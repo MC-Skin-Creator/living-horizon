@@ -82,7 +82,9 @@ public final class FarFarPlayerClient implements ClientModInitializer {
         while (settings.consumeClick()) {
             minecraft.setScreen(new FarConfigScreen(minecraft.screen));
         }
+        long started = System.nanoTime();
         FarPlayerTracker.get().tick(minecraft);
+        Stats.tick(System.nanoTime() - started);
     }
 
     /**
@@ -116,6 +118,8 @@ public final class FarFarPlayerClient implements ClientModInitializer {
                 ? "farfarplayer.status.pack.on" : "farfarplayer.status.pack.off"));
         source.sendFeedback(Component.translatable("farfarplayer.status.mobs",
                 FarPlayerTracker.get().mobs().size(), FarPlayerTracker.get().mobs().shown().size()));
+        source.sendFeedback(Component.translatable("farfarplayer.status.cost", Stats.tickMillis(), Stats.extractMillis(),
+                Stats.drawn(), Stats.skipped()));
         Collection<FarPlayer> players = FarPlayerTracker.get().players();
         if (players.isEmpty()) {
             source.sendFeedback(Component.translatable("farfarplayer.status.none"));

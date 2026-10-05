@@ -12,6 +12,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.util.ProblemReporter;
+import net.minecraft.util.Util;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
@@ -37,11 +38,13 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * The mobs this client has met, left where it last saw them once the server stops
@@ -80,6 +83,9 @@ public final class MobMemory {
         transient volatile MobPaths.@Nullable Plan plan;
         transient volatile boolean planning;
         transient boolean failed;
+        /** Its saved data, being read off the game's thread. */
+        transient @Nullable CompletableFuture<CompoundTag> parsed;
+        transient @Nullable EntityType<?> entityType;
         transient int missingChecks;
         transient double distance;
 
@@ -92,8 +98,8 @@ public final class MobMemory {
             List.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end");
     /** Bounds the file; the oldest sightings go first. */
     private static final int MAX_REMEMBERED = 2000;
-    /** Puppets built per tick at most, so that a crowd does not cost one long frame. */
-    private static final int BUILDS_PER_TICK = 10;
+    /** Nanoseconds per tick for building puppets, so that a crowd does not cost one long frame. */
+    private static final long BUILD_BUDGET = 2_000_000L;
 
     private final Map<UUID, Remembered> mobs = new LinkedHashMap<>();
     /** Mobs the server sends right now: never drawn twice. */
@@ -250,11 +256,17 @@ public final class MobMemory {
         if (clock % 1200 == 0 && dirty) save();
 
         Set<String> still = new HashSet<>(config.stillMobTypes);
-        int built = 0;
+        long budget = System.nanoTime() + BUILD_BUDGET;
         for (Remembered mob : shown) {
             if (mob.puppet == null && !mob.failed) {
-                if (built++ >= BUILDS_PER_TICK) continue;
-                build(mob, level);
+                // The saved data is read on a background thread; the puppet is made here,
+                // where the world is, as long as this tick's budget lasts.
+                if (mob.parsed == null) {
+                    String nbt = mob.nbt;
+                    mob.parsed = CompletableFuture.supplyAsync(() -> parse(nbt), Util.backgroundExecutor());
+                } else if (mob.parsed.isDone() && System.nanoTime() < budget) {
+                    build(mob, level);
+                }
             }
             if (mob.puppet == null) continue;
             if (mob.puppet instanceof LivingEntity living && !still.contains(mob.type)) {
@@ -334,7 +346,8 @@ public final class MobMemory {
         for (var iterator = mobs.values().iterator(); iterator.hasNext(); ) {
             Remembered mob = iterator.next();
             if (!mob.dimension.equals(dimension)) continue;
-            int range = EntityType.byString(mob.type).map(t -> t.clientTrackingRange() * 16).orElse(160);
+            EntityType<?> type = type(mob);
+            int range = type == null ? 160 : type.clientTrackingRange() * 16;
             boolean inRange = distance(mob.x, mob.y, mob.z) < Math.min(range, renderDistanceBlocks) - 24
                     && level.hasChunk((int) Math.floor(mob.x) >> 4, (int) Math.floor(mob.z) >> 4);
             mob.missingChecks = inRange ? mob.missingChecks + 1 : 0;
@@ -358,8 +371,10 @@ public final class MobMemory {
         }
         here.sort(Comparator.comparingDouble(mob -> mob.distance));
         List<Remembered> chosen = here.subList(0, Math.min(here.size(), Math.max(0, config.maxDistantMobs)));
+        Set<Remembered> kept = Collections.newSetFromMap(new IdentityHashMap<>());
+        kept.addAll(chosen);
         for (Remembered mob : shown) {
-            if (!chosen.contains(mob)) mob.puppet = null;
+            if (!kept.contains(mob)) mob.puppet = null;
         }
         shown = Collections.unmodifiableList(new ArrayList<>(chosen));
     }
@@ -372,15 +387,28 @@ public final class MobMemory {
                 && category != MobCategory.UNDERGROUND_WATER_CREATURE && category != MobCategory.AXOLOTLS;
     }
 
+    private static @Nullable EntityType<?> type(Remembered mob) {
+        if (mob.entityType == null) mob.entityType = EntityType.byString(mob.type).orElse(null);
+        return mob.entityType;
+    }
+
+    private static @Nullable CompoundTag parse(String nbt) {
+        try {
+            return TagParser.parseCompoundFully(nbt);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private void build(Remembered mob, ClientLevel level) {
         try {
-            EntityType<?> type = EntityType.byString(mob.type).orElse(null);
+            EntityType<?> type = type(mob);
             Entity entity = type == null ? null : type.create(level, EntitySpawnReason.LOAD);
-            if (entity == null) {
+            CompoundTag tag = mob.parsed == null ? null : mob.parsed.join();
+            if (entity == null || tag == null) {
                 mob.failed = true;
                 return;
             }
-            CompoundTag tag = TagParser.parseCompoundFully(mob.nbt);
             entity.load(TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), tag));
             entity.setPos(mob.x, mob.y, mob.z);
             entity.setOldPosAndRot();

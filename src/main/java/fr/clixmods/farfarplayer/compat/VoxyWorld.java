@@ -15,32 +15,58 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Reads Voxy's world: the ground and biome of a column, for the gulls to find the coast,
- * and the first block along a line, for {@code /farfarplayer voxy}. Voxy keeps every block
- * it has seen, in sections of 32 blocks a side at level 0, one block per voxel; this walks
- * them on a thread of its own, keeping the last sections it read.
+ * Reads Voxy's world: the ground and biome of a column - for the birds to find coasts,
+ * fields and lakes, and for the mobs to find where they may walk - and the first block
+ * along a line, for {@code /farfarplayer voxy}. Voxy keeps every block it has seen, in
+ * sections of 32 blocks a side at level 0, one block per voxel.
+ *
+ * <p>Reads run on a few threads of their own, never on the game's. Each keeps the last
+ * sections it read; columns already read are remembered for a while, since herds and
+ * flocks keep asking about the same ground; and many columns go in one task.
  *
  * <p>Voxy has no API for this. Its classes are reached by reflection so that the mod still
  * loads without it, and any failure turns this off for the session.
  */
 public final class VoxyWorld {
     private static final double STEP = 0.75;
-    /** Sections kept acquired between reads: 256 KiB each in Voxy's memory. */
-    private static final int CACHED_SECTIONS = 160;
+    /** Sections each reader keeps acquired between reads: 256 KiB each in Voxy's memory. */
+    private static final int CACHED_SECTIONS = 96;
+    /** A column read is trusted this long: the terrain far away rarely changes. */
+    private static final long COLUMN_NANOS = 120_000_000_000L;
+    private static final int COLUMNS_KEPT = 60_000;
+    private static final int THREADS = Math.clamp(Runtime.getRuntime().availableProcessors() / 4, 1, 3);
 
-    private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(runnable -> {
-        Thread thread = new Thread(runnable, "Far Far Player Voxy reader");
+    private static final AtomicInteger NAMES = new AtomicInteger();
+    private static final ExecutorService READERS = Executors.newFixedThreadPool(THREADS, runnable -> {
+        Thread thread = new Thread(runnable, "Far Far Player Voxy reader " + NAMES.incrementAndGet());
         thread.setDaemon(true);
+        thread.setPriority(Thread.NORM_PRIORITY - 1);
         return thread;
     });
 
-    /** Worker thread only: Voxy sections held between reads, oldest first. */
-    private static final LinkedHashMap<Long, Object> SECTIONS = new LinkedHashMap<>(256, 0.75f, true);
-    private static @Nullable Object cachedWorld;
+    /** One reader's sections, for one world. */
+    private static final class Cache {
+        final LinkedHashMap<Long, Object> sections = new LinkedHashMap<>(128, 0.75f, true);
+        @Nullable Object world;
+        int generation;
+    }
+
+    private static final ThreadLocal<Cache> CACHES = ThreadLocal.withInitial(Cache::new);
+    /** Bumped when the world changes: every reader lets go of what it holds at its next read. */
+    private static volatile int generation;
+
+    /** Columns already read: the surface, or {@link #NOTHING}, and when. */
+    private record Known(@Nullable Surface surface, long at) {
+    }
+
+    private static final Surface NOTHING = new Surface(Integer.MIN_VALUE, "", false, null);
+    private static final ConcurrentHashMap<Long, Known> COLUMNS = new ConcurrentHashMap<>();
 
     private static boolean ready;
     private static volatile boolean broken;
@@ -51,9 +77,10 @@ public final class VoxyWorld {
     private VoxyWorld() {
     }
 
-    /** Lets go of every cached section: another world. */
+    /** Another world: every section held is let go, every column read forgotten. */
     public static void clear() {
-        if (ready && !broken) WORKER.execute(VoxyWorld::releaseAll);
+        generation++;
+        COLUMNS.clear();
     }
 
     /** For {@code /farfarplayer voxy}. */
@@ -74,7 +101,7 @@ public final class VoxyWorld {
             result.completeExceptionally(new IllegalStateException(failure != null ? failure : "Voxy is not loaded"));
             return result;
         }
-        WORKER.execute(() -> {
+        READERS.execute(() -> {
             try {
                 Object world = world();
                 if (world == null) {
@@ -99,21 +126,57 @@ public final class VoxyWorld {
      * empty where Voxy has nothing, or without Voxy.
      */
     public static CompletableFuture<Optional<Surface>> surface(int x, int z) {
-        CompletableFuture<Optional<Surface>> result = new CompletableFuture<>();
-        if (!available()) {
-            result.complete(Optional.empty());
-            return result;
+        return surfaces(new int[]{x}, new int[]{z}).thenApply(found -> Optional.ofNullable(found[0]));
+    }
+
+    /**
+     * Many columns at once, in one task: entry {@code i} is the surface of
+     * {@code (xs[i], zs[i])}, or null where Voxy has nothing. Columns read recently come
+     * from memory without waiting.
+     */
+    public static CompletableFuture<@Nullable Surface[]> surfaces(int[] xs, int[] zs) {
+        Surface[] found = new Surface[xs.length];
+        if (!available()) return CompletableFuture.completedFuture(found);
+        long now = System.nanoTime();
+        boolean missing = false;
+        for (int i = 0; i < xs.length; i++) {
+            Known known = COLUMNS.get(key(xs[i], zs[i]));
+            if (known != null && now - known.at < COLUMN_NANOS) {
+                found[i] = known.surface == NOTHING ? null : known.surface;
+            } else {
+                missing = true;
+            }
         }
-        WORKER.execute(() -> {
+        if (!missing) return CompletableFuture.completedFuture(found);
+        CompletableFuture<@Nullable Surface[]> result = new CompletableFuture<>();
+        READERS.execute(() -> {
             try {
                 Object world = world();
-                result.complete(world == null ? Optional.empty() : Optional.ofNullable(column(world, x, z)));
+                if (world != null) {
+                    long at = System.nanoTime();
+                    if (COLUMNS.size() > COLUMNS_KEPT) COLUMNS.clear();
+                    for (int i = 0; i < xs.length; i++) {
+                        long key = key(xs[i], zs[i]);
+                        Known known = COLUMNS.get(key);
+                        if (known != null && at - known.at < COLUMN_NANOS) {
+                            found[i] = known.surface == NOTHING ? null : known.surface;
+                            continue;
+                        }
+                        Surface surface = column(world, xs[i], zs[i]);
+                        COLUMNS.put(key, new Known(surface == null ? NOTHING : surface, at));
+                        found[i] = surface;
+                    }
+                }
             } catch (Throwable e) {
                 fail(e);
-                result.complete(Optional.empty());
             }
+            result.complete(found);
         });
         return result;
+    }
+
+    private static long key(int x, int z) {
+        return (long) x << 32 | (z & 0xFFFFFFFFL);
     }
 
     private static @Nullable Surface column(Object world, int x, int z) throws Throwable {
@@ -138,7 +201,7 @@ public final class VoxyWorld {
 
     // --- Voxy -----------------------------------------------------------------------------
 
-    private static boolean available() {
+    private static synchronized boolean available() {
         if (broken) return false;
         if (!ready) {
             ready = true;
@@ -203,14 +266,17 @@ public final class VoxyWorld {
                 .asType(MethodType.methodType(BlockState.class, Object.class, int.class));
     }
 
+    /** Voxy's world for this reader, after letting go of what it held for another one. */
     private static @Nullable Object world() throws Throwable {
         Object system = (Object) renderSystem.invokeExact();
         if (system == null) return null;
         Object world = (Object) engine.invokeExact(system);
         if (world == null || !(boolean) isLive.invokeExact(world)) return null;
-        if (world != cachedWorld) {
-            releaseAll();
-            cachedWorld = world;
+        Cache cache = CACHES.get();
+        if (world != cache.world || cache.generation != generation) {
+            releaseAll(cache);
+            cache.world = world;
+            cache.generation = generation;
         }
         return world;
     }
@@ -237,14 +303,15 @@ public final class VoxyWorld {
         return Double.NaN;
     }
 
-    /** A level 0 section's voxels, from the cache or from Voxy; null where Voxy has nothing. */
+    /** A level 0 section's voxels, from this reader's cache or from Voxy; null where Voxy has nothing. */
     private static long @Nullable [] section(Object world, int sx, int sy, int sz, long key) throws Throwable {
-        Object section = SECTIONS.get(key);
-        if (section == null && !SECTIONS.containsKey(key)) {
+        LinkedHashMap<Long, Object> sections = CACHES.get().sections;
+        Object section = sections.get(key);
+        if (section == null && !sections.containsKey(key)) {
             section = (Object) acquire.invokeExact(world, 0, sx, sy, sz);
-            SECTIONS.put(key, section);
-            if (SECTIONS.size() > CACHED_SECTIONS) {
-                Iterator<Map.Entry<Long, Object>> oldest = SECTIONS.entrySet().iterator();
+            sections.put(key, section);
+            if (sections.size() > CACHED_SECTIONS) {
+                Iterator<Map.Entry<Long, Object>> oldest = sections.entrySet().iterator();
                 Object evicted = oldest.next().getValue();
                 oldest.remove();
                 if (evicted != null) {
@@ -255,9 +322,9 @@ public final class VoxyWorld {
         return section == null ? null : (long[]) data.invokeExact(section);
     }
 
-    private static void releaseAll() {
+    private static void releaseAll(Cache cache) {
         try {
-            for (Object section : SECTIONS.values()) {
+            for (Object section : cache.sections.values()) {
                 if (section != null) {
                     int ignored = (int) release.invokeExact(section);
                 }
@@ -265,8 +332,7 @@ public final class VoxyWorld {
         } catch (Throwable e) {
             fail(e);
         }
-        SECTIONS.clear();
-        cachedWorld = null;
+        cache.sections.clear();
+        cache.world = null;
     }
-
 }

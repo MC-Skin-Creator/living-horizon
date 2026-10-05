@@ -81,6 +81,17 @@ public final class VoxyDepth {
         voxyHeight = viewport[3];
     }
 
+    /** Something is drawn past the render distance this frame, where Voxy's terrain could hide it. */
+    private static boolean needed;
+
+    /**
+     * Called for anything drawn past the render distance. Without it the frame is left
+     * alone: three copies of a full-screen depth texture are no small cost for nothing.
+     */
+    public static void needed() {
+        needed = true;
+    }
+
     /** The world's entities are submitted: the next drawing of features is theirs. */
     public static void arm() {
         armed = true;
@@ -90,6 +101,12 @@ public final class VoxyDepth {
     public static void before() {
         if (!armed) return;
         merged = false;
+        boolean wanted = needed;
+        needed = false;
+        if (!wanted) {
+            reason = "nothing far to hide this frame";
+            return;
+        }
         FarConfig config = FarConfig.get();
         if (!config.enabled || !config.voxyOcclusion || !available()) return;
         try {

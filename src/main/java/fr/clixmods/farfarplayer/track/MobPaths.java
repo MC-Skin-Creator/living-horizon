@@ -52,8 +52,9 @@ public final class MobPaths {
     public static CompletableFuture<Plan> plan(ClientLevel level, double x, double y, double z, double width, long seed) {
         int bx = Mth.floor(x), bz = Mth.floor(z);
         double[][] ground = new double[SIZE][SIZE];
-        CompletableFuture<?>[] pending = new CompletableFuture<?>[SIZE * SIZE];
-        int waiting = 0;
+        // Loaded columns now; the others all in one read of Voxy's world.
+        int[] farX = new int[SIZE * SIZE], farZ = new int[SIZE * SIZE];
+        int far = 0;
         for (int i = 0; i < SIZE; i++) {
             for (int j = 0; j < SIZE; j++) {
                 int cx = bx + i - RADIUS, cz = bz + j - RADIUS;
@@ -63,15 +64,20 @@ public final class MobPaths {
                     boolean wet = !level.getFluidState(new BlockPos(cx, top - 1, cz)).isEmpty();
                     if (!wet) ground[i][j] = top;
                 } else {
-                    int fi = i, fj = j;
-                    pending[waiting++] = VoxyWorld.surface(cx, cz).thenAccept(surface -> surface
-                            .filter(s -> !s.water())
-                            .ifPresent(s -> ground[fi][fj] = s.y() + 1));
+                    farX[far] = cx;
+                    farZ[far] = cz;
+                    far++;
                 }
             }
         }
-        return CompletableFuture.allOf(Arrays.copyOf(pending, waiting))
-                .thenApply(done -> choose(ground, x, y, z, bx, bz, width, seed));
+        if (far == 0) return CompletableFuture.completedFuture(choose(ground, x, y, z, bx, bz, width, seed));
+        return VoxyWorld.surfaces(Arrays.copyOf(farX, far), Arrays.copyOf(farZ, far)).thenApply(surfaces -> {
+            for (int k = 0; k < surfaces.length; k++) {
+                VoxyWorld.Surface s = surfaces[k];
+                if (s != null && !s.water()) ground[farX[k] - bx + RADIUS][farZ[k] - bz + RADIUS] = s.y() + 1;
+            }
+            return choose(ground, x, y, z, bx, bz, width, seed);
+        });
     }
 
     /**

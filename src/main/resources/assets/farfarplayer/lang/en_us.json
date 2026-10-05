@@ -41,6 +41,7 @@
   "farfarplayer.status.pack.on": "Data pack: running, positions are exact.",
   "farfarplayer.status.pack.off": "Data pack: not found, positions come from the locator bar.",
   "farfarplayer.status.mobs": "Mobs remembered: %s (%s drawn).",
+  "farfarplayer.status.cost": "Cost: %s ms per tick, %s ms per frame; %s puppets drawn, %s skipped (behind you or too small).",
   "farfarplayer.voxy.missing": "Voxy is not installed: nothing to hide behind.",
   "farfarplayer.voxy.failed": "Voxy check turned off: %s",
   "farfarplayer.voxy.depth": "Voxy depth on distant mobs: %s.",

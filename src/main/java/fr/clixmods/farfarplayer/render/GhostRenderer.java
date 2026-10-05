@@ -1,7 +1,9 @@
 package fr.clixmods.farfarplayer.render;
 
 import fr.clixmods.farfarplayer.FarConfig;
+import fr.clixmods.farfarplayer.Stats;
 import fr.clixmods.farfarplayer.ambient.Ambience;
+import fr.clixmods.farfarplayer.compat.VoxyDepth;
 import fr.clixmods.farfarplayer.track.FarPlayer;
 import fr.clixmods.farfarplayer.track.FarPlayerTracker;
 import fr.clixmods.farfarplayer.track.MobMemory;
@@ -19,6 +21,7 @@ import net.minecraft.client.renderer.entity.state.HumanoidRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.client.renderer.state.LevelRenderState;
 import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -26,6 +29,7 @@ import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Vector3fc;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Collections;
@@ -69,6 +73,56 @@ public final class GhostRenderer {
     /** Something drawn this far away this frame: the next far plane covers it. */
     public static void noteDistance(double distance) {
         farthest = Math.max(farthest, distance);
+        if (distance > drawnRange) VoxyDepth.needed();
+    }
+
+    // --- What is worth drawing ----------------------------------------------------------
+
+    /** The view this frame: where the camera looks, how wide, how many pixels a radian is. */
+    private static double eyeX, eyeY, eyeZ, lookX, lookY, lookZ, viewAngle, pixelsPerRadian, drawnRange;
+    private static int drawn, skipped;
+
+    private static void view(Camera camera, Minecraft minecraft) {
+        Vec3 eye = camera.position();
+        eyeX = eye.x;
+        eyeY = eye.y;
+        eyeZ = eye.z;
+        Vector3fc look = camera.forwardVector();
+        lookX = look.x();
+        lookY = look.y();
+        lookZ = look.z();
+        double fov = Math.toRadians(minecraft.options.fov().get());
+        int width = Math.max(1, minecraft.getWindow().getWidth()), height = Math.max(1, minecraft.getWindow().getHeight());
+        // Half the screen's diagonal, as an angle, with a margin for a quick turn of the head.
+        double aspect = width / (double) height;
+        viewAngle = Math.atan(Math.tan(fov / 2) * Math.sqrt(1 + aspect * aspect)) + 0.15;
+        pixelsPerRadian = height / (2.0 * Math.tan(fov / 2));
+        drawnRange = minecraft.options.getEffectiveRenderDistance() * 16 - 16;
+    }
+
+    /**
+     * Whether a puppet is worth extracting at all: in front of the camera, within the view,
+     * and - for {@code mayVanish} - at least about half a pixel big at its true size.
+     * Extraction is the costly part of drawing a puppet, and most remembered mobs are
+     * behind the camera or specks.
+     */
+    static boolean worthDrawing(Entity entity, boolean mayVanish) {
+        double size = Math.max(0.5, Math.max(entity.getBbHeight(), entity.getBbWidth()));
+        double dx = entity.getX() - eyeX, dy = entity.getY() + size * 0.5 - eyeY, dz = entity.getZ() - eyeZ;
+        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (distance < size * 2 + 4) return count(true);
+        double angle = Math.acos(Mth.clamp((dx * lookX + dy * lookY + dz * lookZ) / distance, -1, 1));
+        if (angle > viewAngle + Math.asin(Math.min(1, size / distance))) return count(false);
+        if (mayVanish && FarConfig.get().minApparentPixels <= 0 && size / distance * pixelsPerRadian < 0.6) {
+            return count(false);
+        }
+        return count(true);
+    }
+
+    private static boolean count(boolean yes) {
+        if (yes) drawn++;
+        else skipped++;
+        return yes;
     }
 
     public static void beginFrame() {
@@ -103,6 +157,10 @@ public final class GhostRenderer {
         Minecraft minecraft = Minecraft.getInstance();
         EntityRenderDispatcher dispatcher = minecraft.getEntityRenderDispatcher();
         Vec3 eye = camera.position();
+        view(camera, minecraft);
+        long started = System.nanoTime();
+        drawn = 0;
+        skipped = 0;
 
         for (FarPlayer player : FarPlayerTracker.get().players()) {
             AbstractClientPlayer live = player.live();
@@ -117,6 +175,7 @@ public final class GhostRenderer {
                 add(frame, minecraft, eye, body, mountState, false, config, live.getUUID());
             } else if (player.showsPuppet(config)) {
                 Entity puppet = player.puppet();
+                if (!worthDrawing(puppet, false)) continue;
                 Entity mount = config.showVehicles ? player.mountPuppet() : null;
                 EntityRenderState body = dispatcher.extractEntity(puppet, partialTick);
                 EntityRenderState mountState = mount == null ? null : dispatcher.extractEntity(mount, partialTick);
@@ -135,10 +194,12 @@ public final class GhostRenderer {
             // Parrots and bats; the silhouettes are drawn by AmbientRenderer.
             for (Ambience.Flyer flyer : FarPlayerTracker.get().ambience().flyers()) {
                 if (flyer.puppet == null) continue;
+                if (!worthDrawing(flyer.puppet, true)) continue;
                 add(frame, minecraft, eye, dispatcher.extractEntity(flyer.puppet, partialTick), null, true, config, null,
                         (flyer.kind == Ambience.Kind.PARROT ? flyer.span : 1.0) * flyer.scale);
             }
         }
+        Stats.extract(System.nanoTime() - started, drawn, skipped);
     }
 
     /** Mobs met on the way, where they were, doing their little loop. */
@@ -148,6 +209,7 @@ public final class GhostRenderer {
         for (MobMemory.Remembered mob : FarPlayerTracker.get().mobs().shown()) {
             Entity puppet = mob.puppet();
             if (puppet == null) continue;
+            if (!worthDrawing(puppet, true)) continue;
             EntityRenderState body = dispatcher.extractEntity(puppet, partialTick);
             // A puppet is in no world, so never in water: fish would be drawn flopping on
             // their side, as on land. Water mobs were in water when last seen.
@@ -175,6 +237,7 @@ public final class GhostRenderer {
             if (spot.dimension() != dimension) continue;
             Entity puppet = resting.puppet(level, spot);
             if (puppet == null) continue;
+            if (!worthDrawing(puppet, true)) continue;
             EntityRenderState body = dispatcher.extractEntity(puppet, partialTick);
             if (body instanceof LivingEntityRenderState living) {
                 living.yRot = 0;
@@ -209,6 +272,7 @@ public final class GhostRenderer {
         double ax = body.x - eye.x, ay = body.y - eye.y, az = body.z - eye.z;
         double distance = Math.sqrt(ax * ax + ay * ay + az * az);
         if (distance < 1e-3) return;
+        if (distance > drawnRange) VoxyDepth.needed();
 
         // Drawn where they really are, so that terrain in front hides them through the depth
         // buffer - Voxy's included, see VoxyDepth - unless that is past the far plane; then

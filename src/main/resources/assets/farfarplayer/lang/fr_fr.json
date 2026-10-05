@@ -41,6 +41,7 @@
   "farfarplayer.status.pack.on": "Datapack : actif, positions exactes.",
   "farfarplayer.status.pack.off": "Datapack : absent, positions tirées de la barre de localisation.",
   "farfarplayer.status.mobs": "Mobs en mémoire : %s (%s affichés).",
+  "farfarplayer.status.cost": "Coût : %s ms par tick, %s ms par image ; %s copies dessinées, %s ignorées (derrière toi ou trop petites).",
   "farfarplayer.voxy.missing": "Voxy n'est pas installé : rien derrière quoi cacher.",
   "farfarplayer.voxy.failed": "Vérification Voxy désactivée : %s",
   "farfarplayer.voxy.depth": "Profondeur Voxy sur les mobs lointains : %s.",
