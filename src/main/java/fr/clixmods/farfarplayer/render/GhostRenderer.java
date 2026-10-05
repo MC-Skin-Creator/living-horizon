@@ -24,6 +24,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -235,17 +236,32 @@ public final class GhostRenderer {
             state.shadowPieces.clear();
             state.shadowRadius = 0;
             state.nameTag = null;
-            if (puppet && (level == null || !level.hasChunkAt(BlockPos.containing(state.x, state.y + 0.5, state.z)))) {
-                // No chunk is loaded where this puppet stands: light it as open sky,
-                // which the lightmap still darkens at night.
-                state.lightCoords = LightTexture.pack(0, 15);
-            }
+            if (puppet) state.lightCoords = light(level, state);
             if (config.glowOutline && self != null) {
                 state.outlineColor = 0xFFFFFF;
                 frame.haveGlowingEntities = true;
             }
             frame.entityRenderStates.add(state);
         }
+    }
+
+    /**
+     * The light a puppet stands in. Where no chunk is loaded, open sky, which the lightmap
+     * still darkens at night. Where one is, the brightest of its feet, the block above and
+     * the one above that: a puppet stands where its mob was last seen, which may be a little
+     * inside a block, or in a pocket the light engine has not reached yet - read there alone,
+     * it would be drawn black.
+     */
+    private static int light(@Nullable ClientLevel level, EntityRenderState state) {
+        BlockPos feet = BlockPos.containing(state.x, state.y + 0.1, state.z);
+        if (level == null || !level.hasChunkAt(feet)) return LightTexture.pack(0, 15);
+        int block = 0, sky = 0;
+        for (int up = 0; up < 3; up++) {
+            BlockPos at = feet.above(up);
+            block = Math.max(block, level.getBrightness(LightLayer.BLOCK, at));
+            sky = Math.max(sky, level.getBrightness(LightLayer.SKY, at));
+        }
+        return LightTexture.pack(block, sky);
     }
 
     /** Whether an entity the server sends should be drawn whatever its distance. */
