@@ -1,0 +1,12 @@
+accessWidener v2 named
+
+# The locator bar's three kinds of waypoint, and what each one carries.
+accessible class net/minecraft/world/waypoints/TrackedWaypoint$Vec3iWaypoint
+accessible class net/minecraft/world/waypoints/TrackedWaypoint$ChunkWaypoint
+accessible class net/minecraft/world/waypoints/TrackedWaypoint$AzimuthWaypoint
+accessible field net/minecraft/world/waypoints/TrackedWaypoint$Vec3iWaypoint vector Lnet/minecraft/core/Vec3i;
+accessible field net/minecraft/world/waypoints/TrackedWaypoint$ChunkWaypoint chunkPos Lnet/minecraft/world/level/ChunkPos;
+accessible field net/minecraft/world/waypoints/TrackedWaypoint$AzimuthWaypoint angle F
+
+# Skin layers of a player that was never seen up close.
+accessible field net/minecraft/world/entity/Avatar DATA_PLAYER_MODE_CUSTOMISATION Lnet/minecraft/network/syncher/EntityDataAccessor;

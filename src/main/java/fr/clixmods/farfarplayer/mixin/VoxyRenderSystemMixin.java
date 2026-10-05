@@ -1,0 +1,23 @@
+package fr.clixmods.farfarplayer.mixin;
+
+import fr.clixmods.farfarplayer.compat.VoxyDepth;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Pseudo;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+/**
+ * Notes which framebuffer Voxy draws its terrain into: the one bound while Sodium draws
+ * the world's terrain, which is where the entities' depth goes too. Between render passes
+ * Minecraft leaves nothing bound, so this is the moment to ask. Voxy is optional: without
+ * it, this mixin applies to nothing.
+ */
+@Pseudo
+@Mixin(targets = "me.cortex.voxy.client.core.VoxyRenderSystem", remap = false)
+abstract class VoxyRenderSystemMixin {
+    @Inject(method = "renderOpaque", at = @At("HEAD"), require = 0)
+    private void farfarplayer$noteTarget(CallbackInfo ci) {
+        VoxyDepth.noteTarget();
+    }
+}

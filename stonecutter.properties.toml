@@ -1,0 +1,25 @@
+# Mod identity at the top, then one table per Minecraft target.
+
+mod.id = "farfarplayer"
+mod.name = "Far Far Player"
+mod.group = "fr.clixmods.farfarplayer"
+mod.version = "0.1.0"
+
+deps.fabric_loader = "0.19.3"
+# What fabric.mod.json asks of players: Fabric API 0.141 for 1.21.11 needs 0.17.3 itself,
+# and nothing this mod uses is newer. Compiling against 0.19.3 changes nothing to that.
+mod.loader_min = "0.17.3"
+
+# One JUnit line for every target, through the BOM.
+deps.junit = "5.14.4"
+
+# The 1.17 line serves the obfuscated (pre-26) Loom variant on a Java 21 JVM.
+loomx.loom_version = "1.17-SNAPSHOT"
+
+["1.21.11"]
+mod.mc_compat = "1.21.11"
+mod.mc_releases = ["1.21.11"]
+
+deps.fabric_api = "0.141.6+1.21.11"
+# Compile only: the "Configure" button in Mod Menu. The mod runs without it.
+deps.modmenu = "17.0.0"

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "${id}",
+  "version": "${version}",
+  "name": "${name}",
+  "description": "Keeps other players - and what they ride - visible at any distance, past the server's tracking range.",
+  "authors": ["clixmods"],
+  "license": "All-Rights-Reserved",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["fr.clixmods.farfarplayer.FarFarPlayerClient"],
+    "modmenu": ["fr.clixmods.farfarplayer.ui.ModMenuEntry"]
+  },
+  "mixins": [
+    { "config": "farfarplayer.mixins.json", "environment": "client" }
+  ],
+  "accessWidener": "farfarplayer.accesswidener",
+  "depends": {
+    "fabricloader": ">=${loader}",
+    "minecraft": "${minecraft}",
+    "java": ">=${java}",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "voxy": "*"
+  }
+}

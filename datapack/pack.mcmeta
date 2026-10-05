@@ -1,0 +1,7 @@
+{
+  "pack": {
+    "description": "Far Far Player: shares every player's position with the clients that run the mod",
+    "min_format": 94,
+    "max_format": 94
+  }
+}
