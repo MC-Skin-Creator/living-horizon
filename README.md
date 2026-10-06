@@ -1,15 +1,47 @@
 # Living Horizon
 
-Gives life to the distance. A client-side Fabric mod for Minecraft **1.21.11** that
-fills the horizon with the creatures who live there: animals grazing around far-off
+Gives life to the distance. Voxy shows you mountains, forests and villages far past your
+render distance, but empty. Living Horizon fills them: animals grazing around far-off
 villages, villagers and golems, flocks of birds crossing the sky, and other players
 walking where they really are, with their skin, their armour, and the horse, boat or
-happy ghast they were riding. It is made to sit on top of Voxy, which draws the far
-terrain and the villages on it, but never what lives there.
+happy ghast they were riding.
 
-Nothing is sent to the server. On its own, the mod uses only what a vanilla client
-already receives. With the companion **data pack** on the server (not a mod: a folder
-in `world/datapacks`), every position is exact at any distance.
+A client-side Fabric mod for Minecraft **1.21.11**. Nothing is sent to the server: on its
+own, the mod uses only what a vanilla client already receives. With the companion **data
+pack** on the server (not a mod: a folder in `world/datapacks`), every position is exact
+at any distance.
+
+## What you can do
+
+- **See other players far away.** They keep walking where they are, past the range where
+  the server stops sending them, with their skin, cape, elytra and armour, and what they
+  ride.
+- **Watch the distance live.** Animals, villagers and golems graze and wander around the
+  villages Voxy draws, and are hidden by the terrain pixel by pixel, shaders included.
+- **Look up.** Flocks, geese in a V, gulls on the coast, bats at night - and, now and
+  then, a flying saucer taking a cow (`/livinghorizon ufo`).
+- **Find players where they left.** Someone who logged off stays asleep where they were,
+  until they come back.
+- **Tune it.** Everything is in the settings (Mod Menu, or the key under *Living Horizon*
+  in Controls): which mobs, which birds, how many, how far.
+
+## Install
+
+Requires [Fabric Loader](https://fabricmc.net/use/) 0.17.3 or newer and the
+[Fabric API](https://modrinth.com/mod/fabric-api). [Voxy](https://modrinth.com/mod/voxy)
+is what the mod is made for and is recommended. [Mod Menu](https://modrinth.com/mod/modmenu)
+is optional and adds the settings button.
+
+| Minecraft | Java | Fabric Loader | Fabric API |
+|---|---|---|---|
+| 1.21.11 | 21 | 0.17.3 or newer | 0.141.6+1.21.11 |
+
+Drop `livinghorizon-<version>+mc1.21.11.jar` into `.minecraft/mods/`. For exact positions,
+also drop the data pack zip into the world's `datapacks/` folder (see below).
+
+Jars and the data pack come from the
+[releases](https://github.com/MC-Skin-Creator/far-far-entities/releases) page. Releases
+are cut from the commits merged into `main`; a version below `1.0.0` is marked *beta*.
 
 ## The data pack: exact positions
 
@@ -163,5 +195,5 @@ out to the farthest player when needed (`extendFarPlane`).
 ./gradlew buildAndCollect         # jar and data pack zip in build/libs/<version>/
 ```
 
-Same setup as `mcskincreator-mod`: Fabric, official Mojang mappings, Stonecutter with a
+Fabric, official Mojang mappings, Stonecutter with a
 single `1.21.11` node so that more versions can be added the same way later.

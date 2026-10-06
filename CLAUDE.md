@@ -59,3 +59,39 @@ Work happens on a `feature/*` or `fix/*` branch and ends with an open pull
 request. **Never commit or push directly to `main`, and never merge a pull
 request.** Opening the pull request is the end of the task — merging is a human
 decision, made after review, every time.
+
+## CI and releases
+
+`.github/workflows/build.yml` builds and tests every Stonecutter target on each pull
+request, and attaches the jar and the data pack zip as a 7-day workflow artifact. CI is
+what checks a change; a pull request is not done until it is green.
+
+`.github/workflows/release.yml` runs on every push to `main` (except doc-only ones):
+
+- `.github/scripts/next-version.sh` derives the version from the conventional-commit
+  subjects since the last tag: `feat` is a minor, `fix`/`perf` a patch, a breaking change
+  a minor below 1.0.0, and `docs`/`chore`/`ci`/`refactor`/`test`/`build` alone make no
+  release. `1.0.0` is never computed: cut it by hand with the workflow's `version` input.
+  So is a first release at a number the commits would not give.
+- Each target builds on its own runner (`.github/scripts/release-targets.py` reads the
+  tables of `stonecutter.properties.toml`), then the release is tagged, the version and the
+  dated changelog are committed back to `main`, and the GitHub release gets the jar and the
+  data pack zip. Below 1.0.0 it is a pre-release titled `vX.Y.Z (beta)`.
+- Modrinth and CurseForge are published by `mc-publish` when `MODRINTH_TOKEN` /
+  `CURSEFORGE_TOKEN` (secrets) and `MODRINTH_ID` / `CURSEFORGE_ID` (repository variables)
+  exist, and skipped otherwise. The Discord announcement uses `DISCORD_WEBHOOK_EN` / `_FR`.
+
+The mod version is `mod.version` in `stonecutter.properties.toml`; the Minecraft version
+never touches it.
+
+## Changelog
+
+A pull request that changes what a player sees or feels adds its entry to
+`changelog/en.md` and `changelog/fr.md`, under `## Unreleased` / `## Prochaine version`,
+in the same pull request: same headings, same number of bullets, same order. Written for
+players, never for developers: no CI, refactor, tooling or documentation. The release
+dates the section by itself.
+
+## Issues
+
+`.claude/skills/issue-from-comment/` turns a pasted comment into a GitHub issue.
