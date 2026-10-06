@@ -1,50 +1,130 @@
 # Store listing: Modrinth and CurseForge
 
-Everything to paste into the two project pages. Not shipped in the jar, and a change
-here does not trigger a release (`**.md` is ignored by `release.yml`).
+Everything to fill in on the two platforms, field by field. Not shipped in the jar, and a
+change here does not trigger a release (`**.md` is ignored by `release.yml`).
 
-## Identity
+Do first: **make the GitHub repository public.** It is private today, and a GPL project
+with a source link that leads nowhere will be refused or distrusted.
 
-| | Modrinth | CurseForge |
-|---|---|---|
-| Name | Living Horizon | Living Horizon |
-| Slug / URL | `living-horizon` | `living-horizon` |
-| Type | Mod | Mods (Minecraft) |
-| Loader | Fabric | Fabric |
-| Game version | 1.21.11 | 1.21.11 |
-| Environment | Client: required, Server: unsupported | Client |
-| Java | 21 | Java 21 |
-| Source | https://github.com/MC-Skin-Creator/far-far-entities | the same |
-| Issues | https://github.com/MC-Skin-Creator/far-far-entities/issues | the same |
-| License | GPL-3.0 | GNU GPLv3 |
+## Two projects
 
-## Summary
+1. **Living Horizon** (the mod): the jar.
+2. **Living Horizon Data Pack** (optional companion): the zip, as a *Data Pack* project on
+   each platform, linked from the mod page. The release workflow only publishes the jar;
+   the zip is on the GitHub release and is uploaded by hand to the data pack project.
 
-Modrinth, 256 characters at most:
+## Modrinth: the mod
 
-> Gives life to the distance: animals, villagers, birds and other players keep living on the horizon, far past your render distance. Client-side, made for Voxy.
+Create > Project > **Mod**.
 
-CurseForge, 200 characters at most:
+| Field | Value |
+|---|---|
+| Name | `Living Horizon` |
+| URL (slug) | `living-horizon` |
+| Summary (256 max) | `Gives life to the distance: animals, villagers, birds and other players keep living on the horizon, far past your render distance. Client-side, made for Voxy.` |
+| Visibility | Public once ready (draft until the first version is approved) |
+| Categories (pick up to 3 featured) | `Decoration`, `Mobs`, `Utility` |
+| Client side | **Required** |
+| Server side | **Unsupported** |
+| Description | the block below |
+| License | **GNU General Public License v3 only** (`GPL-3.0-only`) |
+| Issue tracker | `https://github.com/MC-Skin-Creator/far-far-entities/issues` |
+| Source code | `https://github.com/MC-Skin-Creator/far-far-entities` |
+| Wiki / Discord | empty until they exist |
+| Donation | your link (Ko-fi, GitHub Sponsors, Patreon, PayPal), labelled as support for you |
+| Icon | 512x512 PNG, no text |
+| Gallery | the five shots below; first one featured |
 
-> Gives life to the distance: animals, villagers, birds and other players keep living on the horizon, past your render distance. Client-side, made for Voxy.
+First version (Versions > Create):
 
-## Tags
+| Field | Value |
+|---|---|
+| Version number | `0.1.0` |
+| Version title | `Living Horizon 0.1.0 (1.21.11)` |
+| Release channel | **Beta** (below 1.0.0) |
+| Loaders | Fabric |
+| Game versions | 1.21.11 |
+| Dependencies | Fabric API: **Required**. Voxy: **Embedded no, Optional/Recommended** |
+| File | `livinghorizon-0.1.0+mc1.21.11.jar` (primary) |
+| Changelog | the "Unreleased" section of `changelog/en.md` |
 
-**Modrinth** (categories, up to three shown first): `decoration`, `mobs`, `utility`.
-Loader: Fabric. Environment: client.
+The release workflow does this version for you once `MODRINTH_TOKEN` and `MODRINTH_ID`
+exist; create the project by hand first, to have the id.
 
-**CurseForge** (categories): Cosmetic, Mobs, Utility & QoL. Loader: Fabric.
+## CurseForge: the mod
 
-Search keywords to work into the description: voxy, render distance, distant players,
-lod, horizon, villagers, birds, ambient, immersion, client-side.
+Create > Project > Class **Mods** (Minecraft).
 
-## Dependencies
+| Field | Value |
+|---|---|
+| Project name | `Living Horizon` |
+| Slug | `living-horizon` |
+| Summary (200 to stay safe) | `Gives life to the distance: animals, villagers, birds and other players keep living on the horizon, past your render distance. Client-side, made for Voxy.` |
+| Main category | **Cosmetic** |
+| Additional categories | **Mobs**, **Utility & QoL** |
+| License | **GNU General Public License version 3 (GPL-3.0)** |
+| Description | the block below, pasted in the editor |
+| Logo | 400x400 or larger, square PNG |
+| Links | Source and Issues as above; Donation: your link |
+| Allow others to distribute | leave **allowed**: the GPL allows it, and modpacks need it |
+| Environment | **Client** |
 
-- **Fabric API**: required (`mc-publish` declares it).
-- **Voxy**: recommended, link only: https://modrinth.com/mod/voxy
-- **Mod Menu**: optional, adds the settings button: https://modrinth.com/mod/modmenu
+First file (Files > Upload):
 
-## Description
+| Field | Value |
+|---|---|
+| File | the jar |
+| Display name | `Living Horizon 0.1.0 (1.21.11)` |
+| Release type | **Beta** |
+| Game versions | 1.21.11, **Fabric**, **Java 21**, **Client** |
+| Relations | Fabric API: Required dependency. Voxy: Optional, if it has a CurseForge page |
+| Changelog | same as Modrinth |
+
+CurseForge reviews a new project before it goes public; it takes from hours to days.
+
+## Modrinth and CurseForge: the data pack
+
+Project type **Data Pack** on each.
+
+| Field | Value |
+|---|---|
+| Name | `Living Horizon Data Pack` |
+| Slug | `living-horizon-data-pack` |
+| Summary | `Companion of Living Horizon: publishes exact positions of players and mobs, so far-away ones appear where they really are. A data pack, no server mod.` |
+| Categories | `Utility` (Modrinth); Utility & QoL (CurseForge) |
+| License | GPL-3.0, as the mod |
+| Game version | 1.21.11 |
+| File | `livinghorizon-datapack-0.1.0+mc1.21.11.zip`, from the GitHub release |
+| Release type | Beta |
+
+Description:
+
+```markdown
+# Living Horizon Data Pack
+
+Companion of [Living Horizon](https://modrinth.com/mod/living-horizon). Put it in a
+world's `datapacks/` folder and run `/reload`: the mod then knows the exact position of
+every player and remembered mob, at any distance, instead of estimating it.
+
+## What it does
+
+Five times a second it writes each player's position, yaw and dimension into scoreboard
+objectives shown in sidebars of four team colours. The server sends those to every client;
+nobody sees them on screen. Every five seconds it also publishes the mobs it remembers
+(animals, villagers, golems, named mobs).
+
+## Good to know
+
+- Everyone's position becomes public to whoever reads the scores. Tell your players.
+- Anyone in a team of colour `black`, `dark_blue`, `dark_green` or `dark_aqua` would see
+  the coordinates in their sidebar. If your server uses them, edit the four `setdisplay`
+  lines in `load.mcfunction`.
+- `/function livinghorizon:uninstall`, then `/datapack disable`, removes everything.
+
+Needs the Living Horizon mod on the client. Nothing to install on the clients otherwise.
+```
+
+## Description of the mod (both platforms)
 
 Markdown. Modrinth takes it as is; on CurseForge, paste it in the editor and let it
 format the headings and lists.
