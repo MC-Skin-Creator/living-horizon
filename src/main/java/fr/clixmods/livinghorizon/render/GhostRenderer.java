@@ -4,6 +4,8 @@ import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.Stats;
 import fr.clixmods.livinghorizon.ambient.Ambience;
 import fr.clixmods.livinghorizon.compat.VoxyDepth;
+import fr.clixmods.livinghorizon.debug.DebugMarks;
+import fr.clixmods.livinghorizon.debug.DebugMarks.Mark;
 import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobMemory;
@@ -34,6 +36,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -98,31 +101,48 @@ public final class GhostRenderer {
         viewAngle = Math.atan(Math.tan(fov / 2) * Math.sqrt(1 + aspect * aspect)) + 0.15;
         pixelsPerRadian = height / (2.0 * Math.tan(fov / 2));
         drawnRange = minecraft.options.getEffectiveRenderDistance() * 16 - 16;
+        debug = DebugMarks.active();
+        if (debug) DebugMarks.begin(eye, pixelsPerRadian);
     }
 
+    /** The debug view is on this frame: every puppet says what became of it. */
+    private static boolean debug;
+
     /**
-     * Whether a puppet is worth extracting at all: in front of the camera, within the view,
-     * and - for {@code mayVanish} - at least about half a pixel big at its true size.
+     * Why a puppet is not worth extracting at all, or null when it is: outside the view,
+     * or - for {@code mayVanish} - smaller than about half a pixel at its true size.
      * Extraction is the costly part of drawing a puppet, and most remembered mobs are
-     * behind the camera or specks.
+     * behind the camera or specks. Each test can be switched off to measure it.
      */
-    static boolean worthDrawing(Entity entity, boolean mayVanish) {
+    static @Nullable Mark skip(Entity entity, boolean mayVanish) {
+        FarConfig config = FarConfig.get();
         double size = Math.max(0.5, Math.max(entity.getBbHeight(), entity.getBbWidth()));
         double dx = entity.getX() - eyeX, dy = entity.getY() + size * 0.5 - eyeY, dz = entity.getZ() - eyeZ;
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if (distance < size * 2 + 4) return count(true);
-        double angle = Math.acos(Mth.clamp((dx * lookX + dy * lookY + dz * lookZ) / distance, -1, 1));
-        if (angle > viewAngle + Math.asin(Math.min(1, size / distance))) return count(false);
-        if (mayVanish && FarConfig.get().minApparentPixels <= 0 && size / distance * pixelsPerRadian < 0.6) {
-            return count(false);
+        if (distance < size * 2 + 4) return count(null);
+        if (config.optViewCulling) {
+            double angle = Math.acos(Mth.clamp((dx * lookX + dy * lookY + dz * lookZ) / distance, -1, 1));
+            if (angle > viewAngle + Math.asin(Math.min(1, size / distance))) return count(Mark.OUTSIDE);
         }
-        return count(true);
+        if (mayVanish && config.optTinyCulling && config.minApparentPixels <= 0
+                && size / distance * pixelsPerRadian < 0.6) {
+            return count(Mark.TINY);
+        }
+        return count(null);
     }
 
-    private static boolean count(boolean yes) {
-        if (yes) drawn++;
+    private static @Nullable Mark count(@Nullable Mark why) {
+        if (why == null) drawn++;
         else skipped++;
-        return yes;
+        return why;
+    }
+
+    /** Not drawn this frame; the debug view is told why. */
+    private static boolean skipped(Entity entity, boolean mayVanish) {
+        Mark why = skip(entity, mayVanish);
+        if (why == null) return false;
+        if (debug) DebugMarks.mark(entity, why);
+        return true;
     }
 
     public static void beginFrame() {
@@ -172,10 +192,12 @@ public final class GhostRenderer {
                 EntityRenderState body = dispatcher.extractEntity(live, partialTick);
                 EntityRenderState mountState = mount != live && !EXTRACTED.contains(mount)
                         ? dispatcher.extractEntity(mount, partialTick) : null;
+                if (debug) DebugMarks.mark(live, Mark.PLAYER);
                 add(frame, minecraft, eye, body, mountState, false, config, live.getUUID());
             } else if (player.showsPuppet(config)) {
                 Entity puppet = player.puppet();
-                if (!worthDrawing(puppet, false)) continue;
+                if (skipped(puppet, false)) continue;
+                if (debug) DebugMarks.mark(puppet, Mark.PLAYER);
                 Entity mount = config.showVehicles ? player.mountPuppet() : null;
                 EntityRenderState body = dispatcher.extractEntity(puppet, partialTick);
                 EntityRenderState mountState = mount == null ? null : dispatcher.extractEntity(mount, partialTick);
@@ -188,33 +210,93 @@ public final class GhostRenderer {
 
         rest(frame, minecraft, dispatcher, eye, partialTick, config);
         mobs(frame, minecraft, dispatcher, eye, partialTick, config);
+        unseen(frame, minecraft, dispatcher, eye, partialTick, config);
         LivingEntity cow = config.ufo ? FarPlayerTracker.get().ambience().ufo().cow() : null;
         if (cow != null) add(frame, minecraft, eye, dispatcher.extractEntity(cow, partialTick), null, true, config, null);
         if (config.skyBirds) {
             // Parrots and bats; the silhouettes are drawn by AmbientRenderer.
             for (Ambience.Flyer flyer : FarPlayerTracker.get().ambience().flyers()) {
                 if (flyer.puppet == null) continue;
-                if (!worthDrawing(flyer.puppet, true)) continue;
+                if (skip(flyer.puppet, true) != null) continue;
                 add(frame, minecraft, eye, dispatcher.extractEntity(flyer.puppet, partialTick), null, true, config, null,
                         (flyer.kind == Ambience.Kind.PARROT ? flyer.span : 1.0) * flyer.scale);
             }
         }
         Stats.extract(System.nanoTime() - started, drawn, skipped);
+        if (debug) DebugMarks.end();
     }
 
     /** Mobs met on the way, where they were, doing their little loop. */
     private static void mobs(LevelRenderState frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
                              Vec3 eye, float partialTick, FarConfig config) {
         if (!config.distantMobs) return;
-        for (MobMemory.Remembered mob : FarPlayerTracker.get().mobs().shown()) {
+        MobMemory memory = FarPlayerTracker.get().mobs();
+        List<MobMemory.Remembered> shown = memory.shown();
+        for (MobMemory.Remembered mob : shown) {
             Entity puppet = mob.puppet();
-            if (puppet == null) continue;
-            if (!worthDrawing(puppet, true)) continue;
+            if (puppet == null) {
+                if (debug && mob.waiting()) markRemembered(mob, Mark.WAITING);
+                continue;
+            }
+            if (skipped(puppet, true)) continue;
+            if (config.hideOccludedMobs && Occlusion.hidden(mob.id(), puppet.getX(), puppet.getY(), puppet.getZ(),
+                    puppet.getBbHeight())) {
+                if (debug) DebugMarks.mark(puppet, Mark.HIDDEN);
+                continue;
+            }
+            if (debug) DebugMarks.mark(puppet, Mark.FAKE);
             EntityRenderState body = dispatcher.extractEntity(puppet, partialTick);
             // A puppet is in no world, so never in water: fish would be drawn flopping on
             // their side, as on land. Water mobs were in water when last seen.
             if (body instanceof LivingEntityRenderState living && livesInWater(puppet)) living.isInWater = true;
             add(frame, minecraft, eye, body, null, true, config, mob.id());
+        }
+        if (debug && DebugMarks.drawing() && minecraft.level != null) {
+            // The ones remembered but past the most shown at once.
+            Set<MobMemory.Remembered> listed = Collections.newSetFromMap(new IdentityHashMap<>());
+            listed.addAll(shown);
+            for (MobMemory.Remembered mob : memory.remembered(minecraft.level.dimension().identifier().toString())) {
+                if (!listed.contains(mob)) markRemembered(mob, Mark.SPARE);
+            }
+        }
+    }
+
+    private static void markRemembered(MobMemory.Remembered mob, Mark mark) {
+        EntityType<?> type = EntityType.byString(mob.type()).orElse(null);
+        if (type == null) return;
+        DebugMarks.mark(mob.x(), mob.y(), mob.z(), type.getWidth(), type.getHeight(), type, mark);
+    }
+
+    /**
+     * Mobs the server sends, of the kinds shown far away, that the game leaves out of the
+     * frame: past its entity distance (the "Entity Distance" slider), or in a part of the
+     * world it does not draw. Their copy only takes over once the server stops sending them;
+     * until then they are drawn here, so that a mob never blinks out between the two.
+     */
+    private static void unseen(LevelRenderState frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
+                               Vec3 eye, float partialTick, FarConfig config) {
+        if (!config.distantMobs) return;
+        boolean game = debug && DebugMarks.gameMobs();
+        Map<EntityType<?>, Boolean> wanted = new IdentityHashMap<>();
+        for (Entity entity : FarPlayerTracker.get().mobs().live()) {
+            if (EXTRACTED.contains(entity)) {
+                if (game) DebugMarks.mark(entity, Mark.GAME);
+                continue;
+            }
+            if (entity.isRemoved() || entity.isInvisible() || entity.isPassenger() || entity.isVehicle()) continue;
+            boolean shown = wanted.computeIfAbsent(entity.getType(),
+                    type -> config.mobTypes.contains(EntityType.getKey(type).toString()));
+            if (!shown && !(config.rememberNamedMobs && entity.hasCustomName())) continue;
+            // Close by, the game leaves a mob out only when the terrain hides it.
+            if (entity.distanceToSqr(eye) < 24 * 24) continue;
+            if (skipped(entity, true)) continue;
+            if (config.hideOccludedMobs && Occlusion.hidden(entity.getUUID(), entity.getX(), entity.getY(), entity.getZ(),
+                    entity.getBbHeight())) {
+                if (debug) DebugMarks.mark(entity, Mark.HIDDEN);
+                continue;
+            }
+            if (debug) DebugMarks.mark(entity, Mark.LIVE);
+            add(frame, minecraft, eye, dispatcher.extractEntity(entity, partialTick), null, false, config, entity.getUUID());
         }
     }
 
@@ -237,7 +319,8 @@ public final class GhostRenderer {
             if (spot.dimension() != dimension) continue;
             Entity puppet = resting.puppet(level, spot);
             if (puppet == null) continue;
-            if (!worthDrawing(puppet, true)) continue;
+            if (skipped(puppet, true)) continue;
+            if (debug) DebugMarks.mark(puppet, Mark.PLAYER);
             EntityRenderState body = dispatcher.extractEntity(puppet, partialTick);
             if (body instanceof LivingEntityRenderState living) {
                 living.yRot = 0;

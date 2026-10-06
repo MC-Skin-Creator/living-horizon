@@ -30,6 +30,7 @@ class MobListTest {
         assertTrue(mobs.contains(EntityType.VILLAGER));
         assertFalse(mobs.contains(EntityType.PLAYER));
         assertFalse(mobs.contains(EntityType.ARMOR_STAND));
+        assertTrue(mobs.contains(EntityType.MANNEQUIN));
         assertTrue(mobs.contains(EntityType.OAK_BOAT));
         assertFalse(mobs.contains(EntityType.MINECART));
         for (String type : MobKinds.TYPES) {

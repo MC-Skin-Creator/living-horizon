@@ -4,6 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import fr.clixmods.livinghorizon.track.MobKinds;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobCategory;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -48,7 +51,16 @@ public final class FarConfig {
      */
     public boolean voxyOcclusion = true;
 
-    private static final int CURRENT = 4;
+    private static final int CURRENT = 5;
+
+    /** Skinned figures, which Distant Friends uses as its fake players: shown, standing still. */
+    private static final String MANNEQUIN = "minecraft:mannequin";
+
+    private static List<String> defaultMobTypes() {
+        List<String> types = new ArrayList<>(MobKinds.TYPES);
+        types.add(MANNEQUIN);
+        return types;
+    }
 
     /** Seconds a player stays drawn where they were last placed once the locator bar loses them. */
     public double lostTimeoutSeconds = 30.0;
@@ -75,13 +87,13 @@ public final class FarConfig {
      * Hostile mobs despawn when nobody is near, so remembering them shows ghosts.
      * Chosen in game under "Choose mobs...".
      */
-    public List<String> mobTypes = new ArrayList<>(MobKinds.TYPES);
+    public List<String> mobTypes = defaultMobTypes();
 
     /**
      * Mobs of {@link #mobTypes} shown standing still, where they were, instead of walking
      * their little loop: a happy ghast drifting around on its own looks wrong.
      */
-    public List<String> stillMobTypes = new ArrayList<>(List.of("minecraft:happy_ghast"));
+    public List<String> stillMobTypes = new ArrayList<>(List.of("minecraft:happy_ghast", MANNEQUIN));
 
     /** A mob with a name tag is remembered and shown whatever its type. */
     public boolean rememberNamedMobs = true;
@@ -122,6 +134,48 @@ public final class FarConfig {
     /** Lets vehicles carrying another player be drawn at any distance the server still sends them. */
     public boolean renderTrackedVehiclesFar = true;
 
+    /**
+     * Distant mobs hidden behind terrain - Voxy's included - are not drawn at all, instead
+     * of drawn and covered pixel by pixel. Cheaper with many mobs, but one only half behind
+     * a hill is not drawn either, and a mob appears a moment after the view clears.
+     * Needs Voxy: its world is what the line of sight is tested against.
+     */
+    public boolean hideOccludedMobs = false;
+
+    /**
+     * Mob types of other mods already offered once. A new one is shown far away from the
+     * start (unless it is a monster), then left as the player sets it.
+     */
+    public List<String> knownModdedMobs = new ArrayList<>();
+
+    // --- Optimisations: each one can be switched off, to see what it saves -----------------
+
+    /** Copies outside the view are not prepared at all. */
+    public boolean optViewCulling = true;
+    /** Copies smaller than about half a pixel are not prepared (only when no minimum size is set). */
+    public boolean optTinyCulling = true;
+    /** Voxy's depth is merged only on frames that draw something past the render distance. */
+    public boolean optLazyVoxyDepth = true;
+    /** Voxy's world is read on several threads at once rather than one. */
+    public boolean optParallelVoxy = true;
+    /** Ground already read in Voxy's world is kept for two minutes. */
+    public boolean optColumnCache = true;
+    /** Saved mobs are read off the game's thread and built within 2 ms per tick. */
+    public boolean optBackgroundBuild = true;
+
+    // --- Debug -----------------------------------------------------------------------------
+
+    /** A coloured box around every distant mob and player, seen through terrain. */
+    public boolean debugBoxes = false;
+    /** Its state, kind, distance and size on screen above each box. */
+    public boolean debugLabels = false;
+    /** Boxes around the mobs the game draws itself, too. */
+    public boolean debugGameMobs = false;
+    /** A panel of what the mod does and costs, in the corner of the screen. */
+    public boolean debugHud = false;
+    /** 0: off; 1: the game's depth; 2: with Voxy's terrain merged in; 3: after the entities. */
+    public int debugDepthView = 0;
+
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private static FarConfig instance = new FarConfig();
@@ -149,13 +203,19 @@ public final class FarConfig {
                 instance.minApparentPixels = 0.0;
             }
         }
-        if (instance.mobTypes == null) instance.mobTypes = new ArrayList<>(MobKinds.TYPES);
-        if (instance.stillMobTypes == null) instance.stillMobTypes = new ArrayList<>(List.of("minecraft:happy_ghast"));
+        if (instance.mobTypes == null) instance.mobTypes = defaultMobTypes();
+        if (instance.stillMobTypes == null) instance.stillMobTypes = new ArrayList<>(List.of("minecraft:happy_ghast", MANNEQUIN));
+        if (instance.version < 5) {
+            // Mannequins came with Distant Friends' fake players: shown, and still, unless set otherwise.
+            if (!instance.mobTypes.contains(MANNEQUIN)) instance.mobTypes.add(MANNEQUIN);
+            if (!instance.stillMobTypes.contains(MANNEQUIN)) instance.stillMobTypes.add(MANNEQUIN);
+        }
         if (instance.version < 4 && instance.birdSize == 2) {
             // Twice the size suited lone parrots; silhouettes come in their own sizes.
             instance.birdSize = 1;
         }
         if (instance.hiddenBirds == null) instance.hiddenBirds = new ArrayList<>();
+        if (instance.knownModdedMobs == null) instance.knownModdedMobs = new ArrayList<>();
         if (instance.version < 3) {
             // Boats came after the list was first written: shown unless taken out by hand.
             for (String type : MobKinds.TYPES) {
@@ -164,6 +224,24 @@ public final class FarConfig {
         }
         instance.version = CURRENT;
         save();
+    }
+
+    /**
+     * Mob types of other mods met for the first time: shown far away, unless monsters,
+     * which despawn as soon as nobody is near. Called once the game has registered them.
+     */
+    public static void adoptModdedMobs(Iterable<EntityType<?>> types) {
+        boolean changed = false;
+        for (EntityType<?> type : types) {
+            Identifier key = EntityType.getKey(type);
+            if (Identifier.DEFAULT_NAMESPACE.equals(key.getNamespace())) continue;
+            String id = key.toString();
+            if (instance.knownModdedMobs.contains(id)) continue;
+            instance.knownModdedMobs.add(id);
+            if (type.getCategory() != MobCategory.MONSTER && !instance.mobTypes.contains(id)) instance.mobTypes.add(id);
+            changed = true;
+        }
+        if (changed) save();
     }
 
     public static void save() {
