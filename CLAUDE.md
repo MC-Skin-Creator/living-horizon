@@ -95,3 +95,9 @@ dates the section by itself.
 ## Issues
 
 `.claude/skills/issue-from-comment/` turns a pasted comment into a GitHub issue.
+
+## License
+
+GPL-3.0-only, `LICENSE` at the root and `"license": "GPL-3.0-only"` in `fabric.mod.json`.
+Never copy code into this repository from a project whose license is not GPL-3.0
+compatible, and never remove a copyright notice.

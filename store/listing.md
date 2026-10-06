@@ -16,7 +16,7 @@ here does not trigger a release (`**.md` is ignored by `release.yml`).
 | Java | 21 | Java 21 |
 | Source | https://github.com/MC-Skin-Creator/far-far-entities | the same |
 | Issues | https://github.com/MC-Skin-Creator/far-far-entities/issues | the same |
-| License | to choose (the mod is `All-Rights-Reserved` today) | the same |
+| License | GPL-3.0 | GNU GPLv3 |
 
 ## Summary
 

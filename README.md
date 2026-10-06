@@ -197,3 +197,28 @@ out to the farthest player when needed (`extendFarPlane`).
 
 Fabric, official Mojang mappings, Stonecutter with a
 single `1.21.11` node so that more versions can be added the same way later.
+
+## License
+
+Living Horizon is free software under the [GNU General Public License v3.0](LICENSE)
+(`GPL-3.0-only`), copyright 2026 clixmods. The mod, the data pack and the textures
+are all covered.
+
+- You can read it, fork it, change it and redistribute it, modpacks and servers included.
+- A modified version, or any work that reuses its code, must stay open under the same
+  license, keep this copyright notice and say what was changed.
+- Anyone who wants to carry the project on, or fix it when it is no longer maintained,
+  is welcome to.
+
+Please give a fork its own name and say it is based on Living Horizon when you publish it
+on Modrinth or CurseForge: the license covers the code, not the name.
+
+## Contributing
+
+Pull requests are welcome. By contributing you agree that your work is distributed under
+the same license, and you keep the copyright on it. Commits are in English, as
+conventional commits (`feat:`, `fix:`, ...); `CLAUDE.md` describes the rules this
+repository follows.
+
+Minecraft is a trademark of Mojang Studios. This project is not affiliated with or
+endorsed by Mojang Studios or Microsoft.
