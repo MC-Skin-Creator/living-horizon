@@ -62,6 +62,15 @@ around a small circle. No AI runs anywhere; it is a picture of what lives there.
   along a clear line, else only turns on the spot - never off a cliff nor into a wall.
   Animals graze between walks.
 - `maxDistantMobs` (200) of them are drawn at once: the nearest.
+- The hand-over never leaves a gap. A mob the server still sends but the game does not
+  draw (past the *Entity Distance* slider, or in a part of the world it does not draw) is
+  drawn by the mod; the moment the server stops sending it, its copy takes its place, on
+  the next tick. How far the server sends each kind of mob is learnt from what it sends
+  (vanilla: up to the view distance; Paper: 48 blocks for animals): a copy is only judged
+  missing well inside that, never just because its chunk is loaded.
+- Mob types of other mods are shown from the start (monsters excepted). Mannequins are
+  too, standing still: Distant Friends uses them as its fake players. The data pack only
+  shares vanilla kinds; the others are remembered by each client.
 
 ## Birds
 
@@ -154,6 +163,23 @@ out to the farthest player when needed (`extendFarPlane`).
 | `showVehicles` | `true` | Draw the mount they were last seen on |
 | `glowOutline` | `false` | Glowing outline, seen through terrain |
 | `renderTrackedVehiclesFar` | `true` | Never cull a mount that carries another player |
+| `hideOccludedMobs` | `false` | Do not draw distant mobs behind terrain at all (tested twice a second in Voxy's world) |
+
+### Debugging
+
+*Debug...* at the bottom of the settings, or `/farfarplayer debug` (panel and boxes):
+
+- **Panel** (top left): cost per tick and frame, what became of every distant mob in the
+  last frame, Voxy reads and depth, how far this server sends mobs, optimisations on.
+- **Boxes**, seen through terrain, coloured by what became of the mob: green copy drawn,
+  cyan real mob drawn by the mod, blue player, white real mob drawn by the game (*Also the
+  game's mobs*), yellow too small (under about half a pixel), orange behind blocks, red
+  outside the view, purple being built, grey past `maxDistantMobs`. A dot in the middle
+  keeps them visible when the box is smaller than its lines.
+- **Labels**: state, kind, distance and size on screen, at a constant size.
+- **Depth view** (bottom right): the game's depth, with Voxy's terrain merged, or after
+  the entities - near white, far black, sky blue.
+- Every optimisation has its own switch (`opt*` in the file), to compare the cost.
 
 ## Building
 

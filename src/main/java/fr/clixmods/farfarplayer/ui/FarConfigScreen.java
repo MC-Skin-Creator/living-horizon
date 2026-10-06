@@ -79,7 +79,12 @@ public final class FarConfigScreen extends OptionsSubScreen {
         list.addSmall(
                 bool("voxyOcclusion", c.voxyOcclusion, v -> c.voxyOcclusion = v),
                 bool("extendFarPlane", c.extendFarPlane, v -> c.extendFarPlane = v),
-                integer("minApparentPixels", 0, 32, (int) c.minApparentPixels, v -> c.minApparentPixels = v));
+                integer("minApparentPixels", 0, 32, (int) c.minApparentPixels, v -> c.minApparentPixels = v),
+                bool("hideOccludedMobs", c.hideOccludedMobs, v -> c.hideOccludedMobs = v));
+        list.addSmall(
+                Button.builder(Component.translatable(KEY + "debug"), b -> minecraft.setScreen(new DebugScreen(this)))
+                        .tooltip(Tooltip.create(Component.translatable(KEY + "debug.tooltip"))).build(),
+                null);
     }
 
     @Override
@@ -95,11 +100,11 @@ public final class FarConfigScreen extends OptionsSubScreen {
         }, Component.translatable(KEY + name), Component.translatable(KEY + name + ".confirm")));
     }
 
-    private static OptionInstance<Boolean> bool(String name, boolean value, Consumer<Boolean> set) {
+    static OptionInstance<Boolean> bool(String name, boolean value, Consumer<Boolean> set) {
         return OptionInstance.createBoolean(KEY + name, tooltip(name), value, set);
     }
 
-    private static OptionInstance<Integer> integer(String name, int min, int max, int value, Consumer<Integer> set) {
+    static OptionInstance<Integer> integer(String name, int min, int max, int value, Consumer<Integer> set) {
         return new OptionInstance<>(KEY + name, tooltip(name),
                 (caption, v) -> v == 0 && min == 0
                         ? Options.genericValueLabel(caption, Component.translatable(KEY + name + ".zero"))
@@ -107,7 +112,7 @@ public final class FarConfigScreen extends OptionsSubScreen {
                 new OptionInstance.IntRange(min, max), Math.clamp(value, min, max), set);
     }
 
-    private static OptionInstance<String> choice(String name, List<String> values, String value, Consumer<String> set) {
+    static OptionInstance<String> choice(String name, List<String> values, String value, Consumer<String> set) {
         return new OptionInstance<>(KEY + name, tooltip(name),
                 (caption, v) -> Options.genericValueLabel(caption, Component.translatable(KEY + name + "." + v)),
                 new OptionInstance.Enum<>(values, Codec.STRING), values.contains(value) ? value : values.getFirst(), set);

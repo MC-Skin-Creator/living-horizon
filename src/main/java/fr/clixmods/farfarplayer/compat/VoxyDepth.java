@@ -101,32 +101,160 @@ public final class VoxyDepth {
     public static void before() {
         if (!armed) return;
         merged = false;
-        boolean wanted = needed;
-        needed = false;
-        if (!wanted) {
-            reason = "nothing far to hide this frame";
-            return;
-        }
+        captured = false;
         FarConfig config = FarConfig.get();
-        if (!config.enabled || !config.voxyOcclusion || !available()) return;
+        boolean wanted = needed || !config.optLazyVoxyDepth;
+        needed = false;
         try {
-            merged = merge();
+            if (!wanted) {
+                reason = "nothing far to hide this frame";
+            } else if (config.enabled && config.voxyOcclusion && available()) {
+                merged = merge();
+            }
+            // The depth view shows the game's depth even when there was nothing to merge.
+            if (!merged && config.debugDepthView != 0) captured = capture();
         } catch (Throwable e) {
             fail(e);
         }
+        mergedLastFrame = merged;
     }
 
     /** Just after the entities are drawn. */
     public static void after() {
         if (!armed) return;
         armed = false;
-        if (!merged) return;
-        merged = false;
         try {
-            restore();
+            if (merged) restore();
+            else if (captured) copy(depthTexture, drawn);
         } catch (Throwable e) {
             fail(e);
         }
+        merged = false;
+        captured = false;
+    }
+
+    /** The depth was copied for the debug view alone, without Voxy's terrain. */
+    private static boolean captured;
+    private static boolean mergedLastFrame;
+
+    /** Whether Voxy's depth was merged in the last frame, for the debug panel. */
+    public static boolean mergedLastFrame() {
+        return mergedLastFrame;
+    }
+
+    /** The game's depth as it is, for the debug view: no Voxy, or nothing to merge. */
+    private static boolean capture() {
+        target = ownTarget();
+        if (target == 0) return false;
+        depthTexture = ownTargetDepth;
+        int w = GL45C.glGetTextureLevelParameteri(depthTexture, 0, GL11C.GL_TEXTURE_WIDTH);
+        int h = GL45C.glGetTextureLevelParameteri(depthTexture, 0, GL11C.GL_TEXTURE_HEIGHT);
+        int f = GL45C.glGetTextureLevelParameteri(depthTexture, 0, GL11C.GL_TEXTURE_INTERNAL_FORMAT);
+        if (w <= 0 || h <= 0) return false;
+        prepare(w, h, f);
+        copy(depthTexture, saved);
+        copy(depthTexture, written);
+        return true;
+    }
+
+    // --- Debug view ---------------------------------------------------------------------
+
+    private static int viewProgram, viewTarget, viewColor;
+
+    /**
+     * Draws one of the depth copies of the last frame in the bottom right corner of the
+     * screen, near white to far black, the sky in dark blue: {@code 1} the game's depth,
+     * {@code 2} with Voxy's terrain merged in, {@code 3} after the entities were drawn.
+     * Called with the HUD, after the world, before the HUD itself is drawn over it.
+     */
+    public static void drawDebugView(int mode) {
+        if (mode < 1 || mode > 3 || saved == 0 || broken) return;
+        try {
+            Minecraft minecraft = Minecraft.getInstance();
+            if (!(minecraft.getMainRenderTarget().getColorTexture() instanceof GlTexture color)) return;
+            if (viewProgram == 0) viewProgram = compileView();
+            if (viewTarget == 0 || viewColor != color.glId()) {
+                if (viewTarget != 0) GL30C.glDeleteFramebuffers(viewTarget);
+                viewTarget = GL45C.glCreateFramebuffers();
+                GL45C.glNamedFramebufferTexture(viewTarget, GL30C.GL_COLOR_ATTACHMENT0, color.glId(), 0);
+                viewColor = color.glId();
+            }
+            int screenW = minecraft.getMainRenderTarget().width, screenH = minecraft.getMainRenderTarget().height;
+            int w = screenW * 2 / 5, h = screenH * 2 / 5, x = screenW - w - 8, y = 8;
+            GlState gl = GlState.save();
+            try {
+                GL30C.glBindFramebuffer(GL30C.GL_DRAW_FRAMEBUFFER, viewTarget);
+                GL11C.glDisable(GL11C.GL_SCISSOR_TEST);
+                GL11C.glDisable(GL11C.GL_CULL_FACE);
+                GL11C.glDisable(GL11C.GL_STENCIL_TEST);
+                GL11C.glDisable(GL11C.GL_BLEND);
+                GL11C.glDisable(GL11C.GL_DEPTH_TEST);
+                GL11C.glDepthMask(false);
+                GL11C.glColorMask(true, true, true, true);
+                GL11C.glViewport(x, y, w, h);
+                GL20C.glUseProgram(viewProgram);
+                GL20C.glUniform4f(GL20C.glGetUniformLocation(viewProgram, "area"), x, y, w, h);
+                GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "size"), width, height);
+                GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "planes"), 0.05f,
+                        minecraft.gameRenderer.getDepthFar());
+                GL30C.glBindVertexArray(vertexArray);
+                GL33C.glBindSampler(0, 0);
+                GL45C.glBindTextureUnit(0, mode == 1 ? saved : mode == 2 ? written : drawn);
+                GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3);
+            } finally {
+                gl.restore();
+            }
+        } catch (Throwable e) {
+            FarFarPlayerClient.LOGGER.warn("Drawing the depth view failed", e);
+            FarConfig.get().debugDepthView = 0;
+        }
+    }
+
+    private static int compileView() {
+        String vertex = """
+                #version 330 core
+                void main() {
+                    vec2 corner = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+                    gl_Position = vec4(corner * 2.0 - 1.0, 0.0, 1.0);
+                }
+                """;
+        String fragment = """
+                #version 330 core
+                uniform sampler2D depth;
+                uniform vec4 area;
+                uniform vec2 size;
+                uniform vec2 planes;
+                out vec4 color;
+                void main() {
+                    vec2 uv = (gl_FragCoord.xy - area.xy) / area.zw;
+                    float d = texelFetch(depth, ivec2(uv * size), 0).r;
+                    if (d >= 1.0) {
+                        color = vec4(0.08, 0.12, 0.32, 1.0);
+                        return;
+                    }
+                    float near = planes.x, far = planes.y;
+                    float z = d * 2.0 - 1.0;
+                    float linear = 2.0 * near * far / (far + near - z * (far - near));
+                    // Logarithmic: a block away and the horizon both readable.
+                    float shade = 1.0 - log(max(linear, near) / near) / log(far / near);
+                    color = vec4(vec3(shade), 1.0);
+                }
+                """;
+        int vs = shader(GL20C.GL_VERTEX_SHADER, vertex), fs = shader(GL20C.GL_FRAGMENT_SHADER, fragment);
+        int linked = GL20C.glCreateProgram();
+        GL20C.glAttachShader(linked, vs);
+        GL20C.glAttachShader(linked, fs);
+        GL20C.glLinkProgram(linked);
+        GL20C.glDeleteShader(vs);
+        GL20C.glDeleteShader(fs);
+        if (GL20C.glGetProgrami(linked, GL20C.GL_LINK_STATUS) == GL11C.GL_FALSE) {
+            throw new IllegalStateException("Depth view program: " + GL20C.glGetProgramInfoLog(linked));
+        }
+        int previous = GL11C.glGetInteger(GL20C.GL_CURRENT_PROGRAM);
+        GL20C.glUseProgram(linked);
+        GL20C.glUniform1i(GL20C.glGetUniformLocation(linked, "depth"), 0);
+        GL20C.glUseProgram(previous);
+        return linked;
     }
 
     /** For {@code /farfarplayer voxy}. */

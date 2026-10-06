@@ -5,7 +5,10 @@ import fr.clixmods.farfarplayer.compat.VoxyDepth;
 import fr.clixmods.farfarplayer.compat.VoxyWorld;
 import fr.clixmods.farfarplayer.track.FarPlayer;
 import fr.clixmods.farfarplayer.track.FarPlayerTracker;
+import fr.clixmods.farfarplayer.render.Occlusion;
 import fr.clixmods.farfarplayer.ui.FarConfigScreen;
+import fr.clixmods.farfarplayer.ui.MobList;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -47,12 +50,25 @@ public final class FarFarPlayerClient implements ClientModInitializer {
                 "key.farfarplayer.settings", InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(), category));
 
         ClientTickEvents.END_CLIENT_TICK.register(this::tick);
+        // Every mod has registered its mobs by now: new kinds are shown far away from the start.
+        ClientLifecycleEvents.CLIENT_STARTED.register(client -> FarConfig.adoptModdedMobs(MobList.all()));
         ClientEntityEvents.ENTITY_LOAD.register((entity, level) -> FarPlayerTracker.get().mobs().onLoad(entity));
         ClientEntityEvents.ENTITY_UNLOAD.register((entity, level) -> FarPlayerTracker.get().mobs().onUnload(entity, level));
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, context) -> dispatcher.register(
                 ClientCommandManager.literal(MOD_ID)
                         .executes(c -> status(c.getSource()))
                         .then(ClientCommandManager.literal("voxy").executes(c -> voxy(c.getSource())))
+                        .then(ClientCommandManager.literal("debug").executes(c -> {
+                            // Panel and boxes together, on or off.
+                            FarConfig config = FarConfig.get();
+                            boolean on = !(config.debugHud || config.debugBoxes);
+                            config.debugHud = on;
+                            config.debugBoxes = on;
+                            FarConfig.save();
+                            c.getSource().sendFeedback(Component.translatable(
+                                    on ? "farfarplayer.debug.on" : "farfarplayer.debug.off"));
+                            return 1;
+                        }))
                         .then(ClientCommandManager.literal("ufo").executes(c -> {
                             Minecraft client = c.getSource().getClient();
                             if (client.level == null || client.player == null) return 0;
@@ -84,6 +100,7 @@ public final class FarFarPlayerClient implements ClientModInitializer {
         }
         long started = System.nanoTime();
         FarPlayerTracker.get().tick(minecraft);
+        if (minecraft.level != null) Occlusion.tick(minecraft.gameRenderer.getMainCamera().position());
         Stats.tick(System.nanoTime() - started);
     }
 

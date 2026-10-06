@@ -1,5 +1,6 @@
 package fr.clixmods.farfarplayer.compat;
 
+import fr.clixmods.farfarplayer.FarConfig;
 import fr.clixmods.farfarplayer.FarFarPlayerClient;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.tags.FluidTags;
@@ -49,6 +50,39 @@ public final class VoxyWorld {
         thread.setPriority(Thread.NORM_PRIORITY - 1);
         return thread;
     });
+    /** The same work on a single thread, when {@link FarConfig#optParallelVoxy} is off, to compare. */
+    private static final ExecutorService READER = Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "Far Far Player Voxy reader");
+        thread.setDaemon(true);
+        thread.setPriority(Thread.NORM_PRIORITY - 1);
+        return thread;
+    });
+    /** Tasks given to the readers and not finished yet, for the debug panel. */
+    private static final AtomicInteger PENDING = new AtomicInteger();
+
+    private static void run(Runnable task) {
+        PENDING.incrementAndGet();
+        (FarConfig.get().optParallelVoxy ? READERS : READER).execute(() -> {
+            try {
+                task.run();
+            } finally {
+                PENDING.decrementAndGet();
+            }
+        });
+    }
+
+    /** For the debug panel: reads waiting or running, columns remembered, reader threads. */
+    public static int pending() {
+        return PENDING.get();
+    }
+
+    public static int columnsKnown() {
+        return COLUMNS.size();
+    }
+
+    public static int threads() {
+        return FarConfig.get().optParallelVoxy ? THREADS : 1;
+    }
 
     /** One reader's sections, for one world. */
     private static final class Cache {
@@ -101,7 +135,7 @@ public final class VoxyWorld {
             result.completeExceptionally(new IllegalStateException(failure != null ? failure : "Voxy is not loaded"));
             return result;
         }
-        READERS.execute(() -> {
+        run(() -> {
             try {
                 Object world = world();
                 if (world == null) {
@@ -138,9 +172,10 @@ public final class VoxyWorld {
         Surface[] found = new Surface[xs.length];
         if (!available()) return CompletableFuture.completedFuture(found);
         long now = System.nanoTime();
+        boolean cache = FarConfig.get().optColumnCache;
         boolean missing = false;
         for (int i = 0; i < xs.length; i++) {
-            Known known = COLUMNS.get(key(xs[i], zs[i]));
+            Known known = cache ? COLUMNS.get(key(xs[i], zs[i])) : null;
             if (known != null && now - known.at < COLUMN_NANOS) {
                 found[i] = known.surface == NOTHING ? null : known.surface;
             } else {
@@ -149,7 +184,7 @@ public final class VoxyWorld {
         }
         if (!missing) return CompletableFuture.completedFuture(found);
         CompletableFuture<@Nullable Surface[]> result = new CompletableFuture<>();
-        READERS.execute(() -> {
+        run(() -> {
             try {
                 Object world = world();
                 if (world != null) {
@@ -157,13 +192,13 @@ public final class VoxyWorld {
                     if (COLUMNS.size() > COLUMNS_KEPT) COLUMNS.clear();
                     for (int i = 0; i < xs.length; i++) {
                         long key = key(xs[i], zs[i]);
-                        Known known = COLUMNS.get(key);
+                        Known known = cache ? COLUMNS.get(key) : null;
                         if (known != null && at - known.at < COLUMN_NANOS) {
                             found[i] = known.surface == NOTHING ? null : known.surface;
                             continue;
                         }
                         Surface surface = column(world, xs[i], zs[i]);
-                        COLUMNS.put(key, new Known(surface == null ? NOTHING : surface, at));
+                        if (cache) COLUMNS.put(key, new Known(surface == null ? NOTHING : surface, at));
                         found[i] = surface;
                     }
                 }
@@ -171,6 +206,37 @@ public final class VoxyWorld {
                 fail(e);
             }
             result.complete(found);
+        });
+        return result;
+    }
+
+    /**
+     * For each point, whether Voxy's terrain stands between the eye and it: a block on the
+     * line, short of the point by {@code margin}. Null without Voxy or its world.
+     */
+    public static CompletableFuture<boolean @Nullable []> blocked(Vec3 eye, double[] xs, double[] ys, double[] zs,
+                                                                  double margin) {
+        if (!available()) return CompletableFuture.completedFuture(null);
+        CompletableFuture<boolean @Nullable []> result = new CompletableFuture<>();
+        run(() -> {
+            boolean[] blocked = null;
+            try {
+                Object world = world();
+                if (world != null) {
+                    blocked = new boolean[xs.length];
+                    for (int i = 0; i < xs.length; i++) {
+                        double dx = xs[i] - eye.x, dy = ys[i] - eye.y, dz = zs[i] - eye.z;
+                        double length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                        if (length <= margin + 2) continue;
+                        blocked[i] = !Double.isNaN(firstHit(world, eye.x, eye.y, eye.z,
+                                dx / length, dy / length, dz / length, 2, length - margin));
+                    }
+                }
+            } catch (Throwable e) {
+                fail(e);
+                blocked = null;
+            }
+            result.complete(blocked);
         });
         return result;
     }

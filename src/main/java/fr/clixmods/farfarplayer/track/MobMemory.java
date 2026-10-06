@@ -21,6 +21,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.animal.FlyingAnimal;
+import net.minecraft.world.entity.decoration.Mannequin;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.vehicle.boat.AbstractBoat;
 import net.minecraft.world.level.storage.TagValueInput;
@@ -34,9 +35,11 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
@@ -88,9 +91,17 @@ public final class MobMemory {
         transient @Nullable EntityType<?> entityType;
         transient int missingChecks;
         transient double distance;
+        /** Forgotten while still on the list being drawn: not drawn again, nor rebuilt. */
+        transient boolean gone;
 
         public UUID id() { return id; }
-        public @Nullable Entity puppet() { return puppet; }
+        public @Nullable Entity puppet() { return gone ? null : puppet; }
+        public boolean waiting() { return !gone && puppet == null && !failed; }
+        public double x() { return x; }
+        public double y() { return y; }
+        public double z() { return z; }
+        public String type() { return type; }
+        public boolean fromPack() { return fromPack; }
     }
 
     private static final Gson GSON = new GsonBuilder().create();
@@ -103,7 +114,15 @@ public final class MobMemory {
 
     private final Map<UUID, Remembered> mobs = new LinkedHashMap<>();
     /** Mobs the server sends right now: never drawn twice. */
-    private final Set<UUID> live = new HashSet<>();
+    private final Map<UUID, Entity> live = new HashMap<>();
+    /**
+     * Per kind of mob, the farthest this server was seen to send one, in blocks across:
+     * how near a remembered mob must be before its absence means something. Servers differ
+     * a lot - vanilla sends animals as far as the view distance, Paper only to 48 blocks.
+     */
+    private final Map<MobCategory, Double> reach = new EnumMap<>(MobCategory.class);
+    /** A mob just left or came back: choose what is drawn on the next tick, not in a second. */
+    private boolean chooseSoon;
     /**
      * Pack mobs this client went to look at and did not find, with where the pack had
      * them: not taken back from the pack until it says they moved.
@@ -122,6 +141,25 @@ public final class MobMemory {
 
     public int size() {
         return mobs.size();
+    }
+
+    /** The mobs and boats the server sends right now. */
+    public Collection<Entity> live() {
+        return live.values();
+    }
+
+    /** How far this server was seen sending each kind of mob, for the debug panel. */
+    public Map<MobCategory, Double> reach() {
+        return reach;
+    }
+
+    /** Every remembered mob of a dimension, drawn or not, for the debug view. */
+    public List<Remembered> remembered(String dimension) {
+        List<Remembered> here = new ArrayList<>();
+        for (Remembered mob : mobs.values()) {
+            if (mob.dimension.equals(dimension) && !live.containsKey(mob.id)) here.add(mob);
+        }
+        return here;
     }
 
     // --- Lifecycle ---------------------------------------------------------------------
@@ -146,6 +184,8 @@ public final class MobMemory {
     void close() {
         save();
         mobs.clear();
+        live.clear();
+        reach.clear();
         shown = List.of();
         file = null;
         selfKnown = false;
@@ -164,8 +204,18 @@ public final class MobMemory {
 
     /** Seen live: the memory is out of date, the real one is here. */
     public void onLoad(Entity entity) {
-        if (rememberable(entity)) live.add(entity.getUUID());
-        if (mobs.remove(entity.getUUID()) != null) dirty = true;
+        if (rememberable(entity)) live.put(entity.getUUID(), entity);
+        forget(entity.getUUID());
+    }
+
+    /** Dropped from memory, and from the frame at once rather than at the next choice. */
+    private void forget(UUID id) {
+        Remembered mob = mobs.remove(id);
+        if (mob == null) return;
+        mob.gone = true;
+        mob.puppet = null;
+        dirty = true;
+        chooseSoon = true;
     }
 
     /** No longer sent: remembered if it walked out of range, forgotten if it died. */
@@ -176,16 +226,16 @@ public final class MobMemory {
         FarConfig config = FarConfig.get();
         if (!config.distantMobs || !worthRemembering(mob, config)) return;
         if ((mob instanceof LivingEntity living && living.isDeadOrDying()) || carriesPlayer(mob)) {
-            if (mobs.remove(mob.getUUID()) != null) dirty = true;
+            forget(mob.getUUID());
             return;
         }
         // Gone right next to us: killed, despawned, picked up - not out of range.
         if (selfKnown && distance(mob.getX(), mob.getY(), mob.getZ()) < 32) {
-            if (mobs.remove(mob.getUUID()) != null) dirty = true;
+            forget(mob.getUUID());
             return;
         }
-        String nbt = snapshot(mob, level);
-        if (nbt == null) return;
+        CompoundTag tag = snapshot(mob, level);
+        if (tag == null) return;
 
         Remembered memory = new Remembered();
         memory.id = mob.getUUID();
@@ -195,18 +245,25 @@ public final class MobMemory {
         memory.y = mob.getY();
         memory.z = mob.getZ();
         memory.yaw = mob.getYRot();
-        memory.nbt = nbt;
+        memory.nbt = tag.toString();
+        // Already read: the copy takes over on the next tick, where the real one was.
+        memory.parsed = CompletableFuture.completedFuture(tag);
+        memory.entityType = mob.getType();
         memory.seenAt = System.currentTimeMillis();
         memory.named = mob.hasCustomName();
-        mobs.remove(memory.id);
+        forget(memory.id);
         mobs.put(memory.id, memory);
+        chooseSoon = true;
         while (mobs.size() > MAX_REMEMBERED) mobs.remove(mobs.keySet().iterator().next());
         dirty = true;
     }
 
-    /** Mobs, and boats: a parked boat vanishes from far away just like an animal. */
+    /**
+     * Mobs, boats - a parked boat vanishes from far away just like an animal - and
+     * mannequins, the skinned figures that Distant Friends stands far away as fake players.
+     */
     private static boolean rememberable(Entity entity) {
-        return entity instanceof Mob || entity instanceof AbstractBoat;
+        return entity instanceof Mob || entity instanceof AbstractBoat || entity instanceof Mannequin;
     }
 
     private static boolean worthRemembering(Entity mob, FarConfig config) {
@@ -223,11 +280,11 @@ public final class MobMemory {
     }
 
     /** The mob as the game saves it: variants, colours, equipment, name, age. */
-    private static @Nullable String snapshot(Entity mob, ClientLevel level) {
+    private static @Nullable CompoundTag snapshot(Entity mob, ClientLevel level) {
         try {
             TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
             mob.saveWithoutId(output);
-            return output.buildResult().toString();
+            return output.buildResult();
         } catch (RuntimeException e) {
             return null;
         }
@@ -250,21 +307,29 @@ public final class MobMemory {
 
         if (clock % 20 == 0) {
             if (pack != null) sync(pack, scoreboard);
+            learnReach();
             reconcile(level, dimension, renderDistanceBlocks);
+            choose(dimension, config);
+        } else if (chooseSoon) {
             choose(dimension, config);
         }
         if (clock % 1200 == 0 && dirty) save();
 
         Set<String> still = new HashSet<>(config.stillMobTypes);
+        boolean background = config.optBackgroundBuild;
         long budget = System.nanoTime() + BUILD_BUDGET;
         for (Remembered mob : shown) {
+            if (mob.gone) continue;
             if (mob.puppet == null && !mob.failed) {
                 // The saved data is read on a background thread; the puppet is made here,
                 // where the world is, as long as this tick's budget lasts.
                 if (mob.parsed == null) {
                     String nbt = mob.nbt;
-                    mob.parsed = CompletableFuture.supplyAsync(() -> parse(nbt), Util.backgroundExecutor());
-                } else if (mob.parsed.isDone() && System.nanoTime() < budget) {
+                    mob.parsed = background
+                            ? CompletableFuture.supplyAsync(() -> parse(nbt), Util.backgroundExecutor())
+                            : CompletableFuture.completedFuture(parse(nbt));
+                }
+                if (mob.parsed.isDone() && (!background || System.nanoTime() < budget)) {
                     build(mob, level);
                 }
             }
@@ -306,6 +371,7 @@ public final class MobMemory {
                     ? null : DIMENSIONS.get(report.dimension());
             if (type == null || dimension == null) continue;
             published.add(id);
+            if (live.containsKey(id)) continue;
             Double gone = dismissed.get(id);
             if (gone != null) {
                 if (gone == report.x() + report.y() * 31 + report.z() * 961) continue;
@@ -332,39 +398,59 @@ public final class MobMemory {
             mob.z = report.z();
             dirty = true;
         }
-        for (var iterator = mobs.values().iterator(); iterator.hasNext(); ) {
-            Remembered mob = iterator.next();
-            if (mob.fromPack && !published.contains(mob.id) && !live.contains(mob.id)) {
-                iterator.remove();
-                dirty = true;
-            }
+        List<UUID> dead = new ArrayList<>();
+        for (Remembered mob : mobs.values()) {
+            if (mob.fromPack && !published.contains(mob.id) && !live.containsKey(mob.id)) dead.add(mob.id);
+        }
+        dead.forEach(this::forget);
+    }
+
+    /**
+     * How far this server sends each kind of mob: the farthest one of them it sends now,
+     * if that is farther than any before. A mob carried or carrying is left out: the
+     * server sends a whole stack as far as the farthest-seen of its riders.
+     */
+    private void learnReach() {
+        for (Entity entity : live.values()) {
+            if (entity.isPassenger() || entity.isVehicle()) continue;
+            double across = Math.hypot(entity.getX() - selfX, entity.getZ() - selfZ);
+            reach.merge(entity.getType().getCategory(), across, Math::max);
         }
     }
 
-    /** Back within range of a remembered mob and it is not there: it moved on, or died. */
+    /**
+     * Back within range of a remembered mob and it is not there: it moved on, or died.
+     * Within range means well inside where this server was seen sending that kind of mob,
+     * not merely inside the loaded chunks: a server that sends animals to 48 blocks only
+     * would otherwise wipe out, a few seconds after they appear, every copy between 48
+     * blocks and the render distance - to bring them back when the pack next moves them.
+     */
     private void reconcile(ClientLevel level, String dimension, int renderDistanceBlocks) {
-        for (var iterator = mobs.values().iterator(); iterator.hasNext(); ) {
-            Remembered mob = iterator.next();
-            if (!mob.dimension.equals(dimension)) continue;
+        List<Remembered> missing = new ArrayList<>();
+        for (Remembered mob : mobs.values()) {
+            if (!mob.dimension.equals(dimension) || live.containsKey(mob.id)) continue;
             EntityType<?> type = type(mob);
-            int range = type == null ? 160 : type.clientTrackingRange() * 16;
-            boolean inRange = distance(mob.x, mob.y, mob.z) < Math.min(range, renderDistanceBlocks) - 24
+            double sent = type == null ? 0 : Math.min(reach.getOrDefault(type.getCategory(), 0.0),
+                    type.clientTrackingRange() * 16);
+            double range = Math.max(24, Math.min(sent, renderDistanceBlocks) - 16);
+            boolean inRange = Math.hypot(mob.x - selfX, mob.z - selfZ) < range
                     && level.hasChunk((int) Math.floor(mob.x) >> 4, (int) Math.floor(mob.z) >> 4);
             mob.missingChecks = inRange ? mob.missingChecks + 1 : 0;
-            if (mob.missingChecks >= 5) {
-                iterator.remove();
-                if (mob.fromPack) dismissed.put(mob.id, mob.x + mob.y * 31 + mob.z * 961);
-                dirty = true;
-            }
+            if (mob.missingChecks >= 5) missing.add(mob);
+        }
+        for (Remembered mob : missing) {
+            if (mob.fromPack) dismissed.put(mob.id, mob.x + mob.y * 31 + mob.z * 961);
+            forget(mob.id);
         }
     }
 
     /** The nearest few, in this dimension: the ones drawn until the next choice. */
     private void choose(String dimension, FarConfig config) {
+        chooseSoon = false;
         Set<String> wanted = new HashSet<>(config.mobTypes);
         List<Remembered> here = new ArrayList<>();
         for (Remembered mob : mobs.values()) {
-            if (!mob.dimension.equals(dimension) || live.contains(mob.id)) continue;
+            if (!mob.dimension.equals(dimension) || live.containsKey(mob.id)) continue;
             if (!wanted.contains(mob.type) && !(config.rememberNamedMobs && mob.named)) continue;
             mob.distance = distance(mob.x, mob.y, mob.z);
             here.add(mob);
@@ -425,6 +511,7 @@ public final class MobMemory {
 
     /** Forgets every mob, here and in the file. */
     public void forgetAll() {
+        for (Remembered mob : mobs.values()) mob.gone = true;
         mobs.clear();
         dismissed.clear();
         shown = List.of();
