@@ -44,7 +44,7 @@ First version (Versions > Create):
 | Release channel | **Beta** (below 1.0.0) |
 | Loaders | Fabric |
 | Game versions | 1.21.11 |
-| Dependencies | Fabric API: **Required**. Voxy: **Embedded no, Optional/Recommended** |
+| Dependencies | Fabric API: **Required**. Voxy: **Optional** |
 | File | `livinghorizon-0.1.0+mc1.21.11.jar` (primary) |
 | Changelog | the "Unreleased" section of `changelog/en.md` |
 
