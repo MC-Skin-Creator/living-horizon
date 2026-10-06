@@ -266,10 +266,12 @@ jobs:
           version-type: ${{ matrix.target.type }}
           loaders: ${{ matrix.target.loader }}
           game-versions: ${{ matrix.target.releases }}
-          # Fabric API is required, and Mod Menu is not asked for: the mod only uses
-          # its API for the settings button.
+          # Fabric API is required. Voxy is what the mod is made for, but it runs
+          # without it. Mod Menu is not asked for: the mod only uses its API for the
+          # settings button.
           dependencies: |
             fabric-api(required){modrinth:P7dR8mSH}{curseforge:306612}
+            voxy(recommended){modrinth:fxxUqruK}
           changelog: |
             See the full notes on GitHub: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.version.outputs.version }}
 
