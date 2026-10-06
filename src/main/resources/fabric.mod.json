@@ -3,18 +3,18 @@
   "id": "${id}",
   "version": "${version}",
   "name": "${name}",
-  "description": "Keeps other players - and what they ride - visible at any distance, past the server's tracking range.",
+  "description": "Gives life to the distance: animals, villagers, birds and other players keep living on the horizon, past the render distance.",
   "authors": ["clixmods"],
-  "license": "All-Rights-Reserved",
+  "license": "GPL-3.0-only",
   "environment": "client",
   "entrypoints": {
-    "client": ["fr.clixmods.farfarplayer.FarFarPlayerClient"],
-    "modmenu": ["fr.clixmods.farfarplayer.ui.ModMenuEntry"]
+    "client": ["fr.clixmods.livinghorizon.LivingHorizonClient"],
+    "modmenu": ["fr.clixmods.livinghorizon.ui.ModMenuEntry"]
   },
   "mixins": [
-    { "config": "farfarplayer.mixins.json", "environment": "client" }
+    { "config": "livinghorizon.mixins.json", "environment": "client" }
   ],
-  "accessWidener": "farfarplayer.accesswidener",
+  "accessWidener": "livinghorizon.accesswidener",
   "depends": {
     "fabricloader": ">=${loader}",
     "minecraft": "${minecraft}",

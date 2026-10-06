@@ -24,4 +24,4 @@ stonecutter {
     }
 }
 
-rootProject.name = "far-far-player"
+rootProject.name = "living-horizon"

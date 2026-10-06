@@ -1,8 +1,8 @@
 # Mod identity at the top, then one table per Minecraft target.
 
-mod.id = "farfarplayer"
-mod.name = "Far Far Player"
-mod.group = "fr.clixmods.farfarplayer"
+mod.id = "livinghorizon"
+mod.name = "Living Horizon"
+mod.group = "fr.clixmods.livinghorizon"
 mod.version = "0.1.0"
 
 deps.fabric_loader = "0.19.3"

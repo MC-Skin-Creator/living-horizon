@@ -1,31 +1,64 @@
-# Far Far Player
+# Living Horizon
 
-A client-side Fabric mod for Minecraft **1.21.11** that keeps other players visible at
-any distance: past the range where the server stops sending them, a copy of them keeps
-walking where they are, with their skin, their armour, and the horse, boat or happy
-ghast they were riding. It is made to sit on top of Voxy, which draws the far terrain
-but never the players on it.
+Gives life to the distance. Voxy shows you mountains, forests and villages far past your
+render distance, but empty. Living Horizon fills them: animals grazing around far-off
+villages, villagers and golems, flocks of birds crossing the sky, and other players
+walking where they really are, with their skin, their armour, and the horse, boat or
+happy ghast they were riding.
 
-Nothing is sent to the server. On its own, the mod uses only what a vanilla client
-already receives. With the companion **data pack** on the server (not a mod: a folder
-in `world/datapacks`), every position is exact at any distance.
+A client-side Fabric mod for Minecraft **1.21.11**. Nothing is sent to the server: on its
+own, the mod uses only what a vanilla client already receives. With the companion **data
+pack** on the server (not a mod: a folder in `world/datapacks`), every position is exact
+at any distance.
+
+## What you can do
+
+- **See other players far away.** They keep walking where they are, past the range where
+  the server stops sending them, with their skin, cape, elytra and armour, and what they
+  ride.
+- **Watch the distance live.** Animals, villagers and golems graze and wander around the
+  villages Voxy draws, and are hidden by the terrain pixel by pixel, shaders included.
+- **Look up.** Flocks, geese in a V, gulls on the coast, bats at night - and, now and
+  then, a flying saucer taking a cow (`/livinghorizon ufo`).
+- **Find players where they left.** Someone who logged off stays asleep where they were,
+  until they come back.
+- **Tune it.** Everything is in the settings (Mod Menu, or the key under *Living Horizon*
+  in Controls): which mobs, which birds, how many, how far.
+
+## Install
+
+Requires [Fabric Loader](https://fabricmc.net/use/) 0.17.3 or newer and the
+[Fabric API](https://modrinth.com/mod/fabric-api). [Voxy](https://modrinth.com/mod/voxy)
+is what the mod is made for and is recommended. [Mod Menu](https://modrinth.com/mod/modmenu)
+is optional and adds the settings button.
+
+| Minecraft | Java | Fabric Loader | Fabric API |
+|---|---|---|---|
+| 1.21.11 | 21 | 0.17.3 or newer | 0.141.6+1.21.11 |
+
+Drop `livinghorizon-<version>+mc1.21.11.jar` into `.minecraft/mods/`. For exact positions,
+also drop the data pack zip into the world's `datapacks/` folder (see below).
+
+Jars and the data pack come from the
+[releases](https://github.com/MC-Skin-Creator/far-far-entities/releases) page. Releases
+are cut from the commits merged into `main`; a version below `1.0.0` is marked *beta*.
 
 ## The data pack: exact positions
 
-`build/libs/<version>/farfarplayer-datapack-<version>+mc1.21.11.zip`, built from the
+`build/libs/<version>/livinghorizon-datapack-<version>+mc1.21.11.zip`, built from the
 `datapack/` folder. Drop it in the world's `datapacks/` folder and run `/reload`.
 
 Five times a second it writes each player's position, yaw, dimension and whether they
-ride something into four scoreboard objectives (`ffp.x`, `ffp.y`, `ffp.z`, `ffp.m`). An
+ride something into four scoreboard objectives (`lh.x`, `lh.y`, `lh.z`, `lh.m`). An
 objective shown in any display slot is sent by the server to **every** client, at any
 distance, so the pack shows its four in the sidebars of four team colours (`black`,
 `dark_blue`, `dark_green`, `dark_aqua`): nobody sees them on screen, every client
-receives them, and the mod reads them. `/farfarplayer` says whether the pack is found.
+receives them, and the mod reads them. `/livinghorizon` says whether the pack is found.
 
 - Anyone in a team of one of those colours would see the coordinates in their sidebar.
   If your server uses them, change the four `setdisplay` lines in `load.mcfunction`.
 - Any client can read these scores: everyone's position is public to whoever looks.
-- `/function farfarplayer:uninstall`, then `/datapack disable "file/<pack name>"`,
+- `/function livinghorizon:uninstall`, then `/datapack disable "file/<pack name>"`,
   removes everything it created.
 
 `DatapackTest` compiles every function with the game's own command dispatcher, and
@@ -35,7 +68,7 @@ parses `pack.mcmeta` and the predicate with the game's own codecs.
 
 A player who logs off stays where they were last, asleep on the ground (or sitting, see
 `offlinePose`), until they come back. This is remembered per server across sessions, in
-`config/farfarplayer/resting/<server>.json`. With the data pack, even players who logged
+`config/livinghorizon/resting/<server>.json`. With the data pack, even players who logged
 off before you joined are there: the pack keeps everyone's last position, and their
 skin is fetched from Mojang by name.
 
@@ -53,7 +86,7 @@ around a small circle. No AI runs anywhere; it is a picture of what lives there.
   `tags/entity_type/remembered.json`, numbered in `mob_kind.mcfunction` in the order of
   `MobKinds.TYPES` (`DatapackTest` checks the three agree).
 - **Without it**, each client remembers the mobs it met itself
-  (the types in `mobTypes`, chosen in game), in `config/farfarplayer/mobs/<server>.json`.
+  (the types in `mobTypes`, chosen in game), in `config/livinghorizon/mobs/<server>.json`.
 - A mob met up close keeps its exact look (the game's own save of it); one known only
   from the pack is built from kind, variant and age.
 - Coming back within range of a remembered mob that is not there forgets it.
@@ -80,7 +113,7 @@ tall buildings, robins hopping in fields, tits in the trees, ducks on lakes and 
 bats at night (some hanging under leaves and roofs), now and then parrots. Perched birds
 fly off when you come close; ducks never let you near. Birds never vanish at once: they
 scatter and shrink away. An easter egg: now and then a flying saucer takes a cow
-(`/farfarplayer ufo`).
+(`/livinghorizon ufo`).
 
 Where each kind goes is read off the terrain a few columns at a time - from the chunks
 loaded here, or farther from Voxy's world (`compat/VoxyWorld`): crops or farmland for
@@ -142,10 +175,10 @@ out to the farthest player when needed (`extendFarPlane`).
 
 ## Using it
 
-- `/farfarplayer` lists the players followed, where their position comes from, and how
+- `/livinghorizon` lists the players followed, where their position comes from, and how
   sure it is (`±` blocks).
-- A key (unbound by default, under *Far Far Player* in Controls) toggles the copies.
-- `config/farfarplayer.json`:
+- A key (unbound by default, under *Living Horizon* in Controls) toggles the copies.
+- `config/livinghorizon.json`:
 
 | Setting | Default | |
 |---|---|---|
@@ -167,7 +200,7 @@ out to the farthest player when needed (`extendFarPlane`).
 
 ### Debugging
 
-*Debug...* at the bottom of the settings, or `/farfarplayer debug` (panel and boxes):
+*Debug...* at the bottom of the settings, or `/livinghorizon debug` (panel and boxes):
 
 - **Panel** (top left): cost per tick and frame, what became of every distant mob in the
   last frame, Voxy reads and depth, how far this server sends mobs, optimisations on.
@@ -188,5 +221,30 @@ out to the farthest player when needed (`extendFarPlane`).
 ./gradlew buildAndCollect         # jar and data pack zip in build/libs/<version>/
 ```
 
-Same setup as `mcskincreator-mod`: Fabric, official Mojang mappings, Stonecutter with a
+Fabric, official Mojang mappings, Stonecutter with a
 single `1.21.11` node so that more versions can be added the same way later.
+
+## License
+
+Living Horizon is free software under the [GNU General Public License v3.0](LICENSE)
+(`GPL-3.0-only`), copyright 2026 clixmods. The mod, the data pack and the textures
+are all covered.
+
+- You can read it, fork it, change it and redistribute it, modpacks and servers included.
+- A modified version, or any work that reuses its code, must stay open under the same
+  license, keep this copyright notice and say what was changed.
+- Anyone who wants to carry the project on, or fix it when it is no longer maintained,
+  is welcome to.
+
+Please give a fork its own name and say it is based on Living Horizon when you publish it
+on Modrinth or CurseForge: the license covers the code, not the name.
+
+## Contributing
+
+Pull requests are welcome. By contributing you agree that your work is distributed under
+the same license, and you keep the copyright on it. Commits are in English, as
+conventional commits (`feat:`, `fix:`, ...); `CLAUDE.md` describes the rules this
+repository follows.
+
+Minecraft is a trademark of Mojang Studios. This project is not affiliated with or
+endorsed by Mojang Studios or Microsoft.

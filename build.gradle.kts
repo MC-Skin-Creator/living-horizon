@@ -2,7 +2,7 @@ plugins {
     id("dev.kikugie.loom-back-compat")
 }
 
-// mod version and Minecraft version stay separate: farfarplayer-0.1.0+mc1.21.11.jar
+// mod version and Minecraft version stay separate: livinghorizon-0.1.0+mc1.21.11.jar
 version = "${property("mod.version")}+mc${sc.current.version}"
 base.archivesName = property("mod.id") as String
 
@@ -44,7 +44,7 @@ dependencies {
 
 loom {
     // Opens the locator bar's waypoint classes, which the client never reads by itself.
-    accessWidenerPath = rootProject.file("src/main/resources/farfarplayer.accesswidener")
+    accessWidenerPath = rootProject.file("src/main/resources/livinghorizon.accesswidener")
 
     runConfigs.all {
         preferGradleTask = true
@@ -84,7 +84,7 @@ tasks {
             put("java", requiredJava.majorVersion)
         }
         inputs.property("java", requiredJava.majorVersion)
-        filesMatching(listOf("fabric.mod.json", "farfarplayer.mixins.json")) { expand(props) }
+        filesMatching(listOf("fabric.mod.json", "livinghorizon.mixins.json")) { expand(props) }
     }
 
     // The companion data pack, zipped next to the jar. Its pack format belongs to one
@@ -93,7 +93,7 @@ tasks {
         group = "build"
         description = "Zips the companion data pack into build/libs/{mod version}/"
         from(rootProject.file("datapack"))
-        archiveFileName = "farfarplayer-datapack-${project.property("mod.version")}+mc${sc.current.version}.zip"
+        archiveFileName = "livinghorizon-datapack-${project.property("mod.version")}+mc${sc.current.version}.zip"
         destinationDirectory = rootProject.layout.buildDirectory.dir("libs/${project.property("mod.version")}")
     }
 
