@@ -6,9 +6,11 @@ import com.google.gson.reflect.TypeToken;
 import fr.clixmods.farfarplayer.FarConfig;
 import fr.clixmods.farfarplayer.FarFarPlayerClient;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.server.IntegratedServer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.util.ProblemReporter;
@@ -430,9 +432,7 @@ public final class MobMemory {
         for (Remembered mob : mobs.values()) {
             if (!mob.dimension.equals(dimension) || live.containsKey(mob.id)) continue;
             EntityType<?> type = type(mob);
-            double sent = type == null ? 0 : Math.min(reach.getOrDefault(type.getCategory(), 0.0),
-                    type.clientTrackingRange() * 16);
-            double range = Math.max(24, Math.min(sent, renderDistanceBlocks) - 16);
+            double range = Math.max(24, Math.min(sent(type), renderDistanceBlocks) - 16);
             boolean inRange = Math.hypot(mob.x - selfX, mob.z - selfZ) < range
                     && level.hasChunk((int) Math.floor(mob.x) >> 4, (int) Math.floor(mob.z) >> 4);
             mob.missingChecks = inRange ? mob.missingChecks + 1 : 0;
@@ -442,6 +442,24 @@ public final class MobMemory {
             if (mob.fromPack) dismissed.put(mob.id, mob.x + mob.y * 31 + mob.z * 961);
             forget(mob.id);
         }
+    }
+
+    /**
+     * How far, in blocks across, the server sends mobs of a type. In a single player world
+     * the answer is known: the type's tracking range scaled by the "Entity Distance" slider,
+     * which the integrated server applies to what it sends, not only to what is drawn. On
+     * another server, the farthest one of that kind it was seen sending.
+     */
+    private static double sent(@Nullable EntityType<?> type, Map<MobCategory, Double> reach) {
+        if (type == null) return 0;
+        int range = type.clientTrackingRange() * 16;
+        IntegratedServer local = Minecraft.getInstance().getSingleplayerServer();
+        if (local != null) return local.getScaledTrackingDistance(range);
+        return Math.min(reach.getOrDefault(type.getCategory(), 0.0), range);
+    }
+
+    private double sent(@Nullable EntityType<?> type) {
+        return sent(type, reach);
     }
 
     /** The nearest few, in this dimension: the ones drawn until the next choice. */
