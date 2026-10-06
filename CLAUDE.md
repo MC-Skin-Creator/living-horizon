@@ -53,12 +53,31 @@ is sent to the server. An optional data pack in `datapack/` makes positions exac
 Mod and dependency versions live in `stonecutter.properties.toml`, never hardcoded
 in the build scripts. The README describes how each part works.
 
-## Branches and pull requests
+## Branch model: Git Flow
 
-Work happens on a `feature/*` or `fix/*` branch and ends with an open pull
-request. **Never commit or push directly to `main`, and never merge a pull
-request.** Opening the pull request is the end of the task — merging is a human
-decision, made after review, every time.
+Trimmed Git Flow.
+
+```
+feature/*  fix/*  ──►  develop  ──►  main
+                                      │
+                                   release
+```
+
+- `main` — stable only. The default branch. A push here cuts a release.
+- `develop` — integration. Work lands here first, and `main` only receives what is
+  ready to ship.
+- `feature/*`, `fix/*` — where work happens, one branch per change. Pull requests target
+  `develop` (`main` only for a hotfix).
+- `release/*` and `hotfix/*` do not exist until a version needs stabilising while
+  development continues elsewhere.
+
+**Never commit or push directly to `main` or `develop`, and never merge a pull request
+into either.** All work, including work done by an AI agent, happens on a `feature/*` or
+`fix/*` branch and ends with an open pull request. Opening the pull request is the end of
+the task — merging is a human decision, made after review, every time, no matter how
+small the change or how green the CI.
+
+After a release, merge `main` back into `develop` so it picks up the version commit.
 
 ## CI and releases
 
