@@ -1,10 +1,11 @@
-# Far Far Player
+# Living Horizon
 
-A client-side Fabric mod for Minecraft **1.21.11** that keeps other players visible at
-any distance: past the range where the server stops sending them, a copy of them keeps
-walking where they are, with their skin, their armour, and the horse, boat or happy
-ghast they were riding. It is made to sit on top of Voxy, which draws the far terrain
-but never the players on it.
+Gives life to the distance. A client-side Fabric mod for Minecraft **1.21.11** that
+fills the horizon with the creatures who live there: animals grazing around far-off
+villages, villagers and golems, flocks of birds crossing the sky, and other players
+walking where they really are, with their skin, their armour, and the horse, boat or
+happy ghast they were riding. It is made to sit on top of Voxy, which draws the far
+terrain and the villages on it, but never what lives there.
 
 Nothing is sent to the server. On its own, the mod uses only what a vanilla client
 already receives. With the companion **data pack** on the server (not a mod: a folder
@@ -12,20 +13,20 @@ in `world/datapacks`), every position is exact at any distance.
 
 ## The data pack: exact positions
 
-`build/libs/<version>/farfarplayer-datapack-<version>+mc1.21.11.zip`, built from the
+`build/libs/<version>/livinghorizon-datapack-<version>+mc1.21.11.zip`, built from the
 `datapack/` folder. Drop it in the world's `datapacks/` folder and run `/reload`.
 
 Five times a second it writes each player's position, yaw, dimension and whether they
-ride something into four scoreboard objectives (`ffp.x`, `ffp.y`, `ffp.z`, `ffp.m`). An
+ride something into four scoreboard objectives (`lh.x`, `lh.y`, `lh.z`, `lh.m`). An
 objective shown in any display slot is sent by the server to **every** client, at any
 distance, so the pack shows its four in the sidebars of four team colours (`black`,
 `dark_blue`, `dark_green`, `dark_aqua`): nobody sees them on screen, every client
-receives them, and the mod reads them. `/farfarplayer` says whether the pack is found.
+receives them, and the mod reads them. `/livinghorizon` says whether the pack is found.
 
 - Anyone in a team of one of those colours would see the coordinates in their sidebar.
   If your server uses them, change the four `setdisplay` lines in `load.mcfunction`.
 - Any client can read these scores: everyone's position is public to whoever looks.
-- `/function farfarplayer:uninstall`, then `/datapack disable "file/<pack name>"`,
+- `/function livinghorizon:uninstall`, then `/datapack disable "file/<pack name>"`,
   removes everything it created.
 
 `DatapackTest` compiles every function with the game's own command dispatcher, and
@@ -35,7 +36,7 @@ parses `pack.mcmeta` and the predicate with the game's own codecs.
 
 A player who logs off stays where they were last, asleep on the ground (or sitting, see
 `offlinePose`), until they come back. This is remembered per server across sessions, in
-`config/farfarplayer/resting/<server>.json`. With the data pack, even players who logged
+`config/livinghorizon/resting/<server>.json`. With the data pack, even players who logged
 off before you joined are there: the pack keeps everyone's last position, and their
 skin is fetched from Mojang by name.
 
@@ -53,7 +54,7 @@ around a small circle. No AI runs anywhere; it is a picture of what lives there.
   `tags/entity_type/remembered.json`, numbered in `mob_kind.mcfunction` in the order of
   `MobKinds.TYPES` (`DatapackTest` checks the three agree).
 - **Without it**, each client remembers the mobs it met itself
-  (the types in `mobTypes`, chosen in game), in `config/farfarplayer/mobs/<server>.json`.
+  (the types in `mobTypes`, chosen in game), in `config/livinghorizon/mobs/<server>.json`.
 - A mob met up close keeps its exact look (the game's own save of it); one known only
   from the pack is built from kind, variant and age.
 - Coming back within range of a remembered mob that is not there forgets it.
@@ -71,7 +72,7 @@ tall buildings, robins hopping in fields, tits in the trees, ducks on lakes and 
 bats at night (some hanging under leaves and roofs), now and then parrots. Perched birds
 fly off when you come close; ducks never let you near. Birds never vanish at once: they
 scatter and shrink away. An easter egg: now and then a flying saucer takes a cow
-(`/farfarplayer ufo`).
+(`/livinghorizon ufo`).
 
 Where each kind goes is read off the terrain a few columns at a time - from the chunks
 loaded here, or farther from Voxy's world (`compat/VoxyWorld`): crops or farmland for
@@ -133,10 +134,10 @@ out to the farthest player when needed (`extendFarPlane`).
 
 ## Using it
 
-- `/farfarplayer` lists the players followed, where their position comes from, and how
+- `/livinghorizon` lists the players followed, where their position comes from, and how
   sure it is (`±` blocks).
-- A key (unbound by default, under *Far Far Player* in Controls) toggles the copies.
-- `config/farfarplayer.json`:
+- A key (unbound by default, under *Living Horizon* in Controls) toggles the copies.
+- `config/livinghorizon.json`:
 
 | Setting | Default | |
 |---|---|---|

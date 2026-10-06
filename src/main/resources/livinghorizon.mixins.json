@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "fr.clixmods.livinghorizon.mixin",
+  "compatibilityLevel": "JAVA_${java}",
+  "client": [
+    "EntityMixin",
+    "FeatureRenderDispatcherMixin",
+    "GameRendererMixin",
+    "LevelRendererMixin",
+    "VoxyRenderSystemMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
