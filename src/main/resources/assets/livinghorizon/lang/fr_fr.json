@@ -159,6 +159,8 @@
   "livinghorizon.options.debugLabels.tooltip": "Au-dessus de chaque boîte : ce qu'il est devenu, son espèce, sa distance et sa taille à l'écran en pixels.",
   "livinghorizon.options.debugGameMobs": "Aussi les mobs du jeu",
   "livinghorizon.options.debugGameMobs.tooltip": "Des boîtes blanches autour des mobs que le jeu dessine lui-même, pour voir où le mod prend le relais.",
+  "livinghorizon.options.debugOutlines": "Contours par type",
+  "livinghorizon.options.debugOutlines.tooltip": "Comment chaque silhouette lointaine est dessinée, visible à travers le relief : un contour vert autour des copies en 3D, un contour magenta autour des imposteurs, et une croix orange là où un mob n'est pas dessiné du tout (derrière des blocs, trop petit, hors de la vue, en attente). La croix dit seulement où, pas quoi.",
   "livinghorizon.options.debugDepthView": "Vue de la profondeur",
   "livinghorizon.options.debugDepthView.tooltip": "Le tampon de profondeur en bas à droite : proche en blanc, loin en noir, le ciel en bleu.",
   "livinghorizon.options.debugDepthView.0": "Non",

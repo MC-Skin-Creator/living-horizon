@@ -34,6 +34,7 @@ public final class DebugScreen extends SideOptionsScreen {
                 bool("debugBoxes", c.debugBoxes, v -> c.debugBoxes = v),
                 bool("debugLabels", c.debugLabels, v -> c.debugLabels = v),
                 bool("debugGameMobs", c.debugGameMobs, v -> c.debugGameMobs = v),
+                bool("debugOutlines", c.debugOutlines, v -> c.debugOutlines = v),
                 choice("debugDepthView", List.of("0", "1", "2", "3"), String.valueOf(c.debugDepthView),
                         v -> c.debugDepthView = Integer.parseInt(v)));
 

@@ -211,6 +211,12 @@ public final class FarConfig {
     public boolean debugLabels = false;
     /** Boxes around the mobs the game draws itself, too. */
     public boolean debugGameMobs = false;
+    /**
+     * How each distant figure is drawn, seen through terrain: a green outline around the
+     * models the mod draws, a magenta one around impostors, and an orange cross where a
+     * mob is left out (behind blocks, too small, outside the view, waiting).
+     */
+    public boolean debugOutlines = false;
     /** A panel of what the mod does and costs, in the corner of the screen. */
     public boolean debugHud = false;
     /** 0: off; 1: the game's depth; 2: with the far terrain merged in; 3: after the entities. */

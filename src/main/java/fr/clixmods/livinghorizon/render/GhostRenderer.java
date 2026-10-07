@@ -574,8 +574,9 @@ public final class GhostRenderer {
             state.shadowPieces.clear();
             state.shadowRadius = 0;
             if (puppet) state.lightCoords = light(level, state);
-            if (config.glowOutline && self != null) {
-                state.outlineColor = 0xFFFFFF;
+            int outline = self == null ? 0 : DebugMarks.outline(config, puppet);
+            if (outline != 0) {
+                state.outlineColor = outline;
                 glowing = true;
             }
             //?} else {
@@ -691,8 +692,10 @@ public final class GhostRenderer {
         int view = ImpostorViews.view(yaw, -ax, -az, shown == null ? -1 : shown.view);
         SHOWN.put(entity, new Shown(key, view, frame));
         int light = light(minecraft.level, x, y, z);
+        int outline = minecraft.player == null ? 0 : DebugMarks.impostorOutline(config);
+        if (outline != 0 && ImpostorRenderer.OUTLINES) glowing = true;
         ImpostorRenderer.add(new ImpostorRenderer.Billboard(ax * pull, ay * pull, az * pull,
-                sheet.worldSize() * pull * boost, sheet, view, light));
+                sheet.worldSize() * pull * boost, sheet, view, light, outline));
         return true;
     }
 

@@ -171,6 +171,12 @@ The game itself lacks what these need, so they are left out rather than imitated
   outside the view, purple being built, grey past `maxDistantMobs`. A dot in the middle
   keeps them visible when the box is smaller than its lines.
 - **Labels**: state, kind, distance and size on screen, at a constant size.
+- **Outlines by kind**: how each distant figure is drawn, seen through terrain - a green
+  outline around the 3D copies (players and mobs the mod draws in place of the real ones),
+  a magenta one around impostors, and an orange cross, a few pixels wide, where a mob is
+  not drawn at all (behind blocks, too small, outside the view, being built, past the
+  maximum): where it is, not what it is. Outlines need 1.21.9 (impostor outlines 1.21.9 to
+  26.1), crosses 1.21.11.
 - **Depth view** (bottom right): the game's depth, with the far terrain merged, or after
   the entities - near white, far black, sky blue.
 - Every optimisation has its own switch (`opt*` in the file), to compare the cost.
