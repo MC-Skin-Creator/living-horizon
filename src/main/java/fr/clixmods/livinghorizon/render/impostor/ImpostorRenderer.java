@@ -4,6 +4,10 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import fr.clixmods.livinghorizon.render.Sink;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+//? if >=1.21.9 && <26.2 {
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.OutlineBufferSource;
+//?}
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,10 +20,26 @@ public final class ImpostorRenderer {
     /**
      * One figure to draw this frame.
      *
-     * @param x    where the feet are, from the camera, already pulled in when past the far plane
-     * @param size blocks along a side of its picture, scaled the same way
+     * @param x       where the feet are, from the camera, already pulled in when past the far plane
+     * @param size    blocks along a side of its picture, scaled the same way
+     * @param outline the colour of its outline, 0 for none
      */
-    public record Billboard(double x, double y, double z, double size, ImpostorAtlas.Sheet sheet, int view, int light) {
+    public record Billboard(double x, double y, double z, double size, ImpostorAtlas.Sheet sheet, int view, int light,
+                            int outline) {
+    }
+
+    /**
+     * Whether impostors can have an outline in this version: drawn into the game's outline
+     * buffer next to the models', which only this range of versions lets in by the side.
+     */
+    //? if >=1.21.9 && <26.2 {
+    public static final boolean OUTLINES = true;
+    //?} else {
+    /*public static final boolean OUTLINES = false;
+    *///?}
+
+    /** An outlined impostor as it was submitted, drawn again into the outline buffer. */
+    private record Outlined(PoseStack.Pose at, Billboard board, float rightX, float rightZ) {
     }
 
     /**
@@ -30,12 +50,14 @@ public final class ImpostorRenderer {
     private static final float INSET = 0.5f / (ImpostorViews.TILE >> (ImpostorAtlas.MIPS - 1));
 
     private static final List<Billboard> FRAME = new ArrayList<>();
+    private static final List<Outlined> OUTLINED = new ArrayList<>();
 
     private ImpostorRenderer() {
     }
 
     public static void beginFrame() {
         FRAME.clear();
+        OUTLINED.clear();
     }
 
     public static void add(Billboard billboard) {
@@ -53,9 +75,29 @@ public final class ImpostorRenderer {
             pose.translate((float) board.x, (float) board.y, (float) board.z);
             collector.draw(pose, ImpostorAtlas.type(board.sheet.page()),
                     (at, out) -> quad(at, out, board, rightX, rightZ));
+            //? if >=1.21.9 && <26.2
+            if (board.outline != 0) OUTLINED.add(new Outlined(pose.last().copy(), board, rightX, rightZ));
             pose.popPose();
             PolygonStats.impostor();
         }
+    }
+
+    /**
+     * The outlines of this frame's impostors, once the world's models have written theirs:
+     * the same quads, through the picture's cutout, into the outline buffer. Once a frame.
+     */
+    public static void drawOutlines() {
+        //? if >=1.21.9 && <26.2 {
+        if (OUTLINED.isEmpty()) return;
+        OutlineBufferSource buffers = Minecraft.getInstance().renderBuffers().outlineBufferSource();
+        for (Outlined outlined : OUTLINED) {
+            Billboard board = outlined.board;
+            buffers.setColor(board.outline);
+            quad(outlined.at, buffers.getBuffer(ImpostorAtlas.type(board.sheet.page())), board, outlined.rightX,
+                    outlined.rightZ);
+        }
+        OUTLINED.clear();
+        //?}
     }
 
     private static void quad(PoseStack.Pose at, VertexConsumer out, Billboard board, float rightX, float rightZ) {

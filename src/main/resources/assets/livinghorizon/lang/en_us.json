@@ -159,6 +159,8 @@
   "livinghorizon.options.debugLabels.tooltip": "Over each box: what became of it, its kind, its distance and its size on screen in pixels.",
   "livinghorizon.options.debugGameMobs": "Also the game's mobs",
   "livinghorizon.options.debugGameMobs.tooltip": "White boxes around the mobs the game draws itself, to see where the mod takes over.",
+  "livinghorizon.options.debugOutlines": "Outlines by kind",
+  "livinghorizon.options.debugOutlines.tooltip": "How each distant figure is drawn, seen through terrain: a green outline around the 3D copies, a magenta one around impostors, and an orange cross where a mob is not drawn at all (behind blocks, too small, outside the view, waiting). The cross only says where, not what.",
   "livinghorizon.options.debugDepthView": "Depth view",
   "livinghorizon.options.debugDepthView.tooltip": "The depth buffer in the bottom right corner, near white to far black, the sky in blue.",
   "livinghorizon.options.debugDepthView.0": "Off",
