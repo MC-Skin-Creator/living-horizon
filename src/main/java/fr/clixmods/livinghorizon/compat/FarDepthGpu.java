@@ -84,6 +84,10 @@ public final class FarDepthGpu {
     private static final int RING = 8;
 
     private static @Nullable MappableRingBuffer mergeUniforms, fadeUniforms;
+    /^* Written before the world's pass for the merge in it: Distant Horizons' depth and the terms. ^/
+    private static @Nullable GpuBuffer preparedUniforms;
+    private static @Nullable GpuTextureView preparedDepth;
+    private static String preparedReason = "no frame yet";
     /^* The game's depth as it was before the fade, to give back after it. ^/
     private static @Nullable GpuTexture saved;
     private static @Nullable GpuTextureView savedView;
@@ -92,22 +96,21 @@ public final class FarDepthGpu {
     private FarDepthGpu() {
     }
 
-    /^* In the world's pass, before the entities are drawn: Distant Horizons' terrain into the depth. ^/
-    public static void merge(RenderPass pass) {
-        if (broken || !FarDepth.gpuMerge()) return;
+    /^*
+     * Before the world's pass opens, where buffers may still be written: Distant Horizons'
+     * depth of this frame - drawn by then - and the terms of both projections, for {@link #merge}.
+     ^/
+    public static void prepare() {
+        preparedUniforms = null;
+        preparedDepth = null;
+        if (broken || DepthFar.openGl() || !DhDepth.available() || DhDepth.shaderPackOn()) return;
         try {
             Object[] dh = DhDepth.readView();
             if (dh == null) {
-                FarDepth.gpuResult(false, DhDepth.reason(), 0, 0);
+                preparedReason = DhDepth.reason();
                 return;
             }
-            CompiledRenderPipeline pipeline = RenderSystem.getCompiledPipelineNullable(MERGE);
-            if (pipeline == null) {
-                FarDepth.gpuResult(false, "the depth merge pipeline did not compile", 0, 0);
-                return;
-            }
-            Minecraft minecraft = Minecraft.getInstance();
-            float[] game = DepthFar.terms(0.05f, DepthFar.of(minecraft));
+            float[] game = DepthFar.terms(0.05f, DepthFar.of(Minecraft.getInstance()));
             if (mergeUniforms == null) {
                 mergeUniforms = new MappableRingBuffer(() -> "Living Horizon far depth", GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_MAP_WRITE, MERGE_SIZE);
             }
@@ -117,11 +120,31 @@ public final class FarDepthGpu {
                         .putVec4((float) dh[1], (float) dh[2], (float) dh[3], (float) dh[4])
                         .putVec4(game[0], game[1], DepthFar.REVERSED ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f);
             }
+            preparedUniforms = uniforms;
+            preparedDepth = (GpuTextureView) dh[0];
+        } catch (Throwable e) {
+            fail(e);
+        }
+    }
+
+    /^* In the world's pass, before the entities are drawn: Distant Horizons' terrain into the depth. ^/
+    public static void merge(RenderPass pass) {
+        if (broken || !FarDepth.gpuMerge()) return;
+        try {
+            if (preparedUniforms == null || preparedDepth == null) {
+                FarDepth.gpuResult(false, preparedReason, 0, 0);
+                return;
+            }
+            CompiledRenderPipeline pipeline = RenderSystem.getCompiledPipelineNullable(MERGE);
+            if (pipeline == null) {
+                FarDepth.gpuResult(false, "the depth merge pipeline did not compile", 0, 0);
+                return;
+            }
             pass.setPipeline(pipeline);
-            pass.setUniform("DhDepth", (GpuTextureView) dh[0], nearest());
-            pass.setUniform("LhFarDepth", uniforms);
+            pass.setUniform("DhDepth", preparedDepth, nearest());
+            pass.setUniform("LhFarDepth", preparedUniforms);
             pass.draw(3, 1, 0, 0);
-            RenderTarget main = minecraft.gameRenderer.mainRenderTarget();
+            RenderTarget main = Minecraft.getInstance().gameRenderer.mainRenderTarget();
             FarDepth.gpuResult(true, "", main.width, main.height);
         } catch (Throwable e) {
             fail(e);
