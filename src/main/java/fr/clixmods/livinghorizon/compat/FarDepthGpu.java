@@ -10,8 +10,8 @@ import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
 import com.mojang.renderpearl.api.commands.CommandEncoder;
 import com.mojang.renderpearl.api.commands.RenderPass;
 import com.mojang.renderpearl.api.commands.RenderPassDescriptor;
+import com.mojang.renderpearl.api.GpuFormat;
 import com.mojang.renderpearl.api.pipeline.BindGroupLayout;
-import fr.clixmods.livinghorizon.FarConfig;
 import com.mojang.renderpearl.api.pipeline.ColorTargetState;
 import com.mojang.renderpearl.api.pipeline.CompareOp;
 import com.mojang.renderpearl.api.pipeline.CompiledRenderPipeline;
@@ -23,6 +23,7 @@ import com.mojang.renderpearl.api.textures.FilterMode;
 import com.mojang.renderpearl.api.textures.GpuSampler;
 import com.mojang.renderpearl.api.textures.GpuTexture;
 import com.mojang.renderpearl.api.textures.GpuTextureView;
+import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import net.minecraft.client.Minecraft;
@@ -36,9 +37,10 @@ import org.jspecify.annotations.Nullable;
 import java.util.Optional;
 
 /^*
- * What {@link FarDepth} does with OpenGL, done through the game's own GPU device, so that it
- * works when the game draws with Vulkan (26.2 on; this class from 26.3): Distant Horizons'
- * depth merged before the entities, and the distant figures kept out of its fade.
+ * What {@link FarDepth} does with OpenGL, done through the game's own GPU device (26.3): with
+ * Vulkan, and with OpenGL over Distant Horizons (see {@link FarDepth#gpuPath()}). Distant
+ * Horizons' depth merged before the entities, the distant figures kept out of its fade, and
+ * which distant mobs the depth hides, in place of OpenGL's occlusion queries.
  *
  * <p>Nothing may be copied in the middle of the world's render pass there, so neither step
  * takes anything back the way {@link FarDepth} does. The merge is a draw in the world's pass:
@@ -92,6 +94,28 @@ public final class FarDepthGpu {
             .withColorTargetState(ColorTargetState.DEFAULT)
             .build();
 
+    /^*
+     * Which distant mobs the depth hides, in place of OpenGL's occlusion queries, which the
+     * game's device does not have: one pixel per mob, its box projected on the screen and a grid
+     * of the depth inside it tested against the box's nearest point. Read back a frame or two later.
+     ^/
+    private static final RenderPipeline VISIBILITY = RenderPipeline.builder(RenderPipelines.GLOBALS_SNIPPET)
+            .withLocation(Identifier.fromNamespaceAndPath(NAMESPACE, "pipeline/far_visibility"))
+            .withVertexShader("core/screenquad")
+            .withFragmentShader(Identifier.fromNamespaceAndPath(NAMESPACE, "core/far_visibility"))
+            .withBindGroupLayout(BindGroupLayout.builder()
+                    .withUniform("InSampler", UniformType.COMBINED_IMAGE_SAMPLER)
+                    .withUniform("LhVisibility", UniformType.UNIFORM_BUFFER)
+                    .build())
+            .withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
+            .withColorTargetState(new ColorTargetState(Optional.empty(), GpuFormat.RGBA8_UNORM, ColorTargetState.WRITE_ALL))
+            .build();
+    /^* Mobs tested per frame: the boxes fit the 16 KiB every device gives a uniform buffer. The others wait a frame. ^/
+    private static final int VISIBILITY_MAX = 480;
+    private static final int VISIBILITY_SIZE = new Std140SizeCalculator().putMat4f().putVec4().get() + VISIBILITY_MAX * 32;
+    /^* Read-backs waiting for the GPU: past this, a frame asks nothing. ^/
+    private static final int READBACKS = 4;
+
     private static final int VIEW_SIZE = new Std140SizeCalculator().putVec4().putVec4().putVec4().get();
     private static final int MERGE_SIZE = new Std140SizeCalculator().putVec4().putVec4().get();
     private static final int FADE_SIZE = new Std140SizeCalculator().putMat4f().putVec4().putVec4().get();
@@ -111,6 +135,18 @@ public final class FarDepthGpu {
     private static @Nullable GpuTextureView savedView;
     private static boolean fading, broken;
 
+    private static @Nullable MappableRingBuffer visibilityUniforms;
+    private static @Nullable GpuTexture visibility;
+    private static @Nullable GpuTextureView visibilityView;
+    /^* One read-back per frame in flight: the buffer, the keys it answers for, and their frame. ^/
+    private static final GpuBuffer[] READBACK_BUFFERS = new GpuBuffer[READBACKS];
+    private static final Object[][] READBACK_KEYS = new Object[READBACKS][];
+    private static final long[] READBACK_FRAMES = new long[READBACKS];
+    private static final int[] READBACK_COUNTS = new int[READBACKS];
+    private static final boolean[] READBACK_BUSY = new boolean[READBACKS];
+    private static final Object[] KEYS = new Object[VISIBILITY_MAX];
+    private static final float[] BOXES = new float[VISIBILITY_MAX * 6];
+
     private FarDepthGpu() {
     }
 
@@ -121,7 +157,8 @@ public final class FarDepthGpu {
     public static void prepare() {
         preparedUniforms = null;
         preparedDepth = null;
-        if (broken || DepthFar.openGl() || !DhDepth.available() || DhDepth.shaderPackOn()) return;
+        FarDepth.gpuAvailable();
+        if (broken || !FarDepth.gpuPath() || !DhDepth.available() || DhDepth.shaderPackOn()) return;
         try {
             Object[] dh = DhDepth.readView();
             if (dh == null) {
@@ -229,6 +266,106 @@ public final class FarDepthGpu {
         }
     }
 
+    // --- Once the world is drawn -------------------------------------------------------------
+
+    /^* The world's pass is closed: the mobs asked about are tested, and the depth view kept. ^/
+    public static void afterWorld() {
+        testVisibility();
+        captureView();
+    }
+
+    private static void testVisibility() {
+        if (broken || !FarDepth.gpuPath()) {
+            OcclusionQueries.gpuReady(false);
+            return;
+        }
+        OcclusionQueries.gpuReady(true);
+        FarConfig config = FarConfig.get();
+        if (!config.hideOccludedMobs || !config.optOcclusionQueries) return;
+        try {
+            int slot = -1;
+            for (int i = 0; i < READBACKS; i++) {
+                if (!READBACK_BUSY[i]) {
+                    slot = i;
+                    break;
+                }
+            }
+            // The GPU is behind: these mobs are asked again next frame.
+            if (slot < 0) return;
+            int n = OcclusionQueries.takeAsked(KEYS, BOXES);
+            if (n == 0) return;
+            Minecraft minecraft = Minecraft.getInstance();
+            RenderTarget main = minecraft.gameRenderer.mainRenderTarget();
+            GpuTextureView depth = main.getDepthTextureView();
+            CompiledRenderPipeline pipeline = RenderSystem.getCompiledPipelineNullable(VISIBILITY);
+            if (depth == null || pipeline == null) return;
+            if (visibility == null || visibility.isClosed()) {
+                visibility = RenderSystem.getDevice().createTexture(() -> "Living Horizon visibility",
+                        GpuTexture.USAGE_RENDER_ATTACHMENT | GpuTexture.USAGE_COPY_SRC, GpuFormat.RGBA8_UNORM, VISIBILITY_MAX, 1, 1, 1);
+                visibilityView = RenderSystem.getDevice().createTextureView(visibility);
+            }
+            if (READBACK_BUFFERS[slot] == null) {
+                READBACK_BUFFERS[slot] = RenderSystem.getDevice().createBuffer(() -> "Living Horizon visibility read-back",
+                        GpuBuffer.USAGE_MAP_READ | GpuBuffer.USAGE_COPY_DST, (long) VISIBILITY_MAX * 4);
+            }
+            if (visibilityUniforms == null) {
+                visibilityUniforms = new MappableRingBuffer(() -> "Living Horizon visibility", GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_MAP_WRITE, VISIBILITY_SIZE);
+            }
+            GpuBuffer uniforms = next(visibilityUniforms);
+            try (GpuBufferSlice.MappedView view = uniforms.map(false, true)) {
+                Std140Builder builder = Std140Builder.intoBuffer(view.data())
+                        .putMat4f(new Matrix4f().set(OcclusionQueries.viewProjection()))
+                        .putVec4(n, DepthFar.REVERSED ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f, 0f);
+                for (int i = 0; i < n; i++) {
+                    builder.putVec4(BOXES[6 * i], BOXES[6 * i + 1], BOXES[6 * i + 2], 0f)
+                            .putVec4(BOXES[6 * i + 3], BOXES[6 * i + 4], BOXES[6 * i + 5], 0f);
+                }
+            }
+            CommandEncoder encoder = RenderSystem.getDevice().createCommandEncoder();
+            try (RenderPass pass = encoder.createRenderPass(RenderPassDescriptor.builder(() -> "Living Horizon: visibility")
+                    .withColorAttachment(visibilityView).build())) {
+                RenderSystem.bindDefaultUniforms(pass);
+                pass.setPipeline(pipeline);
+                pass.setUniform("InSampler", depth, nearest());
+                pass.setUniform("LhVisibility", uniforms);
+                pass.draw(3, 1, 0, 0);
+            }
+            Object[] keys = new Object[n];
+            System.arraycopy(KEYS, 0, keys, 0, n);
+            int index = slot;
+            READBACK_KEYS[index] = keys;
+            READBACK_COUNTS[index] = n;
+            READBACK_FRAMES[index] = OcclusionQueries.frame();
+            READBACK_BUSY[index] = true;
+            encoder.copyTextureToBuffer(visibility, READBACK_BUFFERS[index], 0, () -> readBack(index), 0);
+        } catch (Throwable e) {
+            fail(e);
+        }
+    }
+
+    /^* The GPU has answered: one pixel per mob, its number in red and green, visible in blue. ^/
+    private static void readBack(int slot) {
+        try {
+            GpuBuffer buffer = READBACK_BUFFERS[slot];
+            Object[] keys = READBACK_KEYS[slot];
+            if (buffer == null || keys == null) return;
+            int n = READBACK_COUNTS[slot];
+            try (GpuBufferSlice.MappedView view = buffer.map(true, false)) {
+                java.nio.ByteBuffer data = view.data();
+                for (int i = 0; i < n; i++) {
+                    int index = (data.get(4 * i) & 0xFF) | (data.get(4 * i + 1) & 0xFF) << 8;
+                    if (index >= n) continue;
+                    OcclusionQueries.answer(keys[index], (data.get(4 * i + 2) & 0xFF) >= 128, READBACK_FRAMES[slot]);
+                }
+            }
+        } catch (Throwable e) {
+            fail(e);
+        } finally {
+            READBACK_KEYS[slot] = null;
+            READBACK_BUSY[slot] = false;
+        }
+    }
+
     // --- Depth view ----------------------------------------------------------------------
 
     /^*
@@ -236,8 +373,8 @@ public final class FarDepthGpu {
      * picture whatever its mode: the depth after the entities, Distant Horizons' merged in, as
      * nothing can be copied before that in the middle of the world's pass.
      ^/
-    public static void captureView() {
-        if (broken || DepthFar.openGl() || FarConfig.get().debugDepthView == 0) return;
+    private static void captureView() {
+        if (broken || !FarDepth.gpuPath() || FarConfig.get().debugDepthView == 0) return;
         try {
             RenderTarget main = Minecraft.getInstance().gameRenderer.mainRenderTarget();
             GpuTexture depth = main.getDepthTexture();
@@ -262,7 +399,7 @@ public final class FarDepthGpu {
 
     /^* Draws the kept depth in the bottom right corner, near white to far black, the sky in dark blue. ^/
     public static void drawView(int mode) {
-        if (broken || mode == 0 || DepthFar.openGl() || viewDepthView == null) return;
+        if (broken || mode == 0 || !FarDepth.gpuPath() || viewDepthView == null) return;
         try {
             Minecraft minecraft = Minecraft.getInstance();
             RenderTarget main = minecraft.gameRenderer.mainRenderTarget();
@@ -332,6 +469,7 @@ public final class FarDepthGpu {
 
     private static void fail(Throwable e) {
         broken = true;
+        OcclusionQueries.gpuReady(false);
         fading = false;
         FarDepth.gpuResult(false, "off: " + e, 0, 0);
         LivingHorizonClient.LOGGER.warn("Using Distant Horizons' depth with the game's GPU device failed: distant mobs show through its terrain", e);

@@ -115,6 +115,23 @@ public final class FarDepth {
     private static boolean gpuMerge, gpuFade;
     /** This frame's view-projection, relative to the camera. */
     private static final Matrix4f VIEW_PROJECTION = new Matrix4f();
+    /** {@code FarDepthGpu} exists (26.3) and has run. */
+    private static boolean gpuAvailable;
+
+    public static void gpuAvailable() {
+        gpuAvailable = true;
+    }
+
+    /**
+     * Whether the far terrain's depth goes through the game's own GPU device this frame rather
+     * than straight OpenGL: always with Vulkan; with OpenGL too over Distant Horizons without a
+     * shader pack, where OpenGL calls in the middle of the world's pass left smears at the edge
+     * of the game's chunks.
+     */
+    public static boolean gpuPath() {
+        if (!DepthFar.openGl()) return true;
+        return gpuAvailable && !available() && DhDepth.available() && !DhDepth.shaderPackOn();
+    }
 
     public static boolean gpuMerge() {
         return gpuMerge;
@@ -150,13 +167,13 @@ public final class FarDepth {
         boolean wanted = needed || !config.optLazyDepth;
         needed = false;
         try {
-            if (!DepthFar.openGl()) {
+            if (gpuPath()) {
                 // Distant Horizons alone: Voxy draws with OpenGL only. No shader pack either.
                 boolean dh = wanted && config.anyDistant() && DhDepth.available() && !DhDepth.shaderPackOn();
                 gpuMerge = dh && config.depthOcclusion;
                 gpuFade = dh && config.optDhFade;
                 if (!gpuMerge) {
-                    reason = wanted ? "the game does not draw with OpenGL" : "nothing far to hide this frame";
+                    reason = wanted ? "the far terrain's depth is not usable" : "nothing far to hide this frame";
                     mergedLastFrame = false;
                 }
                 return;
@@ -239,7 +256,7 @@ public final class FarDepth {
      * Called with the HUD, after the world, before the HUD itself is drawn over it.
      */
     public static void drawDebugView(int mode) {
-        if (mode < 1 || mode > 3 || saved == 0 || !DepthFar.openGl()) return;
+        if (mode < 1 || mode > 3 || saved == 0 || !DepthFar.openGl() || gpuPath()) return;
         try {
             Minecraft minecraft = Minecraft.getInstance();
             int colorId = mainTexture(false);

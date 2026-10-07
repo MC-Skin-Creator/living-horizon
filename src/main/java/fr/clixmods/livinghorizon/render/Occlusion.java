@@ -44,13 +44,15 @@ public final class Occlusion {
      * pixel, and the far terrain's world - coarse, twice a second - would only get it wrong.
      */
     private static boolean byPixels() {
-        return !DepthFar.openGl() && FarDepth.mergedLastFrame();
+        return !DepthFar.openGl() && FarDepth.mergedLastFrame() && !byDepth();
     }
 
     /** Whether the depth answers rather than the far terrain's world. */
     private static boolean byDepth() {
-        // The queries are OpenGL's: with Vulkan, the far terrain's world answers.
-        return FarConfig.get().optOcclusionQueries && OcclusionQueries.usable() && DepthFar.openGl();
+        // Through the game's device where the far terrain goes that way (Vulkan, or Distant
+        // Horizons on 26.3), else OpenGL's queries; without either, the far terrain's world.
+        if (!FarConfig.get().optOcclusionQueries || !OcclusionQueries.usable()) return false;
+        return FarDepth.gpuPath() ? OcclusionQueries.gpuReady() : DepthFar.openGl();
     }
 
     /**

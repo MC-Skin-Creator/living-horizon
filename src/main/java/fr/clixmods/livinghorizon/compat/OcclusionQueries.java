@@ -104,6 +104,61 @@ public final class OcclusionQueries {
         return !broken;
     }
 
+    // --- Through the game's GPU device ---------------------------------------------------------
+
+    /** The game's device answers instead of OpenGL's queries ({@code FarDepthGpu}, 26.3). */
+    private static boolean gpuReady;
+    private static long takeCursor;
+
+    public static void gpuReady(boolean ready) {
+        gpuReady = ready;
+    }
+
+    public static boolean gpuReady() {
+        return gpuReady && !broken;
+    }
+
+    /**
+     * This frame's boxes, at most {@code keys.length}, for the game's device: their keys, and
+     * their two corners in {@code boxes}, six floats each. The others are asked again next frame.
+     */
+    public static int takeAsked(Object[] keys, float[] boxes) {
+        int size = ASKED.size();
+        asked = size;
+        int n = Math.min(keys.length, size);
+        // More than fit in one frame: each frame starts where the last one stopped.
+        int start = size > n ? (int) (takeCursor % size) : 0;
+        takeCursor += n;
+        for (int i = 0; i < n; i++) {
+            Box box = ASKED.get((start + i) % size);
+            keys[i] = box.key;
+            boxes[6 * i] = box.lowX;
+            boxes[6 * i + 1] = box.lowY;
+            boxes[6 * i + 2] = box.lowZ;
+            boxes[6 * i + 3] = box.highX;
+            boxes[6 * i + 4] = box.highY;
+            boxes[6 * i + 5] = box.highZ;
+        }
+        ASKED.clear();
+        return n;
+    }
+
+    /** The frame being drawn, to date the answers that come back for it. */
+    public static long frame() {
+        return frame;
+    }
+
+    /** An answer from the game's device about a box asked in {@code askedIn}. */
+    public static void answer(Object key, boolean visible, long askedIn) {
+        Answer old = ANSWERS.get(key);
+        if (old == null || old.frame <= askedIn) ANSWERS.put(key, new Answer(visible, askedIn));
+    }
+
+    /** This frame's view-projection, relative to the camera, as the queries use it. */
+    public static float[] viewProjection() {
+        return VIEW_PROJECTION;
+    }
+
     /** Another world: what was seen is of no use. */
     public static void clear() {
         ANSWERS.clear();

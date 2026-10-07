@@ -79,10 +79,10 @@ abstract class LevelRendererMixin {
         fr.clixmods.livinghorizon.compat.FarDepthGpu.prepare();
     }
 
-    // The world's pass is closed: its depth, for the depth view.
+    // The world's pass is closed: the distant mobs are tested against its depth, which the depth view keeps.
     @Inject(method = "executeOutline", at = @At("HEAD"))
-    private void livinghorizon$captureGpuDepth(CallbackInfo ci) {
-        fr.clixmods.livinghorizon.compat.FarDepthGpu.captureView();
+    private void livinghorizon$afterGpuWorld(CallbackInfo ci) {
+        fr.clixmods.livinghorizon.compat.FarDepthGpu.afterWorld();
     }
     *///?}
 
