@@ -119,7 +119,7 @@ public final class FarDepth {
                 reason = "nothing far to hide this frame";
             } else if (config.anyDistant() && config.depthOcclusion) {
                 if (available()) merged = merge();
-                else if (DhDepth.available()) merged = mergeDh();
+                else if (!broken && DhDepth.available()) merged = mergeDh();
                 else if (!ready) reason = "neither Voxy nor Distant Horizons is usable";
             }
             // The depth view shows the game's depth even when there was nothing to merge.
@@ -189,7 +189,7 @@ public final class FarDepth {
      * Called with the HUD, after the world, before the HUD itself is drawn over it.
      */
     public static void drawDebugView(int mode) {
-        if (mode < 1 || mode > 3 || saved == 0 || broken) return;
+        if (mode < 1 || mode > 3 || saved == 0) return;
         try {
             Minecraft minecraft = Minecraft.getInstance();
             int colorId = mainTexture(false);
@@ -221,7 +221,7 @@ public final class FarDepth {
                 float[] terms = DepthFar.terms(0.05f, far);
                 GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "planes"), 0.05f, far);
                 GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "terms"), terms[0], terms[1]);
-                GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "layout"),
+                GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "depthLayout"),
                         DepthFar.REVERSED ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f);
                 GL30C.glBindVertexArray(vertexArray);
                 GL33C.glBindSampler(0, 0);
@@ -251,17 +251,17 @@ public final class FarDepth {
                 uniform vec2 size;
                 uniform vec2 planes;
                 uniform vec2 terms;  // the projection's two terms, see DepthFar.terms
-                uniform vec2 layout; // 1 when the depth is reversed, 1 when it is 0..1
+                uniform vec2 depthLayout; // 1 when the depth is reversed, 1 when it is 0..1
                 out vec4 color;
                 void main() {
                     vec2 uv = (gl_FragCoord.xy - area.xy) / area.zw;
                     float d = texelFetch(depth, ivec2(uv * size), 0).r;
-                    if (layout.x > 0.5 ? d <= 0.0 : d >= 1.0) {
+                    if (depthLayout.x > 0.5 ? d <= 0.0 : d >= 1.0) {
                         color = vec4(0.08, 0.12, 0.32, 1.0);
                         return;
                     }
                     float near = planes.x, far = planes.y;
-                    float z = layout.y > 0.5 ? d : d * 2.0 - 1.0;
+                    float z = depthLayout.y > 0.5 ? d : d * 2.0 - 1.0;
                     float linear = terms.y / (z + terms.x);
                     // Logarithmic: a block away and the horizon both readable.
                     float shade = 1.0 - log(max(linear, near) / near) / log(far / near);
@@ -441,7 +441,7 @@ public final class FarDepth {
             float near = 0.05f, far = DepthFar.of(minecraft);
             float[] terms = DepthFar.terms(near, far);
             GL20C.glUniform2f(GL20C.glGetUniformLocation(dhProgram, "game"), terms[0], terms[1]);
-            GL20C.glUniform2f(GL20C.glGetUniformLocation(dhProgram, "layout"),
+            GL20C.glUniform2f(GL20C.glGetUniformLocation(dhProgram, "depthLayout"),
                     DepthFar.REVERSED ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f);
             GL30C.glBindVertexArray(vertexArray);
             GL33C.glBindSampler(0, dhSampler);
@@ -476,7 +476,7 @@ public final class FarDepth {
                 uniform vec2 dhSize;
                 uniform vec4 dh;   // projection a, projection b, 1 when the depth is -1..1, depth of nothing
                 uniform vec2 game; // the game's projection a and b, see DepthFar.terms
-                uniform vec2 layout; // 1 when the game's depth is reversed, 1 when it is 0..1
+                uniform vec2 depthLayout; // 1 when the game's depth is reversed, 1 when it is 0..1
                 void main() {
                     float d = texelFetch(dhDepth, ivec2(gl_FragCoord.xy / screen * dhSize), 0).r;
                     if (d == dh.w) discard;
@@ -484,8 +484,8 @@ public final class FarDepth {
                     float z = -dh.y / (ndc + dh.x);
                     if (!(z < 0.0)) discard;
                     float depth = (game.x * z + game.y) / -z;
-                    if (layout.y < 0.5) depth = depth * 0.5 + 0.5;
-                    if (layout.x > 0.5 ? !(depth > 0.0) : !(depth < 1.0)) discard;
+                    if (depthLayout.y < 0.5) depth = depth * 0.5 + 0.5;
+                    if (depthLayout.x > 0.5 ? !(depth > 0.0) : !(depth < 1.0)) discard;
                     gl_FragDepth = clamp(depth, 0.0, 1.0);
                 }
                 """;
