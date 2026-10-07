@@ -23,7 +23,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..', '..');
 const LANGS = ['en', 'fr'];
 const PROJECT = 'Living Horizon';
-const SITE_URL = process.env.LH_SITE_URL || 'https://github.com/MC-Skin-Creator/far-far-entities/releases';
+const SITE_URL = process.env.LH_SITE_URL || 'https://github.com/MC-Skin-Creator/living-horizon/releases';
 
 const KINDS = {
   new: 'new', nouveautés: 'new',
@@ -88,7 +88,7 @@ function payload(release, lang) {
     description: text + link,
     color: 0x4a90d9,
     timestamp: release.date + 'T12:00:00.000Z',
-    footer: { text: 'MC-Skin-Creator/far-far-entities' }
+    footer: { text: 'MC-Skin-Creator/living-horizon' }
   };
   return { username: 'Living Horizon', allowed_mentions: { parse: [] }, embeds: [embed] };
 }
