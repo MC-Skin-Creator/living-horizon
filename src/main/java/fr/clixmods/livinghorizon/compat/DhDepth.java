@@ -21,6 +21,8 @@ final class DhDepth {
 
     private static Field renderProxy, renderParams, projection, m22, m23, m32, farDepth, success, payload;
     private static Method depthTexture, depthRange, depthDirection, name;
+    /** From API 7.1, Distant Horizons may draw through Blaze3D, without a shader pack: its depth is reached through a wrapper. */
+    private static @Nullable Method blazeDepthTexture, wrappedObject;
     /** Iris, when installed: whether a shader pack is on, and the planes it draws Distant Horizons with. */
     private static @Nullable Method irisApi, packInUse, irisNear, irisFar;
 
@@ -68,9 +70,8 @@ final class DhDepth {
             Object proxy = renderProxy.get(null);
             if (proxy == null) return none("Distant Horizons has not started");
             Object result = depthTexture.invoke(proxy);
-            if (!success.getBoolean(result) || !(payload.get(result) instanceof Integer texture) || texture <= 0) {
-                return none("Distant Horizons has no depth texture");
-            }
+            int texture = success.getBoolean(result) && payload.get(result) instanceof Integer id ? id : blazeTexture(proxy);
+            if (texture <= 0) return none("Distant Horizons has no depth texture");
             Object params = renderParams.get(null);
             Object matrix = params == null ? null : projection.get(params);
             if (matrix == null) return none("Distant Horizons has not drawn yet");
@@ -116,6 +117,37 @@ final class DhDepth {
         }
     }
 
+    /**
+     * The OpenGL name of the depth texture Distant Horizons draws into through Blaze3D, which
+     * it does without a shader pack from 26.1; 0 when there is none, or not on OpenGL.
+     */
+    private static int blazeTexture(Object proxy) throws ReflectiveOperationException {
+        if (blazeDepthTexture == null || wrappedObject == null) return 0;
+        Object result = blazeDepthTexture.invoke(proxy);
+        if (!success.getBoolean(result)) return 0;
+        Object wrapper = payload.get(result);
+        // The texture, its view and its sampler; the texture is the game's own GpuTexture.
+        if (wrapper == null || !(wrappedObject.invoke(wrapper) instanceof Object[] objects) || objects.length == 0
+                || objects[0] == null) {
+            return 0;
+        }
+        try {
+            return (int) objects[0].getClass().getMethod("glId").invoke(objects[0]);
+        } catch (NoSuchMethodException e) {
+            return 0; // not an OpenGL texture: Vulkan
+        }
+    }
+
+    /** Whether Iris draws with a shader pack: Distant Horizons then does not fade the game's picture. */
+    static boolean shaderPackOn() {
+        if (irisApi == null || packInUse == null) return false;
+        try {
+            return (boolean) packInUse.invoke(irisApi.invoke(null));
+        } catch (Throwable e) {
+            return false;
+        }
+    }
+
     private static float @Nullable [] none(String why) {
         reason = why;
         return null;
@@ -144,6 +176,12 @@ final class DhDepth {
         renderParams = Class.forName("com.seibel.distanthorizons.core.api.internal.ClientApi").getDeclaredField("RENDER_PARAMS");
         renderParams.setAccessible(true);
         payload = result.getField("payload");
+        try {
+            blazeDepthTexture = proxy.getMethod("getDhDepthTextureBlazeWrapper");
+            wrappedObject = Class.forName(api + "interfaces.IDhApiUnsafeWrapper").getMethod("getWrappedMcObject");
+        } catch (ReflectiveOperationException e) {
+            blazeDepthTexture = null; // before API 7.1: OpenGL only
+        }
         if (Platform.isModLoaded("iris")) {
             try {
                 Class<?> iris = Class.forName("net.irisshaders.iris.api.v0.IrisApi");

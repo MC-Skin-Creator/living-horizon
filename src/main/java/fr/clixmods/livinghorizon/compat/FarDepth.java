@@ -58,7 +58,7 @@ public final class FarDepth {
     private static boolean merged;
 
     private static int target, depthTexture, width, height, format;
-    private static int saved, written, drawn;
+    private static int saved, written, drawn, faded;
     private static int program, vertexArray;
     private static int state;
     /** Why the last frame did nothing, for {@code /livinghorizon voxy}. */
@@ -100,6 +100,7 @@ public final class FarDepth {
     /** The world's entities are submitted: the next drawing of features is theirs. */
     public static void arm() {
         armed = true;
+        fadeMask = false;
     }
 
     /** Just before the entities are drawn. */
@@ -122,8 +123,11 @@ public final class FarDepth {
                 else if (!broken && DhDepth.available()) merged = mergeDh();
                 else if (!ready) reason = "neither Voxy nor Distant Horizons is usable";
             }
+            // Distant Horizons' fade, without a shader pack, needs to know where the entities are.
+            boolean dhFade = wanted && config.anyDistant() && DhDepth.available() && !DhDepth.shaderPackOn();
             // The depth view shows the game's depth even when there was nothing to merge.
-            if (!merged && config.debugDepthView != 0) captured = capture();
+            if (!merged && (config.debugDepthView != 0 || dhFade)) captured = capture();
+            fadeMask = dhFade && (merged || captured) && target == ownTarget;
             // The depth as it is now - far terrain in it, entities not yet - is what hides distant mobs.
             if (wanted && config.anyDistant() && config.hideOccludedMobs && config.optOcclusionQueries) {
                 int depth = merged ? depthTexture : ownTarget() != 0 ? ownTargetDepth : 0;
@@ -154,7 +158,7 @@ public final class FarDepth {
         captured = false;
     }
 
-    /** The depth was copied for the debug view alone, without Voxy's terrain. */
+    /** The depth was copied without the far terrain's: for the debug view, or for Distant Horizons' fade. */
     private static boolean captured;
     private static boolean mergedLastFrame;
 
@@ -534,6 +538,111 @@ public final class FarDepth {
         }
     }
 
+    // --- Distant Horizons' fade -------------------------------------------------------------
+
+    /** The entities of this frame are known: {@code written} before them, {@code drawn} after. */
+    private static boolean fadeMask;
+    /** Between {@link #beforeFade()} and {@link #afterFade()}: the depth to give back is in {@code faded}. */
+    private static boolean fading;
+    private static int unmaskProgram;
+
+    /**
+     * Distant Horizons is about to fade the game's picture into its terrain. Without a
+     * shader pack, it takes anything the game drew past the render distance for terrain
+     * left over, and paints its own terrain over it - the distant mobs included. For the
+     * fade, the pixels of the entities read as sky, which it leaves alone.
+     */
+    public static void beforeFade() {
+        if (!fadeMask || fading || !DepthFar.openGl()) return;
+        try {
+            copy(depthTexture, faded);
+            GlState gl = GlState.save();
+            try {
+                GL30C.glBindFramebuffer(GL30C.GL_DRAW_FRAMEBUFFER, target);
+                GL11C.glDisable(GL11C.GL_SCISSOR_TEST);
+                GL11C.glDisable(GL11C.GL_CULL_FACE);
+                GL11C.glDisable(GL11C.GL_STENCIL_TEST);
+                GL11C.glDisable(GL11C.GL_BLEND);
+                GL11C.glEnable(GL11C.GL_DEPTH_TEST);
+                GL11C.glDepthFunc(GL11C.GL_ALWAYS);
+                GL11C.glDepthMask(true);
+                GL11C.glColorMask(false, false, false, false);
+                GL11C.glViewport(0, 0, width, height);
+                if (unmaskProgram == 0) unmaskProgram = compileUnmask();
+                GL20C.glUseProgram(unmaskProgram);
+                GL20C.glUniform1f(GL20C.glGetUniformLocation(unmaskProgram, "empty"), DepthFar.REVERSED ? 0f : 1f);
+                GL30C.glBindVertexArray(vertexArray);
+                for (int unit = 0; unit < 3; unit++) {
+                    GL33C.glBindSampler(unit, 0);
+                    GL45C.glBindTextureUnit(unit, unit == 0 ? faded : unit == 1 ? written : drawn);
+                }
+                GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3);
+            } finally {
+                gl.restore();
+            }
+            fading = true;
+        } catch (Throwable e) {
+            fadeMask = false;
+            fail(e);
+        }
+    }
+
+    /** Distant Horizons' fade is done: the entities' depth comes back. */
+    public static void afterFade() {
+        if (!fading) return;
+        fading = false;
+        try {
+            copy(faded, depthTexture);
+        } catch (Throwable e) {
+            fadeMask = false;
+            fail(e);
+        }
+    }
+
+    /**
+     * A screen-filling triangle that empties the depth wherever an entity was drawn and
+     * nothing was drawn over it since (translucent terrain, which the fade must still see).
+     */
+    private static int compileUnmask() {
+        String vertex = """
+                #version 330 core
+                void main() {
+                    vec2 corner = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+                    gl_Position = vec4(corner * 2.0 - 1.0, 0.0, 1.0);
+                }
+                """;
+        String fragment = """
+                #version 330 core
+                uniform sampler2D current;
+                uniform sampler2D written;
+                uniform sampler2D drawn;
+                uniform float empty;
+                void main() {
+                    ivec2 at = ivec2(gl_FragCoord.xy);
+                    float entity = texelFetch(drawn, at, 0).r;
+                    if (entity == texelFetch(written, at, 0).r || texelFetch(current, at, 0).r != entity) discard;
+                    gl_FragDepth = empty;
+                }
+                """;
+        int vs = shader(GL20C.GL_VERTEX_SHADER, vertex), fs = shader(GL20C.GL_FRAGMENT_SHADER, fragment);
+        int linked = GL20C.glCreateProgram();
+        GL20C.glAttachShader(linked, vs);
+        GL20C.glAttachShader(linked, fs);
+        GL20C.glLinkProgram(linked);
+        GL20C.glDeleteShader(vs);
+        GL20C.glDeleteShader(fs);
+        if (GL20C.glGetProgrami(linked, GL20C.GL_LINK_STATUS) == GL11C.GL_FALSE) {
+            throw new IllegalStateException("Fade mask program: " + GL20C.glGetProgramInfoLog(linked));
+        }
+        int previous = GL11C.glGetInteger(GL20C.GL_CURRENT_PROGRAM);
+        GL20C.glUseProgram(linked);
+        GL20C.glUniform1i(GL20C.glGetUniformLocation(linked, "current"), 0);
+        GL20C.glUniform1i(GL20C.glGetUniformLocation(linked, "written"), 1);
+        GL20C.glUniform1i(GL20C.glGetUniformLocation(linked, "drawn"), 2);
+        GL20C.glUseProgram(previous);
+        return linked;
+    }
+
     // --- GPU objects ----------------------------------------------------------------------
 
     private static void copy(int from, int to) {
@@ -546,13 +655,14 @@ public final class FarDepth {
             vertexArray = GL45C.glCreateVertexArrays();
         }
         if (saved != 0 && w == width && h == height && f == format) return;
-        for (int texture : new int[]{saved, written, drawn}) if (texture != 0) GL11C.glDeleteTextures(texture);
+        for (int texture : new int[]{saved, written, drawn, faded}) if (texture != 0) GL11C.glDeleteTextures(texture);
         width = w;
         height = h;
         format = f;
         saved = texture();
         written = texture();
         drawn = texture();
+        faded = texture();
     }
 
     private static int texture() {
