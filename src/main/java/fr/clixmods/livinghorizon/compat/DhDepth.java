@@ -21,6 +21,8 @@ final class DhDepth {
 
     private static Field renderProxy, renderParams, projection, m22, m23, m32, farDepth, success, payload;
     private static Method depthTexture, depthRange, depthDirection, name;
+    /** Iris, when installed: whether a shader pack is on, and the planes it draws Distant Horizons with. */
+    private static @Nullable Method irisApi, packInUse, irisNear, irisFar;
 
     private DhDepth() {
     }
@@ -76,14 +78,40 @@ final class DhDepth {
             // The matrix is stored one way or the other: the entry that is -1 is the one that
             // divides by depth, the other one is the offset.
             float b = Math.abs(c + 1.0f) < 1.0e-3f ? d : c;
-            if (Math.abs(b) < 1.0e-6f) return none("Distant Horizons has no projection yet");
             boolean signed = "NEG_ONE_TO_POS_ONE".equals(String.valueOf(name.invoke(depthRange.invoke(proxy))));
+            float[] iris = irisPlanes();
+            if (iris != null) {
+                // A shader pack draws Distant Horizons' terrain with Iris's own projection, whose
+                // near plane is not the one Distant Horizons clamps for itself: OpenGL's -1..1.
+                float near = iris[0], far = iris[1];
+                a = (far + near) / (near - far);
+                b = 2.0f * far * near / (near - far);
+                signed = true;
+            }
+            if (Math.abs(b) < 1.0e-6f) return none("Distant Horizons has no projection yet");
             float nothing = farDepth.getFloat(depthDirection.invoke(proxy));
             return new float[]{texture, a, b, signed ? 1.0f : 0.0f, nothing};
         } catch (Throwable e) {
             broken = true;
             reason = "Distant Horizons did not answer as expected: " + e;
             LivingHorizonClient.LOGGER.warn("Using Distant Horizons' depth turned off: it did not answer as expected", e);
+            return null;
+        }
+    }
+
+    /**
+     * {@code {near, far}} of the projection Iris draws Distant Horizons' terrain with while a
+     * shader pack is on; null without Iris, without a pack, or when its planes are not known yet.
+     */
+    private static float @Nullable [] irisPlanes() {
+        if (irisApi == null || packInUse == null || irisNear == null || irisFar == null) return null;
+        try {
+            if (!(boolean) packInUse.invoke(irisApi.invoke(null))) return null;
+            float near = (float) irisNear.invoke(null), far = (float) irisFar.invoke(null);
+            return near > 0.0f && far > near ? new float[]{near, far} : null;
+        } catch (Throwable e) {
+            packInUse = null;
+            LivingHorizonClient.LOGGER.warn("Iris did not answer as expected: Distant Horizons' depth is read as without a shader pack", e);
             return null;
         }
     }
@@ -116,5 +144,18 @@ final class DhDepth {
         renderParams = Class.forName("com.seibel.distanthorizons.core.api.internal.ClientApi").getDeclaredField("RENDER_PARAMS");
         renderParams.setAccessible(true);
         payload = result.getField("payload");
+        if (Platform.isModLoaded("iris")) {
+            try {
+                Class<?> api = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
+                Class<?> compat = Class.forName("net.irisshaders.iris.compat.dh.DHCompat");
+                irisApi = api.getMethod("getInstance");
+                packInUse = api.getMethod("isShaderPackInUse");
+                irisNear = compat.getMethod("getNearPlane");
+                irisFar = compat.getMethod("getFarPlane");
+            } catch (ReflectiveOperationException e) {
+                packInUse = null;
+                LivingHorizonClient.LOGGER.warn("Iris found, but not the version this mod knows: Distant Horizons' depth is read as without a shader pack", e);
+            }
+        }
     }
 }
