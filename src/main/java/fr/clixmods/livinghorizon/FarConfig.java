@@ -202,6 +202,8 @@ public final class FarConfig {
     public boolean optBackgroundBuild = true;
     /** A mob only a few pixels high on screen plays no walking or idle animation: it only slides and turns. */
     public boolean optStillTiny = true;
+    /** A copy that was not drawn for a moment (out of view, hidden, too small) stays where it is: no animation, no path read. */
+    public boolean optFreezeHidden = false;
 
     // --- Debug -----------------------------------------------------------------------------
 

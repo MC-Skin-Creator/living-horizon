@@ -181,6 +181,8 @@
   "livinghorizon.options.optOcclusionQueries.tooltip": "Comment \"Ignorer les mobs derrière les blocs\" décide, qui doit être activé : le GPU teste la boîte de chaque mob contre la profondeur de l'image - ce que vous voyez, Voxy ou Distant Horizons compris - et un mob dont aucun pixel n'est visible n'est pas dessiné. Désactivé, pour comparer : des lignes de vue sont tracées dans le monde du terrain lointain, ce qui nécessite Voxy ou Distant Horizons.",
   "livinghorizon.options.optBackgroundBuild": "Copies en fond",
   "livinghorizon.options.optStillTiny": "Petits immobiles",
+  "livinghorizon.options.optFreezeHidden": "Figer les non dessinés",
+  "livinghorizon.options.optFreezeHidden.tooltip": "Un mob lointain qui n'est pas dessiné (hors du champ, derrière le relief, trop petit) arrête de bouger : ce n'est qu'une position jusqu'à ce qu'il réapparaisse. Économise leur animation et la lecture des chemins. Désactivé par défaut, pour comparer.",
   "livinghorizon.options.optStillTiny.tooltip": "Un mob lointain de quelques pixels à l'écran glisse et pivote sans jouer ses animations de marche et de repos, qu'on ne verrait pas. Désactivé : toujours animé.",
   "livinghorizon.options.optBackgroundBuild.tooltip": "Les mobs sauvegardés sont lus hors du fil du jeu et construits en 2 ms max par tick. Désactivé : tout d'un coup, sur le fil du jeu.",
   "livinghorizon.debug.on": "Debug Living Horizon : activé (panneau et encadrés).",
@@ -226,6 +228,7 @@
   "livinghorizon.debug.opt.queries": "mobs cachés par la profondeur",
   "livinghorizon.debug.opt.background": "copies construites en arrière-plan",
   "livinghorizon.debug.opt.animation": "mobs minuscules non animés",
+  "livinghorizon.debug.opt.freeze": "mobs non dessinés figés",
   "livinghorizon.debug.depth.1": "jeu",
   "livinghorizon.debug.depth.2": "jeu + terrain lointain",
   "livinghorizon.debug.depth.3": "après les entités"
