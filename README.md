@@ -257,6 +257,9 @@ lives there.
 - A mob less than 10 pixels high on screen plays no walking or idle animation: it keeps
   sliding along its animation and turning, every tick, but its legs stay still
   (`optStillTiny`, `MobMotion.TINY_PIXELS`).
+- With `optFreezeHidden` (debug screen, off by default), a copy that has not been drawn for
+  half a second - out of view, hidden, too small - is not ticked at all: no animation, no
+  path read, only a position, until it is drawn again.
 - A copy is never drawn where the real mob would be sent (`MobMemory.nearRange`: how far the
   server sends that kind - the *Entity Distance* slider in a single player world - within
   the render distance, less 16 blocks, never under 24), except while it walks up to the

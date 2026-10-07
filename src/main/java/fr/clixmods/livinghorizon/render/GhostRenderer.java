@@ -408,6 +408,7 @@ public final class GhostRenderer {
             if (skipped(puppet, true)) continue;
             if (occluded(mob.id(), puppet, config)) continue;
             if (debug) DebugMarks.mark(puppet, Mark.FAKE);
+            mob.drawn();
             if (impostor(minecraft, eye, puppet, partialTick, config)) continue;
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
             // A puppet is in no world, so never in water: fish would be drawn flopping on

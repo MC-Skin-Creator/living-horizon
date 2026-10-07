@@ -194,6 +194,8 @@
   "livinghorizon.options.optOcclusionQueries.tooltip": "How \"Skip mobs behind blocks\" decides, which must be on: the GPU tests each mob's box against the depth of the picture - what you see, Voxy or Distant Horizons included - and a mob with not one pixel in view is not drawn. Off, to compare: lines of sight are traced in the far terrain's world instead, which needs Voxy or Distant Horizons.",
   "livinghorizon.options.optBackgroundBuild": "Background build",
   "livinghorizon.options.optStillTiny": "Still tiny mobs",
+  "livinghorizon.options.optFreezeHidden": "Freeze undrawn mobs",
+  "livinghorizon.options.optFreezeHidden.tooltip": "A distant mob that is not drawn (out of view, behind terrain, too small) stops moving: it is only a position until it shows again. Saves their animation and path reads. Off by default, to compare.",
   "livinghorizon.options.optStillTiny.tooltip": "A distant mob only a few pixels high on screen slides and turns without playing its walking and idle animations, which could not be seen. Off: always animated.",
   "livinghorizon.options.optBackgroundBuild.tooltip": "Saved mobs are read off the game's thread and built within 2 ms per tick. Off: all at once, on the game's thread.",
   "livinghorizon.debug.on": "Living Horizon debug: on (panel and boxes).",
@@ -239,6 +241,7 @@
   "livinghorizon.debug.opt.queries": "mobs hidden by depth",
   "livinghorizon.debug.opt.background": "copies built in background",
   "livinghorizon.debug.opt.animation": "tiny mobs not animated",
+  "livinghorizon.debug.opt.freeze": "undrawn mobs frozen",
   "livinghorizon.debug.depth.1": "game",
   "livinghorizon.debug.depth.2": "game + far terrain",
   "livinghorizon.debug.depth.3": "after entities"

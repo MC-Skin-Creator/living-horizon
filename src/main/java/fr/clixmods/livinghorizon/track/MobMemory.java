@@ -107,6 +107,11 @@ public final class MobMemory {
         transient double distance;
         /** Forgotten while still on the list being drawn: not drawn again, nor rebuilt. */
         transient boolean gone;
+        /** When it was last drawn, in nanoseconds; 0 if never. */
+        transient long drawnAt;
+
+        /** Said by the renderer each frame it draws this copy. */
+        public void drawn() { drawnAt = System.nanoTime(); }
 
         public UUID id() { return id; }
         public @Nullable Entity puppet() { return gone ? null : puppet; }
@@ -125,6 +130,8 @@ public final class MobMemory {
     private static final int MAX_REMEMBERED = 2000;
     /** Nanoseconds per tick for building puppets, so that a crowd does not cost one long frame. */
     private static final long BUILD_BUDGET = 2_000_000L;
+    /** A copy not drawn for this long (nanoseconds) is frozen, with {@link FarConfig#optFreezeHidden}. */
+    private static final long FREEZE_AFTER = 500_000_000L;
     /** Grounds read per tick, at most: a few thousand blocks each, when the chunks are loaded. */
     private static final int READS_PER_TICK = 6;
 
@@ -490,6 +497,11 @@ public final class MobMemory {
             }
             if (mob.puppet == null) continue;
             if (mob.puppet instanceof LivingEntity living) {
+                // Not drawn for a moment: it keeps its place, as a position and nothing more.
+                if (config.optFreezeHidden && mob.motion != null && mob.motion.placed()
+                        && System.nanoTime() - mob.drawnAt > FREEZE_AFTER) {
+                    continue;
+                }
                 boolean roam = !still.contains(mob.type);
                 // Moved by the data pack: the blocks are read again around where it is now.
                 MobPaths.Choice choice = mob.choice;
