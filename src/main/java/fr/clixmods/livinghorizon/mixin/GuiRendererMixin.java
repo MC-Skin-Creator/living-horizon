@@ -28,6 +28,9 @@ abstract class GuiRendererMixin {
     private void livinghorizon$depthView(CallbackInfo ci) {
         int mode = FarConfig.get().debugDepthView;
         if (mode != 0) FarDepth.drawDebugView(mode);
+        // With Vulkan, through the game's device.
+        //? if >=26.3
+        /*if (mode != 0) fr.clixmods.livinghorizon.compat.FarDepthGpu.drawView(mode);*/
     }
 }
 //?}

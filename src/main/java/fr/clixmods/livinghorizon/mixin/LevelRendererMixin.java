@@ -78,6 +78,12 @@ abstract class LevelRendererMixin {
     private void livinghorizon$prepareGpuDepth(CallbackInfo ci) {
         fr.clixmods.livinghorizon.compat.FarDepthGpu.prepare();
     }
+
+    // The world's pass is closed: its depth, for the depth view.
+    @Inject(method = "executeOutline", at = @At("HEAD"))
+    private void livinghorizon$captureGpuDepth(CallbackInfo ci) {
+        fr.clixmods.livinghorizon.compat.FarDepthGpu.captureView();
+    }
     *///?}
 
     // The extraction is LevelExtractorMixin's from 26.2, where it has a class of its own.

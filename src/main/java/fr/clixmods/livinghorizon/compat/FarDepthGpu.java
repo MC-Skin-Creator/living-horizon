@@ -11,6 +11,7 @@ import com.mojang.renderpearl.api.commands.CommandEncoder;
 import com.mojang.renderpearl.api.commands.RenderPass;
 import com.mojang.renderpearl.api.commands.RenderPassDescriptor;
 import com.mojang.renderpearl.api.pipeline.BindGroupLayout;
+import fr.clixmods.livinghorizon.FarConfig;
 import com.mojang.renderpearl.api.pipeline.ColorTargetState;
 import com.mojang.renderpearl.api.pipeline.CompareOp;
 import com.mojang.renderpearl.api.pipeline.CompiledRenderPipeline;
@@ -78,12 +79,29 @@ public final class FarDepthGpu {
             .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, true))
             .build();
 
+    /^* The depth view of the debug screen, in a corner of the picture. ^/
+    private static final RenderPipeline VIEW = RenderPipeline.builder(RenderPipelines.GLOBALS_SNIPPET)
+            .withLocation(Identifier.fromNamespaceAndPath(NAMESPACE, "pipeline/far_depth_view"))
+            .withVertexShader("core/screenquad")
+            .withFragmentShader(Identifier.fromNamespaceAndPath(NAMESPACE, "core/far_depth_view"))
+            .withBindGroupLayout(BindGroupLayout.builder()
+                    .withUniform("InSampler", UniformType.COMBINED_IMAGE_SAMPLER)
+                    .withUniform("LhDepthView", UniformType.UNIFORM_BUFFER)
+                    .build())
+            .withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
+            .withColorTargetState(ColorTargetState.DEFAULT)
+            .build();
+
+    private static final int VIEW_SIZE = new Std140SizeCalculator().putVec4().putVec4().putVec4().get();
     private static final int MERGE_SIZE = new Std140SizeCalculator().putVec4().putVec4().get();
     private static final int FADE_SIZE = new Std140SizeCalculator().putMat4f().putVec4().putVec4().get();
     /^* Frames a uniform buffer is kept before it is written again: the GPU may still be reading it. ^/
     private static final int RING = 8;
 
-    private static @Nullable MappableRingBuffer mergeUniforms, fadeUniforms;
+    private static @Nullable MappableRingBuffer mergeUniforms, fadeUniforms, viewUniforms;
+    /^* The depth of the last frame once the world is drawn, for the depth view. ^/
+    private static @Nullable GpuTexture viewDepth;
+    private static @Nullable GpuTextureView viewDepthView;
     /^* Written before the world's pass for the merge in it: Distant Horizons' depth and the terms. ^/
     private static @Nullable GpuBuffer preparedUniforms;
     private static @Nullable GpuTextureView preparedDepth;
@@ -206,6 +224,72 @@ public final class FarDepthGpu {
             if (blit == null || savedView == null || main.getDepthTextureView() == null) return;
             blitDepth(RenderSystem.getDevice().createCommandEncoder(), blit, savedView, main.getDepthTextureView(),
                     "Living Horizon: depth after the fade");
+        } catch (Throwable e) {
+            fail(e);
+        }
+    }
+
+    // --- Depth view ----------------------------------------------------------------------
+
+    /^*
+     * Once the world is drawn, its depth kept for the depth view. With Vulkan the view has one
+     * picture whatever its mode: the depth after the entities, Distant Horizons' merged in, as
+     * nothing can be copied before that in the middle of the world's pass.
+     ^/
+    public static void captureView() {
+        if (broken || DepthFar.openGl() || FarConfig.get().debugDepthView == 0) return;
+        try {
+            RenderTarget main = Minecraft.getInstance().gameRenderer.mainRenderTarget();
+            GpuTexture depth = main.getDepthTexture();
+            GpuTextureView depthView = main.getDepthTextureView();
+            CompiledRenderPipeline blit = RenderSystem.getCompiledPipelineNullable(RenderPipelines.BLIT_DEPTH);
+            if (depth == null || depthView == null || blit == null) return;
+            int w = depth.getWidth(0), h = depth.getHeight(0);
+            if (viewDepth == null || viewDepth.isClosed() || viewDepth.getWidth(0) != w || viewDepth.getHeight(0) != h
+                    || viewDepth.getFormat() != depth.getFormat()) {
+                if (viewDepthView != null) viewDepthView.close();
+                if (viewDepth != null) viewDepth.close();
+                viewDepth = RenderSystem.getDevice().createTexture(() -> "Living Horizon depth view",
+                        GpuTexture.USAGE_RENDER_ATTACHMENT | GpuTexture.USAGE_TEXTURE_BINDING, depth.getFormat(), w, h, 1, 1);
+                viewDepthView = RenderSystem.getDevice().createTextureView(viewDepth);
+            }
+            blitDepth(RenderSystem.getDevice().createCommandEncoder(), blit, depthView, viewDepthView,
+                    "Living Horizon: depth for the depth view");
+        } catch (Throwable e) {
+            fail(e);
+        }
+    }
+
+    /^* Draws the kept depth in the bottom right corner, near white to far black, the sky in dark blue. ^/
+    public static void drawView(int mode) {
+        if (broken || mode == 0 || DepthFar.openGl() || viewDepthView == null) return;
+        try {
+            Minecraft minecraft = Minecraft.getInstance();
+            RenderTarget main = minecraft.gameRenderer.mainRenderTarget();
+            GpuTextureView color = main.getColorTextureView();
+            CompiledRenderPipeline pipeline = RenderSystem.getCompiledPipelineNullable(VIEW);
+            if (color == null || pipeline == null) return;
+            if (viewUniforms == null) {
+                viewUniforms = new MappableRingBuffer(() -> "Living Horizon depth view", GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_MAP_WRITE, VIEW_SIZE);
+            }
+            GpuBuffer uniforms = next(viewUniforms);
+            float far = DepthFar.of(minecraft), near = 0.05f;
+            float[] terms = DepthFar.terms(near, far);
+            float margin = 8f / Math.max(1, main.width);
+            try (GpuBufferSlice.MappedView view = uniforms.map(false, true)) {
+                Std140Builder.intoBuffer(view.data())
+                        .putVec4(1f - 0.4f - margin, 8f / Math.max(1, main.height), 0.4f, 0.4f)
+                        .putVec4(terms[0], terms[1], near, far)
+                        .putVec4(DepthFar.REVERSED ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f, 0f, 0f);
+            }
+            try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(
+                    RenderPassDescriptor.builder(() -> "Living Horizon: depth view").withColorAttachment(color).build())) {
+                RenderSystem.bindDefaultUniforms(pass);
+                pass.setPipeline(pipeline);
+                pass.setUniform("InSampler", viewDepthView, nearest());
+                pass.setUniform("LhDepthView", uniforms);
+                pass.draw(3, 1, 0, 0);
+            }
         } catch (Throwable e) {
             fail(e);
         }
