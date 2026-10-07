@@ -18,10 +18,15 @@ abstract class DhClientApiMixin {
     @Inject(method = {"renderFadeOpaque", "renderFadeTransparent"}, at = @At("HEAD"), require = 0)
     private void livinghorizon$fadeIn(CallbackInfo ci) {
         FarDepth.beforeFade();
+        // With Vulkan, through the game's device instead.
+        //? if >=26.3
+        /*fr.clixmods.livinghorizon.compat.FarDepthGpu.beforeFade();*/
     }
 
     @Inject(method = {"renderFadeOpaque", "renderFadeTransparent"}, at = @At("RETURN"), require = 0)
     private void livinghorizon$fadeOut(CallbackInfo ci) {
         FarDepth.afterFade();
+        //? if >=26.3
+        /*fr.clixmods.livinghorizon.compat.FarDepthGpu.afterFade();*/
     }
 }

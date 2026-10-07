@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * box passes the depth test against the terrain drawn in front of it. Without a recent
  * answer, the mob is shown.
  *
- * <p>With {@link FarConfig#optOcclusionQueries} off, or once the queries failed, the far terrain's world
+ * <p>With {@link FarConfig#optOcclusionQueries} off, once the queries failed, or with Vulkan, the far terrain's world
  * answers instead. A frame only reads the last answer. Twice a second, the mobs the frames
  * asked about are tested in one go on the reader threads: a line from the eye to the middle
  * of the mob and one to its top. Hidden means both meet a block before the mob.
@@ -41,7 +41,8 @@ public final class Occlusion {
 
     /** Whether the depth answers rather than the far terrain's world. */
     private static boolean byDepth() {
-        return FarConfig.get().optOcclusionQueries && OcclusionQueries.usable();
+        // The queries are OpenGL's: with Vulkan, the far terrain's world answers.
+        return FarConfig.get().optOcclusionQueries && OcclusionQueries.usable() && DepthFar.openGl();
     }
 
     /**

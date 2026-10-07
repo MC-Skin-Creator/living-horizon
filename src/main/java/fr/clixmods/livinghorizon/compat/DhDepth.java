@@ -72,32 +72,71 @@ final class DhDepth {
             Object result = depthTexture.invoke(proxy);
             int texture = success.getBoolean(result) && payload.get(result) instanceof Integer id ? id : blazeTexture(proxy);
             if (texture <= 0) return none("Distant Horizons has no depth texture");
-            Object params = renderParams.get(null);
-            Object matrix = params == null ? null : projection.get(params);
-            if (matrix == null) return none("Distant Horizons has not drawn yet");
-            float a = m22.getFloat(matrix), c = m23.getFloat(matrix), d = m32.getFloat(matrix);
-            // The matrix is stored one way or the other: the entry that is -1 is the one that
-            // divides by depth, the other one is the offset.
-            float b = Math.abs(c + 1.0f) < 1.0e-3f ? d : c;
-            boolean signed = "NEG_ONE_TO_POS_ONE".equals(String.valueOf(name.invoke(depthRange.invoke(proxy))));
-            float[] iris = irisPlanes();
-            if (iris != null) {
-                // A shader pack draws Distant Horizons' terrain with Iris's own projection, whose
-                // near plane is not the one Distant Horizons clamps for itself: OpenGL's -1..1.
-                float near = iris[0], far = iris[1];
-                a = (far + near) / (near - far);
-                b = 2.0f * far * near / (near - far);
-                signed = true;
-            }
-            if (Math.abs(b) < 1.0e-6f) return none("Distant Horizons has no projection yet");
-            float nothing = farDepth.getFloat(depthDirection.invoke(proxy));
-            return new float[]{texture, a, b, signed ? 1.0f : 0.0f, nothing};
+            float[] terms = terms(proxy);
+            return terms == null ? null : new float[]{texture, terms[0], terms[1], terms[2], terms[3]};
         } catch (Throwable e) {
             broken = true;
             reason = "Distant Horizons did not answer as expected: " + e;
             LivingHorizonClient.LOGGER.warn("Using Distant Horizons' depth turned off: it did not answer as expected", e);
             return null;
         }
+    }
+
+    /**
+     * {@code {view, a, b, signed, nothing}} as {@link #read()} gives, but with the game's own
+     * texture view of Distant Horizons' depth instead of an OpenGL name: when it draws through
+     * Blaze3D, which works with Vulkan as with OpenGL. Null with the reason when there is none.
+     */
+    static Object @Nullable [] readView() {
+        try {
+            Object proxy = renderProxy.get(null);
+            if (proxy == null) return noneView("Distant Horizons has not started");
+            if (blazeDepthTexture == null || wrappedObject == null) return noneView("Distant Horizons is too old to draw with Vulkan");
+            Object result = blazeDepthTexture.invoke(proxy);
+            if (!success.getBoolean(result)) return noneView("Distant Horizons has no depth texture");
+            Object wrapper = payload.get(result);
+            // The texture, its view and its sampler.
+            if (wrapper == null || !(wrappedObject.invoke(wrapper) instanceof Object[] objects) || objects.length < 2
+                    || objects[1] == null) {
+                return noneView("Distant Horizons has no depth texture");
+            }
+            float[] terms = terms(proxy);
+            return terms == null ? null : new Object[]{objects[1], terms[0], terms[1], terms[2], terms[3]};
+        } catch (Throwable e) {
+            broken = true;
+            reason = "Distant Horizons did not answer as expected: " + e;
+            LivingHorizonClient.LOGGER.warn("Using Distant Horizons' depth turned off: it did not answer as expected", e);
+            return null;
+        }
+    }
+
+    private static Object @Nullable [] noneView(String why) {
+        reason = why;
+        return null;
+    }
+
+    /** {@code {a, b, signed, nothing}} of the projection Distant Horizons' depth is made with. */
+    private static float @Nullable [] terms(Object proxy) throws ReflectiveOperationException {
+        Object params = renderParams.get(null);
+        Object matrix = params == null ? null : projection.get(params);
+        if (matrix == null) return none("Distant Horizons has not drawn yet");
+        float a = m22.getFloat(matrix), c = m23.getFloat(matrix), d = m32.getFloat(matrix);
+        // The matrix is stored one way or the other: the entry that is -1 is the one that
+        // divides by depth, the other one is the offset.
+        float b = Math.abs(c + 1.0f) < 1.0e-3f ? d : c;
+        boolean signed = "NEG_ONE_TO_POS_ONE".equals(String.valueOf(name.invoke(depthRange.invoke(proxy))));
+        float[] iris = irisPlanes();
+        if (iris != null) {
+            // A shader pack draws Distant Horizons' terrain with Iris's own projection, whose
+            // near plane is not the one Distant Horizons clamps for itself: OpenGL's -1..1.
+            float near = iris[0], far = iris[1];
+            a = (far + near) / (near - far);
+            b = 2.0f * far * near / (near - far);
+            signed = true;
+        }
+        if (Math.abs(b) < 1.0e-6f) return none("Distant Horizons has no projection yet");
+        float nothing = farDepth.getFloat(depthDirection.invoke(proxy));
+        return new float[]{a, b, signed ? 1.0f : 0.0f, nothing};
     }
 
     /**

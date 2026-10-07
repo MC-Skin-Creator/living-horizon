@@ -101,6 +101,44 @@ public final class FarDepth {
     public static void arm() {
         armed = true;
         fadeMask = false;
+        gpuMerge = false;
+        gpuFade = false;
+    }
+
+    // --- Without OpenGL ---------------------------------------------------------------------
+
+    /**
+     * What {@code FarDepthGpu} is to do this frame when the game draws with Vulkan, where
+     * nothing here may talk to OpenGL: merge Distant Horizons' depth before the entities, keep
+     * the figures out of its fade. It draws through the game's own GPU device instead.
+     */
+    private static boolean gpuMerge, gpuFade;
+    /** This frame's view-projection, relative to the camera. */
+    private static final Matrix4f VIEW_PROJECTION = new Matrix4f();
+
+    public static boolean gpuMerge() {
+        return gpuMerge;
+    }
+
+    public static boolean gpuFade() {
+        return gpuFade;
+    }
+
+    public static Matrix4f viewProjection() {
+        return VIEW_PROJECTION;
+    }
+
+    /** What the GPU path did, for {@code /livinghorizon lod} and the debug panel. */
+    public static void gpuResult(boolean done, String why, int w, int h) {
+        mergedLastFrame = done;
+        if (done) {
+            state = 1;
+            width = w;
+            height = h;
+        } else {
+            state = 0;
+            reason = why;
+        }
     }
 
     /** Just before the entities are drawn. */
@@ -113,8 +151,14 @@ public final class FarDepth {
         needed = false;
         try {
             if (!DepthFar.openGl()) {
-                reason = "the game does not draw with OpenGL";
-                mergedLastFrame = false;
+                // Distant Horizons alone: Voxy draws with OpenGL only. No shader pack either.
+                boolean dh = wanted && config.anyDistant() && DhDepth.available() && !DhDepth.shaderPackOn();
+                gpuMerge = dh && config.depthOcclusion;
+                gpuFade = dh && config.optDhFade;
+                if (!gpuMerge) {
+                    reason = wanted ? "the game does not draw with OpenGL" : "nothing far to hide this frame";
+                    mergedLastFrame = false;
+                }
                 return;
             } else if (!wanted) {
                 reason = "nothing far to hide this frame";
@@ -142,6 +186,7 @@ public final class FarDepth {
 
     /** The matrices of this frame, for {@link OcclusionQueries}. */
     public static void noteView(Matrix4f modelView, Matrix4f projection) {
+        VIEW_PROJECTION.set(projection).mul(modelView);
         OcclusionQueries.noteView(modelView, projection);
     }
 
