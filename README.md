@@ -94,7 +94,7 @@ number of mobs, the bird amount a percentage.
 
 The game itself lacks what these need, so they are left out rather than imitated:
 
-- **Impostors** (and their preview screen) and the **glowing outline** need the feature
+- **Impostors** (and their preview screen) and the **outlines** need the feature
   renderers of 1.21.9: before, distant figures are always drawn as full models.
 - The lines of the **F3 screen** need its entry list of 1.21.9; the mod's own debug panel
   works on every version.
@@ -149,7 +149,6 @@ The game itself lacks what these need, so they are left out rather than imitated
 | `depthOcclusion` | `true` | | The far terrain's depth (Voxy or Distant Horizons) on distant mobs and players, pixel by pixel (see *The far terrain's depth* below). Was `voxyOcclusion`. In *Debug...* |
 | `offlinePose` | `"sit"` | | A player who logged off: `"sleep"`, `"sit"` or `"hidden"` |
 | `showVehicles` | `true` | | Draw the mount they were last seen on |
-| `glowOutline` | `false` | | Glowing outline, seen through terrain |
 | `renderTrackedVehiclesFar` | `true` | | Never cull a mount that carries another player |
 | `hideOccludedMobs` | `true` | | Do not draw distant mobs behind terrain at all (see *Mobs hidden by depth* below). In *Debug...*, with `depthOcclusion` |
 | `impostors` | `true` | | Draw far players and mobs as a flat picture of themselves (see *Impostors*) |
@@ -171,12 +170,14 @@ The game itself lacks what these need, so they are left out rather than imitated
   outside the view, purple being built, grey past `maxDistantMobs`. A dot in the middle
   keeps them visible when the box is smaller than its lines.
 - **Labels**: state, kind, distance and size on screen, at a constant size.
-- **Outlines by kind**: how each distant figure is drawn, seen through terrain - a green
-  outline around the 3D copies (players and mobs the mod draws in place of the real ones),
-  a magenta one around impostors, and an orange cross, a few pixels wide, where a mob is
-  not drawn at all (behind blocks, too small, outside the view, being built, past the
-  maximum): where it is, not what it is. Outlines need 1.21.9 (impostor outlines 1.21.9 to
-  26.1), crosses 1.21.11.
+- **Outlines** (*Outlines...*): an outline seen through terrain around each kind of figure,
+  each on its own switch, in the colours of the boxes - white the mobs and players the game
+  draws (`outlineGameMobs`), cyan the real mobs the mod draws (`outlineLiveMobs`), green the
+  3D copies (`outlineCopies`), blue the distant players (`outlinePlayers`), magenta the
+  impostors (`outlineImpostors`) - and a cross a few pixels wide where a distant mob is not
+  drawn at all, in the colour of why (`outlineLeftOut`): where it is, not what it is. Made
+  for screenshots that compare optimisations. Outlines need 1.21.9 (impostor outlines 1.21.9
+  to 26.1), crosses 1.21.11.
 - **Depth view** (bottom right): the game's depth, with the far terrain merged, or after
   the entities - near white, far black, sky blue.
 - Every optimisation has its own switch (`opt*` in the file), to compare the cost.

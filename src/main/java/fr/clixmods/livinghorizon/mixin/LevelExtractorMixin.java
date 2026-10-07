@@ -33,6 +33,11 @@ abstract class LevelExtractorMixin {
         GhostRenderer.extracted(entity);
     }
 
+    @Inject(method = "extractEntity", at = @At("RETURN"))
+    private void livinghorizon$outline(Entity entity, float partialTick, CallbackInfoReturnable<EntityRenderState> cir) {
+        GhostRenderer.extracted(entity, cir.getReturnValue());
+    }
+
     @Inject(method = "extractVisibleEntities", at = @At("TAIL"))
     private void livinghorizon$addDistantPlayers(Camera camera, Frustum frustum, DeltaTracker deltaTracker,
                                                 LevelRenderState frame, CallbackInfo ci) {
