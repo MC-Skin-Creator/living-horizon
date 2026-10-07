@@ -1,6 +1,6 @@
 # Living Horizon — Journal des modifications
 
-## Prochaine version
+## 0.2.0 — 2026-10-07
 
 ### Nouveautés
 - **Compatibilité Distant Horizons** — le mod fonctionne désormais avec Distant Horizons comme avec Voxy, et utilise celui qui est installé. Oiseaux, créatures et lieux lointains lisent son terrain ; les créatures lointaines sont cachées par ses collines pixel par pixel.

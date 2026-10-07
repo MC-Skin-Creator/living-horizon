@@ -1,6 +1,6 @@
 # Living Horizon — Changelog
 
-## Unreleased
+## 0.2.0 — 2026-10-07
 
 ### New
 - **Distant Horizons support** — the mod now works with Distant Horizons as well as Voxy, and uses whichever is installed. Birds, mobs and far-away spots read its terrain, and distant mobs are hidden by its hills pixel by pixel.
