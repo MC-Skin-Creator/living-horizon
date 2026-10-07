@@ -191,7 +191,7 @@
   "livinghorizon.options.optColumnCache": "Cache du sol",
   "livinghorizon.options.optColumnCache.tooltip": "Le sol déjà lu dans le monde lointain est gardé deux minutes. Désactivé : relu à chaque fois.",
   "livinghorizon.options.optOcclusionQueries": "Tri profondeur",
-  "livinghorizon.options.optOcclusionQueries.tooltip": "Comment \"Ignorer les mobs derrière les blocs\" décide, qui doit être activé : le GPU teste la boîte de chaque mob contre la profondeur de l'image - ce que vous voyez, Voxy ou Distant Horizons compris - et un mob dont aucun pixel n'est visible n'est pas dessiné. Pas avec Distant Horizons sans pack de shaders, où les lignes de vue servent. Désactivé, pour comparer : des lignes de vue sont tracées dans le monde du terrain lointain, ce qui nécessite Voxy ou Distant Horizons.",
+  "livinghorizon.options.optOcclusionQueries.tooltip": "Comment \"Ignorer les mobs derrière les blocs\" décide, qui doit être activé : le GPU teste la boîte de chaque mob contre la profondeur de l'image - ce que vous voyez, Voxy ou Distant Horizons compris - et un mob dont aucun pixel n'est visible n'est pas dessiné. Désactivé, pour comparer : des lignes de vue sont tracées dans le monde du terrain lointain, ce qui nécessite Voxy ou Distant Horizons.",
   "livinghorizon.options.optDhFade": "Fondu DH",
   "livinghorizon.options.optDhFade.tooltip": "Sans pack de shaders, Distant Horizons fond l'image du jeu dans son terrain au-delà de la distance de rendu, ce qui recouvrirait les mobs lointains : ils sont tenus hors de ce fondu. Désactivé, pour comparer.",
   "livinghorizon.options.optBackgroundBuild": "Copies en fond",

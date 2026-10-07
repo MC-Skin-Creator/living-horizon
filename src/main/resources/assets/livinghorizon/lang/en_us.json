@@ -191,7 +191,7 @@
   "livinghorizon.options.optColumnCache": "Remember far ground",
   "livinghorizon.options.optColumnCache.tooltip": "Ground already read in the far world is kept two minutes. Off: read again every time.",
   "livinghorizon.options.optOcclusionQueries": "Hide mobs by depth",
-  "livinghorizon.options.optOcclusionQueries.tooltip": "How \"Skip mobs behind blocks\" decides, which must be on: the GPU tests each mob's box against the depth of the picture - what you see, Voxy or Distant Horizons included - and a mob with not one pixel in view is not drawn. Not with Distant Horizons without a shader pack, where lines of sight are used. Off, to compare: lines of sight are traced in the far terrain's world instead, which needs Voxy or Distant Horizons.",
+  "livinghorizon.options.optOcclusionQueries.tooltip": "How \"Skip mobs behind blocks\" decides, which must be on: the GPU tests each mob's box against the depth of the picture - what you see, Voxy or Distant Horizons included - and a mob with not one pixel in view is not drawn. Off, to compare: lines of sight are traced in the far terrain's world instead, which needs Voxy or Distant Horizons.",
   "livinghorizon.options.optDhFade": "DH fade",
   "livinghorizon.options.optDhFade.tooltip": "Without a shader pack, Distant Horizons fades the game's picture into its terrain past the render distance, which would paint over the distant mobs: they are kept out of that fade. Off, to compare.",
   "livinghorizon.options.optBackgroundBuild": "Background build",
