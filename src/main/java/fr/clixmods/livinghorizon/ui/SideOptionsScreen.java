@@ -104,10 +104,12 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
         layout.arrangeElements();
         int panel = columnWidth();
         if (list != null) list.updateSize(panel, layout);
-        // The title and the Done button are centred on the screen by the layout: centre them on the column.
+        // The layout centres the header and footer on the screen: slide them all onto the column by
+        // the same amount, so that a row of several buttons keeps its spacing.
+        int shift = (width - panel) / 2;
         for (GuiEventListener child : children()) {
             if (child instanceof AbstractWidget widget && widget != (Object) list) {
-                widget.setX((panel - widget.getWidth()) / 2);
+                widget.setX(widget.getX() - shift);
             }
         }
     }

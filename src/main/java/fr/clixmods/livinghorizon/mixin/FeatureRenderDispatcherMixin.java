@@ -3,6 +3,8 @@ package fr.clixmods.livinghorizon.mixin;
 // The feature renderers came in 1.21.9; before, LevelRendererMixin brackets the entities itself.
 //? if >=1.21.9 {
 import fr.clixmods.livinghorizon.compat.FarDepth;
+//? if <26.2
+import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
 import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -40,6 +42,8 @@ abstract class FeatureRenderDispatcherMixin {
     @Inject(method = "renderAllFeatures", at = @At("TAIL"))
     private void livinghorizon$voxyDepthOut(CallbackInfo ci) {
         FarDepth.after();
+        // The models' outlines are written; the outline batch ends after this call.
+        ImpostorRenderer.drawOutlines();
     }
 }
 //?}

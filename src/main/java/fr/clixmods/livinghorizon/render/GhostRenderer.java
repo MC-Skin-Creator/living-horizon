@@ -191,6 +191,17 @@ public final class GhostRenderer {
         EXTRACTED.add(entity);
     }
 
+    //? if >=1.21.9 {
+    /** The state the game made of an entity it draws itself: its outline, when asked for. */
+    public static void extracted(Entity entity, EntityRenderState state) {
+        if (!(entity instanceof LivingEntity) || entity instanceof LocalPlayer) return;
+        int outline = DebugMarks.outline(FarConfig.get(), Mark.GAME);
+        if (outline == 0) return;
+        state.outlineColor = outline;
+        glowing = true;
+    }
+    //?}
+
     /** Whether a figure added this frame wants the glowing outline. */
     private static boolean glowing;
 
@@ -336,7 +347,7 @@ public final class GhostRenderer {
                 EntityRenderState body = extract(dispatcher, live, partialTick);
                 EntityRenderState mountState = mount != live && !EXTRACTED.contains(mount)
                         ? extract(dispatcher, mount, partialTick) : null;
-                add(frame, minecraft, eye, body, mountState, false, config, live.getUUID());
+                add(frame, minecraft, eye, body, mountState, false, Mark.PLAYER, config, live.getUUID());
             } else if (player.showsPuppet(config)) {
                 Entity puppet = player.puppet();
                 if (tooFar(puppet, eye, config.playerMaxDistance)) continue;
@@ -349,7 +360,7 @@ public final class GhostRenderer {
                 if (mountState != null && body instanceof HumanoidRenderState humanoid) {
                     humanoid.isPassenger = true;
                 }
-                add(frame, minecraft, eye, body, mountState, true, config, player.id());
+                add(frame, minecraft, eye, body, mountState, true, Mark.PLAYER, config, player.id());
             }
         }
 
@@ -357,13 +368,13 @@ public final class GhostRenderer {
         mobs(frame, minecraft, dispatcher, eye, partialTick, config);
         unseen(frame, minecraft, dispatcher, eye, partialTick, config);
         LivingEntity cow = config.ufo ? FarPlayerTracker.get().ambience().ufo().cow() : null;
-        if (cow != null) add(frame, minecraft, eye, extract(dispatcher, cow, partialTick), null, true, config, null);
+        if (cow != null) add(frame, minecraft, eye, extract(dispatcher, cow, partialTick), null, true, Mark.FAKE, config, null);
         if (config.skyBirds) {
             // Parrots and bats; the silhouettes are drawn by AmbientRenderer.
             for (Ambience.Flyer flyer : FarPlayerTracker.get().ambience().flyers()) {
                 if (flyer.puppet == null) continue;
                 if (skip(flyer.puppet, true) != null) continue;
-                add(frame, minecraft, eye, extract(dispatcher, flyer.puppet, partialTick), null, true, config, null,
+                add(frame, minecraft, eye, extract(dispatcher, flyer.puppet, partialTick), null, true, Mark.FAKE, config, null,
                         (flyer.kind == Ambience.Kind.PARROT ? flyer.span : 1.0) * flyer.scale);
             }
         }
@@ -397,12 +408,13 @@ public final class GhostRenderer {
             if (skipped(puppet, true)) continue;
             if (occluded(mob.id(), puppet, config)) continue;
             if (debug) DebugMarks.mark(puppet, Mark.FAKE);
+            mob.drawn();
             if (impostor(minecraft, eye, puppet, partialTick, config)) continue;
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
             // A puppet is in no world, so never in water: fish would be drawn flopping on
             // their side, as on land. Water mobs were in water when last seen.
             if (body instanceof LivingEntityRenderState living && livesInWater(puppet)) living.isInWater = true;
-            add(frame, minecraft, eye, body, null, true, config, mob.id());
+            add(frame, minecraft, eye, body, null, true, Mark.FAKE, config, mob.id());
         }
         if (debug && DebugMarks.drawing() && minecraft.level != null) {
             // The ones remembered but past the most shown at once.
@@ -485,7 +497,8 @@ public final class GhostRenderer {
             if (occluded(entity.getUUID(), entity, config)) continue;
             if (debug) DebugMarks.mark(entity, Mark.LIVE);
             if (impostor(minecraft, eye, entity, partialTick, config)) continue;
-            add(frame, minecraft, eye, extract(dispatcher, entity, partialTick), null, false, config, entity.getUUID());
+            add(frame, minecraft, eye, extract(dispatcher, entity, partialTick), null, false, Mark.LIVE, config,
+                    entity.getUUID());
         }
     }
 
@@ -528,19 +541,23 @@ public final class GhostRenderer {
                 humanoid.isPassenger = true;
                 body.y -= 0.6;
             }
-            add(frame, minecraft, eye, body, null, true, config, spot.name());
+            add(frame, minecraft, eye, body, null, true, Mark.PLAYER, config, spot.name());
         }
     }
 
     private static void add(List<EntityRenderState> frame, Minecraft minecraft, Vec3 eye, EntityRenderState body,
-                            @Nullable EntityRenderState mount, boolean puppet, FarConfig config, @Nullable Object who) {
-        add(frame, minecraft, eye, body, mount, puppet, config, who, 1.0);
+                            @Nullable EntityRenderState mount, boolean puppet, Mark kind, FarConfig config,
+                            @Nullable Object who) {
+        add(frame, minecraft, eye, body, mount, puppet, kind, config, who, 1.0);
     }
 
-    /** @param size drawn this many times bigger, around the feet */
+    /**
+     * @param kind what it is, for its outline: {@link Mark#PLAYER}, {@link Mark#FAKE} or {@link Mark#LIVE}
+     * @param size drawn this many times bigger, around the feet
+     */
     private static void add(List<EntityRenderState> frame, Minecraft minecraft, Vec3 eye, EntityRenderState body,
-                            @Nullable EntityRenderState mount, boolean puppet, FarConfig config, @Nullable Object who,
-                            double size) {
+                            @Nullable EntityRenderState mount, boolean puppet, Mark kind, FarConfig config,
+                            @Nullable Object who, double size) {
         double ax = body.x - eye.x, ay = body.y - eye.y, az = body.z - eye.z;
         double distance = Math.sqrt(ax * ax + ay * ay + az * az);
         if (distance < 1e-3) return;
@@ -574,8 +591,9 @@ public final class GhostRenderer {
             state.shadowPieces.clear();
             state.shadowRadius = 0;
             if (puppet) state.lightCoords = light(level, state);
-            if (config.glowOutline && self != null) {
-                state.outlineColor = 0xFFFFFF;
+            int outline = self == null ? 0 : DebugMarks.outline(config, kind);
+            if (outline != 0) {
+                state.outlineColor = outline;
                 glowing = true;
             }
             //?} else {
@@ -691,8 +709,10 @@ public final class GhostRenderer {
         int view = ImpostorViews.view(yaw, -ax, -az, shown == null ? -1 : shown.view);
         SHOWN.put(entity, new Shown(key, view, frame));
         int light = light(minecraft.level, x, y, z);
+        int outline = minecraft.player == null ? 0 : DebugMarks.impostorOutline(config);
+        if (outline != 0 && ImpostorRenderer.OUTLINES) glowing = true;
         ImpostorRenderer.add(new ImpostorRenderer.Billboard(ax * pull, ay * pull, az * pull,
-                sheet.worldSize() * pull * boost, sheet, view, light));
+                sheet.worldSize() * pull * boost, sheet, view, light, outline));
         return true;
     }
 

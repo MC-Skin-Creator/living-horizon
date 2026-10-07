@@ -109,6 +109,35 @@ public final class Scene {
         log("screenshot " + context.takeScreenshot(scenario.name() + "-" + name));
     }
 
+    /**
+     * The last frame the game drew itself, as it is on screen. A test screenshot draws a
+     * frame of its own, outside the game's loop, where the debug gizmos (boxes, crosses)
+     * cannot be collected: this one has them. Saved next to the other screenshots.
+     */
+    public static void screenshotFrame(ClientGameTestContext context, Scenario scenario, String name) {
+        context.waitTicks(5);
+        //? if >=1.21.11 {
+        java.nio.file.Path path = net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir()
+                .resolve("screenshots").resolve("frame_" + scenario.name() + "-" + name + ".png");
+        java.util.concurrent.CompletableFuture<Void> saved = new java.util.concurrent.CompletableFuture<>();
+        context.runOnClient(minecraft -> net.minecraft.client.Screenshot.takeScreenshot(minecraft.getMainRenderTarget(),
+                image -> {
+                    try (image) {
+                        java.nio.file.Files.createDirectories(path.getParent());
+                        image.writeToFile(path);
+                        saved.complete(null);
+                    } catch (java.io.IOException e) {
+                        saved.completeExceptionally(e);
+                    }
+                }));
+        while (!saved.isDone()) context.waitTick();
+        saved.join();
+        log("screenshot " + path);
+        //?} else {
+        /*screenshot(context, scenario, name);
+        *///?}
+    }
+
     /** The first impostor page as it is in memory: the first four rows of sheets, at 1:1. */
     public static void screenshotAtlas(ClientGameTestContext context, Scenario scenario) {
         context.setScreen(AtlasScreen::new);
