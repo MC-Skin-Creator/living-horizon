@@ -146,10 +146,10 @@ final class DhDepth {
         payload = result.getField("payload");
         if (Platform.isModLoaded("iris")) {
             try {
-                Class<?> api = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
+                Class<?> iris = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
                 Class<?> compat = Class.forName("net.irisshaders.iris.compat.dh.DHCompat");
-                irisApi = api.getMethod("getInstance");
-                packInUse = api.getMethod("isShaderPackInUse");
+                irisApi = iris.getMethod("getInstance");
+                packInUse = iris.getMethod("isShaderPackInUse");
                 irisNear = compat.getMethod("getNearPlane");
                 irisFar = compat.getMethod("getFarPlane");
             } catch (ReflectiveOperationException e) {
