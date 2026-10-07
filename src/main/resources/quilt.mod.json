@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "quilt_loader": {
+    "group": "${group}",
+    "id": "${id}",
+    "version": "${version}",
+    "metadata": {
+      "name": "${name}",
+      "description": "Gives life to the distance: animals, villagers, birds and other players keep living on the horizon, past the render distance.",
+      "contributors": {
+        "clixmods": "Owner"
+      },
+      "contact": {
+        "homepage": "https://github.com/MC-Skin-Creator/living-horizon",
+        "sources": "https://github.com/MC-Skin-Creator/living-horizon",
+        "issues": "https://github.com/MC-Skin-Creator/living-horizon/issues"
+      },
+      "icon": "assets/livinghorizon/icon.png",
+      "license": {
+        "name": "GNU General Public License v3.0 only",
+        "id": "GPL-3.0-only",
+        "url": "https://www.gnu.org/licenses/gpl-3.0.txt"
+      }
+    },
+    ${intermediate_mappings}
+    "entrypoints": {
+      "client": "fr.clixmods.livinghorizon.LivingHorizonClient",
+      "modmenu": "fr.clixmods.livinghorizon.ui.ModMenuEntry"
+    },
+    "depends": [
+      {
+        "id": "quilt_loader",
+        "versions": ">=${loader}"
+      },
+      {
+        "id": "minecraft",
+        "versions": ${minecraft}
+      },
+      {
+        "id": "java",
+        "versions": ">=${java}"
+      },
+      {
+        "id": "fabric-api",
+        "versions": "*"
+      }
+    ]
+  },
+  "minecraft": {
+    "environment": "client"
+  },
+  "access_widener": "livinghorizon.accesswidener",
+  "mixin": [
+    "livinghorizon.mixins.json"
+  ]
+}

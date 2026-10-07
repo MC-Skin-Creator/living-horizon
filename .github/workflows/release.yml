@@ -1,0 +1,366 @@
+name: release
+
+# Merging is what cuts a release: main produces a stable one, develop a pre-release.
+# Tags are created here rather than being the trigger. Doc-only changes are excluded:
+# develop builds unconditionally otherwise, and a jar carries no doc content worth a
+# pre-release.
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Exact version to release, e.g. 0.1.0 or 1.0.0. Leave empty to derive it from the commits.'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+# Two merges in a row must not compute the same number at once. Nothing is cancelled,
+# because a release may be halfway through tagging and pushing.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  # The project ids are public, so they are repository *variables*, not secrets:
+  # Settings > Secrets and variables > Actions > Variables. The tokens are secrets
+  # (MODRINTH_TOKEN, CURSEFORGE_TOKEN). Without a token and an id, a platform is skipped.
+  MODRINTH_ID: ${{ vars.MODRINTH_ID }}
+  CURSEFORGE_ID: ${{ vars.CURSEFORGE_ID }}
+
+# Five jobs, so the slow part runs in parallel and nothing is tagged before every jar
+# exists: the version is worked out once, each target builds on its own runner, then
+# the release, the uploads and the announcement follow.
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.version.outputs.release }}
+      version: ${{ steps.version.outputs.version }}
+      channel: ${{ steps.version.outputs.channel }}
+      targets: ${{ steps.targets.outputs.targets }}
+
+    steps:
+      - name: Checkout
+        # Full history and tags: the version is derived from the commits since the
+        # last tag.
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Work out the version
+        id: version
+        env:
+          MANUAL_VERSION: ${{ inputs.version }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.ref_name }}" = 'develop' ]; then
+            # Every merge into develop gets a build, even one carrying no
+            # release-worthy commit. The -dev. suffix sorts below the release it
+            # previews, which is exactly what it is.
+            base=$(.github/scripts/next-version.sh --min-patch)
+            version="${base}-dev.${RUN_NUMBER}"
+            channel=dev
+          elif [ -n "$MANUAL_VERSION" ]; then
+            # The manual path exists for the versions no commit message should
+            # decide on its own: the first release, and 1.0.0.
+            version="$MANUAL_VERSION"
+            channel=stable
+          else
+            version=$(.github/scripts/next-version.sh)
+            channel=stable
+          fi
+
+          if [ -z "$version" ]; then
+            echo 'No commit since the last tag earns a release. Nothing to do.'
+            echo 'release=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git rev-parse -q --verify "refs/tags/v${version}" >/dev/null; then
+            echo "v${version} already exists. Nothing to do."
+            echo 'release=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Releasing v${version} (${channel})"
+          {
+            echo 'release=true'
+            echo "version=${version}"
+            echo "channel=${channel}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: List the targets
+        # Read from stonecutter.properties.toml, one entry per table, so a target
+        # added there is built and published without this file changing.
+        id: targets
+        run: echo "targets=$(python3 .github/scripts/release-targets.py)" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    if: needs.version.outputs.release == 'true'
+    strategy:
+      # One target failing must not cancel the others: "Re-run failed jobs" then retries
+      # only that one, and the release waits for all of them anyway.
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.version.outputs.targets) }}
+    name: build ${{ matrix.target.node }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDKs
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # Minecraft up to 1.20.4 runs on Java 17, then Java 21, and 26.x on Java 25.
+          # The last entry becomes JAVA_HOME and so runs Gradle itself, which needs 21:
+          # Loom and the build plugins do not run on 17.
+          java-version: |
+            25
+            17
+            21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+          cache-cleanup: always
+
+      - name: Stamp the version
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          # stonecutter.properties.toml is the single source of the mod version, and
+          # it wins over -P properties on the command line.
+          sed -i "s/^mod\.version = .*/mod.version = \"${VERSION}\"/" stonecutter.properties.toml
+          grep '^mod.version' stonecutter.properties.toml
+
+      - name: Build
+        # The tests already ran on the pull request; this only builds the jar and the
+        # data pack. Over fifty runners download the same plugins and Minecraft files at
+        # once, so a download that fails is tried again; any other failure is not.
+        env:
+          NODE: ${{ matrix.target.node }}
+        run: |
+          set -uo pipefail
+          for attempt in 1 2 3; do
+            ./gradlew ":${NODE}:buildAndCollect" --stacktrace --configure-on-demand \
+              -Porg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64,JAVA_HOME_21_X64,JAVA_HOME_25_X64 \
+              2>&1 | tee gradle.log
+            [ "${PIPESTATUS[0]}" -eq 0 ] && exit 0
+            grep -qE "Could not (resolve|GET|HEAD|download)|could not resolve plugin artifact|Connection (reset|refused|timed out)|Read timed out|Remote host terminated|status code 5[0-9][0-9]" gradle.log || exit 1
+            echo "::warning::A download failed on attempt ${attempt}; trying again."
+            sleep $((attempt * 30))
+          done
+          exit 1
+
+      - name: Hand the files to the release
+        uses: actions/upload-artifact@v4
+        with:
+          name: files-${{ matrix.target.node }}
+          path: build/libs/*/*
+          if-no-files-found: error
+          # The release attaches them; the artifact itself is only the hand-over.
+          retention-days: 1
+
+  release:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Collect the files
+        uses: actions/download-artifact@v4
+        with:
+          pattern: files-*
+          path: files
+          merge-multiple: true
+
+      - name: Set up Node
+        # runs the changelog script that dates the release
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Record the version on main
+        # Only stable releases write the number back, so the file on main always
+        # states the version that was actually released. A push made with
+        # GITHUB_TOKEN does not start another workflow run, so this cannot loop.
+        if: needs.version.outputs.channel == 'stable'
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          sed -i "s/^mod\.version = .*/mod.version = \"${VERSION}\"/" stonecutter.properties.toml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add stonecutter.properties.toml
+          # The changelog is dated in the same commit, so the tag carries it: the
+          # "Unreleased" section becomes this version.
+          node .github/scripts/changelog-release.js "${VERSION}"
+          git add changelog
+          git commit -m "chore: release v${VERSION}"
+          git tag "v${VERSION}"
+          git push origin HEAD:"${{ github.ref_name }}"
+          git push origin "v${VERSION}"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+          CHANNEL: ${{ needs.version.outputs.channel }}
+        run: |
+          set -euo pipefail
+
+          args=(--generate-notes --title "v${VERSION}")
+
+          # Below 1.0.0 the mod is in beta: say so, and keep it off GitHub's
+          # "Latest" badge. 1.0.0 is the day this stops applying.
+          if [ "$CHANNEL" = 'stable' ] && [[ $VERSION == 0.* ]]; then
+            args=(--generate-notes --title "v${VERSION} (beta)" --prerelease)
+          fi
+
+          if [ "$CHANNEL" = 'dev' ]; then
+            # Marked as a pre-release so it never displays as the latest version.
+            args+=(--prerelease --target "${{ github.sha }}")
+
+            # Generate the notes from the last stable release, so a dev build lists
+            # what it adds over the last thing that shipped rather than over the
+            # previous dev build. Skipped while no stable release exists: passing an
+            # empty --notes-start-tag fails the command.
+            # || true because grep exits 1 when there is no tag at all, and under
+            # pipefail that would kill the step before gh is ever reached.
+            last_stable=$(git tag --list 'v*' --sort=-v:refname | grep -v -- '-dev\.' | head -n 1 || true)
+            if [ -n "$last_stable" ]; then
+              args+=(--notes-start-tag "$last_stable")
+            fi
+          fi
+
+          # Wherever the artifacts unpacked them: the jar and the data pack zip of
+          # every target.
+          mapfile -t files < <(find files \( -name '*.jar' -o -name '*.zip' \) | sort)
+          echo "${#files[@]} files"
+          gh release create "v${VERSION}" "${args[@]}" "${files[@]}"
+
+  # Stable releases only: the -dev builds are untested previews and stay on GitHub.
+  # One Modrinth and CurseForge version per jar, each marked with the game releases its
+  # TOML table lists and with its release type there - beta unless its table says
+  # otherwise. Skipped, not failed, while the token or the id of a platform is missing.
+  publish:
+    needs: [version, release]
+    if: needs.version.outputs.channel == 'stable'
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        target: ${{ fromJSON(needs.version.outputs.targets) }}
+    name: publish ${{ matrix.target.node }}
+    runs-on: ubuntu-latest
+    env:
+      MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+      CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+
+    steps:
+      - name: Fetch the jar
+        if: env.MODRINTH_TOKEN != '' || env.CURSEFORGE_TOKEN != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: files-${{ matrix.target.node }}
+          path: files
+
+      - name: Name the version
+        # The jar's own name carries the version string and the game version it was
+        # built on: livinghorizon-0.1.0+mc1.21.11.jar.
+        if: env.MODRINTH_TOKEN != '' || env.CURSEFORGE_TOKEN != ''
+        id: name
+        env:
+          LOADER: ${{ matrix.target.loader }}
+        run: |
+          set -euo pipefail
+          jar=$(find files -name '*.jar')
+          full=$(basename "$jar" .jar)
+          full=${full#livinghorizon-}
+          game=${full#*+mc}
+          game=${game%-"$LOADER"}
+          case "$LOADER" in
+            fabric) label="$game" ;;
+            quilt) label="Quilt $game" ;;
+            neoforge) label="NeoForge $game" ;;
+            forge) label="Forge $game" ;;
+          esac
+          {
+            echo "jar=${jar}"
+            echo "version=${full}"
+            echo "label=${label}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish to Modrinth and CurseForge
+        if: env.MODRINTH_TOKEN != '' || env.CURSEFORGE_TOKEN != ''
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: ${{ env.MODRINTH_ID }}
+          modrinth-token: ${{ env.MODRINTH_TOKEN }}
+          curseforge-id: ${{ env.CURSEFORGE_ID }}
+          curseforge-token: ${{ env.CURSEFORGE_TOKEN }}
+          files: ${{ steps.name.outputs.jar }}
+          name: Living Horizon ${{ needs.version.outputs.version }} (${{ steps.name.outputs.label }})
+          version: ${{ steps.name.outputs.version }}
+          version-type: ${{ matrix.target.type }}
+          loaders: ${{ matrix.target.loader }}
+          game-versions: ${{ matrix.target.releases }}
+          # Fabric and Quilt ask for the Fabric API, which Quilt runs as it runs any Fabric
+          # mod; Voxy and Distant Horizons are both optional, alike. NeoForge and
+          # Forge ask for nothing. Mod Menu is not asked for: the mod only uses its API
+          # for the settings button.
+          dependencies: |
+            ${{ (matrix.target.loader == 'fabric' || matrix.target.loader == 'quilt') && 'fabric-api(required){modrinth:P7dR8mSH}{curseforge:306612}' || '' }}
+            ${{ (matrix.target.loader == 'fabric' || matrix.target.loader == 'quilt') && 'voxy(optional){modrinth:fxxUqruK}' || '' }}
+            distanthorizons(optional){modrinth:uCdwusMi}
+          changelog: |
+            See the full notes on GitHub: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.version.outputs.version }}
+
+  # Last, and never blocking: nothing depends on this job, so a Discord hiccup cannot
+  # undo a release that is already on GitHub, Modrinth and CurseForge. It reads the
+  # changelog from the release tag - where the release job dated it - and posts that
+  # version in each language that has a webhook secret (DISCORD_WEBHOOK_EN / _FR, or
+  # DISCORD_WEBHOOK alone for English). Stable releases only: the -dev builds are
+  # never announced.
+  announce:
+    needs: [version, release, publish]
+    if: always() && needs.version.outputs.channel == 'stable' && needs.release.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the release
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.version.outputs.version }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Announce on Discord
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_WEBHOOK_EN: ${{ secrets.DISCORD_WEBHOOK_EN }}
+          DISCORD_WEBHOOK_FR: ${{ secrets.DISCORD_WEBHOOK_FR }}
+        run: node .github/scripts/announce-discord.js --version "$VERSION"

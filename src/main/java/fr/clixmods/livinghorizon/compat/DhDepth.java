@@ -1,0 +1,120 @@
+package fr.clixmods.livinghorizon.compat;
+
+import fr.clixmods.livinghorizon.LivingHorizonClient;
+import fr.clixmods.livinghorizon.platform.Platform;
+import org.jspecify.annotations.Nullable;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+
+/**
+ * What {@link FarDepth} needs to know about Distant Horizons to use its depth: the GL
+ * texture it draws its terrain's depth into, and the projection that depth is made with.
+ * The texture and the depth range come from its public API; the projection from the
+ * parameters of its last render, which only its internals keep. All reached by reflection:
+ * anything missing turns this off for the session, and the mobs show through the terrain
+ * as they did before.
+ */
+final class DhDepth {
+    private static boolean ready, broken, started;
+    private static String reason = "not started";
+
+    private static Field renderProxy, renderParams, projection, m22, m23, m32, farDepth, success, payload;
+    private static Method depthTexture, depthRange, depthDirection, name;
+
+    private DhDepth() {
+    }
+
+    static boolean started() {
+        return started;
+    }
+
+    /** Why {@link #read()} had nothing, for {@code /livinghorizon lod}. */
+    static String reason() {
+        return reason;
+    }
+
+    static synchronized boolean available() {
+        if (broken) return false;
+        if (!ready) {
+            ready = true;
+            if (!Platform.isModLoaded("distanthorizons")) {
+                broken = true;
+                return false;
+            }
+            try {
+                link();
+            } catch (Throwable e) {
+                broken = true;
+                reason = "Distant Horizons found, but not the version this mod knows: " + e;
+                LivingHorizonClient.LOGGER.warn("Distant Horizons found, but its depth cannot be used: distant mobs show through its terrain", e);
+                return false;
+            }
+        }
+        started = true;
+        return true;
+    }
+
+    /**
+     * {@code {texture, a, b, signed, nothing}}: the GL texture of Distant Horizons' depth,
+     * the two numbers of its projection that matter to depth, 1 when its depth runs from -1
+     * to 1 (0 from 0 to 1), and the depth of a pixel with no terrain; null with the reason
+     * in {@link #reason()} when there is none this frame.
+     */
+    static float @Nullable [] read() {
+        try {
+            Object proxy = renderProxy.get(null);
+            if (proxy == null) return none("Distant Horizons has not started");
+            Object result = depthTexture.invoke(proxy);
+            if (!success.getBoolean(result) || !(payload.get(result) instanceof Integer texture) || texture <= 0) {
+                return none("Distant Horizons has no depth texture");
+            }
+            Object params = renderParams.get(null);
+            Object matrix = params == null ? null : projection.get(params);
+            if (matrix == null) return none("Distant Horizons has not drawn yet");
+            float a = m22.getFloat(matrix), c = m23.getFloat(matrix), d = m32.getFloat(matrix);
+            // The matrix is stored one way or the other: the entry that is -1 is the one that
+            // divides by depth, the other one is the offset.
+            float b = Math.abs(c + 1.0f) < 1.0e-3f ? d : c;
+            if (Math.abs(b) < 1.0e-6f) return none("Distant Horizons has no projection yet");
+            boolean signed = "NEG_ONE_TO_POS_ONE".equals(String.valueOf(name.invoke(depthRange.invoke(proxy))));
+            float nothing = farDepth.getFloat(depthDirection.invoke(proxy));
+            return new float[]{texture, a, b, signed ? 1.0f : 0.0f, nothing};
+        } catch (Throwable e) {
+            broken = true;
+            reason = "Distant Horizons did not answer as expected: " + e;
+            LivingHorizonClient.LOGGER.warn("Using Distant Horizons' depth turned off: it did not answer as expected", e);
+            return null;
+        }
+    }
+
+    private static float @Nullable [] none(String why) {
+        reason = why;
+        return null;
+    }
+
+    private static void link() throws ReflectiveOperationException {
+        String api = "com.seibel.distanthorizons.api.";
+        Class<?> delayed = Class.forName(api + "DhApi$Delayed");
+        Class<?> proxy = Class.forName(api + "interfaces.render.IDhApiRenderProxy");
+        Class<?> result = Class.forName(api + "objects.DhApiResult");
+        Class<?> param = Class.forName(api + "methods.events.sharedParameterObjects.DhApiRenderParam");
+        Class<?> matrix = Class.forName(api + "objects.math.DhApiMat4f");
+        Class<?> direction = Class.forName(api + "enums.config.EDhApiDepthDirection");
+        renderProxy = delayed.getField("renderProxy");
+        depthTexture = proxy.getMethod("getDhDepthTextureGlId");
+        depthRange = proxy.getMethod("getDepthRange");
+        depthDirection = proxy.getMethod("getDepthDirection");
+        success = result.getField("success");
+        farDepth = direction.getField("farDepth");
+        name = Enum.class.getMethod("name");
+        projection = param.getField("dhProjectionMatrix");
+        m22 = matrix.getField("m22");
+        m23 = matrix.getField("m23");
+        m32 = matrix.getField("m32");
+        // Not API: the last parameters Distant Horizons rendered with.
+        renderParams = Class.forName("com.seibel.distanthorizons.core.api.internal.ClientApi").getDeclaredField("RENDER_PARAMS");
+        renderParams.setAccessible(true);
+        payload = result.getField("payload");
+    }
+}

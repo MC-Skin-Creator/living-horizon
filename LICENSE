@@ -1,0 +1,90 @@
+Living Horizon License
+
+Copyright (c) 2026 clixmods. All rights reserved, except as granted below.
+
+This license covers everything in this repository and in the official releases:
+the mod, the data pack, the textures and every other file (the "Software").
+
+"Owner" is clixmods. "Official Repository" is the repository that the Owner names as
+such in the README and in the project pages on Modrinth and CurseForge. "Official
+Release" is a jar or a data pack zip published by the Owner, unmodified.
+
+1. What you may do
+
+   a. Read the source code, and build the Software for your own use.
+   b. Run the Software, alone or in a modpack, on your own machine or on a server.
+   c. Modify the Software privately, to study it, to test it or to prepare a
+      contribution under section 3.
+   d. Redistribute an Official Release, unchanged, in a modpack or on a mirror, as long
+      as you give the credit described in section 4.
+
+2. What you may not do
+
+   a. Publish, upload or distribute a modified version of the Software, or a fork of
+      the Official Repository, by any means, except as allowed by section 5.
+   b. Copy code, textures or other files of the Software into another project.
+   c. Present the Software as your own work, or as approved by the Owner when it is not.
+   d. Remove or alter the copyright notices, the license, or the credits shipped with
+      the Software.
+
+3. Contributions
+
+   Contributions are made as pull requests to the Official Repository, and nowhere else.
+   By submitting one, you confirm that you wrote it or have the right to submit it, and
+   you grant the Owner a perpetual, worldwide, royalty-free, irrevocable and
+   sublicensable license to use, modify, distribute and relicense it, as part of the
+   Software or on its own, under this license or any other. You keep your own copyright.
+   The Owner may accept or refuse any contribution. Every contributor whose
+   contribution is accepted is credited in the Software (a credits file shipped with
+   it), and this credit stays whatever happens to the project: a change of license,
+   the abandonment described in section 5, or a fork. It cannot be removed.
+
+4. Credit
+
+   Wherever you redistribute an Official Release, you must:
+
+   a. name the project ("Living Horizon") and its author (clixmods);
+   b. link to the Official Repository, in a visible place such as the modpack
+      description or its credits file;
+   c. keep every credit and notice that ships with the Software;
+   d. not suggest that the Owner made, endorses or supports your distribution.
+
+5. When the project is abandoned
+
+   The Owner declares the project abandoned by archiving the Official Repository, or by
+   saying so in its README. From that moment, and for the versions of the Software that
+   exist at that moment, this license is replaced by the GNU General Public License
+   version 3 (GPL-3.0-only), with these additional terms, as allowed by its section 7:
+
+   a. Anyone may fork and carry the project on, under the GPL.
+   b. A fork must say clearly, in its README and on its project pages, that it is an
+      unofficial continuation of Living Horizon, and link to the original repository.
+   c. A fork must keep the copyright notices and every credit of the original, including
+      all contributors of the original project, and add its own contributors beside them.
+   d. A fork must not use the name "Living Horizon" or the logo as its own, nor suggest
+      that it is the original project.
+
+   Work published by the Owner after the abandonment stays under the license the Owner
+   chooses.
+
+6. Names
+
+   This license does not grant any right over the name "Living Horizon", the logo or the
+   author's name. Minecraft is a trademark of Mojang Studios. This project is not
+   affiliated with or endorsed by Mojang Studios or Microsoft.
+
+7. Termination
+
+   Any breach of this license ends your rights under it. The Owner may restore them in
+   writing.
+
+8. No warranty
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+   INCLUDING THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+   NON-INFRINGEMENT. IN NO EVENT SHALL THE OWNER BE LIABLE FOR ANY CLAIM, DAMAGES OR
+   OTHER LIABILITY ARISING FROM THE SOFTWARE OR ITS USE.
+
+Versions of the Software published before this license was adopted were under the GNU
+General Public License version 3 (GPL-3.0-only). Copies obtained under it keep that
+license.

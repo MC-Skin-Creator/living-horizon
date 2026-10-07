@@ -1,0 +1,40 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "GPL-3.0-only"
+issueTrackerURL = "https://github.com/MC-Skin-Creator/living-horizon/issues"
+
+[[mods]]
+modId = "${id}"
+version = "${version}"
+displayName = "${name}"
+description = "Gives life to the distance: animals, villagers, birds and other players keep living on the horizon, past the render distance."
+authors = "clixmods"
+displayURL = "https://github.com/MC-Skin-Creator/living-horizon"
+logoFile = "assets/livinghorizon/icon.png"
+
+[[mixins]]
+config = "livinghorizon.mixins.json"
+
+[[dependencies.${id}]]
+modId = "neoforge"
+type = "required"
+versionRange = "${neoforge}"
+side = "CLIENT"
+
+[[dependencies.${id}]]
+modId = "minecraft"
+type = "required"
+versionRange = "${minecraft}"
+side = "CLIENT"
+
+[[dependencies.${id}]]
+modId = "voxy"
+type = "optional"
+versionRange = "[0,)"
+side = "CLIENT"
+
+[[dependencies.${id}]]
+modId = "distanthorizons"
+type = "optional"
+versionRange = "[0,)"
+side = "CLIENT"

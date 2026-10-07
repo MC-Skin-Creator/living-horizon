@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "${id}",
+  "version": "${version}",
+  "name": "${name}",
+  "description": "Gives life to the distance: animals, villagers, birds and other players keep living on the horizon, past the render distance.",
+  "authors": ["clixmods"],
+  "license": "LicenseRef-LivingHorizon",
+  "icon": "assets/livinghorizon/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["fr.clixmods.livinghorizon.LivingHorizonClient"],
+    "modmenu": ["fr.clixmods.livinghorizon.ui.ModMenuEntry"]
+  },
+  "mixins": [
+    { "config": "livinghorizon.mixins.json", "environment": "client" }
+  ],
+  "accessWidener": "livinghorizon.accesswidener",
+  "depends": {
+    "fabricloader": ">=${loader}",
+    "minecraft": "${minecraft}",
+    "java": ">=${java}",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "voxy": "*",
+    "distanthorizons": "*"
+  }
+}

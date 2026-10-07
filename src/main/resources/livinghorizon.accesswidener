@@ -1,0 +1,83 @@
+accessWidener v2 ${namespace}
+
+# One file for every Minecraft target. build.gradle.kts writes the copy each target
+# reads: ${namespace} becomes named, or official from 26.1 where the game is not
+# obfuscated, and a block whose first line is "# @since X" and/or "# @until X" is kept
+# only on the versions it names (both ends included). Blocks are separated by a blank line.
+
+# The locator bar's three kinds of waypoint, and what each one carries. The bar came in 1.21.6.
+# @since 1.21.6
+accessible class net/minecraft/world/waypoints/TrackedWaypoint$Vec3iWaypoint
+accessible class net/minecraft/world/waypoints/TrackedWaypoint$ChunkWaypoint
+accessible class net/minecraft/world/waypoints/TrackedWaypoint$AzimuthWaypoint
+accessible field net/minecraft/world/waypoints/TrackedWaypoint$Vec3iWaypoint vector Lnet/minecraft/core/Vec3i;
+accessible field net/minecraft/world/waypoints/TrackedWaypoint$ChunkWaypoint chunkPos Lnet/minecraft/world/level/ChunkPos;
+accessible field net/minecraft/world/waypoints/TrackedWaypoint$AzimuthWaypoint angle F
+
+# Skin layers of a player that was never seen up close. The field moved to Avatar in 1.21.9.
+# @since 1.21.9
+accessible field net/minecraft/world/entity/Avatar DATA_PLAYER_MODE_CUSTOMISATION Lnet/minecraft/network/syncher/EntityDataAccessor;
+
+# @until 1.21.8
+accessible field net/minecraft/world/entity/player/Player DATA_PLAYER_MODE_CUSTOMISATION Lnet/minecraft/network/syncher/EntityDataAccessor;
+
+# Before 1.21.2, with no render states: a figure is told it swims while it is drawn, and
+# the faces of each cube of a model are counted as it is drawn.
+# @until 1.21.1
+accessible field net/minecraft/world/entity/Entity wasTouchingWater Z
+accessible class net/minecraft/client/model/geom/ModelPart$Polygon
+accessible field net/minecraft/client/model/geom/ModelPart$Cube polygons [Lnet/minecraft/client/model/geom/ModelPart$Polygon;
+
+# The hashed seed the server sends, which tells one world from another.
+accessible field net/minecraft/world/level/biome/BiomeManager biomeZoomSeed J
+
+# The impostors are baked under the world's light, turned the way the picture is drawn.
+# Impostors exist from 1.21.9.
+# @since 1.21.9
+# @until 26.1.2
+accessible method com/mojang/blaze3d/platform/Lighting updateBuffer (Lcom/mojang/blaze3d/platform/Lighting$Entry;Lorg/joml/Vector3f;Lorg/joml/Vector3f;)V
+
+# The same, which takes read-only vectors from 26.2.
+# @since 26.2
+accessible method com/mojang/blaze3d/platform/Lighting updateBuffer (Lcom/mojang/blaze3d/platform/Lighting$Entry;Lorg/joml/Vector3fc;Lorg/joml/Vector3fc;)V
+
+# Synched data that does not change how a figure looks, left out of its impostor key.
+accessible field net/minecraft/world/entity/Entity DATA_SHARED_FLAGS_ID Lnet/minecraft/network/syncher/EntityDataAccessor;
+accessible field net/minecraft/world/entity/Entity DATA_AIR_SUPPLY_ID Lnet/minecraft/network/syncher/EntityDataAccessor;
+accessible field net/minecraft/world/entity/Entity DATA_CUSTOM_NAME_VISIBLE Lnet/minecraft/network/syncher/EntityDataAccessor;
+accessible field net/minecraft/world/entity/Entity DATA_SILENT Lnet/minecraft/network/syncher/EntityDataAccessor;
+accessible field net/minecraft/world/entity/Entity DATA_NO_GRAVITY Lnet/minecraft/network/syncher/EntityDataAccessor;
+accessible field net/minecraft/world/entity/Entity DATA_TICKS_FROZEN Lnet/minecraft/network/syncher/EntityDataAccessor;
+accessible field net/minecraft/world/entity/LivingEntity DATA_LIVING_ENTITY_FLAGS Lnet/minecraft/network/syncher/EntityDataAccessor;
+accessible field net/minecraft/world/entity/LivingEntity DATA_HEALTH_ID Lnet/minecraft/network/syncher/EntityDataAccessor;
+accessible field net/minecraft/world/entity/LivingEntity DATA_EFFECT_AMBIENCE_ID Lnet/minecraft/network/syncher/EntityDataAccessor;
+accessible field net/minecraft/world/entity/LivingEntity DATA_ARROW_COUNT_ID Lnet/minecraft/network/syncher/EntityDataAccessor;
+accessible field net/minecraft/world/entity/LivingEntity DATA_STINGER_COUNT_ID Lnet/minecraft/network/syncher/EntityDataAccessor;
+accessible field net/minecraft/world/entity/player/Player DATA_PLAYER_ABSORPTION_ID Lnet/minecraft/network/syncher/EntityDataAccessor;
+accessible field net/minecraft/world/entity/player/Player DATA_SCORE_ID Lnet/minecraft/network/syncher/EntityDataAccessor;
+
+# Effect particles, and where the entities of a chunk are read from, as 1.20.5 made them.
+# @since 1.20.5
+accessible field net/minecraft/world/entity/LivingEntity DATA_EFFECT_PARTICLES Lnet/minecraft/network/syncher/EntityDataAccessor;
+accessible field net/minecraft/world/level/chunk/storage/EntityStorage simpleRegionStorage Lnet/minecraft/world/level/chunk/storage/SimpleRegionStorage;
+
+# Before 1.20.5: the colour of the effect particles, and the entity storage's own file.
+# @until 1.20.4
+accessible field net/minecraft/world/entity/LivingEntity DATA_EFFECT_COLOR_ID Lnet/minecraft/network/syncher/EntityDataAccessor;
+accessible field net/minecraft/world/level/chunk/storage/EntityStorage worker Lnet/minecraft/world/level/chunk/storage/IOWorker;
+accessible method net/minecraft/world/level/chunk/storage/EntityStorage upgradeChunkTag (Lnet/minecraft/nbt/CompoundTag;)Lnet/minecraft/nbt/CompoundTag;
+
+# The villager's counter of unhappy trades; the class moved to its own package in 1.21.11.
+# @since 1.21.11
+accessible field net/minecraft/world/entity/npc/villager/AbstractVillager DATA_UNHAPPY_COUNTER Lnet/minecraft/network/syncher/EntityDataAccessor;
+
+# @until 1.21.10
+accessible field net/minecraft/world/entity/npc/AbstractVillager DATA_UNHAPPY_COUNTER Lnet/minecraft/network/syncher/EntityDataAccessor;
+
+# Where a single player world keeps the mobs of the chunks it has not loaded, for a scan.
+accessible field net/minecraft/server/level/ServerLevel entityManager Lnet/minecraft/world/level/entity/PersistentEntitySectionManager;
+accessible field net/minecraft/world/level/entity/PersistentEntitySectionManager permanentStorage Lnet/minecraft/world/level/entity/EntityPersistentStorage;
+
+# The far plane, which the camera holds from 26.1: read where the game renderer used to answer.
+# @since 26.1
+accessible field net/minecraft/client/Camera depthFar F

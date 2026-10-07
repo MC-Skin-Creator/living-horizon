@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "livinghorizon-gametest",
+  "version": "1.0.0",
+  "name": "Living Horizon client game tests",
+  "description": "Scripted scenarios that drive the real game and take screenshots. Development only, never shipped.",
+  "license": "GPL-3.0-only",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-client-gametest": ["fr.clixmods.livinghorizon.gametest.LivingHorizonGameTests"]
+  },
+  "depends": {
+    "livinghorizon": "*",
+    "fabric-client-gametest-api-v1": "*"
+  }
+}
