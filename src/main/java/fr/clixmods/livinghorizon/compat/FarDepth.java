@@ -130,7 +130,7 @@ public final class FarDepth {
             if (!merged && (config.debugDepthView != 0 || dhFade)) captured = capture();
             fadeMask = dhFade && (merged || captured) && target == ownTarget;
             // The depth as it is now - far terrain in it, entities not yet - is what hides distant mobs.
-            if (wanted && config.anyDistant() && config.hideOccludedMobs && config.optOcclusionQueries) {
+            if (wanted && config.anyDistant() && config.hideOccludedMobs && config.optOcclusionQueries && queriesAllowed()) {
                 int depth = merged ? depthTexture : ownTarget() != 0 ? ownTargetDepth : 0;
                 if (depth != 0) OcclusionQueries.run(depth);
             }
@@ -138,6 +138,19 @@ public final class FarDepth {
             fail(e);
         }
         mergedLastFrame = merged;
+    }
+
+    /**
+     * Whether occlusion queries may run this session. Not over Distant Horizons drawn without
+     * a shader pack: there they leave smears at the edge of the game's chunks, so the far
+     * terrain's world answers instead.
+     */
+    public static boolean queriesAllowed() {
+        try {
+            return available() || !DhDepth.available() || DhDepth.shaderPackOn();
+        } catch (Throwable e) {
+            return true;
+        }
     }
 
     /** The matrices of this frame, for {@link OcclusionQueries}. */

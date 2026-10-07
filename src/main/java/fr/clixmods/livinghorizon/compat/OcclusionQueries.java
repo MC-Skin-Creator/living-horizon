@@ -126,6 +126,7 @@ public final class OcclusionQueries {
     /** For the debug panel. */
     public static String state() {
         if (broken) return "off: " + reason;
+        if (!FarDepth.queriesAllowed()) return "off: Distant Horizons without a shader pack";
         return asked + " asked, " + culled + " hidden, " + IN_FLIGHT.size() + " frames in flight" +
                 (reason.isEmpty() ? "" : " (" + reason + ")");
     }
