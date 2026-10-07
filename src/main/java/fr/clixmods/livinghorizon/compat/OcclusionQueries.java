@@ -3,13 +3,16 @@ package fr.clixmods.livinghorizon.compat;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import org.joml.Matrix4f;
+import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11C;
 import org.lwjgl.opengl.GL15C;
 import org.lwjgl.opengl.GL20C;
 import org.lwjgl.opengl.GL30C;
 import org.lwjgl.opengl.GL32C;
+import org.lwjgl.opengl.GL33C;
 import org.lwjgl.opengl.GL43C;
 import org.lwjgl.opengl.GL45C;
+import org.lwjgl.opengl.GLCapabilities;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -161,6 +164,10 @@ public final class OcclusionQueries {
                 return;
             }
             prepare(depthTexture);
+            // The conservative test is OpenGL 4.3; the game may run on 3.3 (26.x), where it is not to be used.
+            GLCapabilities caps = GL.getCapabilities();
+            int target = caps.OpenGL43 || caps.GL_ARB_ES3_compatibility
+                    ? GL43C.GL_ANY_SAMPLES_PASSED_CONSERVATIVE : GL33C.GL_ANY_SAMPLES_PASSED;
             Object[] keys = new Object[ASKED.size()];
             int[] queries = new int[ASKED.size()];
             FarDepth.GlState gl = FarDepth.GlState.save();
@@ -186,9 +193,9 @@ public final class OcclusionQueries {
                     queries[i] = POOL.isEmpty() ? GL15C.glGenQueries() : POOL.pop();
                     GL20C.glUniform3f(lowLocation, box.lowX, box.lowY, box.lowZ);
                     GL20C.glUniform3f(highLocation, box.highX, box.highY, box.highZ);
-                    GL15C.glBeginQuery(GL43C.GL_ANY_SAMPLES_PASSED_CONSERVATIVE, queries[i]);
+                    GL15C.glBeginQuery(target, queries[i]);
                     GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 36);
-                    GL15C.glEndQuery(GL43C.GL_ANY_SAMPLES_PASSED_CONSERVATIVE);
+                    GL15C.glEndQuery(target);
                 }
             } finally {
                 if (!clamp) GL11C.glDisable(GL32C.GL_DEPTH_CLAMP);
