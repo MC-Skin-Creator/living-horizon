@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * box passes the depth test against the terrain drawn in front of it. Without a recent
  * answer, the mob is shown.
  *
- * <p>With {@link FarConfig#optOcclusionQueries} off, or once the queries failed, the far terrain's world
+ * <p>With {@link FarConfig#optOcclusionQueries} off, once the queries failed, or with Vulkan, the far terrain's world
  * answers instead. A frame only reads the last answer. Twice a second, the mobs the frames
  * asked about are tested in one go on the reader threads: a line from the eye to the middle
  * of the mob and one to its top. Hidden means both meet a block before the mob.
@@ -39,9 +39,20 @@ public final class Occlusion {
     private Occlusion() {
     }
 
+    /**
+     * With Vulkan, once Distant Horizons' depth is merged: the depth test hides each mob pixel by
+     * pixel, and the far terrain's world - coarse, twice a second - would only get it wrong.
+     */
+    private static boolean byPixels() {
+        return !DepthFar.openGl() && FarDepth.mergedLastFrame() && !byDepth();
+    }
+
     /** Whether the depth answers rather than the far terrain's world. */
     private static boolean byDepth() {
-        return FarConfig.get().optOcclusionQueries && OcclusionQueries.usable();
+        // Through the game's device where the far terrain goes that way (Vulkan, or Distant
+        // Horizons on 26.3), else OpenGL's queries; without either, the far terrain's world.
+        if (!FarConfig.get().optOcclusionQueries || !OcclusionQueries.usable()) return false;
+        return FarDepth.gpuPath() ? OcclusionQueries.gpuReady() : DepthFar.openGl();
     }
 
     /**
@@ -51,6 +62,7 @@ public final class Occlusion {
     static boolean hidden(Object key, Entity entity, double dx, double dy, double dz, double scale) {
         // Asked about, so the far terrain's depth must be in the picture this frame.
         FarDepth.needed();
+        if (byPixels()) return false;
         // The GPU's answer is the better one: what the player sees, no world to read.
         // Never mixed with the world's answer, which disagrees often enough to make mobs blink.
         if (byDepth()) {
@@ -64,7 +76,7 @@ public final class Occlusion {
 
     /** Every client tick, from where the camera is. */
     public static void tick(Vec3 eye) {
-        if (!FarConfig.get().hideOccludedMobs || byDepth()) {
+        if (!FarConfig.get().hideOccludedMobs || byDepth() || byPixels()) {
             ASKED.clear();
             HIDDEN.clear();
             return;

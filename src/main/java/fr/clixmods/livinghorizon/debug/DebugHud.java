@@ -35,7 +35,10 @@ public final class DebugHud {
     public static void draw(GuiGraphics graphics) {
         FarConfig config = FarConfig.get();
         Minecraft minecraft = Minecraft.getInstance();
-        if (config.debugDepthView != 0) FarDepth.drawDebugView(config.debugDepthView);
+        // From 1.21.9 the depth view is drawn when the GUI is (GuiRendererMixin): from 26.1 this
+        // runs before the world is drawn, which would paint over it.
+        //? if <1.21.9
+        /*if (config.debugDepthView != 0) FarDepth.drawDebugView(config.debugDepthView);*/
         //? if >=1.20.2 {
         if (!config.debugHud || minecraft.player == null || minecraft.getDebugOverlay().showDebugScreen()) return;
         //?} else
@@ -144,11 +147,11 @@ public final class DebugHud {
         }
         lines.add(new Line(I18n.get("livinghorizon.debug.hud.reach", reach.isEmpty() ? "?" : reach), GREY));
         lines.add(new Line(I18n.get("livinghorizon.debug.hud.opts"), GREY));
-        String[] names = {"view", "tiny", "depth", "lazy", "parallel", "cache", "occluded", "queries", "background",
+        String[] names = {"view", "tiny", "depth", "lazy", "parallel", "cache", "occluded", "queries", "fade", "background",
                 "animation", "freeze"};
         boolean[] values = {config.optViewCulling, config.optTinyCulling, config.depthOcclusion, config.optLazyDepth,
                 config.optParallelRead, config.optColumnCache, config.hideOccludedMobs, config.optOcclusionQueries,
-                config.optBackgroundBuild, config.optStillTiny, config.optFreezeHidden};
+                config.optDhFade, config.optBackgroundBuild, config.optStillTiny, config.optFreezeHidden};
         for (int i = 0; i < names.length; i++) {
             lines.add(new Line("  " + (values[i] ? "✔ " : "✘ ") + I18n.get("livinghorizon.debug.opt." + names[i]),
                     values[i] ? ON : OFF));

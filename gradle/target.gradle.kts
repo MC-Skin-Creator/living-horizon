@@ -148,6 +148,8 @@ extra["lhMixins"] = buildList {
         add("DebugScreenEntriesMixin")
         add("DebugScreenEntryListMixin")
     }
+    // Distant Horizons' fade, which would paint its terrain over the distant figures.
+    add("DhClientApiMixin")
     add("EntityMixin")
     add("EntityRenderDispatcherMixin")
     // The far plane: the game renderer's before 26.1, the camera's from there.

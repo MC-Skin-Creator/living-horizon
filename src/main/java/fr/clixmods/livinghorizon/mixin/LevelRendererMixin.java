@@ -71,6 +71,21 @@ abstract class LevelRendererMixin {
     }
     //?}
 
+    //? if >=26.3 {
+    /*// With Vulkan, what Distant Horizons' depth merge needs is written before the world's pass
+    // opens: nothing may be written to a buffer while a pass is open.
+    @Inject(method = "prepareTranslucents", at = @At("TAIL"))
+    private void livinghorizon$prepareGpuDepth(CallbackInfo ci) {
+        fr.clixmods.livinghorizon.compat.FarDepthGpu.prepare();
+    }
+
+    // The world's pass is closed: the distant mobs are tested against its depth, which the depth view keeps.
+    @Inject(method = "executeOutline", at = @At("HEAD"))
+    private void livinghorizon$afterGpuWorld(CallbackInfo ci) {
+        fr.clixmods.livinghorizon.compat.FarDepthGpu.afterWorld();
+    }
+    *///?}
+
     // The extraction is LevelExtractorMixin's from 26.2, where it has a class of its own.
     //? if <26.2 {
     @Inject(method = "extractVisibleEntities", at = @At("HEAD"))

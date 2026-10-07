@@ -3,7 +3,7 @@
 ## 0.2.0 — 2026-10-07
 
 ### New
-- **Distant Horizons support** — the mod now works with Distant Horizons as well as Voxy, and uses whichever is installed. Birds, mobs and far-away spots read its terrain, and distant mobs are hidden by its hills pixel by pixel.
+- **Distant Horizons support** — the mod now works with Distant Horizons as well as Voxy, and uses whichever is installed. Birds, mobs and far-away spots read its terrain, and distant mobs are hidden by its hills pixel by pixel, with or without a shader pack.
 - **Distant players** — other players keep walking where they are, past the server's view distance, with their skin, their armour and what they ride.
 - **Distant mobs** — animals, villagers and golems stay on the horizon, grazing and wandering around the villages Voxy shows.
 - **Birds** — flocks, geese in a V, gulls over the coast, bats at night.
