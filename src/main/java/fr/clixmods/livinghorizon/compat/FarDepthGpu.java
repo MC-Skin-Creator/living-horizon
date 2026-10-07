@@ -47,7 +47,9 @@ import java.util.Optional;
  * Distant Horizons' depth stays in the game's for the rest of the frame, which its own fade
  * handles the same way as the sky. The fade, outside any pass, works on a copy of the depth:
  * whatever lies outside the game's own chunks is emptied, which can only be the distant
- * figures or that merged depth, and the copy is put back once the fade is done.
+ * figures or that merged depth; inside them, whatever stands clearly in front of Distant
+ * Horizons' terrain is too, which is an entity, its terrain matching the game's there. The copy
+ * is put back once the fade is done.
  ^/
 public final class FarDepthGpu {
     private static final String NAMESPACE = "livinghorizon";
@@ -75,6 +77,7 @@ public final class FarDepthGpu {
             .withFragmentShader(Identifier.fromNamespaceAndPath(NAMESPACE, "core/far_fade_mask"))
             .withBindGroupLayout(BindGroupLayout.builder()
                     .withUniform("InSampler", UniformType.COMBINED_IMAGE_SAMPLER)
+                    .withUniform("DhDepth", UniformType.COMBINED_IMAGE_SAMPLER)
                     .withUniform("LhFadeMask", UniformType.UNIFORM_BUFFER)
                     .build())
             .withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
@@ -118,7 +121,7 @@ public final class FarDepthGpu {
 
     private static final int VIEW_SIZE = new Std140SizeCalculator().putVec4().putVec4().putVec4().get();
     private static final int MERGE_SIZE = new Std140SizeCalculator().putVec4().putVec4().get();
-    private static final int FADE_SIZE = new Std140SizeCalculator().putMat4f().putVec4().putVec4().get();
+    private static final int FADE_SIZE = new Std140SizeCalculator().putMat4f().putVec4().putVec4().putVec4().putVec4().get();
     /^* Frames a uniform buffer is kept before it is written again: the GPU may still be reading it. ^/
     private static final int RING = 8;
 
@@ -129,6 +132,8 @@ public final class FarDepthGpu {
     /^* Written before the world's pass for the merge in it: Distant Horizons' depth and the terms. ^/
     private static @Nullable GpuBuffer preparedUniforms;
     private static @Nullable GpuTextureView preparedDepth;
+    /^* Distant Horizons' projection terms of this frame, and the game's, for the fade mask. ^/
+    private static final float[] PREPARED_DH = new float[4], PREPARED_GAME = new float[2];
     private static String preparedReason = "no frame yet";
     /^* The game's depth as it was before the fade, to give back after it. ^/
     private static @Nullable GpuTexture saved;
@@ -177,6 +182,9 @@ public final class FarDepthGpu {
             }
             preparedUniforms = uniforms;
             preparedDepth = (GpuTextureView) dh[0];
+            for (int i = 0; i < 4; i++) PREPARED_DH[i] = (float) dh[i + 1];
+            PREPARED_GAME[0] = game[0];
+            PREPARED_GAME[1] = game[1];
         } catch (Throwable e) {
             fail(e);
         }
@@ -232,7 +240,9 @@ public final class FarDepthGpu {
                         .putMat4f(new Matrix4f(FarDepth.viewProjection()).invert())
                         .putVec4((float) ((chunkX - chunks) * 16 - camera.x), (float) ((chunkZ - chunks) * 16 - camera.z),
                                 (float) ((chunkX + chunks + 1) * 16 - camera.x), (float) ((chunkZ + chunks + 1) * 16 - camera.z))
-                        .putVec4(DepthFar.zeroToOne() ? 1f : 0f, DepthFar.REVERSED ? 0f : 1f, 0f, 0f);
+                        .putVec4(DepthFar.zeroToOne() ? 1f : 0f, DepthFar.REVERSED ? 0f : 1f, preparedDepth != null ? 1f : 0f, 0f)
+                        .putVec4(PREPARED_DH[0], PREPARED_DH[1], PREPARED_DH[2], PREPARED_DH[3])
+                        .putVec4(PREPARED_GAME[0], PREPARED_GAME[1], 0f, 0f);
             }
 
             CommandEncoder encoder = RenderSystem.getDevice().createCommandEncoder();
@@ -242,6 +252,8 @@ public final class FarDepthGpu {
                 RenderSystem.bindDefaultUniforms(pass);
                 pass.setPipeline(mask);
                 pass.setUniform("InSampler", copy, nearest());
+                // Without Distant Horizons' depth this frame, the copy stands in and goes unread.
+                pass.setUniform("DhDepth", preparedDepth != null ? preparedDepth : copy, nearest());
                 pass.setUniform("LhFadeMask", uniforms);
                 pass.draw(3, 1, 0, 0);
             }
