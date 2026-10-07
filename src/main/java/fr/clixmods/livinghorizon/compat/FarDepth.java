@@ -124,7 +124,8 @@ public final class FarDepth {
                 else if (!ready) reason = "neither Voxy nor Distant Horizons is usable";
             }
             // Distant Horizons' fade, without a shader pack, needs to know where the entities are.
-            boolean dhFade = wanted && config.anyDistant() && DhDepth.available() && !DhDepth.shaderPackOn();
+            boolean dhFade = wanted && config.anyDistant() && config.optDhFade && DhDepth.available()
+                    && !DhDepth.shaderPackOn();
             // The depth view shows the game's depth even when there was nothing to merge.
             if (!merged && (config.debugDepthView != 0 || dhFade)) captured = capture();
             fadeMask = dhFade && (merged || captured) && target == ownTarget;
