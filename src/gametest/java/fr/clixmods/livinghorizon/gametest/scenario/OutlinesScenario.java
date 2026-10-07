@@ -5,13 +5,15 @@ import fr.clixmods.livinghorizon.debug.DebugMarks.Mark;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
+import fr.clixmods.livinghorizon.ui.OutlinesScreen;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
 /**
- * The debug outlines: remembered copies left behind, the near row drawn as models (green
- * outline), the far row as impostors (magenta outline), and the copies past the most shown
- * at once left out of the frame (orange crosses). Screenshots with the outlines off, then on.
+ * The outlines: remembered copies left behind, the near row drawn as models (green), the far
+ * row as impostors (magenta), the copies past the most shown at once left out of the frame
+ * (grey crosses), and a cow close by that the game draws itself (white). Screenshots with the
+ * outlines off, then on, and the Outlines screen.
  */
 public final class OutlinesScenario implements Scenario {
     private static final String[] MOBS = {"cow", "sheep", "villager", "horse", "wolf", "iron_golem"};
@@ -43,13 +45,20 @@ public final class OutlinesScenario implements Scenario {
             context.waitTicks(300);
             context.runOnClient(minecraft -> minecraft.options.fov().set(30));
             Scene.screenshot(context, this, "plain-zoom");
-            Scene.configure(context, config -> config.debugOutlines = true);
+            Scene.summon(world, "cow", 3, 12, 90);
+            Scene.configure(context, config -> {
+                config.outlineGameMobs = config.outlineLiveMobs = config.outlineCopies = true;
+                config.outlinePlayers = config.outlineImpostors = config.outlineLeftOut = true;
+            });
             Scene.screenshotFrame(context, this, "outlines-zoom");
             context.runOnClient(minecraft -> Scene.log("outlines models=" + PolygonStats.models()
                     + " impostors=" + PolygonStats.impostors() + " fake=" + DebugMarks.count(Mark.FAKE)
                     + " spare=" + DebugMarks.count(Mark.SPARE) + " waiting=" + DebugMarks.count(Mark.WAITING)));
             context.runOnClient(minecraft -> minecraft.options.fov().set(70));
             Scene.screenshotFrame(context, this, "outlines");
+            context.setScreen(() -> new OutlinesScreen(null));
+            Scene.screenshot(context, this, "screen");
+            context.setScreen(() -> null);
         }
     }
 }

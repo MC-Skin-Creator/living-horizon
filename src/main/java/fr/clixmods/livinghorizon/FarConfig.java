@@ -8,6 +8,7 @@ import fr.clixmods.livinghorizon.platform.Platform;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -53,7 +54,7 @@ public final class FarConfig {
     @SerializedName(value = "depthOcclusion", alternate = "voxyOcclusion")
     public boolean depthOcclusion = true;
 
-    private static final int CURRENT = 7;
+    private static final int CURRENT = 8;
 
     /** Skinned figures, which Distant Friends uses as its fake players: shown, standing still. */
     private static final String MANNEQUIN = "minecraft:mannequin";
@@ -146,9 +147,6 @@ public final class FarConfig {
     /** Draws what a player was riding when last seen: horse, boat, happy ghast... */
     public boolean showVehicles = true;
 
-    /** A glowing outline around distant players, seen through terrain. */
-    public boolean glowOutline = false;
-
     /** Lets vehicles carrying another player be drawn at any distance the server still sends them. */
     public boolean renderTrackedVehiclesFar = true;
 
@@ -211,12 +209,23 @@ public final class FarConfig {
     public boolean debugLabels = false;
     /** Boxes around the mobs the game draws itself, too. */
     public boolean debugGameMobs = false;
-    /**
-     * How each distant figure is drawn, seen through terrain: a green outline around the
-     * models the mod draws, a magenta one around impostors, and an orange cross where a
-     * mob is left out (behind blocks, too small, outside the view, waiting).
-     */
-    public boolean debugOutlines = false;
+    // Outlines, seen through terrain, in the colours of the debug boxes: what draws each figure.
+    /** Around the mobs the game draws itself: white. */
+    public boolean outlineGameMobs = false;
+    /** Around the real mobs the server sends that the mod draws, past the game's entity distance: cyan. */
+    public boolean outlineLiveMobs = false;
+    /** Around the 3D copies of mobs the server no longer sends: green. */
+    public boolean outlineCopies = false;
+    /** Around the distant players the mod draws: blue. */
+    public boolean outlinePlayers = false;
+    /** Around impostors, whatever they stand for: magenta. */
+    public boolean outlineImpostors = false;
+    /** A cross where a distant mob is left out of the frame, in the colour of why: where it is, not what. */
+    public boolean outlineLeftOut = false;
+    /** Before version 8, one white outline around every distant figure; read once, then dropped. */
+    private @Nullable Boolean glowOutline;
+    /** Before version 8, the outlines and crosses on the mod's figures together; read once, then dropped. */
+    private @Nullable Boolean debugOutlines;
     /** A panel of what the mod does and costs, in the corner of the screen. */
     public boolean debugHud = false;
     /** 0: off; 1: the game's depth; 2: with the far terrain merged in; 3: after the entities. */
@@ -287,6 +296,18 @@ public final class FarConfig {
             if (instance.offlinePose.equals("sleep")) instance.offlinePose = "sit";
             if (instance.impostorDistance == 200) instance.impostorDistance = 128;
             instance.impostors = true;
+        }
+        if (instance.version < 8) {
+            // One switch per kind of figure now; the old ones turn on what they covered.
+            if (Boolean.TRUE.equals(instance.glowOutline)) {
+                instance.outlineLiveMobs = instance.outlineCopies = instance.outlinePlayers = true;
+                instance.outlineImpostors = true;
+            }
+            if (Boolean.TRUE.equals(instance.debugOutlines)) {
+                instance.outlineCopies = instance.outlineImpostors = instance.outlineLeftOut = true;
+            }
+            instance.glowOutline = null;
+            instance.debugOutlines = null;
         }
         instance.version = CURRENT;
         save();

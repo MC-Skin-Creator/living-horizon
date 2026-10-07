@@ -19,17 +19,13 @@ import java.util.Locale;
  * its colour around it, seen through terrain, a label over it, and a count for the panel.
  * The boxes are the game's own debug gizmos, drawn at the end of the world.
  *
- * <p>With {@link FarConfig#debugOutlines}, a mob left out of the frame gets a cross where it
- * stands instead, and the figures drawn get an outline of their own colour, set where they
- * are drawn: {@link #MODEL_OUTLINE} and {@link #IMPOSTOR_OUTLINE}.
+ * <p>The outlines use the same colours ({@code outline*} in {@link FarConfig}): each figure
+ * drawn gets the colour of what draws it, set where it is drawn, impostors {@link #IMPOSTOR},
+ * and a mob left out of the frame gets a cross where it stands, in the colour of why.
  */
 public final class DebugMarks {
-    /** The outline of a model the mod draws in place of a mob or player it does not have. */
-    public static final int MODEL_OUTLINE = 0x55FF55;
-    /** The outline of an impostor, the flat picture standing in for a model. */
-    public static final int IMPOSTOR_OUTLINE = 0xFF55FF;
-    /** The cross where a mob is left out of the frame. */
-    private static final int CROSS = 0xFFFFAA00;
+    /** An impostor, the flat picture standing in for a model, whatever it stands for. */
+    public static final int IMPOSTOR = 0xFFFF55FF;
     /** Pixels from the centre of a cross to the end of an arm. */
     private static final double CROSS_PIXELS = 5;
 
@@ -48,7 +44,7 @@ public final class DebugMarks {
         /** Not drawn: behind terrain. */
         HIDDEN(0xFFFFAA00, true),
         /** Not drawn: a copy this close to the player is gone from view, so it cannot be walked up to. */
-        NEAR(0xFFFF55FF),
+        NEAR(0xFFAA7744),
         /** Not drawn: outside the view. */
         OUTSIDE(0xFFFF5555, true),
         /** Not drawn yet: its copy is being built. */
@@ -85,7 +81,7 @@ public final class DebugMarks {
     /** Whether anything of the debug view is on: marks cost nothing otherwise. */
     public static boolean active() {
         FarConfig config = FarConfig.get();
-        return config.debugBoxes || config.debugLabels || config.debugOutlines || config.debugHud
+        return config.debugBoxes || config.debugLabels || config.outlineLeftOut || config.debugHud
                 || DebugHud.entryEnabled();
     }
 
@@ -100,20 +96,25 @@ public final class DebugMarks {
     }
 
     /**
-     * The outline a figure the mod draws gets: the debug colours, else white with the
-     * glowing outline, else none (0).
+     * The outline colour (RGB) of a figure drawn as a model, from what draws it, or 0 when
+     * that kind's outline is off.
      *
-     * @param model a model standing for a mob or player the game does not have, rather than the real one
+     * @param kind {@link Mark#GAME}, {@link Mark#LIVE}, {@link Mark#FAKE} or {@link Mark#PLAYER}
      */
-    public static int outline(FarConfig config, boolean model) {
-        if (config.debugOutlines && model) return MODEL_OUTLINE;
-        return config.glowOutline ? 0xFFFFFF : 0;
+    public static int outline(FarConfig config, Mark kind) {
+        boolean on = switch (kind) {
+            case GAME -> config.outlineGameMobs;
+            case LIVE -> config.outlineLiveMobs;
+            case FAKE -> config.outlineCopies;
+            case PLAYER -> config.outlinePlayers;
+            default -> false;
+        };
+        return on ? kind.color & 0xFFFFFF : 0;
     }
 
-    /** The outline of an impostor, as {@link #outline}. */
+    /** The outline colour (RGB) of an impostor, or 0 when off. */
     public static int impostorOutline(FarConfig config) {
-        if (config.debugOutlines) return IMPOSTOR_OUTLINE;
-        return config.glowOutline ? 0xFFFFFF : 0;
+        return config.outlineImpostors ? IMPOSTOR & 0xFFFFFF : 0;
     }
 
     public static void begin(Vec3 eye, double pixels) {
@@ -124,7 +125,7 @@ public final class DebugMarks {
         pixelsPerRadian = pixels;
         boxes = config.debugBoxes;
         labels = config.debugLabels;
-        crosses = config.debugOutlines;
+        crosses = config.outlineLeftOut;
         java.util.Arrays.fill(COUNTS, 0);
     }
 
@@ -149,7 +150,7 @@ public final class DebugMarks {
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
         //? if >=1.21.11 {
         try {
-            if (cross) cross(x, y + height / 2, z, distance);
+            if (cross) cross(x, y + height / 2, z, distance, mark.color);
             if (boxes) {
                 double half = width / 2;
                 Gizmos.cuboid(new AABB(x - half, y, z - half, x + half, y + height, z + half),
@@ -177,7 +178,7 @@ public final class DebugMarks {
      * An X facing the camera, the same few pixels across at any distance, seen through
      * terrain. Only where the mob is: not what it is.
      */
-    private static void cross(double x, double y, double z, double distance) {
+    private static void cross(double x, double y, double z, double distance, int color) {
         double dx = x - eyeX, dy = y - eyeY, dz = z - eyeZ;
         double length = Math.max(distance, 1e-3);
         dx /= length;
@@ -198,8 +199,8 @@ public final class DebugMarks {
         double arm = CROSS_PIXELS * length / pixelsPerRadian;
         double ax = (rx + ux) * arm, ay = uy * arm, az = (rz + uz) * arm;
         double bx = (rx - ux) * arm, by = -uy * arm, bz = (rz - uz) * arm;
-        Gizmos.line(new Vec3(x - ax, y - ay, z - az), new Vec3(x + ax, y + ay, z + az), CROSS, 2f).setAlwaysOnTop();
-        Gizmos.line(new Vec3(x - bx, y - by, z - bz), new Vec3(x + bx, y + by, z + bz), CROSS, 2f).setAlwaysOnTop();
+        Gizmos.line(new Vec3(x - ax, y - ay, z - az), new Vec3(x + ax, y + ay, z + az), color, 2f).setAlwaysOnTop();
+        Gizmos.line(new Vec3(x - bx, y - by, z - bz), new Vec3(x + bx, y + by, z + bz), color, 2f).setAlwaysOnTop();
     }
     //?}
 }
