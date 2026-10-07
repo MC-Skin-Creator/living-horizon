@@ -39,6 +39,14 @@ public final class Occlusion {
     private Occlusion() {
     }
 
+    /**
+     * With Vulkan, once Distant Horizons' depth is merged: the depth test hides each mob pixel by
+     * pixel, and the far terrain's world - coarse, twice a second - would only get it wrong.
+     */
+    private static boolean byPixels() {
+        return !DepthFar.openGl() && FarDepth.mergedLastFrame();
+    }
+
     /** Whether the depth answers rather than the far terrain's world. */
     private static boolean byDepth() {
         // The queries are OpenGL's: with Vulkan, the far terrain's world answers.
@@ -52,6 +60,7 @@ public final class Occlusion {
     static boolean hidden(Object key, Entity entity, double dx, double dy, double dz, double scale) {
         // Asked about, so the far terrain's depth must be in the picture this frame.
         FarDepth.needed();
+        if (byPixels()) return false;
         // The GPU's answer is the better one: what the player sees, no world to read.
         // Never mixed with the world's answer, which disagrees often enough to make mobs blink.
         if (byDepth()) {
@@ -65,7 +74,7 @@ public final class Occlusion {
 
     /** Every client tick, from where the camera is. */
     public static void tick(Vec3 eye) {
-        if (!FarConfig.get().hideOccludedMobs || byDepth()) {
+        if (!FarConfig.get().hideOccludedMobs || byDepth() || byPixels()) {
             ASKED.clear();
             HIDDEN.clear();
             return;
