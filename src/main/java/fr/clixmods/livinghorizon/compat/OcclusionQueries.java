@@ -3,13 +3,16 @@ package fr.clixmods.livinghorizon.compat;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import org.joml.Matrix4f;
+import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11C;
 import org.lwjgl.opengl.GL15C;
 import org.lwjgl.opengl.GL20C;
 import org.lwjgl.opengl.GL30C;
 import org.lwjgl.opengl.GL32C;
+import org.lwjgl.opengl.GL33C;
 import org.lwjgl.opengl.GL43C;
 import org.lwjgl.opengl.GL45C;
+import org.lwjgl.opengl.GLCapabilities;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -87,7 +90,8 @@ public final class OcclusionQueries {
         frame++;
         ASKED.clear();
         culled = 0;
-        if (broken) return;
+        // With Vulkan (26.2 on), there is no OpenGL to ask.
+        if (broken || !DepthFar.openGl()) return;
         try {
             collect();
         } catch (Throwable e) {
@@ -98,6 +102,61 @@ public final class OcclusionQueries {
     /** Not turned off by a GL failure. */
     public static boolean usable() {
         return !broken;
+    }
+
+    // --- Through the game's GPU device ---------------------------------------------------------
+
+    /** The game's device answers instead of OpenGL's queries ({@code FarDepthGpu}, 26.3). */
+    private static boolean gpuReady;
+    private static long takeCursor;
+
+    public static void gpuReady(boolean ready) {
+        gpuReady = ready;
+    }
+
+    public static boolean gpuReady() {
+        return gpuReady && !broken;
+    }
+
+    /**
+     * This frame's boxes, at most {@code keys.length}, for the game's device: their keys, and
+     * their two corners in {@code boxes}, six floats each. The others are asked again next frame.
+     */
+    public static int takeAsked(Object[] keys, float[] boxes) {
+        int size = ASKED.size();
+        asked = size;
+        int n = Math.min(keys.length, size);
+        // More than fit in one frame: each frame starts where the last one stopped.
+        int start = size > n ? (int) (takeCursor % size) : 0;
+        takeCursor += n;
+        for (int i = 0; i < n; i++) {
+            Box box = ASKED.get((start + i) % size);
+            keys[i] = box.key;
+            boxes[6 * i] = box.lowX;
+            boxes[6 * i + 1] = box.lowY;
+            boxes[6 * i + 2] = box.lowZ;
+            boxes[6 * i + 3] = box.highX;
+            boxes[6 * i + 4] = box.highY;
+            boxes[6 * i + 5] = box.highZ;
+        }
+        ASKED.clear();
+        return n;
+    }
+
+    /** The frame being drawn, to date the answers that come back for it. */
+    public static long frame() {
+        return frame;
+    }
+
+    /** An answer from the game's device about a box asked in {@code askedIn}. */
+    public static void answer(Object key, boolean visible, long askedIn) {
+        Answer old = ANSWERS.get(key);
+        if (old == null || old.frame <= askedIn) ANSWERS.put(key, new Answer(visible, askedIn));
+    }
+
+    /** This frame's view-projection, relative to the camera, as the queries use it. */
+    public static float[] viewProjection() {
+        return VIEW_PROJECTION;
     }
 
     /** Another world: what was seen is of no use. */
@@ -161,6 +220,10 @@ public final class OcclusionQueries {
                 return;
             }
             prepare(depthTexture);
+            // The conservative test is OpenGL 4.3; the game may run on 3.3 (26.x), where it is not to be used.
+            GLCapabilities caps = GL.getCapabilities();
+            int target = caps.OpenGL43 || caps.GL_ARB_ES3_compatibility
+                    ? GL43C.GL_ANY_SAMPLES_PASSED_CONSERVATIVE : GL33C.GL_ANY_SAMPLES_PASSED;
             Object[] keys = new Object[ASKED.size()];
             int[] queries = new int[ASKED.size()];
             FarDepth.GlState gl = FarDepth.GlState.save();
@@ -186,9 +249,9 @@ public final class OcclusionQueries {
                     queries[i] = POOL.isEmpty() ? GL15C.glGenQueries() : POOL.pop();
                     GL20C.glUniform3f(lowLocation, box.lowX, box.lowY, box.lowZ);
                     GL20C.glUniform3f(highLocation, box.highX, box.highY, box.highZ);
-                    GL15C.glBeginQuery(GL43C.GL_ANY_SAMPLES_PASSED_CONSERVATIVE, queries[i]);
+                    GL15C.glBeginQuery(target, queries[i]);
                     GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 36);
-                    GL15C.glEndQuery(GL43C.GL_ANY_SAMPLES_PASSED_CONSERVATIVE);
+                    GL15C.glEndQuery(target);
                 }
             } finally {
                 if (!clamp) GL11C.glDisable(GL32C.GL_DEPTH_CLAMP);

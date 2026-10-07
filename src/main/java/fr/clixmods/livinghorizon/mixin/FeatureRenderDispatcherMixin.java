@@ -21,10 +21,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 // graph: the entities are the solid step, then the translucent one, in the main pass.
 @Mixin(FeatureRenderDispatcher.PreparedFrame.class)
 abstract class FeatureRenderDispatcherMixin {
+    //? if >=26.3 {
+    /^@Inject(method = "executeSolid", at = @At("HEAD"))
+    private void livinghorizon$voxyDepthIn(com.mojang.renderpearl.api.commands.RenderPass pass, CallbackInfo ci) {
+        FarDepth.before();
+        // With Vulkan, Distant Horizons' depth is drawn in the world's pass itself, through the game's device.
+        fr.clixmods.livinghorizon.compat.FarDepthGpu.merge(pass);
+    }
+    ^///?} else {
     @Inject(method = "executeSolid", at = @At("HEAD"))
     private void livinghorizon$voxyDepthIn(CallbackInfo ci) {
         FarDepth.before();
     }
+    //?}
 
     @Inject(method = "executeTranslucent", at = @At("TAIL"))
     private void livinghorizon$voxyDepthOut(CallbackInfo ci) {

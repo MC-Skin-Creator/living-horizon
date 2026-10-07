@@ -196,6 +196,12 @@ public final class FarConfig {
      */
     @SerializedName(value = "optOcclusionQueries", alternate = "optHiZ")
     public boolean optOcclusionQueries = true;
+    /**
+     * Distant Horizons' fade of the game's picture into its terrain, without a shader pack,
+     * leaves the entities alone (see {@code FarDepth.beforeFade}). Off, to compare: it paints
+     * its terrain over the distant mobs.
+     */
+    public boolean optDhFade = true;
     /** Saved mobs are read off the game's thread and built within 2 ms per tick. */
     public boolean optBackgroundBuild = true;
     /** A mob only a few pixels high on screen plays no walking or idle animation: it only slides and turns. */
