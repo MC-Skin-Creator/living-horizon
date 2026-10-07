@@ -35,7 +35,10 @@ public final class DebugHud {
     public static void draw(GuiGraphics graphics) {
         FarConfig config = FarConfig.get();
         Minecraft minecraft = Minecraft.getInstance();
-        if (config.debugDepthView != 0) FarDepth.drawDebugView(config.debugDepthView);
+        // From 1.21.9 the depth view is drawn when the GUI is (GuiRendererMixin): from 26.1 this
+        // runs before the world is drawn, which would paint over it.
+        //? if <1.21.9
+        /*if (config.debugDepthView != 0) FarDepth.drawDebugView(config.debugDepthView);*/
         //? if >=1.20.2 {
         if (!config.debugHud || minecraft.player == null || minecraft.getDebugOverlay().showDebugScreen()) return;
         //?} else
