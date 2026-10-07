@@ -90,7 +90,8 @@ public final class OcclusionQueries {
         frame++;
         ASKED.clear();
         culled = 0;
-        if (broken) return;
+        // With Vulkan (26.2 on), there is no OpenGL to ask.
+        if (broken || !DepthFar.openGl()) return;
         try {
             collect();
         } catch (Throwable e) {

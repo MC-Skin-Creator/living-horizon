@@ -194,7 +194,7 @@ public final class FarDepth {
      * Called with the HUD, after the world, before the HUD itself is drawn over it.
      */
     public static void drawDebugView(int mode) {
-        if (mode < 1 || mode > 3 || saved == 0) return;
+        if (mode < 1 || mode > 3 || saved == 0 || !DepthFar.openGl()) return;
         try {
             Minecraft minecraft = Minecraft.getInstance();
             int colorId = mainTexture(false);
