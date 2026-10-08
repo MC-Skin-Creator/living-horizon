@@ -19,3 +19,7 @@
 - **Quilt, NeoForge et Forge** — le mod fonctionne désormais aussi sur Quilt (avec la Fabric API), NeoForge et Forge, en plus de Fabric, sur Minecraft 1.20 à 1.21.11 et 26.1 à 26.3 (NeoForge à partir de 1.20.6).
 - **Un logo** — le mod et le data pack ont leur propre icône, dans la liste des mods et celle des data packs.
 - **Contours** (*Debug...* > *Contours...*) — un contour visible à travers le relief autour de chaque type de silhouette, chacun avec son interrupteur, aux couleurs des boîtes de debug : blanc pour les mobs que dessine le jeu, cyan pour les vrais mobs dessinés par le mod, vert pour les copies 3D, bleu pour les joueurs, magenta pour les imposteurs, et une croix là où un mob lointain n'est pas dessiné du tout. Pratique pour des captures qui comparent ce que le mod dessine et ce qu'il économise.
+
+### Corrections
+- **Avant Minecraft 1.21.5** — les créatures lointaines sont elles aussi cachées derrière les collines de Distant Horizons et de Voxy, et la vue de la profondeur du debug n'est plus toute blanche.
+- **Anciennes versions de Distant Horizons** — les créatures lointaines sont cachées derrière les collines de Distant Horizons et marchent sur son terrain dès la version 2.3, plus seulement avec la dernière.

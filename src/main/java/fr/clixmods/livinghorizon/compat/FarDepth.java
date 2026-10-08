@@ -9,6 +9,7 @@ import com.mojang.blaze3d.opengl.GlTexture;
 import net.minecraft.client.Minecraft;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11C;
+import org.lwjgl.opengl.GL12C;
 import org.lwjgl.opengl.GL13C;
 import org.lwjgl.opengl.GL14C;
 import org.lwjgl.opengl.GL20C;
@@ -182,7 +183,8 @@ public final class FarDepth {
             } else if (config.anyDistant() && config.depthOcclusion) {
                 if (available()) merged = merge();
                 else if (!broken && DhDepth.available()) merged = mergeDh();
-                else if (!ready) reason = "neither Voxy nor Distant Horizons is usable";
+                // Why Distant Horizons is of no use (too old, most often), not what an earlier frame said.
+                else reason = Platform.isModLoaded("distanthorizons") ? DhDepth.reason() : "neither Voxy nor Distant Horizons is usable";
             }
             // Distant Horizons' fade, without a shader pack, needs to know where the entities are.
             boolean dhFade = wanted && config.anyDistant() && config.optDhFade && DhDepth.available()
@@ -386,7 +388,8 @@ public final class FarDepth {
         if (ownTarget != 0 && ownTargetDepth == depth) return ownTarget;
         if (ownTarget != 0) GL30C.glDeleteFramebuffers(ownTarget);
         int format = GL45C.glGetTextureLevelParameteri(depth, 0, GL11C.GL_TEXTURE_INTERNAL_FORMAT);
-        boolean stencil = format == GL30C.GL_DEPTH24_STENCIL8 || format == GL30C.GL_DEPTH32F_STENCIL8;
+        boolean stencil = format == GL30C.GL_DEPTH24_STENCIL8 || format == GL30C.GL_DEPTH32F_STENCIL8
+                || format == GL30C.GL_DEPTH_STENCIL;
         ownTarget = GL45C.glCreateFramebuffers();
         GL45C.glNamedFramebufferTexture(ownTarget,
                 stencil ? GL30C.GL_DEPTH_STENCIL_ATTACHMENT : GL30C.GL_DEPTH_ATTACHMENT, depth, 0);
@@ -730,7 +733,20 @@ public final class FarDepth {
 
     private static int texture() {
         int texture = GL45C.glCreateTextures(GL11C.GL_TEXTURE_2D);
-        GL45C.glTextureStorage2D(texture, 1, format, width, height);
+        if (format == GL11C.GL_DEPTH_COMPONENT || format == GL30C.GL_DEPTH_STENCIL) {
+            // Before 1.21.5 the game's depth has an unsized format, which storage refuses and
+            // leaves the copy without a size: it is made the way the game makes its own, so
+            // that copying between the two stays allowed.
+            boolean stencil = format == GL30C.GL_DEPTH_STENCIL;
+            int previous = GL11C.glGetInteger(GL11C.GL_TEXTURE_BINDING_2D);
+            GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, texture);
+            GL11C.glTexImage2D(GL11C.GL_TEXTURE_2D, 0, format, width, height, 0, format,
+                    stencil ? GL30C.GL_UNSIGNED_INT_24_8 : GL11C.GL_FLOAT, (java.nio.ByteBuffer) null);
+            GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, previous);
+            GL45C.glTextureParameteri(texture, GL12C.GL_TEXTURE_MAX_LEVEL, 0);
+        } else {
+            GL45C.glTextureStorage2D(texture, 1, format, width, height);
+        }
         GL45C.glTextureParameteri(texture, GL11C.GL_TEXTURE_MIN_FILTER, GL11C.GL_NEAREST);
         GL45C.glTextureParameteri(texture, GL11C.GL_TEXTURE_MAG_FILTER, GL11C.GL_NEAREST);
         GL45C.glTextureParameteri(texture, GL14C.GL_TEXTURE_COMPARE_MODE, GL11C.GL_NONE);

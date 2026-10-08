@@ -31,13 +31,15 @@ final class DhSource implements LodSource {
     private volatile long pausedUntil;
 
     private MethodHandle terrainRepo, worldProxy;
-    private MethodHandle worldLoaded, levels, wrapped, columnAt, softCache;
+    private MethodHandle worldLoaded, levels, wrapped, columnAt;
     private MethodHandle success, payload, messageOf;
     private MethodHandle top, blockOf, biomeOf;
-    private MethodHandle isAir, isLiquid, opacity, biomeName;
+    private MethodHandle isAir, isLiquid, isSolid, biomeName;
+    /** Before Distant Horizons 3.0 there is no opacity, and before 2.4 no cache: null then. */
+    private @Nullable MethodHandle opacity, softCache;
 
     /** One reader's cache of Distant Horizons' data, for the level it was made for. */
-    private record Cached(Object level, Object cache) {
+    private record Cached(Object level, @Nullable Object cache) {
     }
 
     private final ThreadLocal<Cached> caches = new ThreadLocal<>();
@@ -115,7 +117,7 @@ final class DhSource implements LodSource {
         if (points != null) {
             for (Object point : points) {
                 Object block = blockOf.invoke(point);
-                if (block == null || (boolean) isAir.invoke(block) || (int) opacity.invoke(block) <= 0) continue;
+                if (block == null || (boolean) isAir.invoke(block) || !opaque(block)) continue;
                 best = Math.max(best, (int) top.invoke(point));
             }
         }
@@ -137,7 +139,7 @@ final class DhSource implements LodSource {
                 link();
             } catch (Throwable e) {
                 broken = true;
-                failure = "Distant Horizons found, but not the version this mod knows: " + e;
+                failure = "Distant Horizons found, but too old or unknown (its world needs 2.3 or newer): " + e;
                 LivingHorizonClient.LOGGER.warn("Distant Horizons found, but not the version this mod knows: its world cannot be read", e);
                 return false;
             }
@@ -175,7 +177,7 @@ final class DhSource implements LodSource {
         wrapped = lookup.findVirtual(unsafe, "getWrappedMcObject", MethodType.methodType(Object.class));
         columnAt = lookup.findVirtual(repo, "getColumnDataAtBlockPos",
                 MethodType.methodType(result, level, int.class, int.class, cache));
-        softCache = lookup.findVirtual(repo, "createSoftCache", MethodType.methodType(cache));
+        softCache = optional(lookup, repo, "createSoftCache", MethodType.methodType(cache));
         success = lookup.findGetter(result, "success", boolean.class);
         payload = lookup.findGetter(result, "payload", Object.class);
         messageOf = lookup.findGetter(result, "message", String.class);
@@ -184,8 +186,25 @@ final class DhSource implements LodSource {
         biomeOf = lookup.findGetter(point, "biomeWrapper", biome);
         isAir = lookup.findVirtual(block, "isAir", MethodType.methodType(boolean.class));
         isLiquid = lookup.findVirtual(block, "isLiquid", MethodType.methodType(boolean.class));
-        opacity = lookup.findVirtual(block, "getOpacity", MethodType.methodType(int.class));
+        isSolid = lookup.findVirtual(block, "isSolid", MethodType.methodType(boolean.class));
+        opacity = optional(lookup, block, "getOpacity", MethodType.methodType(int.class));
         biomeName = lookup.findVirtual(biome, "getName", MethodType.methodType(String.class));
+    }
+
+    /** A method older versions of Distant Horizons do not have: null there. */
+    private static @Nullable MethodHandle optional(MethodHandles.Lookup lookup, Class<?> owner, String name, MethodType type)
+            throws IllegalAccessException {
+        try {
+            return lookup.findVirtual(owner, name, type);
+        } catch (NoSuchMethodException e) {
+            return null;
+        }
+    }
+
+    /** Whether a block stops the eye; without opacity (before 3.0), solid blocks and liquids do. */
+    private boolean opaque(Object block) throws Throwable {
+        if (opacity != null) return (int) opacity.invoke(block) > 0;
+        return (boolean) isSolid.invoke(block) || (boolean) isLiquid.invoke(block);
     }
 
     /** The level Distant Horizons holds for the one the player is in; null while it has none. */
@@ -235,7 +254,8 @@ final class DhSource implements LodSource {
     private Object cache(Object world) throws Throwable {
         Cached cached = caches.get();
         if (cached == null || cached.level() != world) {
-            cached = new Cached(world, softCache.invoke(terrainRepo.invoke()));
+            // Without a cache (before 2.4), Distant Horizons reads without one.
+            cached = new Cached(world, softCache == null ? null : softCache.invoke(terrainRepo.invoke()));
             caches.set(cached);
         }
         return cached.cache();

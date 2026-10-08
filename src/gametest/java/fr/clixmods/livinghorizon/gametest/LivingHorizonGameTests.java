@@ -1,5 +1,6 @@
 package fr.clixmods.livinghorizon.gametest;
 
+import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
@@ -26,7 +27,8 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new ImpostorsScenario(),
             new RememberedMobsScenario(),
             new OutlinesScenario(),
-            new OptionsScreenScenario());
+            new OptionsScreenScenario(),
+            new DepthViewScenario());
 
     @Override
     public void runTest(ClientGameTestContext context) {

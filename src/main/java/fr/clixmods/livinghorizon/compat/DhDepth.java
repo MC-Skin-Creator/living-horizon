@@ -19,8 +19,18 @@ final class DhDepth {
     private static boolean ready, broken, started;
     private static String reason = "not started";
 
-    private static Field renderProxy, renderParams, projection, m22, m23, m32, farDepth, success, payload;
-    private static Method depthTexture, depthRange, depthDirection, name;
+    private static Field renderProxy, projection, m22, m23, m32, success, payload;
+    private static Method depthTexture, name;
+    /**
+     * From Distant Horizons 3.3.2: the layout of its depth. Before, null: OpenGL's usual one,
+     * -1 to 1 with nothing at 1.
+     */
+    private static @Nullable Method depthRange, depthDirection;
+    private static @Nullable Field farDepth;
+    /** From 3.2: the parameters of its last render. Before, null: its projection is rebuilt from its planes. */
+    private static @Nullable Field renderParams;
+    /** Before 3.2: where its near and far planes come from, the override that changes the near one. */
+    private static @Nullable Method nearPlane, farPlane, nearOverride;
     /** From API 7.1, Distant Horizons may draw through Blaze3D, without a shader pack: its depth is reached through a wrapper. */
     private static @Nullable Method blazeDepthTexture, wrappedObject;
     /** Iris, when installed: whether a shader pack is on, and the planes it draws Distant Horizons with. */
@@ -50,7 +60,7 @@ final class DhDepth {
                 link();
             } catch (Throwable e) {
                 broken = true;
-                reason = "Distant Horizons found, but not the version this mod knows: " + e;
+                reason = "Distant Horizons found, but too old or unknown (its depth needs 2.3 or newer): " + e;
                 LivingHorizonClient.LOGGER.warn("Distant Horizons found, but its depth cannot be used: distant mobs show through its terrain", e);
                 return false;
             }
@@ -117,14 +127,25 @@ final class DhDepth {
 
     /** {@code {a, b, signed, nothing}} of the projection Distant Horizons' depth is made with. */
     private static float @Nullable [] terms(Object proxy) throws ReflectiveOperationException {
-        Object params = renderParams.get(null);
-        Object matrix = params == null ? null : projection.get(params);
-        if (matrix == null) return none("Distant Horizons has not drawn yet");
-        float a = m22.getFloat(matrix), c = m23.getFloat(matrix), d = m32.getFloat(matrix);
-        // The matrix is stored one way or the other: the entry that is -1 is the one that
-        // divides by depth, the other one is the offset.
-        float b = Math.abs(c + 1.0f) < 1.0e-3f ? d : c;
-        boolean signed = "NEG_ONE_TO_POS_ONE".equals(String.valueOf(name.invoke(depthRange.invoke(proxy))));
+        float a, b;
+        if (renderParams != null) {
+            Object params = renderParams.get(null);
+            Object matrix = params == null ? null : projection.get(params);
+            if (matrix == null) return none("Distant Horizons has not drawn yet");
+            a = m22.getFloat(matrix);
+            float c = m23.getFloat(matrix), d = m32.getFloat(matrix);
+            // The matrix is stored one way or the other: the entry that is -1 is the one that
+            // divides by depth, the other one is the offset.
+            b = Math.abs(c + 1.0f) < 1.0e-3f ? d : c;
+        } else {
+            float[] planes = planes(proxy);
+            if (planes == null) return none("Distant Horizons has no clip planes yet");
+            float near = planes[0], far = planes[1];
+            a = (far + near) / (near - far);
+            b = 2.0f * far * near / (near - far);
+        }
+        boolean signed = depthRange == null
+                || "NEG_ONE_TO_POS_ONE".equals(String.valueOf(name.invoke(depthRange.invoke(proxy))));
         float[] iris = irisPlanes();
         if (iris != null) {
             // A shader pack draws Distant Horizons' terrain with Iris's own projection, whose
@@ -135,8 +156,22 @@ final class DhDepth {
             signed = true;
         }
         if (Math.abs(b) < 1.0e-6f) return none("Distant Horizons has no projection yet");
-        float nothing = farDepth.getFloat(depthDirection.invoke(proxy));
+        float nothing = depthDirection == null || farDepth == null ? 1.0f : farDepth.getFloat(depthDirection.invoke(proxy));
         return new float[]{a, b, signed ? 1.0f : 0.0f, nothing};
+    }
+
+    /**
+     * {@code {near, far}} as Distant Horizons sets them on its projection before 3.2, which
+     * keeps no copy of it: its near plane, held to 7.5 blocks unless the height-based
+     * override is on, and its far plane. Null when they are not known yet.
+     */
+    private static float @Nullable [] planes(Object proxy) throws ReflectiveOperationException {
+        if (nearPlane == null || farPlane == null) return null;
+        float partialTick = net.minecraft.client.Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(true);
+        float near = ((Number) nearPlane.invoke(proxy, partialTick)).floatValue();
+        if (nearOverride == null || ((Number) nearOverride.invoke(null)).floatValue() == -1.0f) near = Math.min(near, 7.5f);
+        float far = ((Number) farPlane.invoke(null)).floatValue();
+        return near > 0.0f && far > near ? new float[]{near, far} : null;
     }
 
     /**
@@ -199,21 +234,46 @@ final class DhDepth {
         Class<?> result = Class.forName(api + "objects.DhApiResult");
         Class<?> param = Class.forName(api + "methods.events.sharedParameterObjects.DhApiRenderParam");
         Class<?> matrix = Class.forName(api + "objects.math.DhApiMat4f");
-        Class<?> direction = Class.forName(api + "enums.config.EDhApiDepthDirection");
         renderProxy = delayed.getField("renderProxy");
-        depthTexture = proxy.getMethod("getDhDepthTextureGlId");
-        depthRange = proxy.getMethod("getDepthRange");
-        depthDirection = proxy.getMethod("getDepthDirection");
+        try {
+            depthTexture = proxy.getMethod("getDhDepthTextureGlId");
+        } catch (NoSuchMethodException e) {
+            depthTexture = proxy.getMethod("getDhDepthTextureId"); // before 3.3
+        }
+        try {
+            depthRange = proxy.getMethod("getDepthRange");
+            depthDirection = proxy.getMethod("getDepthDirection");
+            farDepth = Class.forName(api + "enums.config.EDhApiDepthDirection").getField("farDepth");
+        } catch (ReflectiveOperationException e) {
+            depthRange = depthDirection = null; // before 3.3.2: OpenGL's usual depth
+            farDepth = null;
+        }
         success = result.getField("success");
-        farDepth = direction.getField("farDepth");
         name = Enum.class.getMethod("name");
         projection = param.getField("dhProjectionMatrix");
         m22 = matrix.getField("m22");
         m23 = matrix.getField("m23");
         m32 = matrix.getField("m32");
-        // Not API: the last parameters Distant Horizons rendered with.
-        renderParams = Class.forName("com.seibel.distanthorizons.core.api.internal.ClientApi").getDeclaredField("RENDER_PARAMS");
-        renderParams.setAccessible(true);
+        // Not API: the last parameters Distant Horizons rendered with, from 3.2.
+        try {
+            renderParams = Class.forName("com.seibel.distanthorizons.core.api.internal.ClientApi").getDeclaredField("RENDER_PARAMS");
+            renderParams.setAccessible(true);
+        } catch (NoSuchFieldException e) {
+            renderParams = null;
+            // Before 3.2, its planes: the near one through the API, the far one and the override not.
+            nearPlane = proxy.getMethod("getNearClipPlaneDistanceInBlocks", float.class);
+            Class<?> util = Class.forName("com.seibel.distanthorizons.core.util.RenderUtil");
+            farPlane = util.getMethod("getFarClipPlaneDistanceInBlocks");
+            nearOverride = null;
+            for (String override : new String[]{"getHeightBasedNearClipOverride", "getHeightBasedNearClipOverrideBlockDistance"}) {
+                try {
+                    nearOverride = util.getMethod(override);
+                    break;
+                } catch (NoSuchMethodException ignored) {
+                    // the other name
+                }
+            }
+        }
         payload = result.getField("payload");
         try {
             blazeDepthTexture = proxy.getMethod("getDhDepthTextureBlazeWrapper");
