@@ -183,7 +183,8 @@ public final class FarDepth {
             } else if (config.anyDistant() && config.depthOcclusion) {
                 if (available()) merged = merge();
                 else if (!broken && DhDepth.available()) merged = mergeDh();
-                else if (!ready) reason = "neither Voxy nor Distant Horizons is usable";
+                // Why Distant Horizons is of no use (too old, most often), not what an earlier frame said.
+                else reason = Platform.isModLoaded("distanthorizons") ? DhDepth.reason() : "neither Voxy nor Distant Horizons is usable";
             }
             // Distant Horizons' fade, without a shader pack, needs to know where the entities are.
             boolean dhFade = wanted && config.anyDistant() && config.optDhFade && DhDepth.available()

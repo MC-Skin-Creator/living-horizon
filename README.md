@@ -29,7 +29,7 @@ version into the world's `datapacks/` folder (see *The data pack* below).
 [Voxy](https://modrinth.com/mod/voxy) and
 [Distant Horizons](https://modrinth.com/mod/distanthorizons) are optional. The mod works
 with the game alone, at whatever render distance you like, and on top of either of them if
-you use one: it finds it by itself.
+you use one: it finds it by itself. Distant Horizons works from 2.3 on.
 
 | Minecraft | Java | Fabric, Quilt | NeoForge | Forge |
 |---|---|---|---|---|
