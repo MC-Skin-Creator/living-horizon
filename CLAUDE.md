@@ -144,11 +144,14 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Far terrain depth missing** (depth view without Voxy's or Distant Horizons' terrain,
   mobs not hidden behind its hills): read the *Far terrain depth* line of the debug panel or
   `/livinghorizon lod`, with *Lazy far depth* off, since lazy depth hides the real reason.
-- **Distant Horizons version.** Its depth needs 3.3.2 or newer (`getDepthRange`,
-  `getDepthDirection`, `EDhApiDepthDirection`), its world 3.0 or newer (`getOpacity`).
-  Every game version has the latest Distant Horizons: compare its API across versions by
-  downloading the jars from Modrinth and running `javap` on the classes `DhDepth` and
-  `DhSource` reach.
+- **Distant Horizons version.** Players run old ones: `DhDepth` and `DhSource` work from
+  2.3 on and fall back where its API is missing. Before 3.3.2 there is no depth layout
+  (`getDepthRange`, `getDepthDirection`: OpenGL's usual one), before 3.3 the depth texture is
+  `getDhDepthTextureId`, before 3.2 no `RENDER_PARAMS` (the projection is rebuilt from its
+  near and far planes), before 3.0 no `getOpacity` (`isSolid` instead), before 2.4 no
+  `createSoftCache` (a null cache). Compare its API across versions by downloading the jars
+  from Modrinth and running `javap` on the classes these two reach; a new requirement on
+  its API gets a fallback, never a dead end.
 - **Before 1.21.5** the game's depth texture has an unsized format (`GL_DEPTH_COMPONENT`):
   `glTextureStorage2D` refuses it, so anything copied from it is allocated the way the game
   allocates its own. A copy "with no size" or an all-white depth view is this.
