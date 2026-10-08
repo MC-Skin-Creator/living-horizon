@@ -306,7 +306,8 @@ public final class OcclusionQueries {
         if (framebuffer != 0 && framebufferDepth == depthTexture) return;
         if (framebuffer != 0) GL30C.glDeleteFramebuffers(framebuffer);
         int format = GL45C.glGetTextureLevelParameteri(depthTexture, 0, GL11C.GL_TEXTURE_INTERNAL_FORMAT);
-        boolean stencil = format == GL30C.GL_DEPTH24_STENCIL8 || format == GL30C.GL_DEPTH32F_STENCIL8;
+        boolean stencil = format == GL30C.GL_DEPTH24_STENCIL8 || format == GL30C.GL_DEPTH32F_STENCIL8
+                || format == GL30C.GL_DEPTH_STENCIL;
         framebuffer = GL45C.glCreateFramebuffers();
         GL45C.glNamedFramebufferTexture(framebuffer,
                 stencil ? GL30C.GL_DEPTH_STENCIL_ATTACHMENT : GL30C.GL_DEPTH_ATTACHMENT, depthTexture, 0);
