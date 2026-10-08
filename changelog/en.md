@@ -23,3 +23,4 @@
 ### Fixes
 - **Before Minecraft 1.21.5** — distant mobs are hidden behind Distant Horizons' and Voxy's hills too, and the debug depth view is no longer all white.
 - **Older Distant Horizons** — distant mobs are hidden behind Distant Horizons' hills and walk on its terrain with versions from 2.3 on, not only the latest.
+- **Far water is see-through** — with Voxy, a mob swimming in a distant river or sea shows under the surface, tinted by the water, instead of being cut off at it or not drawn at all.

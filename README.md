@@ -362,7 +362,14 @@ With a shader pack that keeps Voxy's terrain out of the game's depth buffer (Pho
 Voxy's mountains. `compat/FarDepth` writes Voxy's depth into the game's - with Voxy's own
 depth blit - just before the entities are drawn, and puts the original back just after,
 except where an entity was drawn. Distant mobs are then hidden by Voxy terrain pixel by
-pixel, and the pack still finds the depth it expects. Without a pack, Voxy does this itself.
+pixel, and the pack still finds the depth it expects.
+
+Without a pack, Voxy writes its depth itself - water surfaces included, while the game
+draws its own water after the entities. A mob swimming far away would be cut off at the
+surface. So the game's depth is copied just before Voxy draws, and Voxy's just before it
+draws its water; around the entities, Voxy's terrain goes back in without its water, and
+what of them ends up under it is tinted with the water's colour. Hiding mobs behind terrain
+sees through water too.
 
 ### Mobs hidden by depth
 
