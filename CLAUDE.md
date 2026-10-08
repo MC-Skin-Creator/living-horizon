@@ -136,6 +136,26 @@ scenarios in `src/gametest/java` and takes screenshots to look at. Run
 for what the change touches, and show the user the screenshots. Voxy and Distant Horizons
 cannot run there: say so when a check depends on them.
 
+## Debugging checklist
+
+Check these first when a symptom matches. When a debugging session finds a cause that could
+come back, add it here in the same pull request: this file is what the next session reads.
+
+- **Far terrain depth missing** (depth view without Voxy's or Distant Horizons' terrain,
+  mobs not hidden behind its hills): read the *Far terrain depth* line of the debug panel or
+  `/livinghorizon lod`, with *Lazy far depth* off, since lazy depth hides the real reason.
+- **Distant Horizons version.** Its depth needs 3.3.2 or newer (`getDepthRange`,
+  `getDepthDirection`, `EDhApiDepthDirection`), its world 3.0 or newer (`getOpacity`).
+  Every game version has the latest Distant Horizons: compare its API across versions by
+  downloading the jars from Modrinth and running `javap` on the classes `DhDepth` and
+  `DhSource` reach.
+- **Before 1.21.5** the game's depth texture has an unsized format (`GL_DEPTH_COMPONENT`):
+  `glTextureStorage2D` refuses it, so anything copied from it is allocated the way the game
+  allocates its own. A copy "with no size" or an all-white depth view is this.
+- **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
+  player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
+  scenario shows the depth view.
+
 ## Changelog
 
 A pull request that changes what a player sees or feels adds its entry to

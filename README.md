@@ -29,7 +29,8 @@ version into the world's `datapacks/` folder (see *The data pack* below).
 [Voxy](https://modrinth.com/mod/voxy) and
 [Distant Horizons](https://modrinth.com/mod/distanthorizons) are optional. The mod works
 with the game alone, at whatever render distance you like, and on top of either of them if
-you use one: it finds it by itself.
+you use one: it finds it by itself. Distant Horizons needs **3.3.2 or newer** for its terrain
+to hide distant mobs (3.0 or newer for the rest); an older one is left aside.
 
 | Minecraft | Java | Fabric, Quilt | NeoForge | Forge |
 |---|---|---|---|---|

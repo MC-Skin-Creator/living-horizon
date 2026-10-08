@@ -137,7 +137,7 @@ final class DhSource implements LodSource {
                 link();
             } catch (Throwable e) {
                 broken = true;
-                failure = "Distant Horizons found, but not the version this mod knows: " + e;
+                failure = "Distant Horizons found, but too old or unknown (its world needs 3.0 or newer): " + e;
                 LivingHorizonClient.LOGGER.warn("Distant Horizons found, but not the version this mod knows: its world cannot be read", e);
                 return false;
             }

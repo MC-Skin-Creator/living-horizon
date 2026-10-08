@@ -50,7 +50,7 @@ final class DhDepth {
                 link();
             } catch (Throwable e) {
                 broken = true;
-                reason = "Distant Horizons found, but not the version this mod knows: " + e;
+                reason = "Distant Horizons found, but too old or unknown (its depth needs 3.3.2 or newer): " + e;
                 LivingHorizonClient.LOGGER.warn("Distant Horizons found, but its depth cannot be used: distant mobs show through its terrain", e);
                 return false;
             }
