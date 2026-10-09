@@ -19,7 +19,6 @@ import net.minecraft.util.Util;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobCategory;
 //? if >=26.2 {
 /*import net.minecraft.world.entity.animal.bee.Bee;
@@ -27,11 +26,6 @@ import net.minecraft.world.entity.animal.parrot.Parrot;
 *///?} else {
 import net.minecraft.world.entity.animal.FlyingAnimal;
 //?}
-//? if >=1.21.9
-import net.minecraft.world.entity.decoration.Mannequin;
-//? if >=1.21.2
-import net.minecraft.world.entity.vehicle.boat.AbstractBoat;
-import net.minecraft.world.scores.Scoreboard;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
@@ -53,6 +47,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 /**
  * The mobs this client has met, left where it last saw them once the server stops
@@ -86,7 +81,10 @@ public final class MobMemory {
         float yaw;
         String nbt;
         long seenAt;
-        /** Published by the data pack: dropped when the pack drops it, which means it died. */
+        /**
+         * Shared by the server, through the data pack or the mod: dropped when the server stops
+         * sharing it, which means it died (or, with the mod, that it is now too far).
+         */
         boolean fromPack;
         /** Wore a name tag when last seen. */
         boolean named;
@@ -100,6 +98,8 @@ public final class MobMemory {
         /** The real mob, sent again by the server, that the copy walks up to before it takes over. */
         transient @Nullable Entity handover;
         transient boolean failed;
+        /** The saved data the server last shared for it, as a hash: 0 when none yet. */
+        transient int sharedLook;
         /** Its saved data, being read off the game's thread. */
         transient @Nullable CompletableFuture<CompoundTag> parsed;
         transient @Nullable EntityType<?> entityType;
@@ -124,8 +124,6 @@ public final class MobMemory {
     }
 
     private static final Gson GSON = new GsonBuilder().create();
-    private static final List<String> DIMENSIONS =
-            List.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end");
     /** Bounds the file; the oldest sightings go first. */
     private static final int MAX_REMEMBERED = 2000;
     /** Nanoseconds per tick for building puppets, so that a crowd does not cost one long frame. */
@@ -397,18 +395,9 @@ public final class MobMemory {
         while (mobs.size() > MAX_REMEMBERED) mobs.remove(mobs.keySet().iterator().next());
     }
 
-    /**
-     * Mobs, boats - a parked boat vanishes from far away just like an animal - and
-     * mannequins, the skinned figures that Distant Friends stands far away as fake players.
-     */
+    /** What a client remembers: see {@link MobKinds#figure}. */
     static boolean rememberable(Entity entity) {
-        // Mannequins came in 1.21.9; every boat was one class before 1.21.2.
-        //? if >=1.21.9 {
-        return entity instanceof Mob || entity instanceof AbstractBoat || entity instanceof Mannequin;
-        //?} elif >=1.21.2 {
-        /*return entity instanceof Mob || entity instanceof AbstractBoat;
-        *///?} else
-        /*return entity instanceof Mob || entity instanceof net.minecraft.world.entity.vehicle.Boat;*/
+        return MobKinds.figure(entity);
     }
 
     private static boolean worthRemembering(Entity mob, FarConfig config) {
@@ -435,8 +424,9 @@ public final class MobMemory {
 
     // --- Every tick --------------------------------------------------------------------
 
+    /** {@code shared}: what the server shares, asked for once a second; null when it shares nothing. */
     void tick(ClientLevel level, LocalPlayer self, int renderDistanceBlocks, FarConfig config,
-              @Nullable SharedPositions pack, Scoreboard scoreboard) {
+              @Nullable Supplier<List<SharedPositions.SharedMob>> shared) {
         bound = level;
         world = worldOf(level);
         selfX = self.getX();
@@ -452,7 +442,7 @@ public final class MobMemory {
         String dimension = level.dimension().identifier().toString();
 
         if (clock % 20 == 0) {
-            if (pack != null) sync(pack, scoreboard);
+            if (shared != null) sync(shared.get());
             learnReach();
             reconcile(level, dimension, renderDistanceBlocks);
             choose(dimension, config);
@@ -562,19 +552,17 @@ public final class MobMemory {
     }
 
     /**
-     * Takes the data pack's word: where every mob it publishes is now, as last seen by
-     * whoever was near it. A mob this client has seen keeps the look it saved; one it
-     * never met is built from its kind, variant and age. One the pack stopped publishing
-     * died: the server resets the scores of a dead mob.
+     * Takes the server's word, through the data pack or the mod: where every mob it shares
+     * is now, as last seen by whoever was near it. A mob this client has seen keeps the look
+     * it saved, until the mod says the mob changed; one it never met is built from what the
+     * server says - its saved data with the mod, its kind, variant and age with the pack. One
+     * the server stopped sharing died: the server resets the scores of a dead mob, and the
+     * mod says to forget it.
      */
-    private void sync(SharedPositions pack, Scoreboard scoreboard) {
+    private void sync(List<SharedPositions.SharedMob> shared) {
         Set<UUID> published = new HashSet<>();
-        for (UUID id : pack.mobs(scoreboard)) {
-            SharedPositions.MobReport report = pack.readMob(scoreboard, id);
-            String type = report == null ? null : MobKinds.type(report.kind());
-            String dimension = report == null || report.dimension() >= DIMENSIONS.size()
-                    ? null : DIMENSIONS.get(report.dimension());
-            if (type == null || dimension == null) continue;
+        for (SharedPositions.SharedMob report : shared) {
+            UUID id = report.id();
             published.add(id);
             if (live.containsKey(id)) continue;
             Double gone = dismissed.get(id);
@@ -584,21 +572,37 @@ public final class MobMemory {
             }
 
             Remembered mob = mobs.get(id);
+            int look = report.exact() ? report.nbt().hashCode() | 1 : 0;
             if (mob == null) {
                 mob = new Remembered();
                 mob.id = id;
-                mob.type = type;
-                mob.nbt = MobKinds.nbt(type, report.variant(), report.baby());
+                mob.type = report.type();
+                mob.nbt = report.nbt();
+                mob.yaw = report.yaw();
                 mob.seenAt = System.currentTimeMillis();
+                mob.sharedLook = look;
                 mobs.put(id, mob);
+            } else if (look != 0 && mob.sharedLook != look) {
+                // Its look changed on the server (sheared, grown up, renamed): built again. The
+                // server's first word on a mob met here keeps the look it was met with.
+                if (mob.sharedLook != 0 || mob.fromPack) {
+                    mob.nbt = report.nbt();
+                    mob.parsed = null;
+                    mob.puppet = null;
+                    mob.motion = null;
+                    mob.failed = false;
+                }
+                mob.sharedLook = look;
             } else if (mob.x == report.x() && mob.y == report.y() && mob.z == report.z()
-                    && dimension.equals(mob.dimension) && isHere(mob) && mob.fromPack) {
+                    && report.dimension().equals(mob.dimension) && isHere(mob) && mob.fromPack
+                    && (!report.exact() || mob.named == report.named())) {
                 continue;
             }
             // A mob already drawn is not snapped to its new spot: it walks there (MobMotion).
             mob.fromPack = true;
+            if (report.exact()) mob.named = report.named();
             mob.world = world;
-            mob.dimension = dimension;
+            mob.dimension = report.dimension();
             mob.x = report.x();
             mob.y = report.y();
             mob.z = report.z();

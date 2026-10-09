@@ -7,17 +7,26 @@ through several rendering techniques, and birds bring the sky to life. It works 
 game alone, at any render distance, and supports far-terrain mods such as Voxy and
 Distant Horizons.
 
-A client-side mod for Fabric, Quilt, NeoForge and Forge, on Minecraft **1.20 to 1.21.11**
-and **26.1 to 26.3**. Nothing is sent to the server: on its own, the mod uses only what a
-vanilla client already receives. With the companion **data pack** on the server (not a
-mod: a folder in `world/datapacks`), every position is exact at any distance.
+A mod for Fabric, Quilt, NeoForge and Forge, on Minecraft **1.20 to 1.21.11** and
+**26.1 to 26.3**, for the client first. Nothing is sent to the server: on its own, the mod
+uses only what a vanilla client already receives. Installed on the **server** as well, the
+same jar shares every player and every remembered mob of the world with the players who
+run it, exact at any distance and with each mob's real look. A server that runs no mod can
+use the companion **data pack** instead (a folder in `world/datapacks`), which shares the
+positions.
 
 ## Install
 
 One jar per game version and loader, named
 `livinghorizon-<version>+mc<game version>-<loader>.jar` (no loader suffix for Fabric): drop it
-into `.minecraft/mods/`. For exact positions, also drop the data pack zip of the same game
-version into the world's `datapacks/` folder (see *The data pack* below).
+into `.minecraft/mods/`. For exact positions, also drop the same jar into the server's
+`mods/` folder (see *The mod on a server* below), or, on a server without mods, the data
+pack zip of the same game version into the world's `datapacks/` folder (see *The data pack*
+below).
+
+- **On a server**: the same jar, with the same loader and, on Fabric and Quilt, the Fabric
+  API. Players without the mod join as before: they are sent nothing. The mod still works
+  for the players who have it on a server without it.
 
 - **Fabric**: [Fabric Loader](https://fabricmc.net/use/) 0.15.11 or newer and the
   [Fabric API](https://modrinth.com/mod/fabric-api).
@@ -62,10 +71,10 @@ are cut from the commits merged into `main`; a version below `1.0.0` is marked *
    Horizon...* on the Options screen, Mod Menu's *Configure*, or `/livinghorizon config`)
    and press *Scan the chunks around*, or type `/livinghorizon scan` (or
    `/livinghorizon scan 64` for a radius of your choice). The mobs found appear on the
-   horizon at once. On a server, the scan has nothing to read: the data pack is what
-   shares the mobs.
+   horizon at once. On a server, the scan has nothing to read: the mod on the server, or
+   the data pack, is what shares the mobs.
 3. **Check what is followed.** `/livinghorizon` lists the players followed and where each
-   position comes from, and says whether the data pack is found.
+   position comes from, and says whether the server runs the mod or the data pack.
 
 **Units.** The scan radius is in **chunks** (16 blocks each): the default 32 reads the
 chunks within 512 blocks of you. Every other distance in the settings is in **blocks**:
@@ -79,16 +88,18 @@ number of mobs, the bird amount a percentage.
 
 ## Good to know
 
-- **The data pack makes positions exact.** Without it, a far player is placed from the
-  locator bar, so:
+- **The mod on the server, or the data pack, makes positions exact.** Without either, a
+  far player is placed from the locator bar, so:
   - `/gamerule locatorBar false` on the server leaves only the memory of the last position;
   - a player who **sneaks** leaves the locator bar, and their copy freezes where it was;
   - players in another dimension are not followed.
 - **With the data pack, everyone's position is public** to whoever reads its scores: say
   so to your players. Anyone in a team of colour `black`, `dark_blue`, `dark_green` or
   `dark_aqua` would see the coordinates in their sidebar (see *The data pack* below).
+- **With the mod on the server, positions go only to the players running the mod**, and
+  spectators are never shared; any of those players can still read them.
 - **The scan only works in single player**: a server never sends the mobs of chunks far
-  from you. On a server, the data pack shares them.
+  from you. On a server, the mod on the server or the data pack shares them.
 
 ### What older versions leave out
 
@@ -185,6 +196,44 @@ The game itself lacks what these need, so they are left out rather than imitated
 ## How it works
 
 Everything below is for the curious, and for whoever works on the mod.
+
+### The mod on a server
+
+The same jar runs on a server (`LivingHorizon` is the entry point on both sides,
+`server/ServerShare` the server's part) and talks to the clients running it on one channel,
+`livinghorizon:sync` (`platform/Network`, written by `share/Protocol`). The channel is
+optional both ways: a vanilla client joins a server running the mod, a client with the mod
+joins a vanilla server, and nothing ever goes from a client to the server.
+
+- **Players**: five times a second, every player online, in every dimension (spectators
+  left out). Players who logged off are sent where they were last, kept in
+  `<world>/livinghorizon/players.json`.
+- **Mobs**: the server remembers every shared mob it has had loaded, and keeps it where it
+  was while its chunk is unloaded (`server/MobRegistry`, kept in
+  `<world>/livinghorizon/mobs.json`); it drops it when it dies or is removed for good. Which
+  mobs: the kinds of the data pack, every boat, mannequins, every mob with a name tag, and
+  the mobs of other mods that are not monsters (`MobKinds.shared`). A client is sent those
+  within `mobRadius` of it in its dimension, nearest first, every five seconds, as a change
+  from what it was sent: a new mob with its saved data (less its memories, trades and
+  other state that never shows), so it is drawn as it is without ever having been met; a
+  moved one by its position; and the ones to forget, dead or now too far.
+- The client (`track/ServerFeed`) takes the mod's word before the data pack's, and the data
+  pack's when the mod says nothing of a player. Silent for three seconds, the server is no
+  longer trusted. `/livinghorizon` says when the server runs the mod.
+
+`config/livinghorizon-server.json`, on the server:
+
+| Setting | Default | Unit | |
+|---|---|---|---|
+| `enabled` | `true` | | Off, the server shares nothing |
+| `sharePlayers` | `true` | | Where every player online is |
+| `shareOfflinePlayers` | `true` | | Where players who logged off were last |
+| `shareMobs` | `true` | | The mobs the server remembers |
+| `mobRadius` | `2048` | blocks | How far from a player the mobs sent to them are |
+| `maxMobsPerPlayer` | `2000` | mobs | How many mobs one player is sent at most, nearest first |
+
+A single player world runs the server part too: opened to LAN, it shares its mobs with the
+players who join.
 
 ### The data pack: exact positions
 
