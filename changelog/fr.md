@@ -24,3 +24,4 @@
 - **Avant Minecraft 1.21.5** — les créatures lointaines sont elles aussi cachées derrière les collines de Distant Horizons et de Voxy, et la vue de la profondeur du debug n'est plus toute blanche.
 - **Anciennes versions de Distant Horizons** — les créatures lointaines sont cachées derrière les collines de Distant Horizons et marchent sur son terrain dès la version 2.3, plus seulement avec la dernière.
 - **Photon avec TAAU** — avec Voxy et l'upscaling temporel de Photon activé, les créatures lointaines sont cachées derrière le terrain de Voxy là où il se trouve, et la vue de la profondeur du debug n'a plus de trou bleu là où le terrain du jeu rejoint celui de Voxy.
+- **Créatures lointaines noires** — sans shader pack, les créatures lointaines ne deviennent plus noires par moments, surtout visible en vol : là où le jeu n'a pas encore éclairé le sol, elles sont dessinées à la lumière du jour.
