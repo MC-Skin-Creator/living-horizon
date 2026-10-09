@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### New
+- **Worlds opened to LAN** — when you open your world to friends, your game shares everyone's position by itself: nobody installs a data pack, and friends who join only need the mod.
+
 ## 0.7.0 — 2026-10-17
 
 ### New

@@ -2,6 +2,9 @@
 
 ## Prochaine version
 
+### Nouveautés
+- **Mondes ouverts au LAN** — quand tu ouvres ton monde à des amis, ton jeu partage tout seul la position de tout le monde : plus de datapack à installer, les amis qui te rejoignent n'ont besoin que du mod.
+
 ## 0.7.0 — 2026-10-17
 
 ### Nouveautés
