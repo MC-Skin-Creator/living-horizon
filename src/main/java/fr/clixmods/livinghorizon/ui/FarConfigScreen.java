@@ -113,7 +113,12 @@ public final class FarConfigScreen extends SideOptionsScreen {
     /** Restore defaults sits beside Done: it is about every setting of the screen, not the birds. */
     @Override
     protected void addFooter() {
+        //? if >=1.20.2 {
         LinearLayout row = LinearLayout.horizontal().spacing(8);
+        //?} else {
+        /*LinearLayout row = new LinearLayout(0, 0, LinearLayout.Orientation.HORIZONTAL);
+        row.defaultChildLayoutSetting().padding(4);
+        *///?}
         row.addChild(Button.builder(Component.translatable(KEY + "restoreDefaults"), b -> restoreDefaults())
                 .tooltip(Tooltip.create(Component.translatable(KEY + "restoreDefaults.tooltip"))).width(150).build());
         row.addChild(Button.builder(CommonComponents.GUI_DONE, b -> onClose()).width(150).build());
