@@ -239,7 +239,10 @@ public final class OcclusionQueries {
                 GL11C.glDepthFunc(DepthFar.REVERSED ? GL11C.GL_GEQUAL : GL11C.GL_LEQUAL);
                 GL11C.glDepthMask(false);
                 GL11C.glColorMask(false, false, false, false);
-                GL11C.glViewport(0, 0, width, height);
+                // Where the world is drawn: all of the texture, or its corner under a render scale.
+                int pictureWidth = FarDepth.pictureWidth(), pictureHeight = FarDepth.pictureHeight();
+                GL11C.glViewport(0, 0, pictureWidth > 0 ? Math.min(pictureWidth, width) : width,
+                        pictureHeight > 0 ? Math.min(pictureHeight, height) : height);
                 GL20C.glUseProgram(program);
                 GL20C.glUniformMatrix4fv(matrixLocation, false, VIEW_PROJECTION);
                 GL30C.glBindVertexArray(vertexArray);
