@@ -31,20 +31,20 @@ import net.neoforged.neoforge.common.NeoForge;
 /*import net.minecraft.client.gui.screens.Screen;
 import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import java.util.function.Function;
 *///?}
 
 /**
- * Client entry point. There is no server side: everything the mod knows, a vanilla
- * client already receives.
+ * Client entry point. Everything the mod draws, it learns from what a vanilla client
+ * already receives, and from what a server running the mod or the data pack shares.
+ * {@link LivingHorizon} is the common entry point, run before this one on the client too.
  *
  * <p>Fabric and Quilt find it through {@code fabric.mod.json} and {@code quilt.mod.json}
  * and call {@code onInitializeClient}; NeoForge finds it by its annotation and calls the
- * constructor, on the client only; Forge does the same, and keeps it off a server through
- * {@code clientSideOnly} in {@code mods.toml}, its annotation having no side. Every loader
- * ends in the same {@code start}.
+ * constructor, on the client only. Forge builds one class per mod, {@link LivingHorizon},
+ * which calls {@code forge} when it runs on a client. Every loader ends in the same
+ * {@code start}.
  */
 //? if fabric || quilt {
 public final class LivingHorizonClient implements ClientModInitializer {
@@ -52,10 +52,9 @@ public final class LivingHorizonClient implements ClientModInitializer {
 /*@Mod(value = LivingHorizonClient.MOD_ID, dist = Dist.CLIENT)
 public final class LivingHorizonClient {
 *///?} else {
-/*@Mod(LivingHorizonClient.MOD_ID)
-public final class LivingHorizonClient {
+/*public final class LivingHorizonClient {
 *///?}
-    public static final String MOD_ID = "livinghorizon";
+    public static final String MOD_ID = LivingHorizon.MOD_ID;
     public static final Logger LOGGER = LoggerFactory.getLogger("Living Horizon");
 
     private static KeyMapping toggle;
@@ -76,7 +75,7 @@ public final class LivingHorizonClient {
     *///?} elif <1.21.6 {
     /*// Forge before 56 (1.21.6) builds the mod with no argument, and hands it its event bus
     // through the loading context.
-    public LivingHorizonClient() {
+    static void forge() {
         FMLJavaModLoadingContext context = FMLJavaModLoadingContext.get();
         Events.init(context.getModEventBus());
         // The "Configure" button on the mod list, where Fabric has Mod Menu's. Before Forge 49
@@ -91,7 +90,7 @@ public final class LivingHorizonClient {
         start();
     }
     *///?} else {
-    /*public LivingHorizonClient(FMLJavaModLoadingContext context) {
+    /*static void forge(FMLJavaModLoadingContext context) {
         Events.init(context.getModBusGroup());
         // The "Configure" button on the mod list, where Fabric has Mod Menu's.
         context.registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
@@ -122,6 +121,9 @@ public final class LivingHorizonClient {
         Events.stopping(LodWorld::suspend);
         Events.entityLoad((entity, level) -> FarPlayerTracker.get().mobs().onLoad(entity));
         Events.entityUnload((entity, level) -> FarPlayerTracker.get().mobs().onUnload(entity, level));
+        // What a server running the mod shares; forgotten with the server.
+        Events.payload(data -> FarPlayerTracker.get().feed().accept(data));
+        Events.disconnect(() -> FarPlayerTracker.get().feed().clear());
         //? if fabric || quilt {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, context) -> dispatcher.register(
                 LivingHorizonCommand.<net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource>tree(

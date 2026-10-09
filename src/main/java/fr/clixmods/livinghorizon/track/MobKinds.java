@@ -1,11 +1,20 @@
 package fr.clixmods.livinghorizon.track;
 
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobCategory;
+//? if >=1.21.9
+import net.minecraft.world.entity.decoration.Mannequin;
+//? if >=1.21.2
+import net.minecraft.world.entity.vehicle.boat.AbstractBoat;
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 
 /**
- * The mobs the data pack publishes, numbered the way it numbers them: kind 1 is the
+ * Which mobs are shared, and the mobs the data pack publishes, numbered the way it numbers them: kind 1 is the
  * first of {@link #TYPES}. The pack has the same list twice, in
  * {@code tags/entity_type/remembered.json} and {@code function/mob_kind.mcfunction};
  * {@code DatapackTest} fails when the three disagree.
@@ -34,6 +43,35 @@ public final class MobKinds {
     }
 
     private MobKinds() {
+    }
+
+    /**
+     * Mobs, boats - a parked boat vanishes from far away just like an animal - and
+     * mannequins, the skinned figures that Distant Friends stands far away as fake players.
+     */
+    public static boolean figure(Entity entity) {
+        // Mannequins came in 1.21.9; every boat was one class before 1.21.2.
+        //? if >=1.21.9 {
+        return entity instanceof Mob || entity instanceof AbstractBoat || entity instanceof Mannequin;
+        //?} elif >=1.21.2 {
+        /*return entity instanceof Mob || entity instanceof AbstractBoat;
+        *///?} else
+        /*return entity instanceof Mob || entity instanceof net.minecraft.world.entity.vehicle.Boat;*/
+    }
+
+    /**
+     * What a server running the mod shares: the kinds of the data pack, every boat, mannequins,
+     * every mob with a name tag, and the mobs of other mods that are not monsters - what a
+     * client shows out of the box. A client that shows more remembers the rest itself.
+     */
+    public static boolean shared(Entity entity) {
+        if (!figure(entity)) return false;
+        if (entity.hasCustomName()) return true;
+        Identifier key = EntityType.getKey(entity.getType());
+        String type = key.toString();
+        if (TYPES.contains(type) || isBoat(type) || type.equals("minecraft:mannequin")) return true;
+        return !Identifier.DEFAULT_NAMESPACE.equals(key.getNamespace())
+                && entity.getType().getCategory() != MobCategory.MONSTER;
     }
 
     public static @Nullable String type(int kind) {

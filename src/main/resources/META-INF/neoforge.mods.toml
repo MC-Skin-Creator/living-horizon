@@ -11,6 +11,8 @@ description = "Gives life to the distance: animals, villagers, birds and other p
 authors = "clixmods"
 displayURL = "https://github.com/MC-Skin-Creator/living-horizon"
 logoFile = "assets/livinghorizon/icon.png"
+# The mod runs on a client, on a server, or on both: neither side needs the other to have it.
+displayTest = "IGNORE_ALL_VERSION"
 
 [[mixins]]
 config = "livinghorizon.mixins.json"
@@ -19,13 +21,13 @@ config = "livinghorizon.mixins.json"
 modId = "neoforge"
 type = "required"
 versionRange = "${neoforge}"
-side = "CLIENT"
+side = "BOTH"
 
 [[dependencies.${id}]]
 modId = "minecraft"
 type = "required"
 versionRange = "${minecraft}"
-side = "CLIENT"
+side = "BOTH"
 
 [[dependencies.${id}]]
 modId = "voxy"
