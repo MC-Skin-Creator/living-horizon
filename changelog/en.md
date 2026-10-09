@@ -10,6 +10,7 @@
 - **Livelier mobs** — distant mobs play walks of up to six blocks, chosen from the blocks around them, with pauses to graze and glance around, instead of circling. Grass, flowers and dug paths no longer stop them; fences and cliffs still do. They never jump: as you get close they walk back to where they were, then up to the real mob before the game takes over, and they walk to their new place when they move.
 - **Mobs hidden by what hides them** — a distant mob entirely behind a hill, Voxy's or Distant Horizons' included, is not drawn at all, which saves a lot with many mobs. On by default; the switches moved to *Debug...*.
 - **Players who logged off** stay asleep where they left, until they come back.
+- **Animation settings** — two new sliders choose when distant mobs stop playing their animations: below a size on screen, or past a distance.
 - **Settings beside the game** — the settings screens sit on the left with no blur behind them, so changes show on the world as you make them.
 - **Impostors** (off by default) — far enough away, distant players and mobs are drawn as a flat picture of themselves instead of their whole model, which costs much less with many of them. The pictures follow skins and resource packs; an *Impostors...* screen in the settings shows them and bakes them again.
 - **Polygon count on F3** — the debug screen shows how many polygons the distant players and mobs cost.
