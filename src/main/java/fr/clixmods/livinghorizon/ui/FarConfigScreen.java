@@ -2,6 +2,7 @@ package fr.clixmods.livinghorizon.ui;
 
 import com.mojang.serialization.Codec;
 import fr.clixmods.livinghorizon.FarConfig;
+import fr.clixmods.livinghorizon.QualityPreset;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobScan;
 import net.minecraft.client.Minecraft;
@@ -9,8 +10,10 @@ import net.minecraft.client.OptionInstance;
 import net.minecraft.client.Options;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 
@@ -40,15 +43,29 @@ public final class FarConfigScreen extends SideOptionsScreen {
         FarConfig c = FarConfig.get();
 
         header(Component.translatable(KEY + "general"));
+        QualityPreset preset = QualityPreset.of(c);
         list.addSmall(
-                integer("minApparentPixels", 0, 32, (int) c.minApparentPixels, v -> c.minApparentPixels = v),
-                bool("impostors", c.impostors, v -> c.impostors = v),
-                integer("impostorDistance", 32, 2000, c.impostorDistance, v -> c.impostorDistance = v));
+                Button.builder(Component.translatable(KEY + "preset",
+                                Component.translatable(KEY + "preset." + (preset == null ? "custom" : preset.id()))), b -> {
+                            QualityPreset.next(FarConfig.get()).apply(FarConfig.get());
+                            rebuildWidgets();
+                        })
+                        .tooltip(Tooltip.create(Component.translatable(KEY + "preset.tooltip"))).build(),
+                integer("minApparentPixels", 0, 32, (int) c.minApparentPixels, v -> c.minApparentPixels = v)
+                        .createButton(minecraft.options, 0, 0, 150));
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "debug"), b -> minecraft.setScreen(new DebugScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "debug.tooltip"))).build(),
+                null);
+
+        header(Component.translatable(KEY + "impostorsSection"));
+        list.addSmall(
+                bool("impostors", c.impostors, v -> c.impostors = v),
+                integer("impostorDistance", 32, 2000, c.impostorDistance, v -> c.impostorDistance = v));
+        list.addSmall(
                 Button.builder(Component.translatable(KEY + "impostorPreview"), b -> minecraft.setScreen(new ImpostorScreen(this)))
-                        .tooltip(Tooltip.create(Component.translatable(KEY + "impostorPreview.tooltip"))).build());
+                        .tooltip(Tooltip.create(Component.translatable(KEY + "impostorPreview.tooltip"))).build(),
+                null);
 
         header(Component.translatable(KEY + "players"));
         list.addSmall(
@@ -90,8 +107,17 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "chooseBirds"), b -> minecraft.setScreen(new BirdTypesScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "chooseBirds.tooltip"))).build(),
-                Button.builder(Component.translatable(KEY + "restoreDefaults"), b -> restoreDefaults())
-                        .tooltip(Tooltip.create(Component.translatable(KEY + "restoreDefaults.tooltip"))).build());
+                null);
+    }
+
+    /** Restore defaults sits beside Done: it is about every setting of the screen, not the birds. */
+    @Override
+    protected void addFooter() {
+        LinearLayout row = LinearLayout.horizontal().spacing(8);
+        row.addChild(Button.builder(Component.translatable(KEY + "restoreDefaults"), b -> restoreDefaults())
+                .tooltip(Tooltip.create(Component.translatable(KEY + "restoreDefaults.tooltip"))).width(150).build());
+        row.addChild(Button.builder(CommonComponents.GUI_DONE, b -> onClose()).width(150).build());
+        layout.addToFooter(row);
     }
 
     /**

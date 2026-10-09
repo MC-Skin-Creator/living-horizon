@@ -11,7 +11,8 @@
 - **Mobs hidden by what hides them** — a distant mob entirely behind a hill, Voxy's or Distant Horizons' included, is not drawn at all, which saves a lot with many mobs. On by default; the switches moved to *Debug...*.
 - **Players who logged off** stay asleep where they left, until they come back.
 - **Settings beside the game** — the settings screens sit on the left with no blur behind them, so changes show on the world as you make them.
-- **Impostors** (off by default) — far enough away, distant players and mobs are drawn as a flat picture of themselves instead of their whole model, which costs much less with many of them. The pictures follow skins and resource packs; an *Impostors...* screen in the settings shows them and bakes them again.
+- **Impostors** (off by default) — far enough away, distant players and mobs are drawn as a flat picture of themselves instead of their whole model, which costs much less with many of them. The pictures follow skins and resource packs; an *Impostor Manager...* screen in the settings shows them, with a scroll bar, and bakes them again.
+- **Quality presets** — Low, Normal, High and Ultra set impostor distance, the number and range of distant mobs and the birds in one go, for powerful machines that want a fuller horizon. Impostors have their own settings category, and *Restore defaults* now sits beside *Done*.
 - **Polygon count on F3** — the debug screen shows how many polygons the distant players and mobs cost.
 - **Settings in the Options menu** — a "Living Horizon..." button next to Done, a new limit on how far distant mobs and players are drawn, and an unlimited number of mobs.
 - **Scan the chunks around** — in single player, a button in the settings (or `/livinghorizon scan`) reads the mobs of the chunks around you from the world itself: they show up on the horizon without walking there first.
