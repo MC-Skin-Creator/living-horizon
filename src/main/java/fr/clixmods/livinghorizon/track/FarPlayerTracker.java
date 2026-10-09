@@ -106,6 +106,10 @@ public final class FarPlayerTracker {
             }
         }
         FarConfig config = FarConfig.get();
+        // A world the mod has never been in: read its mobs at once, the way a scan would later.
+        if (mobs.takeFirstVisit() && config.distantMobs && MobScan.available(minecraft)) {
+            MobScan.start(minecraft, config.scanRadius);
+        }
         int dimension = SharedPositions.dimensionCode(current.dimension());
 
         Set<UUID> live = new HashSet<>();

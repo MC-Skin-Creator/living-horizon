@@ -157,6 +157,7 @@ public final class MobMemory {
     private final Map<UUID, Double> dismissed = new HashMap<>();
     private List<Remembered> shown = List.of();
     private @Nullable Path file;
+    private boolean firstVisit;
     /** The level the memory is read for: what unloads from any other one is not remembered. */
     private @Nullable ClientLevel bound;
     /** The seed of the world of {@link #bound}: what a memory must carry to be drawn. */
@@ -209,7 +210,9 @@ public final class MobMemory {
         close();
         file = Platform.configDir()
                 .resolve("livinghorizon").resolve("mobs").resolve(RestingPlayers.safe(server) + ".json");
-        if (!Files.exists(file)) return;
+        // No file yet: the mod has never been in this world.
+        firstVisit = !Files.exists(file);
+        if (firstVisit) return;
         try (Reader reader = Files.newBufferedReader(file)) {
             List<Remembered> read = GSON.fromJson(reader, new TypeToken<List<Remembered>>() { }.getType());
             if (read != null) {
@@ -224,8 +227,16 @@ public final class MobMemory {
         }
     }
 
+    /** True once per world the mod has never been in before: the cue for a first scan. */
+    boolean takeFirstVisit() {
+        boolean first = firstVisit;
+        firstVisit = false;
+        return first;
+    }
+
     void close() {
         save();
+        firstVisit = false;
         mobs.clear();
         live.clear();
         joining.clear();

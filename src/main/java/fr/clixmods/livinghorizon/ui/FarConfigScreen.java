@@ -76,7 +76,7 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 Button.builder(Component.translatable(KEY + "forgetMobs"), b -> confirm("forgetMobs",
                                 () -> FarPlayerTracker.get().mobs().forgetAll()))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "forgetMobs.tooltip"))).build());
-        list.addSmall(scanButton(), integer("scanRadius", MobScan.MIN_RADIUS, MobScan.MAX_RADIUS, c.scanRadius,
+        list.addSmall(scanButton(), chunks("scanRadius", MobScan.MIN_RADIUS, MobScan.MAX_RADIUS, c.scanRadius,
                 v -> c.scanRadius = v).createButton(minecraft.options, 0, 0, 150));
 
         header(Component.translatable(KEY + "birds"));
@@ -150,6 +150,13 @@ public final class FarConfigScreen extends SideOptionsScreen {
                         : maxIsUnlimited && v >= max
                         ? Options.genericValueLabel(caption, Component.translatable(KEY + name + ".max"))
                         : Options.genericValueLabel(caption, v),
+                new OptionInstance.IntRange(min, max), Math.clamp(value, min, max), set::accept);
+    }
+
+    /** A distance in chunks, worded like the game's own render distance ("32 chunks"). */
+    static OptionInstance<Integer> chunks(String name, int min, int max, int value, Consumer<Integer> set) {
+        return new OptionInstance<>(KEY + name, tooltip(name),
+                (caption, v) -> Options.genericValueLabel(caption, Component.translatable(KEY + name + ".value", v)),
                 new OptionInstance.IntRange(min, max), Math.clamp(value, min, max), set::accept);
     }
 
