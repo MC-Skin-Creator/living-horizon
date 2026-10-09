@@ -242,7 +242,7 @@ public final class FarDepth {
     }
 
     /** The game's depth as it is, for the debug view: no Voxy, or nothing to merge. */
-    private static boolean capture() {
+    private static boolean capture() throws ReflectiveOperationException {
         target = ownTarget();
         if (target == 0) return false;
         depthTexture = ownTargetDepth;
