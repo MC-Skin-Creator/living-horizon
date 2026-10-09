@@ -31,11 +31,17 @@ public final class MobScanScenario implements Scenario {
             context.waitTicks(40);
             Scene.command(world, "tp @a 0 ~ 0 0 0");
             context.waitTicks(400);
-            Scene.command(world, "save-all flush");
+            Scene.command(world, "save-all");
             context.waitTicks(40);
             CompletableFuture<MobScan.Result> scan = context.computeOnClient(minecraft -> MobScan.scan(minecraft, 40));
+            // The server only advances while the test lets the game tick: never block on the future.
+            for (int waited = 0; !scan.isDone() && waited < 600; waited++) context.waitTicks(1);
+            if (!scan.isDone()) throw new AssertionError("The scan did not finish");
             MobScan.Result result = scan.join();
             Scene.log("scan summoned=" + MOBS + " found=" + result.mobs().size() + " chunksRead=" + result.chunksRead());
+            if (result.mobs().size() < MOBS) {
+                throw new AssertionError("The scan found " + result.mobs().size() + " of " + MOBS + " mobs");
+            }
         }
     }
 }
