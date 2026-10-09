@@ -45,8 +45,6 @@
   "livinghorizon.offline.test.dimension.1": "Nether",
   "livinghorizon.offline.test.dimension.2": "End",
   "livinghorizon.offline.test.dimension.3": "outra dimensão",
-  "livinghorizon.options.lostTimeoutSeconds": "Jogador perdido",
-  "livinghorizon.options.lostTimeoutSeconds.tooltip": "Sem o pacote de dados: por quanto tempo um jogador fica na última posição conhecida quando já não pode ser localizado (agachado, em outra dimensão...).",
   "livinghorizon.options.renderTrackedVehiclesFar": "Manter veículos",
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "O jogo esconde cedo entidades pequenas como botes, então um jogador num bote flutuaria sobre o nada. Mantém o veículo visível enquanto um jogador o monta.",
   "livinghorizon.options.distantMobs": "Mostrar criaturas",

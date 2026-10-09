@@ -45,8 +45,6 @@
   "livinghorizon.offline.test.dimension.1": "Nether",
   "livinghorizon.offline.test.dimension.2": "End",
   "livinghorizon.offline.test.dimension.3": "inny wymiar",
-  "livinghorizon.options.lostTimeoutSeconds": "Czas utraty gracza",
-  "livinghorizon.options.lostTimeoutSeconds.tooltip": "Bez paczki danych: jak długo gracz pozostaje w ostatniej znanej pozycji, gdy nie da się go już zlokalizować (skradanie się, inny wymiar…).",
   "livinghorizon.options.renderTrackedVehiclesFar": "Zachowaj pojazdy",
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "Gra wcześnie ukrywa małe byty, takie jak łódki, więc gracz w łódce unosiłby się w powietrzu. Pojazd pozostaje widoczny, dopóki jedzie nim gracz.",
   "livinghorizon.options.distantMobs": "Pokazuj stworzenia",

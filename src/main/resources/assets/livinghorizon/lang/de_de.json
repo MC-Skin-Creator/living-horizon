@@ -45,8 +45,6 @@
   "livinghorizon.offline.test.dimension.1": "Nether",
   "livinghorizon.offline.test.dimension.2": "Das Ende",
   "livinghorizon.offline.test.dimension.3": "eine andere Dimension",
-  "livinghorizon.options.lostTimeoutSeconds": "Verweildauer",
-  "livinghorizon.options.lostTimeoutSeconds.tooltip": "Ohne das Datenpaket: Wie lange ein Spieler an seiner letzten bekannten Position bleibt, sobald er nicht mehr geortet werden kann (Schleichen, andere Dimension …).",
   "livinghorizon.options.renderTrackedVehiclesFar": "Fahrmittel behalten",
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "Das Spiel blendet kleine Objekte wie Boote früh aus, sodass ein Spieler im Boot über dem Nichts schweben würde. Hält ein Fahrmittel sichtbar, solange ein Spieler es benutzt.",
   "livinghorizon.options.distantMobs": "Kreaturen anzeigen",

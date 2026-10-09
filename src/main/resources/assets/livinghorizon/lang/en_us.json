@@ -45,8 +45,6 @@
   "livinghorizon.offline.test.dimension.1": "Nether",
   "livinghorizon.offline.test.dimension.2": "End",
   "livinghorizon.offline.test.dimension.3": "another dimension",
-  "livinghorizon.options.lostTimeoutSeconds": "Lost Player Time",
-  "livinghorizon.options.lostTimeoutSeconds.tooltip": "Without the data pack: how long a player stays at their last known position once they can no longer be located (sneaking, another dimension...).",
   "livinghorizon.options.renderTrackedVehiclesFar": "Keep Ridden Vehicles",
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "The game hides small entities like boats early, so a player in a boat would float on nothing. Keeps a vehicle shown while a player rides it.",
   "livinghorizon.options.distantMobs": "Show Mobs",

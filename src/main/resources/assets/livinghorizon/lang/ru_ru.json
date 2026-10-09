@@ -45,8 +45,6 @@
   "livinghorizon.offline.test.dimension.1": "Незер",
   "livinghorizon.offline.test.dimension.2": "Энд",
   "livinghorizon.offline.test.dimension.3": "другое измерение",
-  "livinghorizon.options.lostTimeoutSeconds": "Потерянный игрок",
-  "livinghorizon.options.lostTimeoutSeconds.tooltip": "Без набора данных: сколько игрок остаётся на последнем известном месте, когда его больше нельзя обнаружить (крадётся, другое измерение...).",
   "livinghorizon.options.renderTrackedVehiclesFar": "Занятый транспорт",
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "Игра рано скрывает мелкие сущности вроде лодок, и игрок в лодке парил бы в пустоте. Транспорт остаётся видимым, пока на нём едет игрок.",
   "livinghorizon.options.distantMobs": "Показывать мобов",

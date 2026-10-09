@@ -45,8 +45,6 @@
   "livinghorizon.offline.test.dimension.1": "地獄",
   "livinghorizon.offline.test.dimension.2": "終界",
   "livinghorizon.offline.test.dimension.3": "其他維度",
-  "livinghorizon.options.lostTimeoutSeconds": "失聯玩家保留時間",
-  "livinghorizon.options.lostTimeoutSeconds.tooltip": "沒有資料包時：無法再定位玩家後（潛行、位於其他維度...），玩家在最後已知位置停留多久。",
   "livinghorizon.options.renderTrackedVehiclesFar": "保留騎乘中的載具",
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "遊戲會較早隱藏船等小型實體，使坐船的玩家懸浮在空中。玩家騎乘期間持續顯示其載具。",
   "livinghorizon.options.distantMobs": "顯示生物",

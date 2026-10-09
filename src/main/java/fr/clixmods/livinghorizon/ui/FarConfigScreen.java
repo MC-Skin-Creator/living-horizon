@@ -79,7 +79,6 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 bool("showVehicles", c.showVehicles, v -> c.showVehicles = v));
         list.addBig(blocks("playerMaxDistance", 0, 4000, c.playerMaxDistance, v -> c.playerMaxDistance = v));
         list.addSmall(
-                unit("lostTimeoutSeconds", "seconds", 5, 300, (int) c.lostTimeoutSeconds, v -> c.lostTimeoutSeconds = v),
                 bool("offlinePlayers", c.offlinePlayers, v -> c.offlinePlayers = v),
                 bool("offlineLife", c.offlineLife, v -> c.offlineLife = v),
                 blocks("offlineRoam", 8, 128, c.offlineRoam, v -> c.offlineRoam = v));

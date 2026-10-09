@@ -30,6 +30,9 @@
 - **Distant Horizons' terrain cutting into mobs** — Distant Horizons' terrain no longer cuts into mobs and players standing in front of it (Minecraft 26.1 and newer).
 - **Distant mobs blinking while walking** — with view bobbing on, distant mobs no longer blink and Distant Horizons' terrain no longer flickers in front of them at every step (Minecraft 26.1 and newer).
 
+### Improved
+- **Distant players** — they are placed from the shared positions alone: the locator bar guess is gone, and so is the "Signal lost" setting. Without a data pack or the mod on the server, the console says so once instead.
+
 ## 0.7.0 — 2026-10-17
 
 ### New

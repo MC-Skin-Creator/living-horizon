@@ -45,8 +45,6 @@
   "livinghorizon.offline.test.dimension.1": "Nether",
   "livinghorizon.offline.test.dimension.2": "End",
   "livinghorizon.offline.test.dimension.3": "başka bir boyut",
-  "livinghorizon.options.lostTimeoutSeconds": "Kayıp Oyuncu Süresi",
-  "livinghorizon.options.lostTimeoutSeconds.tooltip": "Veri paketi olmadan: bir oyuncunun yeri artık belirlenemediğinde (eğilme, başka bir boyut...) bilinen son konumunda ne kadar kalacağı.",
   "livinghorizon.options.renderTrackedVehiclesFar": "Binilen Araçları Tut",
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "Oyun, tekne gibi küçük varlıkları erkenden gizler; bu yüzden teknedeki bir oyuncu boşlukta süzülürdü. Bir oyuncu bindiği sürece aracı görünür tutar.",
   "livinghorizon.options.distantMobs": "Canlıları Göster",

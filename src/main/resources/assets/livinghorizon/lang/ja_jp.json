@@ -45,8 +45,6 @@
   "livinghorizon.offline.test.dimension.1": "ネザー",
   "livinghorizon.offline.test.dimension.2": "ジ・エンド",
   "livinghorizon.offline.test.dimension.3": "別のディメンション",
-  "livinghorizon.options.lostTimeoutSeconds": "見失った時の表示時間",
-  "livinghorizon.options.lostTimeoutSeconds.tooltip": "データパックなしの場合：プレイヤーの位置がわからなくなってから（スニーク、別のディメンションなど）、最後にわかった位置にとどまる時間です。",
   "livinghorizon.options.renderTrackedVehiclesFar": "乗車中の乗り物を表示",
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "ゲームはボートなどの小さなエンティティを早めに非表示にするため、ボートに乗ったプレイヤーが何もない所に浮いてしまいます。プレイヤーが乗っている間は乗り物を表示し続けます。",
   "livinghorizon.options.distantMobs": "Mobを表示",

@@ -30,6 +30,9 @@
 - **Terrain de Distant Horizons qui mord sur les créatures** — le terrain de Distant Horizons ne mord plus sur les créatures et les joueurs placés devant lui (Minecraft 26.1 et plus).
 - **Créatures lointaines qui clignotent en marchant** — avec le balancement de la vue, les créatures lointaines ne clignotent plus et le terrain de Distant Horizons ne vacille plus devant elles à chaque pas (Minecraft 26.1 et plus).
 
+### Améliorations
+- **Joueurs lointains** — ils sont placés d'après les positions partagées uniquement : l'estimation par la barre de localisation disparaît, et le réglage « Signal perdu » avec. Sans datapack ni mod sur le serveur, la console le signale une fois.
+
 ## 0.7.0 — 2026-10-17
 
 ### Nouveautés
