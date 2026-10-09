@@ -155,6 +155,12 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Before 1.21.5** the game's depth texture has an unsized format (`GL_DEPTH_COMPONENT`):
   `glTextureStorage2D` refuses it, so anything copied from it is allocated the way the game
   allocates its own. A copy "with no size" or an all-white depth view is this.
+- **Far terrain offset from the game's** (depth view with a blue gap where the game's
+  terrain meets Voxy's, the game's part shrunk towards the bottom left): a shader pack's render
+  scale, Photon's TAAU most often. The pack draws the world, entities included, in the bottom
+  left corner of the depth texture and tells Voxy so with `useViewportDims` and `renderScale`
+  in its `voxy.json`; Voxy's viewport `width`/`height` is that corner. `FarDepth.notePicture`
+  reads it, and anything drawn into or read from the game's depth must stay inside it.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

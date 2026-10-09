@@ -23,3 +23,4 @@
 ### Fixes
 - **Before Minecraft 1.21.5** — distant mobs are hidden behind Distant Horizons' and Voxy's hills too, and the debug depth view is no longer all white.
 - **Older Distant Horizons** — distant mobs are hidden behind Distant Horizons' hills and walk on its terrain with versions from 2.3 on, not only the latest.
+- **Photon with TAAU** — with Voxy and Photon's temporal upscaling on, distant mobs are hidden behind Voxy's terrain where it stands, and the debug depth view no longer shows a blue gap where the game's terrain meets Voxy's.
