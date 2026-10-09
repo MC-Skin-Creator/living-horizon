@@ -10,7 +10,8 @@ Distant Horizons.
 A client-side mod for Fabric, Quilt, NeoForge and Forge, on Minecraft **1.20 to 1.21.11**
 and **26.1 to 26.3**. Nothing is sent to the server: on its own, the mod uses only what a
 vanilla client already receives. With the companion **data pack** on the server (not a
-mod: a folder in `world/datapacks`), every position is exact at any distance.
+mod: a folder in `world/datapacks`), every position is exact at any distance. In a world
+opened to LAN, the host's mod does the data pack's job by itself: nothing to install.
 
 ## Install
 
@@ -79,6 +80,10 @@ number of mobs, the bird amount a percentage.
 
 ## Good to know
 
+- **Playing on LAN: the host needs the mod, nobody needs the data pack.** When a world is
+  opened to LAN, the host's game shares the positions on its own (see *Worlds opened to LAN*
+  below), so friends who join see exact positions with only the mod. A host without the mod
+  shares nothing.
 - **The data pack makes positions exact.** Without it, a far player is placed from the
   locator bar, so:
   - `/gamerule locatorBar false` on the server leaves only the memory of the last position;
@@ -206,6 +211,18 @@ receives them, and the mod reads them. `/livinghorizon` says whether the pack is
 
 `DatapackTest` compiles every function with the game's own command dispatcher, and
 parses `pack.mcmeta` and the predicate with the game's own codecs.
+
+### Worlds opened to LAN
+
+A player who hosts a world from their own game (*Open to LAN*) runs the server in that game,
+so their mod can do what the data pack does: `LanShare` writes the same four objectives, in
+the same layout and the same sidebars, every four ticks for the players and every five
+seconds for the mobs, and a friend's mod reads them as it would the pack's. It runs only
+while the world is open to LAN, never on another server.
+
+- It uses the game's own `scoreboard` command, the same text on every version.
+- When the data pack runs in the world too (its clock moves), the mod leaves the job to it.
+- The objectives are removed when the world closes, so the world is left as it was found.
 
 ### Players who logged off
 

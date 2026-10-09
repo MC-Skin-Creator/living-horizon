@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.track;
 
 import fr.clixmods.livinghorizon.FarConfig;
+import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.ambient.Ambience;
 import fr.clixmods.livinghorizon.compat.LodWorld;
 import net.minecraft.client.Minecraft;
@@ -47,6 +48,8 @@ public final class FarPlayerTracker {
     private @Nullable ClientLevel level;
     private @Nullable String server;
     private int packScan;
+    private int sinceJoin;
+    private boolean warnedNoPack;
 
     public static FarPlayerTracker get() {
         return INSTANCE;
@@ -103,6 +106,8 @@ public final class FarPlayerTracker {
                 resting.open(joined);
                 mobs.open(joined);
                 server = joined;
+                sinceJoin = 0;
+                warnedNoPack = false;
             }
         }
         FarConfig config = FarConfig.get();
@@ -129,6 +134,15 @@ public final class FarPlayerTracker {
 
         Scoreboard scoreboard = current.getScoreboard();
         shared.update(scoreboard);
+        // Ten seconds after joining a server, no sharing at all: say so once, in the console.
+        // A world played alone shares nothing and needs nothing.
+        if (!warnedNoPack && ++sinceJoin >= 200) {
+            warnedNoPack = true;
+            if (!shared.active() && minecraft.getSingleplayerServer() == null) {
+                LivingHorizonClient.LOGGER.warn("Living Horizon: no data pack found on this server, so distant players are placed "
+                        + "from the locator bar only. Install the data pack in the world, or ask the host to open a LAN world with the mod.");
+            }
+        }
 
         Set<String> online = new HashSet<>();
         for (PlayerInfo info : connection.getOnlinePlayers()) {
