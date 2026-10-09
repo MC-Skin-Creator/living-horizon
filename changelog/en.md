@@ -19,6 +19,7 @@
 - **Quilt, NeoForge and Forge** — the mod now also runs on Quilt (with the Fabric API), NeoForge and Forge, next to Fabric, on Minecraft 1.20 to 1.21.11 and 26.1 to 26.3 (NeoForge from 1.20.6).
 - **A logo** — the mod and the data pack have their own icon, in the mod list and the data pack list.
 - **Outlines** (*Debug...* > *Outlines...*) — an outline seen through terrain around each kind of figure, each on its own switch, in the colours of the debug boxes: white for the mobs the game draws, cyan for real mobs the mod draws, green for 3D copies, blue for players, magenta for impostors, and a cross where a distant mob is not drawn at all. Handy for screenshots comparing what the mod draws and what it saves.
+- **On the server too** — the same jar can go into a server's mods folder. Players running the mod then see every other player and the animals, villagers and golems of the whole world where they really are, with their real look - the coat, the colour, the name tag - even mobs they never went near, mobs of other mods included. Players without the mod still join as before. It replaces the data pack where both are there.
 
 ### Fixes
 - **Before Minecraft 1.21.5** — distant mobs are hidden behind Distant Horizons' and Voxy's hills too, and the debug depth view is no longer all white.

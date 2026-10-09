@@ -29,18 +29,20 @@ import java.util.UUID;
 
 /**
  * Every other player on the server, followed once per client tick from what a client
- * receives: the entities the server sends, the data pack scores, the locator bar.
+ * receives: the entities the server sends, what a server running the mod shares
+ * ({@link ServerFeed}), the data pack scores, the locator bar.
  *
- * <p>Nothing is sent to the server. When it runs the companion data pack, every
- * position is exact; otherwise the locator bar is all there is, and a server that turns
- * it off ({@code /gamerule locatorBar false}) leaves only the memory of where each player
- * was last seen.
+ * <p>Nothing is sent to the server. When it runs the mod or the companion data pack, every
+ * position is exact, the mod's first; otherwise the locator bar is all there is, and a
+ * server that turns it off ({@code /gamerule locatorBar false}) leaves only the memory of
+ * where each player was last seen.
  */
 public final class FarPlayerTracker {
     private static final FarPlayerTracker INSTANCE = new FarPlayerTracker();
 
     private final Map<UUID, FarPlayer> players = new HashMap<>();
     private final SharedPositions shared = new SharedPositions();
+    private final ServerFeed feed = new ServerFeed();
     private final RestingPlayers resting = new RestingPlayers();
     private final MobMemory mobs = new MobMemory();
     private final Ambience ambience = new Ambience();
@@ -55,6 +57,11 @@ public final class FarPlayerTracker {
     /** Whether the companion data pack is running on this server. */
     public boolean sharing() {
         return shared.active();
+    }
+
+    /** What a server running the mod shares; whether it does right now is {@link ServerFeed#active}. */
+    public ServerFeed feed() {
+        return feed;
     }
 
     public Collection<FarPlayer> players() {
@@ -81,6 +88,7 @@ public final class FarPlayerTracker {
         LocalPlayer self = minecraft.player;
         ClientPacketListener connection = minecraft.getConnection();
         if (current == null || self == null || connection == null) {
+            feed.clear();
             players.clear();
             level = null;
             if (server != null) {
@@ -107,6 +115,9 @@ public final class FarPlayerTracker {
         }
         FarConfig config = FarConfig.get();
         int dimension = SharedPositions.dimensionCode(current.dimension());
+        String dimensionId = current.dimension().identifier().toString();
+        feed.tick();
+        boolean fromMod = feed.active();
 
         Set<UUID> live = new HashSet<>();
         for (AbstractClientPlayer player : current.players()) {
@@ -142,7 +153,9 @@ public final class FarPlayerTracker {
             if (player != null) player.profile = info.getProfile();
             if (live.contains(id)) continue;
 
-            SharedPositions.Report report = shared.read(scoreboard, name);
+            // The mod's word first; the pack's when the mod says nothing of this player.
+            SharedPositions.Report report = fromMod ? feed.player(name, dimensionId, dimension) : null;
+            if (report == null) report = shared.read(scoreboard, name);
             var waypoint = waypoints.get(id);
             if (player == null) {
                 if (waypoint == null && report == null) continue;
@@ -162,19 +175,20 @@ public final class FarPlayerTracker {
             return true;
         });
 
-        // The data pack keeps the last position of everyone who ever played here.
-        if (shared.active() && ++packScan >= 20) {
+        // The mod and the data pack keep the last position of everyone who ever played here.
+        if ((fromMod || shared.active()) && ++packScan >= 20) {
             packScan = 0;
-            for (String name : shared.holders(scoreboard)) {
+            for (String name : fromMod ? feed.resting() : shared.holders(scoreboard)) {
                 if (online.contains(name.toLowerCase(Locale.ROOT))) continue;
-                SharedPositions.Report report = shared.read(scoreboard, name);
+                SharedPositions.Report report = fromMod
+                        ? feed.resting(name, dimensionId, dimension) : shared.read(scoreboard, name);
                 if (report != null) resting.restFromPack(name, report);
             }
         }
         resting.tick();
         ambience.tick(current, self, config);
         mobs.tick(current, self, minecraft.options.getEffectiveRenderDistance() * 16, config,
-                shared.active() ? shared : null, scoreboard);
+                fromMod ? feed::mobs : shared.active() ? () -> shared.sharedMobs(scoreboard) : null);
     }
 
     /** Which server this is, as a name for the file of who rests where. */

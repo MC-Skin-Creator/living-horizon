@@ -90,6 +90,31 @@ public final class SharedPositions {
     public record MobReport(UUID id, double x, double y, double z, int kind, int dimension, boolean baby, int variant) {
     }
 
+    /**
+     * A mob shared by the server, whoever shares it: the pack, or the server running the mod
+     * ({@link ServerFeed}). {@code exact}: its saved data is the mob's own, not made up from
+     * its kind, variant and age.
+     */
+    public record SharedMob(UUID id, String type, String dimension, double x, double y, double z, float yaw,
+                            String nbt, boolean named, boolean exact) {
+    }
+
+    private static final List<String> DIMENSIONS =
+            List.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end");
+
+    /** Every mob the pack publishes that this version knows the kind of. */
+    List<SharedMob> sharedMobs(Scoreboard scoreboard) {
+        List<SharedMob> shared = new ArrayList<>();
+        for (UUID id : mobs(scoreboard)) {
+            MobReport report = readMob(scoreboard, id);
+            String type = report == null ? null : MobKinds.type(report.kind());
+            if (type == null || report.dimension() >= DIMENSIONS.size()) continue;
+            shared.add(new SharedMob(id, type, DIMENSIONS.get(report.dimension()), report.x(), report.y(), report.z(), 0,
+                    MobKinds.nbt(type, report.variant(), report.baby()), false, false));
+        }
+        return shared;
+    }
+
     /** Every player the pack has a position for, online or not. */
     List<String> holders(Scoreboard scoreboard) {
         List<String> names = new ArrayList<>();
@@ -164,5 +189,11 @@ public final class SharedPositions {
         if (dimension == Level.NETHER) return 1;
         if (dimension == Level.END) return 2;
         return 3;
+    }
+
+    /** The same code, for a dimension named by its id. */
+    static int dimensionCode(String dimension) {
+        int code = DIMENSIONS.indexOf(dimension);
+        return code >= 0 ? code : 3;
     }
 }

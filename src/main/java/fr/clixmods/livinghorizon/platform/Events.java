@@ -16,6 +16,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 //?} elif neoforge {
@@ -172,6 +173,22 @@ public final class Events {
         /*NeoForge.EVENT_BUS.addListener(ClientPlayerNetworkEvent.LoggingOut.class, event -> listener.run());
         *///?} elif forge {
         /*ClientPlayerNetworkEvent.LoggingOut.BUS.addListener(event -> listener.run());
+        *///?}
+    }
+
+    /** A message from the server on the mod's channel ({@link Network}), on the game's thread. */
+    public static void payload(Consumer<byte[]> listener) {
+        //? if (fabric || quilt) && >=1.20.5 {
+        ClientPlayNetworking.registerGlobalReceiver(Network.Payload.TYPE, (payload, context) -> listener.accept(payload.data()));
+        //?} elif fabric || quilt {
+        /*ClientPlayNetworking.registerGlobalReceiver(Network.CHANNEL, (client, handler, buf, sender) -> {
+            byte[] data = new byte[buf.readableBytes()];
+            buf.readBytes(data);
+            client.execute(() -> listener.accept(data));
+        });
+        *///?} else {
+        /*// NeoForge and Forge receive it on the channel declared in common code.
+        Network.listen(listener);
         *///?}
     }
 

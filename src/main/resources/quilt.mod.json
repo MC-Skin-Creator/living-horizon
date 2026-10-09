@@ -24,6 +24,7 @@
     },
     ${intermediate_mappings}
     "entrypoints": {
+      "main": "fr.clixmods.livinghorizon.LivingHorizon",
       "client": "fr.clixmods.livinghorizon.LivingHorizonClient",
       "modmenu": "fr.clixmods.livinghorizon.ui.ModMenuEntry"
     },
@@ -47,7 +48,7 @@
     ]
   },
   "minecraft": {
-    "environment": "client"
+    "environment": "*"
   },
   "access_widener": "livinghorizon.accesswidener",
   "mixin": [

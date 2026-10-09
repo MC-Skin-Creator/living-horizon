@@ -37,10 +37,12 @@ its last line of content, nothing after.
 
 ## What this is
 
-**Living Horizon** gives life to the distance. It is a **client-side** mod for Fabric,
-Quilt, NeoForge and Forge, on several Minecraft versions: animals, villagers, birds and other players keep living
-on the horizon, past the render distance, on top of Voxy's far terrain. Nothing
-is sent to the server. An optional data pack in `datapack/` makes positions exact.
+**Living Horizon** gives life to the distance. It is a mod for Fabric, Quilt, NeoForge and
+Forge, on several Minecraft versions, for the client first: animals, villagers, birds and
+other players keep living on the horizon, past the render distance, on top of Voxy's far
+terrain. Nothing is sent to the server. The same jar on a server shares players and mobs
+with the clients running it (`server/`, one optional channel in `platform/Network`); an
+optional data pack in `datapack/` shares positions on a server without mods.
 
 | | |
 |---|---|
@@ -57,7 +59,10 @@ Targets are the tables of `stonecutter.properties.toml` (a node named `<version>
 `settings.gradle.kts`; the release and the CI read the first. Sources are written for
 1.21.11 and branch with Stonecutter: `//? if >=26.1 {`, `//? if fabric {` and so on, and
 `stonecutter.gradle.kts` holds the pure renames. What differs between loaders lives in
-`platform/` (events, config folder) and the entry point. `gradle/target.gradle.kts` works
+`platform/` (events, server events, the network channel, config folder) and the entry
+points. `LivingHorizon` is the common one, which a dedicated server loads: nothing reached
+from it, `server/`, `share/` or `platform/Network` and `ServerEvents` may touch a class
+that only exists on the client. `LivingHorizonClient` starts the client. `gradle/target.gradle.kts` works
 out what the build scripts share: the Java level, the pack.mcmeta, the access widener and
 transformer (from the one source file, blocks tagged `@since` / `@until`) and the mixin list.
 Adding a version: a node in `settings.gradle.kts`, a table per loader in the TOML, fix the

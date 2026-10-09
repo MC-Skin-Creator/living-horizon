@@ -158,8 +158,12 @@ public final class LivingHorizonCommand {
 
     /** {@code /livinghorizon}: who is followed, from what, and how sure the position is. */
     private static int status(Source source) {
-        source.feedback(Component.translatable(FarPlayerTracker.get().sharing()
-                ? "livinghorizon.status.pack.on" : "livinghorizon.status.pack.off"));
+        if (FarPlayerTracker.get().feed().active()) {
+            source.feedback(Component.translatable("livinghorizon.status.server.on", FarPlayerTracker.get().feed().mobCount()));
+        } else {
+            source.feedback(Component.translatable(FarPlayerTracker.get().sharing()
+                    ? "livinghorizon.status.pack.on" : "livinghorizon.status.pack.off"));
+        }
         source.feedback(Component.translatable("livinghorizon.status.mobs",
                 FarPlayerTracker.get().mobs().size(), FarPlayerTracker.get().mobs().shown().size()));
         source.feedback(Component.translatable("livinghorizon.status.cost", Stats.tickMillis(), Stats.extractMillis(),
