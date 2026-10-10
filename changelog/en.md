@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Fixed
+- **Birds and bats** — none of them lets you come within reach any more: bats move away when you walk towards them, instead of letting you stand among them.
 - **Shader packs** — distant figures shown as impostors are no longer dark with Iris shaders such as Photon or Complementary: they catch the sun like full models.
 
 ## 0.4.0 — 2026-10-10
