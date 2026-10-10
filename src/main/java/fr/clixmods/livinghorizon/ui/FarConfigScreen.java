@@ -48,7 +48,8 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 Button.builder(Component.translatable(KEY + "preset",
                                 Component.translatable(KEY + "preset." + (preset == null ? "custom" : preset.id()))), b -> {
                             QualityPreset.next(FarConfig.get()).apply(FarConfig.get());
-                            rebuildWidgets();
+                            // A fresh screen: rebuildWidgets() would stack a second layout on the first.
+                            minecraft.setScreen(new FarConfigScreen(parent));
                         })
                         .tooltip(Tooltip.create(Component.translatable(KEY + "preset.tooltip"))).build(),
                 integer("minApparentPixels", 0, 32, (int) c.minApparentPixels, v -> c.minApparentPixels = v)
