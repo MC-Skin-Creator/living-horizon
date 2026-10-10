@@ -56,7 +56,6 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 bool("showVehicles", c.showVehicles, v -> c.showVehicles = v),
                 choice("offlinePose", List.of("sleep", "sit", "hidden"), c.offlinePose, v -> c.offlinePose = v),
                 integer("playerMaxDistance", 0, 4000, c.playerMaxDistance, v -> c.playerMaxDistance = v),
-                integer("lostTimeoutSeconds", 5, 300, (int) c.lostTimeoutSeconds, v -> c.lostTimeoutSeconds = v),
                 bool("renderTrackedVehiclesFar", c.renderTrackedVehiclesFar, v -> c.renderTrackedVehiclesFar = v));
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "forgetSleepers"), b -> confirm("forgetSleepers",

@@ -12,10 +12,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
-//? if >=1.21.6
-import net.minecraft.world.waypoints.TrackedWaypoint;
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
@@ -25,24 +22,17 @@ import java.util.UUID;
  * One other player, followed whether or not the server still sends them.
  *
  * <p>While the server sends the entity, it is the truth and the game draws it. Once it
- * stops, what remains is a memory - how they looked, what they rode - and whatever else
- * still arrives: the companion data pack's exact position when the server runs it, the
- * locator bar otherwise. The memory becomes two puppets (the player and their mount),
- * copies that were never added to the world, which this class moves and animates every
- * tick from the best estimate of where the real one is.
+ * stops, what remains is a memory - how they looked, what they rode - and the position
+ * the companion data pack (or a LAN host's mod) publishes, when there is one. The memory
+ * becomes two puppets (the player and their mount), copies that were never added to the world, which this class moves and animates every
+ * tick towards where the real one is.
  */
 public final class FarPlayer {
     public enum Source {
         /** The server sends the entity: its position is exact. */
         LIVE,
-        /** The companion data pack publishes the position: exact, at any distance. */
+        /** The data pack, or a LAN host's mod, publishes the position: exact, at any distance. */
         SHARED,
-        /** The locator bar gives the block. */
-        EXACT,
-        /** The locator bar gives the chunk: 332 blocks or less, past the view distance. */
-        CHUNK,
-        /** The locator bar gives a direction only; the distance is estimated. */
-        BEARING,
         /** Nothing is known any more. */
         LOST
     }
@@ -74,7 +64,9 @@ public final class FarPlayer {
     boolean vanished;
     int ticksSinceInfo;
 
-    final PositionFilter filter = new PositionFilter();
+    /** Where the shared position says they are; only meaningful while {@link #targeted}. */
+    private double targetX, targetZ;
+    private boolean targeted;
 
     // What is drawn, smoothed out of the estimate.
     private boolean placed;
@@ -113,17 +105,12 @@ public final class FarPlayer {
 
     /** How sure the position is, in blocks. */
     public double uncertainty() {
-        return switch (source) {
-            case LIVE, SHARED -> 0.1;
-            case EXACT -> 0.5;
-            default -> filter.ready() ? filter.spread() : Double.NaN;
-        };
+        return source == Source.LIVE || source == Source.SHARED ? 0.1 : Double.NaN;
     }
 
     /** Whether the puppets should be drawn this frame. */
     public boolean showsPuppet(FarConfig config) {
-        if (source == Source.LIVE || !placed || vanished || puppet == null) return false;
-        return source != Source.LOST || ticksSinceInfo < config.lostTimeoutSeconds * 20;
+        return source != Source.LIVE && source != Source.LOST && placed && !vanished && puppet != null;
     }
 
     // --- While the server sends the entity ---------------------------------------
@@ -165,20 +152,11 @@ public final class FarPlayer {
     // --- Once it stops ------------------------------------------------------------
 
     void observeRemote(ClientLevel level, Player self, PlayerInfo info, SharedPositions.@Nullable Report shared,
-                       //? if >=1.21.6 {
-                       int dimension, @Nullable TrackedWaypoint waypoint, double vanishRadius, FarConfig config) {
-                       //?} else
-                       /*int dimension, @Nullable Object waypoint, double vanishRadius, FarConfig config) {*/
+                       int dimension, double vanishRadius, FarConfig config) {
         if (source == Source.LIVE) leaveLive(level, self, vanishRadius);
         if (puppet == null) freshPuppet(level, info);
 
-        filter.predict(DT);
-        Source heard;
-        if (shared != null) {
-            heard = share(shared, dimension);
-        } else {
-            heard = waypoint == null ? null : read(waypoint, self);
-        }
+        Source heard = shared == null ? null : share(shared, dimension);
 
         if (heard != null) {
             source = heard;
@@ -190,7 +168,7 @@ public final class FarPlayer {
             ticksSinceInfo++;
         }
 
-        if (source != Source.LOST && filter.ready()) {
+        if (source != Source.LOST && targeted) {
             follow(self);
             knownDimension = dimension;
         }
@@ -204,10 +182,12 @@ public final class FarPlayer {
         // well inside it was removed instead: dead, through a portal, logged off.
         vanished = Math.hypot(x - self.getX(), z - self.getZ()) < vanishRadius;
         if (vanished) {
-            filter.clear();
+            targeted = false;
             placed = false;
         } else {
-            filter.resetAt(x, z, velX * 20, velZ * 20, 1.0);
+            targetX = x;
+            targetZ = z;
+            targeted = true;
         }
         if (lastSeen != null) {
             puppet = copyPlayer(level, lastSeen);
@@ -218,80 +198,30 @@ public final class FarPlayer {
         }
     }
 
-    /** Takes the data pack's word. Null when they are in another dimension. */
+    /** Takes the shared position's word. Null when they are in another dimension. */
     private @Nullable Source share(SharedPositions.Report report, int dimension) {
         if (report.dimension() != dimension) {
             knownDimension = -1;
             vanished = true;
             placed = false;
-            filter.clear();
+            targeted = false;
             return null;
         }
-        filter.resetAt(report.x(), report.z(),
-                filter.ready() ? filter.velocityX() : 0, filter.ready() ? filter.velocityZ() : 0, 0.1);
+        targetX = report.x();
+        targetZ = report.z();
+        targeted = true;
         knownY = report.y();
         knownYaw = report.yaw();
         riding = report.riding();
         return Source.SHARED;
     }
 
-    //? if <1.21.6 {
-    /*/^* No locator bar before 1.21.6: nothing to read. ^/
-    private @Nullable Source read(Object waypoint, Player self) {
-        return null;
-    }
-    *///?} else {
-    /** Feeds one locator bar waypoint to the filter. Null when it carries nothing. */
-    private @Nullable Source read(TrackedWaypoint waypoint, Player self) {
-        knownYaw = Float.NaN;
-        if (waypoint instanceof TrackedWaypoint.Vec3iWaypoint block) {
-            double bx = block.vector.getX() + 0.5, bz = block.vector.getZ() + 0.5;
-            filter.resetAt(bx, bz, filter.ready() ? filter.velocityX() : 0, filter.ready() ? filter.velocityZ() : 0, 0.4);
-            knownY = block.vector.getY();
-            return Source.EXACT;
-        }
-        if (waypoint instanceof TrackedWaypoint.ChunkWaypoint chunk) {
-            ChunkPos pos = chunk.chunkPos;
-            double minX = pos.getMinBlockX(), minZ = pos.getMinBlockZ();
-            if (!filter.ready() || !filter.observeBox(minX, minZ, minX + 16, minZ + 16, 1.5)) {
-                filter.resetAt(minX + 8, minZ + 8, 0, 0, 4.0);
-            }
-            return Source.CHUNK;
-        }
-        if (waypoint instanceof TrackedWaypoint.AzimuthWaypoint azimuth) {
-            double angle = azimuth.angle;
-            double ox = self.getX(), oz = self.getZ();
-            if (!filter.ready()) {
-                filter.resetAlongBearing(ox, oz, angle, 340, 3000);
-            }
-            if (!bearing(ox, oz, angle)) {
-                // Nothing in the cloud agrees: a teleport, a respawn, or a turn the
-                // cloud could not follow. Start again on the new line, around the
-                // distance believed so far.
-                double r = placed ? Math.max(340, Math.hypot(x - ox, z - oz)) : 1000;
-                filter.resetAlongBearing(ox, oz, angle, Math.max(340, r * 0.5), Math.max(r * 2.0, 900));
-                bearing(ox, oz, angle);
-            }
-            return Source.BEARING;
-        }
-        return null;
-    }
-    //?}
-
-    private boolean bearing(double ox, double oz, double angle) {
-        // Half a degree is the server's own threshold for sending a new angle.
-        return filter.observeBearing(ox, oz, angle, Math.toRadians(0.6), Math.toRadians(0.6))
-                // A direction is only sent past 332 blocks.
-                && filter.observeDistance(ox, oz, 330, Double.POSITIVE_INFINITY, 6.0);
-    }
-
     /** Moves what is drawn towards the estimate, smoothly unless the jump is a teleport. */
     private void follow(Player self) {
-        double tx = filter.x(), tz = filter.z();
+        double tx = targetX, tz = targetZ;
         double ty = Double.isNaN(knownY) ? self.getY() : knownY;
         double px = x, pz = z;
-        boolean precise = source == Source.EXACT || source == Source.SHARED;
-        if (!placed || (precise && Math.hypot(tx - x, tz - z) > 64)) {
+        if (!placed || Math.hypot(tx - x, tz - z) > 64) {
             x = tx;
             y = ty;
             z = tz;
@@ -299,16 +229,10 @@ public final class FarPlayer {
             velX = velZ = 0;
             return;
         }
-        double seconds = switch (source) {
-            // The pack publishes five times a second.
-            case SHARED -> 0.2;
-            case EXACT -> 0.15;
-            case CHUNK -> 0.6;
-            default -> 1.0;
-        };
-        double k = 1 - Math.exp(-DT / seconds);
+        // The positions come five times a second.
+        double k = 1 - Math.exp(-DT / 0.2);
         x += (tx - x) * k;
-        y += (ty - y) * (1 - Math.exp(-DT / (precise ? 0.2 : 0.3)));
+        y += (ty - y) * k;
         z += (tz - z) * k;
         velX = lerp(0.2, velX, x - px);
         velZ = lerp(0.2, velZ, z - pz);

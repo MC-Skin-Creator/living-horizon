@@ -10,7 +10,8 @@ Distant Horizons.
 A client-side mod for Fabric, Quilt, NeoForge and Forge, on Minecraft **1.20 to 1.21.11**
 and **26.1 to 26.3**. Nothing is sent to the server: on its own, the mod uses only what a
 vanilla client already receives. With the companion **data pack** on the server (not a
-mod: a folder in `world/datapacks`), every position is exact at any distance.
+mod: a folder in `world/datapacks`), every position is exact at any distance. In a world
+opened to LAN, the host's mod does the data pack's job by itself: nothing to install.
 
 ## Install
 
@@ -79,11 +80,13 @@ number of mobs, the bird amount a percentage.
 
 ## Good to know
 
-- **The data pack makes positions exact.** Without it, a far player is placed from the
-  locator bar, so:
-  - `/gamerule locatorBar false` on the server leaves only the memory of the last position;
-  - a player who **sneaks** leaves the locator bar, and their copy freezes where it was;
-  - players in another dimension are not followed.
+- **Playing on LAN: the host needs the mod, nobody needs the data pack.** When a world is
+  opened to LAN, the host's game shares the positions on its own (see *Worlds opened to LAN*
+  below), so friends who join see exact positions with only the mod. A host without the mod
+  shares nothing.
+- **Far players need the data pack, or a LAN host with the mod.** Without either, a player
+  past the server's range is not shown, and the console says so once, 10 seconds after
+  joining. Players in another dimension are not followed.
 - **With the data pack, everyone's position is public** to whoever reads its scores: say
   so to your players. Anyone in a team of colour `black`, `dark_blue`, `dark_green` or
   `dark_aqua` would see the coordinates in their sidebar (see *The data pack* below).
@@ -98,8 +101,6 @@ The game itself lacks what these need, so they are left out rather than imitated
   renderers of 1.21.9: before, distant figures are always drawn as full models.
 - The lines of the **F3 screen** need its entry list of 1.21.9; the mod's own debug panel
   works on every version.
-- Players past the server's range are placed by the **locator bar**, which came in 1.21.6:
-  before, a player out of range stays where it was last seen (or where the data pack says).
 - Mob kinds a version does not have yet (happy ghast, pale oak boats, armadillo, mannequin)
   are not in its lists. Before 1.21.2 every boat was one entity type: boats are remembered
   by the client but not published by the data pack there.
@@ -131,7 +132,6 @@ The game itself lacks what these need, so they are left out rather than imitated
 | `enabled` | `true` | | |
 | `minApparentPixels` | `0` | pixels | Above 0, a far player is never drawn smaller than this (and stops shrinking) |
 | `extendFarPlane` | `true` | | Push the far clipping plane out to the farthest player, so terrain can hide them |
-| `lostTimeoutSeconds` | `30` | seconds | How long a copy stays once the locator bar loses them |
 | `distantMobs` | `true` | | Keep remembered mobs visible far away |
 | `maxDistantMobs` | `512` | mobs | How many of them are drawn at once, nearest first (`1000`: no limit; no limit here and in `mobMaxDistance` together can crash the game) |
 | `mobMaxDistance` | `512` | blocks | Past this, distant mobs are not drawn (`0`: no limit) |
@@ -206,6 +206,18 @@ receives them, and the mod reads them. `/livinghorizon` says whether the pack is
 
 `DatapackTest` compiles every function with the game's own command dispatcher, and
 parses `pack.mcmeta` and the predicate with the game's own codecs.
+
+### Worlds opened to LAN
+
+A player who hosts a world from their own game (*Open to LAN*) runs the server in that game,
+so their mod can do what the data pack does: `LanShare` writes the same four objectives, in
+the same layout and the same sidebars, every four ticks for the players and every five
+seconds for the mobs, and a friend's mod reads them as it would the pack's. It runs only
+while the world is open to LAN, never on another server.
+
+- It uses the game's own `scoreboard` command, the same text on every version.
+- When the data pack runs in the world too (its clock moves), the mod leaves the job to it.
+- The objectives are removed when the world closes, so the world is left as it was found.
 
 ### Players who logged off
 
@@ -386,28 +398,13 @@ in front does. A mob never asked about, or whose answer is more than six frames 
 drawn. With `optOcclusionQueries` off, or once the queries failed, the mobs are tested in
 the far terrain's world instead (`Occlusion`); the two answers are never mixed.
 
-### Where the position comes from, without the data pack
+### Where a far player is drawn
 
 | Distance from you | What the client knows | What is drawn |
 |---|---|---|
 | Inside the server's view distance | The entity itself | The real player (the mod only stops their mount from being culled) |
-| View distance → 332 blocks | The locator bar sends their **chunk** | A copy, kept inside that chunk |
-| Past 332 blocks | The locator bar sends a **direction** only | A copy, at an estimated distance |
-| No locator bar signal | Nothing | The copy stays where it was, then fades after `lostTimeoutSeconds` |
-
-The locator bar (the bar above the hotbar that shows where other players are) is the
-key: the server sends it to every client, with the player's UUID, at any distance.
-Past 332 blocks it is only an angle. One angle is a line, not a point - but as you move,
-you see that line from somewhere else, and the lines cross. `track/PositionFilter` is a
-particle filter that does exactly that. In practice:
-
-- **The direction is always right**, to about half a degree.
-- **The distance is found when you move sideways** relative to them: in the tests, a
-  minute of walking (340 blocks) across the line of sight places a player 1.7 km away
-  to within 25 to 190 blocks.
-- **If you both stand still, or they walk straight away from you**, the distance
-  cannot be known from a direction alone. The estimate then keeps the last distance it
-  had, or follows the speed they were last seen walking at.
+| Past it | The shared position (data pack or LAN host's mod) | A copy, at that position |
+| Past it, nothing shared | Nothing | Nobody |
 
 The copy is drawn by the game's own renderer, so skins, capes, elytras, armour and
 shader packs work. It is drawn where it really is, at its true size, so terrain in front
@@ -417,10 +414,8 @@ out to the farthest player when needed (`extendFarPlane`).
 
 #### What breaks it
 
-- `/gamerule locatorBar false` on the server: only the memory of the last position is left.
-- A player who **sneaks** disappears from the locator bar (vanilla behaviour), so the copy
-  freezes where it was.
-- Another dimension: the locator bar only covers your own.
+- No shared positions (no data pack, no mod on the LAN host): no copy at all.
+- Another dimension: the copy is hidden until they are back in yours.
 - A player who was **never** close to you is drawn standing, with their skin, and no mount:
   what they ride is only known once the server has sent it.
 

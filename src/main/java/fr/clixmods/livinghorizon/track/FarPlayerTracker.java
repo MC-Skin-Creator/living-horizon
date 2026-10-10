@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.track;
 
 import fr.clixmods.livinghorizon.FarConfig;
+import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.ambient.Ambience;
 import fr.clixmods.livinghorizon.compat.LodWorld;
 import net.minecraft.client.Minecraft;
@@ -13,8 +14,6 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.server.IntegratedServer;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.scores.Scoreboard;
-//? if >=1.21.6
-import net.minecraft.world.waypoints.TrackedWaypoint;
 import org.jspecify.annotations.Nullable;
 
 import java.nio.file.Path;
@@ -29,12 +28,11 @@ import java.util.UUID;
 
 /**
  * Every other player on the server, followed once per client tick from what a client
- * receives: the entities the server sends, the data pack scores, the locator bar.
+ * receives: the entities the server sends and the shared positions (the data pack's scores, or a
+ * LAN host's mod).
  *
- * <p>Nothing is sent to the server. When it runs the companion data pack, every
- * position is exact; otherwise the locator bar is all there is, and a server that turns
- * it off ({@code /gamerule locatorBar false}) leaves only the memory of where each player
- * was last seen.
+ * <p>Nothing is sent to the server. Past the server's view distance, a player is placed
+ * only where the shared positions say; without them, they are not shown.
  */
 public final class FarPlayerTracker {
     private static final FarPlayerTracker INSTANCE = new FarPlayerTracker();
@@ -47,6 +45,8 @@ public final class FarPlayerTracker {
     private @Nullable ClientLevel level;
     private @Nullable String server;
     private int packScan;
+    private int sinceJoin;
+    private boolean warnedNoPack;
 
     public static FarPlayerTracker get() {
         return INSTANCE;
@@ -103,6 +103,8 @@ public final class FarPlayerTracker {
                 resting.open(joined);
                 mobs.open(joined);
                 server = joined;
+                sinceJoin = 0;
+                warnedNoPack = false;
             }
         }
         FarConfig config = FarConfig.get();
@@ -115,20 +117,21 @@ public final class FarPlayerTracker {
             live.add(player.getUUID());
         }
 
-        // The locator bar came in 1.21.6; before, players are placed by the data pack alone.
-        //? if >=1.21.6 {
-        Map<UUID, TrackedWaypoint> waypoints = new HashMap<>();
-        connection.getWaypointManager().forEachWaypoint(self,
-                waypoint -> waypoint.id().left().ifPresent(id -> waypoints.put(id, waypoint)));
-        //?} else
-        /*Map<UUID, Object> waypoints = Map.of();*/
-
         // The server stops sending a player at the edge of its view distance. Lost well
         // inside it, the player was removed rather than left behind.
         double vanishRadius = Math.max(16, minecraft.options.getEffectiveRenderDistance() * 16 - 40);
 
         Scoreboard scoreboard = current.getScoreboard();
         shared.update(scoreboard);
+        // Ten seconds after joining a server, no sharing at all: say so once, in the console.
+        // A world played alone shares nothing and needs nothing.
+        if (!warnedNoPack && ++sinceJoin >= 200) {
+            warnedNoPack = true;
+            if (!shared.active() && minecraft.getSingleplayerServer() == null) {
+                LivingHorizonClient.LOGGER.warn("Living Horizon: no data pack found on this server, so distant players are not shown. "
+                        + "Install the data pack in the world, or ask the host to open a LAN world with the mod.");
+            }
+        }
 
         Set<String> online = new HashSet<>();
         for (PlayerInfo info : connection.getOnlinePlayers()) {
@@ -143,14 +146,13 @@ public final class FarPlayerTracker {
             if (live.contains(id)) continue;
 
             SharedPositions.Report report = shared.read(scoreboard, name);
-            var waypoint = waypoints.get(id);
             if (player == null) {
-                if (waypoint == null && report == null) continue;
+                if (report == null) continue;
                 player = new FarPlayer(id);
                 player.profile = info.getProfile();
                 players.put(id, player);
             }
-            player.observeRemote(current, self, info, report, dimension, waypoint, vanishRadius, config);
+            player.observeRemote(current, self, info, report, dimension, vanishRadius, config);
         }
 
         // Gone from the tab list: logged off. They rest where they were last known.
