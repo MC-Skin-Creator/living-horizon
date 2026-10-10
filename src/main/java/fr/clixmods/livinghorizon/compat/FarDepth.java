@@ -214,7 +214,8 @@ public final class FarDepth {
         captured = false;
         intoVoxy = false;
         FarConfig config = FarConfig.get();
-        boolean wanted = needed || !config.optLazyDepth;
+        // The depth view shows the far terrain merged even when nothing far is drawn this frame.
+        boolean wanted = needed || !config.optLazyDepth || config.debugDepthView != 0;
         needed = false;
         try {
             if (gpuPath()) {
@@ -415,7 +416,8 @@ public final class FarDepth {
         if (!ready && !DhDepth.started()) return "not started";
         if (broken) return "off";
         return switch (state) {
-            case 1 -> "on, " + width + "x" + height;
+            // On in an earlier frame says nothing of this one: why this one did nothing, then.
+            case 1 -> mergedLastFrame ? "on, " + width + "x" + height : "waiting: " + reason;
             case 2 -> "not needed (Voxy writes its own depth)";
             default -> "waiting: " + reason;
         };
