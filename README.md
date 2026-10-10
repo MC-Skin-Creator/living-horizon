@@ -379,6 +379,15 @@ Under a pack's render scale (Photon's TAAU), the pack draws the world in the bot
 corner of the depth texture and says so to Voxy (`useViewportDims`): Voxy's depth, the depth
 view and the occlusion queries all go in that corner too.
 
+The other way round, such a pack also reads Voxy's own depth textures (`vxDepthTexOpaque`,
+`vxDepthTexTrans`) where the game's depth ends. Photon's screen-space shadows, used past its
+shadow map, start from the point Voxy's depth gives for any fragment farther than the render
+distance plus 64 blocks: at a distant mob, the terrain behind it, whose shadow then fell
+across the mob. Right after the entities are drawn, `FarDepth` writes them into both of
+Voxy's depth textures wherever they are nearer than its terrain, converted from the game's
+projection to Voxy's. Only nearer values are written, so a pack that takes the nearer of the
+two depths, or reads Voxy's only where the game's is empty (Complementary), sees no change.
+
 ### Mobs hidden by depth
 
 "Skip mobs behind blocks" (`hideOccludedMobs`) does not draw a distant mob the terrain
