@@ -2,6 +2,7 @@ package fr.clixmods.livinghorizon.gametest;
 
 import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RememberedMobsScenario;
@@ -25,6 +26,7 @@ import java.util.stream.Collectors;
 public final class LivingHorizonGameTests implements FabricClientGameTest {
     private static final List<Scenario> SCENARIOS = List.of(
             new ImpostorsScenario(),
+            new LightingScenario(),
             new RememberedMobsScenario(),
             new OutlinesScenario(),
             new OptionsScreenScenario(),
@@ -41,6 +43,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
                 throw new AssertionError("Unknown scenario '" + name + "', known: " + known);
             }
         }
+        Scene.shaderPack(context);
         for (Scenario scenario : SCENARIOS) {
             if (!all && !names.contains(scenario.name())) continue;
             Scene.log("scenario " + scenario.name() + " starts");

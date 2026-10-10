@@ -17,6 +17,7 @@ into a virtual display (Xvfb).
 .claude/skills/game-test/run.sh                  # every scenario
 .claude/skills/game-test/run.sh impostors        # one, or several: a,b
 .claude/skills/game-test/run.sh all --sodium     # with Sodium loaded too
+.claude/skills/game-test/run.sh impostors --shaders <pack folder>   # Sodium, Iris and a shader pack
 ```
 
 It takes 1 to 3 minutes per scenario. The script:
@@ -94,7 +95,11 @@ thread), `setScreen`, `clickScreenButton(translation key)`, `takeScreenshot`. Th
 
 - No real graphics card: a bug of one driver (NVIDIA, AMD) does not show here.
 - **Voxy and Distant Horizons cannot run** (Voxy needs GLSL 4.60, llvmpipe has 4.50).
-  Iris and shader packs are not tried. Say so when a check depended on them.
+  Say so when a check depended on them.
+- **Shader packs** run through Iris on llvmpipe, slowly: `--shaders` takes an unpacked
+  pack folder (clone Photon or Complementary into the scratchpad), downloads Iris next to
+  Sodium, and `Scene.shaderPack` copies the pack into Iris's folder and turns it on before
+  the first scenario. The run folder is emptied at start, so a pack copied there by hand is lost.
 - Sodium can be added (`--sodium`, downloaded from Modrinth into `build/game-test-mods`).
 
 ## Never
