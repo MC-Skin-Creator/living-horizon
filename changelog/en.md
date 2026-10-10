@@ -9,6 +9,7 @@
 
 ### Fixed
 - **Black distant mobs** — without shaders, distant mobs no longer turn black for a moment, mostly while flying.
+- **Photon with Voxy** — distant mobs no longer wear the shadow of the terrain behind them.
 
 ## 0.3.2 — 2026-10-09
 

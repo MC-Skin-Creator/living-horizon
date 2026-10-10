@@ -9,6 +9,7 @@
 
 ### Corrections
 - **Créatures lointaines noires** — sans shaders, les créatures lointaines ne deviennent plus noires par moments, surtout en vol.
+- **Photon avec Voxy** — les créatures lointaines ne portent plus l'ombre du terrain situé derrière elles.
 
 ## 0.3.2 — 2026-10-09
 

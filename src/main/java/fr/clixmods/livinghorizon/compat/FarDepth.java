@@ -41,7 +41,12 @@ import java.lang.reflect.Method;
  *       wherever an entity was drawn, its depth stays.</li>
  * </ol>
  *
- * <p>Without a pack, Voxy already writes its depth for good and this does nothing. Voxy
+ * <p>Without a pack, Voxy already writes its depth for good and this does nothing.
+ *
+ * <p>The other way round, the entities drawn are written into Voxy's own two depth
+ * textures, which a pack reads where the game's depth ends: Photon shades a fragment that
+ * far with shadows marched through Voxy's depth, from the point Voxy's depth gives - the
+ * terrain behind a distant mob, whose shadow then fell across the mob. Voxy
  * has no API for this: its classes are reached by reflection, every GL state touched is
  * put back, and any failure turns this off for the session.
  */
@@ -52,6 +57,10 @@ public final class FarDepth {
     private static Method getNullable, getViewport, getDepthTex, transformBlitDepth;
     private static Field pipelineField, dataField, toVanillaField, depthBlitField, fbTranslucentField, textureIdField;
     private static Field projectionField, modelViewField, viewportWidthField, viewportHeightField;
+    private static Field fbField, voxyProjectionField;
+    /** Null in a Voxy without {@code RenderProperties}, whose depth is OpenGL's usual one. */
+    private static @Nullable Field propertiesField;
+    private static @Nullable Method zeroToOneMethod, reverseZMethod;
     /** Null in a Voxy that does not know {@code useViewportDims}. */
     private static @Nullable Field useViewportDimsField;
     private static Class<?> irisPipeline;
@@ -60,6 +69,8 @@ public final class FarDepth {
     private static boolean armed;
     /** Whether {@link #before()} wrote Voxy's depth, so that {@link #after()} must undo it. */
     private static boolean merged;
+    /** Whether {@link #after()} writes the entities into Voxy's own depth. */
+    private static boolean intoVoxy;
 
     private static int target, depthTexture, width, height, format;
     private static int saved, written, drawn, faded;
@@ -173,6 +184,7 @@ public final class FarDepth {
         if (!armed) return;
         merged = false;
         captured = false;
+        intoVoxy = false;
         FarConfig config = FarConfig.get();
         boolean wanted = needed || !config.optLazyDepth;
         needed = false;
@@ -199,8 +211,11 @@ public final class FarDepth {
             boolean dhFade = wanted && config.anyDistant() && config.optDhFade && DhDepth.available()
                     && !DhDepth.shaderPackOn();
             boolean queries = wanted && config.anyDistant() && config.hideOccludedMobs && config.optOcclusionQueries;
+            // A pack that keeps Voxy's depth apart reads it past the game's: the entities go there too.
+            boolean voxy = wanted && config.anyDistant() && keepsOwnDepth();
             // The depth view shows the game's depth even when there was nothing to merge.
-            if (!merged && (config.debugDepthView != 0 || dhFade || queries)) captured = capture();
+            if (!merged && (config.debugDepthView != 0 || dhFade || queries || voxy)) captured = capture();
+            intoVoxy = voxy && (merged || captured);
             fadeMask = dhFade && (merged || captured) && target == ownTarget;
             // The depth as it is now - far terrain in it, entities not yet - is what hides distant mobs.
             // Tested on its copy: the game's own texture, which Distant Horizons reads later in the
@@ -225,11 +240,13 @@ public final class FarDepth {
         try {
             if (merged) restore();
             else if (captured) copy(depthTexture, drawn);
+            if (intoVoxy) intoVoxy();
         } catch (Throwable e) {
             fail(e);
         }
         merged = false;
         captured = false;
+        intoVoxy = false;
     }
 
     /** The depth was copied without the far terrain's: for the debug view, or for Distant Horizons' fade. */
@@ -649,6 +666,149 @@ public final class FarDepth {
         }
     }
 
+    // --- Into Voxy's depth -------------------------------------------------------------------
+
+    /** Our framebuffers around Voxy's opaque and translucent depth textures. */
+    private static int voxyOpaqueTarget, voxyOpaqueDepth, voxyTranslucentTarget, voxyTranslucentDepth;
+    private static int intoVoxyProgram;
+
+    /** Voxy draws under a shader pack that keeps its terrain out of the game's depth. */
+    private static boolean keepsOwnDepth() throws ReflectiveOperationException {
+        if (!available()) return false;
+        Object system = getNullable.invoke(null);
+        if (system == null) return false;
+        Object pipeline = pipelineField.get(system);
+        return irisPipeline.isInstance(pipeline) && !toVanillaField.getBoolean(dataField.get(pipeline));
+    }
+
+    /**
+     * Writes the entities just drawn into Voxy's opaque and translucent depth, wherever they
+     * are nearer than its terrain: a pack that reads Voxy's depth where the game's ends then
+     * finds the mob there, not the terrain behind it. Voxy's pixels are the game's, one for
+     * one, from the bottom left corner; the depth goes back to a distance in front of the
+     * camera through the game's projection, then forward through Voxy's.
+     */
+    private static void intoVoxy() throws ReflectiveOperationException {
+        Object system = getNullable.invoke(null);
+        if (system == null) return;
+        Object pipeline = pipelineField.get(system);
+        Object viewport = getViewport.invoke(system);
+        if (!irisPipeline.isInstance(pipeline) || viewport == null) return;
+        Object opaque = getDepthTex.invoke(fbField.get(pipeline));
+        Object translucent = getDepthTex.invoke(fbTranslucentField.get(pipeline));
+        int vw = viewportWidthField.getInt(viewport), vh = viewportHeightField.getInt(viewport);
+        if (opaque == null || translucent == null || vw <= 0 || vh <= 0) return;
+        boolean zeroToOne = false, reversed = false;
+        Object properties = propertiesField == null ? null : propertiesField.get(pipeline);
+        if (properties != null) {
+            zeroToOne = (boolean) zeroToOneMethod.invoke(properties);
+            reversed = (boolean) reverseZMethod.invoke(properties);
+        }
+        float[] fromGame = new Matrix4f((Matrix4f) projectionField.get(viewport)).invert().get(new float[16]);
+        float[] toVoxy = ((Matrix4f) voxyProjectionField.get(viewport)).get(new float[16]);
+        if (intoVoxyProgram == 0) intoVoxyProgram = compileIntoVoxy();
+        int opaqueId = textureIdField.getInt(opaque), translucentId = textureIdField.getInt(translucent);
+        if (voxyOpaqueDepth != opaqueId) {
+            voxyOpaqueTarget = wrap(voxyOpaqueTarget, opaqueId);
+            voxyOpaqueDepth = opaqueId;
+        }
+        if (voxyTranslucentDepth != translucentId) {
+            voxyTranslucentTarget = wrap(voxyTranslucentTarget, translucentId);
+            voxyTranslucentDepth = translucentId;
+        }
+        GlState gl = GlState.save();
+        try {
+            GL11C.glDisable(GL11C.GL_SCISSOR_TEST);
+            GL11C.glDisable(GL11C.GL_CULL_FACE);
+            GL11C.glDisable(GL11C.GL_STENCIL_TEST);
+            GL11C.glDisable(GL11C.GL_BLEND);
+            GL11C.glEnable(GL11C.GL_DEPTH_TEST);
+            GL11C.glDepthFunc(reversed ? GL11C.GL_GREATER : GL11C.GL_LESS);
+            GL11C.glDepthMask(true);
+            GL11C.glColorMask(false, false, false, false);
+            GL11C.glViewport(0, 0, vw, vh);
+            GL20C.glUseProgram(intoVoxyProgram);
+            GL20C.glUniform2f(GL20C.glGetUniformLocation(intoVoxyProgram, "size"), vw, vh);
+            GL20C.glUniformMatrix4fv(GL20C.glGetUniformLocation(intoVoxyProgram, "fromGame"), false, fromGame);
+            GL20C.glUniformMatrix4fv(GL20C.glGetUniformLocation(intoVoxyProgram, "toVoxy"), false, toVoxy);
+            GL20C.glUniform4f(GL20C.glGetUniformLocation(intoVoxyProgram, "depthLayout"),
+                    DepthFar.REVERSED ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f, reversed ? 1f : 0f, zeroToOne ? 1f : 0f);
+            GL30C.glBindVertexArray(vertexArray);
+            for (int unit = 0; unit < 2; unit++) {
+                GL33C.glBindSampler(unit, 0);
+                GL45C.glBindTextureUnit(unit, unit == 0 ? written : drawn);
+            }
+            for (int framebuffer : new int[]{voxyOpaqueTarget, voxyTranslucentTarget}) {
+                GL30C.glBindFramebuffer(GL30C.GL_DRAW_FRAMEBUFFER, framebuffer);
+                GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3);
+            }
+        } finally {
+            gl.restore();
+        }
+    }
+
+    /** A framebuffer of our own around a depth texture, in place of {@code previous}. */
+    private static int wrap(int previous, int depth) {
+        if (previous != 0) GL30C.glDeleteFramebuffers(previous);
+        int format = GL45C.glGetTextureLevelParameteri(depth, 0, GL11C.GL_TEXTURE_INTERNAL_FORMAT);
+        boolean stencil = format == GL30C.GL_DEPTH24_STENCIL8 || format == GL30C.GL_DEPTH32F_STENCIL8
+                || format == GL30C.GL_DEPTH_STENCIL;
+        int framebuffer = GL45C.glCreateFramebuffers();
+        GL45C.glNamedFramebufferTexture(framebuffer,
+                stencil ? GL30C.GL_DEPTH_STENCIL_ATTACHMENT : GL30C.GL_DEPTH_ATTACHMENT, depth, 0);
+        return framebuffer;
+    }
+
+    /** A screen-filling triangle that writes, in Voxy's projection, wherever an entity was drawn. */
+    private static int compileIntoVoxy() {
+        String vertex = """
+                #version 330 core
+                void main() {
+                    vec2 corner = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+                    gl_Position = vec4(corner * 2.0 - 1.0, 0.0, 1.0);
+                }
+                """;
+        String fragment = """
+                #version 330 core
+                uniform sampler2D written;
+                uniform sampler2D drawn;
+                uniform vec2 size;     // Voxy's viewport
+                uniform mat4 fromGame; // the inverse of the game's projection
+                uniform mat4 toVoxy;   // Voxy's projection
+                uniform vec4 depthLayout; // reversed, 0..1: the game's, then Voxy's
+                void main() {
+                    ivec2 at = ivec2(gl_FragCoord.xy);
+                    float entity = texelFetch(drawn, at, 0).r;
+                    if (entity == texelFetch(written, at, 0).r) discard;
+                    if (depthLayout.x > 0.5 ? !(entity > 0.0) : !(entity < 1.0)) discard;
+                    float z = depthLayout.y > 0.5 ? entity : entity * 2.0 - 1.0;
+                    vec4 view = fromGame * vec4(gl_FragCoord.xy / size * 2.0 - 1.0, z, 1.0);
+                    vec4 clip = toVoxy * vec4(view.xyz / view.w, 1.0);
+                    float depth = clip.z / clip.w;
+                    if (depthLayout.w < 0.5) depth = depth * 0.5 + 0.5;
+                    // Nearer than Voxy's near plane, or past its far one: nothing to write.
+                    if (!(depth > 0.0 && depth < 1.0)) discard;
+                    gl_FragDepth = depth;
+                }
+                """;
+        int vs = shader(GL20C.GL_VERTEX_SHADER, vertex), fs = shader(GL20C.GL_FRAGMENT_SHADER, fragment);
+        int linked = GL20C.glCreateProgram();
+        GL20C.glAttachShader(linked, vs);
+        GL20C.glAttachShader(linked, fs);
+        GL20C.glLinkProgram(linked);
+        GL20C.glDeleteShader(vs);
+        GL20C.glDeleteShader(fs);
+        if (GL20C.glGetProgrami(linked, GL20C.GL_LINK_STATUS) == GL11C.GL_FALSE) {
+            throw new IllegalStateException("Voxy depth program: " + GL20C.glGetProgramInfoLog(linked));
+        }
+        int previous = GL11C.glGetInteger(GL20C.GL_CURRENT_PROGRAM);
+        GL20C.glUseProgram(linked);
+        GL20C.glUniform1i(GL20C.glGetUniformLocation(linked, "written"), 0);
+        GL20C.glUniform1i(GL20C.glGetUniformLocation(linked, "drawn"), 1);
+        GL20C.glUseProgram(previous);
+        return linked;
+    }
+
     // --- Distant Horizons' fade -------------------------------------------------------------
 
     /** The entities of this frame are known: {@code written} before them, {@code drawn} after. */
@@ -960,6 +1120,16 @@ public final class FarDepth {
         modelViewField = viewport.getField("modelView");
         viewportWidthField = viewport.getField("width");
         viewportHeightField = viewport.getField("height");
+        voxyProjectionField = viewport.getField("projection");
+        fbField = pipeline.getField("fb");
+        try {
+            Class<?> properties = Class.forName("me.cortex.voxy.client.core.RenderProperties");
+            propertiesField = pipeline.getField("properties");
+            zeroToOneMethod = properties.getMethod("isZero2One");
+            reverseZMethod = properties.getMethod("isReverseZ");
+        } catch (ClassNotFoundException | NoSuchFieldException | NoSuchMethodException e) {
+            propertiesField = null;
+        }
         try {
             useViewportDimsField = data.getField("useViewportDims");
         } catch (NoSuchFieldException e) {
