@@ -30,10 +30,12 @@ public final class MobTypesScreen extends OptionsSubScreen {
 
     /** Every mob type, sorted by its name in the current language. */
     private final List<EntityType<?>> types;
+    private final Screen parent;
     private String filter = "";
 
     public MobTypesScreen(Screen parent) {
         super(parent, Minecraft.getInstance().options, Component.translatable(KEY + "title"));
+        this.parent = parent;
         types = MobList.all();
         types.sort(Comparator.comparing(type -> type.getDescription().getString().toLowerCase(Locale.ROOT)));
     }
@@ -47,7 +49,7 @@ public final class MobTypesScreen extends OptionsSubScreen {
         search.setResponder(text -> {
             if (text.equals(filter)) return;
             filter = text;
-            rebuildWidgets();
+            reopen();
         });
         list.addSmall(search, null);
         setInitialFocus(search);
@@ -106,7 +108,7 @@ public final class MobTypesScreen extends OptionsSubScreen {
             FarConfig.get().mobTypes.addAll(MobKinds.TYPES);
             FarConfig.get().stillMobTypes.clear();
             FarConfig.get().stillMobTypes.add("minecraft:happy_ghast");
-            rebuildWidgets();
+            reopen();
         }).width(74).build());
         row.addChild(Button.builder(CommonComponents.GUI_DONE, b -> onClose()).width(74).build());
     }
@@ -124,7 +126,18 @@ public final class MobTypesScreen extends OptionsSubScreen {
             if (!on) Mode.HIDDEN.apply(id);
             else if (current == Mode.HIDDEN) Mode.ANIMATED.apply(id);
         }
-        rebuildWidgets();
+        reopen();
+    }
+
+    /**
+     * Redraws with the current filter and settings. A fresh screen, not {@code rebuildWidgets()}:
+     * that one runs {@code init()} again on the same layout and stacks another header, list and
+     * footer on top of the old ones.
+     */
+    private void reopen() {
+        MobTypesScreen next = new MobTypesScreen(parent);
+        next.filter = filter;
+        minecraft.setScreen(next);
     }
 
     @Override
