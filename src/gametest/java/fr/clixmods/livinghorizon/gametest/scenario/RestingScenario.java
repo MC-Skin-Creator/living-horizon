@@ -41,30 +41,30 @@ public final class RestingScenario implements Scenario {
             Scene.command(world, "scoreboard players set " + NAME + " lh.y " + (GROUND + 3) * 10);
             Scene.command(world, "scoreboard players set " + NAME + " lh.z 85");
             Scene.command(world, "scoreboard players set " + NAME + " lh.m 180");
-            Scene.command(world, "tp @a 0.5 " + GROUND + " 1.5 0 20");
+            Scene.command(world, "tp @a 0.5 " + GROUND + " 1.5 0 0");
             wait(context, world, 60);
-            log(context, "pillar");
+            check(context, "pillar", GROUND + 3, false);
             Scene.screenshot(context, this, "pillar");
 
             Scene.command(world, "fill 0 " + GROUND + " 8 0 " + (GROUND + 2) + " 8 air");
             wait(context, world, 40);
-            log(context, "fallen");
+            check(context, "fallen", GROUND, false);
             Scene.screenshot(context, this, "fallen");
 
             Scene.command(world, "fill 0 " + GROUND + " 8 0 " + (GROUND + 1) + " 8 dirt");
             wait(context, world, 20);
-            log(context, "buried");
+            check(context, "buried", GROUND + 2, false);
             Scene.screenshot(context, this, "buried");
 
             Scene.command(world, "fill 0 " + GROUND + " 8 0 " + (GROUND + 2) + " 8 stone");
             wait(context, world, 20);
-            log(context, "rebuilt");
+            check(context, "rebuilt", GROUND + 3, false);
             Scene.screenshot(context, this, "rebuilt");
 
             Scene.command(world, "setblock 3 " + GROUND + " 9 red_bed[facing=north,part=foot]");
             Scene.command(world, "setblock 3 " + GROUND + " 8 red_bed[facing=north,part=head]");
             wait(context, world, 40);
-            log(context, "bed");
+            check(context, "bed", GROUND + 0.6875, true);
             Scene.screenshot(context, this, "bed");
         }
     }
@@ -77,8 +77,9 @@ public final class RestingScenario implements Scenario {
         }
     }
 
-    private static void log(ClientGameTestContext context, String step) {
-        context.runOnClient(minecraft -> {
+    /** Logs where the sleeper is, and fails the run when it is not where it should be. */
+    private static void check(ClientGameTestContext context, String step, double y, boolean bed) {
+        String where = context.computeOnClient(minecraft -> {
             ClientLevel level = minecraft.level;
             RestingPlayers resting = FarPlayerTracker.get().resting();
             for (RestingPlayers.Spot spot : resting.spots()) {
@@ -86,9 +87,11 @@ public final class RestingScenario implements Scenario {
                 var puppet = resting.puppet(level, spot);
                 Scene.log("resting " + step + " y=" + puppet.getY() + " bed=" + puppet.inBed()
                         + " standing=" + puppet.standing());
-                return;
+                return Math.abs(puppet.getY() - y) < 1e-3 && puppet.inBed() == bed ? null
+                        : "y=" + puppet.getY() + " bed=" + puppet.inBed();
             }
-            Scene.log("resting " + step + " no sleeper");
+            return "no sleeper";
         });
+        if (where != null) throw new AssertionError("resting " + step + ": expected y=" + y + " bed=" + bed + ", got " + where);
     }
 }
