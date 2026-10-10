@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### New
+- **First scan by itself** — the first time you enter a single player world, the mobs of the 32 chunks around you are read at once, so the horizon is alive from the start. The scan distance is now given in chunks, like the render distance, and the other distances say *blocks*.
+
 ## 0.3.2 — 2026-10-09
 
 ### Fixed
