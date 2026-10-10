@@ -46,8 +46,11 @@ import java.util.function.Function;
 public final class Ambience {
     public enum Kind { SILHOUETTE, PARROT, BAT }
 
-    /** Which sprite a silhouette uses, flying and perched; and how it is tinted. */
-    public enum Species { GENERIC, GULL, PIGEON, ROBIN, TIT, DUCK }
+    /**
+     * Which sprite or model a silhouette uses, flying and perched; and how it is tinted.
+     * Geese and birds of prey share the plain sprite with the flocks, but have models of their own.
+     */
+    public enum Species { GENERIC, GULL, PIGEON, ROBIN, TIT, DUCK, GOOSE, RAPTOR }
 
     /** The kinds of birds that can be switched off one by one; the id is what {@code hiddenBirds} holds. */
     public enum Type {
@@ -499,7 +502,8 @@ public final class Ambience {
                     if (parrot == null) break;
                     flyer = new Flyer(Kind.PARROT, Species.GENERIC, (float) Math.max(1, config.birdSize), 0, parrot, 0.9f);
                 } else {
-                    flyer = new Flyer(Kind.SILHOUETTE, Species.GENERIC, baseSpan * (float) (0.9 + r.nextDouble() * 0.2),
+                    flyer = new Flyer(Kind.SILHOUETTE, geese ? Species.GOOSE : Species.GENERIC,
+                            baseSpan * (float) (0.9 + r.nextDouble() * 0.2),
                             25 + r.nextInt(30), null, geese ? 0.32f : 0.7f + r.nextFloat() * 0.3f);
                     flyer.beat = r.nextFloat() * 6.28f;
                 }
@@ -567,7 +571,7 @@ public final class Ambience {
                 height[i] = r.nextGaussian() * 6;
                 phase[i] = r.nextDouble() * 100;
                 turn[i] = r.nextInt(5) == 0 ? -direction : direction;
-                Flyer flyer = new Flyer(Kind.SILHOUETTE, Species.GENERIC,
+                Flyer flyer = new Flyer(Kind.SILHOUETTE, Species.RAPTOR,
                         silhouetteSize(config, 1.8 + r.nextDouble() * 0.8), 30 + r.nextInt(25), null, 0.28f);
                 flyer.place(cx, cy, cz);
                 flyers.add(flyer);
