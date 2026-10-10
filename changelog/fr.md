@@ -6,6 +6,7 @@
 - **Premier scan automatique** — la première fois que tu entres dans un monde solo, les mobs des 32 chunks autour de toi sont lus tout de suite, pour que l'horizon soit vivant dès le départ. La distance du scan est maintenant donnée en chunks, comme la distance d'affichage, et les autres distances indiquent des *blocs*.
 - **Réglages d'animation** — deux nouveaux curseurs choisissent quand les mobs lointains arrêtent leurs animations : sous une certaine taille à l'écran, ou au-delà d'une distance.
 - **Préréglages de qualité** — Bas, Normal, Élevé et Ultra règlent d'un coup la portée des imposteurs, le nombre et la portée des créatures lointaines et les oiseaux, pour les machines puissantes qui veulent un horizon plus fourni. Les imposteurs ont leur propre catégorie, et *Rétablir les valeurs par défaut* est passé à côté de *Terminé*.
+- **Page de réglages dans Sodium** — avec Sodium 0.8 ou plus récent (et Reese's ou Enchanted's Sodium Options), une page *Living Horizon* des réglages vidéo ouvre les réglages du mod. Fabric et Quilt, à partir de Minecraft 1.21.11.
 
 ## 0.3.2 — 2026-10-09
 
