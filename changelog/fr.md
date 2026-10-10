@@ -4,6 +4,7 @@
 
 ### Nouveautés
 - **Premier scan automatique** — la première fois que tu entres dans un monde solo, les mobs des 32 chunks autour de toi sont lus tout de suite, pour que l'horizon soit vivant dès le départ. La distance du scan est maintenant donnée en chunks, comme la distance d'affichage, et les autres distances indiquent des *blocs*.
+- **Réglages d'animation** — deux nouveaux curseurs choisissent quand les mobs lointains arrêtent leurs animations : sous une certaine taille à l'écran, ou au-delà d'une distance.
 
 ## 0.3.2 — 2026-10-09
 
