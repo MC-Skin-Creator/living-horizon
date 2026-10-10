@@ -301,13 +301,16 @@ Where each kind goes is read off the terrain a few columns at a time - from the 
 loaded here, or farther from the far world (`compat/LodWorld`, which reads Voxy through `VoxySource` or
 Distant Horizons through `DhSource`, its public API): crops or farmland for
 robins, leaves for tits, a man-made block well above its neighbours for pigeons, a beach or
-ocean biome for gulls. Birds are pixel sprites from `textures/misc/birds.png` (flying: seen
-from above, one plane per wing; perched: seen from the side, facing the camera); bats and
-parrots are the game's own.
+ocean biome for gulls. Birds are small 3D models (`ambient/BirdModels`): boxes in pixels,
+like the game's mobs, coloured box by box over a feather grain (`textures/misc/birds_3d.png`);
+the wings beat and bend at the tip, perched birds stand on their legs, ducks float. With
+`birdStyle` set to `2d` they are pixel sprites from `textures/misc/birds.png` instead (flying:
+seen from above, one plane per wing; perched: seen from the side, facing the camera). Bats
+and parrots are the game's own either way.
 
 Settings: on/off, how many (`birdDensity`, percent), how far (`birdMaxDistance`), how low
-flocks may fly (`birdMinHeight`), size, and each kind on its own ("Choose birds...",
-`hiddenBirds`).
+flocks may fly (`birdMinHeight`), size, 3D or 2D (`birdStyle`), and each kind on its own
+("Choose birds...", `hiddenBirds`).
 
 ### Impostors
 

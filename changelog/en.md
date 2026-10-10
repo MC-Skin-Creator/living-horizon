@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### New
+- **3D birds** — every bird is now a small model, like the game's mobs, with beating wings and legs when perched. *Bird style* in the settings brings back the flat 2D birds.
+
 ### Fixed
 - **Shader packs** — distant figures shown as impostors are no longer dark with Iris shaders such as Photon or Complementary: they catch the sun like full models.
 

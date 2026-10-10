@@ -2,6 +2,9 @@
 
 ## Prochaine version
 
+### Nouveautés
+- **Oiseaux en 3D** — chaque oiseau est maintenant un petit modèle, comme les mobs du jeu, qui bat des ailes et se pose sur ses pattes. *Style des oiseaux* dans les réglages remet les oiseaux plats en 2D.
+
 ### Corrections
 - **Shaders** — les silhouettes lointaines affichées en imposteurs ne sont plus sombres avec les shaders d'Iris comme Photon ou Complementary : elles prennent le soleil comme les vrais modèles.
 
