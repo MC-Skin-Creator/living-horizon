@@ -107,6 +107,8 @@ public final class MobMemory {
         transient double distance;
         /** Forgotten while still on the list being drawn: not drawn again, nor rebuilt. */
         transient boolean gone;
+        /** Too small or too far for its animation to show; kept between ticks for the hysteresis. */
+        transient boolean still;
         /** When it was last drawn, in nanoseconds; 0 if never. */
         transient long drawnAt;
 
@@ -157,6 +159,7 @@ public final class MobMemory {
     private final Map<UUID, Double> dismissed = new HashMap<>();
     private List<Remembered> shown = List.of();
     private @Nullable Path file;
+    private boolean firstVisit;
     /** The level the memory is read for: what unloads from any other one is not remembered. */
     private @Nullable ClientLevel bound;
     /** The seed of the world of {@link #bound}: what a memory must carry to be drawn. */
@@ -209,7 +212,9 @@ public final class MobMemory {
         close();
         file = Platform.configDir()
                 .resolve("livinghorizon").resolve("mobs").resolve(RestingPlayers.safe(server) + ".json");
-        if (!Files.exists(file)) return;
+        // No file yet: the mod has never been in this world.
+        firstVisit = !Files.exists(file);
+        if (firstVisit) return;
         try (Reader reader = Files.newBufferedReader(file)) {
             List<Remembered> read = GSON.fromJson(reader, new TypeToken<List<Remembered>>() { }.getType());
             if (read != null) {
@@ -224,8 +229,16 @@ public final class MobMemory {
         }
     }
 
+    /** True once per world the mod has never been in before: the cue for a first scan. */
+    boolean takeFirstVisit() {
+        boolean first = firstVisit;
+        firstVisit = false;
+        return first;
+    }
+
     void close() {
         save();
+        firstVisit = false;
         mobs.clear();
         live.clear();
         joining.clear();
@@ -519,8 +532,8 @@ public final class MobMemory {
                         mob.planning = false;
                     });
                 }
-                boolean tiny = pixelsPerRadian > 0
-                        && apparentPixels(living, mob, config, pixelsPerRadian) < MobMotion.TINY_PIXELS;
+                mob.still = isStill(living, mob, config, pixelsPerRadian);
+                boolean tiny = mob.still;
                 double handover = Math.max(24, Math.min(sent(type(mob)), renderDistanceBlocks));
                 float home = MobMotion.home(Math.hypot(mob.x - selfX, mob.z - selfZ), handover);
                 motion(mob).tick(living, mob, choice, clock, roam, tiny, home);
@@ -552,6 +565,17 @@ public final class MobMemory {
         Minecraft minecraft = Minecraft.getInstance();
         double fov = Math.toRadians(minecraft.options.fov().get());
         return Math.max(1, minecraft.getWindow().getHeight()) / (2.0 * Math.tan(fov / 2));
+    }
+
+    /**
+     * Whether a mob's animation is switched off: past the distance cap, or smaller on screen than
+     * the minimum. Once still it resumes only above the minimum plus a quarter and a pixel.
+     */
+    private static boolean isStill(LivingEntity puppet, Remembered mob, FarConfig config, double pixelsPerRadian) {
+        if (config.animationMaxDistance > 0 && mob.distance > config.animationMaxDistance) return true;
+        if (pixelsPerRadian <= 0 || config.animationMinPixels <= 0) return false;
+        double min = config.animationMinPixels;
+        return apparentPixels(puppet, mob, config, pixelsPerRadian) < (mob.still ? min * 1.25 + 1 : min);
     }
 
     /** Roughly how tall a mob looks on screen, at the distance it was last sorted at. */

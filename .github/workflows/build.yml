@@ -17,6 +17,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Entries go under Unreleased only, with the headings the release reads, the same in
+  # English and French: the release dates that section and posts it on Modrinth,
+  # CurseForge and Discord.
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check the changelog
+        run: node .github/scripts/changelog-check.js "origin/${{ github.base_ref }}"
+
   build:
     # One job per Stonecutter target, so a version that stops compiling fails on its
     # own line. A target added to stonecutter.properties.toml is added here too.

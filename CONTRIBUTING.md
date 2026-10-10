@@ -13,7 +13,8 @@ clone private and open a pull request when it is ready.
 3. Commits are in English, as conventional commits (`feat(scope): summary`).
 4. Run `./gradlew :1.21.11:build`: it compiles and runs the tests. CI runs it too.
 5. Add yourself to `CREDITS.md` in your pull request, with a few words on what you brought.
-6. If the change shows to players, add it to `changelog/en.md` and `changelog/fr.md`.
+6. If the change shows to players, add it to `changelog/en.md` and `changelog/fr.md`, under
+   *Unreleased* / *Prochaine version*, in one short sentence a player understands.
 
 `CLAUDE.md` describes the full conventions of this repository.
 

@@ -168,10 +168,22 @@ come back, add it here in the same pull request: this file is what the next sess
 ## Changelog
 
 A pull request that changes what a player sees or feels adds its entry to
-`changelog/en.md` and `changelog/fr.md`, under `## Unreleased` / `## Prochaine version`,
-in the same pull request: same headings, same number of bullets, same order. Written for
-players, never for developers: no CI, refactor, tooling or documentation. The release
-dates the section by itself.
+`changelog/en.md` and `changelog/fr.md`, under `## Unreleased` / `## Prochaine version`
+and nowhere else: a dated section is a version already released, never edited. Headings
+are `### New`, `### Improved`, `### Fixed` (`### Nouveautés`, `### Améliorations`,
+`### Corrections`); both files have the same headings and number of bullets, in the same
+order. The `changelog` CI job checks all of this.
+
+The release dates the section, opens a new empty one, and posts the entries on Modrinth
+(Changelog tab), CurseForge (file page) and Discord. Players read them, so write for
+someone who has never seen the code:
+
+- one short sentence per bullet, a bold subject first: `**Photon** — distant mobs hide
+  behind the right hills again.`
+- say what the player notices, not how it was done: no shader, depth, buffer, pass,
+  query, mask, class or setting internals; nothing about the debug screens.
+- a fix says what was wrong and that it is gone, naming the mod or game version involved.
+- nothing for CI, refactors, tooling, documentation or debug-only tools.
 
 ## Issues
 
