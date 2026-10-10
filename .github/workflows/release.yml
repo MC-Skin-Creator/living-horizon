@@ -180,6 +180,8 @@ jobs:
   release:
     needs: [version, build]
     runs-on: ubuntu-latest
+    outputs:
+      changelog: ${{ steps.notes.outputs.changelog }}
 
     steps:
       - name: Checkout
@@ -221,6 +223,24 @@ jobs:
           git tag "v${VERSION}"
           git push origin HEAD:"${{ github.ref_name }}"
           git push origin "v${VERSION}"
+
+      - name: Read the changelog
+        # This version's section of changelog/en.md, dated just above, for the
+        # Modrinth and CurseForge version pages.
+        if: needs.version.outputs.channel == 'stable'
+        id: notes
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          link="[Full release on GitHub](https://github.com/${{ github.repository }}/releases/tag/v${VERSION})"
+          notes=$(node .github/scripts/changelog-notes.js "$VERSION")
+          {
+            echo 'changelog<<LH_CHANGELOG_EOF'
+            if [ -n "$notes" ]; then printf '%s\n\n' "$notes"; fi
+            echo "$link"
+            echo 'LH_CHANGELOG_EOF'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Publish the release
         env:
@@ -334,8 +354,9 @@ jobs:
             ${{ (matrix.target.loader == 'fabric' || matrix.target.loader == 'quilt') && 'fabric-api(required){modrinth:P7dR8mSH}{curseforge:306612}' || '' }}
             ${{ (matrix.target.loader == 'fabric' || matrix.target.loader == 'quilt') && 'voxy(optional){modrinth:fxxUqruK}' || '' }}
             distanthorizons(optional){modrinth:uCdwusMi}
-          changelog: |
-            See the full notes on GitHub: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.version.outputs.version }}
+          # The player changelog of this version, shown in the Changelog tab of Modrinth
+          # and on the file page of CurseForge.
+          changelog: ${{ needs.release.outputs.changelog }}
 
   # Last, and never blocking: nothing depends on this job, so a Discord hiccup cannot
   # undo a release that is already on GitHub, Modrinth and CurseForge. It reads the
