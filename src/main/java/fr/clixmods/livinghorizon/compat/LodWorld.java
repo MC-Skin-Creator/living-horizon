@@ -296,6 +296,44 @@ public final class LodWorld {
         return result;
     }
 
+    /**
+     * For each point, whether it stands out in the open in the far world: no block that
+     * stops light above {@code eyes[i]}, and no water at {@code feet[i]}. Null where the
+     * far world knows nothing of the column - a cave is never taken for open air for want
+     * of knowing what is over it - and the whole answer null without Voxy or Distant Horizons.
+     */
+    public static CompletableFuture<@Nullable Boolean @Nullable []> openAir(double[] xs, double[] feet, double[] eyes,
+                                                                            double[] zs) {
+        LodSource source = source();
+        if (source == null) return CompletableFuture.completedFuture(null);
+        CompletableFuture<@Nullable Boolean @Nullable []> result = new CompletableFuture<>();
+        run(() -> {
+            Boolean[] open = null;
+            try {
+                Object world = open(source);
+                if (world != null) {
+                    open = new Boolean[xs.length];
+                    for (int i = 0; i < xs.length; i++) {
+                        int x = (int) Math.floor(xs[i]), z = (int) Math.floor(zs[i]);
+                        Surface top = source.column(world, x, z);
+                        if (top == null) continue;
+                        // Nothing in the column over its top block: no need to look up past it.
+                        double above = top.y() + 1 - eyes[i];
+                        BlockState[] standing = source.slice(world, x, z, (int) Math.floor(feet[i]), 1);
+                        boolean wet = standing != null && standing[0] != null && !standing[0].getFluidState().isEmpty();
+                        open[i] = !wet && (above <= 0 || Double.isNaN(source.firstHit(world, xs[i], eyes[i], zs[i],
+                                0, 1, 0, 0, above)));
+                    }
+                }
+            } catch (Throwable e) {
+                source.fail(e);
+                open = null;
+            }
+            result.complete(open);
+        });
+        return result;
+    }
+
     private static long key(int x, int z) {
         return (long) x << 32 | (z & 0xFFFFFFFFL);
     }

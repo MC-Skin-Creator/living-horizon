@@ -81,3 +81,7 @@ accessible field net/minecraft/world/level/entity/PersistentEntitySectionManager
 # The far plane, which the camera holds from 26.1: read where the game renderer used to answer.
 # @since 26.1
 accessible field net/minecraft/client/Camera depthFar F
+
+# The slot whose item shields a mob from the sun: the head, or a zombie horse's body.
+# @since 1.21.11
+accessible method net/minecraft/world/entity/Mob sunProtectionSlot ()Lnet/minecraft/world/entity/EquipmentSlot;

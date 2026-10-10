@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
+import fr.clixmods.livinghorizon.compat.LodWorld;
 import fr.clixmods.livinghorizon.platform.Platform;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -13,11 +14,16 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.server.IntegratedServer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
+//? if >=1.21.11
+import net.minecraft.tags.EntityTypeTags;
 import net.minecraft.util.Util;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+//? if <1.21.11
+/*import net.minecraft.world.entity.EquipmentSlot;*/
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobCategory;
@@ -69,8 +75,9 @@ import java.util.concurrent.CompletableFuture;
  * <p>Only mobs that stay put are worth remembering: animals do, hostile mobs despawn as
  * soon as nobody is around. Which ones is {@link FarConfig#mobTypes}, plus every mob with
  * a name tag ({@link FarConfig#rememberNamedMobs}). A memory is dropped
- * when the mob is seen dying, or when this client comes back within range of where it
- * was and it is not there any more.
+ * when the mob is seen dying, when this client comes back within range of where it
+ * was and it is not there any more, or in daylight when it is a mob the sun burns,
+ * standing in the open.
  *
  * <p>Remembered per server across sessions, in {@code config/livinghorizon/mobs/<server>.json}.
  */
@@ -107,6 +114,10 @@ public final class MobMemory {
         transient double distance;
         /** Forgotten while still on the list being drawn: not drawn again, nor rebuilt. */
         transient boolean gone;
+        /** Its sky being read in the far world. */
+        transient volatile boolean skyChecking;
+        /** Found out in the open in daylight by the far world: forgotten at the next look. */
+        transient volatile boolean burnt;
         /** Too small or too far for its animation to show; kept between ticks for the hysteresis. */
         transient boolean still;
         /** When it was last drawn, in nanoseconds; 0 if never. */
@@ -468,6 +479,7 @@ public final class MobMemory {
             if (pack != null) sync(pack, scoreboard);
             learnReach();
             reconcile(level, dimension, renderDistanceBlocks);
+            if (clock % 100 == 0) burn(level);
             choose(dimension, config);
         } else if (chooseSoon) {
             choose(dimension, config);
@@ -686,6 +698,69 @@ public final class MobMemory {
             forget(mob.id);
         }
     }
+
+    /**
+     * Daylight: a zombie, a skeleton, a phantom out in the open burns, so its copy goes
+     * with the night. Only where the sky is known to be open right above it - from the
+     * chunks loaded here, else from the far world - so that the ones in a cave stay, and so
+     * do the ones in shade, in water, in the rain, or wearing a helmet. Only copies built
+     * for drawing are looked at: what they wear is in them, and the others are not seen.
+     * The data pack's mobs are left to the pack: the server knows when they burn.
+     */
+    private void burn(ClientLevel level) {
+        List<Remembered> burnt = new ArrayList<>();
+        List<Remembered> far = new ArrayList<>();
+        boolean sunny = level.isBrightOutside() && !level.isRaining();
+        for (Remembered mob : shown) {
+            if (mob.gone) continue;
+            if (mob.burnt) {
+                burnt.add(mob);
+                continue;
+            }
+            if (!sunny || mob.fromPack || mob.skyChecking || !(mob.puppet instanceof Mob puppet) || !burns(puppet)) continue;
+            BlockPos eye = BlockPos.containing(mob.x, mob.y + puppet.getEyeHeight(), mob.z);
+            if (level.hasChunk(eye.getX() >> 4, eye.getZ() >> 4)) {
+                if (level.canSeeSky(eye) && level.getFluidState(BlockPos.containing(mob.x, mob.y, mob.z)).isEmpty()) {
+                    burnt.add(mob);
+                }
+            } else {
+                far.add(mob);
+            }
+        }
+        burnt.forEach(mob -> forget(mob.id));
+        if (far.isEmpty()) return;
+        int n = far.size();
+        double[] xs = new double[n], feet = new double[n], eyes = new double[n], zs = new double[n];
+        for (int i = 0; i < n; i++) {
+            Remembered mob = far.get(i);
+            mob.skyChecking = true;
+            xs[i] = mob.x;
+            feet[i] = mob.y;
+            eyes[i] = mob.y + (mob.puppet != null ? mob.puppet.getEyeHeight() : 1.5);
+            zs[i] = mob.z;
+        }
+        LodWorld.openAir(xs, feet, eyes, zs).whenComplete((open, error) -> {
+            for (int i = 0; i < n; i++) {
+                if (open != null && Boolean.TRUE.equals(open[i])) far.get(i).burnt = true;
+                far.get(i).skyChecking = false;
+            }
+        });
+    }
+
+    /** Burns in daylight, as the game has it, with nothing on to shield it. */
+    private static boolean burns(Mob mob) {
+        // The game's own list and the slot that shields from the sun came in 1.21.11; before,
+        // zombies but husks, skeletons but wither skeletons, and phantoms burnt.
+        //? if >=1.21.11 {
+        return mob.getType().builtInRegistryHolder().is(EntityTypeTags.BURN_IN_DAYLIGHT) && mob.getItemBySlot(mob.sunProtectionSlot()).isEmpty();
+        //?} else
+        /*return SUN_SENSITIVE.contains(EntityType.getKey(mob.getType()).toString()) && mob.getItemBySlot(EquipmentSlot.HEAD).isEmpty();*/
+    }
+
+    //? if <1.21.11 {
+    /*private static final Set<String> SUN_SENSITIVE = Set.of("minecraft:zombie", "minecraft:zombie_villager",
+            "minecraft:drowned", "minecraft:skeleton", "minecraft:stray", "minecraft:bogged", "minecraft:phantom");
+    *///?}
 
     /**
      * How far, in blocks across, the server sends mobs of a type. In a single player world

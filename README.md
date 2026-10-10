@@ -236,6 +236,11 @@ lives there.
 - A mob met up close keeps its exact look (the game's own save of it); one known only
   from the pack is built from kind, variant and age.
 - Coming back within range of a remembered mob that is not there forgets it.
+- In daylight, a remembered mob the sun burns (zombies, skeletons, phantoms; the entity
+  type tag `burn_in_daylight` from 1.21.11) is forgotten when it stands in the open: sky
+  open right above its eyes (from the loaded chunks, else Voxy's or Distant Horizons'
+  world), not in water nor rain, nothing on its head. One in a cave, in shade, or where
+  neither knows the terrain stays. Only the copies being drawn are looked at.
 - When a mob is remembered, the blocks within 8 blocks of it are read once
   (`track/MobPaths`, from loaded chunks or the far world, Voxy or Distant Horizons): in
   each column, the floor nearest its height with room above it. Grass, flowers, crops and
