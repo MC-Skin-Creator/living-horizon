@@ -7,6 +7,9 @@
 - **Animation settings** — two new sliders choose when distant mobs stop playing their animations: below a size on screen, or past a distance.
 - **Quality presets** — Low, Normal, High and Ultra set impostor distance, the number and range of distant mobs and the birds in one go, for powerful machines that want a fuller horizon. Impostors have their own settings category, and *Restore defaults* now sits beside *Done*.
 
+### Fixed
+- **Black distant mobs** — without shaders, distant mobs no longer turn black for a moment, mostly while flying.
+
 ## 0.3.2 — 2026-10-09
 
 ### Fixed

@@ -7,6 +7,9 @@
 - **Réglages d'animation** — deux nouveaux curseurs choisissent quand les mobs lointains arrêtent leurs animations : sous une certaine taille à l'écran, ou au-delà d'une distance.
 - **Préréglages de qualité** — Bas, Normal, Élevé et Ultra règlent d'un coup la portée des imposteurs, le nombre et la portée des créatures lointaines et les oiseaux, pour les machines puissantes qui veulent un horizon plus fourni. Les imposteurs ont leur propre catégorie, et *Rétablir les valeurs par défaut* est passé à côté de *Terminé*.
 
+### Corrections
+- **Créatures lointaines noires** — sans shaders, les créatures lointaines ne deviennent plus noires par moments, surtout en vol.
+
 ## 0.3.2 — 2026-10-09
 
 ### Corrections
