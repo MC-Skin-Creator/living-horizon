@@ -5,6 +5,8 @@
 ### Corrections
 - **Shaders** — les silhouettes lointaines affichées en imposteurs ne sont plus sombres avec les shaders d'Iris comme Photon ou Complementary : elles prennent le soleil comme les vrais modèles.
 - **Photon avec Voxy** — les créatures lointaines ne portent plus l'ombre du terrain situé derrière elles.
+- **Créatures qui s'éloignent** — une créature ne disparaît plus pendant quelques images avant que sa copie lointaine n'apparaisse.
+- **Créatures qui s'éloignent** — la copie lointaine regarde maintenant dans la même direction que la créature, au lieu de parfois se tourner ailleurs.
 
 ## 0.4.0 — 2026-10-10
 
