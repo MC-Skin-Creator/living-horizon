@@ -7,6 +7,10 @@ version = "${property("mod.version")}+mc${sc.current.version}"
 base.archivesName = property("mod.id") as String
 
 repositories {
+    maven("https://maven.caffeinemc.net/releases") {
+        name = "CaffeineMC"
+        content { includeGroup("net.caffeinemc") }
+    }
     maven("https://maven.terraformersmc.com/releases") {
         name = "TerraformersMC"
         content { includeGroup("com.terraformersmc") }
@@ -35,6 +39,8 @@ dependencies {
     modImplementation("net.fabricmc.fabric-api:fabric-api:${sc.properties["deps.fabric_api"] as String}")
     // Only its API, for the settings button; nothing of it ships, nothing requires it.
     modCompileOnly("com.terraformersmc:modmenu:${property("deps.modmenu")}") { isTransitive = false }
+    // Only its API, for the page in Sodium's video settings; present from 1.21.11 on.
+    findProperty("deps.sodium_api")?.let { modCompileOnly("net.caffeinemc:sodium-fabric-api:$it") { isTransitive = false } }
 
     testImplementation(platform("org.junit:junit-bom:${property("deps.junit")}"))
     testImplementation("org.junit.jupiter:junit-jupiter")

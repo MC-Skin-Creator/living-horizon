@@ -10,7 +10,8 @@
   "environment": "client",
   "entrypoints": {
     "client": ["fr.clixmods.livinghorizon.LivingHorizonClient"],
-    "modmenu": ["fr.clixmods.livinghorizon.ui.ModMenuEntry"]
+    "modmenu": ["fr.clixmods.livinghorizon.ui.ModMenuEntry"],
+    "sodium:config_api_user": ["fr.clixmods.livinghorizon.ui.SodiumEntry"]
   },
   "mixins": [
     { "config": "livinghorizon.mixins.json", "environment": "client" }
