@@ -2,6 +2,9 @@
 
 ## Prochaine version
 
+### Nouveautés
+- **Joueurs déconnectés** — ils tombent quand on casse les blocs sous eux, ressortent quand on les ensevelit, et dorment dans un lit s'il y en a un tout près.
+
 ### Corrections
 - **Shaders** — les silhouettes lointaines affichées en imposteurs ne sont plus sombres avec les shaders d'Iris comme Photon ou Complementary : elles prennent le soleil comme les vrais modèles.
 

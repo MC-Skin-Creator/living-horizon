@@ -148,6 +148,8 @@ The game itself lacks what these need, so they are left out rather than imitated
 | `ufo` | `true` | | The easter egg |
 | `depthOcclusion` | `true` | | The far terrain's depth (Voxy or Distant Horizons) on distant mobs and players, pixel by pixel (see *The far terrain's depth* below). Was `voxyOcclusion`. In *Debug...* |
 | `offlinePose` | `"sit"` | | A player who logged off: `"sleep"`, `"sit"` or `"hidden"` |
+| `offlineOnGround` | `true` | | A player who logged off falls when what they rest on breaks, and climbs out when buried |
+| `offlineBedRadius` | `4` | blocks | A player who logged off this close to a free bed lies in it; `0` never |
 | `showVehicles` | `true` | | Draw the mount they were last seen on |
 | `renderTrackedVehiclesFar` | `true` | | Never cull a mount that carries another player |
 | `hideOccludedMobs` | `true` | | Do not draw distant mobs behind terrain at all (see *Mobs hidden by depth* below). In *Debug...*, with `depthOcclusion` |
@@ -214,6 +216,14 @@ A player who logs off stays where they were last, asleep on the ground (or sitti
 `config/livinghorizon/resting/<server>.json`. With the data pack, even players who logged
 off before you joined are there: the pack keeps everyone's last position, and their
 skin is fetched from Mojang by name.
+
+Where the blocks around them are loaded, they keep to those blocks (`offlineOnGround`):
+break the pile they sit on and they fall to the floor below, standing up for a moment
+as they land; bury them and they reappear on top. Their own spot always wins once it
+has room and something under it again, since that is where they will come back. With
+nothing below down to the bottom of the world, they stay where they are. A free bed
+within `offlineBedRadius` blocks of their spot is better still: they are shown asleep
+in it.
 
 ### Mobs far away
 

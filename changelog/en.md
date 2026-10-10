@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### New
+- **Players who logged off** — they fall when the blocks under them are broken, climb out when buried, and sleep in a bed if one is close by.
+
 ### Fixed
 - **Shader packs** — distant figures shown as impostors are no longer dark with Iris shaders such as Photon or Complementary: they catch the sun like full models.
 

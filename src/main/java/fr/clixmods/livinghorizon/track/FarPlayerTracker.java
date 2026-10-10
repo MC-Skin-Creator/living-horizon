@@ -177,7 +177,7 @@ public final class FarPlayerTracker {
                 if (report != null) resting.restFromPack(name, report);
             }
         }
-        resting.tick();
+        resting.tick(current, config);
         ambience.tick(current, self, config);
         mobs.tick(current, self, minecraft.options.getEffectiveRenderDistance() * 16, config,
                 shared.active() ? shared : null, scoreboard);

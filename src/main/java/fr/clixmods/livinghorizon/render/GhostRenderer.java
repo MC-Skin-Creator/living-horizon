@@ -16,6 +16,7 @@ import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobMemory;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
+import fr.clixmods.livinghorizon.track.RestingPuppet;
 import fr.clixmods.livinghorizon.track.SharedPositions;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -509,7 +510,10 @@ public final class GhostRenderer {
                 || category == MobCategory.UNDERGROUND_WATER_CREATURE || category == MobCategory.AXOLOTLS;
     }
 
-    /** Players who logged off, lying or sitting where they were last. */
+    /**
+     * Players who logged off, lying or sitting where they were last - or asleep in a bed
+     * nearby, or on their feet for a moment when what they rested on gave way.
+     */
     private static void rest(List<EntityRenderState> frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
                              Vec3 eye, float partialTick, FarConfig config) {
         boolean sleep = "sleep".equals(config.offlinePose);
@@ -520,16 +524,19 @@ public final class GhostRenderer {
         int dimension = SharedPositions.dimensionCode(level.dimension());
         for (RestingPlayers.Spot spot : resting.spots()) {
             if (spot.dimension() != dimension) continue;
-            Entity puppet = resting.puppet(level, spot);
-            if (puppet == null) continue;
+            RestingPuppet puppet = resting.puppet(level, spot);
             if (skipped(puppet, true)) continue;
             if (debug) DebugMarks.mark(puppet, Mark.PLAYER);
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
+            boolean lying = !puppet.inBed() && !puppet.standing();
             if (body instanceof LivingEntityRenderState living) {
                 living.yRot = 0;
                 living.xRot = 0;
                 living.walkAnimationSpeed = 0;
-                if (sleep) {
+                if (puppet.inBed()) {
+                    // In the bed: its sleeping position, so the game lays it along the bed.
+                    living.pose = Pose.SLEEPING;
+                } else if (lying && sleep) {
                     // Lying on the ground: the game lays a sleeper out along its body
                     // rotation when there is no bed, a little lower than on a mattress.
                     living.pose = Pose.SLEEPING;
@@ -537,7 +544,7 @@ public final class GhostRenderer {
                     body.y += 0.13;
                 }
             }
-            if (!sleep && body instanceof HumanoidRenderState humanoid) {
+            if (lying && !sleep && body instanceof HumanoidRenderState humanoid) {
                 // The riding pose, without a mount: legs out in front, on the ground.
                 humanoid.isPassenger = true;
                 body.y -= 0.6;
