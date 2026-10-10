@@ -110,17 +110,21 @@ public final class ImpostorRenderer {
         float vTop = board.sheet.row() / (float) ImpostorAtlas.TILES_DOWN;
         float vBottom = (board.sheet.row() + 1) / (float) ImpostorAtlas.TILES_DOWN;
         float lx = -rightX * half, lz = -rightZ * half, rx = rightX * half, rz = rightZ * half;
-        vertex(at, out, board.light, lx, bottom, lz, u0, vBottom);
-        vertex(at, out, board.light, rx, bottom, rz, u1, vBottom);
-        vertex(at, out, board.light, rx, top, rz, u1, vTop);
-        vertex(at, out, board.light, lx, top, lz, u0, vTop);
+        float[] corners = {lx, bottom, lz, rx, bottom, rz, rx, top, rz, lx, top, lz};
+        // Leant back round the middle of the figure, so that shader packs light it from above too.
+        ImpostorLean.lean(board.x, board.y, board.z, board.x, board.y + top / 2, board.z, corners);
+        vertex(at, out, board.light, corners[0], corners[1], corners[2], u0, vBottom);
+        vertex(at, out, board.light, corners[3], corners[4], corners[5], u1, vBottom);
+        vertex(at, out, board.light, corners[6], corners[7], corners[8], u1, vTop);
+        vertex(at, out, board.light, corners[9], corners[10], corners[11], u0, vTop);
     }
 
     private static void vertex(PoseStack.Pose at, VertexConsumer out, int light, float x, float y, float z,
                                float u, float v) {
         // Lit as a top face, which the game's light leaves at full brightness: the pictures
         // already carry the shading a model gets in the world. Only the light where the
-        // figure stands (sky, torches, night) is applied on top.
+        // figure stands (sky, torches, night) is applied on top. Shader packs never see this
+        // normal: Iris takes the quad's own, which ImpostorLean turns up.
         out.addVertex(at, x, y, z)
                 .setColor(255, 255, 255, 255)
                 .setUv(u, v)

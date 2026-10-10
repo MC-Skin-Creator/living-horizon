@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- **Shader packs** — distant figures shown as impostors are no longer dark with Iris shaders such as Photon or Complementary: they catch the sun like full models.
+
 ## 0.4.0 — 2026-10-10
 
 ### New
