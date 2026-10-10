@@ -30,6 +30,42 @@ public final class Scene {
         System.out.println(LOG + line);
     }
 
+    /**
+     * Turns on the shader pack named by {@code -Plh.shaderpack=<folder>} (run.sh's
+     * {@code --shaders}), when Iris is loaded: copied into Iris's folder, chosen and loaded.
+     * Through reflection, Iris being no dependency of the mod. Nothing without the property.
+     */
+    static void shaderPack(ClientGameTestContext context) {
+        String folder = System.getProperty("livinghorizon.shaderpack", "");
+        if (folder.isBlank()) return;
+        if (!net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("iris")) {
+            throw new AssertionError("A shader pack was given, but Iris is not loaded");
+        }
+        context.runOnClient(minecraft -> {
+            try {
+                java.nio.file.Path source = java.nio.file.Path.of(folder);
+                Class<?> iris = Class.forName("net.irisshaders.iris.Iris");
+                java.nio.file.Path packs = (java.nio.file.Path) iris.getMethod("getShaderpacksDirectory").invoke(null);
+                java.nio.file.Path target = packs.resolve(source.getFileName());
+                try (var files = java.nio.file.Files.walk(source)) {
+                    for (java.nio.file.Path file : (Iterable<java.nio.file.Path>) files::iterator) {
+                        java.nio.file.Path to = target.resolve(source.relativize(file).toString());
+                        if (java.nio.file.Files.isDirectory(file)) java.nio.file.Files.createDirectories(to);
+                        else java.nio.file.Files.copy(file, to, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
+                Object config = iris.getMethod("getIrisConfig").invoke(null);
+                config.getClass().getMethod("setShaderPackName", String.class).invoke(config, source.getFileName().toString());
+                config.getClass().getMethod("setShadersEnabled", boolean.class).invoke(config, true);
+                config.getClass().getMethod("save").invoke(config);
+                iris.getMethod("reload").invoke(null);
+                log("shader pack " + source.getFileName());
+            } catch (ReflectiveOperationException | java.io.IOException e) {
+                throw new IllegalStateException("Could not load the shader pack " + folder, e);
+            }
+        });
+    }
+
     /** Back to the defaults between scenarios: settings, options, no screen. */
     static void reset(ClientGameTestContext context) {
         context.setScreen(() -> null);

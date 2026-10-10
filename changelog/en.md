@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Fixed
+- **Shader packs** — distant figures shown as impostors are no longer dark with Iris shaders such as Photon or Complementary: they catch the sun like full models.
+- **Photon with Voxy** — distant mobs no longer wear the shadow of the terrain behind them.
+
+## 0.4.0 — 2026-10-10
+
 ### New
 - **First scan by itself** — the first time you enter a single player world, the mobs of the 32 chunks around you are read at once, so the horizon is alive from the start. The scan distance is now given in chunks, like the render distance, and the other distances say *blocks*.
 - **Animation settings** — two new sliders choose when distant mobs stop playing their animations: below a size on screen, or past a distance.
@@ -9,7 +15,6 @@
 
 ### Fixed
 - **Black distant mobs** — without shaders, distant mobs no longer turn black for a moment, mostly while flying.
-- **Photon with Voxy** — distant mobs no longer wear the shadow of the terrain behind them.
 
 ## 0.3.2 — 2026-10-09
 

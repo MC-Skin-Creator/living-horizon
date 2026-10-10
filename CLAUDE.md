@@ -166,6 +166,10 @@ come back, add it here in the same pull request: this file is what the next sess
   blocks with shadows marched through Voxy's own depth, from the point that depth gives. The
   mobs must be in it: `FarDepth.intoVoxy` writes them there after the entities are drawn, so
   check that it runs (Voxy's pipeline, `renderToVanillaDepth` off, something drawn far).
+- **Flat geometry lit wrong under shaders** (impostors, bird silhouettes dark or lit from
+  the wrong side): Iris throws away the normal given to a quad and computes it from its
+  corners, counter-clockwise. `ImpostorLean` moves an impostor's corners along their lines of
+  sight so that its own plane faces where the light should come from.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
