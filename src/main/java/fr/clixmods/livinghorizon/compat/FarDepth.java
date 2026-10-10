@@ -58,7 +58,9 @@ public final class FarDepth {
     private static boolean voxyOff;
     private static Method getNullable, getViewport, getDepthTex, transformBlitDepth;
     private static Field pipelineField, dataField, toVanillaField, depthBlitField, textureIdField;
-    private static Field projectionField, modelViewField, fbField;
+    private static Field projectionField, modelViewField, fbField, viewportWidthField, viewportHeightField;
+    /** Null in a Voxy that does not know {@code useViewportDims}. */
+    private static @Nullable Field useViewportDimsField;
     private static Class<?> irisPipeline;
     /** Voxy's pipeline without a pack; null if this Voxy has none we know. */
     private static @Nullable Class<?> normalPipeline;
@@ -86,6 +88,12 @@ public final class FarDepth {
     private static int voxyTarget, voxyWidth, voxyHeight;
     /** Our own framebuffer around the game's depth, when Voxy's could not be noted. */
     private static int ownTarget, ownTargetDepth;
+    /**
+     * How much of the depth texture the world is drawn to, from its bottom left corner: all of
+     * it, or less under a shader pack's render scale (Photon's TAAU), where the pack draws the
+     * world - entities included - in the corner and stretches it to the screen afterwards.
+     */
+    private static int pictureWidth, pictureHeight;
 
     /**
      * Voxy is about to draw its terrain into whatever is bound: the framebuffer the
@@ -307,7 +315,7 @@ public final class FarDepth {
     }
 
     /** The game's depth as it is, for the debug view: no Voxy, or nothing to merge. */
-    private static boolean capture() {
+    private static boolean capture() throws ReflectiveOperationException {
         target = ownTarget();
         if (target == 0) return false;
         depthTexture = ownTargetDepth;
@@ -316,6 +324,7 @@ public final class FarDepth {
         int f = GL45C.glGetTextureLevelParameteri(depthTexture, 0, GL11C.GL_TEXTURE_INTERNAL_FORMAT);
         if (w <= 0 || h <= 0) return false;
         prepare(w, h, f);
+        notePicture(w, h);
         copy(depthTexture, saved);
         copy(depthTexture, written);
         return true;
@@ -359,7 +368,8 @@ public final class FarDepth {
                 GL11C.glViewport(x, y, w, h);
                 GL20C.glUseProgram(viewProgram);
                 GL20C.glUniform4f(GL20C.glGetUniformLocation(viewProgram, "area"), x, y, w, h);
-                GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "size"), width, height);
+                // The part the world is drawn to, so that the view matches the screen under a render scale.
+                GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "size"), pictureWidth, pictureHeight);
                 float far = DepthFar.of(minecraft);
                 float[] terms = DepthFar.terms(0.05f, far);
                 GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "planes"), 0.05f, far);
@@ -471,6 +481,38 @@ public final class FarDepth {
         return ownTarget;
     }
 
+    /**
+     * Notes how much of the depth texture the world is drawn to, at most {@code w} by
+     * {@code h}. A pack that renders smaller tells Voxy where with {@code useViewportDims}:
+     * Voxy then reads the game's depth in the corner, at its own viewport's size, and so does
+     * everything here - Voxy's depth written there, the depth view and the occlusion queries.
+     */
+    private static void notePicture(int w, int h) throws ReflectiveOperationException {
+        pictureWidth = w;
+        pictureHeight = h;
+        if (useViewportDimsField == null || !available()) return;
+        Object system = getNullable.invoke(null);
+        if (system == null) return;
+        Object pipeline = pipelineField.get(system);
+        if (!irisPipeline.isInstance(pipeline) || !useViewportDimsField.getBoolean(dataField.get(pipeline))) return;
+        Object viewport = getViewport.invoke(system);
+        if (viewport == null) return;
+        int vw = viewportWidthField.getInt(viewport), vh = viewportHeightField.getInt(viewport);
+        if (vw <= 0 || vh <= 0) return;
+        pictureWidth = Math.min(vw, w);
+        pictureHeight = Math.min(vh, h);
+    }
+
+    /** The width the world is drawn to in the depth this frame, for {@link OcclusionQueries}. */
+    static int pictureWidth() {
+        return pictureWidth;
+    }
+
+    /** The height the world is drawn to in the depth this frame, for {@link OcclusionQueries}. */
+    static int pictureHeight() {
+        return pictureHeight;
+    }
+
     private static boolean skip(String why) {
         reason = why;
         return false;
@@ -503,8 +545,6 @@ public final class FarDepth {
         int w = GL45C.glGetTextureLevelParameteri(depthTexture, 0, GL11C.GL_TEXTURE_WIDTH);
         int h = GL45C.glGetTextureLevelParameteri(depthTexture, 0, GL11C.GL_TEXTURE_HEIGHT);
         int f = GL45C.glGetTextureLevelParameteri(depthTexture, 0, GL11C.GL_TEXTURE_INTERNAL_FORMAT);
-        // Voxy's blit reads its picture in screen fractions, so a picture rendered smaller
-        // (a pack's render scale) lands where it belongs all the same.
         if (w <= 0 || h <= 0) return skip("the depth texture has no size");
         // Voxy's depth is in the game's for good: the game's own, from before, is needed to
         // take its water back out. Copied from the frame after the one that first needs it.
@@ -512,6 +552,7 @@ public final class FarDepth {
             return skip("the depth from before Voxy is not copied yet");
         }
         prepare(w, h, f);
+        notePicture(voxyWidth > 0 ? voxyWidth : w, voxyHeight > 0 ? voxyHeight : h);
 
         // Voxy's terrain without its water: its opaque depth, copied before the water was
         // drawn into it without a pack; with one, the water goes to a depth of its own.
@@ -532,8 +573,9 @@ public final class FarDepth {
                 GL33C.glBindSampler(3, 0);
                 GL45C.glBindTextureUnit(3, textureIdField.getInt(colourField.get(pipeline)));
             }
-            // Over the part of the picture Voxy drew to: all of it, or less under a render scale.
-            GL11C.glViewport(0, 0, voxyWidth > 0 ? voxyWidth : w, voxyHeight > 0 ? voxyHeight : h);
+            // Voxy's blit reads its picture in screen fractions: stretched over the part of the
+            // texture the world is drawn to, it lands where the pack draws the entities.
+            GL11C.glViewport(0, 0, pictureWidth, pictureHeight);
             Matrix4f transform = new Matrix4f((Matrix4f) projectionField.get(viewport)).mul((Matrix4f) modelViewField.get(viewport));
             transformBlitDepth.invoke(null, blit, voxyTexture, target, viewport, transform);
         } finally {
@@ -590,6 +632,8 @@ public final class FarDepth {
         int dhHeight = GL45C.glGetTextureLevelParameteri((int) dh[0], 0, GL11C.GL_TEXTURE_HEIGHT);
         if (dhWidth <= 0 || dhHeight <= 0) return skip("Distant Horizons has no depth yet");
         prepare(w, h, f);
+        pictureWidth = w;
+        pictureHeight = h;
         if (dhProgram == 0) {
             dhProgram = compileDh();
             dhSampler = GL33C.glGenSamplers();
@@ -1089,6 +1133,13 @@ public final class FarDepth {
         textureIdField = glTexture.getField("id");
         projectionField = viewport.getField("vanillaProjection");
         modelViewField = viewport.getField("modelView");
+        viewportWidthField = viewport.getField("width");
+        viewportHeightField = viewport.getField("height");
+        try {
+            useViewportDimsField = data.getField("useViewportDims");
+        } catch (NoSuchFieldException e) {
+            useViewportDimsField = null;
+        }
         transformBlitDepth = pipeline.getDeclaredMethod("transformBlitDepth", blit, int.class, int.class, viewport, Matrix4f.class);
         transformBlitDepth.setAccessible(true);
         try {

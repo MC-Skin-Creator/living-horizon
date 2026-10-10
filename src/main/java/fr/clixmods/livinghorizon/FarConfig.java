@@ -206,6 +206,13 @@ public final class FarConfig {
     public boolean optBackgroundBuild = true;
     /** A mob only a few pixels high on screen plays no walking or idle animation: it only slides and turns. */
     public boolean optStillTiny = true;
+    /**
+     * Pixels: a distant mob shorter than this on screen plays no walking or idle animation (it
+     * resumes a little above, so it never flickers). 0 always animates. Needs {@link #optStillTiny}.
+     */
+    public int animationMinPixels = 10;
+    /** Blocks: past this, no distant mob plays an animation, however big it looks. 0 is no limit. */
+    public int animationMaxDistance = 0;
     /** A copy that was not drawn for a moment (out of view, hidden, too small) stays where it is: no animation, no path read. */
     public boolean optFreezeHidden = false;
 
