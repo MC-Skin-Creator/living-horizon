@@ -29,6 +29,7 @@ public class EntityRenderState {
         z = Mth.lerp(partialTick, entity.zOld, entity.getZ());
         boundingBoxWidth = entity.getBbWidth();
         boundingBoxHeight = entity.getBbHeight();
+        nameTag = entity.getDisplayName();
     }
 
     /^* The state of an entity, of the kind the game would have made for it. ^/
@@ -38,11 +39,24 @@ public class EntityRenderState {
         return new EntityRenderState(entity, partialTick);
     }
 
+    /^*
+     * The figure drawn without its name right now: the game shows a name by the entity's own
+     * rules, which LivingEntityRendererMixin overrules for it. Its name is its display name
+     * until {@link #nameTag} is set to null.
+     ^/
+    private static @Nullable Entity nameless;
+
+    public static boolean nameless(Entity entity) {
+        return entity == nameless;
+    }
+
     /^* Gives the entity what was changed here, until {@link #restore}. ^/
     public void apply() {
+        if (nameTag == null) nameless = entity;
     }
 
     public void restore() {
+        nameless = null;
     }
 }
 *///?}

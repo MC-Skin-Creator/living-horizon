@@ -31,6 +31,7 @@ public class LivingEntityRenderState extends EntityRenderState {
 
     @Override
     public void apply() {
+        super.apply();
         LivingEntity living = (LivingEntity) entity;
         headRot = living.yHeadRot;
         headRotO = living.yHeadRotO;
@@ -59,6 +60,7 @@ public class LivingEntityRenderState extends EntityRenderState {
         living.xRotO = pitchO;
         if (oldPose != null && living.getPose() != oldPose) living.setPose(oldPose);
         living.wasTouchingWater = wasInWater;
+        super.restore();
     }
 }
 *///?}

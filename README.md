@@ -147,7 +147,11 @@ The game itself lacks what these need, so they are left out rather than imitated
 | `birdSize` | `1` | times | How much bigger than life birds are drawn |
 | `ufo` | `true` | | The easter egg |
 | `depthOcclusion` | `true` | | The far terrain's depth (Voxy or Distant Horizons) on distant mobs and players, pixel by pixel (see *The far terrain's depth* below). Was `voxyOcclusion`. In *Debug...* |
-| `offlinePose` | `"sit"` | | A player who logged off: `"sleep"`, `"sit"` or `"hidden"` |
+| `offlinePlayers` | `true` | | Players who logged off are shown and remembered; off, neither |
+| `offlinePose` | `"sit"` | | A player who logged off: `"sleep"` or `"sit"` |
+| `offlineNames` | `true` | | Their name above them, marked offline, and when they were last seen under the crosshair |
+| `offlineOnGround` | `true` | | A player who logged off falls when what they rest on breaks, and climbs out when buried |
+| `offlineBedRadius` | `4` | blocks | A player who logged off this close to a free bed lies in it; `0` never |
 | `showVehicles` | `true` | | Draw the mount they were last seen on |
 | `renderTrackedVehiclesFar` | `true` | | Never cull a mount that carries another player |
 | `hideOccludedMobs` | `true` | | Do not draw distant mobs behind terrain at all (see *Mobs hidden by depth* below). In *Debug...*, with `depthOcclusion` |
@@ -209,11 +213,26 @@ parses `pack.mcmeta` and the predicate with the game's own codecs.
 
 ### Players who logged off
 
-A player who logs off stays where they were last, asleep on the ground (or sitting, see
-`offlinePose`), until they come back. This is remembered per server across sessions, in
+A player who logs off stays where they were last, sitting on the ground (or asleep, see
+`offlinePose`), until they come back. `offlinePlayers` off turns this off completely: nobody
+is shown, remembered or written to the file. This is remembered per server across sessions, in
 `config/livinghorizon/resting/<server>.json`. With the data pack, even players who logged
 off before you joined are there: the pack keeps everyone's last position, and their
 skin is fetched from Mojang by name.
+
+Where the blocks around them are loaded, they keep to those blocks (`offlineOnGround`):
+break the pile they sit on and they fall to the floor below, standing up for a moment
+as they land; bury them and they reappear on top. Their own spot always wins once it
+has room and something under it again, since that is where they will come back. With
+nothing below down to the bottom of the world, they stay where they are. A free bed
+within `offlineBedRadius` blocks of their spot is better still: they are shown asleep
+in it.
+
+Their name shows above them, followed by *(offline)*, as close as the game shows names (64
+blocks). Looking at one at any distance shows, under the crosshair, when they were last seen,
+in the game's language; a player known only from the data pack shows as offline without a
+date. That time is kept in the file with their spot (`lastSeen`, milliseconds since 1970).
+`offlineNames` turns both off.
 
 ### Mobs far away
 
