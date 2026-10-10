@@ -61,7 +61,7 @@ public final class FarConfigScreen extends SideOptionsScreen {
         header(Component.translatable(KEY + "impostorsSection"));
         list.addSmall(
                 bool("impostors", c.impostors, v -> c.impostors = v),
-                integer("impostorDistance", 32, 2000, c.impostorDistance, v -> c.impostorDistance = v));
+                blocks("impostorDistance", 32, 2000, c.impostorDistance, v -> c.impostorDistance = v));
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "impostorPreview"), b -> minecraft.setScreen(new ImpostorScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "impostorPreview.tooltip"))).build(),
@@ -72,7 +72,7 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 bool("enabled", c.enabled, v -> c.enabled = v),
                 bool("showVehicles", c.showVehicles, v -> c.showVehicles = v),
                 choice("offlinePose", List.of("sleep", "sit", "hidden"), c.offlinePose, v -> c.offlinePose = v),
-                integer("playerMaxDistance", 0, 4000, c.playerMaxDistance, v -> c.playerMaxDistance = v),
+                blocks("playerMaxDistance", 0, 4000, c.playerMaxDistance, v -> c.playerMaxDistance = v),
                 integer("lostTimeoutSeconds", 5, 300, (int) c.lostTimeoutSeconds, v -> c.lostTimeoutSeconds = v),
                 bool("renderTrackedVehiclesFar", c.renderTrackedVehiclesFar, v -> c.renderTrackedVehiclesFar = v));
         list.addSmall(
@@ -85,22 +85,24 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(
                 bool("distantMobs", c.distantMobs, v -> c.distantMobs = v),
                 integer("maxDistantMobs", 0, FarConfig.UNLIMITED_MOBS, c.maxDistantMobs, v -> c.maxDistantMobs = v, true),
-                integer("mobMaxDistance", 0, 4000, c.mobMaxDistance, v -> c.mobMaxDistance = v),
-                bool("rememberNamedMobs", c.rememberNamedMobs, v -> c.rememberNamedMobs = v));
+                blocks("mobMaxDistance", 0, 4000, c.mobMaxDistance, v -> c.mobMaxDistance = v),
+                bool("rememberNamedMobs", c.rememberNamedMobs, v -> c.rememberNamedMobs = v),
+                integer("animationMinPixels", 0, 40, c.animationMinPixels, v -> c.animationMinPixels = v),
+                blocks("animationMaxDistance", 0, 4000, c.animationMaxDistance, v -> c.animationMaxDistance = v));
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "chooseMobs"), b -> minecraft.setScreen(new MobTypesScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "chooseMobs.tooltip"))).build(),
                 Button.builder(Component.translatable(KEY + "forgetMobs"), b -> confirm("forgetMobs",
                                 () -> FarPlayerTracker.get().mobs().forgetAll()))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "forgetMobs.tooltip"))).build());
-        list.addSmall(scanButton(), integer("scanRadius", MobScan.MIN_RADIUS, MobScan.MAX_RADIUS, c.scanRadius,
+        list.addSmall(scanButton(), chunks("scanRadius", MobScan.MIN_RADIUS, MobScan.MAX_RADIUS, c.scanRadius,
                 v -> c.scanRadius = v).createButton(minecraft.options, 0, 0, 150));
 
         header(Component.translatable(KEY + "birds"));
         list.addSmall(
                 bool("skyBirds", c.skyBirds, v -> c.skyBirds = v),
                 integer("birdDensity", 0, 500, c.birdDensity, v -> c.birdDensity = v),
-                integer("birdMaxDistance", 100, 3000, c.birdMaxDistance, v -> c.birdMaxDistance = v),
+                blocks("birdMaxDistance", 100, 3000, c.birdMaxDistance, v -> c.birdMaxDistance = v),
                 integer("birdMinHeight", 0, 200, c.birdMinHeight, v -> c.birdMinHeight = v),
                 integer("birdSize", 1, 6, c.birdSize, v -> c.birdSize = v),
                 bool("ufo", c.ufo, v -> c.ufo = v));
@@ -181,6 +183,22 @@ public final class FarConfigScreen extends SideOptionsScreen {
                         : maxIsUnlimited && v >= max
                         ? Options.genericValueLabel(caption, Component.translatable(KEY + name + ".max"))
                         : Options.genericValueLabel(caption, v),
+                new OptionInstance.IntRange(min, max), Math.clamp(value, min, max), set::accept);
+    }
+
+    /** A distance in blocks, said so: "512 blocks"; zero reads as the {@code .zero} text. */
+    static OptionInstance<Integer> blocks(String name, int min, int max, int value, Consumer<Integer> set) {
+        return new OptionInstance<>(KEY + name, tooltip(name),
+                (caption, v) -> v == 0 && min == 0
+                        ? Options.genericValueLabel(caption, Component.translatable(KEY + name + ".zero"))
+                        : Options.genericValueLabel(caption, Component.translatable(KEY + "blocks", v)),
+                new OptionInstance.IntRange(min, max), Math.clamp(value, min, max), set::accept);
+    }
+
+    /** A distance in chunks, worded like the game's own render distance ("32 chunks"). */
+    static OptionInstance<Integer> chunks(String name, int min, int max, int value, Consumer<Integer> set) {
+        return new OptionInstance<>(KEY + name, tooltip(name),
+                (caption, v) -> Options.genericValueLabel(caption, Component.translatable(KEY + name + ".value", v)),
                 new OptionInstance.IntRange(min, max), Math.clamp(value, min, max), set::accept);
     }
 
