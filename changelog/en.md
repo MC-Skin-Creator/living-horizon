@@ -9,6 +9,7 @@
 
 ### Fixed
 - **Black distant mobs** — without shaders, distant mobs no longer turn black for a moment, mostly while flying.
+- **Pause** — in single player, distant mobs, players and birds now freeze when the game is paused.
 
 ## 0.3.2 — 2026-10-09
 
