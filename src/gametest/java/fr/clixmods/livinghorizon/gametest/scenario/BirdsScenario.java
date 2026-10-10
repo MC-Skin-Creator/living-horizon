@@ -4,6 +4,8 @@ import fr.clixmods.livinghorizon.ambient.Ambience.Species;
 import fr.clixmods.livinghorizon.ambient.PosedBirds;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
+import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
+import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
@@ -14,7 +16,8 @@ import java.util.Random;
  * The birds, posed by hand: each species up close, perched on a log (the duck on water)
  * and flying, then all of them side by side at their true sizes, a sky full of them, and
  * a gull's wing beat in three steps. Everything in 3D, then the lineup and the sky again
- * in 2D to compare.
+ * in 2D to compare. Last, the 3D birds as impostors: every species far away, perched and
+ * flying, as models then as pictures, the sky again as pictures, and the baked atlas.
  */
 public final class BirdsScenario implements Scenario {
     /** Each species and a wingspan of its own, in blocks, as the mod gives it. */
@@ -49,6 +52,7 @@ public final class BirdsScenario implements Scenario {
                 lineup(context, style);
                 sky(context, style);
             }
+            impostors(context);
             PosedBirds.clear();
         }
     }
@@ -111,6 +115,52 @@ public final class BirdsScenario implements Scenario {
         }
         look(22f);
         Scene.screenshot(context, this, style + "-lineup");
+    }
+
+    /**
+     * Each species 45 blocks away, perched and flying above, four times its size so that it
+     * can be told apart, as models then as impostors once every sheet is baked.
+     */
+    private void impostors(ClientGameTestContext context) {
+        if (context.computeOnClient(minecraft -> ImpostorAtlas.failed())) {
+            Scene.log("birds: no impostors in this version");
+            return;
+        }
+        clear();
+        Scene.configure(context, config -> {
+            config.birdStyle = "3d";
+            config.impostors = false;
+            config.impostorDistance = 32;
+        });
+        float[] beat = {40f, 5f, -30f};
+        for (int i = 0; i < SPECIES.length; i++) {
+            Species species = (Species) SPECIES[i][0];
+            float span = (float) SPECIES[i][1] * 4;
+            double x = 14.5 - i * 4;
+            PosedBirds.add(species, span, x, ground, 45.5, -150f, true, 0f, 0f);
+            PosedBirds.add(species, span, x, ground + 7, 47.5, -160f, false, beat[i % beat.length], 0f);
+        }
+        look(4f);
+        context.runOnClient(minecraft -> minecraft.options.fov().set(40));
+        Scene.screenshot(context, this, "3d-far-models");
+        Scene.configure(context, config -> config.impostors = true);
+        context.waitFor(minecraft -> ImpostorAtlas.failed() || ImpostorAtlas.sheets() > 0 && ImpostorAtlas.waiting() == 0, 2400);
+        context.runOnClient(minecraft -> Scene.log("birds impostors baked=" + ImpostorAtlas.sheets()
+                + " waiting=" + ImpostorAtlas.waiting() + " failed=" + ImpostorAtlas.failed()));
+        if (context.computeOnClient(minecraft -> ImpostorAtlas.failed())) {
+            throw new AssertionError("The bird impostors could not be baked, see the log");
+        }
+        Scene.screenshot(context, this, "3d-far-impostors");
+        context.runOnClient(minecraft ->
+                Scene.log("birds impostors drawn=" + PolygonStats.impostors() + " models=" + PolygonStats.models()));
+        if (context.computeOnClient(minecraft -> PolygonStats.impostors()) < SPECIES.length * 2) {
+            throw new AssertionError("The far birds are not drawn as impostors");
+        }
+        context.runOnClient(minecraft -> minecraft.options.fov().set(70));
+        // The sky up close, every bird past the distance.
+        Scene.configure(context, config -> config.impostorDistance = 8);
+        sky(context, "3d-impostors");
+        Scene.screenshotAtlas(context, this);
     }
 
     /** Geese in a V, two buzzards circling, a cloud of starlings, gulls lower down. */
