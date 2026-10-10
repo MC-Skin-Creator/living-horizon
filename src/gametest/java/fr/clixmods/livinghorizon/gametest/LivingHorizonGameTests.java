@@ -6,6 +6,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RememberedMobsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.UnloadScenario;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
@@ -30,7 +31,8 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new RememberedMobsScenario(),
             new OutlinesScenario(),
             new OptionsScreenScenario(),
-            new DepthViewScenario());
+            new DepthViewScenario(),
+            new UnloadScenario());
 
     @Override
     public void runTest(ClientGameTestContext context) {

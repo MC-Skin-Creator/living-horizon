@@ -5,6 +5,8 @@
 ### Fixed
 - **Shader packs** — distant figures shown as impostors are no longer dark with Iris shaders such as Photon or Complementary: they catch the sun like full models.
 - **Photon with Voxy** — distant mobs no longer wear the shadow of the terrain behind them.
+- **Mobs leaving your range** — a mob no longer vanishes for a few frames before its distant copy appears.
+- **Mobs leaving your range** — the distant copy now faces the way the mob did, instead of sometimes turning to another direction.
 
 ## 0.4.0 — 2026-10-10
 
