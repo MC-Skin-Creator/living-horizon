@@ -3,7 +3,9 @@
 # src/gametest/java, under a virtual display. Prints the scenario log lines and the
 # screenshots taken. See SKILL.md next to this file.
 #
-#   .claude/skills/game-test/run.sh [scenario[,scenario...]|all] [--sodium]
+#   .claude/skills/game-test/run.sh [scenario[,scenario...]|all] [--sodium] [--shaders <pack folder>]
+#
+# --shaders loads Sodium and Iris and turns the shader pack on (an unpacked folder).
 #
 # Runs the active version, 1.21.11. LH_NODE=26.1.x runs another Fabric target (its name in
 # stonecutter.properties.toml); the scenarios are the same on every one.
@@ -15,8 +17,13 @@ ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SCENARIO="${1:-all}"
 shift || true
 WITH_SODIUM=0
-for arg in "$@"; do
-    [ "$arg" = "--sodium" ] && WITH_SODIUM=1
+SHADERS=""
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --sodium) WITH_SODIUM=1 ;;
+        --shaders) WITH_SODIUM=1; SHADERS="$(cd "$2" && pwd)" || { echo "game-test: no shader pack folder $2"; exit 2; }; shift ;;
+    esac
+    shift
 done
 
 RUN_DIR="$ROOT/build/run/clientGameTest"
@@ -40,20 +47,30 @@ if [[ "${JAVA_TOOL_OPTIONS:-}" =~ -Dhttps\.proxyHost=([^ ]+) ]]; then
     } >>"$props"
 fi
 
+# The latest release, or beta when there is none, of a Modrinth project for this version.
+download() {
+    local project="$1" url
+    [ -s "$MODS/$project.jar" ] && return 0
+    url="$(curl -sS "https://api.modrinth.com/v2/project/$project/version?game_versions=%5B%221.21.11%22%5D&loaders=%5B%22fabric%22%5D" \
+        | python3 -c 'import json,sys
+versions = json.load(sys.stdin)
+chosen = next((v for v in versions if v["version_type"] == "release"), versions[0] if versions else None)
+print([f["url"] for f in chosen["files"] if f["primary"]][0] if chosen else "")')"
+    [ -n "$url" ] && curl -sSfL -o "$MODS/$project.jar" "$url" || { echo "game-test: could not download $project"; exit 2; }
+}
+
 MOD_ARGS=()
 if [ "$WITH_SODIUM" = 1 ]; then
     MODS="$ROOT/build/game-test-mods"
     mkdir -p "$MODS"
-    if [ ! -s "$MODS/sodium.jar" ]; then
-        # Sodium's latest release for this Minecraft version, from Modrinth.
-        url="$(curl -sS "https://api.modrinth.com/v2/project/sodium/version?game_versions=%5B%221.21.11%22%5D&loaders=%5B%22fabric%22%5D" \
-            | python3 -c 'import json,sys
-for v in json.load(sys.stdin):
-    if v["version_type"] == "release":
-        print([f["url"] for f in v["files"] if f["primary"]][0]); break')"
-        curl -sSfL -o "$MODS/sodium.jar" "$url" || { echo "game-test: could not download Sodium"; exit 2; }
+    download sodium
+    if [ -n "$SHADERS" ]; then
+        download iris
+        MOD_ARGS+=("-Plh.shaderpack=$SHADERS")
+    else
+        rm -f "$MODS/iris.jar"
     fi
-    MOD_ARGS=("-Plh.mods=$MODS")
+    MOD_ARGS+=("-Plh.mods=$MODS")
 fi
 
 command -v xvfb-run >/dev/null || { echo "game-test: xvfb-run is missing (apt-get install xvfb)"; exit 2; }

@@ -41,6 +41,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
                 throw new AssertionError("Unknown scenario '" + name + "', known: " + known);
             }
         }
+        Scene.shaderPack(context);
         for (Scenario scenario : SCENARIOS) {
             if (!all && !names.contains(scenario.name())) continue;
             Scene.log("scenario " + scenario.name() + " starts");

@@ -161,6 +161,10 @@ come back, add it here in the same pull request: this file is what the next sess
   left corner of the depth texture and tells Voxy so with `useViewportDims` and `renderScale`
   in its `voxy.json`; Voxy's viewport `width`/`height` is that corner. `FarDepth.notePicture`
   reads it, and anything drawn into or read from the game's depth must stay inside it.
+- **Flat geometry lit wrong under shaders** (impostors, bird silhouettes dark or lit from
+  the wrong side): Iris throws away the normal given to a quad and computes it from its
+  corners, counter-clockwise. `ImpostorLean` moves an impostor's corners along their lines of
+  sight so that its own plane faces where the light should come from.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
