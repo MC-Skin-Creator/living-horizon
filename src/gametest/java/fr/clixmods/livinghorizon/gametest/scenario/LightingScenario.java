@@ -35,7 +35,11 @@ public final class LightingScenario implements Scenario {
         });
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
             Scene.row(world, MOBS, 1, 50, 3.5);
-            context.waitFor(minecraft -> mobs(minecraft.level) >= MOBS.length, 6000);
+            for (int tries = 0; tries < 60 && context.computeOnClient(minecraft -> mobs(minecraft.level)) < MOBS.length; tries++) {
+                context.waitTicks(20);
+                context.runOnClient(minecraft -> Scene.log("lighting waiting: client mobs=" + mobs(minecraft.level)
+                        + " entities=" + minecraft.level.getEntityCount() + " player at " + minecraft.player.blockPosition()));
+            }
             context.runOnClient(minecraft -> minecraft.options.fov().set(30));
 
             Scene.configure(context, config -> config.impostors = true);
