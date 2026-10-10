@@ -212,6 +212,23 @@ final class DhDepth {
         }
     }
 
+    /**
+     * Whether Distant Horizons draws its terrain with OpenGL itself rather than through the
+     * game's GPU device: its rendering engine setting, which it turns to OpenGL whenever Iris
+     * is installed. Its depth is then an OpenGL texture, and no texture of the game's.
+     */
+    static boolean drawsWithOpenGl() {
+        if (broken || renderProxy == null || depthTexture == null) return false;
+        try {
+            Object proxy = renderProxy.get(null);
+            if (proxy == null) return false;
+            Object result = depthTexture.invoke(proxy);
+            return success.getBoolean(result) && payload.get(result) instanceof Integer id && id > 0;
+        } catch (ReflectiveOperationException e) {
+            return false;
+        }
+    }
+
     /** Whether Iris draws with a shader pack: Distant Horizons then does not fade the game's picture. */
     static boolean shaderPackOn() {
         if (irisApi == null || packInUse == null) return false;

@@ -147,11 +147,13 @@ public final class FarDepth {
      * Whether the far terrain's depth goes through the game's own GPU device this frame rather
      * than straight OpenGL: always with Vulkan; with OpenGL too over Distant Horizons without a
      * shader pack, where OpenGL calls in the middle of the world's pass left smears at the edge
-     * of the game's chunks.
+     * of the game's chunks - unless Distant Horizons draws with OpenGL itself, as it does when
+     * Iris is installed, and has no depth the game's device can read.
      */
     public static boolean gpuPath() {
         if (!DepthFar.openGl()) return true;
-        return gpuAvailable && !available() && DhDepth.available() && !DhDepth.shaderPackOn();
+        return gpuAvailable && !available() && DhDepth.available() && !DhDepth.shaderPackOn()
+                && !DhDepth.drawsWithOpenGl();
     }
 
     public static boolean gpuMerge() {
