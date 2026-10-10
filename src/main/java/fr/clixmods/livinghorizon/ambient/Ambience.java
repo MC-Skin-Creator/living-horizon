@@ -79,6 +79,8 @@ public final class Ambience {
         public boolean perched;
         /** 1 normally; shrinks to 0 as the bird leaves for good. */
         public float scale = 1f;
+        /** The impostor picture shown last frame, -1 while drawn as a model. */
+        int view = -1;
         float beat, beatRate;
         boolean gliding;
 

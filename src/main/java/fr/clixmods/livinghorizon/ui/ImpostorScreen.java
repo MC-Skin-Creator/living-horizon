@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.ui;
 
 import fr.clixmods.livinghorizon.FarConfig;
+import fr.clixmods.livinghorizon.ambient.BirdFigure;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorViews;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -236,8 +237,13 @@ public final class ImpostorScreen extends Screen {
     //?}
 
     private static Component name(ImpostorAtlas.Baked row) {
-        return BuiltInRegistries.ENTITY_TYPE.getOptional(Identifier.tryParse(row.key().type())).map(EntityType::getDescription)
-                .orElse(Component.literal(row.key().type()));
+        String type = row.key().type();
+        // A 3D bird: one sheet per pose and height, named after its species.
+        if (type.startsWith(BirdFigure.KEY)) {
+            return Component.translatable(KEY + "bird." + type.substring(BirdFigure.KEY.length()));
+        }
+        return BuiltInRegistries.ENTITY_TYPE.getOptional(Identifier.tryParse(type)).map(EntityType::getDescription)
+                .orElse(Component.literal(type));
     }
 
     private Component status() {
