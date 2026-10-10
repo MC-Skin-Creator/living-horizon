@@ -136,6 +136,13 @@ public final class FarConfig {
     public int birdSize = 1;
 
     /**
+     * How birds are drawn: {@code "3d"} as small box models, like the game's mobs, with
+     * beating wings and legs; {@code "2d"} as flat pixel sprites. Bats and parrots are the
+     * game's own either way.
+     */
+    public String birdStyle = "3d";
+
+    /**
      * Kinds of birds switched off, by id: {@code flocks}, {@code geese}, {@code raptors},
      * {@code gulls}, {@code pigeons}, {@code robins}, {@code tits}, {@code bats}, {@code parrots}.
      */
@@ -246,6 +253,11 @@ public final class FarConfig {
     /** 0: off; 1: the game's depth; 2: with the far terrain merged in; 3: after the entities. */
     public int debugDepthView = 0;
 
+    /** Birds drawn as 3D models rather than flat sprites. */
+    public boolean birdModels() {
+        return !"2d".equals(birdStyle);
+    }
+
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private static FarConfig instance = new FarConfig();
@@ -290,6 +302,7 @@ public final class FarConfig {
             instance.birdSize = 1;
         }
         if (instance.hiddenBirds == null) instance.hiddenBirds = new ArrayList<>();
+        if (instance.birdStyle == null) instance.birdStyle = "3d";
         if (instance.knownModdedMobs == null) instance.knownModdedMobs = new ArrayList<>();
         if (instance.version < 3) {
             // Boats came after the list was first written: shown unless taken out by hand.

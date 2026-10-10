@@ -301,13 +301,17 @@ Where each kind goes is read off the terrain a few columns at a time - from the 
 loaded here, or farther from the far world (`compat/LodWorld`, which reads Voxy through `VoxySource` or
 Distant Horizons through `DhSource`, its public API): crops or farmland for
 robins, leaves for tits, a man-made block well above its neighbours for pigeons, a beach or
-ocean biome for gulls. Birds are pixel sprites from `textures/misc/birds.png` (flying: seen
-from above, one plane per wing; perched: seen from the side, facing the camera); bats and
-parrots are the game's own.
+ocean biome for gulls. Birds are small 3D models (`ambient/BirdModels`): boxes in pixels,
+like the game's mobs, coloured box by box over a feather grain (`textures/misc/birds_3d.png`);
+the wings beat and bend at the tip, perched birds stand on their legs, ducks float; past the
+impostor distance they are pictures of themselves (see *Impostors*). With
+`birdStyle` set to `2d` they are pixel sprites from `textures/misc/birds.png` instead (flying:
+seen from above, one plane per wing; perched: seen from the side, facing the camera). Bats
+and parrots are the game's own either way.
 
 Settings: on/off, how many (`birdDensity`, percent), how far (`birdMaxDistance`), how low
-flocks may fly (`birdMinHeight`), size, and each kind on its own ("Choose birds...",
-`hiddenBirds`).
+flocks may fly (`birdMinHeight`), size, 3D or 2D (`birdStyle`), and each kind on its own
+("Choose birds...", `hiddenBirds`).
 
 ### Impostors
 
@@ -349,8 +353,15 @@ nothing, and the game no longer builds a render state and a model for it every f
   baked, its eight views, and its front view at 32, 16 and 8 screen pixels, as it looks
   far away. *Bake again* throws every picture away and bakes the figures on hand anew,
   even after a failed bake.
+- **Birds.** A 3D bird (`ambient/BirdFigure`) is baked from its model as a figure of the
+  mod's own (`ImpostorFigure`), not an entity: one sheet per species, pose (perched, or
+  flying with its wings up, level or down) and height it is seen from (from well below,
+  below or above flying; below, level or above perched), all of a pose baked together the
+  first time one is needed. Its picture faces the camera entirely, not only round, since it
+  was baked as seen from that height, and the wing beat goes on from one sheet to the next.
+  Sheets of figures of the mod's are named after the species in the impostor screen.
 - **Not impostors:** figures with a mount or a rider, players resting on the ground, the
-  birds and the saucer's cow.
+  2D birds, parrots and bats, and the saucer's cow.
 
 ### The far terrain's depth
 

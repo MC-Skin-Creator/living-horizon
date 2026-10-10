@@ -731,7 +731,7 @@ public final class GhostRenderer {
         int outline = minecraft.player == null ? 0 : DebugMarks.impostorOutline(config);
         if (outline != 0 && ImpostorRenderer.OUTLINES) glowing = true;
         ImpostorRenderer.add(new ImpostorRenderer.Billboard(ax * pull, ay * pull, az * pull,
-                sheet.worldSize() * pull * boost, sheet, view, light, outline));
+                sheet.worldSize() * pull * boost, sheet, view, light, outline, false));
         return true;
     }
 
