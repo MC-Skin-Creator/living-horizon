@@ -179,9 +179,37 @@ public final class FarDepth {
         }
     }
 
+    private static boolean irisLinked;
+    private static @Nullable Object irisApi;
+    private static @Nullable Method shadowPass;
+
+    /**
+     * Whether Iris is drawing its shadow pass. From 26.2 that pass draws its entities through
+     * the same steps as the world's, after the world's are submitted: left alone, it took the
+     * bracket meant for the world's entities, and the world's were drawn without it.
+     */
+    private static boolean irisShadowPass() {
+        if (!irisLinked) {
+            irisLinked = true;
+            try {
+                Class<?> api = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
+                irisApi = api.getMethod("getInstance").invoke(null);
+                shadowPass = api.getMethod("isRenderingShadowPass");
+            } catch (ReflectiveOperationException | LinkageError e) {
+                shadowPass = null; // no Iris
+            }
+        }
+        if (shadowPass == null) return false;
+        try {
+            return (boolean) shadowPass.invoke(irisApi);
+        } catch (ReflectiveOperationException e) {
+            return false;
+        }
+    }
+
     /** Just before the entities are drawn. */
     public static void before() {
-        if (!armed) return;
+        if (!armed || irisShadowPass()) return;
         merged = false;
         captured = false;
         intoVoxy = false;
@@ -235,7 +263,7 @@ public final class FarDepth {
 
     /** Just after the entities are drawn. */
     public static void after() {
-        if (!armed) return;
+        if (!armed || irisShadowPass()) return;
         armed = false;
         try {
             if (merged) restore();
