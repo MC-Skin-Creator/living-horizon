@@ -170,5 +170,6 @@ extra["lhMixins"] = buildList {
     // Before 1.20.5 the mod's screens have a list of their own, which places its rows itself.
     if (atLeast("1.20.5")) add("OptionsListEntryMixin")
     add("TextureManagerMixin")
+    add("VoxyNormalPipelineMixin")
     add("VoxyRenderSystemMixin")
 }.sorted().joinToString(",\n    ") { "\"$it\"" }

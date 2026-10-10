@@ -180,7 +180,11 @@ final class VoxySource implements LodSource {
         return world;
     }
 
-    /** Distance to the first opaque voxel along a unit direction, between two distances; NaN if none. */
+    /**
+     * Distance to the first opaque voxel along a unit direction, between two distances; NaN if
+     * none. Voxy counts water as dimming light, so as opaque: water, and what stands in it
+     * without filling its block, is seen through here.
+     */
     @Override
     public double firstHit(Object world, double ax, double ay, double az, double dx, double dy, double dz,
                                    double from, double to) throws Throwable {
@@ -198,9 +202,15 @@ final class VoxySource implements LodSource {
             }
             if (voxels == null) continue;
             long id = voxels[(y & 31) << 10 | (z & 31) << 5 | (x & 31)];
-            if (!(boolean) isAir.invokeExact(id) && (int) opacity.invokeExact(types, id) > 0) return t;
+            if (!(boolean) isAir.invokeExact(id) && (int) opacity.invokeExact(types, id) > 0
+                    && !seenThrough((BlockState) blockState.invokeExact(types, (int) blockId.invokeExact(id)))) return t;
         }
         return Double.NaN;
+    }
+
+    /** Water, or a block in water that does not fill its space: kelp, seagrass, a waterlogged fence. */
+    private static boolean seenThrough(@Nullable BlockState state) {
+        return state != null && state.getFluidState().is(FluidTags.WATER) && !state.canOcclude();
     }
 
     /** Every block of the slice, as Voxy keeps them: plants, paths and fences included. */

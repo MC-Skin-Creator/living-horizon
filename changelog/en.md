@@ -7,6 +7,9 @@
 - **Animation settings** — two new sliders choose when distant mobs stop playing their animations: below a size on screen, or past a distance.
 - **Quality presets** — Low, Normal, High and Ultra set impostor distance, the number and range of distant mobs and the birds in one go, for powerful machines that want a fuller horizon. Impostors have their own settings category, and *Restore defaults* now sits beside *Done*.
 
+### Fixed
+- **Far water is see-through** — with Voxy, a mob swimming in a distant river or sea shows under the surface, tinted by the water, instead of being cut off at it or not drawn at all.
+
 ## 0.3.2 — 2026-10-09
 
 ### Fixed
