@@ -254,9 +254,11 @@ lives there.
   sends the real mob, the copy walks the rest of the way up to it (faster the farther it
   is) while the real one is kept out of the frame, and the real one takes over once both
   stand in the same place.
-- A mob less than 10 pixels high on screen plays no walking or idle animation: it keeps
-  sliding along its animation and turning, every tick, but its legs stay still
-  (`optStillTiny`, `MobMotion.TINY_PIXELS`).
+- A mob shorter on screen than `animationMinPixels` (10 by default, 0 always animates) plays
+  no walking or idle animation: it keeps sliding along its animation and turning, every
+  tick, but its legs stay still (`optStillTiny`). It resumes at that size plus a quarter and
+  a pixel, so it never flickers. `animationMaxDistance` (blocks, 0 no limit) also stills
+  every mob past it, however big (`MobMemory.isStill`).
 - With `optFreezeHidden` (debug screen, off by default), a copy that has not been drawn for
   half a second - out of view, hidden, too small - is not ticked at all: no animation, no
   path read, only a position, until it is drawn again.
@@ -343,7 +345,7 @@ nothing, and the game no longer builds a render state and a model for it every f
   and when its look changes, it keeps its old picture until the new one is baked.
 - **Sizes.** Two pages of 128 sheets each; past that the sheet unused for longest is
   replaced.
-- **Preview.** *Impostors...* in the settings, or `/livinghorizon impostors`: every figure
+- **Preview.** *Impostor Manager...* in the settings, or `/livinghorizon impostors`: every figure
   baked, its eight views, and its front view at 32, 16 and 8 screen pixels, as it looks
   far away. *Bake again* throws every picture away and bakes the figures on hand anew,
   even after a failed bake.

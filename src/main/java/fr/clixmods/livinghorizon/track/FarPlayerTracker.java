@@ -105,7 +105,13 @@ public final class FarPlayerTracker {
                 server = joined;
             }
         }
+        // Paused in single player: the world is frozen, and so is everything drawn on its horizon.
+        if (minecraft.isPaused()) return;
         FarConfig config = FarConfig.get();
+        // A world the mod has never been in: read its mobs at once, the way a scan would later.
+        if (mobs.takeFirstVisit() && config.distantMobs && MobScan.available(minecraft)) {
+            MobScan.start(minecraft, config.scanRadius);
+        }
         int dimension = SharedPositions.dimensionCode(current.dimension());
 
         Set<UUID> live = new HashSet<>();

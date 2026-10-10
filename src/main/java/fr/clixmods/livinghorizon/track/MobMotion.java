@@ -24,8 +24,6 @@ final class MobMotion {
     private static final float TURN = 18f;
     /** No room to walk: a slow turn on the spot every so many ticks. */
     private static final int TURN_ROUND = 300;
-    /** A mob less than this many pixels high on screen plays no animation: its legs could not be told apart. */
-    static final double TINY_PIXELS = 10;
 
     private final long seed;
     private double x, y, z;

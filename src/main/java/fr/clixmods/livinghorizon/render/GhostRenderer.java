@@ -36,6 +36,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import java.util.ArrayList;
 *///?}
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -591,6 +592,7 @@ public final class GhostRenderer {
             state.shadowPieces.clear();
             state.shadowRadius = 0;
             if (puppet) state.lightCoords = light(level, state);
+            else if (!lit(level, BlockPos.containing(state.x, state.y, state.z))) state.lightCoords = OPEN_SKY;
             int outline = self == null ? 0 : DebugMarks.outline(config, kind);
             if (outline != 0) {
                 state.outlineColor = outline;
@@ -605,12 +607,14 @@ public final class GhostRenderer {
         }
     }
 
+    private static final int OPEN_SKY = LightTexture.pack(0, 15);
+
     /**
-     * The light a puppet stands in. Where no chunk is loaded, open sky, which the lightmap
-     * still darkens at night. Where one is, the brightest of its feet, the block above and
-     * the one above that: a puppet stands where its mob was last seen, which may be a little
-     * inside a block, or in a pocket the light engine has not reached yet - read there alone,
-     * it would be drawn black.
+     * The light a puppet stands in. Where the client has no light, open sky, which the
+     * lightmap still darkens at night. Where it has, the brightest of its feet, the block
+     * above and the one above that: a puppet stands where its mob was last seen, which may
+     * be a little inside a block, or in a pocket the light engine has not reached yet - read
+     * there alone, it would be drawn black.
      */
     private static int light(@Nullable ClientLevel level, EntityRenderState state) {
         return light(level, state.x, state.y, state.z);
@@ -618,7 +622,7 @@ public final class GhostRenderer {
 
     private static int light(@Nullable ClientLevel level, double x, double y, double z) {
         BlockPos feet = BlockPos.containing(x, y + 0.1, z);
-        if (level == null || !level.hasChunkAt(feet)) return LightTexture.pack(0, 15);
+        if (!lit(level, feet)) return OPEN_SKY;
         int block = 0, sky = 0;
         for (int up = 0; up < 3; up++) {
             BlockPos at = feet.above(up);
@@ -626,6 +630,21 @@ public final class GhostRenderer {
             sky = Math.max(sky, level.getBrightness(LightLayer.SKY, at));
         }
         return LightTexture.pack(block, sky);
+    }
+
+    /**
+     * Whether the client has the light of this spot. A chunk that arrives gets its light only
+     * a few frames later, through a queue the game empties a little each frame - longer when
+     * flying, as chunks come in fast. Until then every block of it reads black.
+     */
+    private static boolean lit(@Nullable ClientLevel level, BlockPos at) {
+        if (level == null || !level.hasChunkAt(at)) return false;
+        //? if >=1.21.3 {
+        return level.getLightEngine().lightOnInColumn(
+                SectionPos.getZeroNode(SectionPos.blockToSectionCoord(at.getX()), SectionPos.blockToSectionCoord(at.getZ())));
+        //?} else {
+        /*return level.getLightEngine().lightOnInSection(SectionPos.of(at));
+        *///?}
     }
 
     // --- Impostors ------------------------------------------------------------------------
