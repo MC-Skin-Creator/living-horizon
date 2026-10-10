@@ -345,7 +345,7 @@ nothing, and the game no longer builds a render state and a model for it every f
   and when its look changes, it keeps its old picture until the new one is baked.
 - **Sizes.** Two pages of 128 sheets each; past that the sheet unused for longest is
   replaced.
-- **Preview.** *Impostors...* in the settings, or `/livinghorizon impostors`: every figure
+- **Preview.** *Impostor Manager...* in the settings, or `/livinghorizon impostors`: every figure
   baked, its eight views, and its front view at 32, 16 and 8 screen pixels, as it looks
   far away. *Bake again* throws every picture away and bakes the figures on hand anew,
   even after a failed bake.

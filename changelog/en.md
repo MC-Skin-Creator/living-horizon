@@ -5,6 +5,7 @@
 ### New
 - **First scan by itself** — the first time you enter a single player world, the mobs of the 32 chunks around you are read at once, so the horizon is alive from the start. The scan distance is now given in chunks, like the render distance, and the other distances say *blocks*.
 - **Animation settings** — two new sliders choose when distant mobs stop playing their animations: below a size on screen, or past a distance.
+- **Quality presets** — Low, Normal, High and Ultra set impostor distance, the number and range of distant mobs and the birds in one go, for powerful machines that want a fuller horizon. Impostors have their own settings category, and *Restore defaults* now sits beside *Done*.
 
 ## 0.3.2 — 2026-10-09
 

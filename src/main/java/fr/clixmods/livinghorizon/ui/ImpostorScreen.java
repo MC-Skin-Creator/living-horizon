@@ -8,6 +8,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
+//? if >=1.21.9
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -37,6 +39,8 @@ public final class ImpostorScreen extends Screen {
     private final @Nullable Screen parent;
     private List<ImpostorAtlas.Baked> rows = List.of();
     private double scroll;
+    private boolean dragging;
+    private static final int BAR_WIDTH = 6;
 
     public ImpostorScreen(@Nullable Screen parent) {
         super(Component.translatable(KEY + "title"));
@@ -92,7 +96,7 @@ public final class ImpostorScreen extends Screen {
 
         rows = ImpostorAtlas.baked();
         rows.sort(Comparator.comparing(row -> name(row).getString().toLowerCase(Locale.ROOT)));
-        scroll = Mth.clamp(scroll, 0, Math.max(0, rows.size() * rowHeight() - (bottom() - TOP)));
+        scroll = Mth.clamp(scroll, 0, maxScroll());
 
         if (rows.isEmpty()) {
             graphics.drawCenteredString(font, Component.translatable(KEY + "empty"), width / 2, TOP + 20, DIM);
@@ -109,7 +113,92 @@ public final class ImpostorScreen extends Screen {
         }
         graphics.disableScissor();
         //?}
+        drawScrollBar(graphics);
     }
+
+    private int maxScroll() {
+        return Math.max(0, rows.size() * rowHeight() - (bottom() - TOP));
+    }
+
+    private int barHeight() {
+        int track = bottom() - TOP;
+        return Mth.clamp(track * track / Math.max(track, rows.size() * rowHeight()), 20, track);
+    }
+
+    private int barTop() {
+        int free = bottom() - TOP - barHeight();
+        return TOP + (maxScroll() == 0 ? 0 : (int) (free * scroll / maxScroll()));
+    }
+
+    private void drawScrollBar(GuiGraphics graphics) {
+        if (maxScroll() == 0) return;
+        int x = width - BAR_WIDTH - 2;
+        graphics.fill(x, TOP, x + BAR_WIDTH, bottom(), 0x80000000);
+        graphics.fill(x, barTop(), x + BAR_WIDTH, barTop() + barHeight(), dragging ? 0xFFFFFFFF : 0xFFA0A0A0);
+    }
+
+    /** Puts the bar's middle at the pointer, so that a click on the track jumps there and a drag follows. */
+    private void scrollTo(double mouseY) {
+        int free = bottom() - TOP - barHeight();
+        if (free <= 0) return;
+        scroll = Mth.clamp((mouseY - TOP - barHeight() / 2.0) / free, 0, 1) * maxScroll();
+    }
+
+    private boolean onBar(double mouseX, double mouseY) {
+        return maxScroll() > 0 && mouseX >= width - BAR_WIDTH - 4 && mouseY >= TOP && mouseY < bottom();
+    }
+
+    //? if >=1.21.9 {
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (event.button() == 0 && onBar(event.x(), event.y())) {
+            dragging = true;
+            scrollTo(event.y());
+            return true;
+        }
+        return super.mouseClicked(event, doubleClick);
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        if (dragging) {
+            scrollTo(event.y());
+            return true;
+        }
+        return super.mouseDragged(event, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        dragging = false;
+        return super.mouseReleased(event);
+    }
+    //?} else {
+    /*@Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0 && onBar(mouseX, mouseY)) {
+            dragging = true;
+            scrollTo(mouseY);
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (dragging) {
+            scrollTo(mouseY);
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        dragging = false;
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+    *///?}
 
     //? if >=1.21.9 {
     private void drawRow(GuiGraphics graphics, ImpostorAtlas.Baked row, int x, int y, int tile, int scale) {
