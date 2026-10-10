@@ -97,9 +97,10 @@ thread), `setScreen`, `clickScreenButton(translation key)`, `takeScreenshot`. Th
 - **Voxy and Distant Horizons cannot run** (Voxy needs GLSL 4.60, llvmpipe has 4.50).
   Say so when a check depended on them.
 - **Shader packs** run through Iris on llvmpipe, slowly: `--shaders` takes an unpacked
-  pack folder (clone Photon or Complementary into the scratchpad), downloads Iris next to
-  Sodium, and `Scene.shaderPack` copies the pack into Iris's folder and turns it on before
-  the first scenario. The run folder is emptied at start, so a pack copied there by hand is lost.
+  pack folder, downloads Iris next to Sodium for the node's game version (`LH_NODE`), and
+  `Scene.shaderPack` copies the pack into Iris's folder and turns it on before the first
+  scenario. Photon does not load on llvmpipe (too much shared memory): use Complementary,
+  its zip from Modrinth unpacked into the scratchpad. The run folder is emptied at start, so a pack copied there by hand is lost.
 - Sodium can be added (`--sodium`, downloaded from Modrinth into `build/game-test-mods`).
 
 ## Never
