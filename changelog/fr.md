@@ -4,6 +4,7 @@
 
 ### Corrections
 - **Shaders** — les silhouettes lointaines affichées en imposteurs ne sont plus sombres avec les shaders d'Iris comme Photon ou Complementary : elles prennent le soleil comme les vrais modèles.
+- **Photon avec Voxy** — les créatures lointaines ne portent plus l'ombre du terrain situé derrière elles.
 
 ## 0.4.0 — 2026-10-10
 
