@@ -7,3 +7,4 @@
 - **Distant mobs** — animals, villagers and golems stay on the horizon, grazing and wandering around the villages Voxy shows.
 - **Birds** — flocks, geese in a V, gulls over the coast, bats at night.
 - **Players who logged off** stay asleep where they left, until they come back.
+- **Sleepers keep to the ground** — players who logged off fall when the blocks under them are broken, climb out when buried, and sleep in a bed if one is close by.

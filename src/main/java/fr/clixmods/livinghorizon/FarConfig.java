@@ -72,6 +72,16 @@ public final class FarConfig {
     public String offlinePose = "sleep";
 
     /**
+     * A player who logged off keeps to the blocks around them, where those are loaded:
+     * they fall when what they rest on is broken, reappear on top when buried, and go
+     * back to where they logged off once there is room and something under it again.
+     */
+    public boolean offlineOnGround = true;
+
+    /** Blocks: a player who logged off this close to a free bed is shown asleep in it. 0: never. */
+    public int offlineBedRadius = 4;
+
+    /**
      * Mobs met on the way stay where they were once out of range, doing a little loop
      * of their own (no AI: a walk around a small circle, a look around).
      */

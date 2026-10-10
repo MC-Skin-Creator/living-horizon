@@ -72,6 +72,14 @@ A player who logs off stays where they were last, asleep on the ground (or sitti
 off before you joined are there: the pack keeps everyone's last position, and their
 skin is fetched from Mojang by name.
 
+Where the blocks around them are loaded, they keep to those blocks (`offlineOnGround`):
+break the pile they sit on and they fall to the floor below, standing up for a moment
+as they land; bury them and they reappear on top. Their own spot always wins once it
+has room and something under it again, since that is where they will come back. With
+nothing below down to the bottom of the world, they stay where they are. A free bed
+within `offlineBedRadius` blocks of their spot is better still: they are shown asleep
+in it.
+
 ## Mobs far away
 
 Animals (and villagers, golems, allays, named mobs) stay visible once out of range,
@@ -193,6 +201,8 @@ out to the farthest player when needed (`extendFarPlane`).
 | `rememberNamedMobs` | `true` | A mob with a name tag is shown whatever its type |
 | `voxyOcclusion` | `true` | Voxy's depth on distant mobs and players, pixel by pixel (see above) |
 | `offlinePose` | `"sleep"` | A player who logged off: `"sleep"`, `"sit"` or `"hidden"` |
+| `offlineOnGround` | `true` | A player who logged off falls when what they rest on breaks, and climbs out when buried |
+| `offlineBedRadius` | `4` | A player who logged off this close to a free bed lies in it; `0` never |
 | `showVehicles` | `true` | Draw the mount they were last seen on |
 | `glowOutline` | `false` | Glowing outline, seen through terrain |
 | `renderTrackedVehiclesFar` | `true` | Never cull a mount that carries another player |

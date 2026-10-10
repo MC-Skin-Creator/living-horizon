@@ -7,15 +7,14 @@ import com.google.gson.reflect.TypeToken;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.properties.PropertyMap;
+import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.multiplayer.PlayerInfo;
-import net.minecraft.client.player.RemotePlayer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.util.Util;
-import net.minecraft.world.entity.Avatar;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
@@ -70,25 +69,10 @@ public final class RestingPlayers {
         }
     }
 
-    /** A player that never was: their skin comes from a remembered profile, not from the tab list. */
-    static final class Puppet extends RemotePlayer {
-        private final PlayerInfo info;
-
-        Puppet(ClientLevel level, GameProfile profile) {
-            super(level, profile);
-            this.info = new PlayerInfo(profile, false);
-        }
-
-        @Override
-        protected @Nullable PlayerInfo getPlayerInfo() {
-            return info;
-        }
-    }
-
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private final Map<String, Spot> spots = new LinkedHashMap<>();
-    private final Map<String, Puppet> puppets = new HashMap<>();
+    private final Map<String, RestingPuppet> puppets = new HashMap<>();
     private final Set<String> lookups = new HashSet<>();
     private @Nullable Path file;
 
@@ -181,25 +165,17 @@ public final class RestingPlayers {
 
     // --- Puppets -----------------------------------------------------------------------
 
-    public @Nullable RemotePlayer puppet(ClientLevel level, Spot spot) {
-        return puppets.computeIfAbsent(key(spot.name()), k -> {
-            Puppet puppet = new Puppet(level, spot.profile());
-            puppet.getEntityData().set(Avatar.DATA_PLAYER_MODE_CUSTOMISATION, (byte) 0x7F);
-            puppet.setPos(spot.x(), spot.y(), spot.z());
-            puppet.setOldPosAndRot();
-            puppet.setYRot(spot.yaw());
-            puppet.yBodyRot = puppet.yBodyRotO = spot.yaw();
-            puppet.yHeadRot = puppet.yHeadRotO = spot.yaw();
-            return puppet;
-        });
+    public RestingPuppet puppet(ClientLevel level, Spot spot) {
+        return puppets.computeIfAbsent(key(spot.name()), k -> new RestingPuppet(level, spot, spot.profile()));
     }
 
-    /** Keeps the idle animations (breathing, arms) going. */
-    void tick() {
-        for (Puppet puppet : puppets.values()) {
-            puppet.setOldPosAndRot();
-            puppet.tickCount++;
+    /** Keeps the idle animations (breathing, arms) going, and every sleeper in a bed or on the ground. */
+    void tick(ClientLevel level, FarConfig config) {
+        Set<BlockPos> beds = new HashSet<>();
+        for (RestingPuppet puppet : puppets.values()) {
+            if (puppet.bed() != null) beds.add(puppet.bed());
         }
+        for (RestingPuppet puppet : puppets.values()) puppet.tick(level, config, beds);
     }
 
     // --- File --------------------------------------------------------------------------

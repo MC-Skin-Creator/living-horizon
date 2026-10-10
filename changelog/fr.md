@@ -7,3 +7,4 @@
 - **Créatures lointaines** — animaux, villageois et golems restent à l'horizon, à brouter et à se promener autour des villages que Voxy affiche.
 - **Oiseaux** — nuées, oies en V, goélands sur la côte, chauves-souris la nuit.
 - **Joueurs déconnectés** — ils restent endormis là où ils sont partis, jusqu'à leur retour.
+- **Joueurs déconnectés au sol** — ils tombent quand on casse les blocs sous eux, ressortent quand on les ensevelit, et dorment dans un lit s'il y en a un tout près.

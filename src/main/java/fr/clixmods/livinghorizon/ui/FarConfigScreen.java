@@ -41,6 +41,8 @@ public final class FarConfigScreen extends OptionsSubScreen {
                 bool("enabled", c.enabled, v -> c.enabled = v),
                 bool("showVehicles", c.showVehicles, v -> c.showVehicles = v),
                 choice("offlinePose", List.of("sleep", "sit", "hidden"), c.offlinePose, v -> c.offlinePose = v),
+                bool("offlineOnGround", c.offlineOnGround, v -> c.offlineOnGround = v),
+                integer("offlineBedRadius", 0, 8, c.offlineBedRadius, v -> c.offlineBedRadius = v),
                 integer("lostTimeoutSeconds", 5, 300, (int) c.lostTimeoutSeconds, v -> c.lostTimeoutSeconds = v),
                 bool("glowOutline", c.glowOutline, v -> c.glowOutline = v),
                 bool("renderTrackedVehiclesFar", c.renderTrackedVehiclesFar, v -> c.renderTrackedVehiclesFar = v));
