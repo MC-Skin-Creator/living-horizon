@@ -15,6 +15,7 @@
 
 ### Corrections
 - **Créatures lointaines noires** — sans shaders, les créatures lointaines ne deviennent plus noires par moments, surtout en vol.
+- **Pause** — en solo, les créatures, les joueurs et les oiseaux lointains se figent maintenant quand le jeu est en pause.
 
 ## 0.3.2 — 2026-10-09
 

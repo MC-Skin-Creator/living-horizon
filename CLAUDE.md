@@ -176,6 +176,12 @@ come back, add it here in the same pull request: this file is what the next sess
 
 ## Changelog
 
+**Every change, every push.** Whenever you work on something, write its changelog entry
+in the same pull request, and before every push re-read both changelog files against what
+you are about to push: each player-visible change has its bullet, in both languages, and
+no bullet describes something that is not in the diff. Never push first and fix the
+changelog in a later commit or pull request.
+
 A pull request that changes what a player sees or feels adds its entry to
 `changelog/en.md` and `changelog/fr.md`, under `## Unreleased` / `## Prochaine version`
 and nowhere else: a dated section is a version already released, never edited. Headings
