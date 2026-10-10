@@ -5,6 +5,7 @@
 ### Fixed
 - **Shader packs** — distant figures shown as impostors are no longer dark with Iris shaders such as Photon or Complementary: they catch the sun like full models.
 - **Photon with Voxy** — distant mobs no longer wear the shadow of the terrain behind them.
+- **Zombies and skeletons at dawn** — remembered zombies, skeletons and phantoms no longer stay on the horizon after sunrise where the sun would have burnt them; the ones in caves and in shade stay.
 
 ## 0.4.0 — 2026-10-10
 
