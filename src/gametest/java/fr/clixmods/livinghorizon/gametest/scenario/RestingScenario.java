@@ -12,7 +12,9 @@ import net.minecraft.client.multiplayer.ClientLevel;
  * A player who logged off, sitting on a pillar 6 blocks ahead. The data pack's scores are
  * written by hand, as the pack would: the sleeper is someone who left before. The pillar
  * is broken (they fall to the ground), they are buried (they reappear on top), the pillar
- * is built again (back on it), then a bed is put next to it (asleep in the bed).
+ * is built again (back on it), then a bed is put next to it (asleep in the bed). Then the
+ * camera looks at them (their name, and under the crosshair that they are offline), and
+ * the logged-off players are switched off.
  */
 public final class RestingScenario implements Scenario {
     private static final String NAME = "LH_Sleeper";
@@ -66,6 +68,18 @@ public final class RestingScenario implements Scenario {
             wait(context, world, 40);
             check(context, "bed", GROUND + 0.6875, true);
             Scene.screenshot(context, this, "bed");
+
+            // Looking at them: their name above them, marked offline, and under the crosshair.
+            Scene.command(world, "tp @a 0.5 " + GROUND + " 1.5 -23 7");
+            wait(context, world, 20);
+            aimed(context, true);
+            Scene.screenshot(context, this, "looked-at");
+
+            // Switched off: neither shown nor looked at.
+            Scene.configure(context, config -> config.offlinePlayers = false);
+            wait(context, world, 20);
+            aimed(context, false);
+            Scene.screenshot(context, this, "switched-off");
         }
     }
 
@@ -74,6 +88,18 @@ public final class RestingScenario implements Scenario {
         for (int done = 0; done < ticks; done += 10) {
             Scene.command(world, "scoreboard players add #clock lh.m 1");
             context.waitTicks(10);
+        }
+    }
+
+    /** Fails the run unless the sleeper is (or is not) the one under the crosshair. */
+    private static void aimed(ClientGameTestContext context, boolean expected) {
+        String aimed = context.computeOnClient(minecraft -> {
+            RestingPlayers.Spot spot = FarPlayerTracker.get().resting().lookedAt();
+            return spot == null ? "nobody" : spot.name();
+        });
+        Scene.log("resting looked at: " + aimed);
+        if (expected != NAME.equals(aimed)) {
+            throw new AssertionError("resting: looked at " + aimed + ", expected " + (expected ? NAME : "nobody"));
         }
     }
 

@@ -2,11 +2,13 @@ package fr.clixmods.livinghorizon.track;
 
 import com.mojang.authlib.GameProfile;
 import fr.clixmods.livinghorizon.FarConfig;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.player.RemotePlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Avatar;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -64,6 +66,13 @@ public final class RestingPuppet extends RemotePlayer {
     @Override
     protected @Nullable PlayerInfo getPlayerInfo() {
         return info;
+    }
+
+    /** Its name, marked offline: what its name tag says. */
+    @Override
+    public Component getDisplayName() {
+        return Component.empty().append(getName()).append(" ")
+                .append(Component.translatable("livinghorizon.offline.tag").withStyle(ChatFormatting.GRAY));
     }
 
     /**

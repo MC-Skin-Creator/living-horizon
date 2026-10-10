@@ -54,7 +54,7 @@ public final class FarConfig {
     @SerializedName(value = "depthOcclusion", alternate = "voxyOcclusion")
     public boolean depthOcclusion = true;
 
-    private static final int CURRENT = 8;
+    private static final int CURRENT = 9;
 
     /** Skinned figures, which Distant Friends uses as its fake players: shown, standing still. */
     private static final String MANNEQUIN = "minecraft:mannequin";
@@ -69,10 +69,23 @@ public final class FarConfig {
     public double lostTimeoutSeconds = 30.0;
 
     /**
+     * Players who logged off stay where they were last, until they come back. Off, they are
+     * not followed at all: not drawn, not remembered, and the file of who rests where is
+     * left as it is.
+     */
+    public boolean offlinePlayers = true;
+
+    /**
      * How a player who logged off is shown where they were last: {@code "sleep"} lying
-     * down, {@code "sit"} sitting on the ground, {@code "hidden"} not at all.
+     * down, {@code "sit"} sitting on the ground.
      */
     public String offlinePose = "sit";
+
+    /**
+     * Their name above a player who logged off, marked offline, as close as the game shows
+     * names; and when they were last seen, under the crosshair, when looked at.
+     */
+    public boolean offlineNames = true;
 
     /**
      * A player who logged off keeps to the blocks around them, where those are loaded:
@@ -333,6 +346,11 @@ public final class FarConfig {
             }
             instance.glowOutline = null;
             instance.debugOutlines = null;
+        }
+        if (instance.version < 9 && "hidden".equals(instance.offlinePose)) {
+            // Hiding them is a switch of its own now, which also stops remembering them.
+            instance.offlinePlayers = false;
+            instance.offlinePose = "sit";
         }
         instance.version = CURRENT;
         save();

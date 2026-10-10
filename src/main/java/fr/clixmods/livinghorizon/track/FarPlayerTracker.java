@@ -162,14 +162,14 @@ public final class FarPlayerTracker {
         // Gone from the tab list: logged off. They rest where they were last known.
         players.values().removeIf(player -> {
             if (connection.getPlayerInfo(player.id()) != null) return false;
-            if (player.profile != null && player.knownDimension() >= 0) {
+            if (config.offlinePlayers && player.profile != null && player.knownDimension() >= 0) {
                 resting.rest(player.profile, player.knownDimension(), player.x(), player.y(), player.z(), player.yaw());
             }
             return true;
         });
 
         // The data pack keeps the last position of everyone who ever played here.
-        if (shared.active() && ++packScan >= 20) {
+        if (config.offlinePlayers && shared.active() && ++packScan >= 20) {
             packScan = 0;
             for (String name : shared.holders(scoreboard)) {
                 if (online.contains(name.toLowerCase(Locale.ROOT))) continue;
@@ -177,7 +177,8 @@ public final class FarPlayerTracker {
                 if (report != null) resting.restFromPack(name, report);
             }
         }
-        resting.tick(current, config);
+        if (config.offlinePlayers) resting.tick(current, config);
+        resting.aim(minecraft, config);
         ambience.tick(current, self, config);
         mobs.tick(current, self, minecraft.options.getEffectiveRenderDistance() * 16, config,
                 shared.active() ? shared : null, scoreboard);

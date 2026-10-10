@@ -4,6 +4,7 @@
 
 ### Nouveautés
 - **Joueurs déconnectés** — ils tombent quand on casse les blocs sous eux, ressortent quand on les ensevelit, et dorment dans un lit s'il y en a un tout près.
+- **Noms hors ligne** — les joueurs déconnectés affichent leur nom marqué *(hors ligne)*, et en regarder un indique quand il a été vu pour la dernière fois ; un nouvel interrupteur les masque tous.
 
 ### Corrections
 - **Shaders** — les silhouettes lointaines affichées en imposteurs ne sont plus sombres avec les shaders d'Iris comme Photon ou Complementary : elles prennent le soleil comme les vrais modèles.

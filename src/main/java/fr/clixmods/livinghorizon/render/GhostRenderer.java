@@ -37,6 +37,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import java.util.ArrayList;
 *///?}
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -516,8 +517,8 @@ public final class GhostRenderer {
      */
     private static void rest(List<EntityRenderState> frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
                              Vec3 eye, float partialTick, FarConfig config) {
+        if (!config.offlinePlayers) return;
         boolean sleep = "sleep".equals(config.offlinePose);
-        if (!sleep && !"sit".equals(config.offlinePose)) return;
         ClientLevel level = minecraft.level;
         if (level == null) return;
         RestingPlayers resting = FarPlayerTracker.get().resting();
@@ -549,7 +550,16 @@ public final class GhostRenderer {
                 humanoid.isPassenger = true;
                 body.y -= 0.6;
             }
+            // Their name, marked offline, where the game would show it: close by, as for anyone.
+            Component name = config.offlineNames ? body.nameTag : null;
+            //? if >=1.21.2 {
+            if (name != null && (puppet.inBed() || lying && sleep) && body.nameTagAttachment != null) {
+                // Lying down: just above the body, as the game puts a sleeper's name (the tag adds half a block).
+                body.nameTagAttachment = new Vec3(0, 0.3, 0);
+            }
+            //?}
             add(frame, minecraft, eye, body, null, true, Mark.PLAYER, config, spot.name());
+            body.nameTag = name;
         }
     }
 

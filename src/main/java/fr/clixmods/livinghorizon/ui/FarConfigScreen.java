@@ -72,7 +72,9 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(
                 bool("enabled", c.enabled, v -> c.enabled = v),
                 bool("showVehicles", c.showVehicles, v -> c.showVehicles = v),
-                choice("offlinePose", List.of("sleep", "sit", "hidden"), c.offlinePose, v -> c.offlinePose = v),
+                bool("offlinePlayers", c.offlinePlayers, v -> c.offlinePlayers = v),
+                choice("offlinePose", List.of("sleep", "sit"), c.offlinePose, v -> c.offlinePose = v),
+                bool("offlineNames", c.offlineNames, v -> c.offlineNames = v),
                 bool("offlineOnGround", c.offlineOnGround, v -> c.offlineOnGround = v),
                 blocks("offlineBedRadius", 0, 8, c.offlineBedRadius, v -> c.offlineBedRadius = v),
                 blocks("playerMaxDistance", 0, 4000, c.playerMaxDistance, v -> c.playerMaxDistance = v),

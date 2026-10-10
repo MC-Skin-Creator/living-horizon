@@ -4,6 +4,7 @@
 
 ### New
 - **Players who logged off** — they fall when the blocks under them are broken, climb out when buried, and sleep in a bed if one is close by.
+- **Offline names** — players who logged off show their name marked *(offline)*, and looking at one tells when they were last seen; a new switch hides them all.
 
 ### Fixed
 - **Shader packs** — distant figures shown as impostors are no longer dark with Iris shaders such as Photon or Complementary: they catch the sun like full models.
