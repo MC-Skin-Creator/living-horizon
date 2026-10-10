@@ -365,6 +365,9 @@ Voxy's mountains. `compat/FarDepth` writes Voxy's depth into the game's - with V
 depth blit - just before the entities are drawn, and puts the original back just after,
 except where an entity was drawn. Distant mobs are then hidden by Voxy terrain pixel by
 pixel, and the pack still finds the depth it expects. Without a pack, Voxy does this itself.
+Under a pack's render scale (Photon's TAAU), the pack draws the world in the bottom left
+corner of the depth texture and says so to Voxy (`useViewportDims`): Voxy's depth, the depth
+view and the occlusion queries all go in that corner too.
 
 ### Mobs hidden by depth
 
