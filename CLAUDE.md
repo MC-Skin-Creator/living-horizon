@@ -161,6 +161,11 @@ come back, add it here in the same pull request: this file is what the next sess
   left corner of the depth texture and tells Voxy so with `useViewportDims` and `renderScale`
   in its `voxy.json`; Voxy's viewport `width`/`height` is that corner. `FarDepth.notePicture`
   reads it, and anything drawn into or read from the game's depth must stay inside it.
+- **Terrain shadows across distant mobs** (Photon with Voxy, the edge of a ledge's shadow on a
+  mob standing in front of it): the pack shades fragments past the render distance plus 64
+  blocks with shadows marched through Voxy's own depth, from the point that depth gives. The
+  mobs must be in it: `FarDepth.intoVoxy` writes them there after the entities are drawn, so
+  check that it runs (Voxy's pipeline, `renderToVanillaDepth` off, something drawn far).
 - **Flat geometry lit wrong under shaders** (impostors, bird silhouettes dark or lit from
   the wrong side): Iris throws away the normal given to a quad and computes it from its
   corners, counter-clockwise. `ImpostorLean` moves an impostor's corners along their lines of
@@ -170,6 +175,12 @@ come back, add it here in the same pull request: this file is what the next sess
   scenario shows the depth view.
 
 ## Changelog
+
+**Every change, every push.** Whenever you work on something, write its changelog entry
+in the same pull request, and before every push re-read both changelog files against what
+you are about to push: each player-visible change has its bullet, in both languages, and
+no bullet describes something that is not in the diff. Never push first and fix the
+changelog in a later commit or pull request.
 
 A pull request that changes what a player sees or feels adds its entry to
 `changelog/en.md` and `changelog/fr.md`, under `## Unreleased` / `## Prochaine version`

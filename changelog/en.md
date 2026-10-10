@@ -7,6 +7,7 @@
 
 ### Fixed
 - **Shader packs** — distant figures shown as impostors are no longer dark with Iris shaders such as Photon or Complementary: they catch the sun like full models.
+- **Photon with Voxy** — distant mobs no longer wear the shadow of the terrain behind them.
 
 ## 0.4.0 — 2026-10-10
 
@@ -17,6 +18,7 @@
 
 ### Fixed
 - **Black distant mobs** — without shaders, distant mobs no longer turn black for a moment, mostly while flying.
+- **Pause** — in single player, distant mobs, players and birds now freeze when the game is paused.
 
 ## 0.3.2 — 2026-10-09
 
