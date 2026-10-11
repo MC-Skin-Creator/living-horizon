@@ -89,7 +89,12 @@ thread), `setScreen`, `clickScreenButton(translation key)`, `takeScreenshot`. Th
 - **Occlusion.** With `hideOccludedMobs` on, figures past the terrain are hidden by
   depth; turn it off to look at the figures themselves.
 - **Slow.** Chunks draw slowly: `flatWorld` waits 100 ticks. `waitForChunksRender`
-  times out at large render distances.
+  times out at large render distances. The menus' blur is off (`Scene.reset`): on a
+  machine with few cores llvmpipe spends them all blurring the loading screen, the server
+  runs in step with the client, and "Timeout loading world" ends the run. Raise the
+  render distance after `flatWorld`, not before, for the same reason.
+- **Options' bounds.** An option set out of its range is ignored: the field of view goes
+  from 30 to 110, so 30 is the closest zoom.
 
 ## Limits
 

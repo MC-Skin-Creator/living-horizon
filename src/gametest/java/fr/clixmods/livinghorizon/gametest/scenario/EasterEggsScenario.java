@@ -8,7 +8,6 @@ import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobMemory;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.player.RemotePlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
@@ -86,14 +85,23 @@ public final class EasterEggsScenario implements Scenario {
         if (!on) throw new AssertionError("ee4 found no spot");
         context.waitTicks(10);
         Scene.screenshot(context, this, "ee4-corner");
-        context.runOnClient(minecraft -> {
+        // Closer, 28 blocks (he goes under 24), looking at him, the HUD off: his eyes.
+        String spot = context.computeOnClient(minecraft -> {
             RemotePlayer him = ambience().herobrine().figure();
             if (him == null) throw new AssertionError("ee4 gone before being looked at");
-            lookAt(minecraft.player, him.getX(), him.getY() + 1.6, him.getZ());
-            minecraft.options.fov().set(10);
             Scene.log("eggs ee4 at " + him.position() + ", " + (int) him.distanceTo(minecraft.player) + " blocks");
+            Vec3 away = minecraft.player.position().subtract(him.position()).multiply(1, 0, 1).normalize();
+            Vec3 at = him.position().add(away.scale(28));
+            double dx = him.getX() - at.x, dz = him.getZ() - at.z;
+            float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+            float pitch = (float) -Math.toDegrees(Math.atan2(him.getY() + 1.6 - (at.y + 1.62), Math.hypot(dx, dz)));
+            minecraft.options.fov().set(30);
+            minecraft.options.hideGui = true;
+            return String.format(java.util.Locale.ROOT, "%.3f %.3f %.3f %.2f %.2f", at.x, at.y, at.z, yaw, pitch);
         });
+        Scene.command(world, "tp @a " + spot);
         Scene.screenshot(context, this, "ee4-looked-at");
+        context.runOnClient(minecraft -> minecraft.options.hideGui = false);
         context.waitTicks(110);
         if (context.computeOnClient(minecraft -> ambience().herobrine().busy())) {
             throw new AssertionError("ee4 still there 5 seconds after being looked at");
@@ -148,11 +156,5 @@ public final class EasterEggsScenario implements Scenario {
             context.waitTicks(20);
         }
         if (context.computeOnClient(minecraft -> ambience().pass().busy())) throw new AssertionError("ee2 never left");
-    }
-
-    private static void lookAt(LocalPlayer player, double x, double y, double z) {
-        double dx = x - player.getX(), dy = y - player.getEyeY(), dz = z - player.getZ();
-        player.setYRot((float) Math.toDegrees(Math.atan2(-dx, dz)));
-        player.setXRot((float) -Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz))));
     }
 }

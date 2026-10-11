@@ -71,6 +71,9 @@ public final class Scene {
         context.setScreen(() -> null);
         context.runOnClient(minecraft -> {
             minecraft.options.guiScale().set(1);
+            // The menus' blur, on the loading screen too, costs llvmpipe every core: with few,
+            // the server, held in step with the client, cannot load the world in time.
+            minecraft.options.menuBackgroundBlurriness().set(0);
             minecraft.options.fov().set(70);
             minecraft.options.renderDistance().set(12);
             minecraft.options.entityDistanceScaling().set(1.0);
