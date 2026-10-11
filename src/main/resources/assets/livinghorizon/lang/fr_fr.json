@@ -196,6 +196,8 @@
   "livinghorizon.options.impostorDistance.tooltip": "Blocs : au-delà de cette distance, les imposteurs remplacent les modèles. Plus bas, c'est moins coûteux ; plus haut, les modèles complets restent plus longtemps.",
   "livinghorizon.options.debug": "Debug...",
   "livinghorizon.options.debug.tooltip": "Le plan lointain, les contours par type, encadrés et étiquettes sur les mobs lointains, panneau de compteurs et de coûts, tampon de profondeur avec le terrain lointain, et un interrupteur pour chaque optimisation.",
+  "livinghorizon.options.impostorPlayers": "Imposteurs des joueurs",
+  "livinghorizon.options.impostorPlayers.tooltip": "Les joueurs lointains deviennent eux aussi des imposteurs, comme les mobs. Désactivé, ils gardent leur modèle complet à toute distance : leur skin et leur armure restent détaillés. Nécessite les Imposteurs activés.",
   "livinghorizon.options.impostorPreview": "Gestionnaire d'imposteurs...",
   "livinghorizon.options.impostorPreview.tooltip": "Voir à quoi ressemblent les imposteurs, et les générer à nouveau.",
   "livinghorizon.options.debug.rendering": "Rendu",

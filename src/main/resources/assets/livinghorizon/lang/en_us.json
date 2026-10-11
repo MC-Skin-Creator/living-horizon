@@ -196,6 +196,8 @@
   "livinghorizon.options.impostorDistance.tooltip": "Blocks: past this distance, impostors stand in for the models. Lower is cheaper; higher keeps the full models longer.",
   "livinghorizon.options.debug": "Debug...",
   "livinghorizon.options.debug.tooltip": "The far plane, outlines by kind, boxes and labels on distant mobs, a panel of counts and costs, the depth buffer with the far terrain, and a switch for every optimisation.",
+  "livinghorizon.options.impostorPlayers": "Player impostors",
+  "livinghorizon.options.impostorPlayers.tooltip": "Distant players become impostors too, like mobs. Off, they keep their whole model at any distance, so their skin and armour stay in full detail. Needs Impostors on.",
   "livinghorizon.options.impostorPreview": "Impostor Manager...",
   "livinghorizon.options.impostorPreview.tooltip": "See what the impostors look like, and bake them again.",
   "livinghorizon.options.debug.rendering": "Rendering",

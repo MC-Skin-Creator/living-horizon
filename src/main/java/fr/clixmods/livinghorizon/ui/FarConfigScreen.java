@@ -66,7 +66,7 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "impostorPreview"), b -> minecraft.setScreen(new ImpostorScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "impostorPreview.tooltip"))).build(),
-                null);
+                bool("impostorPlayers", c.impostorPlayers, v -> c.impostorPlayers = v).createButton(minecraft.options, 0, 0, 150));
 
         header(Component.translatable(KEY + "players"));
         list.addSmall(

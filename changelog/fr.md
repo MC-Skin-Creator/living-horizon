@@ -2,6 +2,9 @@
 
 ## Prochaine version
 
+### Nouveautés
+- **Imposteurs des joueurs** — un nouveau réglage garde les joueurs lointains en modèles complets tandis que les mobs deviennent toujours des images plates au loin.
+
 ## 0.7.0 — 2026-10-17
 
 ### Nouveautés
