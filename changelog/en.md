@@ -9,6 +9,7 @@
 - **Minecraft 26.1** — distant mobs hide behind Voxy's and Distant Horizons' hills, as on other versions.
 - **Voxy 0.2.18** — the mod reads Voxy's terrain again: distant mobs stand on it and hide behind its hills.
 - **Distant Horizons on Minecraft 26.3 with Iris installed** — distant mobs hide behind Distant Horizons' hills again.
+- **Voxy on Minecraft 26.3 with a shader pack** — distant mobs hide behind Voxy's hills.
 
 ## 0.4.0 — 2026-10-10
 

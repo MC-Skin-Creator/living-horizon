@@ -534,6 +534,11 @@ public final class FarDepth {
             GL11C.glDisable(GL11C.GL_SCISSOR_TEST);
             GL11C.glColorMask(false, false, false, false);
             GL11C.glDepthMask(true);
+            //? if >=26.3 {
+            /*// Voxy's blit keeps the comparison it finds. From 26.3 the world's pass is already open
+            // here, and what the game left set rejects Voxy's terrain: the game's own, nearer wins.
+            GL11C.glDepthFunc(DepthFar.reversed() ? GL11C.GL_GEQUAL : GL11C.GL_LEQUAL);
+            *///?}
             // Voxy's blit reads its picture in screen fractions: stretched over the part of the
             // texture the world is drawn to, it lands where the pack draws the entities.
             GL11C.glViewport(0, 0, pictureWidth, pictureHeight);

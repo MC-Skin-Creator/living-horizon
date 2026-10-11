@@ -216,6 +216,9 @@ come back, add it here in the same pull request: this file is what the next sess
   register their `UndoReverseZ` mixins and draw the world in OpenGL's usual depth while a
   pack is on (1.11.4 and later keep 26.2's reversed one). Whatever reads the game's depth
   with OpenGL follows `DepthFar.reversed()`, read from the projection, never `REVERSED`.
+- **Voxy's terrain missing from the depth on 26.3** (merge "on", depth view without it): Voxy's
+  `transformBlitDepth` keeps the depth comparison it finds, and from 26.3 the world's pass is
+  already open when `FarDepth.merge` runs. The merge sets it itself there, as `mergeDh` does.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
