@@ -259,6 +259,7 @@ public final class FarDepth {
     /** The matrices of this frame, for {@link OcclusionQueries}. */
     public static void noteView(Matrix4f modelView, Matrix4f projection) {
         VIEW_PROJECTION.set(projection).mul(modelView);
+        DepthFar.noteProjection(projection);
         OcclusionQueries.noteView(modelView, projection);
     }
 
@@ -348,7 +349,7 @@ public final class FarDepth {
                 GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "planes"), 0.05f, far);
                 GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "terms"), terms[0], terms[1]);
                 GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "depthLayout"),
-                        DepthFar.REVERSED ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f);
+                        DepthFar.reversed() ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f);
                 GL30C.glBindVertexArray(vertexArray);
                 GL33C.glBindSampler(0, 0);
                 GL45C.glBindTextureUnit(0, mode == 1 ? saved : mode == 2 ? written : drawn);
@@ -591,7 +592,7 @@ public final class FarDepth {
             GL11C.glDisable(GL11C.GL_STENCIL_TEST);
             GL11C.glDisable(GL11C.GL_BLEND);
             GL11C.glEnable(GL11C.GL_DEPTH_TEST);
-            GL11C.glDepthFunc(DepthFar.REVERSED ? GL11C.GL_GREATER : GL11C.GL_LESS);
+            GL11C.glDepthFunc(DepthFar.reversed() ? GL11C.GL_GREATER : GL11C.GL_LESS);
             GL11C.glDepthMask(true);
             GL11C.glColorMask(false, false, false, false);
             GL11C.glViewport(0, 0, w, h);
@@ -604,7 +605,7 @@ public final class FarDepth {
             float[] terms = DepthFar.terms(near, far);
             GL20C.glUniform2f(GL20C.glGetUniformLocation(dhProgram, "game"), terms[0], terms[1]);
             GL20C.glUniform2f(GL20C.glGetUniformLocation(dhProgram, "depthLayout"),
-                    DepthFar.REVERSED ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f);
+                    DepthFar.reversed() ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f);
             GL30C.glBindVertexArray(vertexArray);
             GL33C.glBindSampler(0, dhSampler);
             GL45C.glBindTextureUnit(0, (int) dh[0]);
@@ -831,7 +832,7 @@ public final class FarDepth {
             float renderDistance = Minecraft.getInstance().options.getEffectiveRenderDistance() * 16f - 16f;
             GL20C.glUniform1f(GL20C.glGetUniformLocation(intoVoxyProgram, "beyond"), renderDistance);
             GL20C.glUniform4f(GL20C.glGetUniformLocation(intoVoxyProgram, "depthLayout"),
-                    DepthFar.REVERSED ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f, reversed ? 1f : 0f, zeroToOne ? 1f : 0f);
+                    DepthFar.reversed() ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f, reversed ? 1f : 0f, zeroToOne ? 1f : 0f);
             GL30C.glBindVertexArray(vertexArray);
             for (int unit = 0; unit < 2; unit++) {
                 GL33C.glBindSampler(unit, 0);
@@ -946,7 +947,7 @@ public final class FarDepth {
                 GL11C.glViewport(0, 0, width, height);
                 if (unmaskProgram == 0) unmaskProgram = compileUnmask();
                 GL20C.glUseProgram(unmaskProgram);
-                GL20C.glUniform1f(GL20C.glGetUniformLocation(unmaskProgram, "empty"), DepthFar.REVERSED ? 0f : 1f);
+                GL20C.glUniform1f(GL20C.glGetUniformLocation(unmaskProgram, "empty"), DepthFar.reversed() ? 0f : 1f);
                 GL30C.glBindVertexArray(vertexArray);
                 for (int unit = 0; unit < 3; unit++) {
                     GL33C.glBindSampler(unit, 0);

@@ -236,7 +236,7 @@ public final class OcclusionQueries {
                 GL11C.glDisable(GL11C.GL_BLEND);
                 GL11C.glEnable(GL11C.GL_DEPTH_TEST);
                 GL11C.glEnable(GL32C.GL_DEPTH_CLAMP);
-                GL11C.glDepthFunc(DepthFar.REVERSED ? GL11C.GL_GEQUAL : GL11C.GL_LEQUAL);
+                GL11C.glDepthFunc(DepthFar.reversed() ? GL11C.GL_GEQUAL : GL11C.GL_LEQUAL);
                 GL11C.glDepthMask(false);
                 GL11C.glColorMask(false, false, false, false);
                 // Where the world is drawn: all of the texture, or its corner under a render scale.

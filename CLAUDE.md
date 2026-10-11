@@ -212,7 +212,10 @@ come back, add it here in the same pull request: this file is what the next sess
   through the same `PreparedFrame.executeSolid` / `executeTranslucent` steps as the world,
   after the world's are submitted. `FarDepth.before` / `after` skip it
   (`IrisApi.isRenderingShadowPass`), or it takes the bracket meant for the world's entities.
-  The depth stays reversed under Iris (its `UndoReverseZ` mixins are not registered).
+- **Depth view all white under shaders on 26.2** (Iris 1.11.2 or older): those versions
+  register their `UndoReverseZ` mixins and draw the world in OpenGL's usual depth while a
+  pack is on (1.11.4 and later keep 26.2's reversed one). Whatever reads the game's depth
+  with OpenGL follows `DepthFar.reversed()`, read from the projection, never `REVERSED`.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
