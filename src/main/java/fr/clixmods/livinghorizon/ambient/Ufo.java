@@ -47,7 +47,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * <p>Secret: nothing a player reads (settings, README, changelog) says what it is.
  */
 public final class Ufo {
-    private static final Identifier SHEET = Identifier.fromNamespaceAndPath(LivingHorizonClient.MOD_ID, "textures/misc/birds.png");
+    static final Identifier SHEET = Identifier.fromNamespaceAndPath(LivingHorizonClient.MOD_ID, "textures/misc/birds.png");
     static final RenderType SOLID = RenderTypes.entityCutout(SHEET);
     private static final RenderType GLOW = RenderTypes.entityTranslucentEmissive(SHEET);
     /** A white texel of the bird sheet: every box is that texel, tinted. */

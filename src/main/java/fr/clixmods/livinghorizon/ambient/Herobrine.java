@@ -10,6 +10,8 @@ import fr.clixmods.livinghorizon.track.Puppets;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.player.RemotePlayer;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
@@ -42,6 +44,8 @@ public final class Herobrine {
     private static final double LOOKED_AT = Math.cos(Math.toRadians(8));
     /** Ticks he waits to be seen before he goes anyway. */
     private static final int PATIENCE = 1800;
+    /** Glowing and unshaded, the way the game draws a spider's eyes: the white texel of the bird sheet. */
+    private static final RenderType EYES = RenderTypes.eyes(Ufo.SHEET);
     /** A pixel of the player model, drawn at 15/16 of its size, in blocks. */
     private static final float PIXEL = 0.9375f / 16f;
     /** Pixels from the feet to the neck, where the head turns. */
@@ -149,7 +153,7 @@ public final class Herobrine {
                 (float) (Mth.lerp(partial, him.yo, him.getY()) - camera.y),
                 (float) (Mth.lerp(partial, him.zo, him.getZ()) - camera.z));
         pose.mulPose(Axis.YP.rotationDegrees(-Mth.rotLerp(partial, him.yHeadRotO, him.yHeadRot)));
-        collector.draw(pose, Ufo.SOLID, Herobrine::eyes);
+        collector.draw(pose, EYES, Herobrine::eyes);
         pose.popPose();
     }
 
