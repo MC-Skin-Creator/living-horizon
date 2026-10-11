@@ -184,6 +184,10 @@ come back, add it here in the same pull request: this file is what the next sess
   pack on or off, it switches itself to OpenGL and fills only `getDhDepthTextureGlId`; the
   Blaze3D wrapper the game's GPU device path reads stays empty ("has no depth texture").
   `FarDepth.gpuPath` falls back to the OpenGL path when `DhDepth.drawsWithOpenGl`.
+- **Distant Horizons under a shader pack from 26.2** (depth view flat grey under shaders only):
+  Iris draws its terrain with OpenGL's -1..1 projection, but the game's 0..1 clip control
+  (`glClipControl`, 26.2 on) applies to it too, so its depth is 0..1, and its far plane is 1
+  whatever Distant Horizons' own depth direction. `DhDepth.terms` reads it so from 26.2 only.
 - **Before 1.21.5** the game's depth texture has an unsized format (`GL_DEPTH_COMPONENT`):
   `glTextureStorage2D` refuses it, so anything copied from it is allocated the way the game
   allocates its own. A copy "with no size" or an all-white depth view is this.

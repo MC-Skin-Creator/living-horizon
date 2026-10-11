@@ -153,10 +153,20 @@ final class DhDepth {
             float near = iris[0], far = iris[1];
             a = (far + near) / (near - far);
             b = 2.0f * far * near / (near - far);
+            //? if >=26.2 {
+            /*// From 26.2 the game turns on 0..1 clip control for everything drawn, Iris's pass of
+            // Distant Horizons included: its depth is 0..1 though the projection is OpenGL's.
+            signed = !fr.clixmods.livinghorizon.render.DepthFar.zeroToOne();
+            *///?} else {
             signed = true;
+            //?}
         }
         if (Math.abs(b) < 1.0e-6f) return none("Distant Horizons has no projection yet");
         float nothing = depthDirection == null || farDepth == null ? 1.0f : farDepth.getFloat(depthDirection.invoke(proxy));
+        //? if >=26.2 {
+        /*// Iris's projection keeps the far plane at 1, whatever way Distant Horizons runs its own.
+        if (iris != null) nothing = 1.0f;
+        *///?}
         return new float[]{a, b, signed ? 1.0f : 0.0f, nothing};
     }
 
