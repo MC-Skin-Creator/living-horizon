@@ -198,7 +198,7 @@ come back, add it here in the same pull request: this file is what the next sess
   left corner of the depth texture and tells Voxy so with `useViewportDims` and `renderScale`
   in its `voxy.json`; Voxy's viewport `width`/`height` is that corner. `FarDepth.notePicture`
   reads it, and anything drawn into or read from the game's depth must stay inside it.
-  Distant Horizons is not told: from 26.2, `FarDepth.packScale` reads Photon's own options
+  Distant Horizons is not told: `FarDepth.packScale` reads Photon's own options
   (`TAAU`, `TAAU_RENDER_SCALE`) from Iris, the value its `voxy.json` gives Voxy.
 - **Terrain shadows across distant mobs** (Photon with Voxy, the edge of a ledge's shadow on a
   mob standing in front of it): the pack shades fragments past the render distance plus 64

@@ -520,15 +520,13 @@ public final class FarDepth {
     private static void notePicture(int w, int h) throws ReflectiveOperationException {
         pictureWidth = w;
         pictureHeight = h;
-        //? if >=26.2 {
-        /*if (!available()) {
-            float scale = packScale();
-            pictureWidth = Math.round(w * scale);
-            pictureHeight = Math.round(h * scale);
+        if (!available()) {
+            float fraction = packScale();
+            pictureWidth = Math.round(w * fraction);
+            pictureHeight = Math.round(h * fraction);
             return;
         }
-        *///?}
-        if (useViewportDimsField == null || !available()) return;
+        if (useViewportDimsField == null) return;
         Object system = getNullable.invoke(null);
         if (system == null) return;
         Object pipeline = pipelineField.get(system);
