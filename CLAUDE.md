@@ -180,6 +180,8 @@ come back, add it here in the same pull request: this file is what the next sess
   not its head; under shaders with Voxy, or with Distant Horizons): from 1.21.9 to 26.1 the
   bracketed call only fills the world's buffer source, and the game draws the last batch and
   the fixed buffers after it. `FeatureRenderDispatcherMixin` ends the batch before `FarDepth.after`.
+  Seen with many mobs on screen: the occlusion queries fall behind (`IN_FLIGHT_MAX`, `MAX_AGE`),
+  the mobs behind terrain are drawn, and the depth alone hides them.
 - **Voxy version.** `FarDepth` and `VoxySource` reach Voxy by reflection; a renamed class turns
   both off ("Voxy found, but not the version this mod knows"). 0.2.18 renamed
   `IGetVoxyRenderSystem` to `IVoxyRenderSystemHolder` (`VoxySource.renderSystemGetter` tries
