@@ -88,9 +88,9 @@ public final class Scene {
                     throw new IllegalStateException(e);
                 }
             }
-            // Birds and the saucer move on their own: off, so that two screenshots compare.
+            // Birds and the easter eggs move on their own: off, so that two screenshots compare.
             config.skyBirds = false;
-            config.ufo = false;
+            config.easterEggs = false;
         });
     }
 

@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.gametest;
 
 import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.EasterEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FollowedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.GaitsScenario;
@@ -50,7 +51,8 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new EntityDepthScenario(),
             new UnloadScenario(),
             new FollowedMobsScenario(),
-            new GaitsScenario());
+            new GaitsScenario(),
+            new EasterEggsScenario());
 
     @Override
     public void runTest(ClientGameTestContext context) {

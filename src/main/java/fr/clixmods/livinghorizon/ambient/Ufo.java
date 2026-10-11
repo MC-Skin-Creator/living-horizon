@@ -1,5 +1,8 @@
 package fr.clixmods.livinghorizon.ambient;
 
+import fr.clixmods.livinghorizon.FarConfig;
+import fr.clixmods.livinghorizon.track.FarPlayerTracker;
+import fr.clixmods.livinghorizon.track.MobMemory;
 import fr.clixmods.livinghorizon.track.Puppets;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -20,30 +23,37 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * An easter egg: now and then, far away, a flying saucer comes down over a cow, lifts it
- * up in a beam of light, and is gone. The saucer, the beam and the cow exist on this
- * screen only - no cow anywhere was harmed.
+ * Easter egg 1: now and then, a flying saucer comes down over a cow this client remembers,
+ * lifts up a second cow grazing beside it in a beam of light, and is gone. The remembered
+ * cow stays where it was; the second one, the saucer and the beam exist on this screen
+ * only - no cow anywhere was harmed.
  *
  * <p>The saucer is a few boxes of colour, Minecraft style, with lights blinking round the
- * rim; the beam is a translucent glowing column; the cow is the game's own, a puppet like
- * the distant mobs.
+ * rim; the beam is a translucent glowing column; the cow taken is a twin of the remembered
+ * one ({@link MobMemory#twin}), a puppet like the distant mobs.
+ *
+ * <p>Secret: nothing a player reads (settings, README, changelog) says what it is.
  */
 public final class Ufo {
     private static final Identifier SHEET = Identifier.fromNamespaceAndPath(LivingHorizonClient.MOD_ID, "textures/misc/birds.png");
-    private static final RenderType SOLID = RenderTypes.entityCutout(SHEET);
+    static final RenderType SOLID = RenderTypes.entityCutout(SHEET);
     private static final RenderType GLOW = RenderTypes.entityTranslucentEmissive(SHEET);
     /** A white texel of the bird sheet: every box is that texel, tinted. */
     private static final float U = 7.5f / 64f, V = 1.5f / 32f;
-    private static final int BRIGHT = LightTexture.FULL_BRIGHT, LIT = LightTexture.pack(0, 15);
+    static final int BRIGHT = LightTexture.FULL_BRIGHT, LIT = LightTexture.pack(0, 15);
+    private static final String COW = "minecraft:cow";
 
     /** Ticks of the show: arrive, beam on, lift, beam off, wait, climb away, dash off. */
     private static final int ARRIVED = 240, BEAM = 300, LIFTED = 480, TAKEN = 500, GONE = 520;
@@ -53,12 +63,31 @@ public final class Ufo {
     private static final double CLIMB_OUT = 550, CLIMB_UP = 280;
     /** Blocks from the ground to the saucer's middle while it hovers. */
     private static final double HOVER = 16;
+    /** How far the remembered cow may be, in blocks across: when called, and by chance. */
+    private static final double CALLED_MIN = 24, CALLED_MAX = 400, CHANCE_MIN = 80, CHANCE_MAX = 480;
+    /** Ahead of the player: within about 45 degrees of where they look. */
+    private static final double AHEAD = 0.7;
+    /** Spots beside the cow tried before standing the twin at the cow's own height. */
+    private static final int TRIES = 8;
+
+    /** What calling the show found. */
+    public enum Call {
+        /** A cow ahead of the player: it comes in sight. */
+        AHEAD,
+        /** A cow elsewhere, or a show already on its way. */
+        AROUND,
+        /** No cow remembered in reach, or the easter eggs are off. */
+        NOTHING
+    }
 
     private final RandomSource random = RandomSource.create();
     private final AtomicReference<double @Nullable []> foundGround = new AtomicReference<>();
     private int tries;
     private boolean active, searching;
     private int age;
+    /** Where the remembered cow stood when the show was called: the twin goes beside it. */
+    private double anchorX, anchorY, anchorZ;
+    private @Nullable LivingEntity twin;
     private double groundX, groundY, groundZ;
     private double fromX, fromY, fromZ, awayX, awayZ;
     private double x, y, z, xo, yo, zo;
@@ -67,28 +96,67 @@ public final class Ufo {
     private boolean cowShown;
     private int idle;
 
-    /** The cow while it is still to be seen. */
+    /** On its way or under way: no other easter egg starts meanwhile. */
+    public boolean busy() {
+        return active || searching;
+    }
+
+    /** The cow taken, while it is still to be seen. */
     public @Nullable LivingEntity cow() {
         return active && cowShown ? cow : null;
     }
 
-    /** Starts the show somewhere ahead of the player: by chance, or because they asked. */
-    public void summon(ClientLevel level, LocalPlayer self, boolean near) {
-        if (active || searching) return;
+    /**
+     * Starts the show over a cow this client remembers, an adult one drawn far away: by
+     * chance, ahead of the player, or because they asked ({@code called}: nearer, and
+     * anywhere around if none is ahead).
+     */
+    public Call summon(ClientLevel level, LocalPlayer self, boolean called) {
+        if (!FarConfig.get().easterEggs || level.dimension() != Level.OVERWORLD) return Call.NOTHING;
+        if (active || searching) return Call.AROUND;
+        MobMemory memory = FarPlayerTracker.get().mobs();
+        int limit = FarConfig.get().mobMaxDistance;
+        double close = called ? CALLED_MIN : CHANCE_MIN, far = called ? CALLED_MAX : CHANCE_MAX;
+        if (limit > 0) far = Math.min(far, limit);
+        double yaw = Math.toRadians(self.getYRot()), lookX = -Math.sin(yaw), lookZ = Math.cos(yaw);
+        List<MobMemory.Remembered> ahead = new ArrayList<>(), around = new ArrayList<>();
+        for (MobMemory.Remembered mob : memory.shown()) {
+            if (!COW.equals(mob.type()) || memory.handingOver(mob)) continue;
+            if (!(mob.puppet() instanceof LivingEntity puppet) || puppet.isBaby()) continue;
+            double dx = puppet.getX() - self.getX(), dz = puppet.getZ() - self.getZ(), across = Math.hypot(dx, dz);
+            if (across < close || across > far) continue;
+            ((dx * lookX + dz * lookZ) / across > AHEAD ? ahead : around).add(mob);
+        }
+        Call call = !ahead.isEmpty() ? Call.AHEAD : called && !around.isEmpty() ? Call.AROUND : Call.NOTHING;
+        if (call == Call.NOTHING) return call;
+        List<MobMemory.Remembered> from = call == Call.AHEAD ? ahead : around;
+        MobMemory.Remembered chosen = from.get(random.nextInt(from.size()));
+        Entity remembered = chosen.puppet();
+        LivingEntity made = memory.twin(chosen, level);
+        if (remembered == null || made == null) return Call.NOTHING;
+        twin = made;
+        anchorX = remembered.getX();
+        anchorY = remembered.getY();
+        anchorZ = remembered.getZ();
         searching = true;
         tries = 0;
-        look(level, self, near);
+        // A lookup of an earlier show, answered late, is not this one's.
+        foundGround.set(null);
+        look(level);
+        return call;
     }
 
-    public void tick(ClientLevel level, LocalPlayer self, boolean enabled) {
+    /** {@code quiet}: no other easter egg under way, so this one may start by chance. */
+    public void tick(ClientLevel level, LocalPlayer self, boolean enabled, boolean quiet) {
         if (!enabled) {
             active = searching = false;
+            twin = null;
             return;
         }
         if (!active && !searching) {
             // Rare: about once in a quarter of an hour of night, three quarters of day.
             int chance = level.isBrightOutside() ? 54000 : 18000;
-            if (++idle > 1200 && random.nextInt(chance) == 0) {
+            if (++idle > 1200 && quiet && random.nextInt(chance) == 0) {
                 idle = 0;
                 summon(level, self, false);
             }
@@ -97,41 +165,41 @@ public final class Ufo {
         if (searching) {
             double[] ground = foundGround.getAndSet(null);
             if (ground == null) return;
-            if (Double.isNaN(ground[1])) {
-                // Water, or nothing known there: look elsewhere, a few times.
-                if (++tries < 6) look(level, self, ground[3] > 0);
-                else searching = false;
-                return;
+            // Beside the cow and about as high: not in water, not up or down a cliff.
+            if (Double.isNaN(ground[1]) || Math.abs(ground[1] - anchorY) > 1.5) {
+                if (++tries < TRIES) {
+                    look(level);
+                    return;
+                }
+                ground[1] = anchorY;
             }
-            begin(level, self, ground[0], ground[1], ground[2]);
+            begin(self, ground[0], ground[1], ground[2]);
             return;
         }
         step();
     }
 
-    /** Picks a column ahead of the player and finds its ground, here or in Voxy's world. */
-    private void look(ClientLevel level, LocalPlayer self, boolean near) {
-        double bearing = Math.toRadians(self.getYRot()) + random.nextGaussian() * (near ? 0.3 : 0.7);
-        double distance = near ? 70 + random.nextDouble() * 80 : 140 + random.nextDouble() * 200;
-        int gx = Mth.floor(self.getX() - Math.sin(bearing) * distance);
-        int gz = Mth.floor(self.getZ() + Math.cos(bearing) * distance);
-        double flag = near ? 1 : 0;
+    /** Picks a spot beside the remembered cow and finds its ground, here or in the far world. */
+    private void look(ClientLevel level) {
+        double angle = random.nextDouble() * Math.PI * 2, gap = 2.2 + random.nextDouble();
+        double sx = anchorX + Math.sin(angle) * gap, sz = anchorZ + Math.cos(angle) * gap;
+        int gx = Mth.floor(sx), gz = Mth.floor(sz);
         if (level.hasChunk(gx >> 4, gz >> 4)) {
             int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, gx, gz);
             boolean wet = !level.getFluidState(new BlockPos(gx, top - 1, gz)).isEmpty();
-            foundGround.set(new double[]{gx + 0.5, wet ? Double.NaN : top, gz + 0.5, flag});
+            foundGround.set(new double[]{sx, wet ? Double.NaN : top, sz});
         } else {
-            LodWorld.surface(gx, gz).thenAccept(surface -> foundGround.set(surface.isPresent() && !surface.get().water()
-                    ? new double[]{gx + 0.5, surface.get().y() + 1, gz + 0.5, flag}
-                    : new double[]{gx + 0.5, Double.NaN, gz + 0.5, flag}));
+            LodWorld.surface(gx, gz).thenAccept(surface -> foundGround.set(new double[]{sx,
+                    surface.isPresent() && !surface.get().water() ? surface.get().y() + 1 : Double.NaN, sz}));
         }
     }
 
-    private void begin(ClientLevel level, LocalPlayer self, double gx, double gy, double gz) {
-        LivingEntity created = Puppets.create(EntityType.COW, level);
+    private void begin(LocalPlayer self, double gx, double gy, double gz) {
+        LivingEntity taken = twin;
+        twin = null;
         searching = false;
-        if (created == null) return;
-        cow = created;
+        if (taken == null) return;
+        cow = taken;
         groundX = gx;
         groundY = gy;
         groundZ = gz;
@@ -251,9 +319,16 @@ public final class Ufo {
             collector.draw(pose, GLOW, (at, out) -> beam(at, out, drop, alpha));
         }
 
+        saucer(pose, collector, heading, tiltNow, spinNow, blink);
+        pose.popPose();
+    }
+
+    /** The saucer at the pose's origin: heading where it goes, tilted forwards, spinning. */
+    static void saucer(PoseStack pose, Sink collector, float heading, float tilt, float spin, int blink) {
+        pose.pushPose();
         pose.mulPose(Axis.YP.rotationDegrees(-heading));
-        pose.mulPose(Axis.XP.rotationDegrees(tiltNow));
-        pose.mulPose(Axis.YP.rotationDegrees(spinNow));
+        pose.mulPose(Axis.XP.rotationDegrees(tilt));
+        pose.mulPose(Axis.YP.rotationDegrees(spin));
         collector.draw(pose, SOLID, (at, out) -> saucer(at, out, blink));
         pose.popPose();
     }
@@ -288,7 +363,7 @@ public final class Ufo {
     }
 
     /** An axis-aligned box, every face wound to face outwards. */
-    private static void box(PoseStack.Pose at, VertexConsumer out, float x0, float y0, float z0, float x1, float y1, float z1,
+    static void box(PoseStack.Pose at, VertexConsumer out, float x0, float y0, float z0, float x1, float y1, float z1,
                             int r, int g, int b, int light) {
         face(at, out, r, g, b, light, 0, 1, 0, x0, y1, z0, x0, y1, z1, x1, y1, z1, x1, y1, z0);
         face(at, out, r, g, b, light, 0, -1, 0, x0, y0, z0, x1, y0, z0, x1, y0, z1, x0, y0, z1);
@@ -299,7 +374,7 @@ public final class Ufo {
     }
 
     /** One face, its corners put in the order that makes it face {@code (nx, ny, nz)}. */
-    private static void face(PoseStack.Pose at, VertexConsumer out, int r, int g, int b, int light,
+    static void face(PoseStack.Pose at, VertexConsumer out, int r, int g, int b, int light,
                              float nx, float ny, float nz,
                              float ax, float ay, float az, float bx, float by, float bz,
                              float cx, float cy, float cz, float dx, float dy, float dz) {
@@ -318,7 +393,7 @@ public final class Ufo {
         }
     }
 
-    private static void vertex(PoseStack.Pose at, VertexConsumer out, float x, float y, float z,
+    static void vertex(PoseStack.Pose at, VertexConsumer out, float x, float y, float z,
                                int r, int g, int b, int a, int light, float nx, float ny, float nz) {
         out.addVertex(at, x, y, z)
                 .setColor(r, g, b, a)

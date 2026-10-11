@@ -250,10 +250,28 @@ public final class Ambience {
     private @Nullable ClientLevel level;
     private int probeCooldown;
     private final Ufo ufo = new Ufo();
+    private final SaucerPass pass = new SaucerPass();
+    private final Ghosts ghosts = new Ghosts();
+    private final Herobrine herobrine = new Herobrine();
 
-    /** The easter egg. */
+    /** Easter egg 1. */
     public Ufo ufo() {
         return ufo;
+    }
+
+    /** Easter egg 2. */
+    public SaucerPass pass() {
+        return pass;
+    }
+
+    /** Easter egg 3. */
+    public Ghosts ghosts() {
+        return ghosts;
+    }
+
+    /** Easter egg 4. */
+    public Herobrine herobrine() {
+        return herobrine;
     }
 
     /** Everything flying or perched this tick. */
@@ -268,7 +286,13 @@ public final class Ambience {
             found.clear();
             level = current;
         }
-        ufo.tick(current, self, config.ufo && current.dimension() == Level.OVERWORLD);
+        // The easter eggs: one at a time, never two by chance together.
+        boolean eggs = config.easterEggs && current.dimension() == Level.OVERWORLD;
+        boolean quiet = !ufo.busy() && !pass.busy() && !ghosts.busy() && !herobrine.busy();
+        ufo.tick(current, self, eggs, quiet);
+        pass.tick(current, self, eggs, quiet);
+        ghosts.tick(current, self, eggs, quiet);
+        herobrine.tick(current, self, eggs, quiet);
         flyers.clear();
         if (!config.skyBirds || current.dimension() != Level.OVERWORLD) {
             groups.clear();

@@ -7,6 +7,7 @@ import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Stats;
+import fr.clixmods.livinghorizon.ambient.Ufo;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.LodWorld;
 import fr.clixmods.livinghorizon.debug.DebugHud;
@@ -21,8 +22,10 @@ import fr.clixmods.livinghorizon.ui.FarConfigScreen;
 import fr.clixmods.livinghorizon.ui.ImpostorScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import org.jspecify.annotations.Nullable;
@@ -30,6 +33,7 @@ import org.jspecify.annotations.Nullable;
 import java.time.ZoneId;
 import java.util.Collection;
 import java.util.Locale;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 
 /**
@@ -103,13 +107,21 @@ public final class LivingHorizonCommand {
                                 .then(RequiredArgumentBuilder.<S, Integer>argument("radius",
                                                 IntegerArgumentType.integer(MobScan.MIN_RADIUS))
                                         .executes(c -> scan(source.apply(c.getSource()), IntegerArgumentType.getInteger(c, "radius")))))
-                        .then(LiteralArgumentBuilder.<S>literal("ufo").executes(c -> {
+                        // The easter eggs, numbered: a name would say what they are.
+                        .then(LiteralArgumentBuilder.<S>literal("ee1").executes(c -> {
                             Minecraft client = source.apply(c.getSource()).client();
                             if (client.level == null || client.player == null) return 0;
-                            FarPlayerTracker.get().ambience().ufo().summon(client.level, client.player, true);
-                            source.apply(c.getSource()).feedback(Component.translatable("livinghorizon.ufo.summoned"));
-                            return 1;
+                            Ufo.Call call = FarPlayerTracker.get().ambience().ufo().summon(client.level, client.player, true);
+                            source.apply(c.getSource()).feedback(Component.translatable(call == Ufo.Call.NOTHING
+                                    ? NOTHING : "livinghorizon.ee1." + call.name().toLowerCase(Locale.ROOT)));
+                            return call == Ufo.Call.NOTHING ? 0 : 1;
                         }))
+                        .then(LiteralArgumentBuilder.<S>literal("ee2").executes(c -> egg(source.apply(c.getSource()), "ee2",
+                                (level, player) -> FarPlayerTracker.get().ambience().pass().summon(level, player, true))))
+                        .then(LiteralArgumentBuilder.<S>literal("ee3").executes(c -> egg(source.apply(c.getSource()), "ee3",
+                                (level, player) -> FarPlayerTracker.get().ambience().ghosts().summon(level, player, true))))
+                        .then(LiteralArgumentBuilder.<S>literal("ee4").executes(c -> egg(source.apply(c.getSource()), "ee4",
+                                (level, player) -> FarPlayerTracker.get().ambience().herobrine().summon(level, player, true))))
                         .then(LiteralArgumentBuilder.<S>literal("config").executes(c -> {
                             // After the chat screen, which closes once the command has run.
                             Minecraft client = source.apply(c.getSource()).client();
@@ -208,6 +220,18 @@ public final class LivingHorizonCommand {
     }
 
     /** {@code /livinghorizon scan [radius]}: the mobs of the chunks around, read from a single player world. */
+    /** What an easter egg answers when it cannot come: the off switch, the wrong place. */
+    private static final String NOTHING = "livinghorizon.ee.nothing";
+
+    /** Calls an easter egg now; it answers {@code livinghorizon.<egg>.on}, or {@link #NOTHING}. */
+    private static int egg(Source source, String egg, BiPredicate<ClientLevel, LocalPlayer> call) {
+        Minecraft client = source.client();
+        if (client.level == null || client.player == null) return 0;
+        boolean on = call.test(client.level, client.player);
+        source.feedback(Component.translatable(on ? "livinghorizon." + egg + ".on" : NOTHING));
+        return on ? 1 : 0;
+    }
+
     private static int scan(Source source, int radius) {
         Minecraft client = source.client();
         // After the command has run, outside the command dispatcher.

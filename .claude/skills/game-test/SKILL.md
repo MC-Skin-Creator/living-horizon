@@ -63,7 +63,7 @@ The scenarios are in `src/gametest/java/fr/clixmods/livinghorizon/gametest/`:
   player at 0, 0 facing south, +z; close it with try-with-resources), `command`,
   `summon` and `row` (mobs with `NoAI`, turned every 45 degrees), `configure` (the mod's
   settings), `screenshot`, `screenshotAtlas` (the impostor page), `log` (an `LHTEST` line).
-  Every scenario starts from the default settings, with birds and the saucer off.
+  Every scenario starts from the default settings, with birds and the easter eggs off.
 - `scenario/ImpostorsScenario`, `scenario/RememberedMobsScenario`: examples to copy.
 
 The `context` is Fabric's `ClientGameTestContext`: `waitTicks`, `runOnClient` and

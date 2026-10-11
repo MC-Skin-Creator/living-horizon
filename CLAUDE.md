@@ -92,6 +92,22 @@ must look exactly the same with Living Horizon installed as without it:
 Writing the mobs into Voxy's depth over the whole screen, for Photon's shadows, broke Voxy's
 water under Photon. Check any change to `compat/` against this section.
 
+## Easter eggs are secret
+
+The mod hides a few easter eggs, in `ambient/` (the `eeN` commands in `LivingHorizonCommand`
+say which class is which). Players find them; nothing they read gives one away:
+
+- never describe one in the README, the changelog, a tooltip, a translation or a release
+  note, and never in a commit subject or a pull request title (the GitHub release lists
+  those): say "easter egg" and its number at most;
+- one settings switch covers them all, `easterEggs` ("Easter eggs", a tooltip that says
+  nothing of what they are);
+- each is called by number, `/livinghorizon ee1`, `ee2` and so on, never by a name that
+  says what it is; its lang keys are `livinghorizon.eeN.*`, and `livinghorizon.ee.nothing`
+  when it cannot come;
+- one at a time: one starts by chance only while none of the others is under way;
+- an easter egg gets no changelog entry, even when it changes.
+
 ## Branch model: Git Flow
 
 Trimmed Git Flow.

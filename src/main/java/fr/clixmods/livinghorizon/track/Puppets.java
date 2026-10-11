@@ -1,5 +1,9 @@
 package fr.clixmods.livinghorizon.track;
 
+import com.mojang.authlib.GameProfile;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.RemotePlayer;
+import net.minecraft.world.entity.Avatar;
 import net.minecraft.world.entity.Entity;
 //? if >=1.21.2
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -43,6 +47,16 @@ public final class Puppets {
      */
     public static Runnable atRest(Entity entity) {
         return MobGait.atRest(entity);
+    }
+
+    /**
+     * A player of this profile, numbered, with every skin layer on. One the server does not
+     * know wears the default skin the game picks from its id. Render thread only.
+     */
+    public static RemotePlayer player(ClientLevel level, GameProfile profile) {
+        RemotePlayer player = numbered(new RemotePlayer(level, profile));
+        player.getEntityData().set(Avatar.DATA_PLAYER_MODE_CUSTOMISATION, (byte) 0x7F);
+        return player;
     }
 
     /**

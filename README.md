@@ -110,8 +110,7 @@ The game itself lacks what these need, so they are left out rather than imitated
   ride.
 - **Watch the distance live.** Animals, villagers and golems graze and wander around the
   far-off villages, and are hidden by the terrain pixel by pixel, shaders included.
-- **Look up.** Flocks, geese in a V, gulls on the coast, bats at night - and, now and
-  then, a flying saucer taking a cow (`/livinghorizon ufo`).
+- **Look up.** Flocks, geese in a V, gulls on the coast, bats at night.
 - **Find players where they left.** Someone who logged off lives their life where they
   were - a stroll, a seat, a bed at night, a shield against monsters - until they come back.
 - **Tune it.** Everything is in the settings (see *Settings* below): which mobs, which
@@ -144,7 +143,7 @@ The game itself lacks what these need, so they are left out rather than imitated
 | `birdMaxDistance` | `800` | blocks | How far away birds can be |
 | `birdMinHeight` | `30` | blocks | Above you (or the sea, whichever is higher), below which flocks never fly |
 | `birdSize` | `1` | times | How much bigger than life birds are drawn |
-| `ufo` | `true` | | The easter egg |
+| `easterEggs` | `true` | | A few surprises, now and then |
 | `depthOcclusion` | `true` | | The far terrain's depth (Voxy or Distant Horizons) on distant mobs and players, pixel by pixel (see *The far terrain's depth* below). Was `voxyOcclusion`. In *Debug...* |
 | `offlinePlayers` | `true` | | Players who logged off are shown and remembered; off, neither |
 | `offlineLife` | `true` | | Players who logged off live their life around their spot (see below); off, they sit on it |
@@ -345,8 +344,7 @@ circling, gulls over the coast (landing on the beach now and then), pigeons sitt
 tall buildings, robins hopping in fields, tits in the trees, ducks on lakes and rivers,
 bats at night (some hanging under leaves and roofs), now and then parrots. Perched birds
 fly off when you come close; ducks never let you near. Birds never vanish at once: they
-scatter and shrink away. An easter egg: now and then a flying saucer takes a cow
-(`/livinghorizon ufo`).
+scatter and shrink away.
 
 Where each kind goes is read off the terrain a few columns at a time - from the chunks
 loaded here, or farther from the far world (`compat/LodWorld`, which reads Voxy through `VoxySource` or
@@ -426,7 +424,7 @@ nothing, and the game no longer builds a render state and a model for it every f
   far away. *Bake again* throws every picture away, on disk too, and bakes the figures on
   hand anew, even after a failed bake.
 - **Not impostors:** figures with a mount or a rider, players resting on the ground, the
-  birds and the saucer's cow.
+  birds.
 
 ### The far terrain's depth
 
