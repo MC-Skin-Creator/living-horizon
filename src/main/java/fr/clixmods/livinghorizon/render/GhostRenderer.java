@@ -161,6 +161,7 @@ public final class GhostRenderer {
 
     public static void beginFrame() {
         OcclusionQueries.beginFrame();
+        FarDepth.beginFigures();
         EXTRACTED.clear();
         TRANSFORMS.clear();
         glowing = false;
@@ -583,6 +584,11 @@ public final class GhostRenderer {
         }
 
         Transform transform = new Transform(ax, ay, az, pull, pull * boost * size);
+        if (distance > drawnRange) {
+            // Where it shows on screen: as big as drawn, around its middle, a mount included.
+            double extent = Math.max(1.8, Math.max(body.boundingBoxHeight, body.boundingBoxWidth)) * size * boost;
+            FarDepth.figure(ax, ay + extent * 0.5, az, extent * (mount == null ? 0.75 : 1.5));
+        }
         LocalPlayer self = minecraft.player;
         ClientLevel level = minecraft.level;
         for (EntityRenderState state : mount == null ? new EntityRenderState[]{body} : new EntityRenderState[]{mount, body}) {
@@ -732,6 +738,10 @@ public final class GhostRenderer {
         if (outline != 0 && ImpostorRenderer.OUTLINES) glowing = true;
         ImpostorRenderer.add(new ImpostorRenderer.Billboard(ax * pull, ay * pull, az * pull,
                 sheet.worldSize() * pull * boost, sheet, view, light, outline));
+        if (distance > drawnRange) {
+            double extent = sheet.worldSize() * boost;
+            FarDepth.figure(ax, ay + extent * 0.5, az, extent * 0.75);
+        }
         return true;
     }
 

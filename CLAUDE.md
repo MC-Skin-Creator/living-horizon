@@ -80,15 +80,17 @@ The mod draws its own figures and nothing else. Voxy, Distant Horizons, Iris and
 must look exactly the same with Living Horizon installed as without it:
 
 - read their buffers and state, never write into them: no depth, colour or texture of
-  theirs is changed, not even for a pixel, not even to fix how our figures look under them;
+  theirs is changed. The one exception is our own figures' pixels: where one of our mobs is
+  drawn in front of everything, its depth may be given to them (Photon's shadows read Voxy's
+  depth there), never a pixel more, with a switch to turn it off (`optVoxyShadows`);
 - whatever is put into the game's own buffers to draw our figures (the far terrain's depth
   merged around the entities) is put back before anyone else reads them;
 - if our figures only look right by changing what another mod draws, leave them as they are
   and say so: a visible change to Voxy's water, a pack's shadows or Distant Horizons' terrain
   is never an acceptable price.
 
-Writing the mobs into Voxy's depth textures for Photon's shadows broke Voxy's water under
-Photon; it was removed. Check any change to `compat/` against this section.
+Writing the mobs into Voxy's depth over the whole screen, for Photon's shadows, broke Voxy's
+water under Photon. Check any change to `compat/` against this section.
 
 ## Branch model: Git Flow
 
@@ -185,9 +187,11 @@ come back, add it here in the same pull request: this file is what the next sess
   left corner of the depth texture and tells Voxy so with `useViewportDims` and `renderScale`
   in its `voxy.json`; Voxy's viewport `width`/`height` is that corner. `FarDepth.notePicture`
   reads it, and anything drawn into or read from the game's depth must stay inside it.
-- **Never write into Voxy's or Distant Horizons' own buffers.** Read them, never change what
-  they draw. Writing the mobs into Voxy's depth textures (for Photon's shadows past the render
-  distance) made Voxy's water disappear under Photon, and was removed.
+- **Terrain shadows across distant mobs** (Photon with Voxy, the edge of a ledge's shadow on a
+  mob standing in front of it): the pack shades fragments past the render distance plus 64
+  blocks with shadows marched through Voxy's own depth. `FarDepth.intoVoxy` writes our figures
+  there, inside the screen rectangles `FarDepth.figure` collects, past the render distance and
+  only where they were just drawn; anything wider (Voxy's water gone under Photon) is a bug.
 - **Flat geometry lit wrong under shaders** (impostors, bird silhouettes dark or lit from
   the wrong side): Iris throws away the normal given to a quad and computes it from its
   corners, counter-clockwise. `ImpostorLean` moves an impostor's corners along their lines of
