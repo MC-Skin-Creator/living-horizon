@@ -317,6 +317,17 @@ public final class FarDepth {
         OcclusionQueries.noteView(modelView, projection);
     }
 
+    /**
+     * Whether {@link #after()} is about to give the depth back, or to read what the entities
+     * drew. From 1.21.9 to 26.1 the call it follows only fills the world's buffers, and the
+     * game draws what is left in them afterwards: drawn after the depth is given back, that
+     * part of the entities showed through the far terrain (a villager's clothes without the
+     * villager). The caller draws it first.
+     */
+    public static boolean givesBack() {
+        return armed && (merged || captured) && !irisShadowPass();
+    }
+
     /** Just after the entities are drawn. */
     public static void after() {
         if (!armed || irisShadowPass()) return;

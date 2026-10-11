@@ -176,6 +176,10 @@ come back, add it here in the same pull request: this file is what the next sess
   `PreparedFrame.executeSolid` from 26.2. Never the translucent step: Iris copies the game's
   depth for the pack just before it (`beginTranslucents`), and a copy holding Voxy's terrain
   changes how the pack shades it (a far mountain shaded differently with *Far depth* on).
+- **Part of a mob through the far terrain** (a villager's clothes or arms behind a Voxy wall,
+  not its head; under shaders with Voxy, or with Distant Horizons): from 1.21.9 to 26.1 the
+  bracketed call only fills the world's buffer source, and the game draws the last batch and
+  the fixed buffers after it. `FeatureRenderDispatcherMixin` ends the batch before `FarDepth.after`.
 - **Voxy version.** `FarDepth` and `VoxySource` reach Voxy by reflection; a renamed class turns
   both off ("Voxy found, but not the version this mod knows"). 0.2.18 renamed
   `IGetVoxyRenderSystem` to `IVoxyRenderSystemHolder` (`VoxySource.renderSystemGetter` tries

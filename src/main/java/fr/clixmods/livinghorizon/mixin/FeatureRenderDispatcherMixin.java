@@ -3,8 +3,12 @@ package fr.clixmods.livinghorizon.mixin;
 // The feature renderers came in 1.21.9; before, LevelRendererMixin brackets the entities itself.
 //? if >=1.21.9 {
 import fr.clixmods.livinghorizon.compat.FarDepth;
-//? if <26.2
+//? if <26.2 {
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
+import net.minecraft.client.renderer.MultiBufferSource;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Shadow;
+//?}
 import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -56,6 +60,10 @@ abstract class FeatureRenderDispatcherMixin {
 // one, and that copy must be the game's own.
 @Mixin(FeatureRenderDispatcher.class)
 abstract class FeatureRenderDispatcherMixin {
+    @Shadow
+    @Final
+    private MultiBufferSource.BufferSource bufferSource;
+
     @Inject(method = "renderSolidFeatures", at = @At("HEAD"))
     private void livinghorizon$voxyDepthIn(CallbackInfo ci) {
         FarDepth.before();
@@ -63,6 +71,8 @@ abstract class FeatureRenderDispatcherMixin {
 
     @Inject(method = "renderSolidFeatures", at = @At("TAIL"))
     private void livinghorizon$voxyDepthOut(CallbackInfo ci) {
+        // The game draws what is left in the buffers right after this call: drawn first.
+        if (FarDepth.givesBack()) bufferSource.endBatch();
         FarDepth.after();
     }
 
@@ -75,6 +85,10 @@ abstract class FeatureRenderDispatcherMixin {
 *///?} else {
 @Mixin(FeatureRenderDispatcher.class)
 abstract class FeatureRenderDispatcherMixin {
+    @Shadow
+    @Final
+    private MultiBufferSource.BufferSource bufferSource;
+
     @Inject(method = "renderAllFeatures", at = @At("HEAD"))
     private void livinghorizon$voxyDepthIn(CallbackInfo ci) {
         FarDepth.before();
@@ -82,6 +96,9 @@ abstract class FeatureRenderDispatcherMixin {
 
     @Inject(method = "renderAllFeatures", at = @At("TAIL"))
     private void livinghorizon$voxyDepthOut(CallbackInfo ci) {
+        // The game draws what is left in the buffers after this call, a few kinds at a time
+        // (items and glints after the block outline): all of it drawn first, in the buffers' order.
+        if (FarDepth.givesBack()) bufferSource.endBatch();
         FarDepth.after();
         // The models' outlines are written; the outline batch ends after this call.
         ImpostorRenderer.drawOutlines();
