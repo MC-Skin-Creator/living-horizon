@@ -4,7 +4,6 @@
 
 ### Fixed
 - **Shader packs** — distant figures shown as impostors are no longer dark with Iris shaders such as Photon or Complementary: they catch the sun like full models.
-- **Photon with Voxy** — distant mobs no longer wear the shadow of the terrain behind them.
 - **Shaders on Minecraft 26.2 and later** — distant mobs hide behind Voxy's and Distant Horizons' hills with a shader pack on, as they do without one.
 - **Minecraft 26.1** — distant mobs hide behind Voxy's and Distant Horizons' hills, as on other versions.
 - **Voxy 0.2.18** — the mod reads Voxy's terrain again: distant mobs stand on it and hide behind its hills.
