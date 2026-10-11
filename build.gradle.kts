@@ -86,6 +86,8 @@ loom {
         property("livinghorizon.scenario", (findProperty("lh.scenario") ?: "all").toString())
         // Other mods to load with it (Sodium...): -Plh.mods=<folder of jars>.
         findProperty("lh.mods")?.let { property("fabric.addMods", it.toString()) }
+        // A shader pack folder to turn on through Iris, which -Plh.mods must hold: -Plh.shaderpack=<folder>.
+        findProperty("lh.shaderpack")?.let { property("livinghorizon.shaderpack", it.toString()) }
     }
 }
 

@@ -74,6 +74,24 @@ an older node is checked by starting its client.
 Mod and dependency versions live in `stonecutter.properties.toml`, never hardcoded
 in the build scripts. The README describes how each part works.
 
+## Never change another mod's rendering
+
+The mod draws its own figures and nothing else. Voxy, Distant Horizons, Iris and shader packs
+must look exactly the same with Living Horizon installed as without it:
+
+- read their buffers and state, never write into them: no depth, colour or texture of
+  theirs is changed. The one exception is our own figures' pixels: where one of our mobs is
+  drawn in front of everything, its depth may be given to them (Photon's shadows read Voxy's
+  depth there), never a pixel more, with a switch to turn it off (`optVoxyShadows`);
+- whatever is put into the game's own buffers to draw our figures (the far terrain's depth
+  merged around the entities) is put back before anyone else reads them;
+- if our figures only look right by changing what another mod draws, leave them as they are
+  and say so: a visible change to Voxy's water, a pack's shadows or Distant Horizons' terrain
+  is never an acceptable price.
+
+Writing the mobs into Voxy's depth over the whole screen, for Photon's shadows, broke Voxy's
+water under Photon. Check any change to `compat/` against this section.
+
 ## Branch model: Git Flow
 
 Trimmed Git Flow.
@@ -152,6 +170,25 @@ come back, add it here in the same pull request: this file is what the next sess
   `createSoftCache` (a null cache). Compare its API across versions by downloading the jars
   from Modrinth and running `javap` on the classes these two reach; a new requirement on
   its API gets a fallback, never a dead end.
+- **Which call draws the world's entities** changes between versions, and `FarDepth.before` /
+  `after` must bracket that one: `renderAllFeatures` up to 1.21.11, `renderSolidFeatures` on
+  26.1 (where `renderAllFeatures` draws the hand, after a depth clear: an empty depth view),
+  `PreparedFrame.executeSolid` from 26.2. Never the translucent step: Iris copies the game's
+  depth for the pack just before it (`beginTranslucents`), and a copy holding Voxy's terrain
+  changes how the pack shades it (a far mountain shaded differently with *Far depth* on).
+- **Voxy version.** `FarDepth` and `VoxySource` reach Voxy by reflection; a renamed class turns
+  both off ("Voxy found, but not the version this mod knows"). 0.2.18 renamed
+  `IGetVoxyRenderSystem` to `IVoxyRenderSystemHolder` (`VoxySource.renderSystemGetter` tries
+  both). Check a new version with `javap` on its jar from Modrinth, as for Distant Horizons.
+- **Distant Horizons' rendering engine** (from 3.3: Blaze3D or OpenGL). With Iris installed,
+  pack on or off, it switches itself to OpenGL and fills only `getDhDepthTextureGlId`; the
+  Blaze3D wrapper the game's GPU device path reads stays empty ("has no depth texture").
+  `FarDepth.gpuPath` falls back to the OpenGL path when `DhDepth.drawsWithOpenGl`.
+- **Distant Horizons under a shader pack from 26.2** (depth view flat grey, or a grey veil, under
+  shaders only): Iris draws its terrain with Iris's near and far planes, but in the depth layout
+  Distant Horizons reports (`getDepthRange`, `getDepthDirection`: reversed and 0..1 on 26.2,
+  empty at 0). Measured: sky 0, ground at 53 blocks 0.067, horizon 0.005. `DhDepth.terms`
+  combines the two from 26.2 only; older versions keep OpenGL's -1..1.
 - **Before 1.21.5** the game's depth texture has an unsized format (`GL_DEPTH_COMPONENT`):
   `glTextureStorage2D` refuses it, so anything copied from it is allocated the way the game
   allocates its own. A copy "with no size" or an all-white depth view is this.
@@ -161,11 +198,43 @@ come back, add it here in the same pull request: this file is what the next sess
   left corner of the depth texture and tells Voxy so with `useViewportDims` and `renderScale`
   in its `voxy.json`; Voxy's viewport `width`/`height` is that corner. `FarDepth.notePicture`
   reads it, and anything drawn into or read from the game's depth must stay inside it.
+  Distant Horizons is not told: `FarDepth.packScale` reads Photon's own options
+  (`TAAU`, `TAAU_RENDER_SCALE`) from Iris, the value its `voxy.json` gives Voxy.
+- **Terrain shadows across distant mobs** (Photon with Voxy, the edge of a ledge's shadow on a
+  mob standing in front of it): the pack shades fragments past the render distance plus 64
+  blocks with shadows marched through Voxy's own depth. `FarDepth.intoVoxy` writes our figures
+  there, inside the screen rectangles `FarDepth.figure` collects, past the render distance and
+  only where they were just drawn; anything wider (Voxy's water gone under Photon) is a bug.
+- **Flat geometry lit wrong under shaders** (impostors, bird silhouettes dark or lit from
+  the wrong side): Iris throws away the normal given to a quad and computes it from its
+  corners, counter-clockwise. `ImpostorLean` moves an impostor's corners along their lines of
+  sight so that its own plane faces where the light should come from.
+- **Far terrain depth lost under shaders from 26.2** (depth view empty or uniform, nothing
+  hidden behind the far terrain, only with a pack on): Iris's shadow pass draws its entities
+  through the same `PreparedFrame.executeSolid` / `executeTranslucent` steps as the world,
+  after the world's are submitted. `FarDepth.before` / `after` skip it
+  (`IrisApi.isRenderingShadowPass`), or it takes the bracket meant for the world's entities.
+- **Depth view all white under shaders on 26.2** (Iris 1.11.2 or older): those versions
+  register their `UndoReverseZ` mixins and draw the world in OpenGL's usual depth while a
+  pack is on (1.11.4 and later keep 26.2's reversed one). Whatever reads the game's depth
+  with OpenGL follows `DepthFar.reversed()`, read from the projection, never `REVERSED`.
+- **Voxy's terrain missing from the depth on 26.3** (merge "on", depth view without it): Voxy's
+  `transformBlitDepth` keeps the depth comparison it finds, and from 26.3 the world's pass is
+  already open when `FarDepth.merge` runs. The merge sets it itself there, as `mergeDh` does.
+- **Far terrain flickering under Photon on 26.3 with Distant Horizons** (garbage colours on the
+  far scene, Iris logs "the Opaque + Translucent pass ran with shaders on"): Distant Horizons
+  3.3.2 with Iris 1.11.6, not this mod. Gone with Distant Horizons 3.3.4 and Iris 1.11.7.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
 
 ## Changelog
+
+**Every change, every push.** Whenever you work on something, write its changelog entry
+in the same pull request, and before every push re-read both changelog files against what
+you are about to push: each player-visible change has its bullet, in both languages, and
+no bullet describes something that is not in the diff. Never push first and fix the
+changelog in a later commit or pull request.
 
 A pull request that changes what a player sees or feels adds its entry to
 `changelog/en.md` and `changelog/fr.md`, under `## Unreleased` / `## Prochaine version`
