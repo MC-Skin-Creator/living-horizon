@@ -152,6 +152,10 @@ come back, add it here in the same pull request: this file is what the next sess
   `createSoftCache` (a null cache). Compare its API across versions by downloading the jars
   from Modrinth and running `javap` on the classes these two reach; a new requirement on
   its API gets a fallback, never a dead end.
+- **Distant Horizons' rendering engine** (from 3.3: Blaze3D or OpenGL). With Iris installed,
+  pack on or off, it switches itself to OpenGL and fills only `getDhDepthTextureGlId`; the
+  Blaze3D wrapper the game's GPU device path reads stays empty ("has no depth texture").
+  `FarDepth.gpuPath` falls back to the OpenGL path when `DhDepth.drawsWithOpenGl`.
 - **Before 1.21.5** the game's depth texture has an unsized format (`GL_DEPTH_COMPONENT`):
   `glTextureStorage2D` refuses it, so anything copied from it is allocated the way the game
   allocates its own. A copy "with no size" or an all-white depth view is this.
