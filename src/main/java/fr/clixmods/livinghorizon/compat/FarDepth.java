@@ -699,8 +699,6 @@ public final class FarDepth {
     /** Our figures drawn past the render distance this frame: a sphere each, around the camera. */
     private static final float[] FIGURES = new float[4 * 512];
     private static int figures;
-    /** The most of Voxy's picture our figures may cover before nothing is written, as a share. */
-    private static final float MOST_COVERED = 0.25f;
 
     /** A new frame: the figures of the last one are forgotten. */
     public static void beginFigures() {
@@ -722,11 +720,10 @@ public final class FarDepth {
 
     /**
      * The rectangles of Voxy's picture our figures cover this frame, {@code x, y, w, h} each,
-     * in {@code out}; how many, or -1 when they cover too much of it to be only our figures.
+     * in {@code out}; how many.
      */
     private static int rectangles(int[] out, int vw, int vh) {
         int count = 0;
-        long area = 0;
         org.joml.Vector4f corner = new org.joml.Vector4f();
         for (int f = 0; f < figures; f++) {
             float x = FIGURES[f * 4], y = FIGURES[f * 4 + 1], z = FIGURES[f * 4 + 2], r = FIGURES[f * 4 + 3];
@@ -749,14 +746,13 @@ public final class FarDepth {
             int x1 = Math.min(vw, (int) Math.ceil((maxX * 0.5f + 0.5f) * vw) + 2);
             int y1 = Math.min(vh, (int) Math.ceil((maxY * 0.5f + 0.5f) * vh) + 2);
             if (x1 <= x0 || y1 <= y0) continue;
-            area += (long) (x1 - x0) * (y1 - y0);
             out[count * 4] = x0;
             out[count * 4 + 1] = y0;
             out[count * 4 + 2] = x1 - x0;
             out[count * 4 + 3] = y1 - y0;
             count++;
         }
-        return area > (long) (MOST_COVERED * vw * vh) ? -1 : count;
+        return count;
     }
 
     private static final int[] RECTANGLES = new int[4 * 512];
@@ -779,8 +775,7 @@ public final class FarDepth {
      * shades past the render distance from Voxy's depth (Photon's shadows) finds the mob there,
      * not the terrain behind it. Only the pixels where one of our figures was just drawn, in
      * front of everything, inside the rectangles they cover and past the render distance:
-     * anywhere else Voxy's depth, and so what Voxy draws, is left exactly as it was. When the
-     * rectangles cover more than a quarter of the picture nothing is written that frame.
+     * anywhere else Voxy's depth, and so what Voxy draws, is left exactly as it was.
      * Voxy's pixels are the game's, one for one, from the bottom left corner; the depth goes
      * back to a distance in front of the camera through the game's projection, then forward
      * through Voxy's.

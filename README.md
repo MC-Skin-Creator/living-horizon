@@ -376,8 +376,7 @@ whose shadow then fell across the mob. Right after the entities are drawn, `FarD
 our figures into both of Voxy's depth textures, and nothing else: only inside the screen
 rectangles of the figures drawn past the render distance (`FarDepth.figure`), only where they
 were just drawn, past the render distance and nearer than Voxy's terrain. Anywhere else what
-Voxy draws is left exactly as it is; when the rectangles would cover more than a quarter of the
-picture, nothing is written. *Voxy shadows* (`optVoxyShadows`) turns it off.
+Voxy draws is left exactly as it is. *Voxy shadows* (`optVoxyShadows`) turns it off.
 
 ### Mobs hidden by depth
 

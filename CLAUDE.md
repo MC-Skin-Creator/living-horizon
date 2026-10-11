@@ -171,9 +171,11 @@ come back, add it here in the same pull request: this file is what the next sess
   from Modrinth and running `javap` on the classes these two reach; a new requirement on
   its API gets a fallback, never a dead end.
 - **Which call draws the world's entities** changes between versions, and `FarDepth.before` /
-  `after` must bracket that one: `renderAllFeatures` up to 1.21.11, `renderSolidFeatures` /
-  `renderTranslucentFeatures` on 26.1 (where `renderAllFeatures` draws the hand, after a depth
-  clear: an empty depth view), `PreparedFrame.executeSolid` / `executeTranslucent` from 26.2.
+  `after` must bracket that one: `renderAllFeatures` up to 1.21.11, `renderSolidFeatures` on
+  26.1 (where `renderAllFeatures` draws the hand, after a depth clear: an empty depth view),
+  `PreparedFrame.executeSolid` from 26.2. Never the translucent step: Iris copies the game's
+  depth for the pack just before it (`beginTranslucents`), and a copy holding Voxy's terrain
+  changes how the pack shades it (a far mountain shaded differently with *Far depth* on).
 - **Voxy version.** `FarDepth` and `VoxySource` reach Voxy by reflection; a renamed class turns
   both off ("Voxy found, but not the version this mod knows"). 0.2.18 renamed
   `IGetVoxyRenderSystem` to `IVoxyRenderSystemHolder` (`VoxySource.renderSystemGetter` tries
