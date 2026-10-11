@@ -8,6 +8,7 @@
 - **Shaders sur Minecraft 26.2 et plus** — les créatures lointaines se cachent derrière les collines de Voxy et de Distant Horizons avec un pack de shaders, comme sans.
 - **Minecraft 26.1** — les créatures lointaines se cachent derrière les collines de Voxy et de Distant Horizons, comme sur les autres versions.
 - **Voxy 0.2.18** — le mod lit de nouveau le terrain de Voxy : les créatures lointaines s'y tiennent et se cachent derrière ses collines.
+- **Distant Horizons sur Minecraft 26.3 avec Iris installé** — les créatures lointaines se cachent de nouveau derrière les collines de Distant Horizons.
 
 ## 0.4.0 — 2026-10-10
 
