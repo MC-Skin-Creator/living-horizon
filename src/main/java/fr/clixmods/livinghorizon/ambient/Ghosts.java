@@ -41,7 +41,7 @@ public final class Ghosts {
     private static final double SPACING = 2.4;
     /** Ticks they stand looking at the player before they vanish. */
     private static final int STARE = 50;
-    /** The figures of the show under way. Render thread only. */
+    /** The figures drawn see-through, of this easter egg and others. Render thread only. */
     private static final Set<Entity> SEE_THROUGH = Collections.newSetFromMap(new IdentityHashMap<>());
 
     private static final class Figure {
@@ -67,6 +67,12 @@ public final class Ghosts {
     /** Drawn see-through by the game, as an invisible entity its viewer may see. */
     public static boolean seeThrough(Entity entity) {
         return !SEE_THROUGH.isEmpty() && SEE_THROUGH.contains(entity);
+    }
+
+    /** An invisible figure of another easter egg drawn see-through from now on, or no longer. */
+    static void seeThrough(Entity entity, boolean on) {
+        if (on) SEE_THROUGH.add(entity);
+        else SEE_THROUGH.remove(entity);
     }
 
     /** Under way: no other easter egg starts meanwhile. */
@@ -166,9 +172,9 @@ public final class Ghosts {
     }
 
     private void clear() {
+        figures.forEach(SEE_THROUGH::remove);
         walkers.clear();
         figures.clear();
-        SEE_THROUGH.clear();
         level = null;
     }
 

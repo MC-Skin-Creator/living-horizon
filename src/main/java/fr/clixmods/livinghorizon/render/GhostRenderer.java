@@ -428,7 +428,7 @@ public final class GhostRenderer {
         if (debug) DebugMarks.end();
     }
 
-    /** The figures of the easter eggs: the cow taken, the watcher, the ghosts, lit by themselves. */
+    /** The figures of the easter eggs: the cow taken, the watcher; the ghosts, lit by themselves, one seated. */
     private static void eggs(List<EntityRenderState> frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
                              Vec3 eye, float partialTick, FarConfig config) {
         Ambience ambience = FarPlayerTracker.get().ambience();
@@ -439,11 +439,27 @@ public final class GhostRenderer {
         for (LivingEntity ghost : ambience.ghosts().figures()) {
             EntityRenderState state = extract(dispatcher, ghost, partialTick);
             add(frame, minecraft, eye, state, null, true, Mark.FAKE, config, null);
-            //? if >=1.21.9 {
-            state.lightCoords = LightTexture.FULL_BRIGHT;
-            //?} else
-            /*LIGHTS.put(state, LightTexture.FULL_BRIGHT);*/
+            selfLit(state);
         }
+        LivingEntity sailor = ambience.ghostBoat().rider();
+        if (sailor != null) {
+            EntityRenderState state = extract(dispatcher, sailor, partialTick);
+            if (state instanceof HumanoidRenderState humanoid) {
+                // Seated on the boat's bench, as the resting players sit on the ground.
+                humanoid.isPassenger = true;
+                state.y -= 0.6;
+            }
+            add(frame, minecraft, eye, state, null, true, Mark.FAKE, config, null);
+            selfLit(state);
+        }
+    }
+
+    /** In a light of its own, whatever the light where it stands. */
+    private static void selfLit(EntityRenderState state) {
+        //? if >=1.21.9 {
+        state.lightCoords = LightTexture.FULL_BRIGHT;
+        //?} else
+        /*LIGHTS.put(state, LightTexture.FULL_BRIGHT);*/
     }
 
     /** Past the distance set in the options; 0 is no limit. */

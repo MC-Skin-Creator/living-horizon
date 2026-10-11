@@ -122,6 +122,12 @@ public final class LivingHorizonCommand {
                                 (level, player) -> FarPlayerTracker.get().ambience().ghosts().summon(level, player, true))))
                         .then(LiteralArgumentBuilder.<S>literal("ee4").executes(c -> egg(source.apply(c.getSource()), "ee4",
                                 (level, player) -> FarPlayerTracker.get().ambience().herobrine().summon(level, player, true))))
+                        .then(LiteralArgumentBuilder.<S>literal("ee5").executes(c -> egg(source.apply(c.getSource()), "ee5",
+                                (level, player) -> FarPlayerTracker.get().ambience().waver().summon(level, player, true))))
+                        .then(LiteralArgumentBuilder.<S>literal("ee6").executes(c -> egg(source.apply(c.getSource()), "ee6",
+                                (level, player) -> FarPlayerTracker.get().ambience().bigfoot().summon(level, player, true))))
+                        .then(LiteralArgumentBuilder.<S>literal("ee7").executes(c -> egg(source.apply(c.getSource()), "ee7",
+                                (level, player) -> FarPlayerTracker.get().ambience().ghostBoat().summon(level, player, true))))
                         .then(LiteralArgumentBuilder.<S>literal("config").executes(c -> {
                             // After the chat screen, which closes once the command has run.
                             Minecraft client = source.apply(c.getSource()).client();

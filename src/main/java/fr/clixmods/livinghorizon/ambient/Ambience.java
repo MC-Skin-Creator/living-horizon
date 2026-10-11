@@ -253,6 +253,9 @@ public final class Ambience {
     private final SaucerPass pass = new SaucerPass();
     private final Ghosts ghosts = new Ghosts();
     private final Herobrine herobrine = new Herobrine();
+    private final Waver waver = new Waver();
+    private final Bigfoot bigfoot = new Bigfoot();
+    private final GhostBoat ghostBoat = new GhostBoat();
 
     /** Easter egg 1. */
     public Ufo ufo() {
@@ -274,6 +277,21 @@ public final class Ambience {
         return herobrine;
     }
 
+    /** Easter egg 5. */
+    public Waver waver() {
+        return waver;
+    }
+
+    /** Easter egg 6. */
+    public Bigfoot bigfoot() {
+        return bigfoot;
+    }
+
+    /** Easter egg 7. */
+    public GhostBoat ghostBoat() {
+        return ghostBoat;
+    }
+
     /** Everything flying or perched this tick. */
     public List<Flyer> flyers() {
         return flyers;
@@ -288,11 +306,15 @@ public final class Ambience {
         }
         // The easter eggs: one at a time, never two by chance together.
         boolean eggs = config.easterEggs && current.dimension() == Level.OVERWORLD;
-        boolean quiet = !ufo.busy() && !pass.busy() && !ghosts.busy() && !herobrine.busy();
+        boolean quiet = !ufo.busy() && !pass.busy() && !ghosts.busy() && !herobrine.busy()
+                && !waver.busy() && !bigfoot.busy() && !ghostBoat.busy();
         ufo.tick(current, self, eggs, quiet);
         pass.tick(current, self, eggs, quiet);
         ghosts.tick(current, self, eggs, quiet);
         herobrine.tick(current, self, eggs, quiet);
+        waver.tick(current, self, eggs, quiet);
+        bigfoot.tick(current, self, eggs, quiet);
+        ghostBoat.tick(current, self, eggs, quiet);
         flyers.clear();
         if (!config.skyBirds || current.dimension() != Level.OVERWORLD) {
             groups.clear();

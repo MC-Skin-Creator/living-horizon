@@ -51,6 +51,9 @@ public final class AmbientRenderer {
             ambience.ufo().submit(pose, camera, collector, partial);
             ambience.pass().submit(pose, camera, collector, partial);
             ambience.herobrine().submit(pose, camera, collector, partial);
+            ambience.waver().submit(pose, camera, collector, partial);
+            ambience.bigfoot().submit(pose, camera, collector, partial);
+            ambience.ghostBoat().submit(pose, camera, collector, partial);
         }
         for (Ambience.Flyer bird : FarPlayerTracker.get().ambience().flyers()) {
             if (!config.skyBirds || bird.kind != Ambience.Kind.SILHOUETTE) continue;

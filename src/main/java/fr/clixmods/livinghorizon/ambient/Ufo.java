@@ -49,7 +49,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class Ufo {
     static final Identifier SHEET = Identifier.fromNamespaceAndPath(LivingHorizonClient.MOD_ID, "textures/misc/birds.png");
     static final RenderType SOLID = RenderTypes.entityCutout(SHEET);
-    private static final RenderType GLOW = RenderTypes.entityTranslucentEmissive(SHEET);
+    static final RenderType GLOW = RenderTypes.entityTranslucentEmissive(SHEET);
     /** A white texel of the bird sheet: every box is that texel, tinted. */
     private static final float U = 7.5f / 64f, V = 1.5f / 32f;
     static final int BRIGHT = LightTexture.FULL_BRIGHT, LIT = LightTexture.pack(0, 15);
@@ -364,36 +364,42 @@ public final class Ufo {
 
     /** An axis-aligned box, every face wound to face outwards. */
     static void box(PoseStack.Pose at, VertexConsumer out, float x0, float y0, float z0, float x1, float y1, float z1,
-                            int r, int g, int b, int light) {
-        face(at, out, r, g, b, light, 0, 1, 0, x0, y1, z0, x0, y1, z1, x1, y1, z1, x1, y1, z0);
-        face(at, out, r, g, b, light, 0, -1, 0, x0, y0, z0, x1, y0, z0, x1, y0, z1, x0, y0, z1);
-        face(at, out, r, g, b, light, 0, 0, -1, x0, y0, z0, x0, y1, z0, x1, y1, z0, x1, y0, z0);
-        face(at, out, r, g, b, light, 0, 0, 1, x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1);
-        face(at, out, r, g, b, light, -1, 0, 0, x0, y0, z0, x0, y0, z1, x0, y1, z1, x0, y1, z0);
-        face(at, out, r, g, b, light, 1, 0, 0, x1, y0, z0, x1, y1, z0, x1, y1, z1, x1, y0, z1);
+                    int r, int g, int b, int light) {
+        box(at, out, x0, y0, z0, x1, y1, z1, r, g, b, 255, light);
+    }
+
+    /** The same, see-through as much as {@code a} says, for a translucent render type. */
+    static void box(PoseStack.Pose at, VertexConsumer out, float x0, float y0, float z0, float x1, float y1, float z1,
+                    int r, int g, int b, int a, int light) {
+        face(at, out, r, g, b, a, light, 0, 1, 0, x0, y1, z0, x0, y1, z1, x1, y1, z1, x1, y1, z0);
+        face(at, out, r, g, b, a, light, 0, -1, 0, x0, y0, z0, x1, y0, z0, x1, y0, z1, x0, y0, z1);
+        face(at, out, r, g, b, a, light, 0, 0, -1, x0, y0, z0, x0, y1, z0, x1, y1, z0, x1, y0, z0);
+        face(at, out, r, g, b, a, light, 0, 0, 1, x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1);
+        face(at, out, r, g, b, a, light, -1, 0, 0, x0, y0, z0, x0, y0, z1, x0, y1, z1, x0, y1, z0);
+        face(at, out, r, g, b, a, light, 1, 0, 0, x1, y0, z0, x1, y1, z0, x1, y1, z1, x1, y0, z1);
     }
 
     /** One face, its corners put in the order that makes it face {@code (nx, ny, nz)}. */
-    static void face(PoseStack.Pose at, VertexConsumer out, int r, int g, int b, int light,
+    private static void face(PoseStack.Pose at, VertexConsumer out, int r, int g, int b, int a, int light,
                              float nx, float ny, float nz,
                              float ax, float ay, float az, float bx, float by, float bz,
                              float cx, float cy, float cz, float dx, float dy, float dz) {
         float ux = bx - ax, uy = by - ay, uz = bz - az, vx = cx - ax, vy = cy - ay, vz = cz - az;
         float wx = uy * vz - uz * vy, wy = uz * vx - ux * vz, wz = ux * vy - uy * vx;
         if (wx * nx + wy * ny + wz * nz >= 0) {
-            vertex(at, out, ax, ay, az, r, g, b, 255, light, nx, ny, nz);
-            vertex(at, out, bx, by, bz, r, g, b, 255, light, nx, ny, nz);
-            vertex(at, out, cx, cy, cz, r, g, b, 255, light, nx, ny, nz);
-            vertex(at, out, dx, dy, dz, r, g, b, 255, light, nx, ny, nz);
+            vertex(at, out, ax, ay, az, r, g, b, a, light, nx, ny, nz);
+            vertex(at, out, bx, by, bz, r, g, b, a, light, nx, ny, nz);
+            vertex(at, out, cx, cy, cz, r, g, b, a, light, nx, ny, nz);
+            vertex(at, out, dx, dy, dz, r, g, b, a, light, nx, ny, nz);
         } else {
-            vertex(at, out, ax, ay, az, r, g, b, 255, light, nx, ny, nz);
-            vertex(at, out, dx, dy, dz, r, g, b, 255, light, nx, ny, nz);
-            vertex(at, out, cx, cy, cz, r, g, b, 255, light, nx, ny, nz);
-            vertex(at, out, bx, by, bz, r, g, b, 255, light, nx, ny, nz);
+            vertex(at, out, ax, ay, az, r, g, b, a, light, nx, ny, nz);
+            vertex(at, out, dx, dy, dz, r, g, b, a, light, nx, ny, nz);
+            vertex(at, out, cx, cy, cz, r, g, b, a, light, nx, ny, nz);
+            vertex(at, out, bx, by, bz, r, g, b, a, light, nx, ny, nz);
         }
     }
 
-    static void vertex(PoseStack.Pose at, VertexConsumer out, float x, float y, float z,
+    private static void vertex(PoseStack.Pose at, VertexConsumer out, float x, float y, float z,
                                int r, int g, int b, int a, int light, float nx, float ny, float nz) {
         out.addVertex(at, x, y, z)
                 .setColor(r, g, b, a)
