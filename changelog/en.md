@@ -11,6 +11,8 @@
 - **Distant Horizons on Minecraft 26.3 with Iris installed** — distant mobs hide behind Distant Horizons' hills again.
 - **Voxy on Minecraft 26.3 with a shader pack** — distant mobs hide behind Voxy's hills.
 - **Distant Horizons with Photon's render scale** — distant mobs hide behind the right hills, not hills shifted on the screen.
+- **Mobs leaving your range** — a mob no longer vanishes for a few frames before its distant copy appears.
+- **Mobs leaving your range** — the distant copy now faces the way the mob did, instead of sometimes turning to another direction.
 
 ## 0.4.0 — 2026-10-10
 

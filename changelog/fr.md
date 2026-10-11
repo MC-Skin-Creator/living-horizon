@@ -11,6 +11,8 @@
 - **Distant Horizons sur Minecraft 26.3 avec Iris installé** — les créatures lointaines se cachent de nouveau derrière les collines de Distant Horizons.
 - **Voxy sur Minecraft 26.3 avec un pack de shaders** — les créatures lointaines se cachent derrière les collines de Voxy.
 - **Distant Horizons avec la résolution réduite de Photon** — les créatures lointaines se cachent derrière les bonnes collines, et non derrière des collines décalées à l'écran.
+- **Créatures qui s'éloignent** — une créature ne disparaît plus pendant quelques images avant que sa copie lointaine n'apparaisse.
+- **Créatures qui s'éloignent** — la copie lointaine regarde maintenant dans la même direction que la créature, au lieu de parfois se tourner ailleurs.
 
 ## 0.4.0 — 2026-10-10
 
