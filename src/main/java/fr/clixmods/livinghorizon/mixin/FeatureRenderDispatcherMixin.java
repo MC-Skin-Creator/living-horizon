@@ -40,6 +40,23 @@ abstract class FeatureRenderDispatcherMixin {
         FarDepth.after();
     }
 }
+*///?} elif >=26.1 {
+/*// On 26.1 the world's features are drawn in two steps, solid then translucent;
+// renderAllFeatures is left to the hand, drawn after the depth is cleared.
+@Mixin(FeatureRenderDispatcher.class)
+abstract class FeatureRenderDispatcherMixin {
+    @Inject(method = "renderSolidFeatures", at = @At("HEAD"))
+    private void livinghorizon$voxyDepthIn(CallbackInfo ci) {
+        FarDepth.before();
+    }
+
+    @Inject(method = "renderTranslucentFeatures", at = @At("TAIL"))
+    private void livinghorizon$voxyDepthOut(CallbackInfo ci) {
+        FarDepth.after();
+        // The models' outlines are written; the outline batch ends after this call.
+        ImpostorRenderer.drawOutlines();
+    }
+}
 *///?} else {
 @Mixin(FeatureRenderDispatcher.class)
 abstract class FeatureRenderDispatcherMixin {
