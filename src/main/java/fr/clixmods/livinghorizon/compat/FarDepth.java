@@ -207,6 +207,43 @@ public final class FarDepth {
         }
     }
 
+    private static boolean packLinked;
+    private static @Nullable Method currentPack, packOptions, optionValues, booleanOption, stringOption;
+
+    /**
+     * The fraction of the screen a shader pack draws the world to, from the bottom left corner:
+     * Photon's TAAU shrinks it in its vertex shaders and stretches it afterwards. Voxy is told
+     * through the pack's {@code voxy.json}; Distant Horizons is not, so the pack's own option is
+     * read. 1 without a pack, or with a pack that draws to all of the screen.
+     */
+    private static float packScale() {
+        if (!DhDepth.shaderPackOn()) return 1f;
+        if (!packLinked) {
+            packLinked = true;
+            try {
+                currentPack = Class.forName("net.irisshaders.iris.Iris").getMethod("getCurrentPack");
+                packOptions = Class.forName("net.irisshaders.iris.shaderpack.ShaderPack").getMethod("getShaderPackOptions");
+                optionValues = Class.forName("net.irisshaders.iris.shaderpack.option.ShaderPackOptions").getMethod("getOptionValues");
+                Class<?> values = Class.forName("net.irisshaders.iris.shaderpack.option.values.OptionValues");
+                booleanOption = values.getMethod("getBooleanValueOrDefault", String.class);
+                stringOption = values.getMethod("getStringValueOrDefault", String.class);
+            } catch (ReflectiveOperationException | LinkageError e) {
+                currentPack = null; // no Iris, or not the one this mod knows
+            }
+        }
+        if (currentPack == null) return 1f;
+        try {
+            Object pack = ((java.util.Optional<?>) currentPack.invoke(null)).orElse(null);
+            if (pack == null) return 1f;
+            Object values = optionValues.invoke(packOptions.invoke(pack));
+            if (!(boolean) booleanOption.invoke(values, "TAAU")) return 1f;
+            float scale = Float.parseFloat((String) stringOption.invoke(values, "TAAU_RENDER_SCALE"));
+            return scale >= 0.25f && scale <= 1f ? scale : 1f;
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return 1f;
+        }
+    }
+
     /** Just before the entities are drawn. */
     public static void before() {
         if (!armed || irisShadowPass()) return;
@@ -466,6 +503,14 @@ public final class FarDepth {
     private static void notePicture(int w, int h) throws ReflectiveOperationException {
         pictureWidth = w;
         pictureHeight = h;
+        //? if >=26.2 {
+        /*if (!available()) {
+            float scale = packScale();
+            pictureWidth = Math.round(w * scale);
+            pictureHeight = Math.round(h * scale);
+            return;
+        }
+        *///?}
         if (useViewportDimsField == null || !available()) return;
         Object system = getNullable.invoke(null);
         if (system == null) return;
@@ -558,7 +603,7 @@ public final class FarDepth {
      * converted from its projection to the game's, and written wherever it is nearer than
      * what is there: the same merge as Voxy's, undone by {@link #restore()} the same way.
      */
-    private static boolean mergeDh() {
+    private static boolean mergeDh() throws ReflectiveOperationException {
         float[] dh = DhDepth.read();
         if (dh == null) return skip(DhDepth.reason());
         target = ownTarget();
@@ -578,8 +623,7 @@ public final class FarDepth {
         int dhHeight = GL45C.glGetTextureLevelParameteri((int) dh[0], 0, GL11C.GL_TEXTURE_HEIGHT);
         if (dhWidth <= 0 || dhHeight <= 0) return skip("Distant Horizons has no depth yet");
         prepare(w, h, f);
-        pictureWidth = w;
-        pictureHeight = h;
+        notePicture(w, h);
         if (dhProgram == 0) {
             dhProgram = compileDh();
             dhSampler = GL33C.glGenSamplers();
