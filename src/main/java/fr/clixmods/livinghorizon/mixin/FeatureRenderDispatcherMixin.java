@@ -18,7 +18,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 //? if >=26.2 {
 /*// From 26.2 the world's features are prepared once and drawn in steps through the frame
-// graph: the entities are the solid step, then the translucent one, in the main pass.
+// graph: the entities are the solid step, then the translucent one, in the main pass. The
+// depth is given back after the solid step: Iris copies it for the pack just before the
+// translucent one, and that copy must be the game's own.
 @Mixin(FeatureRenderDispatcher.PreparedFrame.class)
 abstract class FeatureRenderDispatcherMixin {
     //? if >=26.3 {
@@ -35,9 +37,39 @@ abstract class FeatureRenderDispatcherMixin {
     }
     //?}
 
-    @Inject(method = "executeTranslucent", at = @At("TAIL"))
+    //? if >=26.3 {
+    /^@Inject(method = "executeSolid", at = @At("TAIL"))
+    private void livinghorizon$voxyDepthOut(com.mojang.renderpearl.api.commands.RenderPass pass, CallbackInfo ci) {
+        FarDepth.after();
+    }
+    ^///?} else {
+    @Inject(method = "executeSolid", at = @At("TAIL"))
     private void livinghorizon$voxyDepthOut(CallbackInfo ci) {
         FarDepth.after();
+    }
+    //?}
+}
+*///?} elif >=26.1 {
+/*// On 26.1 the world's features are drawn in two steps, solid then translucent;
+// renderAllFeatures is left to the hand, drawn after the depth is cleared. The depth is
+// given back after the solid step: Iris copies it for the pack just before the translucent
+// one, and that copy must be the game's own.
+@Mixin(FeatureRenderDispatcher.class)
+abstract class FeatureRenderDispatcherMixin {
+    @Inject(method = "renderSolidFeatures", at = @At("HEAD"))
+    private void livinghorizon$voxyDepthIn(CallbackInfo ci) {
+        FarDepth.before();
+    }
+
+    @Inject(method = "renderSolidFeatures", at = @At("TAIL"))
+    private void livinghorizon$voxyDepthOut(CallbackInfo ci) {
+        FarDepth.after();
+    }
+
+    @Inject(method = "renderTranslucentFeatures", at = @At("TAIL"))
+    private void livinghorizon$outlines(CallbackInfo ci) {
+        // The models' outlines are written; the outline batch ends after this call.
+        ImpostorRenderer.drawOutlines();
     }
 }
 *///?} else {

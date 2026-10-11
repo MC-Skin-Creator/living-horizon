@@ -4,7 +4,13 @@
 
 ### Corrections
 - **Shaders** — les silhouettes lointaines affichées en imposteurs ne sont plus sombres avec les shaders d'Iris comme Photon ou Complementary : elles prennent le soleil comme les vrais modèles.
-- **Photon avec Voxy** — les créatures lointaines ne portent plus l'ombre du terrain situé derrière elles.
+- **Photon avec Voxy** — les créatures lointaines ne portent plus l'ombre du terrain situé derrière elles, et l'eau de Voxy reste telle quelle.
+- **Shaders sur Minecraft 26.2 et plus** — les créatures lointaines se cachent derrière les collines de Voxy et de Distant Horizons avec un pack de shaders, anciennes versions d'Iris comprises, comme sans.
+- **Minecraft 26.1** — les créatures lointaines se cachent derrière les collines de Voxy et de Distant Horizons, comme sur les autres versions.
+- **Voxy 0.2.18** — le mod lit de nouveau le terrain de Voxy : les créatures lointaines s'y tiennent et se cachent derrière ses collines.
+- **Distant Horizons sur Minecraft 26.3 avec Iris installé** — les créatures lointaines se cachent de nouveau derrière les collines de Distant Horizons.
+- **Voxy sur Minecraft 26.3 avec un pack de shaders** — les créatures lointaines se cachent derrière les collines de Voxy.
+- **Distant Horizons avec la résolution réduite de Photon** — les créatures lointaines se cachent derrière les bonnes collines, et non derrière des collines décalées à l'écran.
 
 ## 0.4.0 — 2026-10-10
 
