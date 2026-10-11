@@ -170,6 +170,12 @@ come back, add it here in the same pull request: this file is what the next sess
   the wrong side): Iris throws away the normal given to a quad and computes it from its
   corners, counter-clockwise. `ImpostorLean` moves an impostor's corners along their lines of
   sight so that its own plane faces where the light should come from.
+- **Far terrain depth lost under shaders from 26.2** (depth view empty or uniform, nothing
+  hidden behind the far terrain, only with a pack on): Iris's shadow pass draws its entities
+  through the same `PreparedFrame.executeSolid` / `executeTranslucent` steps as the world,
+  after the world's are submitted. `FarDepth.before` / `after` skip it
+  (`IrisApi.isRenderingShadowPass`), or it takes the bracket meant for the world's entities.
+  The depth stays reversed under Iris (its `UndoReverseZ` mixins are not registered).
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
