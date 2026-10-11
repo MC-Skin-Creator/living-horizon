@@ -33,16 +33,18 @@ public final class EasterEggsScenario implements Scenario {
 
     @Override
     public void run(ClientGameTestContext context) {
-        context.runOnClient(minecraft -> {
-            minecraft.options.entityDistanceScaling().set(0.5);
-            minecraft.options.renderDistance().set(16);
-        });
         Scene.configure(context, config -> {
             config.easterEggs = true;
             config.impostors = false;
             config.hideOccludedMobs = false;
         });
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
+            // Farther once the world is there: the loading screen would wait for all of it.
+            context.runOnClient(minecraft -> {
+                minecraft.options.entityDistanceScaling().set(0.5);
+                minecraft.options.renderDistance().set(16);
+            });
+            context.waitTicks(60);
             ufo(context, world);
             herobrine(context, world);
             ghosts(context, world);
