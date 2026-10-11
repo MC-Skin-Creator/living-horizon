@@ -1125,7 +1125,7 @@ public final class FarDepth {
     }
 
     private static void link() throws ReflectiveOperationException {
-        Class<?> getter = Class.forName("me.cortex.voxy.client.core.IGetVoxyRenderSystem");
+        Class<?> getter = VoxySource.renderSystemGetter();
         Class<?> system = Class.forName("me.cortex.voxy.client.core.VoxyRenderSystem");
         Class<?> pipeline = Class.forName("me.cortex.voxy.client.core.AbstractRenderPipeline");
         Class<?> depthBuffer = Class.forName("me.cortex.voxy.client.core.rendering.util.DepthFramebuffer");

@@ -156,6 +156,10 @@ come back, add it here in the same pull request: this file is what the next sess
   `after` must bracket that one: `renderAllFeatures` up to 1.21.11, `renderSolidFeatures` /
   `renderTranslucentFeatures` on 26.1 (where `renderAllFeatures` draws the hand, after a depth
   clear: an empty depth view), `PreparedFrame.executeSolid` / `executeTranslucent` from 26.2.
+- **Voxy version.** `FarDepth` and `VoxySource` reach Voxy by reflection; a renamed class turns
+  both off ("Voxy found, but not the version this mod knows"). 0.2.18 renamed
+  `IGetVoxyRenderSystem` to `IVoxyRenderSystemHolder` (`VoxySource.renderSystemGetter` tries
+  both). Check a new version with `javap` on its jar from Modrinth, as for Distant Horizons.
 - **Before 1.21.5** the game's depth texture has an unsized format (`GL_DEPTH_COMPONENT`):
   `glTextureStorage2D` refuses it, so anything copied from it is allocated the way the game
   allocates its own. A copy "with no size" or an all-white depth view is this.
