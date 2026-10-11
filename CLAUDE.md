@@ -221,6 +221,9 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Voxy's terrain missing from the depth on 26.3** (merge "on", depth view without it): Voxy's
   `transformBlitDepth` keeps the depth comparison it finds, and from 26.3 the world's pass is
   already open when `FarDepth.merge` runs. The merge sets it itself there, as `mergeDh` does.
+- **Far terrain flickering under Photon on 26.3 with Distant Horizons** (garbage colours on the
+  far scene, Iris logs "the Opaque + Translucent pass ran with shaders on"): Distant Horizons
+  3.3.2 with Iris 1.11.6, not this mod. Gone with Distant Horizons 3.3.4 and Iris 1.11.7.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
