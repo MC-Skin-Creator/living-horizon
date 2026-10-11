@@ -154,19 +154,20 @@ final class DhDepth {
             a = (far + near) / (near - far);
             b = 2.0f * far * near / (near - far);
             //? if >=26.2 {
-            /*// From 26.2 the game turns on 0..1 clip control for everything drawn, Iris's pass of
-            // Distant Horizons included: its depth is 0..1 though the projection is OpenGL's.
-            signed = !fr.clixmods.livinghorizon.render.DepthFar.zeroToOne();
+            /*// From 26.2 Iris draws Distant Horizons' terrain with Iris's planes but in Distant
+            // Horizons' own depth layout - reversed and 0..1 as the game's, empty at 0 - which it
+            // reports: Iris's planes, in the layout Distant Horizons gives (signed set above).
+            boolean reversed = depthDirection != null && farDepth != null
+                    && farDepth.getFloat(depthDirection.invoke(proxy)) < 0.5f;
+            float n = reversed ? far : near, f = reversed ? near : far;
+            a = signed ? (f + n) / (n - f) : f / (n - f);
+            b = signed ? 2.0f * f * n / (n - f) : n * f / (n - f);
             *///?} else {
             signed = true;
             //?}
         }
         if (Math.abs(b) < 1.0e-6f) return none("Distant Horizons has no projection yet");
         float nothing = depthDirection == null || farDepth == null ? 1.0f : farDepth.getFloat(depthDirection.invoke(proxy));
-        //? if >=26.2 {
-        /*// Iris's projection keeps the far plane at 1, whatever way Distant Horizons runs its own.
-        if (iris != null) nothing = 1.0f;
-        *///?}
         return new float[]{a, b, signed ? 1.0f : 0.0f, nothing};
     }
 
