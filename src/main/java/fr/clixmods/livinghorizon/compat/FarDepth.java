@@ -21,6 +21,7 @@ import org.lwjgl.opengl.GL45C;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Map;
 
 /**
  * Voxy's terrain in the depth buffer while the entities are drawn, and only then: so that
@@ -208,13 +209,17 @@ public final class FarDepth {
     }
 
     private static boolean packLinked;
-    private static @Nullable Method currentPack, packOptions, optionValues, booleanOption, stringOption;
+    private static @Nullable Method currentPack, packOptions, optionValues, optionSet, booleanOption, stringOption;
+    private static @Nullable Method booleanOptions, stringOptions;
+    /** The pack the scale was read from, and the scale: Iris builds a new pack when an option changes. */
+    private static @Nullable Object scaledPack;
+    private static float scale = 1f;
 
     /**
      * The fraction of the screen a shader pack draws the world to, from the bottom left corner:
      * Photon's TAAU shrinks it in its vertex shaders and stretches it afterwards. Voxy is told
      * through the pack's {@code voxy.json}; Distant Horizons is not, so the pack's own option is
-     * read. 1 without a pack, or with a pack that draws to all of the screen.
+     * read, once per pack. 1 without a pack, or with a pack that draws to all of the screen.
      */
     private static float packScale() {
         if (!DhDepth.shaderPackOn()) return 1f;
@@ -225,8 +230,12 @@ public final class FarDepth {
                 packOptions = Class.forName("net.irisshaders.iris.shaderpack.ShaderPack").getMethod("getShaderPackOptions");
                 optionValues = Class.forName("net.irisshaders.iris.shaderpack.option.ShaderPackOptions").getMethod("getOptionValues");
                 Class<?> values = Class.forName("net.irisshaders.iris.shaderpack.option.values.OptionValues");
+                optionSet = values.getMethod("getOptionSet");
                 booleanOption = values.getMethod("getBooleanValueOrDefault", String.class);
                 stringOption = values.getMethod("getStringValueOrDefault", String.class);
+                Class<?> set = Class.forName("net.irisshaders.iris.shaderpack.option.OptionSet");
+                booleanOptions = set.getMethod("getBooleanOptions");
+                stringOptions = set.getMethod("getStringOptions");
             } catch (ReflectiveOperationException | LinkageError e) {
                 currentPack = null; // no Iris, or not the one this mod knows
             }
@@ -235,10 +244,18 @@ public final class FarDepth {
         try {
             Object pack = ((java.util.Optional<?>) currentPack.invoke(null)).orElse(null);
             if (pack == null) return 1f;
+            if (pack == scaledPack) return scale;
+            scaledPack = pack;
+            scale = 1f;
             Object values = optionValues.invoke(packOptions.invoke(pack));
-            if (!(boolean) booleanOption.invoke(values, "TAAU")) return 1f;
-            float scale = Float.parseFloat((String) stringOption.invoke(values, "TAAU_RENDER_SCALE"));
-            return scale >= 0.25f && scale <= 1f ? scale : 1f;
+            Object set = optionSet.invoke(values);
+            // Asked for an option it does not have, Iris logs a warning and answers true.
+            if (!((Map<?, ?>) booleanOptions.invoke(set)).containsKey("TAAU")
+                    || !((Map<?, ?>) stringOptions.invoke(set)).containsKey("TAAU_RENDER_SCALE")
+                    || !(boolean) booleanOption.invoke(values, "TAAU")) return scale;
+            float read = Float.parseFloat((String) stringOption.invoke(values, "TAAU_RENDER_SCALE"));
+            if (read >= 0.25f && read <= 1f) scale = read;
+            return scale;
         } catch (ReflectiveOperationException | RuntimeException e) {
             return 1f;
         }
