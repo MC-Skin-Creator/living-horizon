@@ -83,7 +83,10 @@ public final class MobMemory {
         /** The world it lives in, told apart by its seed: null in a file from before worlds were told apart. */
         @Nullable Long world;
         double x, y, z;
+        /** Where its body faces, as drawn: not where it last walked to, which a mob standing still keeps. */
         float yaw;
+        /** Where its head turned, when it was just seen; NaN when not known, then the body's. */
+        transient float head = Float.NaN;
         String nbt;
         long seenAt;
         /** Published by the data pack: dropped when the pack drops it, which means it died. */
@@ -168,6 +171,8 @@ public final class MobMemory {
     private int clock;
     private double selfX, selfY, selfZ;
     private boolean selfKnown;
+    /** Nanoseconds spent since the last tick building copies of mobs as they unloaded. */
+    private long builtNow;
 
     public List<Remembered> shown() {
         return shown;
@@ -343,15 +348,42 @@ public final class MobMemory {
         }
         CompoundTag tag = snapshot(mob, level);
         if (tag == null) return;
+        // The body as the game drew it: a mob standing still turns it, not its yaw.
+        float body = mob instanceof LivingEntity living ? living.yBodyRot : mob.getYRot();
         remember(new MobScan.Found(mob.getUUID(), EntityType.getKey(mob.getType()).toString(),
-                mob.getX(), mob.getY(), mob.getZ(), mob.getYRot(), tag, mob.hasCustomName()),
+                mob.getX(), mob.getY(), mob.getZ(), body, tag, mob.hasCustomName()),
                 level.dimension().identifier().toString(), worldOf(level));
         Remembered fresh = mobs.get(entity.getUUID());
-        if (joinedPuppet != null && fresh != null) {
-            fresh.puppet = joinedPuppet;
-            fresh.motion = joined.motion;
+        if (fresh != null) {
+            if (mob instanceof LivingEntity living) fresh.head = living.yHeadRot;
+            if (joinedPuppet != null) {
+                fresh.puppet = joinedPuppet;
+                fresh.motion = joined.motion;
+            }
+            showNow(fresh, level, config);
         }
         trim();
+    }
+
+    /**
+     * Drawn from this frame on. The server's packets are read every frame, but the game ticks
+     * every 50 ms: waiting for the next tick to choose and build the copy left the frames in
+     * between with neither the real mob nor its copy. The next choice puts the list in order.
+     */
+    private void showNow(Remembered mob, ClientLevel level, FarConfig config) {
+        if (config.maxDistantMobs <= 0) return;
+        if (mob.puppet == null) {
+            // A crowd unloaded at once (a teleport) is left to the ticks and their budget.
+            if (config.optBackgroundBuild && builtNow >= BUILD_BUDGET) return;
+            long started = System.nanoTime();
+            build(mob, level);
+            builtNow += System.nanoTime() - started;
+            if (mob.puppet == null) return;
+        }
+        mob.distance = distance(mob.x, mob.y, mob.z);
+        List<Remembered> next = new ArrayList<>(shown);
+        next.add(mob);
+        shown = Collections.unmodifiableList(next);
     }
 
     /**
@@ -457,6 +489,7 @@ public final class MobMemory {
         selfZ = self.getZ();
         selfKnown = true;
         renderBlocks = renderDistanceBlocks;
+        builtNow = 0;
         clock++;
         if (!config.distantMobs) {
             shown = List.of();
@@ -770,6 +803,12 @@ public final class MobMemory {
                 living.hurtTime = 0;
                 living.hurtDuration = 0;
                 living.deathTime = 0;
+                // Its saved data turns body and head to its yaw: they face as they were seen.
+                living.setYRot(mob.yaw);
+                living.yBodyRot = mob.yaw;
+                living.yHeadRot = Float.isNaN(mob.head) ? mob.yaw : mob.head;
+                living.yBodyRotO = living.yBodyRot;
+                living.yHeadRotO = living.yHeadRot;
             }
             MobMotion motion = mob.motion;
             if (motion != null && motion.placed()) {

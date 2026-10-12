@@ -58,7 +58,8 @@ final class MobMotion {
         x = mob.x;
         y = mob.y;
         z = mob.z;
-        body = head = mob.yaw;
+        body = mob.yaw;
+        head = Float.isNaN(mob.head) ? mob.yaw : mob.head;
         placed = true;
     }
 
