@@ -42,6 +42,9 @@ import java.util.Map;
  *       wherever an entity was drawn, its depth stays.</li>
  * </ol>
  *
+ * <p>From 26.1 the translucent parts of the entities have a step of their own, bracketed the
+ * same way: see {@link #beforeTranslucent}.
+ *
  * <p>Without a pack, Voxy already writes its depth for good and this does nothing.
  *
  * <p>Voxy's and Distant Horizons' own textures are read, never written, but for our own
@@ -267,6 +270,7 @@ public final class FarDepth {
         merged = false;
         captured = false;
         intoVoxy = false;
+        lateShown = false;
         FarConfig config = FarConfig.get();
         // The depth view shows the far terrain merged even when nothing far is drawn this frame.
         boolean wanted = needed || !config.optLazyDepth || config.debugDepthView != 0;
@@ -285,8 +289,8 @@ public final class FarDepth {
             } else if (!wanted) {
                 reason = "nothing far to hide this frame";
             } else if (config.anyDistant() && config.depthOcclusion) {
-                if (available()) merged = merge();
-                else if (!broken && DhDepth.available()) merged = mergeDh();
+                if (available()) merged = merge(false);
+                else if (!broken && DhDepth.available()) merged = mergeDh(false);
                 // Why Distant Horizons is of no use (too old, most often), not what an earlier frame said.
                 else reason = Platform.isModLoaded("distanthorizons") ? DhDepth.reason() : "neither Voxy nor Distant Horizons is usable";
             }
@@ -328,20 +332,90 @@ public final class FarDepth {
         return armed && (merged || captured) && !irisShadowPass();
     }
 
-    /** Just after the entities are drawn. */
+    /** Just after the entities are drawn, where they have no translucent step of their own. */
     public static void after() {
+        after(null);
+    }
+
+    /**
+     * Just after the solid parts of the entities are drawn, by {@code owner}: its translucent
+     * step follows, see {@link #beforeTranslucent}. Null where the call drew them all.
+     */
+    public static void after(@Nullable Object owner) {
         if (!armed || irisShadowPass()) return;
         armed = false;
+        lateMerge = lateCopy = lateMerged = false;
         try {
-            if (merged) restore();
+            if (merged) restore(false);
             else if (captured) copy(depthTexture, drawn);
             if (intoVoxy) intoVoxy();
+            lateOwner = owner;
+            lateMerge = owner != null && merged;
+            lateCopy = owner != null && !merged && captured && FarConfig.get().debugDepthView == 3;
         } catch (Throwable e) {
             fail(e);
         }
         merged = false;
         captured = false;
         intoVoxy = false;
+    }
+
+    // --- The translucent step -----------------------------------------------------------------
+
+    /**
+     * From 26.1 the translucent parts of the entities (a slime's outer layer) are drawn in a
+     * step of their own, after the solid one. Iris copies the game's depth for the pack just
+     * before it, so the far terrain's depth is out of it then: it goes back in at the start of
+     * that step, after the copy, and out again at its end, the same way as for the solid step.
+     * Only for the one whose solid step it follows: Iris draws the hand with another, in between.
+     */
+    private static @Nullable Object lateOwner;
+    private static boolean lateMerge, lateCopy, lateMerged;
+    /** The depth view's "after the entities" is the copy after the translucent step this frame. */
+    private static boolean lateShown;
+    private static int lateSaved, lateWritten, lateDrawn;
+
+    private static boolean late(Object owner) {
+        return owner == lateOwner && (lateMerge || lateCopy) && !irisShadowPass();
+    }
+
+    /** Just before the translucent parts of the entities are drawn, by {@code owner}. */
+    public static void beforeTranslucent(Object owner) {
+        if (!late(owner)) return;
+        try {
+            if (lateMerge) lateMerged = available() ? merge(true) : mergeDh(true);
+            else prepareLate();
+        } catch (Throwable e) {
+            fail(e);
+            lateMerge = lateCopy = lateMerged = false;
+        }
+    }
+
+    /** Whether {@link #afterTranslucent} is about to give the depth back, or to copy it: see {@link #givesBack()}. */
+    public static boolean givesBackTranslucent(Object owner) {
+        return late(owner) && (lateMerged || lateCopy);
+    }
+
+    /** Just after the translucent parts of the entities are drawn, by {@code owner}. */
+    public static void afterTranslucent(Object owner) {
+        if (!late(owner)) return;
+        try {
+            if (lateMerged) restore(true);
+            else if (lateCopy) copy(depthTexture, lateDrawn);
+            lateShown = lateMerged || lateCopy;
+        } catch (Throwable e) {
+            fail(e);
+        }
+        lateMerge = lateCopy = lateMerged = false;
+        lateOwner = null;
+    }
+
+    /** The translucent step's copies, made the first time they are needed. */
+    private static void prepareLate() {
+        if (lateSaved != 0) return;
+        lateSaved = texture();
+        lateWritten = texture();
+        lateDrawn = texture();
     }
 
     /** The depth was copied without the far terrain's: for the debug view, or for Distant Horizons' fade. */
@@ -417,7 +491,7 @@ public final class FarDepth {
                         DepthFar.reversed() ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f);
                 GL30C.glBindVertexArray(vertexArray);
                 GL33C.glBindSampler(0, 0);
-                GL45C.glBindTextureUnit(0, mode == 1 ? saved : mode == 2 ? written : drawn);
+                GL45C.glBindTextureUnit(0, mode == 1 ? saved : mode == 2 ? written : lateShown ? lateDrawn : drawn);
                 GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3);
             } finally {
                 gl.restore();
@@ -565,7 +639,11 @@ public final class FarDepth {
         return false;
     }
 
-    private static boolean merge() throws ReflectiveOperationException {
+    /**
+     * Writes Voxy's depth into the game's: {@code saved} before, {@code written} after, or the
+     * late copies for the translucent step ({@code late}), in the framebuffer the solid step used.
+     */
+    private static boolean merge(boolean late) throws ReflectiveOperationException {
         Object system = getNullable.invoke(null);
         if (system == null) return skip("Voxy is not rendering");
         Object pipeline = pipelineField.get(system);
@@ -583,8 +661,10 @@ public final class FarDepth {
         int voxyTexture = textureIdField.getInt(voxyDepth);
 
         // The game's depth texture: the one Voxy drew into, or else the main one.
-        target = voxyTarget != 0 ? voxyTarget : ownTarget();
-        voxyTarget = 0;
+        if (!late) {
+            target = voxyTarget != 0 ? voxyTarget : ownTarget();
+            voxyTarget = 0;
+        }
         if (target == 0) return skip("no framebuffer to draw into");
         if (GL45C.glGetNamedFramebufferAttachmentParameteri(target, GL30C.GL_DEPTH_ATTACHMENT,
                 GL30C.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE) != GL11C.GL_TEXTURE) {
@@ -598,8 +678,9 @@ public final class FarDepth {
         if (w <= 0 || h <= 0) return skip("the depth texture has no size");
         prepare(w, h, f);
         notePicture(voxyWidth > 0 ? voxyWidth : w, voxyHeight > 0 ? voxyHeight : h);
+        if (late) prepareLate();
 
-        copy(depthTexture, saved);
+        copy(depthTexture, late ? lateSaved : saved);
         GlState gl = GlState.save();
         try {
             GL11C.glDisable(GL11C.GL_SCISSOR_TEST);
@@ -618,7 +699,7 @@ public final class FarDepth {
         } finally {
             gl.restore();
         }
-        copy(depthTexture, written);
+        copy(depthTexture, late ? lateWritten : written);
         state = 1;
         return true;
     }
@@ -627,9 +708,9 @@ public final class FarDepth {
      * Distant Horizons draws its terrain into a framebuffer of its own and never writes its
      * depth into the game's, so the entities would show through it. Its depth texture is
      * converted from its projection to the game's, and written wherever it is nearer than
-     * what is there: the same merge as Voxy's, undone by {@link #restore()} the same way.
+     * what is there: the same merge as Voxy's, undone by {@link #restore} the same way.
      */
-    private static boolean mergeDh() throws ReflectiveOperationException {
+    private static boolean mergeDh(boolean late) throws ReflectiveOperationException {
         float[] dh = DhDepth.read();
         if (dh == null) return skip(DhDepth.reason());
         target = ownTarget();
@@ -650,6 +731,7 @@ public final class FarDepth {
         if (dhWidth <= 0 || dhHeight <= 0) return skip("Distant Horizons has no depth yet");
         prepare(w, h, f);
         notePicture(w, h);
+        if (late) prepareLate();
         if (dhProgram == 0) {
             dhProgram = compileDh();
             dhSampler = GL33C.glGenSamplers();
@@ -658,7 +740,7 @@ public final class FarDepth {
             GL33C.glSamplerParameteri(dhSampler, GL14C.GL_TEXTURE_COMPARE_MODE, GL11C.GL_NONE);
         }
 
-        copy(depthTexture, saved);
+        copy(depthTexture, late ? lateSaved : saved);
         GlState gl = GlState.save();
         try {
             GL30C.glBindFramebuffer(GL30C.GL_DRAW_FRAMEBUFFER, target);
@@ -688,7 +770,7 @@ public final class FarDepth {
         } finally {
             gl.restore();
         }
-        copy(depthTexture, written);
+        copy(depthTexture, late ? lateWritten : written);
         state = 1;
         return true;
     }
@@ -746,8 +828,10 @@ public final class FarDepth {
 
     // --- After --------------------------------------------------------------------------
 
-    private static void restore() {
-        copy(depthTexture, drawn);
+    /** Gives the depth back after the solid step, or after the translucent one ({@code late}). */
+    private static void restore(boolean late) {
+        int before = late ? lateSaved : saved, withFar = late ? lateWritten : written, after = late ? lateDrawn : drawn;
+        copy(depthTexture, after);
         GlState gl = GlState.save();
         try {
             GL30C.glBindFramebuffer(GL30C.GL_DRAW_FRAMEBUFFER, target);
@@ -764,7 +848,7 @@ public final class FarDepth {
             GL30C.glBindVertexArray(vertexArray);
             for (int unit = 0; unit < 3; unit++) {
                 GL33C.glBindSampler(unit, 0);
-                GL45C.glBindTextureUnit(unit, unit == 0 ? saved : unit == 1 ? written : drawn);
+                GL45C.glBindTextureUnit(unit, unit == 0 ? before : unit == 1 ? withFar : after);
             }
             GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3);
         } finally {
@@ -1107,7 +1191,11 @@ public final class FarDepth {
             vertexArray = GL45C.glCreateVertexArrays();
         }
         if (saved != 0 && w == width && h == height && f == format) return;
-        for (int texture : new int[]{saved, written, drawn, faded}) if (texture != 0) GL11C.glDeleteTextures(texture);
+        for (int texture : new int[]{saved, written, drawn, faded, lateSaved, lateWritten, lateDrawn}) {
+            if (texture != 0) GL11C.glDeleteTextures(texture);
+        }
+        lateSaved = lateWritten = lateDrawn = 0;
+        lateShown = false;
         width = w;
         height = h;
         format = f;

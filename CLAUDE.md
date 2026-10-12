@@ -173,15 +173,22 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Which call draws the world's entities** changes between versions, and `FarDepth.before` /
   `after` must bracket that one: `renderAllFeatures` up to 1.21.11, `renderSolidFeatures` on
   26.1 (where `renderAllFeatures` draws the hand, after a depth clear: an empty depth view),
-  `PreparedFrame.executeSolid` from 26.2. Never the translucent step: Iris copies the game's
-  depth for the pack just before it (`beginTranslucents`), and a copy holding Voxy's terrain
-  changes how the pack shades it (a far mountain shaded differently with *Far depth* on).
+  `PreparedFrame.executeSolid` from 26.2. Never across into the translucent step: Iris copies
+  the game's depth for the pack just before it (`beginTranslucents`, at the call to
+  `renderTranslucentFeatures` / `executeTranslucent` / `executeClassicTransparency`), and a copy
+  holding Voxy's terrain changes how the pack shades it (a far mountain shaded differently with
+  *Far depth* on). The translucent step has a bracket of its own, opened inside the call, after
+  the copy (`FarDepth.beforeTranslucent` / `afterTranslucent`).
 - **Part of a mob through the far terrain** (a villager's clothes or arms behind a Voxy wall,
   not its head; under shaders with Voxy, or with Distant Horizons): from 1.21.9 to 26.1 the
   bracketed call only fills the world's buffer source, and the game draws the last batch and
   the fixed buffers after it. `FeatureRenderDispatcherMixin` ends the batch before `FarDepth.after`.
   Seen with many mobs on screen: the occlusion queries fall behind (`IN_FLIGHT_MAX`, `MAX_AGE`),
   the mobs behind terrain are drawn, and the depth alone hides them.
+- **Translucent parts through the far terrain** (a slime's outer layer behind a Voxy hill, its
+  core hidden; missing from the depth view): from 26.1 they are drawn in the translucent step,
+  after the solid bracket. The late bracket covers it, for the dispatcher (26.1) or prepared frame
+  (26.2) whose solid step was bracketed only: Iris draws the hand with one of its own in between.
 - **Voxy version.** `FarDepth` and `VoxySource` reach Voxy by reflection; a renamed class turns
   both off ("Voxy found, but not the version this mod knows"). 0.2.18 renamed
   `IGetVoxyRenderSystem` to `IVoxyRenderSystemHolder` (`VoxySource.renderSystemGetter` tries
