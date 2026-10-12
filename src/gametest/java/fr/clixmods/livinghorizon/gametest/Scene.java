@@ -139,18 +139,20 @@ public final class Scene {
         }
     }
 
-    /** Takes a screenshot after letting a few frames settle. */
-    public static void screenshot(ClientGameTestContext context, Scenario scenario, String name) {
+    /** Takes a screenshot after letting a few frames settle; where it was saved. */
+    public static java.nio.file.Path screenshot(ClientGameTestContext context, Scenario scenario, String name) {
         context.waitTicks(5);
-        log("screenshot " + context.takeScreenshot(scenario.name() + "-" + name));
+        java.nio.file.Path path = context.takeScreenshot(scenario.name() + "-" + name);
+        log("screenshot " + path);
+        return path;
     }
 
     /**
      * The last frame the game drew itself, as it is on screen. A test screenshot draws a
      * frame of its own, outside the game's loop, where the debug gizmos (boxes, crosses)
-     * cannot be collected: this one has them. Saved next to the other screenshots.
+     * cannot be collected: this one has them. Saved next to the other screenshots; where.
      */
-    public static void screenshotFrame(ClientGameTestContext context, Scenario scenario, String name) {
+    public static java.nio.file.Path screenshotFrame(ClientGameTestContext context, Scenario scenario, String name) {
         context.waitTicks(5);
         //? if >=1.21.11 {
         java.nio.file.Path path = net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir()
@@ -169,8 +171,9 @@ public final class Scene {
         while (!saved.isDone()) context.waitTick();
         saved.join();
         log("screenshot " + path);
+        return path;
         //?} else {
-        /*screenshot(context, scenario, name);
+        /*return screenshot(context, scenario, name);
         *///?}
     }
 

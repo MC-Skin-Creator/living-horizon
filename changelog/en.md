@@ -4,6 +4,14 @@
 
 ### Fixed
 - **Forge 1.20.1 to 1.20.4** — the game no longer crashes on startup with the mod installed.
+- **Mobs leaving your range** — a mob no longer vanishes for a few frames before its distant copy appears.
+- **Mobs leaving your range** — the distant copy now faces the way the mob did, instead of sometimes turning to another direction.
+- **Minecraft 1.21.9 to 26.1** — parts of distant mobs, such as a villager's clothes or a held item, no longer show through Voxy's terrain under shaders, nor through Distant Horizons' terrain.
+- **Minecraft 26.1 and later** — the see-through parts of distant mobs, such as a slime's outer layer, no longer show through Voxy's terrain under shaders, nor through Distant Horizons' terrain.
+
+## 0.4.1 — 2026-10-11
+
+### Fixed
 - **Shader packs** — distant figures shown as impostors are no longer dark with Iris shaders such as Photon or Complementary: they catch the sun like full models.
 - **Photon with Voxy** — distant mobs no longer wear the shadow of the terrain behind them, and Voxy's water stays as it is.
 - **Shaders on Minecraft 26.2 and later** — distant mobs hide behind Voxy's and Distant Horizons' hills with a shader pack on, older Iris versions included, as they do without one.
@@ -12,8 +20,6 @@
 - **Distant Horizons on Minecraft 26.3 with Iris installed** — distant mobs hide behind Distant Horizons' hills again.
 - **Voxy on Minecraft 26.3 with a shader pack** — distant mobs hide behind Voxy's hills.
 - **Distant Horizons with Photon's render scale** — distant mobs hide behind the right hills, not hills shifted on the screen.
-- **Mobs leaving your range** — a mob no longer vanishes for a few frames before its distant copy appears.
-- **Mobs leaving your range** — the distant copy now faces the way the mob did, instead of sometimes turning to another direction.
 
 ## 0.4.0 — 2026-10-10
 
