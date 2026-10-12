@@ -2,6 +2,8 @@
 
 ## Prochaine version
 
+## 0.4.2 — 2026-10-12
+
 ### Corrections
 - **Créatures qui s'éloignent** — une créature ne disparaît plus pendant quelques images avant que sa copie lointaine n'apparaisse.
 - **Créatures qui s'éloignent** — la copie lointaine regarde maintenant dans la même direction que la créature, au lieu de parfois se tourner ailleurs.

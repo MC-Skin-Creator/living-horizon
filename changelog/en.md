@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.2 — 2026-10-12
+
 ### Fixed
 - **Mobs leaving your range** — a mob no longer vanishes for a few frames before its distant copy appears.
 - **Mobs leaving your range** — the distant copy now faces the way the mob did, instead of sometimes turning to another direction.
