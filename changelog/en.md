@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Fixed
+- **Impostors screen on Minecraft 1.21.8 and older** — opening it no longer crashes the game.
 - **Shader packs** — distant figures shown as impostors are no longer dark with Iris shaders such as Photon or Complementary: they catch the sun like full models.
 - **Photon with Voxy** — distant mobs no longer wear the shadow of the terrain behind them, and Voxy's water stays as it is.
 - **Shaders on Minecraft 26.2 and later** — distant mobs hide behind Voxy's and Distant Horizons' hills with a shader pack on, older Iris versions included, as they do without one.
