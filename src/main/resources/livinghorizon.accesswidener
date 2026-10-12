@@ -21,19 +21,22 @@ accessible field net/minecraft/world/entity/Avatar DATA_PLAYER_MODE_CUSTOMISATIO
 # @until 1.21.8
 accessible field net/minecraft/world/entity/player/Player DATA_PLAYER_MODE_CUSTOMISATION Lnet/minecraft/network/syncher/EntityDataAccessor;
 
-# Before 1.21.2, with no render states: a figure is told it swims while it is drawn, and
-# the faces of each cube of a model are counted as it is drawn.
+# Before 1.21.2, with no render states: a figure is told it swims, stands still or walks
+# while it is drawn, and the faces of each cube of a model are counted as it is drawn.
 # @until 1.21.1
 accessible field net/minecraft/world/entity/Entity wasTouchingWater Z
+accessible field net/minecraft/world/entity/WalkAnimationState position F
+accessible field net/minecraft/world/entity/WalkAnimationState speed F
+accessible field net/minecraft/world/entity/WalkAnimationState speedOld F
 accessible class net/minecraft/client/model/geom/ModelPart$Polygon
 accessible field net/minecraft/client/model/geom/ModelPart$Cube polygons [Lnet/minecraft/client/model/geom/ModelPart$Polygon;
 
 # The hashed seed the server sends, which tells one world from another.
 accessible field net/minecraft/world/level/biome/BiomeManager biomeZoomSeed J
 
-# The impostors are baked under the world's light, turned the way the picture is drawn.
-# Impostors exist from 1.21.9.
-# @since 1.21.9
+# The impostors are baked under the world's light, turned the way the picture is drawn: a
+# light of our own, as the game keeps them from 1.21.6.
+# @since 1.21.6
 # @until 26.1.2
 accessible method com/mojang/blaze3d/platform/Lighting updateBuffer (Lcom/mojang/blaze3d/platform/Lighting$Entry;Lorg/joml/Vector3f;Lorg/joml/Vector3f;)V
 

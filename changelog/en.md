@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### New
+- **Impostors on Minecraft 1.20.1 to 1.21.8** — far players and mobs are drawn as light pictures of themselves on these versions too, and the Impostor Manager shows them.
+
 ### Fixed
 - **Forge 1.20.1 to 1.20.4** — the game no longer crashes on startup with the mod installed.
 - **Impostors screen on Minecraft 1.21.8 and older** — opening it no longer crashes the game.

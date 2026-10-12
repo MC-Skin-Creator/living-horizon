@@ -243,6 +243,13 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Mobs near the player never drawn far away**, only those met later: the mob memory is opened
   on the first tick with a player, and opening clears the mobs sent so far, which the level may
   have loaded just before. `FarPlayerTracker` hands it the level's entities again once open.
+- **Impostors before 1.21.6** (empty or missing pictures, or a figure flashing over the screen
+  at the start of a frame): the game has no output override there, so `ImpostorAtlas` bakes
+  at the start of the frame (`GameRendererMixin`) into a target of its own, which
+  `MinecraftMixin` and `LevelRendererTargetMixin` hand out as the main target and the Fabulous
+  item target while `ImpostorAtlas.drawing()` is set. A render type that binds yet another
+  target of the game's escapes it; before 1.21.5 the eight views share one target, each in its
+  own viewport.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

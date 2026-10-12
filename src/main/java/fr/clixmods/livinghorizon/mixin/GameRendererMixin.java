@@ -6,6 +6,11 @@ import fr.clixmods.livinghorizon.render.GhostRenderer;
 import net.minecraft.client.renderer.GameRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+//? if <1.21.6 {
+/*import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+*///?}
 
 /**
  * Pushes the far clipping plane out to the farthest distant player. The game clips at
@@ -19,5 +24,17 @@ abstract class GameRendererMixin {
     private float livinghorizon$reachDistantPlayers(float far) {
         return GhostRenderer.farPlane(far);
     }
+
+    //? if <1.21.6 {
+    /*/^*
+     * Bakes the impostors waiting, before the frame is drawn: the game sets up the world's
+     * drawing and the GUI's afterwards, whatever the bake left. From 1.21.6 they are baked
+     * in the GUI pass instead (GuiRendererMixin).
+     ^/
+    @Inject(method = "render", at = @At("HEAD"))
+    private void livinghorizon$bakeImpostors(CallbackInfo ci) {
+        ImpostorAtlas.bakePending();
+    }
+    *///?}
 }
 //?}
