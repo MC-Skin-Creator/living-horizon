@@ -11,6 +11,7 @@ import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.server.IntegratedServer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.scores.Scoreboard;
 //? if >=1.21.6
@@ -103,6 +104,9 @@ public final class FarPlayerTracker {
                 resting.open(joined);
                 mobs.open(joined);
                 server = joined;
+                // Opening the memory forgets the mobs sent so far: the level may have loaded
+                // those round the player before this first tick, and loads them only once.
+                for (Entity entity : current.entitiesForRendering()) mobs.onLoad(entity);
             }
         }
         // Paused in single player: the world is frozen, and so is everything drawn on its horizon.
