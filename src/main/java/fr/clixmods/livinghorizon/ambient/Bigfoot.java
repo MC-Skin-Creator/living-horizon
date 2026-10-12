@@ -22,12 +22,14 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Easter egg 6: now and then, by day in a forest, a big hairy figure walks across the
- * player's view among the trees, turns its head to look at them once, walks on, and is
- * gone - at once if the player comes near. Only on this screen.
+ * Easter egg 6: now and then, day or night, far off in a forest, a big hairy figure walks
+ * across the player's view among the trees, turns its head to look at them once, walks on,
+ * and is gone as soon as something stands between them - a trunk, a rock - or the player
+ * comes near. Only on this screen.
  *
  * <p>The figure is drawn of boxes ({@link BoxFigure}), on the ground under the trees, in
- * the light where it walks.
+ * the light where it walks. It starts out of sight where it can, and once it has been in
+ * sight a while, the first obstacle that hides it is where it goes.
  *
  * <p>Secret: nothing a player reads (settings, README, changelog) says what it is.
  */
@@ -36,14 +38,23 @@ public final class Bigfoot {
             1.0f, 0.36f, 1.0f, 0.95f, 0.6f, 1.25f, 0.3f, 0.55f, 0.1f, 0x5E4329, 0x8C7058);
     /** Blocks per tick it walks; blocks across under which it goes. */
     private static final double PACE = 0.075, NEAR = 18;
+    /** How far off it walks, in blocks across: in the loaded chunks, where the trees are. */
+    private static final double MIN = 80, MAX = 180;
     /** Ticks it keeps its head turned to the player. */
     private static final int LOOK = 40;
+    /** Ticks in sight before an obstacle may take it; ticks hidden that do; ticks it walks on, at most, to find one. */
+    private static final int SEEN = 40, HIDDEN = 4, LONGER = 400;
 
+    private final EggCalendar calendar;
     private final RandomSource random = RandomSource.create();
     private boolean active;
     private double x, y, z, xo, yo, zo, dirX, dirZ, walked;
     private float yaw, headYaw, headYawO;
-    private int age, steps, lookAt, light, idle;
+    private int age, steps, lookAt, light, idle, seen, hidden;
+
+    Bigfoot(EggCalendar calendar) {
+        this.calendar = calendar;
+    }
 
     /** Under way: no other easter egg starts meanwhile. */
     public boolean busy() {
@@ -56,35 +67,39 @@ public final class Bigfoot {
     }
 
     /**
-     * Starts it walking across the view somewhere ahead, in a forest: by chance, or because
-     * the player asked ({@code called}: anywhere ahead if no forest is). False if the easter
-     * eggs are off or no ground was found.
+     * Starts it walking across the view somewhere ahead, far off in a forest: by chance, or
+     * because the player asked ({@code called}: straighter in front of them). False if the
+     * easter eggs are off or no forest ground was found.
      */
     public boolean summon(ClientLevel level, LocalPlayer self, boolean called) {
         if (!FarConfig.get().easterEggs || level.dimension() != Level.OVERWORLD) return false;
         if (active) return true;
         double look = Math.toRadians(self.getYRot());
-        for (int attempt = 0; attempt < 32; attempt++) {
-            double bearing = look + random.nextGaussian() * (called ? 0.3 : 0.6);
-            double distance = 30 + random.nextDouble() * 30;
+        Vec3 eye = self.getEyePosition();
+        for (int attempt = 0; attempt < 48; attempt++) {
+            double bearing = look + random.nextGaussian() * (called ? 0.35 : 0.6);
+            double distance = MIN + random.nextDouble() * (MAX - MIN);
             double sx = self.getX() - Math.sin(bearing) * distance, sz = self.getZ() + Math.cos(bearing) * distance;
             double sy = ground(level, sx, sz);
-            if (Double.isNaN(sy)) continue;
-            if (!forest(level, sx, sy, sz) && !(called && attempt >= 16)) continue;
-            // Across the view, from a few blocks before the spot.
+            if (Double.isNaN(sy) || !forest(level, sx, sy, sz)) continue;
+            // Across the view, from a few blocks before the spot: out of sight there, if it can be.
             double side = random.nextBoolean() ? 1 : -1;
-            dirX = Math.cos(bearing) * side;
-            dirZ = Math.sin(bearing) * side;
-            x = xo = sx - dirX * 8;
-            z = zo = sz - dirZ * 8;
-            double start = ground(level, x, z);
-            y = yo = Double.isNaN(start) ? sy : start;
+            double ax = Math.cos(bearing) * side, az = Math.sin(bearing) * side;
+            double bx = sx - ax * 8, bz = sz - az * 8, start = ground(level, bx, bz);
+            double by = Double.isNaN(start) ? sy : start;
+            if (attempt < 24 && visible(level, self, eye, bx, by, bz)) continue;
+            dirX = ax;
+            dirZ = az;
+            x = xo = bx;
+            z = zo = bz;
+            y = yo = by;
             yaw = (float) Math.toDegrees(Math.atan2(-dirX, dirZ));
             headYaw = headYawO = 0f;
             steps = 220 + random.nextInt(100);
             lookAt = steps * 2 / 5;
             walked = 0;
             age = 0;
+            seen = hidden = 0;
             light = BoxFigure.light(level, x, y, z);
             active = true;
             return true;
@@ -99,11 +114,10 @@ public final class Bigfoot {
             return;
         }
         if (!active) {
-            // Rare, by day, and only for a player who stands in a forest.
-            if (++idle > 6000 && quiet && level.isBrightOutside() && random.nextInt(54000) == 0
-                    && forest(level, self.getX(), self.getY(), self.getZ())) {
+            // Rare, day or night: about once in an hour and a half, where a forest stands ahead.
+            if (++idle > 6000 && quiet && random.nextInt(108000) == 0) {
                 idle = 0;
-                summon(level, self, false);
+                if (summon(level, self, false)) calendar.shown(6);
             }
             return;
         }
@@ -122,7 +136,21 @@ public final class Bigfoot {
         float wanted = age > lookAt && age < lookAt + LOOK ? Mth.clamp(toPlayer, -100f, 100f) : 0f;
         headYaw += Mth.clamp(wanted - headYaw, -8f, 8f);
         light = BoxFigure.light(level, x, y, z);
-        if (age > steps || Math.hypot(self.getX() - x, self.getZ() - z) < NEAR) active = false;
+        // Seen for a while, it goes behind the first thing that hides it; past its walk, as soon
+        // as something does, or anyway a little later.
+        if (visible(level, self, self.getEyePosition(), x, y, z)) {
+            seen++;
+            hidden = 0;
+        } else {
+            hidden++;
+        }
+        boolean gone = hidden >= HIDDEN && (seen >= SEEN || age > steps);
+        if (gone || age > steps + LONGER || Math.hypot(self.getX() - x, self.getZ() - z) < NEAR) active = false;
+    }
+
+    /** Its head or its chest in sight of the player's eye. */
+    private static boolean visible(ClientLevel level, LocalPlayer self, Vec3 eye, double x, double y, double z) {
+        return Ghosts.inSight(level, self, eye, x, y + 2.3, z) || Ghosts.inSight(level, self, eye, x, y + 1.4, z);
     }
 
     /** Forest, taiga or jungle. */

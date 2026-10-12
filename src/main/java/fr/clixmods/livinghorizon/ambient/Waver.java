@@ -37,12 +37,17 @@ public final class Waver {
     /** Blocks across: it goes if the player comes this close. */
     private static final double NEAR = 24;
 
+    private final EggCalendar calendar;
     private final RandomSource random = RandomSource.create();
     private final AtomicReference<Columns.Column @Nullable []> found = new AtomicReference<>();
     private boolean searching, active, called;
     private double x, y, z, feetY;
     private float yaw, yawO;
     private int age, idle;
+
+    Waver(EggCalendar calendar) {
+        this.calendar = calendar;
+    }
 
     /** On its way or under way: no other easter egg starts meanwhile. */
     public boolean busy() {
@@ -88,8 +93,8 @@ public final class Waver {
             return;
         }
         if (!active && !searching) {
-            // Rare, by day: about once in an hour of it, where there are mountains.
-            if (++idle > 6000 && quiet && level.isBrightOutside() && random.nextInt(72000) == 0) {
+            // Rare, by day: about once in two hours of it, where there are mountains.
+            if (++idle > 6000 && quiet && level.isBrightOutside() && random.nextInt(144000) == 0) {
                 idle = 0;
                 summon(level, self, false);
             }
@@ -105,6 +110,7 @@ public final class Waver {
             }
             if (top == null) return;
             if (!called && (top.y() < feetY + ABOVE_PLAYER || top.y() < level.getSeaLevel() + ABOVE_SEA)) return;
+            if (!called) calendar.shown(5);
             x = top.x();
             y = top.y();
             z = top.z();

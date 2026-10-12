@@ -249,13 +249,19 @@ public final class Ambience {
     private final ConcurrentLinkedQueue<Spot> found = new ConcurrentLinkedQueue<>();
     private @Nullable ClientLevel level;
     private int probeCooldown;
-    private final Ufo ufo = new Ufo();
-    private final SaucerPass pass = new SaucerPass();
-    private final Ghosts ghosts = new Ghosts();
-    private final Herobrine herobrine = new Herobrine();
-    private final Waver waver = new Waver();
-    private final Bigfoot bigfoot = new Bigfoot();
-    private final GhostBoat ghostBoat = new GhostBoat();
+    private final EggCalendar calendar = new EggCalendar();
+    private final Ufo ufo = new Ufo(calendar);
+    private final SaucerPass pass = new SaucerPass(calendar);
+    private final Ghosts ghosts = new Ghosts(calendar);
+    private final Herobrine herobrine = new Herobrine(calendar);
+    private final Waver waver = new Waver(calendar);
+    private final Bigfoot bigfoot = new Bigfoot(calendar);
+    private final GhostBoat ghostBoat = new GhostBoat(calendar);
+
+    /** When the easter eggs may come by chance, per world. */
+    public EggCalendar calendar() {
+        return calendar;
+    }
 
     /** Easter egg 1. */
     public Ufo ufo() {
@@ -304,17 +310,19 @@ public final class Ambience {
             found.clear();
             level = current;
         }
-        // The easter eggs: one at a time, never two by chance together.
+        // The easter eggs: by chance only on the days the calendar allows, one at a time. The
+        // watcher keeps his own nights, out of the others' way: he waits for them, not they for him.
+        calendar.tick(current);
         boolean eggs = config.easterEggs && current.dimension() == Level.OVERWORLD;
-        boolean quiet = !ufo.busy() && !pass.busy() && !ghosts.busy() && !herobrine.busy()
+        boolean free = !ufo.busy() && !pass.busy() && !ghosts.busy()
                 && !waver.busy() && !bigfoot.busy() && !ghostBoat.busy();
-        ufo.tick(current, self, eggs, quiet);
-        pass.tick(current, self, eggs, quiet);
-        ghosts.tick(current, self, eggs, quiet);
-        herobrine.tick(current, self, eggs, quiet);
-        waver.tick(current, self, eggs, quiet);
-        bigfoot.tick(current, self, eggs, quiet);
-        ghostBoat.tick(current, self, eggs, quiet);
+        ufo.tick(current, self, eggs, free && calendar.allows(1));
+        pass.tick(current, self, eggs, free && calendar.allows(2));
+        ghosts.tick(current, self, eggs, free && calendar.allows(3));
+        herobrine.tick(current, self, eggs, free);
+        waver.tick(current, self, eggs, free && calendar.allows(5));
+        bigfoot.tick(current, self, eggs, free && calendar.allows(6));
+        ghostBoat.tick(current, self, eggs, free && calendar.allows(7));
         flyers.clear();
         if (!config.skyBirds || current.dimension() != Level.OVERWORLD) {
             groups.clear();

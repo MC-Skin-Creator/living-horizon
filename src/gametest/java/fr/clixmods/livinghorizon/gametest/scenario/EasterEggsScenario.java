@@ -45,6 +45,8 @@ public final class EasterEggsScenario implements Scenario {
                 minecraft.options.renderDistance().set(16);
             });
             context.waitTicks(60);
+            // First, while nothing else may come by chance: no cow is remembered yet.
+            calendar(context, world);
             ufo(context, world);
             herobrine(context, world);
             ghosts(context, world);
@@ -53,6 +55,48 @@ public final class EasterEggsScenario implements Scenario {
             bigfoot(context, world);
             boat(context, world);
         }
+    }
+
+    /**
+     * The calendar: a day for each dawn; from the second or third, the watcher (4) comes on his
+     * own a while into the night, and goes once he is looked in the eyes.
+     */
+    private void calendar(ClientGameTestContext context, TestSingleplayerContext world) {
+        int before = context.computeOnClient(minecraft -> ambience().calendar().days());
+        for (int day = 0; day < 3; day++) {
+            Scene.command(world, "time set 14000");
+            context.waitTicks(5);
+            Scene.command(world, "time set 1000");
+            context.waitTicks(5);
+        }
+        int after = context.computeOnClient(minecraft -> ambience().calendar().days());
+        Scene.log("eggs calendar " + before + " -> " + after + " days");
+        if (after != before + 3) throw new AssertionError("the calendar counted " + (after - before) + " dawns, not 3");
+        Scene.command(world, "time set 14000");
+        Vec3 at = null;
+        for (int i = 0; i < 2400 && at == null; i += 20) {
+            context.waitTicks(20);
+            at = context.computeOnClient(minecraft -> {
+                RemotePlayer him = ambience().herobrine().figure();
+                return him == null ? null : him.position();
+            });
+        }
+        if (at == null) throw new AssertionError("ee4 did not come by night");
+        Vec3 him = at;
+        context.runOnClient(minecraft -> {
+            Scene.log("eggs ee4 by night at " + him + ", " + (int) him.distanceTo(minecraft.player.position()) + " blocks");
+            lookAt(minecraft.player, him.x, him.y + 1.6, him.z);
+            minecraft.options.fov().set(30);
+        });
+        Scene.screenshot(context, this, "ee4-night");
+        context.waitTicks(110);
+        if (context.computeOnClient(minecraft -> ambience().herobrine().busy())) {
+            throw new AssertionError("ee4 still there 5 seconds after being looked in the eyes");
+        }
+        Scene.command(world, "time set noon");
+        context.runOnClient(minecraft -> minecraft.options.fov().set(70));
+        Scene.command(world, "tp @a 0 ~ 0 0 0");
+        context.waitTicks(20);
     }
 
     /** 1: a cow beside a remembered one, taken up. */
@@ -86,8 +130,11 @@ public final class EasterEggsScenario implements Scenario {
     /** 4: the watcher, seen from the corner of the eye, looked at, gone. */
     private void herobrine(ClientGameTestContext context, TestSingleplayerContext world) {
         boolean on = context.computeOnClient(minecraft -> ambience().herobrine().summon(minecraft.level, minecraft.player, true));
-        if (!on) throw new AssertionError("ee4 found no spot");
-        context.waitTicks(10);
+        if (!on) throw new AssertionError("ee4 did not start");
+        await(context, () -> {
+            RemotePlayer him = ambience().herobrine().figure();
+            return him == null ? null : him.position();
+        }, "ee4");
         Scene.screenshot(context, this, "ee4-corner");
         // Closer, 28 blocks (he goes under 24), looking at him: his eyes. Three degrees to the
         // side keep the crosshair off his face and still count as looking at him (8).
@@ -182,25 +229,32 @@ public final class EasterEggsScenario implements Scenario {
         context.runOnClient(minecraft -> minecraft.options.fov().set(70));
     }
 
-    /** 6: walking across, no forest here, and gone when the player comes near. */
+    /** 6: far off in a forest the test makes ahead, and gone behind the first thing that hides it. */
     private void bigfoot(ClientGameTestContext context, TestSingleplayerContext world) {
+        Scene.command(world, "tp @a 0 ~ -160 0 0");
+        // In strips, each under the game's limit on how many blocks one command changes.
+        for (int z = 65; z < 195; z += 15) {
+            Scene.command(world, "execute at @p run fillbiome ~-130 -64 ~" + z + " ~130 -57 ~" + (z + 14) + " minecraft:forest");
+        }
+        context.waitTicks(40);
         boolean on = context.computeOnClient(minecraft -> ambience().bigfoot().summon(minecraft.level, minecraft.player, true));
-        if (!on) throw new AssertionError("ee6 found no ground");
+        if (!on) throw new AssertionError("ee6 found no forest");
         context.waitTicks(80);
-        Vec3 at = context.computeOnClient(minecraft -> {
+        context.runOnClient(minecraft -> {
             Vec3 now = ambience().bigfoot().position();
             if (now == null) throw new AssertionError("ee6 gone too soon");
             Scene.log("eggs ee6 at " + now + ", " + (int) now.distanceTo(minecraft.player.position()) + " blocks");
             lookAt(minecraft.player, now.x, now.y + 1.4, now.z);
             minecraft.options.fov().set(30);
-            return now;
         });
         Scene.screenshot(context, this, "ee6-walk");
-        Scene.command(world, "tp @a " + (at.x + 4) + " ~ " + at.z);
-        context.waitTicks(10);
+        // A wall in front of the player, between them: it has been seen long enough, and goes.
+        Scene.command(world, "execute at @p run fill ~-8 ~ ~2 ~8 ~5 ~2 minecraft:stone");
+        context.waitTicks(15);
         if (context.computeOnClient(minecraft -> ambience().bigfoot().busy())) {
-            throw new AssertionError("ee6 still there with the player next to it");
+            throw new AssertionError("ee6 still there behind a wall");
         }
+        Scene.command(world, "execute at @p run fill ~-8 ~ ~2 ~8 ~5 ~2 minecraft:air");
         context.runOnClient(minecraft -> minecraft.options.fov().set(70));
         Scene.command(world, "tp @a 0 ~ -160 0 0");
         context.waitTicks(20);

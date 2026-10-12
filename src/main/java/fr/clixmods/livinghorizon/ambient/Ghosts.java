@@ -57,6 +57,7 @@ public final class Ghosts {
         }
     }
 
+    private final EggCalendar calendar;
     private final RandomSource random = RandomSource.create();
     private final List<Figure> walkers = new ArrayList<>();
     private final List<RemotePlayer> figures = new ArrayList<>();
@@ -73,6 +74,10 @@ public final class Ghosts {
     static void seeThrough(Entity entity, boolean on) {
         if (on) SEE_THROUGH.add(entity);
         else SEE_THROUGH.remove(entity);
+    }
+
+    Ghosts(EggCalendar calendar) {
+        this.calendar = calendar;
     }
 
     /** Under way: no other easter egg starts meanwhile. */
@@ -132,10 +137,10 @@ public final class Ghosts {
         if (!walkers.isEmpty() && (!enabled || current != level)) clear();
         if (!enabled) return;
         if (walkers.isEmpty()) {
-            // Very rare, and only at night: about once in four hours of night.
-            if (++idle > 6000 && quiet && !current.isBrightOutside() && random.nextInt(288000) == 0) {
+            // Very rare, and only at night: about once in eight hours of night.
+            if (++idle > 6000 && quiet && !current.isBrightOutside() && random.nextInt(576000) == 0) {
                 idle = 0;
-                summon(current, self, false);
+                if (summon(current, self, false)) calendar.shown(3);
             }
             return;
         }

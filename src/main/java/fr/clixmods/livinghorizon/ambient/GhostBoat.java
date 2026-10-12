@@ -45,6 +45,7 @@ public final class GhostBoat {
     /** Height of the bench above the water, where the ghost sits. */
     private static final double SEAT = 0.3;
 
+    private final EggCalendar calendar;
     private final RandomSource random = RandomSource.create();
     private final AtomicReference<Columns.Column @Nullable []> found = new AtomicReference<>();
     private @Nullable RemotePlayer rider;
@@ -53,6 +54,10 @@ public final class GhostBoat {
     private double x, y, z, xo, yo, zo, surface, dirX, dirZ;
     private float yaw, yawO, turn;
     private int age, idle;
+
+    GhostBoat(EggCalendar calendar) {
+        this.calendar = calendar;
+    }
 
     /** On its way or under way: no other easter egg starts meanwhile. */
     public boolean busy() {
@@ -107,8 +112,8 @@ public final class GhostBoat {
         if (busy() && (!enabled || current != level)) clear();
         if (!enabled) return;
         if (!busy()) {
-            // Rare, and only at night: about once in forty minutes of it, where there is water.
-            if (++idle > 6000 && quiet && !current.isBrightOutside() && random.nextInt(48000) == 0) {
+            // Rare, and only at night: about once in an hour and twenty minutes of it, where there is water.
+            if (++idle > 6000 && quiet && !current.isBrightOutside() && random.nextInt(96000) == 0) {
                 idle = 0;
                 summon(current, self, false);
             }
@@ -161,6 +166,7 @@ public final class GhostBoat {
     }
 
     private void begin(ClientLevel current, Columns.Column spot) {
+        if (!called) calendar.shown(7);
         x = xo = spot.x();
         z = zo = spot.z();
         // The top of the water block, a little under the column's top.

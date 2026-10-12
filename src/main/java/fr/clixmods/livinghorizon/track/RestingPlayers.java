@@ -335,7 +335,7 @@ public final class RestingPlayers {
     }
 
     /** A server address as a file name. */
-    static String safe(String server) {
+    public static String safe(String server) {
         String cleaned = server.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9._-]", "_");
         return cleaned.isEmpty() ? "unknown" : cleaned;
     }

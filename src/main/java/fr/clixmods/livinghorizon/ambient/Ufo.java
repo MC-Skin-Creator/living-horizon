@@ -80,10 +80,11 @@ public final class Ufo {
         NOTHING
     }
 
+    private final EggCalendar calendar;
     private final RandomSource random = RandomSource.create();
     private final AtomicReference<double @Nullable []> foundGround = new AtomicReference<>();
     private int tries;
-    private boolean active, searching;
+    private boolean active, searching, called;
     private int age;
     /** Where the remembered cow stood when the show was called: the twin goes beside it. */
     private double anchorX, anchorY, anchorZ;
@@ -95,6 +96,10 @@ public final class Ufo {
     private @Nullable LivingEntity cow;
     private boolean cowShown;
     private int idle;
+
+    Ufo(EggCalendar calendar) {
+        this.calendar = calendar;
+    }
 
     /** On its way or under way: no other easter egg starts meanwhile. */
     public boolean busy() {
@@ -135,6 +140,7 @@ public final class Ufo {
         LivingEntity made = memory.twin(chosen, level);
         if (remembered == null || made == null) return Call.NOTHING;
         twin = made;
+        this.called = called;
         anchorX = remembered.getX();
         anchorY = remembered.getY();
         anchorZ = remembered.getZ();
@@ -154,8 +160,8 @@ public final class Ufo {
             return;
         }
         if (!active && !searching) {
-            // Rare: about once in a quarter of an hour of night, three quarters of day.
-            int chance = level.isBrightOutside() ? 54000 : 18000;
+            // Rare: about once in half an hour of night, an hour and a half of day.
+            int chance = level.isBrightOutside() ? 108000 : 36000;
             if (++idle > 1200 && quiet && random.nextInt(chance) == 0) {
                 idle = 0;
                 summon(level, self, false);
@@ -199,6 +205,7 @@ public final class Ufo {
         twin = null;
         searching = false;
         if (taken == null) return;
+        if (!called) calendar.shown(1);
         cow = taken;
         groundX = gx;
         groundY = gy;

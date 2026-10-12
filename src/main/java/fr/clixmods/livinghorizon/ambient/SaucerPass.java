@@ -29,6 +29,7 @@ public final class SaucerPass {
 
     private enum Phase { CRUISE, HOVER, DASH }
 
+    private final EggCalendar calendar;
     private final RandomSource random = RandomSource.create();
     private boolean active;
     private Phase phase = Phase.CRUISE;
@@ -38,6 +39,10 @@ public final class SaucerPass {
     private double dirX, dirZ, dashX, dashY, dashZ;
     private double stopAt, travelled, speed;
     private float heading, tilt, tiltO, spin, spinO;
+
+    SaucerPass(EggCalendar calendar) {
+        this.calendar = calendar;
+    }
 
     /** Under way: no other easter egg starts meanwhile. */
     public boolean busy() {
@@ -78,11 +83,11 @@ public final class SaucerPass {
             return;
         }
         if (!active) {
-            // Rarer than the first: about once in an hour of night, three of day.
-            int chance = level.isBrightOutside() ? 216000 : 72000;
+            // Rarer than the first: about once in two hours of night, six of day.
+            int chance = level.isBrightOutside() ? 432000 : 144000;
             if (++idle > 2400 && quiet && random.nextInt(chance) == 0) {
                 idle = 0;
-                summon(level, self, false);
+                if (summon(level, self, false)) calendar.shown(2);
             }
             return;
         }
