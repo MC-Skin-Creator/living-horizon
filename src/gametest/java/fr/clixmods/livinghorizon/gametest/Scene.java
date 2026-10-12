@@ -110,8 +110,14 @@ public final class Scene {
         TestSingleplayerContext world = context.worldBuilder().setUseConsistentSettings(true).create();
         // The chunks round the player draw slowly without a graphics card.
         context.waitTicks(100);
-        command(world, "gamerule doDaylightCycle false");
+        // The game rules took ids of their own in 1.21.11; the old names are refused there.
+        //? if >=1.21.11 {
+        command(world, "gamerule advance_time false");
+        command(world, "gamerule spawn_mobs false");
+        //?} else {
+        /*command(world, "gamerule doDaylightCycle false");
         command(world, "gamerule doMobSpawning false");
+        *///?}
         command(world, "weather clear");
         command(world, "time set noon");
         command(world, "tp @a 0 ~ 0 0 0");
