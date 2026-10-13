@@ -17,6 +17,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EntityType;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -94,7 +95,8 @@ public final class ImpostorScreen extends Screen {
         graphics.drawCenteredString(font, title, width / 2, 8, NAME_COLOR);
         graphics.drawCenteredString(font, status(), width / 2, 22, DIM);
 
-        rows = ImpostorAtlas.baked();
+        // A copy to sort: before 1.21.9 the atlas hands out List.of(), which refuses sort.
+        rows = new ArrayList<>(ImpostorAtlas.baked());
         rows.sort(Comparator.comparing(row -> name(row).getString().toLowerCase(Locale.ROOT)));
         scroll = Mth.clamp(scroll, 0, maxScroll());
 
