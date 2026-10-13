@@ -7,8 +7,9 @@
   "authors": ["clixmods"],
   "license": "LicenseRef-LivingHorizon",
   "icon": "assets/livinghorizon/icon.png",
-  "environment": "client",
+  "environment": "*",
   "entrypoints": {
+    "main": ["fr.clixmods.livinghorizon.LivingHorizon"],
     "client": ["fr.clixmods.livinghorizon.LivingHorizonClient"],
     "modmenu": ["fr.clixmods.livinghorizon.ui.ModMenuEntry"]
   },

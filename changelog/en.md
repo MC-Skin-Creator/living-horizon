@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### New
+- **On the server too** — the same jar in a server's mods folder shows the players running the mod every player, and the animals, villagers and golems of the whole world, where they really are and as they really look; players without the mod join as before.
+
 ## 0.5.0 — 2026-10-13
 
 ### New

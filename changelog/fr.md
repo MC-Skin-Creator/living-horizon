@@ -2,6 +2,9 @@
 
 ## Prochaine version
 
+### Nouveautés
+- **Aussi sur le serveur** — le même jar dans le dossier mods d'un serveur montre aux joueurs qui ont le mod tous les joueurs, et les animaux, villageois et golems de toute la carte, là où ils sont vraiment et tels qu'ils sont ; les joueurs sans le mod se connectent comme avant.
+
 ## 0.5.0 — 2026-10-13
 
 ### Nouveautés
