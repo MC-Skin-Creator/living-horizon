@@ -111,7 +111,8 @@ The game itself lacks what these need, so they are left out rather than imitated
 - **Watch the distance live.** Animals, villagers and golems graze and wander around the
   far-off villages, and are hidden by the terrain pixel by pixel, shaders included.
 - **Look up.** Flocks, geese in a V, gulls on the coast, bats at night - and, now and
-  then, a flying saucer taking a cow (`/livinghorizon ufo`).
+  then, a flying saucer taking a cow (`/livinghorizon ufo`). `/livinghorizon bird <kind>`
+  calls any kind of bird at once.
 - **Find players where they left.** Someone who logged off lives their life where they
   were - a stroll, a seat, a bed at night, a shield against monsters - until they come back.
 - **Tune it.** Everything is in the settings (see *Settings* below): which mobs, which
@@ -346,8 +347,16 @@ tall buildings, robins hopping in fields, tits in the trees, ducks on lakes and 
 bats at night (some hanging under leaves and roofs), now and then parrots. Perched birds
 fly off when you come close and land again a little farther; ducks never let you near, and
 take off together for farther along the water, or for another water known around. Birds that
-leave never vanish at once: they scatter and shrink away. An easter egg: now and then a flying saucer takes a cow
-(`/livinghorizon ufo`).
+leave never vanish at once: they scatter and shrink away. An easter egg: now and then a flying
+saucer takes a cow (`/livinghorizon ufo`).
+
+`/livinghorizon bird <kind>` (`flocks`, `geese`, `raptors`, `gulls`, `pigeons`, `robins`,
+`tits`, `ducks`, `bats`, `parrots`) calls a group of that kind at once, whatever the pace, the
+hour or the weather (`Ambience.summon`). Those that fly come within 100 blocks. Those that
+perch go to the place the player looks at, up to 128 blocks away, when it suits them (a tree
+for tits, water for ducks, a field for robins, a tall building for pigeons, the coast for
+gulls), else to the nearest one around, never close enough to take fright at once; the chat
+says when there is none, or when that kind is switched off.
 
 Where each kind goes is read off the terrain a few columns at a time - from the chunks
 loaded here, or farther from the far world (`compat/LodWorld`, which reads Voxy through `VoxySource` or

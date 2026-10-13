@@ -155,6 +155,8 @@ public final class Ambience {
         final Type type;
         final List<Flyer> flyers = new ArrayList<>();
         int age;
+        /** Called by {@code /livinghorizon bird}: stays its time whatever the hour or the weather. */
+        boolean summoned;
 
         Group(Type type) {
             this.type = type;
@@ -309,8 +311,8 @@ public final class Ambience {
             if (group.departing >= 0) return !group.depart();
             boolean keep = group.tick(this, self, reach) && !config.hiddenBirds.contains(group.type.id);
             // Bats go home at dawn; birds take shelter when it rains.
-            if (group.type == Type.BATS && day) keep = false;
-            if (group.type != Type.BATS && rain && group.age > 200) keep = false;
+            if (!group.summoned && group.type == Type.BATS && day) keep = false;
+            if (!group.summoned && group.type != Type.BATS && rain && group.age > 200) keep = false;
             // Never gone at once: they scatter first, and fade as they go.
             if (!keep) group.leave(random);
             return false;
@@ -335,6 +337,92 @@ public final class Ambience {
             case DUCKS -> found(spot(Place.WATER, self, Perchers.WARY + 10, 200),
                     s -> new Perchers(this, level, s, config, Type.DUCKS, Species.DUCK, 2, 6, 0.9f));
         };
+    }
+
+    // --- Called for -----------------------------------------------------------------------
+
+    /** What {@link #summon} did. */
+    public enum Summon {
+        /** The birds are on their way. */
+        DONE,
+        /** Birds are switched off, or this is not the Overworld. */
+        OFF,
+        /** That kind is switched off in "Choose birds...". */
+        HIDDEN,
+        /** No place around for that kind: no tree, water, field, building or coast. */
+        NO_PLACE
+    }
+
+    /** Blocks from the player within which summoned birds are placed and fly: well in sight. */
+    private static final double SUMMON_REACH = 100;
+
+    /**
+     * {@code /livinghorizon bird <kind>}: a group of that kind now, whatever the pace, the
+     * hour or the weather. Birds that perch go to the place {@code looked} at when it suits
+     * them, else to the nearest that does around, past where they would take fright; the
+     * others fly in sight.
+     */
+    public Summon summon(Type type, ClientLevel level, LocalPlayer self, FarConfig config, @Nullable BlockPos looked) {
+        if (!config.skyBirds || level.dimension() != Level.OVERWORLD) return Summon.OFF;
+        if (config.hiddenBirds.contains(type.id)) return Summon.HIDDEN;
+        Group group = switch (type) {
+            case FLOCKS, GEESE, PARROTS, RAPTORS, BATS -> create(type, level, self, SUMMON_REACH, config);
+            case GULLS -> found(summonSpot(level, self, Place.COAST, looked, 12),
+                    s -> new Gulls(this, level, s, config));
+            case PIGEONS -> found(summonSpot(level, self, Place.PERCH, looked, 14),
+                    s -> new Pigeons(this, level, s, config));
+            case ROBINS -> found(summonSpot(level, self, Place.FIELD, looked, Perchers.SCARED + 3),
+                    s -> new Perchers(this, level, s, config, Type.ROBINS, Species.ROBIN, 1, 3, 0.8f));
+            case TITS -> found(summonSpot(level, self, Place.TREE, looked, Perchers.SCARED + 3),
+                    s -> new Perchers(this, level, s, config, Type.TITS, Species.TIT, 2, 4, 0.6f));
+            case DUCKS -> found(summonSpot(level, self, Place.WATER, looked, Perchers.WARY + 4),
+                    s -> new Perchers(this, level, s, config, Type.DUCKS, Species.DUCK, 2, 6, 0.9f));
+        };
+        if (group == null || group.flyers.isEmpty()) return Summon.NO_PLACE;
+        group.summoned = true;
+        groups.add(group);
+        return Summon.DONE;
+    }
+
+    /**
+     * Where summoned birds of a place go: the column looked at when it is one, else the
+     * nearest spot known, else the nearest loaded column around that is one; never within
+     * {@code beyond} blocks, where they would take fright at once.
+     */
+    private @Nullable Spot summonSpot(ClientLevel level, LocalPlayer self, Place place, @Nullable BlockPos looked,
+                                      double beyond) {
+        if (looked != null && level.hasChunk(looked.getX() >> 4, looked.getZ() >> 4)) {
+            Spot spot = read(level, looked.getX(), looked.getZ());
+            if (spot != null && spot.place == place && Math.hypot(spot.x - self.getX(), spot.z - self.getZ()) >= beyond) {
+                return spot;
+            }
+        }
+        Spot nearest = null;
+        double best = SUMMON_REACH;
+        for (Spot spot : spots) {
+            double distance = Math.hypot(spot.x - self.getX(), spot.z - self.getZ());
+            if (spot.place == place && distance >= beyond && distance < best) {
+                nearest = spot;
+                best = distance;
+            }
+        }
+        if (nearest != null) return nearest;
+        // Ring after ring around the player, a column every block or so.
+        for (int radius = (int) Math.ceil(beyond); radius <= 64; radius++) {
+            int steps = (int) Math.ceil(radius * Math.PI * 2);
+            for (int step = 0; step < steps; step++) {
+                double angle = step * Math.PI * 2 / steps;
+                int x = Mth.floor(self.getX() + Math.sin(angle) * radius);
+                int z = Mth.floor(self.getZ() + Math.cos(angle) * radius);
+                if (!level.hasChunk(x >> 4, z >> 4)) continue;
+                Spot spot = read(level, x, z);
+                if (spot != null && spot.place == place) {
+                    keep(spot);
+                    return spot;
+                }
+            }
+        }
+        return null;
     }
 
     // --- Where birds go -------------------------------------------------------------------
