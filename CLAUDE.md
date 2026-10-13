@@ -126,7 +126,7 @@ what checks a change; a pull request is not done until it is green.
 
 `.github/workflows/release.yml` runs on every push to `main` and `develop` (except doc-only
 ones). A push to `develop` publishes a GitHub pre-release `vX.Y.Z-dev.N` only: no tag
-baseline, no commit back, no Modrinth, CurseForge or Discord. A push to `main` does this:
+baseline, no commit back, no Modrinth, CurseForge, Nexus Mods or Discord. A push to `main` does this:
 
 - `.github/scripts/next-version.sh` derives the version from the conventional-commit
   subjects since the last tag: `feat` is a minor, `fix`/`perf` a patch, a breaking change
@@ -139,7 +139,11 @@ baseline, no commit back, no Modrinth, CurseForge or Discord. A push to `main` d
   data pack zip. Below 1.0.0 it is a pre-release titled `vX.Y.Z (beta)`.
 - Modrinth and CurseForge are published by `mc-publish` when `MODRINTH_TOKEN` /
   `CURSEFORGE_TOKEN` (secrets) and `MODRINTH_ID` / `CURSEFORGE_ID` (repository variables)
-  exist, and skipped otherwise. The Discord announcement uses `DISCORD_WEBHOOK_EN` / `_FR`.
+  exist, and skipped otherwise. Nexus Mods is published by `.github/scripts/nexus-publish.js`
+  (its v3 API) when `NEXUSMODS_TOKEN` (secret) and `NEXUSMODS_ID` (variable, the number in
+  the page's URL) exist: one file per target, found by its name ("Living Horizon (Fabric
+  26.1.x)"), created on the first release and given a new version on the next ones. The API
+  cannot create the page itself. The Discord announcement uses `DISCORD_WEBHOOK_EN` / `_FR`.
 
 The mod version is `mod.version` in `stonecutter.properties.toml`; the Minecraft version
 never touches it.
