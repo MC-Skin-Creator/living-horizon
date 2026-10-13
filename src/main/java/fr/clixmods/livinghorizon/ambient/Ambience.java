@@ -780,13 +780,14 @@ public final class Ambience {
     private static final class Perchers extends Group {
         /** Blocks within which robins and tits take off from the player. */
         static final double SCARED = 7;
-        /** Blocks within which ducks take off and leave. */
+        /** Blocks within which ducks take off, all together, for farther along the water. */
         static final double WARY = 14;
         /** Blocks from the spot past which a bird flies back to it, once nobody is near it. */
         static final double HOME = 10;
 
         final ClientLevel level;
-        final double sx, sy, sz;
+        /** Where the group lives: ducks someone came near move it farther along the water. */
+        double sx, sy, sz;
         final boolean onTrees, onWater;
         final int stay;
         /**
@@ -837,8 +838,14 @@ public final class Ambience {
             }
         }
 
+        /**
+         * Whether the column is known here: loaded, and not empty to the bottom of the world,
+         * as a chunk at the edge of the view can be while it comes or goes.
+         */
         boolean loaded(double x, double z) {
-            return level.hasChunk(Mth.floor(x) >> 4, Mth.floor(z) >> 4);
+            int bx = Mth.floor(x), bz = Mth.floor(z);
+            return level.hasChunk(bx >> 4, bz >> 4)
+                    && level.getHeight(Heightmap.Types.WORLD_SURFACE, bx, bz) > level.getMinY();
         }
 
         /**
@@ -878,6 +885,60 @@ public final class Ambience {
             return null;
         }
 
+        private boolean airborne() {
+            for (boolean flies : flying) if (flies) return true;
+            return false;
+        }
+
+        /**
+         * Someone came near the ducks: a stretch of water away from them, out of their
+         * reach, becomes the group's spot, and every duck flies there. Farther along the same
+         * water first, else another water known around. False when there is none.
+         */
+        private boolean startle(Ambience a, LocalPlayer self, RandomSource r) {
+            double cx = 0, cz = 0;
+            for (Flyer flyer : flyers) {
+                cx += flyer.x / flyers.size();
+                cz += flyer.z / flyers.size();
+            }
+            double away = Math.atan2(cx - self.getX(), cz - self.getZ());
+            double[] found = null;
+            for (int tries = 0; tries < 16 && found == null; tries++) {
+                double angle = away + r.nextGaussian() * 0.6, distance = 12 + r.nextDouble() * 24;
+                double x = cx + Math.sin(angle) * distance, z = cz + Math.cos(angle) * distance;
+                if (!loaded(x, z) || Math.hypot(x - self.getX(), z - self.getZ()) < WARY + 6) continue;
+                double y = perchAt(x, z);
+                if (!Double.isNaN(y)) found = new double[]{x, y, z};
+            }
+            if (found == null) {
+                Spot other = a.spot(Place.WATER, self, WARY + 10, 120);
+                if (other == null) return false;
+                found = new double[]{other.x, other.y, other.z};
+            }
+            sx = found[0];
+            sy = found[1];
+            sz = found[2];
+            for (int i = 0; i < flyers.size(); i++) {
+                Flyer flyer = flyers.get(i);
+                double now = Math.min(1.0, timer[i] / (double) Math.max(1, length[i]));
+                fromX[i] = flyer.x;
+                fromY[i] = Mth.lerp(now, fromY[i], toY[i]);
+                fromZ[i] = flyer.z;
+                double[] land = landing(sx + r.nextGaussian() * 2, sz + r.nextGaussian() * 2, sx, sz, i, r);
+                toX[i] = land == null ? sx : land[0];
+                toY[i] = land == null ? sy : land[1];
+                toZ[i] = land == null ? sz : land[2];
+                double distance = Math.hypot(toX[i] - flyer.x, toZ[i] - flyer.z);
+                flying[i] = true;
+                timer[i] = 0;
+                rest[i] = 0;
+                // A beat or two apart, as real ducks do not take off as one.
+                length[i] = (int) (20 + distance * 5) + r.nextInt(10);
+                flyer.yaw = (float) Math.toDegrees(Math.atan2(-(toX[i] - flyer.x), toZ[i] - flyer.z));
+            }
+            return true;
+        }
+
         /** Whether another bird of the group stands, or is about to, right there. */
         private boolean crowded(double x, double z, int skip) {
             for (int j = 0; j < flyers.size(); j++) {
@@ -892,12 +953,16 @@ public final class Ambience {
             RandomSource r = a.random;
             boolean leaving = age > stay;
             boolean anyNear = false;
-            if (onWater) {
-                // Ducks never let anyone near: the whole lot takes off, away, and is gone.
+            if (onWater && !airborne()) {
+                // Ducks never let anyone near: the whole lot takes off and lands farther along
+                // the water, away from them; and leaves only when there is no water to go to.
                 for (Flyer flyer : flyers) {
                     if (Math.hypot(flyer.x - self.getX(), flyer.z - self.getZ()) < WARY) {
-                        fleeFrom(self.getX(), self.getZ());
-                        return false;
+                        if (!startle(a, self, r)) {
+                            fleeFrom(self.getX(), self.getZ());
+                            return false;
+                        }
+                        break;
                     }
                 }
             }

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Improved
+- **Ducks** — when you come near, they take off together and land farther along the water instead of flying away for good.
+
 ### Fixed
 - **Perched birds** — tits, robins and ducks no longer dart back and forth, stand in the air or inside the leaves, or swim onto dry land, and ducks no longer appear right next to you only to fly off at once.
 

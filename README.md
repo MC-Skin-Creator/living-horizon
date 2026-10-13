@@ -292,8 +292,9 @@ Purely a picture, on this client: flocks crossing the sky, geese in a V, birds o
 circling, gulls over the coast (landing on the beach now and then), pigeons sitting on
 tall buildings, robins hopping in fields, tits in the trees, ducks on lakes and rivers,
 bats at night (some hanging under leaves and roofs), now and then parrots. Perched birds
-fly off when you come close; ducks never let you near. Birds never vanish at once: they
-scatter and shrink away. An easter egg: now and then a flying saucer takes a cow
+fly off when you come close and land again a little farther; ducks never let you near, and
+take off together for farther along the water, or for another water known around. Birds that
+leave never vanish at once: they scatter and shrink away. An easter egg: now and then a flying saucer takes a cow
 (`/livinghorizon ufo`).
 
 Where each kind goes is read off the terrain a few columns at a time - from the chunks
