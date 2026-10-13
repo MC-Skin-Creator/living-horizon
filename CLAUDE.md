@@ -254,6 +254,11 @@ come back, add it here in the same pull request: this file is what the next sess
   item target while `ImpostorAtlas.drawing()` is set. A render type that binds yet another
   target of the game's escapes it; before 1.21.5 the eight views share one target, each in its
   own viewport.
+- **Perched birds darting to and fro, standing in the air or inside a block** (tits, robins,
+  ducks): a move's progress is `timer / length`, so the rest after landing is `rest`, never
+  added to `length` (which put an arrived bird back part of the way). Where a bird lands comes
+  from `Perchers.perchAt` (leaves, water, dry ground), away from column edges, and a resting
+  bird is stood again on what is under it. The `perchers` scenario counts both.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

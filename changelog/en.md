@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- **Perched birds** — tits, robins and ducks no longer dart back and forth, stand in the air or inside the leaves, or swim onto dry land, and ducks no longer appear right next to you only to fly off at once.
+
 ## 0.5.0 — 2026-10-13
 
 ### New

@@ -2,6 +2,9 @@
 
 ## Prochaine version
 
+### Corrections
+- **Oiseaux posés** — les mésanges, rouges-gorges et canards ne font plus de va-et-vient, ne se posent plus dans le vide ou dans les feuilles, ne nagent plus sur la terre ferme, et les canards n'apparaissent plus juste à côté de vous pour s'envoler aussitôt.
+
 ## 0.5.0 — 2026-10-13
 
 ### Nouveautés
