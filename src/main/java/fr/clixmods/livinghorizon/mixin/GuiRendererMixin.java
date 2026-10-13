@@ -1,9 +1,11 @@
 package fr.clixmods.livinghorizon.mixin;
 
-// Impostors are baked from 1.21.9 only.
+// The GUI renders pictures-in-pictures from 1.21.6; before, GameRendererMixin bakes the impostors.
+//? if >=1.21.6 {
 //? if >=1.21.9 {
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.compat.FarDepth;
+//?}
 import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
 import net.minecraft.client.gui.render.GuiRenderer;
 import org.spongepowered.asm.mixin.Mixin;
@@ -23,6 +25,8 @@ abstract class GuiRendererMixin {
         ImpostorAtlas.bakePending();
     }
 
+    // Before 1.21.9 the debug panel draws the depth view itself (DebugHud).
+    //? if >=1.21.9 {
     /** The depth view, over the world once it is drawn and under the GUI. */
     @Inject(method = "render", at = @At("HEAD"))
     private void livinghorizon$depthView(CallbackInfo ci) {
@@ -32,5 +36,6 @@ abstract class GuiRendererMixin {
         //? if >=26.3
         /*if (mode != 0) fr.clixmods.livinghorizon.compat.FarDepthGpu.drawView(mode);*/
     }
+    //?}
 }
 //?}

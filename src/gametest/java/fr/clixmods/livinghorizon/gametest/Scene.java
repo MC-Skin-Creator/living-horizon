@@ -193,13 +193,15 @@ public final class Scene {
         @Override
         public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
             graphics.fill(0, 0, width, height, 0xFF7090B0);
-            // Impostors, and so a page to show, exist from 1.21.9.
-            //? if >=1.21.9 {
             var page = ImpostorAtlas.id(0);
             // 1:1 the first 854 pixels of the first four rows, then two sheets per row at a quarter.
+            //? if >=1.21.6 {
             graphics.blit(page, 0, 0, 854, 256, 0f, 854f / 2048f, 0f, 256f / 2048f);
             graphics.blit(page, 0, 270, 512, 334, 0f, 1f, 0f, 256f / 2048f);
-            //?}
+            //?} else {
+            /*graphics.blit(net.minecraft.client.renderer.rendertype.RenderTypes::guiTextured, page, 0, 0, 0f, 0f, 854, 256, 854, 256, 2048, 2048);
+            graphics.blit(net.minecraft.client.renderer.rendertype.RenderTypes::guiTextured, page, 0, 270, 0f, 0f, 512, 64, 2048, 256, 2048, 2048);
+            *///?}
         }
 
         @Override

@@ -211,8 +211,8 @@ public final class GhostRenderer {
         return glowing;
     }
 
-    /** The state of an entity as its renderer sees it this frame. */
-    private static EntityRenderState extract(EntityRenderDispatcher dispatcher, Entity entity, float partialTick) {
+    /** The state of an entity as its renderer sees it this frame; the impostors are baked from it too. */
+    public static EntityRenderState extract(EntityRenderDispatcher dispatcher, Entity entity, float partialTick) {
         //? if >=1.21.9 {
         return dispatcher.extractEntity(entity, partialTick);
         //?} elif >=1.21.2 {
@@ -246,8 +246,8 @@ public final class GhostRenderer {
             new IdentityHashMap<>();
 
     @SuppressWarnings("unchecked")
-    private static <S extends EntityRenderState> void drawState(S state, double x, double y, double z, PoseStack pose,
-                                                               MultiBufferSource buffers, int light) {
+    public static <S extends EntityRenderState> void drawState(S state, double x, double y, double z, PoseStack pose,
+                                                              MultiBufferSource buffers, int light) {
         var renderer = (net.minecraft.client.renderer.entity.EntityRenderer<?, S>) RENDERERS.get(state);
         if (renderer == null) return;
         Vec3 offset = renderer.getRenderOffset(state);
@@ -262,8 +262,8 @@ public final class GhostRenderer {
      * the mod changed in its state given to the entity for that time.
      ^/
     @SuppressWarnings("unchecked")
-    private static void drawState(EntityRenderState state, double x, double y, double z, PoseStack pose,
-                                  MultiBufferSource buffers, int light) {
+    public static void drawState(EntityRenderState state, double x, double y, double z, PoseStack pose,
+                                 MultiBufferSource buffers, int light) {
         Entity entity = state.entity;
         var renderer = (net.minecraft.client.renderer.entity.EntityRenderer<Entity>)
                 Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(entity);

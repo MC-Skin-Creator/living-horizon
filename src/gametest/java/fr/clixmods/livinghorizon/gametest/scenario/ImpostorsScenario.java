@@ -36,18 +36,6 @@ public final class ImpostorsScenario implements Scenario {
             Scene.row(world, MOBS, 3, 50, 2.6);
             Scene.row(world, MOBS, 3, 95, 4.5);
             context.waitTicks(60);
-            //? if <1.21.9 {
-            /*// No impostors before 1.21.9: the models alone, which must be drawn.
-            Scene.screenshot(context, this, "models");
-            context.runOnClient(minecraft -> minecraft.options.fov().set(30));
-            Scene.screenshot(context, this, "models-zoom");
-            int models = context.computeOnClient(minecraft -> {
-                Scene.log("impostors off before 1.21.9, models=" + PolygonStats.models());
-                return PolygonStats.models();
-            });
-            context.runOnClient(minecraft -> minecraft.options.fov().set(70));
-            if (true) return;
-            *///?}
 
             // Asked for at once rather than waiting for them to be needed.
             Scene.configure(context, config -> config.impostors = true);

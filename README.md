@@ -94,8 +94,7 @@ number of mobs, the bird amount a percentage.
 
 The game itself lacks what these need, so they are left out rather than imitated:
 
-- **Impostors** (and their preview screen) and the **outlines** need the feature
-  renderers of 1.21.9: before, distant figures are always drawn as full models.
+- The **outlines** need the feature renderers of 1.21.9.
 - The lines of the **F3 screen** need its entry list of 1.21.9; the mod's own debug panel
   works on every version.
 - Players past the server's range are placed by the **locator bar**, which came in 1.21.6:
@@ -337,6 +336,15 @@ nothing, and the game no longer builds a render state and a model for it every f
   sheet at least), so they are ready when a figure crosses the distance. A figure whose
   sheet is missing is drawn as a model meanwhile. A resource reload throws every sheet
   away and they are baked again.
+- **Older versions.** From 1.21.6 the views are drawn the way the GUI draws its pictures,
+  through the game's output overrides. Before, they are drawn at the start of the frame
+  into a target of the mod's own, which `MinecraftMixin` and `LevelRendererTargetMixin`
+  hand the game as its main target and its Fabulous item target while a figure is drawn:
+  on 1.21.5 one view at a time through the GPU device, before 1.21.5 the eight views side
+  by side in plain OpenGL, read back at once and written into a page with its mip levels.
+  Before 1.21.2, with no render states, the figure is posed through the mod's stand-ins
+  (`render/state/`), which set the entity's body, head, stride and age for the time it is
+  drawn.
 - **What counts as the same figure.** `ImpostorKey`: the type, the player's skin, the
   synched data that changes the look (variant, colour, profession, baby, pose; not health,
   air, score or being on fire) and what it wears.

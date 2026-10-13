@@ -20,6 +20,12 @@ public class EntityRenderState {
     public double x, y, z;
     public float boundingBoxWidth, boundingBoxHeight;
     public @Nullable Component nameTag;
+    /^* Ticks the figure has lived, which some models move with; NaN keeps the entity's. ^/
+    public float ageInTicks = Float.NaN;
+    /^* Read by nothing: the renderer the figures are drawn through draws no fire. ^/
+    public boolean displayFireAnimation;
+
+    private int tickCount;
 
     protected EntityRenderState(Entity entity, float partialTick) {
         this.entity = entity;
@@ -40,9 +46,12 @@ public class EntityRenderState {
 
     /^* Gives the entity what was changed here, until {@link #restore}. ^/
     public void apply() {
+        tickCount = entity.tickCount;
+        if (!Float.isNaN(ageInTicks)) entity.tickCount = (int) ageInTicks;
     }
 
     public void restore() {
+        entity.tickCount = tickCount;
     }
 }
 *///?}
