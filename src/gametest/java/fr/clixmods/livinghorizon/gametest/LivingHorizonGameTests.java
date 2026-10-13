@@ -14,6 +14,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.PerchersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RememberedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.UnloadScenario;
@@ -52,7 +53,8 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new UnloadScenario(),
             new FollowedMobsScenario(),
             new GaitsScenario(),
-            new BirdsScenario());
+            new BirdsScenario(),
+            new PerchersScenario());
 
     @Override
     public void runTest(ClientGameTestContext context) {

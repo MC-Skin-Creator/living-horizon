@@ -13,6 +13,7 @@
 ### Corrections
 - **Longue-vue** — les créatures lointaines vues à la longue-vue sont mesurées à leur taille zoomée : *Taille animation* correspond maintenant à ce qu'on voit, et elles continuent de marcher quand elles paraissent grosses.
 - **Ouverture d'un monde** — les créatures lointaines marchent et broutent dès le début, au lieu de seulement tourner sur elles-mêmes.
+- **Oiseaux posés** — les mésanges, rouges-gorges et canards ne font plus de va-et-vient, ne se posent plus dans le vide ou dans les feuilles, ne nagent plus sur la terre ferme, et les canards n'apparaissent plus juste à côté de vous pour s'envoler aussitôt.
 
 ## 0.6.0 — 2026-10-15
 
