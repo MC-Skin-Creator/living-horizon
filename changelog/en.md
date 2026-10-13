@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Fixed
+- **Forge 1.20.1 to 1.20.4** — the game no longer crashes on startup with the mod installed.
 - **Mobs leaving your range** — a mob no longer vanishes for a few frames before its distant copy appears.
 - **Mobs leaving your range** — the distant copy now faces the way the mob did, instead of sometimes turning to another direction.
 - **Minecraft 1.21.9 to 26.1** — parts of distant mobs, such as a villager's clothes or a held item, no longer show through Voxy's terrain under shaders, nor through Distant Horizons' terrain.
