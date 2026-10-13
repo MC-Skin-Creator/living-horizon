@@ -9,6 +9,11 @@ drawn in an optimized way, so the horizon stays alive without costing frames.
 It also works on the vanilla game, which lets you play with the render distance and the
 simulation distance at their minimum and still see a living world.
 
+> ⚠️ **This is a beta, so expect bugs.** I mainly play on 1.21.11 with Voxy, and it works there;
+> I have not tested every combination of loader and game version. Found a bug? Tell me how it
+> runs on your setup, on the [issues](https://github.com/MC-Skin-Creator/living-horizon/issues)
+> page or on the [Discord](https://discord.gg/THSV9dexNj). Thanks to anyone who helps! 🙏
+
 A client-side mod for Fabric, Quilt, NeoForge and Forge, on Minecraft **1.20 to 1.21.11**
 and **26.1 to 26.3**. Nothing is sent to the server: on its own, the mod uses only what a
 vanilla client already receives. With the companion **data pack** on the server (not a

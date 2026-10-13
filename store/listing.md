@@ -158,6 +158,16 @@ life too. Client-side, on any server.
 their minimum and still see a living world: animals, villagers and other players keep
 living on the horizon.
 
+⚠️ **This is a beta, so expect bugs.**
+
+It runs on Fabric, Quilt, NeoForge and Forge, on Minecraft 1.20 to 1.21.11 and 26.1 to 26.3. I mainly play on 1.21.11 with Voxy, and it works there. I haven't tested every combination, so some may break.
+
+**Found a bug?** Tell me how it runs on your setup!
+
+Thanks to anyone who helps! 🙏
+
+Join the Discord: [https://discord.gg/THSV9dexNj](https://discord.gg/THSV9dexNj) or use the comment section!
+
 ## Getting started
 
 1. Install the file of your game version and loader (see *Requirements*). Voxy and
@@ -196,7 +206,7 @@ The scan radius is in **chunks** (32 = 512 blocks); every other distance is in *
 
 ## Links
 
-[Source and issues](https://github.com/MC-Skin-Creator/living-horizon)
+[Source and issues](https://github.com/MC-Skin-Creator/living-horizon) · [Discord](https://discord.gg/THSV9dexNj)
 ```
 
 ## Gallery, in this order
