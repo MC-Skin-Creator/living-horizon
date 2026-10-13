@@ -28,8 +28,6 @@ loomx.loom_version = "1.17-SNAPSHOT"
 ["1.20.1"]
 mod.mc_compat = ">=1.20 <=1.20.1"
 mod.mc_releases = ["1.20", "1.20.1"]
-# Starts in the game, but not yet seen drawing in a world.
-mod.release_type = "alpha"
 mod.datapack_format = "15"
 
 deps.fabric_api = "0.92.12+1.20.1"
@@ -485,8 +483,6 @@ loomx.loom_unobf_plugin = "org.quiltmc.loom"
 ["1.20.1-forge"]
 mod.mc_compat = "[1.20.1]"
 mod.mc_releases = ["1.20.1"]
-# Starts in the game, but not yet seen drawing in a world.
-mod.release_type = "alpha"
 mod.datapack_format = "15"
 
 deps.forge = "47.4.10"

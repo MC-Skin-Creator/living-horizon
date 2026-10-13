@@ -155,11 +155,18 @@ extra["lhMixins"] = buildList {
     // The far plane: the game renderer's before 26.1, the camera's from there.
     add(if (atLeast("26.1")) "CameraMixin" else "GameRendererMixin")
     add("GuiMixin")
-    // The feature renderers, and the GUI pass the impostors are baked in, came in 1.21.9.
+    // The feature renderers came in 1.21.9.
     if (atLeast("1.21.9")) {
         add("FeatureRenderDispatcherMixin")
-        add("GuiRendererMixin")
         add("ModelFeatureRendererMixin")
+    }
+    // The GUI pass the impostors are baked in came in 1.21.6. Before, they are baked into a
+    // target of our own that stands in for the game's main one and its item target.
+    if (atLeast("1.21.6")) {
+        add("GuiRendererMixin")
+    } else {
+        add("LevelRendererTargetMixin")
+        add("MinecraftMixin")
     }
     add("LevelRendererMixin")
     // Before 1.21.2 a figure sits only when it rides: the render states carry the pose after.

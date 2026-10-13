@@ -116,7 +116,10 @@ into either.** All work, including work done by an AI agent, happens on a `featu
 the task — merging is a human decision, made after review, every time, no matter how
 small the change or how green the CI.
 
-After a release, merge `main` back into `develop` so it picks up the version commit.
+`develop` never falls behind `main`: `.github/workflows/sync-develop.yml` runs after every
+push to `main` and after every release from `main`. It fast-forwards `develop` to `main`
+when everything on `develop` has shipped, merges `main` into it otherwise, and opens a
+`main` → `develop` pull request when the merge conflicts or the push is refused.
 
 ## CI and releases
 
@@ -126,7 +129,7 @@ what checks a change; a pull request is not done until it is green.
 
 `.github/workflows/release.yml` runs on every push to `main` and `develop` (except doc-only
 ones). A push to `develop` publishes a GitHub pre-release `vX.Y.Z-dev.N` only: no tag
-baseline, no commit back, no Modrinth, CurseForge or Discord. A push to `main` does this:
+baseline, no commit back, no Modrinth, CurseForge, Nexus Mods or Discord. A push to `main` does this:
 
 - `.github/scripts/next-version.sh` derives the version from the conventional-commit
   subjects since the last tag: `feat` is a minor, `fix`/`perf` a patch, a breaking change
@@ -139,7 +142,11 @@ baseline, no commit back, no Modrinth, CurseForge or Discord. A push to `main` d
   data pack zip. Below 1.0.0 it is a pre-release titled `vX.Y.Z (beta)`.
 - Modrinth and CurseForge are published by `mc-publish` when `MODRINTH_TOKEN` /
   `CURSEFORGE_TOKEN` (secrets) and `MODRINTH_ID` / `CURSEFORGE_ID` (repository variables)
-  exist, and skipped otherwise. The Discord announcement uses `DISCORD_WEBHOOK_EN` / `_FR`.
+  exist, and skipped otherwise. Nexus Mods is published by `.github/scripts/nexus-publish.js`
+  (its v3 API) when `NEXUSMODS_TOKEN` (secret) and `NEXUSMODS_ID` (variable, the number in
+  the page's URL) exist: one file per target, found by its name ("Living Horizon (Fabric
+  26.1.x)"), created on the first release and given a new version on the next ones. The API
+  cannot create the page itself. The Discord announcement uses `DISCORD_WEBHOOK_EN` / `_FR`.
 
 The mod version is `mod.version` in `stonecutter.properties.toml`; the Minecraft version
 never touches it.
@@ -237,6 +244,16 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Far terrain flickering under Photon on 26.3 with Distant Horizons** (garbage colours on the
   far scene, Iris logs "the Opaque + Translucent pass ran with shaders on"): Distant Horizons
   3.3.2 with Iris 1.11.6, not this mod. Gone with Distant Horizons 3.3.4 and Iris 1.11.7.
+- **Mobs near the player never drawn far away**, only those met later: the mob memory is opened
+  on the first tick with a player, and opening clears the mobs sent so far, which the level may
+  have loaded just before. `FarPlayerTracker` hands it the level's entities again once open.
+- **Impostors before 1.21.6** (empty or missing pictures, or a figure flashing over the screen
+  at the start of a frame): the game has no output override there, so `ImpostorAtlas` bakes
+  at the start of the frame (`GameRendererMixin`) into a target of its own, which
+  `MinecraftMixin` and `LevelRendererTargetMixin` hand out as the main target and the Fabulous
+  item target while `ImpostorAtlas.drawing()` is set. A render type that binds yet another
+  target of the game's escapes it; before 1.21.5 the eight views share one target, each in its
+  own viewport.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

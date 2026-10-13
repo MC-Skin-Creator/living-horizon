@@ -121,6 +121,8 @@ tasks {
             register("loader", "mod.loader_min")
             put("java", requiredJava.majorVersion)
             put("mixins", project.extra["lhMixins"] as String)
+            // Loom names its own refmap in the config: the placeholder is for the older Forge.
+            put("refmap", "")
         }
         inputs.property("java", requiredJava.majorVersion)
         inputs.property("mixins", project.extra["lhMixins"] as String)
