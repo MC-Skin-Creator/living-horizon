@@ -8,6 +8,7 @@
 
 ### Corrections
 - **Écran des imposteurs** — deux silhouettes du même nom, comme des villageois aux tenues différentes, n'échangent plus leur place en clignotant.
+- **Imposteurs** — les fins traits sombres et les pixels noirs qui apparaissaient parfois en haut ou en bas des créatures lointaines ont disparu, et les créatures longues comme les chevaux et les renifleurs ne sont plus coupées au museau ou à la queue.
 
 ## 0.5.0 — 2026-10-13
 

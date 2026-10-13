@@ -143,8 +143,11 @@ public final class ImpostorAtlas {
      */
     public static final int MIPS = 4;
 
-    /** The feet stand this far down a tile, as a fraction of its height. */
-    public static final float FEET = 0.95f;
+    /**
+     * The feet stand this far down a tile, as a fraction of its height: above the strip
+     * {@link ImpostorRenderer} leaves out at the bottom of a tile, so they are not cut off.
+     */
+    public static final float FEET = 0.9f;
 
     /** Each view is drawn this many times larger than a tile, then averaged down. */
     private static final int SUPERSAMPLE = 2;
@@ -196,8 +199,20 @@ public final class ImpostorAtlas {
         }
     }
 
-    private record Request(ImpostorKey key, Entity puppet) {
+    /**
+     * A figure to bake, its picture {@code grow} times larger than {@link #size} gives: a
+     * figure longer than its box (a horse's muzzle, a sniffer) is baked again larger.
+     */
+    private record Request(ImpostorKey key, Entity puppet, double grow) {
     }
+
+    /**
+     * How much larger a figure cut off by the very edge of its picture is baked again at
+     * least, and how much larger than {@link #size} a picture can get.
+     */
+    private static final double GROW = 1.3, MAX_GROW = 2.5;
+    /** Pixels round a drawn view that its tile does not show. */
+    private static final int HIDDEN = (int) Math.ceil(ImpostorRenderer.INSET * RENDER);
 
     //? if >=1.21.6 {
     private static final class PageTexture extends AbstractTexture {
@@ -362,7 +377,7 @@ public final class ImpostorAtlas {
     public static void request(ImpostorKey key, Entity puppet) {
         settle();
         if (failed || SHEETS.containsKey(key) || !QUEUED.add(key)) return;
-        QUEUE.add(new Request(key, puppet));
+        QUEUE.add(new Request(key, puppet, 1.0));
     }
 
     public static int sheets() {
@@ -545,7 +560,7 @@ public final class ImpostorAtlas {
 
     private static void bake(Minecraft minecraft, Request request) {
         Entity puppet = request.puppet;
-        double size = size(puppet);
+        double size = size(puppet) * request.grow;
         int index = allocate();
         if (index < 0) {
             QUEUED.remove(request.key);
@@ -610,7 +625,7 @@ public final class ImpostorAtlas {
                 *///?}
                 boolean last = view == ImpostorViews.VIEWS - 1;
                 encoder.copyTextureToBuffer(target.color, buffer, /*? if >=1.21.11 {*/ (long) /*?} else {*/ /*(int) *//*?}*/ bytes * view,
-                        last ? () -> readBack(request.key, index, size, buffer, generation) : () -> {
+                        last ? () -> readBack(request, index, size, buffer, generation) : () -> {
                         }, 0);
             }
             sent = true;
@@ -637,7 +652,7 @@ public final class ImpostorAtlas {
      ^/
     private static void bake(Minecraft minecraft, Request request) {
         Entity puppet = request.puppet;
-        double size = size(puppet);
+        double size = size(puppet) * request.grow;
         int index = allocate();
         if (index < 0) {
             QUEUED.remove(request.key);
@@ -670,7 +685,7 @@ public final class ImpostorAtlas {
                 buffers.endBatch();
                 boolean last = view == ImpostorViews.VIEWS - 1;
                 encoder.copyTextureToBuffer(target.getColorTexture(), buffer, bytes * view,
-                        last ? () -> readBack(request.key, index, size, buffer, generation) : () -> {
+                        last ? () -> readBack(request, index, size, buffer, generation) : () -> {
                         }, 0);
             }
             sent = true;
@@ -706,7 +721,7 @@ public final class ImpostorAtlas {
      ^/
     private static void bake(Minecraft minecraft, Request request) {
         Entity puppet = request.puppet;
-        double size = size(puppet);
+        double size = size(puppet) * request.grow;
         int index = allocate();
         if (index < 0) {
             QUEUED.remove(request.key);
@@ -777,7 +792,7 @@ public final class ImpostorAtlas {
                 QUEUED.remove(request.key);
             }
         }
-        store(request.key, index, size, pictures, generation);
+        store(request, index, size, pictures, generation);
     }
 
     /^* Reads the views back from our target: bottom row first, as the GPU device does. ^/
@@ -812,7 +827,7 @@ public final class ImpostorAtlas {
 
     //? if >=1.21.5 {
     /** The views are read back: their pixels go on to {@link #store}. */
-    private static void readBack(ImpostorKey key, int index, double size, GpuBuffer buffer, int generation) {
+    private static void readBack(Request request, int index, double size, GpuBuffer buffer, int generation) {
         int[][] pictures = null;
         try {
             if (generation == ImpostorAtlas.generation) {
@@ -837,7 +852,7 @@ public final class ImpostorAtlas {
         } finally {
             buffer.close();
         }
-        store(key, index, size, pictures, generation);
+        store(request, index, size, pictures, generation);
     }
 
     /** Writes a strip of pixels into one level of a page, top row first. */
@@ -873,11 +888,20 @@ public final class ImpostorAtlas {
 
     /**
      * The views are drawn and read back, bottom row first: their levels go into the page,
-     * and the sheet can be used. No pictures when the read back failed.
+     * and the sheet can be used. No pictures when the read back failed. A figure cut off by
+     * the edge of its tiles is queued again, larger.
      */
-    private static void store(ImpostorKey key, int index, double size, int @Nullable [][] pictures, int generation) {
+    private static void store(Request request, int index, double size, int @Nullable [][] pictures, int generation) {
+        ImpostorKey key = request.key;
+        boolean again = false;
         try {
             if (generation != ImpostorAtlas.generation || pictures == null) return;
+            double growth = growth(pictures);
+            if (growth > 1.01 && request.grow < MAX_GROW) {
+                QUEUE.add(new Request(key, request.puppet, Math.min(MAX_GROW, request.grow * growth)));
+                again = true;
+                return;
+            }
             int[][][] views = new int[ImpostorViews.VIEWS][][];
             for (int view = 0; view < ImpostorViews.VIEWS; view++) {
                 views[view] = ImpostorPixels.mips(pictures[view], RENDER, ImpostorViews.TILE, MIPS);
@@ -903,10 +927,19 @@ public final class ImpostorAtlas {
             if (generation == ImpostorAtlas.generation) fail(error);
         } finally {
             if (generation == ImpostorAtlas.generation) {
-                QUEUED.remove(key);
+                if (!again) QUEUED.remove(key);
                 if (BAKING.remove(index)) FREE.push(index);
             }
         }
+    }
+
+    /** How much larger the views must be drawn to stay within what their tiles show. */
+    private static double growth(int[][] pictures) {
+        double growth = 1;
+        for (int[] picture : pictures) {
+            growth = Math.max(growth, ImpostorPixels.growth(picture, RENDER, HIDDEN, RENDER * (1 - FEET), GROW));
+        }
+        return growth;
     }
 
     /**
