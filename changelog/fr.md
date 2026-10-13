@@ -2,6 +2,8 @@
 
 ## Prochaine version
 
+## 0.5.0 — 2026-10-13
+
 ### Nouveautés
 - **Imposteurs sur Minecraft 1.20.1 à 1.21.8** — les joueurs et créatures lointains sont dessinés en images légères d'eux-mêmes sur ces versions aussi, et le Gestionnaire d'imposteurs les montre.
 

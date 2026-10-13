@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.5.0 — 2026-10-13
+
 ### New
 - **Impostors on Minecraft 1.20.1 to 1.21.8** — far players and mobs are drawn as light pictures of themselves on these versions too, and the Impostor Manager shows them.
 
