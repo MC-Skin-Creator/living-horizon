@@ -3,6 +3,8 @@
 ## Unreleased
 
 ### Fixed
+- **Forge 1.20.1 to 1.20.4** — the game no longer crashes on startup with the mod installed.
+- **Impostors screen on Minecraft 1.21.8 and older** — opening it no longer crashes the game.
 - **Joining a world** — mobs already around you when you join are drawn far away too, instead of only those met afterwards.
 - **Mobs leaving your range** — a mob no longer vanishes for a few frames before its distant copy appears.
 - **Mobs leaving your range** — the distant copy now faces the way the mob did, instead of sometimes turning to another direction.

@@ -116,7 +116,10 @@ into either.** All work, including work done by an AI agent, happens on a `featu
 the task — merging is a human decision, made after review, every time, no matter how
 small the change or how green the CI.
 
-After a release, merge `main` back into `develop` so it picks up the version commit.
+`develop` never falls behind `main`: `.github/workflows/sync-develop.yml` runs after every
+push to `main` and after every release from `main`. It fast-forwards `develop` to `main`
+when everything on `develop` has shipped, merges `main` into it otherwise, and opens a
+`main` → `develop` pull request when the merge conflicts or the push is refused.
 
 ## CI and releases
 
