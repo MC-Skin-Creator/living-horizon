@@ -7,6 +7,7 @@
 
 ### Fixed
 - **Forge 1.20.1 to 1.20.4** — the game no longer crashes on startup with the mod installed.
+- **GeckoLib mobs on Minecraft 1.21.2 to 1.21.8** — a world no longer crashes a few seconds after loading when a mob from a GeckoLib mod was met far away; such mobs are not shown far away yet.
 - **Impostors screen on Minecraft 1.21.8 and older** — opening it no longer crashes the game.
 - **Joining a world** — mobs already around you when you join are drawn far away too, instead of only those met afterwards.
 - **Mobs leaving your range** — a mob no longer vanishes for a few frames before its distant copy appears.
