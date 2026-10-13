@@ -24,7 +24,8 @@ import java.util.Map;
  * bird must stand on what it belongs on (leaves, water, dry ground) at its height, and a
  * hop must never cross more ground than a hop. Then the player walks up to the tits and
  * away again, and the leaves under one of them are broken: each time the birds must land
- * properly, without darting to and fro.
+ * properly, without darting to and fro. Last, the player walks up to the ducks: they must
+ * fly off and land farther along the pond, out of reach, not vanish.
  */
 public final class PerchersScenario implements Scenario {
     /** Blocks a bird may cross in a tick while it is not flying: a hop is about 0.1. */
@@ -100,11 +101,47 @@ public final class PerchersScenario implements Scenario {
                         + (canopy + 1) + " " + (bz + 1) + " air");
                 watch(context, 200, "leaves broken");
             }
+            // Up to the ducks: the same ducks must be on the water afterwards, out of reach.
+            double[] duck = position(context, Ambience.Species.DUCK);
+            List<Ambience.Flyer> ducks = context.computeOnClient(minecraft -> {
+                List<Ambience.Flyer> all = new ArrayList<>();
+                for (Ambience.Flyer flyer : FarPlayerTracker.get().ambience().flyers()) {
+                    if (flyer.species == Ambience.Species.DUCK) all.add(flyer);
+                }
+                return all;
+            });
+            if (duck != null) {
+                pond(context, "ducks-before");
+                look(context, duck[0] + 3, ground, duck[2], 0f, 20f);
+                watch(context, 300, "ducks approached");
+                pond(context, "ducks-after");
+                String lost = context.computeOnClient(minecraft -> {
+                    List<Ambience.Flyer> now = FarPlayerTracker.get().ambience().flyers();
+                    for (Ambience.Flyer flyer : ducks) {
+                        if (!now.contains(flyer) || flyer.scale < 1f) return "a duck left";
+                        double away = Math.hypot(flyer.x - minecraft.player.getX(), flyer.z - minecraft.player.getZ());
+                        if (away < 14) return "a duck " + away + " blocks away";
+                    }
+                    return null;
+                });
+                Scene.log("perchers ducks after being approached: " + (lost == null ? "all moved on the water" : lost));
+                if (lost != null) throw new AssertionError("Ducks approached: " + lost);
+            }
             Scene.log("perchers checked=" + checked + " misplaced=" + misplaced + " darts=" + darts);
             if (checked == 0) throw new AssertionError("No perched bird to check");
             if (misplaced * 50 > checked) throw new AssertionError("Birds standing where they should not: " + misplaced);
             if (darts > 0) throw new AssertionError("Birds darting faster than a hop: " + darts);
         }
+    }
+
+    /** The whole pond from above its south bank, out of the ducks' reach. */
+    private void pond(ClientGameTestContext context, String name) {
+        Scene.command(world, "gamemode spectator @a");
+        context.runOnClient(minecraft -> minecraft.options.fov().set(60));
+        look(context, 0, ground + 22, 6, 180f, 38f);
+        Scene.screenshot(context, this, name);
+        context.runOnClient(minecraft -> minecraft.options.fov().set(70));
+        Scene.command(world, "gamemode survival @a");
     }
 
     private void look(ClientGameTestContext context, double x, double y, double z, float yaw, float pitch) {
@@ -146,7 +183,8 @@ public final class PerchersScenario implements Scenario {
                         Scene.log("perchers dart " + flyer.species + " " + Math.hypot(flyer.x - was[0], flyer.z - was[1]));
                     }
                     int bx = Mth.floor(flyer.x), bz = Mth.floor(flyer.z);
-                    if (!level.hasChunk(bx >> 4, bz >> 4)) continue;
+                    if (!level.hasChunk(bx >> 4, bz >> 4)
+                            || level.getHeight(Heightmap.Types.WORLD_SURFACE, bx, bz) <= level.getMinY()) continue;
                     checked++;
                     boolean tree = flyer.species == Ambience.Species.TIT, duck = flyer.species == Ambience.Species.DUCK;
                     int top = level.getHeight(tree || duck ? Heightmap.Types.WORLD_SURFACE

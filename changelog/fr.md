@@ -9,6 +9,7 @@
 
 ### Améliorations
 - **Créatures lointaines** — les slimes, les cubes de magma et les lapins se déplacent maintenant par bonds au lieu de glisser, le slime s'écrasant en retombant, et les poules battent des ailes en descendant d'un bloc.
+- **Canards** — quand vous approchez, ils s'envolent ensemble et se reposent plus loin sur l'eau au lieu de partir pour de bon.
 
 ### Corrections
 - **Longue-vue** — les créatures lointaines vues à la longue-vue sont mesurées à leur taille zoomée : *Taille animation* correspond maintenant à ce qu'on voit, et elles continuent de marcher quand elles paraissent grosses.

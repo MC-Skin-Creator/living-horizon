@@ -9,6 +9,7 @@
 
 ### Improved
 - **Distant mobs** — slimes, magma cubes and rabbits now hop their way around instead of sliding, a slime squashing as it lands, and chickens flap their wings stepping down a block.
+- **Ducks** — when you come near, they take off together and land farther along the water instead of flying away for good.
 
 ### Fixed
 - **Spyglass** — distant mobs seen through a spyglass are measured at their zoomed size: *Animation size* now matches what you see, and they keep walking when they look big.
