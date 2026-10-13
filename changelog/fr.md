@@ -2,6 +2,9 @@
 
 ## Prochaine version
 
+### Nouveautés
+- **`/livinghorizon bird`** — fait venir n'importe quel type d'oiseau tout de suite : regardez un arbre, de l'eau ou un champ, et les oiseaux qui y vivent viennent s'y poser.
+
 ### Améliorations
 - **Canards** — quand vous approchez, ils s'envolent ensemble et se reposent plus loin sur l'eau au lieu de partir pour de bon.
 

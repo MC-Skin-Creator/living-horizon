@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### New
+- **`/livinghorizon bird`** — calls any kind of bird at once: look at a tree, water or a field, and the birds that belong there land on it.
+
 ### Improved
 - **Ducks** — when you come near, they take off together and land farther along the water instead of flying away for good.
 

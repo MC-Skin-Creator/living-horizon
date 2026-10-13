@@ -1,5 +1,6 @@
 package fr.clixmods.livinghorizon.gametest;
 
+import fr.clixmods.livinghorizon.gametest.scenario.BirdCommandScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
@@ -36,7 +37,8 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new DepthViewScenario(),
             new EntityDepthScenario(),
             new UnloadScenario(),
-            new PerchersScenario());
+            new PerchersScenario(),
+            new BirdCommandScenario());
 
     @Override
     public void runTest(ClientGameTestContext context) {
