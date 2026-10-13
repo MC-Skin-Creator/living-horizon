@@ -1,0 +1,79 @@
+name: sync develop
+
+# Keeps develop on top of main, so the next pull request into main never conflicts
+# with a release commit or a hotfix. Two triggers: a push to main (a merge, a hotfix,
+# a doc-only change the release skips), and the end of a release run, because the
+# version commit it pushes with GITHUB_TOKEN starts no push run of its own. For the
+# same reason, the push to develop made here does not cut a dev pre-release.
+on:
+  push:
+    branches:
+      - main
+  workflow_run:
+    workflows: [release]
+    types: [completed]
+    # release also runs on develop for the dev pre-releases; only main's runs matter.
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Both triggers often fire for the same merge; the second run finds nothing to do.
+concurrency:
+  group: sync-develop
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Bring main into develop
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main develop
+
+          if git merge-base --is-ancestor origin/main origin/develop; then
+            echo 'develop already contains main. Nothing to do.'
+            exit 0
+          fi
+
+          # When a conflict or a protected develop stops the push, a pull request
+          # from main to develop is left for a human instead.
+          open_pr() {
+            if [ -n "$(gh pr list --base develop --head main --state open --json number --jq '.[].number')" ]; then
+              echo 'A main to develop pull request is already open.'
+            else
+              gh pr create --base develop --head main \
+                --title 'chore: merge main back into develop' \
+                --body 'develop could not be brought up to date with main automatically. Merge this pull request to sync it.'
+            fi
+          }
+
+          if git merge-base --is-ancestor origin/develop origin/main; then
+            # Everything on develop has shipped: develop becomes main, no merge commit.
+            echo 'Fast-forwarding develop to main.'
+            git push origin origin/main:refs/heads/develop || open_pr
+            exit 0
+          fi
+
+          # develop carries work that is not released yet: keep it and merge main in.
+          git checkout -B develop origin/develop
+          if git merge --no-edit -m 'chore: merge main back into develop' origin/main; then
+            git push origin develop || open_pr
+          else
+            git merge --abort
+            echo 'main does not merge cleanly into develop.'
+            open_pr
+          fi
