@@ -247,15 +247,12 @@ public final class ImpostorScreen extends Screen {
     private static void blitView(GuiGraphics graphics, Identifier page, ImpostorAtlas.Sheet sheet, int view, int x, int y,
                                  int size) {
         //? if >=1.21.6 {
-        float u0 = (sheet.column() * ImpostorViews.VIEWS + view) / (float) ImpostorAtlas.TILES_ACROSS;
-        float u1 = u0 + 1f / ImpostorAtlas.TILES_ACROSS;
-        float v0 = sheet.row() / (float) ImpostorAtlas.TILES_DOWN;
-        float v1 = v0 + 1f / ImpostorAtlas.TILES_DOWN;
-        graphics.blit(page, x, y, x + size, y + size, u0, u1, v0, v1);
+        float u0 = sheet.u(view), v0 = sheet.v();
+        graphics.blit(page, x, y, x + size, y + size, u0, u0 + sheet.span(), v0, v0 + sheet.span());
         //?} else {
         /*// In pixels of the page before 1.21.6.
-        int u = (sheet.column() * ImpostorViews.VIEWS + view) * ImpostorViews.TILE, v = sheet.row() * ImpostorViews.TILE;
-        int tile = ImpostorViews.TILE, side = ImpostorAtlas.PAGE_SIZE;
+        int tile = sheet.tile(), side = ImpostorAtlas.PAGE_SIZE;
+        int u = (sheet.column() * ImpostorViews.VIEWS + view) * tile, v = sheet.row() * tile;
         //? if >=1.21.2 {
         graphics.blit(RenderTypes::guiTextured, page, x, y, u, v, size, size, tile, tile, side, side);
         //?} else {
