@@ -21,7 +21,7 @@ Create > Project > **Mod**.
 |---|---|
 | Name | `Living Horizon` |
 | URL (slug) | `living-horizon` |
-| Summary (256 max) | `Gives life to the distance: players and mobs stay visible far past your render distance, with or without Voxy or Distant Horizons, and birds bring the sky to life. Client-side.` |
+| Summary (256 max) | `See mobs and players on the far terrain of Voxy and Distant Horizons, drawn in an optimized way. Works on vanilla too: play with minimal render and simulation distance and the horizon stays alive. Client-side.` |
 | Visibility | Public once ready (draft until the first version is approved) |
 | Categories (pick up to 3 featured) | `Decoration`, `Mobs`, `Utility` |
 | Client side | **Required** |
@@ -57,7 +57,7 @@ Create > Project > Class **Mods** (Minecraft).
 |---|---|
 | Project name | `Living Horizon` |
 | Slug | `living-horizon` |
-| Summary (200 to stay safe) | `Gives life to the distance: players and mobs stay visible past your render distance, with or without Voxy or Distant Horizons, and birds bring the sky to life.` |
+| Summary (200 to stay safe) | `See mobs and players on the far terrain of Voxy and Distant Horizons, drawn the optimized way. Works on vanilla too: keep render and simulation distance minimal and the horizon stays alive.` |
 | Main category | **Cosmetic** |
 | Additional categories | **Mobs**, **Utility & QoL** |
 | License | **Custom** (Living Horizon License), link to the `LICENSE` file |
@@ -149,12 +149,14 @@ format the headings and lists.
 ```markdown
 # Living Horizon
 
-**Gives life to the distance.** Players and mobs stay visible far past your render
-distance, through several rendering techniques. It supports far-terrain mods such as
-Voxy and Distant Horizons, and adds birds to bring the sky to life, so you can take in
-your Minecraft world at its best. Client-side, on any server.
+**Gives life to the distance.** Mobs and players are drawn **on top of the far terrain of
+Voxy and Distant Horizons**, which was not possible before, and they are drawn in an
+optimized way, so the horizon stays alive without costing frames. Birds bring the sky to
+life too. Client-side, on any server.
 
-You can now play with a lower simulation distance and still see a living world.
+**It works on vanilla too.** Play with the render distance and the simulation distance at
+their minimum and still see a living world: animals, villagers and other players keep
+living on the horizon.
 
 ## Getting started
 
@@ -177,11 +179,12 @@ The scan radius is in **chunks** (32 = 512 blocks); every other distance is in *
 
 ## Features
 
-- See other players far away.
-- See mobs far away.
+- See mobs and players on the far terrain of Voxy and Distant Horizons.
+- Drawn in an optimized way: a living horizon at a low cost.
+- Works on vanilla too, at any render distance.
+- Play with minimal render and simulation distance and keep a living world.
 - Birds added to the sky.
 - Players who logged off stay where they left.
-- Play with a lower simulation distance, the distance stays alive.
 - Everything can be configured.
 
 ## Requirements

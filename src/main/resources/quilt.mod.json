@@ -6,7 +6,7 @@
     "version": "${version}",
     "metadata": {
       "name": "${name}",
-      "description": "Gives life to the distance: animals, villagers, birds and other players keep living on the horizon, past the render distance.",
+      "description": "See animals, villagers and other players on top of Voxy and Distant Horizons far terrain, drawn in an optimized way. Works on vanilla too: play with a minimal render and simulation distance and the horizon stays alive.",
       "contributors": {
         "clixmods": "Owner"
       },

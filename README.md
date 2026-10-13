@@ -2,10 +2,12 @@
 
 # Living Horizon
 
-Gives life to the distance. Players and mobs stay visible far past your render distance,
-through several rendering techniques, and birds bring the sky to life. It works with the
-game alone, at any render distance, and supports far-terrain mods such as Voxy and
-Distant Horizons.
+Gives life to the distance. **Animals, villagers, other players and birds are drawn on top of
+the far terrain of Voxy and Distant Horizons**, which was not possible before, and they are
+drawn in an optimized way, so the horizon stays alive without costing frames.
+
+It also works on the vanilla game, which lets you play with the render distance and the
+simulation distance at their minimum and still see a living world.
 
 A client-side mod for Fabric, Quilt, NeoForge and Forge, on Minecraft **1.20 to 1.21.11**
 and **26.1 to 26.3**. Nothing is sent to the server: on its own, the mod uses only what a
