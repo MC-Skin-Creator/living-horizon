@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Fixed
+- **Forge 1.20.1 to 1.20.4** — the game no longer crashes on startup with the mod installed.
 - **Impostors screen on Minecraft 1.21.8 and older** — opening it no longer crashes the game.
 - **Mobs leaving your range** — a mob no longer vanishes for a few frames before its distant copy appears.
 - **Mobs leaving your range** — the distant copy now faces the way the mob did, instead of sometimes turning to another direction.
