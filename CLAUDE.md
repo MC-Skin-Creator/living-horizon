@@ -38,9 +38,12 @@ its last line of content, nothing after.
 ## What this is
 
 **Living Horizon** gives life to the distance. It is a **client-side** mod for Fabric,
-Quilt, NeoForge and Forge, on several Minecraft versions: animals, villagers, birds and other players keep living
-on the horizon, past the render distance, on top of Voxy's far terrain. Nothing
-is sent to the server. An optional data pack in `datapack/` makes positions exact.
+Quilt, NeoForge and Forge, on several Minecraft versions. Its main feature, the one every
+description leads with: animals, villagers, birds and other players are drawn on top of the
+far terrain of **Voxy and Distant Horizons**, in an optimized way, which was not possible
+before. It also works on the vanilla game, so players can keep the render and simulation
+distance at their minimum and still see a living horizon. Nothing is sent to the server.
+An optional data pack in `datapack/` makes positions exact.
 
 | | |
 |---|---|
