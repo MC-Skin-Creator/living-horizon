@@ -240,6 +240,9 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Far terrain flickering under Photon on 26.3 with Distant Horizons** (garbage colours on the
   far scene, Iris logs "the Opaque + Translucent pass ran with shaders on"): Distant Horizons
   3.3.2 with Iris 1.11.6, not this mod. Gone with Distant Horizons 3.3.4 and Iris 1.11.7.
+- **Mobs near the player never drawn far away**, only those met later: the mob memory is opened
+  on the first tick with a player, and opening clears the mobs sent so far, which the level may
+  have loaded just before. `FarPlayerTracker` hands it the level's entities again once open.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
