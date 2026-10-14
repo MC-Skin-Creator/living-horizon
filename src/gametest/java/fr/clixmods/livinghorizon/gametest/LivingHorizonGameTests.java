@@ -6,6 +6,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.PerfScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RememberedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.UnloadScenario;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -34,7 +35,8 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new OptionsScreenScenario(),
             new DepthViewScenario(),
             new EntityDepthScenario(),
-            new UnloadScenario());
+            new UnloadScenario(),
+            new PerfScenario());
 
     @Override
     public void runTest(ClientGameTestContext context) {
