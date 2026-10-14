@@ -176,6 +176,8 @@ public final class BenchmarkWorld {
         /*minecraft.level.disconnect();
         minecraft.clearLevel(new net.minecraft.client.gui.screens.GenericDirtMessageScreen(Component.translatable("menu.savingLevel")));
         *///?}
+        // The world saved, back to the title screen, as the pause screen does.
+        minecraft.setScreen(new net.minecraft.client.gui.screens.TitleScreen());
     }
 
     private static void open(Minecraft minecraft) {
