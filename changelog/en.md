@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+- **Max mobs set to None** — distant mobs no longer cost any frame rate: the mobs just past your entity distance are no longer drawn either.
+- **Stutter every minute** — the game no longer freezes for a moment while it saves the mobs it remembers.
+
 ## 0.5.0 — 2026-10-13
 
 ### New
@@ -19,8 +23,6 @@
 - **Mobs leaving your range** — the distant copy now faces the way the mob did, instead of sometimes turning to another direction.
 - **Minecraft 1.21.9 to 26.1** — parts of distant mobs, such as a villager's clothes or a held item, no longer show through Voxy's terrain under shaders, nor through Distant Horizons' terrain.
 - **Minecraft 26.1 and later** — the see-through parts of distant mobs, such as a slime's outer layer, no longer show through Voxy's terrain under shaders, nor through Distant Horizons' terrain.
-- **Max mobs set to None** — distant mobs no longer cost any frame rate: the mobs just past your entity distance are no longer drawn either.
-- **Stutter every minute** — the game no longer freezes for a moment while it saves the mobs it remembers.
 
 ## 0.4.1 — 2026-10-11
 
