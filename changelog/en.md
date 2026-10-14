@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Improved
+- **Frame rate** — distant mobs cost less to draw, most of all where nothing hides them, as in a superflat world.
+
 ## 0.5.0 — 2026-10-13
 
 ### New

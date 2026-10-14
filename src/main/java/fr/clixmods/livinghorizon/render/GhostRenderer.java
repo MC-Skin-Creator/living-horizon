@@ -443,6 +443,9 @@ public final class GhostRenderer {
             double extent = Math.max(0.5, Math.max(entity.getBbHeight(), entity.getBbWidth()));
             boost = Math.clamp(config.minApparentPixels / (extent / distance * pixelsPerRadian), 1.0, 400.0);
         }
+        // Past the render distance, the far terrain's depth must be in the picture to hide it.
+        // Within it, the game's own terrain is there already: no merge, no copy for this one.
+        if (distance > drawnRange) FarDepth.needed();
         if (!Occlusion.hidden(key, entity, dx, dy, dz, boost)) {
             return false;
         }

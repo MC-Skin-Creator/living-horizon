@@ -60,8 +60,6 @@ public final class Occlusion {
      * drawn {@code scale} times its size; false until there is one.
      */
     static boolean hidden(Object key, Entity entity, double dx, double dy, double dz, double scale) {
-        // Asked about, so the far terrain's depth must be in the picture this frame.
-        FarDepth.needed();
         if (byPixels()) return false;
         // The GPU's answer is the better one: what the player sees, no world to read.
         // Never mixed with the world's answer, which disagrees often enough to make mobs blink.

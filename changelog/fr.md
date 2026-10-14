@@ -2,6 +2,9 @@
 
 ## Prochaine version
 
+### Améliorations
+- **Images par seconde** — les créatures lointaines coûtent moins cher à dessiner, surtout là où rien ne les cache, comme dans un monde plat.
+
 ## 0.5.0 — 2026-10-13
 
 ### Nouveautés

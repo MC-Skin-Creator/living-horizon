@@ -329,7 +329,16 @@ public final class FarDepth {
      * villager). The caller draws it first.
      */
     public static boolean givesBack() {
-        return armed && (merged || captured) && !irisShadowPass();
+        return armed && (merged || (captured && keepsDrawn())) && !irisShadowPass();
+    }
+
+    /**
+     * Whether the depth after the entities is read this frame, when nothing was merged: by
+     * Distant Horizons' fade, by Voxy's copy of our figures or by the depth view. Otherwise
+     * nobody reads it, and it is not copied: a full-screen copy every frame for nothing.
+     */
+    private static boolean keepsDrawn() {
+        return fadeMask || intoVoxy || FarConfig.get().debugDepthView == 3;
     }
 
     /** Just after the entities are drawn, where they have no translucent step of their own. */
@@ -347,7 +356,7 @@ public final class FarDepth {
         lateMerge = lateCopy = lateMerged = false;
         try {
             if (merged) restore(false);
-            else if (captured) copy(depthTexture, drawn);
+            else if (captured && keepsDrawn()) copy(depthTexture, drawn);
             if (intoVoxy) intoVoxy();
             lateOwner = owner;
             lateMerge = owner != null && merged;
@@ -438,7 +447,8 @@ public final class FarDepth {
         if (w <= 0 || h <= 0) return false;
         prepare(w, h, f);
         notePicture(w, h);
-        copy(depthTexture, saved);
+        // Nothing is merged: the depth before is the one tested against. Kept apart for the depth view only.
+        if (FarConfig.get().debugDepthView == 1) copy(depthTexture, saved);
         copy(depthTexture, written);
         return true;
     }
