@@ -60,5 +60,6 @@ public final class BenchmarkWorldScenario implements Scenario {
                 || context.computeOnClient(minecraft -> minecraft.level != null)); i++) {
             context.waitTicks(5);
         }
+        context.setScreen(net.minecraft.client.gui.screens.TitleScreen::new);
     }
 }
