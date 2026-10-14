@@ -569,7 +569,7 @@ public final class MobMemory {
                 mob.still = isStill(living, mob, config, pixelsPerRadian);
                 boolean tiny = mob.still;
                 double handover = Math.max(24, Math.min(sent(type(mob)), renderDistanceBlocks));
-                float home = MobMotion.home(Math.hypot(mob.x - selfX, mob.z - selfZ), handover);
+                float home = MobMotion.home(MobMotion.hypot(mob.x - selfX, mob.z - selfZ), handover);
                 motion(mob).tick(living, mob, choice, clock, roam, tiny, home);
             } else {
                 hold(mob.puppet, mob);
@@ -677,7 +677,7 @@ public final class MobMemory {
     private void learnReach() {
         for (Entity entity : live.values()) {
             if (entity.isPassenger() || entity.isVehicle()) continue;
-            double across = Math.hypot(entity.getX() - selfX, entity.getZ() - selfZ);
+            double across = MobMotion.hypot(entity.getX() - selfX, entity.getZ() - selfZ);
             reach.merge(entity.getType().getCategory(), across, Math::max);
         }
     }
@@ -710,7 +710,7 @@ public final class MobMemory {
             if (!mob.dimension.equals(dimension) || !isHere(mob) || live.containsKey(mob.id)) continue;
             EntityType<?> type = type(mob);
             double range = nearRange(type);
-            boolean inRange = Math.hypot(mob.x - selfX, mob.z - selfZ) < range
+            boolean inRange = MobMotion.hypot(mob.x - selfX, mob.z - selfZ) < range
                     && level.hasChunk((int) Math.floor(mob.x) >> 4, (int) Math.floor(mob.z) >> 4);
             mob.missingChecks = inRange ? mob.missingChecks + 1 : 0;
             if (mob.missingChecks >= 5) missing.add(mob);

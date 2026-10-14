@@ -42,12 +42,12 @@ public final class MobAnimations {
             for (int k = 0; k < steps.length; k++) {
                 Step step = steps[k];
                 start[k] = t;
-                t += Math.max(1, (int) Math.ceil(Math.hypot(step.x - px, step.z - pz) / WALK));
+                t += Math.max(1, (int) Math.ceil(MobMotion.hypot(step.x - px, step.z - pz) / WALK));
                 arrive[k] = t;
                 t += step.pause;
                 px = step.x;
                 pz = step.z;
-                extent = Math.max(extent, Math.hypot(px, pz));
+                extent = Math.max(extent, MobMotion.hypot(px, pz));
             }
             this.extent = extent;
             duration = t;

@@ -254,6 +254,13 @@ come back, add it here in the same pull request: this file is what the next sess
   item target while `ImpostorAtlas.drawing()` is set. A render type that binds yet another
   target of the game's escapes it; before 1.21.5 the eight views share one target, each in its
   own viewport.
+- **Frame rate lost to the mod** (with Voxy or not): measure before guessing. The `perf`
+  game-test scenario times each feature on and off in a flat world full of animals; run it with
+  `JAVA_TOOL_OPTIONS="$JAVA_TOOL_OPTIONS -XX:StartFlightRecording=filename=<scratchpad>/rec-%p.jfr,settings=profile"`
+  and count the render thread's samples (`main` in the recording) under `fr.clixmods` per phase.
+  The usual cost is a full-screen depth copy each frame: `FarDepth.capture` runs only when
+  something reads the copy, and the occlusion queries read the game's depth where it is, except
+  with Distant Horizons. Under llvmpipe the queries' `glDrawArrays` is CPU time a real GPU does not pay.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
