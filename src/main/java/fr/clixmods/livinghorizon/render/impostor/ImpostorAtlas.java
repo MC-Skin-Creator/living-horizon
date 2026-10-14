@@ -388,6 +388,16 @@ public final class ImpostorAtlas {
     *///?}
 
     public static RenderType type(int page) {
+        if (page >= types.length) types = java.util.Arrays.copyOf(types, page + 1);
+        RenderType type = types[page];
+        if (type == null) types[page] = type = makeType(page);
+        return type;
+    }
+
+    /** The render type of each page, made once: its name was built again for every picture, every frame. */
+    private static RenderType[] types = new RenderType[0];
+
+    private static RenderType makeType(int page) {
         //? if >=26.1 {
         /*return RenderTypes.entityCutout(id(page));
         *///?} else {

@@ -54,7 +54,7 @@ public final class FarConfig {
     @SerializedName(value = "depthOcclusion", alternate = "voxyOcclusion")
     public boolean depthOcclusion = true;
 
-    private static final int CURRENT = 8;
+    private static final int CURRENT = 9;
 
     /** Skinned figures, which Distant Friends uses as its fake players: shown, standing still. */
     private static final String MANNEQUIN = "minecraft:mannequin";
@@ -155,6 +155,7 @@ public final class FarConfig {
      * all, instead of drawn and covered pixel by pixel. Cheaper with many mobs. Asked of the
      * GPU against the depth of the picture ({@link #optOcclusionQueries}), so a mob with one
      * pixel in view is still drawn, and one appears a frame or two after the view clears.
+     * Impostors are never asked: a picture costs less to draw than the question.
      */
     public boolean hideOccludedMobs = true;
 
@@ -221,7 +222,7 @@ public final class FarConfig {
     /** Blocks: past this, no distant mob plays an animation, however big it looks. 0 is no limit. */
     public int animationMaxDistance = 0;
     /** A copy that was not drawn for a moment (out of view, hidden, too small) stays where it is: no animation, no path read. */
-    public boolean optFreezeHidden = false;
+    public boolean optFreezeHidden = true;
 
     // --- Debug -----------------------------------------------------------------------------
 
@@ -330,6 +331,10 @@ public final class FarConfig {
             }
             instance.glowOutline = null;
             instance.debugOutlines = null;
+        }
+        if (instance.version < 9) {
+            // A copy nobody sees no longer walks: hundreds of them cost every tick for nothing.
+            instance.optFreezeHidden = true;
         }
         instance.version = CURRENT;
         save();

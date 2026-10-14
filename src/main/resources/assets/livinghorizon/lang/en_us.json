@@ -215,7 +215,7 @@
   "livinghorizon.options.optBackgroundBuild": "Background build",
   "livinghorizon.options.optStillTiny": "Still tiny mobs",
   "livinghorizon.options.optFreezeHidden": "Freeze undrawn mobs",
-  "livinghorizon.options.optFreezeHidden.tooltip": "A distant mob that is not drawn (out of view, behind terrain, too small) stops moving: it is only a position until it shows again. Saves their animation and path reads. Off by default, to compare.",
+  "livinghorizon.options.optFreezeHidden.tooltip": "A distant mob that is not drawn (out of view, behind terrain, too small) stops moving: it is only a position until it shows again. Saves their animation and path reads. On by default; off, to compare.",
   "livinghorizon.options.optStillTiny.tooltip": "A distant mob only a few pixels high on screen slides and turns without playing its walking and idle animations, which could not be seen. Off: always animated.",
   "livinghorizon.options.optBackgroundBuild.tooltip": "Saved mobs are read off the game's thread and built within 2 ms per tick. Off: all at once, on the game's thread.",
   "livinghorizon.debug.on": "Living Horizon debug: on (panel and boxes).",

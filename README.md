@@ -258,7 +258,7 @@ lives there.
   tick, but its legs stay still (`optStillTiny`). It resumes at that size plus a quarter and
   a pixel, so it never flickers. `animationMaxDistance` (blocks, 0 no limit) also stills
   every mob past it, however big (`MobMemory.isStill`).
-- With `optFreezeHidden` (debug screen, off by default), a copy that has not been drawn for
+- With `optFreezeHidden` (debug screen, on by default), a copy that has not been drawn for
   half a second - out of view, hidden, too small - is not ticked at all: no animation, no
   path read, only a position, until it is drawn again.
 - A copy is never drawn where the real mob would be sent (`MobMemory.nearRange`: how far the

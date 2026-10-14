@@ -99,6 +99,11 @@ public final class OcclusionQueries {
         }
     }
 
+    /** Whether a mob was asked about this frame: without one, there is nothing to test the depth for. */
+    static boolean pending() {
+        return !broken && !ASKED.isEmpty();
+    }
+
     /** Not turned off by a GL failure. */
     public static boolean usable() {
         return !broken;
@@ -273,9 +278,10 @@ public final class OcclusionQueries {
     private static void collect() {
         while (!IN_FLIGHT.isEmpty()) {
             Batch batch = IN_FLIGHT.peek();
-            for (int query : batch.queries) {
-                if (GL15C.glGetQueryObjecti(query, GL15C.GL_QUERY_RESULT_AVAILABLE) == GL11C.GL_FALSE) return;
-            }
+            // The GPU answers in the order it was asked: the last one done, they all are. One
+            // call per batch rather than one per mob, each of which may wait on the driver.
+            int last = batch.queries[batch.queries.length - 1];
+            if (GL15C.glGetQueryObjecti(last, GL15C.GL_QUERY_RESULT_AVAILABLE) == GL11C.GL_FALSE) return;
             IN_FLIGHT.poll();
             for (int i = 0; i < batch.queries.length; i++) {
                 boolean visible = GL15C.glGetQueryObjecti(batch.queries[i], GL15C.GL_QUERY_RESULT) != 0;

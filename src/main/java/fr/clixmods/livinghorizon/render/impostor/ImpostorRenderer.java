@@ -38,8 +38,8 @@ public final class ImpostorRenderer {
     /*public static final boolean OUTLINES = false;
     *///?}
 
-    /** An outlined impostor as it was submitted, drawn again into the outline buffer. */
-    private record Outlined(PoseStack.Pose at, Billboard board, float rightX, float rightZ) {
+    /** An outlined impostor as it was submitted, drawn again into the outline buffer: {@code at} the camera. */
+    private record Outlined(PoseStack.Pose at, Billboard board) {
     }
 
     /**
@@ -64,21 +64,31 @@ public final class ImpostorRenderer {
         FRAME.add(billboard);
     }
 
-    /** From the entity submission, with the pose at the camera. */
+    /**
+     * From the entity submission, with the pose at the camera. One piece per atlas page, with
+     * every picture of that page in it: hundreds of figures are a handful of submissions.
+     */
     public static void submit(PoseStack pose, Sink collector) {
-        for (Billboard board : FRAME) {
-            double across = Math.sqrt(board.x * board.x + board.z * board.z);
-            if (across < 1e-3) continue;
-            // The camera's right along the ground: forward is (x, z), and right is forward x up.
-            float rightX = (float) (-board.z / across), rightZ = (float) (board.x / across);
-            pose.pushPose();
-            pose.translate((float) board.x, (float) board.y, (float) board.z);
-            collector.draw(pose, ImpostorAtlas.type(board.sheet.page()),
-                    (at, out) -> quad(at, out, board, rightX, rightZ));
-            //? if >=1.21.9 && <26.2
-            if (board.outline != 0) OUTLINED.add(new Outlined(pose.last().copy(), board, rightX, rightZ));
-            pose.popPose();
-            PolygonStats.impostor();
+        if (FRAME.isEmpty()) return;
+        //? if >=1.21.9 && <26.2
+        PoseStack.Pose camera = null;
+        List<Billboard> left = new ArrayList<>(FRAME);
+        while (!left.isEmpty()) {
+            int page = left.get(0).sheet.page();
+            List<Billboard> boards = new ArrayList<>();
+            left.removeIf(board -> board.sheet.page() == page && boards.add(board));
+            collector.draw(pose, ImpostorAtlas.type(page), (at, out) -> {
+                for (Billboard board : boards) quad(at, out, board);
+            });
+            for (Billboard board : boards) {
+                //? if >=1.21.9 && <26.2 {
+                if (board.outline != 0) {
+                    if (camera == null) camera = pose.last().copy();
+                    OUTLINED.add(new Outlined(camera, board));
+                }
+                //?}
+                PolygonStats.impostor();
+            }
         }
     }
 
@@ -93,14 +103,18 @@ public final class ImpostorRenderer {
         for (Outlined outlined : OUTLINED) {
             Billboard board = outlined.board;
             buffers.setColor(board.outline);
-            quad(outlined.at, buffers.getBuffer(ImpostorAtlas.type(board.sheet.page())), board, outlined.rightX,
-                    outlined.rightZ);
+            quad(outlined.at, buffers.getBuffer(ImpostorAtlas.type(board.sheet.page())), board);
         }
         OUTLINED.clear();
         //?}
     }
 
-    private static void quad(PoseStack.Pose at, VertexConsumer out, Billboard board, float rightX, float rightZ) {
+    /** One picture, its feet {@code (board.x, board.y, board.z)} from the camera {@code at} stands for. */
+    private static void quad(PoseStack.Pose at, VertexConsumer out, Billboard board) {
+        double across = Math.sqrt(board.x * board.x + board.z * board.z);
+        if (across < 1e-3) return;
+        // The camera's right along the ground: forward is (x, z), and right is forward x up.
+        float rightX = (float) (-board.z / across), rightZ = (float) (board.x / across);
         float half = (float) board.size * (0.5f - INSET);
         float bottom = (float) -(1 - ImpostorAtlas.FEET) * (float) board.size;
         float top = ImpostorAtlas.FEET * (float) board.size;
@@ -113,10 +127,11 @@ public final class ImpostorRenderer {
         float[] corners = {lx, bottom, lz, rx, bottom, rz, rx, top, rz, lx, top, lz};
         // Leant back round the middle of the figure, so that shader packs light it from above too.
         ImpostorLean.lean(board.x, board.y, board.z, board.x, board.y + top / 2, board.z, corners);
-        vertex(at, out, board.light, corners[0], corners[1], corners[2], u0, vBottom);
-        vertex(at, out, board.light, corners[3], corners[4], corners[5], u1, vBottom);
-        vertex(at, out, board.light, corners[6], corners[7], corners[8], u1, vTop);
-        vertex(at, out, board.light, corners[9], corners[10], corners[11], u0, vTop);
+        float x = (float) board.x, y = (float) board.y, z = (float) board.z;
+        vertex(at, out, board.light, x + corners[0], y + corners[1], z + corners[2], u0, vBottom);
+        vertex(at, out, board.light, x + corners[3], y + corners[4], z + corners[5], u1, vBottom);
+        vertex(at, out, board.light, x + corners[6], y + corners[7], z + corners[8], u1, vTop);
+        vertex(at, out, board.light, x + corners[9], y + corners[10], z + corners[11], u0, vTop);
     }
 
     private static void vertex(PoseStack.Pose at, VertexConsumer out, int light, float x, float y, float z,

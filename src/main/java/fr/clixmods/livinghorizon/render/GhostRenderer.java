@@ -408,10 +408,13 @@ public final class GhostRenderer {
                 continue;
             }
             if (skipped(puppet, true)) continue;
-            if (occluded(mob.id(), puppet, config)) continue;
+            // A picture costs less to draw than to ask the GPU whether it is hidden: it is
+            // drawn, and the depth hides it pixel by pixel like the rest.
+            boolean picture = impostor(minecraft, eye, puppet, partialTick, config);
+            if (!picture && occluded(mob.id(), puppet, config)) continue;
             if (debug) DebugMarks.mark(puppet, Mark.FAKE);
             mob.drawn();
-            if (impostor(minecraft, eye, puppet, partialTick, config)) continue;
+            if (picture) continue;
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
             // A puppet is in no world, so never in water: fish would be drawn flopping on
             // their side, as on land. Water mobs were in water when last seen.
@@ -499,9 +502,10 @@ public final class GhostRenderer {
             if (entity.distanceToSqr(eye) < 24 * 24) continue;
             if (tooFar(entity, eye, config.mobMaxDistance)) continue;
             if (skipped(entity, true)) continue;
-            if (occluded(entity.getUUID(), entity, config)) continue;
+            boolean picture = impostor(minecraft, eye, entity, partialTick, config);
+            if (!picture && occluded(entity.getUUID(), entity, config)) continue;
             if (debug) DebugMarks.mark(entity, Mark.LIVE);
-            if (impostor(minecraft, eye, entity, partialTick, config)) continue;
+            if (picture) continue;
             add(frame, minecraft, eye, extract(dispatcher, entity, partialTick), null, false, Mark.LIVE, config,
                     entity.getUUID());
         }

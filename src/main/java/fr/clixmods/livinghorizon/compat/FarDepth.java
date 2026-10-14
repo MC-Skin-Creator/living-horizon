@@ -297,17 +297,28 @@ public final class FarDepth {
             // Distant Horizons' fade, without a shader pack, needs to know where the entities are.
             boolean dhFade = wanted && config.anyDistant() && config.optDhFade && DhDepth.available()
                     && !DhDepth.shaderPackOn();
-            boolean queries = wanted && config.anyDistant() && config.hideOccludedMobs && config.optOcclusionQueries;
+            boolean queries = wanted && config.anyDistant() && config.hideOccludedMobs && config.optOcclusionQueries
+                    && OcclusionQueries.pending();
             // A pack that keeps Voxy's depth apart reads it past the game's: our far figures go there too.
             boolean voxy = wanted && config.anyDistant() && config.optVoxyShadows && figures > 0 && keepsOwnDepth();
+            // Distant Horizons reads the game's own texture later in the frame: with it installed,
+            // that texture is never attached anywhere else in the middle of the frame, and the
+            // queries test a copy. Without it, they read the game's depth where it is.
+            boolean queriesOnCopy = queries && DhDepth.available();
             // The depth view shows the game's depth even when there was nothing to merge.
-            if (!merged && (config.debugDepthView != 0 || dhFade || queries || voxy)) captured = capture();
+            if (!merged && (config.debugDepthView != 0 || dhFade || queriesOnCopy || voxy)) captured = capture();
             intoVoxy = voxy && (merged || captured);
             fadeMask = dhFade && (merged || captured) && target == ownTarget;
             // The depth as it is now - far terrain in it, entities not yet - is what hides distant mobs.
-            // Tested on its copy: the game's own texture, which Distant Horizons reads later in the
-            // frame, is never attached anywhere else in the middle of the frame.
-            if (queries && (merged || captured)) OcclusionQueries.run(written);
+            if (queries) {
+                if (merged || captured) {
+                    OcclusionQueries.run(written);
+                } else {
+                    // Only read, never written: a full-screen copy each frame for nothing.
+                    int depth = unmerged();
+                    if (depth != 0) OcclusionQueries.run(depth);
+                }
+            }
         } catch (Throwable e) {
             fail(e);
         }
@@ -451,6 +462,19 @@ public final class FarDepth {
         if (FarConfig.get().debugDepthView == 1) copy(depthTexture, saved);
         copy(depthTexture, written);
         return true;
+    }
+
+    /**
+     * The game's depth as it is, for the occlusion queries alone: nothing merged into it, no
+     * copy made. Its size is noted for them, as {@link #capture} does. 0 when there is none.
+     */
+    private static int unmerged() throws ReflectiveOperationException {
+        if (ownTarget() == 0) return 0;
+        int w = GL45C.glGetTextureLevelParameteri(ownTargetDepth, 0, GL11C.GL_TEXTURE_WIDTH);
+        int h = GL45C.glGetTextureLevelParameteri(ownTargetDepth, 0, GL11C.GL_TEXTURE_HEIGHT);
+        if (w <= 0 || h <= 0) return 0;
+        notePicture(w, h);
+        return ownTargetDepth;
     }
 
     // --- Debug view ---------------------------------------------------------------------

@@ -490,6 +490,7 @@ public final class MobMemory {
         selfKnown = true;
         renderBlocks = renderDistanceBlocks;
         builtNow = 0;
+        sentRanges.clear();
         clock++;
         if (!config.distantMobs) {
             shown = List.of();
@@ -735,8 +736,13 @@ public final class MobMemory {
     }
 
     private double sent(@Nullable EntityType<?> type) {
-        return sent(type, reach);
+        Double known = sentRanges.get(type);
+        if (known == null) sentRanges.put(type, known = sent(type, reach));
+        return known;
     }
+
+    /** {@link #sent} per type, worked out once a tick: asked for every mob, every frame. */
+    private final Map<EntityType<?>, Double> sentRanges = new IdentityHashMap<>();
 
     /** The nearest few, in this dimension: the ones drawn until the next choice. */
     private void choose(String dimension, FarConfig config) {
