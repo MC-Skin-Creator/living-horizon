@@ -254,7 +254,9 @@ come back, add it here in the same pull request: this file is what the next sess
   item target while `ImpostorAtlas.drawing()` is set. A render type that binds yet another
   target of the game's escapes it; before 1.21.5 the eight views share one target, each in its
   own viewport.
-- **Frame rate lost to the mod** (with Voxy or not): measure before guessing. The `perf`
+- **Frame rate lost to the mod** (with Voxy or not): measure before guessing. On the player's
+  machine, ask for the report of `/livinghorizon benchmark` (`debug/Benchmark`): frame times with
+  the mod off, each preset and each part on its own, on their GPU and mods. Here, the `perf`
   game-test scenario times each feature on and off in a flat world full of animals; run it with
   `JAVA_TOOL_OPTIONS="$JAVA_TOOL_OPTIONS -XX:StartFlightRecording=filename=<scratchpad>/rec-%p.jfr,settings=profile"`
   and count the render thread's samples (`main` in the recording) under `fr.clixmods` per phase.

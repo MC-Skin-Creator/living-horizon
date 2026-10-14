@@ -8,6 +8,7 @@ import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Stats;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.LodWorld;
+import fr.clixmods.livinghorizon.debug.Benchmark;
 import fr.clixmods.livinghorizon.debug.DebugHud;
 import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.Profiles;
@@ -109,11 +110,38 @@ public final class LivingHorizonCommand {
                             client.execute(() -> client.setScreen(new FarConfigScreen(null)));
                             return 1;
                         }))
+                        .then(LiteralArgumentBuilder.<S>literal("benchmark")
+                                .executes(c -> benchmark(source.apply(c.getSource()), Benchmark.DEFAULT_SECONDS))
+                                .then(LiteralArgumentBuilder.<S>literal("stop").executes(c -> {
+                                    Source from = source.apply(c.getSource());
+                                    from.client().execute(() -> Benchmark.stop(from.client()));
+                                    return 1;
+                                }))
+                                .then(RequiredArgumentBuilder.<S, Integer>argument("seconds",
+                                                IntegerArgumentType.integer(Benchmark.MIN_SECONDS, Benchmark.MAX_SECONDS))
+                                        .executes(c -> benchmark(source.apply(c.getSource()),
+                                                IntegerArgumentType.getInteger(c, "seconds")))))
                         .then(LiteralArgumentBuilder.<S>literal("impostors").executes(c -> {
                             Minecraft client = source.apply(c.getSource()).client();
                             client.execute(() -> client.setScreen(new ImpostorScreen(null)));
                             return 1;
                         }));
+    }
+
+    /**
+     * {@code /livinghorizon benchmark [seconds]}: the frame rate with the mod off, on, and each
+     * part of it on its own, written to a report. The player stands still meanwhile.
+     */
+    private static int benchmark(Source source, int seconds) {
+        if (Benchmark.running()) {
+            source.feedback(Component.translatable("livinghorizon.benchmark.running"));
+            return 0;
+        }
+        source.feedback(Component.translatable("livinghorizon.benchmark.started", Benchmark.duration(seconds)));
+        Minecraft client = source.client();
+        // After the chat screen, which closes once the command has run.
+        client.execute(() -> Benchmark.start(client, seconds));
+        return 1;
     }
 
     /** {@code /livinghorizon scan [radius]}: the mobs of the chunks around, read from a single player world. */

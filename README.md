@@ -181,6 +181,25 @@ The game itself lacks what these need, so they are left out rather than imitated
   the entities - near white, far black, sky blue.
 - Every optimisation has its own switch (`opt*` in the file), to compare the cost.
 
+### Benchmark
+
+`/livinghorizon benchmark [seconds]` measures what the mod costs where the player stands: stand
+still and look at what you play with. The settings go through phases: the mod off, your
+settings, each quality preset, distant players, mobs and birds each on their own, then mobs
+without impostors, without hiding the hidden ones, and without the far terrain's depth. The
+mod off comes again at the end, to show any drift. Each phase settles for 4 seconds (the first
+for 10) and is measured for `seconds` (8 by default, 3 to 60), about two and a half minutes in all.
+`/livinghorizon benchmark stop` stops it.
+
+While it runs, the debug views are off, and the frame rate cap, vsync and the game's own
+slowdown when idle are lifted. Everything is put back at the end, and nothing is saved. The
+report goes to `livinghorizon/benchmarks/benchmark-<date>.txt` in the game folder and to the
+log. Per phase it gives the frame rate, the 1% low, the 99th percentile and worst frame
+times, and the cost in milliseconds per frame against the mod off. It also gives what the
+mod did (tick and extraction time, figures drawn, copies, impostors, polygons, birds, the
+occlusion queries and the far depth), with the game, GPU, mods and settings. A phase where
+the player moved or a screen was open is marked.
+
 ## How it works
 
 Everything below is for the curious, and for whoever works on the mod.

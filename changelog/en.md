@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### New
+- **Benchmark** — `/livinghorizon benchmark` measures what the mod costs in your world, part by part, and writes a report you can send with a bug report.
+
 ### Improved
 - **Frame rate** — distant mobs and birds cost much less to draw, most of all where nothing hides them, as in a superflat world.
 

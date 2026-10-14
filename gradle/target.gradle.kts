@@ -169,6 +169,8 @@ extra["lhMixins"] = buildList {
         add("MinecraftMixin")
     }
     add("LevelRendererMixin")
+    // The top of the game's loop, once a frame: the benchmark's frame times.
+    add("MinecraftFrameMixin")
     // Before 1.21.2 a figure sits only when it rides: the render states carry the pose after.
     if (!atLeast("1.21.2")) add("LivingEntityRendererMixin")
     // The world's extraction left the level renderer for a class of its own in 26.2.
