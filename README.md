@@ -235,6 +235,12 @@ lives there.
 - A mob met up close keeps its exact look (the game's own save of it); one known only
   from the pack is built from kind, variant and age.
 - Coming back within range of a remembered mob that is not there forgets it.
+- **In single player** the server runs in the game itself: four times a second it is asked
+  where the remembered mobs are (`track/ServerMobs`). The ones it still moves - past the
+  distance it sends them at, but inside the simulation distance - are followed by their
+  copies, at its pace and facing the way they face, with no animation of their own; one
+  that dies there is forgotten. Otherwise the copy would stand where the mob was last seen
+  while the real one wandered off, and run or jump to it once it was sent again.
 - When a mob is remembered, the blocks within 8 blocks of it are read once
   (`track/MobPaths`, from loaded chunks or the far world, Voxy or Distant Horizons): in
   each column, the floor nearest its height with room above it. Grass, flowers, crops and

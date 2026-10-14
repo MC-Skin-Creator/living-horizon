@@ -11,6 +11,7 @@
 - **Joining a world** — mobs already around you when you join are drawn far away too, instead of only those met afterwards.
 - **Mobs leaving your range** — a mob no longer vanishes for a few frames before its distant copy appears.
 - **Mobs leaving your range** — the distant copy now faces the way the mob did, instead of sometimes turning to another direction.
+- **Single player** — distant mobs no longer teleport or sprint to another spot as you come back: they follow the real mobs as they wander, and disappear when those die.
 - **Minecraft 1.21.9 to 26.1** — parts of distant mobs, such as a villager's clothes or a held item, no longer show through Voxy's terrain under shaders, nor through Distant Horizons' terrain.
 - **Minecraft 26.1 and later** — the see-through parts of distant mobs, such as a slime's outer layer, no longer show through Voxy's terrain under shaders, nor through Distant Horizons' terrain.
 

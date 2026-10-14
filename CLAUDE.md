@@ -247,6 +247,12 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Mobs near the player never drawn far away**, only those met later: the mob memory is opened
   on the first tick with a player, and opening clears the mobs sent so far, which the level may
   have loaded just before. `FarPlayerTracker` hands it the level's entities again once open.
+- **Distant mobs jumping or sprinting as the player comes back** (the copy runs or teleports to
+  the real mob once it is sent again): the server stops sending a mob at its tracking range
+  (160 blocks for animals, scaled by *Entity Distance*) but keeps moving it out to the
+  simulation distance, a square of chunks that reaches farther on its diagonals. In single
+  player `ServerMobs` asks the server where those are and the copies follow; on a server only
+  the data pack closes that gap.
 - **Impostors before 1.21.6** (empty or missing pictures, or a figure flashing over the screen
   at the start of a frame): the game has no output override there, so `ImpostorAtlas` bakes
   at the start of the frame (`GameRendererMixin`) into a target of its own, which

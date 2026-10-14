@@ -11,6 +11,7 @@
 - **En rejoignant un monde** — les créatures déjà autour de toi à ton arrivée sont elles aussi dessinées au loin, et plus seulement celles rencontrées ensuite.
 - **Créatures qui s'éloignent** — une créature ne disparaît plus pendant quelques images avant que sa copie lointaine n'apparaisse.
 - **Créatures qui s'éloignent** — la copie lointaine regarde maintenant dans la même direction que la créature, au lieu de parfois se tourner ailleurs.
+- **En solo** — les créatures lointaines ne se téléportent plus et ne foncent plus vers un autre endroit quand tu reviens : elles suivent les vraies créatures dans leurs déplacements, et disparaissent quand celles-ci meurent.
 - **Minecraft 1.21.9 à 26.1** — des morceaux de créatures lointaines, comme les vêtements d'un villageois ou un objet tenu en main, ne traversent plus le terrain de Voxy avec les shaders, ni celui de Distant Horizons.
 - **Minecraft 26.1 et plus** — les parties transparentes des créatures lointaines, comme l'enveloppe d'un slime, ne traversent plus le terrain de Voxy avec les shaders, ni celui de Distant Horizons.
 

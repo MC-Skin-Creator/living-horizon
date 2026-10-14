@@ -74,6 +74,9 @@ public final class Scene {
             minecraft.options.fov().set(70);
             minecraft.options.renderDistance().set(12);
             minecraft.options.entityDistanceScaling().set(1.0);
+            // The menus' blur is drawn on the CPU here: frames of the loading screen slow enough
+            // with it for a new world to time out before it loads.
+            minecraft.options.menuBackgroundBlurriness().set(0);
             FarConfig defaults = new FarConfig();
             FarConfig config = FarConfig.get();
             // Field by field: the config object is the one the mod holds.

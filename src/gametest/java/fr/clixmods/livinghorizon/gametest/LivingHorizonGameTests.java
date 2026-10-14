@@ -2,6 +2,7 @@ package fr.clixmods.livinghorizon.gametest;
 
 import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.FollowedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
@@ -34,7 +35,8 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new OptionsScreenScenario(),
             new DepthViewScenario(),
             new EntityDepthScenario(),
-            new UnloadScenario());
+            new UnloadScenario(),
+            new FollowedMobsScenario());
 
     @Override
     public void runTest(ClientGameTestContext context) {
