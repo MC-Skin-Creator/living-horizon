@@ -136,7 +136,7 @@ final class MobMotion {
         }
 
         // On it, or on the way to it in a straight line when it is not one tick away.
-        double dx = tx - x, dz = tz - z, d = Math.hypot(dx, dz);
+        double dx = tx - x, dz = tz - z, d = hypot(dx, dz);
         double reach = Math.max(0.2, Math.min(0.5, d / 40));
         double step = Math.min(d, reach);
         double fromX = x, fromZ = z;
@@ -152,13 +152,13 @@ final class MobMotion {
         if (Math.abs(ground - y) < 0.01) y = ground;
 
         // Walking back to its spot, or on its way somewhere: facing the way it goes.
-        boolean going = catching || (home > 0 && Math.hypot(x - fromX, z - fromZ) > 0.02);
+        boolean going = catching || (home > 0 && hypot(x - fromX, z - fromZ) > 0.02);
         float turnTo = going ? (float) (Mth.atan2(z - fromZ, x - fromX) * Mth.RAD_TO_DEG) - 90f : facing;
         body = Mth.approachDegrees(body, turnTo, walking || going ? TURN : 4f);
         float look = grazing ? 0 : glance(seed, clock + offset) * (walking || catching ? 0.3f : 1f) * (1 - home);
         head = Mth.approachDegrees(head, body + look, 8f);
         pitch = Mth.lerp(0.15f, pitch, grazing ? 40f : 0f);
-        apply(puppet, Math.hypot(x - fromX, z - fromZ), tiny);
+        apply(puppet, hypot(x - fromX, z - fromZ), tiny);
     }
 
     /**
@@ -169,8 +169,8 @@ final class MobMotion {
     boolean follow(LivingEntity puppet, MobMemory.Remembered mob, Entity real) {
         if (!placed) place(mob);
         double tx = real.getX(), ty = real.getY(), tz = real.getZ();
-        double dx = tx - x, dz = tz - z, d = Math.hypot(dx, dz);
-        double pace = Math.hypot(real.getX() - real.xo, real.getZ() - real.zo);
+        double dx = tx - x, dz = tz - z, d = hypot(dx, dz);
+        double pace = hypot(real.getX() - real.xo, real.getZ() - real.zo);
         double step = Math.min(d, Math.min(0.8, pace + 0.06 + 0.05 * d));
         double fromX = x, fromZ = z;
         if (d > 1e-4) {
@@ -187,8 +187,8 @@ final class MobMotion {
         float headTo = real instanceof LivingEntity living ? living.yHeadRot : yaw;
         head = Mth.approachDegrees(head, d > 1.5 ? body : headTo, 10f);
         pitch = Mth.lerp(0.3f, pitch, real.getXRot());
-        apply(puppet, Math.hypot(x - fromX, z - fromZ), false);
-        boolean there = Math.hypot(tx - x, tz - z) < 0.1 && Math.abs(ty - y) < 0.15
+        apply(puppet, hypot(x - fromX, z - fromZ), false);
+        boolean there = hypot(tx - x, tz - z) < 0.1 && Math.abs(ty - y) < 0.15
                 && Math.abs(Mth.wrapDegrees(body - yaw)) < 15;
         return there || ++following > 120;
     }
@@ -209,5 +209,10 @@ final class MobMotion {
             Puppets.walk(puppet, (float) Math.min(moved * 4.0, 1.0), 0.4f, puppet.isBaby() ? 3f : 1f);
             puppet.tickCount++;
         }
+    }
+
+    /** {@code Math.hypot} without its care for overflow, which makes it many times slower: called per mob or bird, per tick. */
+    public static double hypot(double x, double z) {
+        return Math.sqrt(x * x + z * z);
     }
 }

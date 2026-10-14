@@ -145,7 +145,7 @@ public final class MobPaths {
         double last = ground.height(ground.x, ground.z);
         for (int k = 0; k + 3 < corners.length; k += 2) {
             double ax = corners[k], az = corners[k + 1], bx = corners[k + 2], bz = corners[k + 3];
-            int samples = Math.max(1, (int) Math.ceil(Math.hypot(bx - ax, bz - az) / 0.25));
+            int samples = Math.max(1, (int) Math.ceil(MobMotion.hypot(bx - ax, bz - az) / 0.25));
             for (int s = 1; s <= samples; s++) {
                 double u = s / (double) samples;
                 double lx = ax + (bx - ax) * u, lz = az + (bz - az) * u;

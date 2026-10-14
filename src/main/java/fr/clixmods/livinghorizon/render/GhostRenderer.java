@@ -443,6 +443,9 @@ public final class GhostRenderer {
             double extent = Math.max(0.5, Math.max(entity.getBbHeight(), entity.getBbWidth()));
             boost = Math.clamp(config.minApparentPixels / (extent / distance * pixelsPerRadian), 1.0, 400.0);
         }
+        // Past the render distance, the far terrain's depth must be in the picture to hide it.
+        // Within it, the game's own terrain is there already: no merge, no copy for this one.
+        if (distance > drawnRange) FarDepth.needed();
         if (!Occlusion.hidden(key, entity, dx, dy, dz, boost)) {
             return false;
         }
@@ -473,11 +476,13 @@ public final class GhostRenderer {
      * Mobs the server sends, of the kinds shown far away, that the game leaves out of the
      * frame: past its entity distance (the "Entity Distance" slider), or in a part of the
      * world it does not draw. Their copy only takes over once the server stops sending them;
-     * until then they are drawn here, so that a mob never blinks out between the two.
+     * until then they are drawn here, so that a mob never blinks out between the two. With
+     * no copy drawn at all ({@link FarConfig#maxDistantMobs} at 0) there is nothing to hand
+     * over to: they are left out like the game leaves them, and cost nothing.
      */
     private static void unseen(List<EntityRenderState> frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
                                Vec3 eye, float partialTick, FarConfig config) {
-        if (!config.distantMobs) return;
+        if (!config.distantMobs || config.maxDistantMobs <= 0) return;
         boolean game = debug && DebugMarks.gameMobs();
         Map<EntityType<?>, Boolean> wanted = new IdentityHashMap<>();
         MobMemory memory = FarPlayerTracker.get().mobs();

@@ -189,7 +189,7 @@ public final class Ambience {
             for (int i = 0; i < flyers.size(); i++) {
                 Flyer flyer = flyers.get(i);
                 double angle = Math.atan2(flyer.x - cx, flyer.z - cz) + random.nextGaussian() * (flee ? 0.35 : 0.8);
-                if (Math.hypot(flyer.x - cx, flyer.z - cz) < 0.5) angle = random.nextDouble() * Math.PI * 2;
+                if (hypot(flyer.x - cx, flyer.z - cz) < 0.5) angle = random.nextDouble() * Math.PI * 2;
                 double speed = 0.18 + random.nextDouble() * 0.12;
                 dx[i] = Math.sin(angle) * speed;
                 dz[i] = Math.cos(angle) * speed;
@@ -341,7 +341,7 @@ public final class Ambience {
     private @Nullable Spot spot(Place place, LocalPlayer self, double within) {
         List<Spot> candidates = new ArrayList<>();
         for (Spot spot : spots) {
-            if (spot.place == place && Math.hypot(spot.x - self.getX(), spot.z - self.getZ()) < within) candidates.add(spot);
+            if (spot.place == place && hypot(spot.x - self.getX(), spot.z - self.getZ()) < within) candidates.add(spot);
         }
         return candidates.isEmpty() ? null : candidates.get(random.nextInt(candidates.size()));
     }
@@ -353,7 +353,7 @@ public final class Ambience {
     private void findSpots(ClientLevel level, LocalPlayer self, double reach) {
         Spot spot;
         while ((spot = found.poll()) != null) keep(spot);
-        spots.removeIf(s -> Math.hypot(s.x - self.getX(), s.z - self.getZ()) > reach * 1.2);
+        spots.removeIf(s -> hypot(s.x - self.getX(), s.z - self.getZ()) > reach * 1.2);
         if (--probeCooldown > 0) return;
         probeCooldown = 30;
         double loaded = Math.max(16, Math.min(96, Minecraft.getInstance().options.getEffectiveRenderDistance() * 16 - 8));
@@ -603,7 +603,7 @@ public final class Ambience {
                 }
                 flyer.gliding = ((age + (int) phase[i] * 7) % 220) > 35;
                 flyer.moveTo(x, y, z, yaw, bank);
-                if (Math.hypot(x - self.getX(), z - self.getZ()) < reach * 1.3) anyNear = true;
+                if (hypot(x - self.getX(), z - self.getZ()) < reach * 1.3) anyNear = true;
             }
             return !leaving || anyNear;
         }
@@ -677,7 +677,7 @@ public final class Ambience {
 
         /** Landing, standing, taking off: true while gull i is busy with that rather than flying. */
         boolean ground(int i, Flyer flyer, LocalPlayer self, RandomSource r, boolean leaving) {
-            boolean near = Math.hypot(flyer.x - self.getX(), flyer.z - self.getZ()) < 9;
+            boolean near = hypot(flyer.x - self.getX(), flyer.z - self.getZ()) < 9;
             if (mode[i] == FLYING) {
                 if (leaving || near || r.nextInt(900) != 0) return false;
                 double[] beach = beach(r);
@@ -750,14 +750,14 @@ public final class Ambience {
                 double before = heading[i];
                 heading[i] += 0.035 * Math.sin((age + phase[i]) * 0.011) + 0.02 * Math.sin((age + phase[i]) * 0.037);
                 double toSpot = Math.atan2(-(sx - flyer.x), sz - flyer.z) + (leaving ? Math.PI : 0);
-                if (leaving || Math.hypot(sx - flyer.x, sz - flyer.z) > 30) heading[i] += 0.04 * Math.sin(wrap(toSpot - heading[i]));
+                if (leaving || hypot(sx - flyer.x, sz - flyer.z) > 30) heading[i] += 0.04 * Math.sin(wrap(toSpot - heading[i]));
                 double x = flyer.x - Math.sin(heading[i]) * speed[i];
                 double z = flyer.z + Math.cos(heading[i]) * speed[i];
                 double y = sy + altitude[i] + 3 * Math.sin((age + phase[i]) * 0.02) + (leaving ? (age - stay) * 0.03 : 0);
                 float bank = (float) Mth.clamp(wrap(heading[i] - before) * 900, -35, 35);
                 flyer.gliding = ((age + (int) phase[i]) % 160) > 28;
                 flyer.moveTo(x, y, z, (float) Math.toDegrees(heading[i]), bank);
-                if (Math.hypot(x - self.getX(), z - self.getZ()) < reach * 1.3) anyNear = true;
+                if (hypot(x - self.getX(), z - self.getZ()) < reach * 1.3) anyNear = true;
             }
             return !leaving || (anyNear && age < stay + 2400);
         }
@@ -837,7 +837,7 @@ public final class Ambience {
             if (onWater) {
                 // Ducks never let anyone near: the whole lot takes off, away, and is gone.
                 for (Flyer flyer : flyers) {
-                    if (Math.hypot(flyer.x - self.getX(), flyer.z - self.getZ()) < 14) {
+                    if (hypot(flyer.x - self.getX(), flyer.z - self.getZ()) < 14) {
                         fleeFrom(self.getX(), self.getZ());
                         return false;
                     }
@@ -845,7 +845,7 @@ public final class Ambience {
             }
             for (int i = 0; i < flyers.size(); i++) {
                 Flyer flyer = flyers.get(i);
-                double close = Math.hypot(flyer.x - self.getX(), flyer.z - self.getZ());
+                double close = hypot(flyer.x - self.getX(), flyer.z - self.getZ());
                 boolean scared = !onWater && close < 7 && Math.abs(flyer.y - self.getY()) < 6;
                 if (timer[i] >= length[i] || (scared && !flying[i])) {
                     // Next move: a hop, a short flight, or away from whoever came close.
@@ -868,7 +868,7 @@ public final class Ambience {
                     }
                     double tx = flyer.x + Math.sin(angle) * distance, tz = flyer.z + Math.cos(angle) * distance;
                     // Never wander far from the spot, unless leaving or scared off.
-                    if (!leaving && !scared && Math.hypot(tx - sx, tz - sz) > 10) {
+                    if (!leaving && !scared && hypot(tx - sx, tz - sz) > 10) {
                         tx = sx + r.nextGaussian() * 2;
                         tz = sz + r.nextGaussian() * 2;
                     }
@@ -889,7 +889,7 @@ public final class Ambience {
                 double t = Math.min(1.0, timer[i] / (double) length[i]);
                 double x = Mth.lerp(t, fromX[i], toX[i]);
                 double z = Mth.lerp(t, fromZ[i], toZ[i]);
-                double arc = flying[i] ? 1.5 + Math.hypot(toX[i] - fromX[i], toZ[i] - fromZ[i]) * 0.15 : onWater ? 0 : 0.35;
+                double arc = flying[i] ? 1.5 + hypot(toX[i] - fromX[i], toZ[i] - fromZ[i]) * 0.15 : onWater ? 0 : 0.35;
                 double y = Mth.lerp(t, fromY[i], toY[i]) + Math.sin(t * Math.PI) * arc;
                 // Afloat: rocking gently on the water, the body a little below its surface.
                 if (onWater && !flying[i]) y += Math.sin(age * 0.12 + i) * 0.03 - 0.1;
@@ -902,7 +902,7 @@ public final class Ambience {
                     if ((timer[i] / 7) % 9 == 0) y -= 0.05;
                 }
                 flyer.moveTo(x, y, z, flyer.yaw, 0f);
-                if (Math.hypot(x - self.getX(), z - self.getZ()) < reach) anyNear = true;
+                if (hypot(x - self.getX(), z - self.getZ()) < reach) anyNear = true;
             }
             return !leaving || (anyNear && age < stay + 400);
         }
@@ -958,7 +958,7 @@ public final class Ambience {
         @Override
         boolean tick(Ambience a, LocalPlayer self, double reach) {
             RandomSource r = a.random;
-            double close = Math.hypot(sx - self.getX(), sz - self.getZ());
+            double close = hypot(sx - self.getX(), sz - self.getZ());
             boolean leaving = age > stay;
             if (airborne < 0 && (close < 10 || leaving)) airborne = 0;
             if (airborne < 0) {
@@ -996,7 +996,7 @@ public final class Ambience {
                 flyer.perched = false;
                 flyer.gliding = false;
                 flyer.moveTo(x, y, z, yaw, 0f);
-                if (Math.abs(flyer.y - perchY[i]) > 0.05 || Math.hypot(flyer.x - perchX[i], flyer.z - perchZ[i]) > 0.1) {
+                if (Math.abs(flyer.y - perchY[i]) > 0.05 || hypot(flyer.x - perchX[i], flyer.z - perchZ[i]) > 0.1) {
                     settled = false;
                 }
             }
@@ -1084,7 +1084,7 @@ public final class Ambience {
             for (int i = 0; i < flyers.size(); i++) {
                 Flyer flyer = flyers.get(i);
                 if (hanging[i]) {
-                    if (Math.hypot(flyer.x - self.getX(), flyer.z - self.getZ()) < 6
+                    if (hypot(flyer.x - self.getX(), flyer.z - self.getZ()) < 6
                             && Math.abs(flyer.y - self.getY()) < 6) {
                         // Someone came close: drop, and away.
                         hanging[i] = false;
@@ -1135,5 +1135,10 @@ public final class Ambience {
         List<Entity> puppets = new ArrayList<>();
         for (Flyer flyer : flyers) if (flyer.puppet != null) puppets.add(flyer.puppet);
         return puppets;
+    }
+
+    /** {@code Math.hypot} without its care for overflow, which makes it many times slower: called per bird, per tick. */
+    private static double hypot(double x, double z) {
+        return Math.sqrt(x * x + z * z);
     }
 }

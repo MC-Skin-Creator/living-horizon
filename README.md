@@ -181,6 +181,47 @@ The game itself lacks what these need, so they are left out rather than imitated
   the entities - near white, far black, sky blue.
 - Every optimisation has its own switch (`opt*` in the file), to compare the cost.
 
+### Benchmark
+
+`/livinghorizon benchmark [seconds]` measures what the mod costs where the player stands: stand
+still and look at what you play with. The settings go through phases: the mod off, your
+settings, each quality preset, distant players, mobs and birds each on their own, then mobs
+without impostors, without hiding the hidden ones, and without the far terrain's depth. The
+mod off comes again in the middle and at the end: the baseline is the mean of the three, and their
+spread, the drift, is the noise. A 20 second warm-up, not measured, comes first: measured, a first
+phase with the mod off came out a quarter slower than the same phase at the end. Each phase settles
+for 4 seconds and is measured for `seconds` (8 by default, 3 to 60), about three minutes in all.
+`/livinghorizon benchmark stop` stops it.
+
+While it runs, the debug views are off, and the frame rate cap, vsync and the game's own
+slowdown when idle are lifted. Everything is put back at the end, and nothing is saved. The
+report goes to `livinghorizon/benchmarks/benchmark-<date>.txt` in the game folder and to the
+log. Per phase it gives the frame rate, the 1% low, the 99th percentile and worst frame
+times, and the cost in milliseconds per frame against the mod off. It also gives what the
+mod did (tick and extraction time, figures drawn, copies, impostors, polygons, birds, the
+occlusion queries and the far depth), with the game, GPU, mods and settings. A phase where
+the player moved or a screen was open is marked.
+
+`/livinghorizon benchmark world` makes a world to run it in, the same for everyone
+(`debug/BenchmarkWorld`). It is a new single player world, "Living Horizon benchmark", added to the
+world list: the world the player is in is saved and closed first, never changed or replaced. It
+says so and only goes ahead on `/livinghorizon benchmark world confirm`. Nothing in it is random:
+
+- a flat world of a fixed seed, without structures, creative, time stopped at noon, clear weather,
+  no mob, patrol, trader or phantom spawning, no random ticks;
+- a flat world spawns animals where its chunks are generated: every chunk within 48 of the start is
+  generated first, sixteen by sixteen with `/forceload`, and emptied of them;
+- then every mob is summoned by the mod, of a chosen kind, at a chosen place, facing the player,
+  with a fixed id, no AI and the tag `lh_bench`. Given data, `/summon` keeps a mob as it is: a
+  sheep stays white, a horse keeps its coat.
+
+The player stands at 0, 0 looking south, at a zone for each part of the mod: mobs the game draws
+(20 to 56 blocks), mobs past its entity distance that the mod draws (72 to 136), some of them
+behind a stone wall, about 500 remembered copies (192 to 480, more than *Max mobs* by default),
+some behind a hill, a herd past the default *Mob distance* (576 to 672), and a pond, a wheat field,
+a tree and a tower for the birds. The far herds are never sent to the client: a scan of 48 chunks
+remembers them once the world is built. Birds are the mod's own and come and go on their own.
+
 ## How it works
 
 Everything below is for the curious, and for whoever works on the mod.
@@ -258,7 +299,7 @@ lives there.
   tick, but its legs stay still (`optStillTiny`). It resumes at that size plus a quarter and
   a pixel, so it never flickers. `animationMaxDistance` (blocks, 0 no limit) also stills
   every mob past it, however big (`MobMemory.isStill`).
-- With `optFreezeHidden` (debug screen, off by default), a copy that has not been drawn for
+- With `optFreezeHidden` (debug screen, on by default), a copy that has not been drawn for
   half a second - out of view, hidden, too small - is not ticked at all: no animation, no
   path read, only a position, until it is drawn again.
 - A copy is never drawn where the real mob would be sent (`MobMemory.nearRange`: how far the
@@ -271,7 +312,8 @@ lives there.
 - The hand-over never leaves a gap. A mob the server still sends but the game does not
   draw (past the *Entity Distance* slider, or in a part of the world it does not draw) is
   drawn by the mod; the moment the server stops sending it, its copy takes its place, on
-  the next tick. How far the server sends each kind of mob is learnt from what it sends
+  the next tick. With `maxDistantMobs` at 0 there is no copy to hand over to, and the mod
+  leaves those mobs out as the game does. How far the server sends each kind of mob is learnt from what it sends
   (vanilla: up to the view distance; Paper: 48 blocks for animals): a copy is only judged
   missing well inside that, never just because its chunk is loaded.
 - **Scan the chunks around** (a button in the settings, or `/livinghorizon scan [radius]`):

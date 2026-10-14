@@ -54,7 +54,7 @@ public final class FarConfig {
     @SerializedName(value = "depthOcclusion", alternate = "voxyOcclusion")
     public boolean depthOcclusion = true;
 
-    private static final int CURRENT = 8;
+    private static final int CURRENT = 9;
 
     /** Skinned figures, which Distant Friends uses as its fake players: shown, standing still. */
     private static final String MANNEQUIN = "minecraft:mannequin";
@@ -83,7 +83,10 @@ public final class FarConfig {
     /** The value of {@link #maxDistantMobs} (and above) that means no limit. */
     public static final int UNLIMITED_MOBS = 1000;
 
-    /** How many remembered mobs are drawn at once: the nearest ones. {@link #UNLIMITED_MOBS}: all. */
+    /**
+     * How many remembered mobs are drawn at once: the nearest ones. {@link #UNLIMITED_MOBS}: all.
+     * 0 draws no distant mob, not even the real ones past the game's entity distance.
+     */
     public int maxDistantMobs = 512;
 
     /** Blocks: past this, distant mobs are not drawn. 0 is no limit. */
@@ -221,7 +224,7 @@ public final class FarConfig {
     /** Blocks: past this, no distant mob plays an animation, however big it looks. 0 is no limit. */
     public int animationMaxDistance = 0;
     /** A copy that was not drawn for a moment (out of view, hidden, too small) stays where it is: no animation, no path read. */
-    public boolean optFreezeHidden = false;
+    public boolean optFreezeHidden = true;
 
     // --- Debug -----------------------------------------------------------------------------
 
@@ -330,6 +333,10 @@ public final class FarConfig {
             }
             instance.glowOutline = null;
             instance.debugOutlines = null;
+        }
+        if (instance.version < 9) {
+            // A copy nobody sees no longer walks: hundreds of them cost every tick for nothing.
+            instance.optFreezeHidden = true;
         }
         instance.version = CURRENT;
         save();

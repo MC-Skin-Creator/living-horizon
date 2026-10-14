@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon;
 import com.mojang.blaze3d.platform.InputConstants;
 import fr.clixmods.livinghorizon.command.LivingHorizonCommand;
 import fr.clixmods.livinghorizon.compat.LodWorld;
+import fr.clixmods.livinghorizon.debug.BenchmarkWorld;
 import fr.clixmods.livinghorizon.platform.Events;
 import fr.clixmods.livinghorizon.render.Occlusion;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
@@ -168,6 +169,7 @@ public final class LivingHorizonClient {
         while (settings.consumeClick()) {
             minecraft.setScreen(new FarConfigScreen(minecraft.screen));
         }
+        BenchmarkWorld.tick(minecraft);
         long started = System.nanoTime();
         FarPlayerTracker.get().tick(minecraft);
         if (minecraft.level != null) Occlusion.tick(minecraft.gameRenderer.getMainCamera().position());

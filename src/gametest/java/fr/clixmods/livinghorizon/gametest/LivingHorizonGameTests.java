@@ -1,11 +1,14 @@
 package fr.clixmods.livinghorizon.gametest;
 
+import fr.clixmods.livinghorizon.gametest.scenario.BenchmarkScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.BenchmarkWorldScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.PerfScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RememberedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.UnloadScenario;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -34,7 +37,10 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new OptionsScreenScenario(),
             new DepthViewScenario(),
             new EntityDepthScenario(),
-            new UnloadScenario());
+            new UnloadScenario(),
+            new PerfScenario(),
+            new BenchmarkScenario(),
+            new BenchmarkWorldScenario());
 
     @Override
     public void runTest(ClientGameTestContext context) {

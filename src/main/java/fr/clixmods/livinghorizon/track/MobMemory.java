@@ -126,6 +126,24 @@ public final class MobMemory {
         public double z() { return z; }
         public String type() { return type; }
         public boolean fromPack() { return fromPack; }
+
+        /** What is written to the file, apart from what the game's thread keeps changing. */
+        private Remembered saved() {
+            Remembered copy = new Remembered();
+            copy.id = id;
+            copy.type = type;
+            copy.dimension = dimension;
+            copy.world = world;
+            copy.x = x;
+            copy.y = y;
+            copy.z = z;
+            copy.yaw = yaw;
+            copy.nbt = nbt;
+            copy.seenAt = seenAt;
+            copy.fromPack = fromPack;
+            copy.named = named;
+            return copy;
+        }
     }
 
     private static final Gson GSON = new GsonBuilder().create();
@@ -168,6 +186,8 @@ public final class MobMemory {
     /** The seed of the world of {@link #bound}: what a memory must carry to be drawn. */
     private long world;
     private boolean dirty;
+    /** The last write of the file, off the game's thread: each one starts once the one before is done. */
+    private CompletableFuture<?> writing = CompletableFuture.completedFuture(null);
     private int clock;
     private double selfX, selfY, selfZ;
     private boolean selfKnown;
@@ -242,7 +262,11 @@ public final class MobMemory {
     }
 
     void close() {
-        save();
+        // Leaving the world: written here, after any write still running, so that the file is
+        // whole before it is read again.
+        writing.handle((done, error) -> null).join();
+        if (file != null) write(file, copies());
+        dirty = false;
         firstVisit = false;
         mobs.clear();
         live.clear();
@@ -490,6 +514,7 @@ public final class MobMemory {
         selfKnown = true;
         renderBlocks = renderDistanceBlocks;
         builtNow = 0;
+        sentRanges.clear();
         clock++;
         if (!config.distantMobs) {
             shown = List.of();
@@ -568,7 +593,7 @@ public final class MobMemory {
                 mob.still = isStill(living, mob, config, pixelsPerRadian);
                 boolean tiny = mob.still;
                 double handover = Math.max(24, Math.min(sent(type(mob)), renderDistanceBlocks));
-                float home = MobMotion.home(Math.hypot(mob.x - selfX, mob.z - selfZ), handover);
+                float home = MobMotion.home(MobMotion.hypot(mob.x - selfX, mob.z - selfZ), handover);
                 motion(mob).tick(living, mob, choice, clock, roam, tiny, home);
             } else {
                 hold(mob.puppet, mob);
@@ -676,7 +701,7 @@ public final class MobMemory {
     private void learnReach() {
         for (Entity entity : live.values()) {
             if (entity.isPassenger() || entity.isVehicle()) continue;
-            double across = Math.hypot(entity.getX() - selfX, entity.getZ() - selfZ);
+            double across = MobMotion.hypot(entity.getX() - selfX, entity.getZ() - selfZ);
             reach.merge(entity.getType().getCategory(), across, Math::max);
         }
     }
@@ -709,7 +734,7 @@ public final class MobMemory {
             if (!mob.dimension.equals(dimension) || !isHere(mob) || live.containsKey(mob.id)) continue;
             EntityType<?> type = type(mob);
             double range = nearRange(type);
-            boolean inRange = Math.hypot(mob.x - selfX, mob.z - selfZ) < range
+            boolean inRange = MobMotion.hypot(mob.x - selfX, mob.z - selfZ) < range
                     && level.hasChunk((int) Math.floor(mob.x) >> 4, (int) Math.floor(mob.z) >> 4);
             mob.missingChecks = inRange ? mob.missingChecks + 1 : 0;
             if (mob.missingChecks >= 5) missing.add(mob);
@@ -735,8 +760,13 @@ public final class MobMemory {
     }
 
     private double sent(@Nullable EntityType<?> type) {
-        return sent(type, reach);
+        Double known = sentRanges.get(type);
+        if (known == null) sentRanges.put(type, known = sent(type, reach));
+        return known;
     }
+
+    /** {@link #sent} per type, worked out once a tick: asked for every mob, every frame. */
+    private final Map<EntityType<?>, Double> sentRanges = new IdentityHashMap<>();
 
     /** The nearest few, in this dimension: the ones drawn until the next choice. */
     private void choose(String dimension, FarConfig config) {
@@ -841,16 +871,32 @@ public final class MobMemory {
 
     // --- File --------------------------------------------------------------------------
 
+    /**
+     * Writes the file off the game's thread: up to {@link #MAX_REMEMBERED} mobs with their
+     * saved data are megabytes of JSON, a frame lost every minute when written in the tick.
+     */
     private void save() {
         if (file == null) return;
         dirty = false;
+        Path to = file;
+        List<Remembered> copy = copies();
+        writing = writing.handle((done, error) -> null).thenRunAsync(() -> write(to, copy), Util.backgroundExecutor());
+    }
+
+    private List<Remembered> copies() {
+        List<Remembered> copy = new ArrayList<>(mobs.size());
+        for (Remembered mob : mobs.values()) copy.add(mob.saved());
+        return copy;
+    }
+
+    private static void write(Path to, List<Remembered> mobs) {
         try {
-            Files.createDirectories(file.getParent());
-            try (Writer writer = Files.newBufferedWriter(file)) {
-                GSON.toJson(new ArrayList<>(mobs.values()), writer);
+            Files.createDirectories(to.getParent());
+            try (Writer writer = Files.newBufferedWriter(to)) {
+                GSON.toJson(mobs, writer);
             }
-        } catch (IOException e) {
-            LivingHorizonClient.LOGGER.warn("Could not write {}", file, e);
+        } catch (IOException | RuntimeException e) {
+            LivingHorizonClient.LOGGER.warn("Could not write {}", to, e);
         }
     }
 }
