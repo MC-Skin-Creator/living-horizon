@@ -161,7 +161,10 @@ public final class BenchmarkWorld {
 
     /** Saves and closes the world the player is in, back to the title screen. */
     public static void leave(Minecraft minecraft) {
+        // As the pause screen's "Save and Quit": the connection closed first, or the integrated
+        // server never stops.
         //? if >=1.21.6 {
+        minecraft.level.disconnect(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE);
         minecraft.disconnectWithSavingScreen();
         //?} elif >=1.20.5 {
         /*minecraft.level.disconnect();
