@@ -166,6 +166,9 @@ public final class BenchmarkWorld {
         //?} elif >=1.20.5 {
         /*minecraft.level.disconnect();
         minecraft.disconnect(new net.minecraft.client.gui.screens.GenericMessageScreen(Component.translatable("menu.savingLevel")));
+        *///?} elif >=1.20.2 {
+        /*minecraft.level.disconnect();
+        minecraft.disconnect(new net.minecraft.client.gui.screens.GenericDirtMessageScreen(Component.translatable("menu.savingLevel")));
         *///?} else {
         /*minecraft.level.disconnect();
         minecraft.clearLevel(new net.minecraft.client.gui.screens.GenericDirtMessageScreen(Component.translatable("menu.savingLevel")));

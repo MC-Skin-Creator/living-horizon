@@ -29,18 +29,22 @@ public final class BenchmarkWorldScenario implements Scenario {
         String counts = context.computeOnClient(minecraft -> {
             var server = minecraft.getSingleplayerServer();
             if (server == null) return "no server";
-            int placed = 0, other = 0;
+            int placedCount = 0, other = 0;
             StringBuilder strays = new StringBuilder();
             for (Entity entity : server.overworld().getAllEntities()) {
                 if (entity instanceof Player) continue;
-                if (entity.getTags().contains(BenchmarkWorld.TAG)) {
-                    placed++;
+                //? if >=26.1 {
+                /*boolean placed = entity.entityTags().contains(BenchmarkWorld.TAG);
+                *///?} else
+                boolean placed = entity.getTags().contains(BenchmarkWorld.TAG);
+                if (placed) {
+                    placedCount++;
                 } else {
                     other++;
                     if (strays.length() < 300) strays.append(entity.getType()).append(" at ").append(entity.blockPosition()).append("; ");
                 }
             }
-            return placed + " placed loaded, " + other + " others " + strays + "| remembered "
+            return placedCount + " placed loaded, " + other + " others " + strays + "| remembered "
                     + FarPlayerTracker.get().mobs().size() + ", shown " + FarPlayerTracker.get().mobs().shown().size()
                     + " | player at " + minecraft.player.blockPosition() + " yaw " + minecraft.player.getYRot();
         });
@@ -50,6 +54,11 @@ public final class BenchmarkWorldScenario implements Scenario {
         context.waitTicks(100);
         Scene.screenshot(context, this, "south");
         context.runOnClient(BenchmarkWorld::leave);
-        for (int i = 0; i < 200 && context.computeOnClient(minecraft -> minecraft.level != null); i++) context.waitTicks(5);
+        // Closed once the integrated server's thread has ended, as the test framework counts it:
+        // this world is not one the framework made, so it is not closed for us.
+        for (int i = 0; i < 600 && (net.fabricmc.fabric.impl.client.gametest.threading.ThreadingImpl.isServerRunning
+                || context.computeOnClient(minecraft -> minecraft.level != null)); i++) {
+            context.waitTicks(5);
+        }
     }
 }
