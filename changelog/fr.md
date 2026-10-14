@@ -5,6 +5,10 @@
 ### Améliorations
 - **Images par seconde** — les créatures lointaines et les oiseaux coûtent beaucoup moins cher à dessiner, surtout là où rien ne les cache, comme dans un monde plat.
 
+### Corrections
+- **Mobs max sur Aucun** — les créatures lointaines ne coûtent plus d'images par seconde : les créatures juste au-delà de ta distance des entités ne sont plus dessinées non plus.
+- **Saccade toutes les minutes** — le jeu ne se fige plus un instant quand il enregistre les créatures dont il se souvient.
+
 ## 0.5.0 — 2026-10-13
 
 ### Nouveautés

@@ -271,7 +271,8 @@ lives there.
 - The hand-over never leaves a gap. A mob the server still sends but the game does not
   draw (past the *Entity Distance* slider, or in a part of the world it does not draw) is
   drawn by the mod; the moment the server stops sending it, its copy takes its place, on
-  the next tick. How far the server sends each kind of mob is learnt from what it sends
+  the next tick. With `maxDistantMobs` at 0 there is no copy to hand over to, and the mod
+  leaves those mobs out as the game does. How far the server sends each kind of mob is learnt from what it sends
   (vanilla: up to the view distance; Paper: 48 blocks for animals): a copy is only judged
   missing well inside that, never just because its chunk is loaded.
 - **Scan the chunks around** (a button in the settings, or `/livinghorizon scan [radius]`):

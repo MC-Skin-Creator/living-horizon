@@ -83,7 +83,10 @@ public final class FarConfig {
     /** The value of {@link #maxDistantMobs} (and above) that means no limit. */
     public static final int UNLIMITED_MOBS = 1000;
 
-    /** How many remembered mobs are drawn at once: the nearest ones. {@link #UNLIMITED_MOBS}: all. */
+    /**
+     * How many remembered mobs are drawn at once: the nearest ones. {@link #UNLIMITED_MOBS}: all.
+     * 0 draws no distant mob, not even the real ones past the game's entity distance.
+     */
     public int maxDistantMobs = 512;
 
     /** Blocks: past this, distant mobs are not drawn. 0 is no limit. */

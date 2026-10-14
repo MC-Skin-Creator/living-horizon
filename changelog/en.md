@@ -5,6 +5,10 @@
 ### Improved
 - **Frame rate** — distant mobs and birds cost much less to draw, most of all where nothing hides them, as in a superflat world.
 
+### Fixed
+- **Max mobs set to None** — distant mobs no longer cost any frame rate: the mobs just past your entity distance are no longer drawn either.
+- **Stutter every minute** — the game no longer freezes for a moment while it saves the mobs it remembers.
+
 ## 0.5.0 — 2026-10-13
 
 ### New

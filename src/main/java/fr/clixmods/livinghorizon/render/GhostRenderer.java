@@ -476,11 +476,13 @@ public final class GhostRenderer {
      * Mobs the server sends, of the kinds shown far away, that the game leaves out of the
      * frame: past its entity distance (the "Entity Distance" slider), or in a part of the
      * world it does not draw. Their copy only takes over once the server stops sending them;
-     * until then they are drawn here, so that a mob never blinks out between the two.
+     * until then they are drawn here, so that a mob never blinks out between the two. With
+     * no copy drawn at all ({@link FarConfig#maxDistantMobs} at 0) there is nothing to hand
+     * over to: they are left out like the game leaves them, and cost nothing.
      */
     private static void unseen(List<EntityRenderState> frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
                                Vec3 eye, float partialTick, FarConfig config) {
-        if (!config.distantMobs) return;
+        if (!config.distantMobs || config.maxDistantMobs <= 0) return;
         boolean game = debug && DebugMarks.gameMobs();
         Map<EntityType<?>, Boolean> wanted = new IdentityHashMap<>();
         MobMemory memory = FarPlayerTracker.get().mobs();

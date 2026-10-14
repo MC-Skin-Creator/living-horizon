@@ -261,6 +261,11 @@ come back, add it here in the same pull request: this file is what the next sess
   The usual cost is a full-screen depth copy each frame: `FarDepth.capture` runs only when
   something reads the copy, and the occlusion queries read the game's depth where it is, except
   with Distant Horizons. Under llvmpipe the queries' `glDrawArrays` is CPU time a real GPU does not pay.
+- **Frame rate lost with no distant mob drawn** (*Max mobs* at None, yet slower with distant
+  mobs on): `GhostRenderer.unseen` draws the real mobs past the game's entity distance and asks
+  the occlusion queries about each. It is skipped when no copy is drawn.
+- **A hitch every minute**: a file written in the tick. `MobMemory.save` writes its megabytes
+  of JSON off the game's thread; keep any new save that way.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
