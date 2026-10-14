@@ -41,7 +41,14 @@ import java.util.function.Consumer;
  */
 public final class Benchmark {
     /** One step: a name for the report, and what it changes in the player's settings. */
-    private record Phase(String id, String what, Consumer<FarConfig> setup) {
+    private record Phase(String id, String what, Consumer<FarConfig> setup, boolean measured) {
+        Phase(String id, String what, Consumer<FarConfig> setup) {
+            this(id, what, setup, true);
+        }
+
+        boolean off() {
+            return id.startsWith("off");
+        }
     }
 
     /** What one phase measured. */
@@ -84,8 +91,12 @@ public final class Benchmark {
 
     /** Seconds each phase is left to settle before it is measured: copies built, pictures baked. */
     private static final double SETTLE = 4.0;
-    /** The first phase settles longer: the chat closing, the chunks around still being built. */
-    private static final double SETTLE_FIRST = 10.0;
+    /**
+     * The first phase, not measured: the game warms up for it (code compiled as it runs, the
+     * graphics card raising its clocks, the chunks around still built). Measured, a first
+     * phase with the mod off came out a quarter slower than the same phase at the end.
+     */
+    private static final double SETTLE_FIRST = 20.0;
     public static final int DEFAULT_SECONDS = 8, MIN_SECONDS = 3, MAX_SECONDS = 60;
     /** Blocks or degrees the player may move before a phase is marked as moved. */
     private static final double MOVE = 0.05, TURN = 0.5;
@@ -143,7 +154,7 @@ public final class Benchmark {
     /** How long it takes, in seconds. */
     public static int duration(int seconds) {
         double each = SETTLE + Math.max(MIN_SECONDS, Math.min(MAX_SECONDS, seconds));
-        return (int) Math.ceil(phases().size() * each + SETTLE_FIRST - SETTLE);
+        return (int) Math.ceil((phases().size() - 1) * each + SETTLE_FIRST);
     }
 
     /** Stops it before the end; the settings are put back and nothing is written. */
@@ -172,6 +183,10 @@ public final class Benchmark {
         }
         if (!measuring) {
             if (elapsed < settle) return;
+            if (!phases.get(index).measured) {
+                next(minecraft);
+                return;
+            }
             measuring = true;
             frameCount = 0;
             lastFrame = now;
@@ -261,12 +276,16 @@ public final class Benchmark {
 
     private static List<Phase> phases() {
         List<Phase> list = new ArrayList<>();
+        list.add(new Phase("warmup", "warming up, your settings, not measured", config -> {
+        }, false));
         list.add(new Phase("off", "mod off", Benchmark::off));
         list.add(new Phase("yours", "your settings", config -> {
         }));
         for (QualityPreset preset : QualityPreset.values()) {
             list.add(new Phase(preset.id(), "preset " + preset.id(), preset::apply));
         }
+        // The mod off between the halves too: the baseline is the mean of three, and their spread is the drift.
+        list.add(new Phase("off-middle", "mod off, between", Benchmark::off));
         list.add(new Phase("players", "distant players only", config -> {
             off(config);
             config.enabled = true;
@@ -330,15 +349,22 @@ public final class Benchmark {
         double offMillis = 0;
         int offs = 0;
         for (Result result : RESULTS) {
-            if (result.phase.id.startsWith("off") && result.frames.length > 0) {
+            if (result.phase.off() && result.frames.length > 0) {
                 offMillis += result.averageMillis();
                 offs++;
             }
         }
         offMillis = offs == 0 ? 0 : offMillis / offs;
+        double fastest = Double.MAX_VALUE, slowest = 0;
+        for (Result result : RESULTS) {
+            if (!result.phase.off() || result.frames.length == 0) continue;
+            fastest = Math.min(fastest, result.averageMillis());
+            slowest = Math.max(slowest, result.averageMillis());
+        }
 
         out.append("== Frames (").append(fmt(measureSeconds, 0)).append(" s measured per phase, after ")
-                .append(fmt(SETTLE, 0)).append(" s to settle)\n");
+                .append(fmt(SETTLE, 0)).append(" s to settle, after ").append(fmt(SETTLE_FIRST, 0))
+                .append(" s of warm-up)\n");
         out.append(String.format(Locale.ROOT, "%-20s %8s %8s %8s %8s %8s %9s  %s%n",
                 "phase", "fps", "1% low", "ms avg", "ms p99", "ms max", "cost ms", "notes"));
         for (Result result : RESULTS) {
@@ -350,7 +376,12 @@ public final class Benchmark {
                     (result.averageMillis() - offMillis >= 0 ? "+" : "") + fmt(result.averageMillis() - offMillis, 2),
                     notes.trim()));
         }
-        out.append("cost ms: the average frame time minus the mod off's (the mean of its two phases).\n\n");
+        out.append("cost ms: the average frame time minus the mod off's, the mean of its ").append(offs).append(" phases.\n");
+        if (offs > 1) {
+            out.append("drift: the mod off's phases are ").append(fmt(slowest - fastest, 2))
+                    .append(" ms apart; a cost smaller than that is noise.\n");
+        }
+        out.append("\n");
 
         out.append("== What the mod did, at the end of each phase\n");
         out.append(String.format(Locale.ROOT, "%-20s %8s %8s %7s %7s %7s %6s %7s %10s %9s %6s%n", "phase", "tick ms",

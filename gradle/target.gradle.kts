@@ -178,6 +178,8 @@ extra["lhMixins"] = buildList {
     add("ModelPartMixin")
     // Before 1.20.5 the mod's screens have a list of their own, which places its rows itself.
     if (atLeast("1.20.5")) add("OptionsListEntryMixin")
+    // "Create" on the world creation screen, for the benchmark's world.
+    add("CreateWorldScreenAccessor")
     add("TextureManagerMixin")
     add("VoxyRenderSystemMixin")
 }.sorted().joinToString(",\n    ") { "\"$it\"" }

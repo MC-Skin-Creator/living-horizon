@@ -9,6 +9,7 @@ import fr.clixmods.livinghorizon.Stats;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.LodWorld;
 import fr.clixmods.livinghorizon.debug.Benchmark;
+import fr.clixmods.livinghorizon.debug.BenchmarkWorld;
 import fr.clixmods.livinghorizon.debug.DebugHud;
 import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.Profiles;
@@ -112,6 +113,18 @@ public final class LivingHorizonCommand {
                         }))
                         .then(LiteralArgumentBuilder.<S>literal("benchmark")
                                 .executes(c -> benchmark(source.apply(c.getSource()), Benchmark.DEFAULT_SECONDS))
+                                .then(LiteralArgumentBuilder.<S>literal("world")
+                                        // Leaving the world is not done on a typo: said first, done on "confirm".
+                                        .executes(c -> {
+                                            source.apply(c.getSource()).feedback(
+                                                    Component.translatable("livinghorizon.benchmark.world.explain"));
+                                            return 1;
+                                        })
+                                        .then(LiteralArgumentBuilder.<S>literal("confirm").executes(c -> {
+                                            Minecraft client = source.apply(c.getSource()).client();
+                                            client.execute(() -> BenchmarkWorld.start(client));
+                                            return 1;
+                                        })))
                                 .then(LiteralArgumentBuilder.<S>literal("stop").executes(c -> {
                                     Source from = source.apply(c.getSource());
                                     from.client().execute(() -> Benchmark.stop(from.client()));

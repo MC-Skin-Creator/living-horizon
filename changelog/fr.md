@@ -4,6 +4,7 @@
 
 ### Nouveautés
 - **Benchmark** — `/livinghorizon benchmark` mesure ce que le mod coûte dans ton monde, partie par partie, et écrit un rapport à joindre à un signalement de bug.
+- **Monde de benchmark** — `/livinghorizon benchmark world` crée un nouveau monde de test, le même pour tout le monde, pour y lancer le benchmark ; ton propre monde reste tel quel.
 
 ### Améliorations
 - **Images par seconde** — les créatures lointaines et les oiseaux coûtent beaucoup moins cher à dessiner, surtout là où rien ne les cache, comme dans un monde plat.

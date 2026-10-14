@@ -187,8 +187,10 @@ The game itself lacks what these need, so they are left out rather than imitated
 still and look at what you play with. The settings go through phases: the mod off, your
 settings, each quality preset, distant players, mobs and birds each on their own, then mobs
 without impostors, without hiding the hidden ones, and without the far terrain's depth. The
-mod off comes again at the end, to show any drift. Each phase settles for 4 seconds (the first
-for 10) and is measured for `seconds` (8 by default, 3 to 60), about two and a half minutes in all.
+mod off comes again in the middle and at the end: the baseline is the mean of the three, and their
+spread, the drift, is the noise. A 20 second warm-up, not measured, comes first: measured, a first
+phase with the mod off came out a quarter slower than the same phase at the end. Each phase settles
+for 4 seconds and is measured for `seconds` (8 by default, 3 to 60), about three minutes in all.
 `/livinghorizon benchmark stop` stops it.
 
 While it runs, the debug views are off, and the frame rate cap, vsync and the game's own
@@ -199,6 +201,26 @@ times, and the cost in milliseconds per frame against the mod off. It also gives
 mod did (tick and extraction time, figures drawn, copies, impostors, polygons, birds, the
 occlusion queries and the far depth), with the game, GPU, mods and settings. A phase where
 the player moved or a screen was open is marked.
+
+`/livinghorizon benchmark world` makes a world to run it in, the same for everyone
+(`debug/BenchmarkWorld`). It is a new single player world, "Living Horizon benchmark", added to the
+world list: the world the player is in is saved and closed first, never changed or replaced. It
+says so and only goes ahead on `/livinghorizon benchmark world confirm`. Nothing in it is random:
+
+- a flat world of a fixed seed, without structures, creative, time stopped at noon, clear weather,
+  no mob, patrol, trader or phantom spawning, no random ticks;
+- a flat world spawns animals where its chunks are generated: every chunk within 48 of the start is
+  generated first, sixteen by sixteen with `/forceload`, and emptied of them;
+- then every mob is summoned by the mod, of a chosen kind, at a chosen place, facing the player,
+  with a fixed id, no AI and the tag `lh_bench`. Given data, `/summon` keeps a mob as it is: a
+  sheep stays white, a horse keeps its coat.
+
+The player stands at 0, 0 looking south, at a zone for each part of the mod: mobs the game draws
+(20 to 56 blocks), mobs past its entity distance that the mod draws (72 to 136), some of them
+behind a stone wall, about 500 remembered copies (192 to 480, more than *Max mobs* by default),
+some behind a hill, a herd past the default *Mob distance* (576 to 672), and a pond, a wheat field,
+a tree and a tower for the birds. The far herds are never sent to the client: a scan of 48 chunks
+remembers them once the world is built. Birds are the mod's own and come and go on their own.
 
 ## How it works
 
