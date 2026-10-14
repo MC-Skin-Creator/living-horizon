@@ -155,7 +155,6 @@ public final class FarConfig {
      * all, instead of drawn and covered pixel by pixel. Cheaper with many mobs. Asked of the
      * GPU against the depth of the picture ({@link #optOcclusionQueries}), so a mob with one
      * pixel in view is still drawn, and one appears a frame or two after the view clears.
-     * Impostors are never asked: a picture costs less to draw than the question.
      */
     public boolean hideOccludedMobs = true;
 

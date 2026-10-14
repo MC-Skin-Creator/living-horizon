@@ -297,7 +297,8 @@ public final class FarDepth {
             // Distant Horizons' fade, without a shader pack, needs to know where the entities are.
             boolean dhFade = wanted && config.anyDistant() && config.optDhFade && DhDepth.available()
                     && !DhDepth.shaderPackOn();
-            boolean queries = wanted && config.anyDistant() && config.hideOccludedMobs && config.optOcclusionQueries
+            // Whenever a mob was asked about, far or not: without a merge they cost no copy.
+            boolean queries = config.anyDistant() && config.hideOccludedMobs && config.optOcclusionQueries
                     && OcclusionQueries.pending();
             // A pack that keeps Voxy's depth apart reads it past the game's: our far figures go there too.
             boolean voxy = wanted && config.anyDistant() && config.optVoxyShadows && figures > 0 && keepsOwnDepth();
