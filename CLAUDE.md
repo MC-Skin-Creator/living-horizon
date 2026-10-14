@@ -254,6 +254,12 @@ come back, add it here in the same pull request: this file is what the next sess
   item target while `ImpostorAtlas.drawing()` is set. A render type that binds yet another
   target of the game's escapes it; before 1.21.5 the eight views share one target, each in its
   own viewport.
+- **Frame rate lost with no distant mob drawn** (*Max mobs* at None, yet slower with distant
+  mobs on): `GhostRenderer.unseen` draws the real mobs past the game's entity distance, and
+  every mob asked about through `Occlusion.hidden` calls `FarDepth.needed()`, which merges the
+  far depth, copies it and runs the queries that frame. It is skipped when no copy is drawn.
+- **A hitch every minute**: a file written in the tick. `MobMemory.save` writes its megabytes
+  of JSON off the game's thread; keep any new save that way.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

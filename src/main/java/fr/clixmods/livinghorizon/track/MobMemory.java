@@ -126,6 +126,24 @@ public final class MobMemory {
         public double z() { return z; }
         public String type() { return type; }
         public boolean fromPack() { return fromPack; }
+
+        /** What is written to the file, apart from what the game's thread keeps changing. */
+        private Remembered saved() {
+            Remembered copy = new Remembered();
+            copy.id = id;
+            copy.type = type;
+            copy.dimension = dimension;
+            copy.world = world;
+            copy.x = x;
+            copy.y = y;
+            copy.z = z;
+            copy.yaw = yaw;
+            copy.nbt = nbt;
+            copy.seenAt = seenAt;
+            copy.fromPack = fromPack;
+            copy.named = named;
+            return copy;
+        }
     }
 
     private static final Gson GSON = new GsonBuilder().create();
@@ -168,6 +186,8 @@ public final class MobMemory {
     /** The seed of the world of {@link #bound}: what a memory must carry to be drawn. */
     private long world;
     private boolean dirty;
+    /** The last write of the file, off the game's thread: each one starts once the one before is done. */
+    private CompletableFuture<?> writing = CompletableFuture.completedFuture(null);
     private int clock;
     private double selfX, selfY, selfZ;
     private boolean selfKnown;
@@ -242,7 +262,11 @@ public final class MobMemory {
     }
 
     void close() {
-        save();
+        // Leaving the world: written here, after any write still running, so that the file is
+        // whole before it is read again.
+        writing.handle((done, error) -> null).join();
+        if (file != null) write(file, copies());
+        dirty = false;
         firstVisit = false;
         mobs.clear();
         live.clear();
@@ -841,16 +865,32 @@ public final class MobMemory {
 
     // --- File --------------------------------------------------------------------------
 
+    /**
+     * Writes the file off the game's thread: up to {@link #MAX_REMEMBERED} mobs with their
+     * saved data are megabytes of JSON, a frame lost every minute when written in the tick.
+     */
     private void save() {
         if (file == null) return;
         dirty = false;
+        Path to = file;
+        List<Remembered> copy = copies();
+        writing = writing.handle((done, error) -> null).thenRunAsync(() -> write(to, copy), Util.backgroundExecutor());
+    }
+
+    private List<Remembered> copies() {
+        List<Remembered> copy = new ArrayList<>(mobs.size());
+        for (Remembered mob : mobs.values()) copy.add(mob.saved());
+        return copy;
+    }
+
+    private static void write(Path to, List<Remembered> mobs) {
         try {
-            Files.createDirectories(file.getParent());
-            try (Writer writer = Files.newBufferedWriter(file)) {
-                GSON.toJson(new ArrayList<>(mobs.values()), writer);
+            Files.createDirectories(to.getParent());
+            try (Writer writer = Files.newBufferedWriter(to)) {
+                GSON.toJson(mobs, writer);
             }
-        } catch (IOException e) {
-            LivingHorizonClient.LOGGER.warn("Could not write {}", file, e);
+        } catch (IOException | RuntimeException e) {
+            LivingHorizonClient.LOGGER.warn("Could not write {}", to, e);
         }
     }
 }
