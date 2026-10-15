@@ -170,11 +170,12 @@ public final class ImpostorAtlas {
     /** Pixels across a page of tiles at scale 1: one sheet, its views side by side. */
     public static final int PAGE_WIDTH = ImpostorViews.TILE * ImpostorViews.VIEWS;
     /**
-     * Tiles at most this many times as large as {@link ImpostorViews#TILE}, for figures baked
-     * larger than their box says (see {@link Request}): as many pixels to the block as the
-     * others. A page holds tiles of one scale only.
+     * Tiles at most this many times as large as {@link ImpostorViews#TILE}. One: every picture
+     * has as many pixels, and a figure larger than its box (a horse's muzzle) is drawn smaller
+     * in its tile instead (see {@link Request}). At a hundred blocks a figure is a dozen
+     * pixels tall, and larger tiles took four times the memory for nothing to see.
      */
-    private static final int MAX_SCALE = 3;
+    private static final int MAX_SCALE = 1;
 
     /** Bytes of video memory a row of scale 1 takes: a strip of 512 by 64 pixels and its mip levels. */
     private static final long ROW_BYTES = rowBytes();
@@ -299,10 +300,10 @@ public final class ImpostorAtlas {
     }
 
     /**
-     * A figure to bake, its picture {@code grow} times larger than {@link #size} gives: a
-     * figure longer than its box (a horse's muzzle, a sniffer) is baked again larger, into
-     * tiles {@code scale} times larger, so that it keeps its sharpness. Squeezed into
-     * smaller tiles when the pages have no room for those: the whole figure, less sharp.
+     * A figure to bake, its picture covering {@code grow} times what {@link #size} gives: a
+     * figure longer than its box (a horse's muzzle, a sniffer) is baked again with more round
+     * it, drawn smaller, into tiles {@code scale} times larger (at most {@link #MAX_SCALE}).
+     * Squeezed into smaller tiles when the pages have no room for those.
      */
     private record Request(ImpostorKey key, Entity puppet, double grow, int scale) {
         static Request of(ImpostorKey key, Entity puppet, double grow) {
@@ -327,7 +328,7 @@ public final class ImpostorAtlas {
      * How much larger a figure cut off by the very edge of its picture is baked again at
      * least, and how much larger than {@link #size} a picture can get.
      */
-    private static final double GROW = 1.3, MAX_GROW = MAX_SCALE;
+    private static final double GROW = 1.3, MAX_GROW = 3;
 
     //? if >=1.21.6 {
     private static final class PageTexture extends AbstractTexture {
@@ -435,6 +436,19 @@ public final class ImpostorAtlas {
     private static final Queue<Loaded> LOADED = new ConcurrentLinkedQueue<>();
     /** Sheets read from disk rather than baked, and views drawn, since the game started. */
     private static int loads, bakes;
+    /**
+     * Figures whose pictures came out the same as another's, pixel for pixel: they share its
+     * sheet. Two looks that differ only in something the picture does not show (a value
+     * never drawn, one learnt to be restless after the first bake) take one row, one line of
+     * the impostor screen.
+     */
+    private static final Map<ImpostorKey, ImpostorKey> ALIASES = new HashMap<>();
+    /** The figure each picture was first baked for, by its kind, scale and pixels. */
+    private static final Map<Look, ImpostorKey> LOOKS = new HashMap<>();
+
+    private record Look(String type, int scale, long pixels) {
+    }
+
     /** How much larger each figure was last baked: asked for again, it starts there. */
     private static final Map<ImpostorKey, Double> GROWN = new HashMap<>();
     /** Figures the pages had no room for, and when: not asked for again for a while. */
@@ -499,8 +513,8 @@ public final class ImpostorAtlas {
     /** The pictures of a figure, if baked. Counts as a use, so the sheets in use are kept. */
     public static @Nullable Sheet sheet(ImpostorKey key) {
         settle();
-        Sheet sheet = SHEETS.get(key);
-        if (sheet != null) USED.put(key, System.currentTimeMillis());
+        Sheet sheet = SHEETS.get(ALIASES.getOrDefault(key, key));
+        if (sheet != null) USED.put(ALIASES.getOrDefault(key, key), System.currentTimeMillis());
         return sheet;
     }
 
@@ -540,6 +554,17 @@ public final class ImpostorAtlas {
 
     public static int sheets() {
         return SHEETS.size();
+    }
+
+    private static boolean baked(ImpostorKey key) {
+        return SHEETS.containsKey(key) || ALIASES.containsKey(key);
+    }
+
+    /** A sheet thrown away: the figures sharing it, and its pixels, go with it. */
+    private static void forget(ImpostorKey key) {
+        USED.remove(key);
+        ALIASES.values().removeIf(key::equals);
+        LOOKS.values().removeIf(key::equals);
     }
 
     /** Page numbers in use run below this. */
@@ -601,6 +626,8 @@ public final class ImpostorAtlas {
         }
         PAGES.clear();
         SHEETS.clear();
+        ALIASES.clear();
+        LOOKS.clear();
         USED.clear();
         QUEUE.clear();
         QUEUED.clear();
@@ -640,7 +667,7 @@ public final class ImpostorAtlas {
                 continue;
             }
             QUEUED.remove(loaded.key);
-            if (SHEETS.containsKey(loaded.key)) continue;
+            if (baked(loaded.key)) continue;
             int index = allocate(loaded.key, loaded.stored.scale());
             if (index < 0) {
                 REFUSED.put(loaded.key, System.currentTimeMillis());
@@ -657,7 +684,7 @@ public final class ImpostorAtlas {
         }
         while (!QUEUE.isEmpty()) {
             Request request = QUEUE.poll();
-            if (request.puppet.level() != minecraft.level || SHEETS.containsKey(request.key)) {
+            if (request.puppet.level() != minecraft.level || baked(request.key)) {
                 QUEUED.remove(request.key);
                 continue;
             }
@@ -722,7 +749,7 @@ public final class ImpostorAtlas {
             // Least recently used first: the ones after it are in use too.
             if (inUse(entry.getKey(), IN_USE)) return -1;
             oldest.remove();
-            USED.remove(entry.getKey());
+            forget(entry.getKey());
             return entry.getValue().index;
         }
         return -1;
@@ -804,7 +831,7 @@ public final class ImpostorAtlas {
             Map.Entry<ImpostorKey, Sheet> entry = sheets.next();
             if (!PLAYER.equals(entry.getKey().type()) || inUse(entry.getKey(), PLAYER_KEEP)) continue;
             sheets.remove();
-            USED.remove(entry.getKey());
+            forget(entry.getKey());
             free(entry.getValue().index);
         }
         for (int number = 0; number < PAGES.size(); number++) {
@@ -1273,10 +1300,22 @@ public final class ImpostorAtlas {
         return true;
     }
 
-    /** Writes a sheet's levels, its views side by side, into its row: it can be used. */
+    /**
+     * Writes a sheet's levels, its views side by side, into its row: it can be used. The same
+     * pixels as a sheet of its kind already baked: it shares that one, and its row is freed.
+     */
     private static boolean place(ImpostorKey key, int index, double size, int[][] levels) {
         Page owner = PAGES.get(index / ROWS);
         if (owner == null) return false;
+        Look look = new Look(key.type(), owner.scale, pixels(levels[0]));
+        ImpostorKey same = LOOKS.get(look);
+        if (same != null && !same.equals(key) && SHEETS.containsKey(same)) {
+            ALIASES.put(key, same);
+            USED.put(same, System.currentTimeMillis());
+            free(index);
+            return true;
+        }
+        LOOKS.put(look, key);
         Sheet sheet = new Sheet(index, owner.rows, size, owner.scale);
         for (int level = 0; level < MIPS; level++) {
             int tile = sheet.tile() >> level;
@@ -1285,6 +1324,13 @@ public final class ImpostorAtlas {
         SHEETS.put(key, sheet);
         USED.put(key, System.currentTimeMillis());
         return true;
+    }
+
+    /** A hash of a picture's pixels: two looks drawn the same have the same. */
+    private static long pixels(int[] level) {
+        long hash = 1125899906842597L;
+        for (int pixel : level) hash = hash * 31 + pixel;
+        return hash;
     }
 
     /** How much larger the views must be drawn to stay within what their tiles show. */

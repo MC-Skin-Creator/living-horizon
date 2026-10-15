@@ -266,7 +266,9 @@ come back, add it here in the same pull request: this file is what the next sess
   random sound variant), or a kind of figure has more looks than its pages may hold. With the
   pages full, "waiting" going round and round with the baked count stuck: a figure baked
   small, grown, refused for lack of room and asked for again the next second. `room` squeezes
-  it into smaller tiles, or `REFUSED` keeps it a model for a while; `crowd` checks it.
+  it into smaller tiles, or `REFUSED` keeps it a model for a while; `crowd` checks it. The same
+  figure twice in the impostor screen: two keys for one look (a value the picture does not show);
+  `ImpostorAtlas.place` compares the pixels and makes the second an alias of the first.
   `ImpostorKey` leaves out what never shows (positions, times, owners, names, sound variants,
   an item's damage), names variants by their registry key so that a sheet is found again in
   the next world, and learns per kind of mob the values seen changing again and again
@@ -281,8 +283,9 @@ come back, add it here in the same pull request: this file is what the next sess
   mob, a horse without its muzzle): the texture filter reads half a pixel of the smallest level
   past each tile, so the quad and its UVs keep `ImpostorRenderer.INSET` clear on all four sides,
   and the feet stand above it (`ImpostorAtlas.FEET`). A figure reaching into that strip is baked
-  again larger (`ImpostorPixels.growth`), into tiles as many times larger on a page of their own,
-  so that it keeps its pixels to the block. `impostoredges` shows both.
+  again with more room round it (`ImpostorPixels.growth`), drawn smaller in a tile of the same 64
+  pixels: tiles two or three times larger took four or nine times the memory for a figure a dozen
+  pixels tall. `impostoredges` and `longmobs` show both.
 - **Crash extracting a distant mob on 1.21.2 to 1.21.8** (`NullPointerException` under
   `GhostRenderer.state`, often blamed on another mod's mixin into `extractRenderState`):
   GeckoLib 4's `createRenderState()` returns null and its `render` draws the entity it was

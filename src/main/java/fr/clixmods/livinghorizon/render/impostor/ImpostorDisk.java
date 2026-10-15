@@ -47,7 +47,7 @@ import java.util.zip.GZIPOutputStream;
  */
 public final class ImpostorDisk {
     /** Bumped whenever a sheet is baked differently, or the file holds something else. */
-    private static final int FORMAT = 1;
+    private static final int FORMAT = 2;
     private static final int MAGIC = 0x4C484953;
     /** Sheet files kept in all: the ones read or written longest ago go first. */
     private static final int KEEP = 4096;

@@ -5,6 +5,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FollowedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorCrowdScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorEdgesScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.ImpostorLongMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorSharingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
@@ -36,6 +37,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new ImpostorSharingScenario(),
             new ImpostorCrowdScenario(),
             new ImpostorEdgesScenario(),
+            new ImpostorLongMobsScenario(),
             new ImpostorScreenScenario(),
             new LightingScenario(),
             new RememberedMobsScenario(),
