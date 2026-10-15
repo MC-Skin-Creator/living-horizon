@@ -46,6 +46,14 @@ public final class ImpostorScreen extends Screen {
     private double scroll;
     private boolean dragging;
     private static final int BAR_WIDTH = 6;
+    /**
+     * By name, then by key: the atlas hands its figures out in order of last use, which the
+     * world changes every frame, so two figures with one name would swap rows every frame.
+     */
+    private static final Comparator<ImpostorAtlas.Baked> ORDER = Comparator
+            .comparing((ImpostorAtlas.Baked row) -> name(row).getString().toLowerCase(Locale.ROOT))
+            .thenComparing(row -> row.key().type())
+            .thenComparingLong(row -> row.key().appearance());
 
     public ImpostorScreen(@Nullable Screen parent) {
         super(Component.translatable(KEY + "title"));
@@ -101,7 +109,7 @@ public final class ImpostorScreen extends Screen {
 
         // A copy to sort: before 1.21.9 the atlas hands out List.of(), which refuses sort.
         rows = new ArrayList<>(ImpostorAtlas.baked());
-        rows.sort(Comparator.comparing(row -> name(row).getString().toLowerCase(Locale.ROOT)));
+        rows.sort(ORDER);
         scroll = Mth.clamp(scroll, 0, maxScroll());
 
         if (rows.isEmpty()) {
