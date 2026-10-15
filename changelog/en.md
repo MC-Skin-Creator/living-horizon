@@ -5,6 +5,9 @@
 ### Improved
 - **Mod icon** — a new pixel-art icon: Steve in front, and mobs, villagers, players and birds alive all the way to the mountains behind him.
 
+### Fixed
+- **Impostors screen** — two figures with the same name, such as villagers in different outfits, no longer swap places and flicker.
+
 ## 0.5.0 — 2026-10-13
 
 ### New

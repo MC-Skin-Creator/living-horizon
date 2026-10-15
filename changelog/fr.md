@@ -5,6 +5,9 @@
 ### Améliorations
 - **Icône du mod** — une nouvelle icône en pixel art : Steve au premier plan, et des créatures, des villageois, des joueurs et des oiseaux bien vivants jusqu'aux montagnes derrière lui.
 
+### Corrections
+- **Écran des imposteurs** — deux silhouettes du même nom, comme des villageois aux tenues différentes, n'échangent plus leur place en clignotant.
+
 ## 0.5.0 — 2026-10-13
 
 ### Nouveautés
