@@ -90,6 +90,9 @@ public final class ImpostorSharingScenario implements Scenario {
                 }
                 throw new AssertionError("No pig");
             });
+            // Gone before the world closes: a crowd left behind upset the next worlds' tests.
+            Scene.command(world, "kill @e[type=zombie]");
+            context.waitTicks(40);
         }
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
             Scene.command(world, "execute at @p run summon pig ~-12 ~ ~20 {NoAI:1b,PersistenceRequired:1b}");
