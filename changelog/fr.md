@@ -2,6 +2,8 @@
 
 ## Prochaine version
 
+## 0.6.0 — 2026-10-15
+
 ### Nouveautés
 - **Imposteurs** — les images des créatures sont enregistrées sur le disque et réutilisées à la partie suivante : elles ne sont redessinées qu'après un changement de packs de ressources, de mods ou de version du jeu.
 

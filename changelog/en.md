@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.0 — 2026-10-15
+
 ### New
 - **Impostors** — mob pictures are saved on disk and reused the next time you play, so they are only drawn again after a change of resource packs, mods or game version.
 
