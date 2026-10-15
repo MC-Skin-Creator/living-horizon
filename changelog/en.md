@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Improved
+- **Mod icon** — a new pixel-art icon: Steve in front, and mobs, villagers, players and birds alive all the way to the mountains behind him.
+
+## 0.5.0 — 2026-10-13
+
 ### New
 - **Impostors on Minecraft 1.20.1 to 1.21.8** — far players and mobs are drawn as light pictures of themselves on these versions too, and the Impostor Manager shows them.
 
@@ -10,6 +15,10 @@
 - **Impostors screen on Minecraft 1.21.8 and older** — opening it no longer crashes the game.
 - **Impostors screen** — two figures with the same name, such as villagers in different outfits, no longer swap places and flicker.
 - **Joining a world** — mobs already around you when you join are drawn far away too, instead of only those met afterwards.
+
+## 0.4.2 — 2026-10-12
+
+### Fixed
 - **Mobs leaving your range** — a mob no longer vanishes for a few frames before its distant copy appears.
 - **Mobs leaving your range** — the distant copy now faces the way the mob did, instead of sometimes turning to another direction.
 - **Minecraft 1.21.9 to 26.1** — parts of distant mobs, such as a villager's clothes or a held item, no longer show through Voxy's terrain under shaders, nor through Distant Horizons' terrain.
