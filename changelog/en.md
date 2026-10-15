@@ -5,6 +5,9 @@
 ### Improved
 - **Mod icon** — a new pixel-art icon: Steve in front, and mobs, villagers, players and birds alive all the way to the mountains behind him.
 
+### Fixed
+- **Impostors screen** — two figures with the same name, such as villagers in different outfits, no longer swap places and flicker.
+
 ## 0.5.0 — 2026-10-13
 
 ### New
@@ -13,7 +16,6 @@
 ### Fixed
 - **Forge 1.20.1 to 1.20.4** — the game no longer crashes on startup with the mod installed.
 - **Impostors screen on Minecraft 1.21.8 and older** — opening it no longer crashes the game.
-- **Impostors screen** — two figures with the same name, such as villagers in different outfits, no longer swap places and flicker.
 - **Joining a world** — mobs already around you when you join are drawn far away too, instead of only those met afterwards.
 
 ## 0.4.2 — 2026-10-12
