@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.5.0 — 2026-10-13
+
 ### New
 - **Impostors on Minecraft 1.20.1 to 1.21.8** — far players and mobs are drawn as light pictures of themselves on these versions too, and the Impostor Manager shows them.
 
@@ -9,6 +11,10 @@
 - **Forge 1.20.1 to 1.20.4** — the game no longer crashes on startup with the mod installed.
 - **Impostors screen on Minecraft 1.21.8 and older** — opening it no longer crashes the game.
 - **Joining a world** — mobs already around you when you join are drawn far away too, instead of only those met afterwards.
+
+## 0.4.2 — 2026-10-12
+
+### Fixed
 - **Mobs leaving your range** — a mob no longer vanishes for a few frames before its distant copy appears.
 - **Mobs leaving your range** — the distant copy now faces the way the mob did, instead of sometimes turning to another direction.
 - **Single player** — distant mobs no longer teleport or sprint to another spot as you come back: they follow the real mobs as they wander, and disappear when those die.
