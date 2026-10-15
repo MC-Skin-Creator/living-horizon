@@ -35,6 +35,9 @@ public final class ImpostorScreenScenario implements Scenario {
     @Override
     public void run(ClientGameTestContext context) {
         Scene.configure(context, config -> config.impostors = true);
+        // The "Saving world" notice in a corner, after a new world is made, would tell the two
+        // screenshots apart.
+        context.runOnClient(minecraft -> minecraft.options.showAutosaveIndicator().set(false));
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
             for (int i = 0; i < PROFESSIONS.length; i++) {
                 Scene.command(world, "execute at @p run summon villager ~" + (i * 3 - 1.5) + " ~ ~6 {NoAI:1b,"
@@ -52,7 +55,9 @@ public final class ImpostorScreenScenario implements Scenario {
                 return found;
             });
             context.waitTicks(80);
-            int baked = context.computeOnClient(minecraft -> ImpostorAtlas.sheets());
+            // The sheets of earlier scenarios stay: the mobs keep theirs from one world to the next.
+            int baked = context.computeOnClient(minecraft ->
+                    (int) keys.stream().filter(key -> ImpostorAtlas.sheet(key) != null).count());
             Scene.log("impostorscreen keys=" + keys.size() + " baked=" + baked);
             if (keys.size() != 2 || baked != 2) {
                 throw new AssertionError("Expected two villager pictures, got " + keys.size() + " keys, " + baked + " baked");
@@ -67,6 +72,7 @@ public final class ImpostorScreenScenario implements Scenario {
             Path second = Scene.screenshot(context, this, "second");
             context.setScreen(() -> null);
 
+            context.runOnClient(minecraft -> minecraft.options.showAutosaveIndicator().set(true));
             long changed = changedPixels(first, second);
             Scene.log("impostorscreen changed=" + changed);
             if (changed > 0) throw new AssertionError("The impostor screen's rows moved: " + changed + " pixels changed");

@@ -248,18 +248,18 @@ public final class ImpostorScreen extends Screen {
                                  int size) {
         //? if >=1.21.6 {
         float u0 = sheet.u(view), v0 = sheet.v();
-        graphics.blit(page, x, y, x + size, y + size, u0, u0 + sheet.span(), v0, v0 + sheet.span());
+        graphics.blit(page, x, y, x + size, y + size, u0, u0 + sheet.uSpan(), v0, v0 + sheet.vSpan());
         //?} else {
         /*// In pixels of the page before 1.21.6.
-        int tile = sheet.tile(), side = ImpostorAtlas.PAGE_SIZE;
-        int u = (sheet.column() * ImpostorViews.VIEWS + view) * tile, v = sheet.row() * tile;
+        int tile = sheet.tile(), wide = sheet.pageWidth(), tall = sheet.pageHeight();
+        int u = view * tile, v = sheet.row() * tile;
         //? if >=1.21.2 {
-        graphics.blit(RenderTypes::guiTextured, page, x, y, u, v, size, size, tile, tile, side, side);
+        graphics.blit(RenderTypes::guiTextured, page, x, y, u, v, size, size, tile, tile, wide, tall);
         //?} else {
         /^// Blended, as the newer versions draw it: the pictures' edges are see-through.
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        graphics.blit(page, x, y, size, size, u, v, tile, tile, side, side);
+        graphics.blit(page, x, y, size, size, u, v, tile, tile, wide, tall);
         RenderSystem.disableBlend();
         ^///?}
         *///?}

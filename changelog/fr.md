@@ -2,6 +2,9 @@
 
 ## Prochaine version
 
+### Nouveautés
+- **Imposteurs** — les images des créatures sont enregistrées sur le disque et réutilisées à la partie suivante : elles ne sont redessinées qu'après un changement de packs de ressources, de mods ou de version du jeu.
+
 ### Améliorations
 - **Icône du mod** — une nouvelle icône en pixel art : Steve au premier plan, et des créatures, des villageois, des joueurs et des oiseaux bien vivants jusqu'aux montagnes derrière lui.
 - **En solo** — les créatures lointaines se téléportent ou foncent bien moins souvent vers un autre endroit quand tu reviens : elles suivent désormais les vraies créatures tant que le jeu les fait bouger, et disparaissent quand celles-ci meurent.
@@ -10,6 +13,7 @@
 - **Écran des imposteurs** — deux silhouettes du même nom, comme des villageois aux tenues différentes, n'échangent plus leur place en clignotant.
 - **Imposteurs** — les fins traits sombres et les pixels noirs qui apparaissaient parfois en haut ou en bas des créatures lointaines ont disparu, et les créatures longues comme les chevaux et les renifleurs ne sont plus coupées au museau ou à la queue.
 - **Créatures GeckoLib sur Minecraft 1.21.2 à 1.21.8** — un monde ne plante plus quelques secondes après son chargement quand une créature d'un mod GeckoLib a été croisée au loin ; ces créatures ne sont pas encore montrées au loin.
+- **Imposteurs** — le jeu ne ralentit plus avec les imposteurs activés : les mêmes créatures ne sont plus redessinées en boucle dans de nouvelles images, et les créatures qui se ressemblent partagent une seule image, gardée d'un monde à l'autre.
 
 ## 0.5.0 — 2026-10-13
 
