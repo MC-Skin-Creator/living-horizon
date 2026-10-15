@@ -263,7 +263,11 @@ come back, add it here in the same pull request: this file is what the next sess
   the next world, and learns per kind of mob the values seen changing again and again
   (`RESTLESS`). `ImpostorAtlas` gives each kind of figure pages of its own (`Page`), keeps the
   mobs' sheets, throws the players' away once unused, and never evicts a sheet drawn or asked
-  for within `IN_USE`. The `sharing` scenario checks all of it.
+  for within `IN_USE`. `ImpostorDisk` keeps the mobs' sheets on disk under a fingerprint
+  (game, resource packs, mods): a sheet never read back from disk means its key is not
+  stable across games (an identity hash in `ImpostorKey.stable`). The `sharing` scenario
+  checks all of it, except across games: the client game tests start from an empty run
+  folder every time.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

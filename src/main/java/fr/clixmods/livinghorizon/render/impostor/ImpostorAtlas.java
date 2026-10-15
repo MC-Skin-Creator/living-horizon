@@ -112,7 +112,9 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * The pictures of the impostors, baked by the game's own renderers.
@@ -134,11 +136,13 @@ import java.util.Set;
  * before, at the start of the frame, into a target of our own that the game takes for its
  * main one while a figure is drawn, and before 1.21.5 the eight views are drawn side by side
  * and read back at once. Everything here runs on the render thread. Resource reloads throw
- * the sheets away; they are baked again from the figures at hand.
+ * the sheets away; they are read back from disk when the packs are the same, baked again
+ * from the figures at hand otherwise.
  *
  * <p>Each kind of figure has pages of its own, one sheet per row, sized to the looks it
  * has: a cow with two looks takes a small page, villagers a few larger ones. The mobs keep
- * their sheets, from one world to the next; the players' are thrown away once unused.
+ * their sheets, from one world to the next, and on disk from one game to the next
+ * ({@link ImpostorDisk}); the players' are thrown away once unused.
  */
 public final class ImpostorAtlas {
     /**
@@ -243,6 +247,10 @@ public final class ImpostorAtlas {
     private record Request(ImpostorKey key, Entity puppet) {
     }
 
+    /** A sheet read from disk, to upload; no sheet when it could not be read, to bake instead. */
+    private record Loaded(ImpostorKey key, Entity puppet, ImpostorDisk.@Nullable Stored stored, int generation) {
+    }
+
     //? if >=1.21.6 {
     private static final class PageTexture extends AbstractTexture {
         PageTexture(String label, int height) {
@@ -345,6 +353,10 @@ public final class ImpostorAtlas {
     private static final Deque<Request> QUEUE = new ArrayDeque<>();
     /** Queued, or drawn and waiting for the read back. */
     private static final Set<ImpostorKey> QUEUED = new HashSet<>();
+    /** Sheets read from disk, handed over by the disk's thread. */
+    private static final Queue<Loaded> LOADED = new ConcurrentLinkedQueue<>();
+    /** Sheets read from disk rather than baked, since the game started. */
+    private static int loads;
     /** Rows being baked: not free, not yet a sheet. */
     private static final Set<Integer> BAKING = new HashSet<>();
     /** The pages by number, null where a player page was given back. */
@@ -378,6 +390,7 @@ public final class ImpostorAtlas {
         failed = false;
         dirty = true;
         settle();
+        ImpostorDisk.clear();
     }
 
     /** One baked figure, for the impostor screen. */
@@ -412,7 +425,19 @@ public final class ImpostorAtlas {
      */
     public static void request(ImpostorKey key, Entity puppet) {
         if (failed || sheet(key) != null || !QUEUED.add(key)) return;
+        // A mob met in an earlier game: read back rather than baked.
+        if (!PLAYER.equals(key.type()) && ImpostorDisk.has(key)) {
+            int asked = generation;
+            ImpostorDisk.read(key).whenComplete((stored, error) ->
+                    LOADED.add(new Loaded(key, puppet, error == null ? stored : null, asked)));
+            return;
+        }
         QUEUE.add(new Request(key, puppet));
+    }
+
+    /** Sheets read from disk rather than baked, since the game started. */
+    public static int loads() {
+        return loads;
     }
 
     public static int sheets() {
@@ -476,7 +501,10 @@ public final class ImpostorAtlas {
         QUEUE.clear();
         QUEUED.clear();
         BAKING.clear();
+        LOADED.clear();
         ImpostorKey.forgetAll();
+        // The packs or the mods may have changed: the sheets on disk are looked for again.
+        ImpostorDisk.reset();
     }
 
     /**
@@ -488,12 +516,35 @@ public final class ImpostorAtlas {
         if (!usable()) {
             for (Request request : QUEUE) QUEUED.remove(request.key);
             QUEUE.clear();
+            for (Loaded loaded : LOADED) QUEUED.remove(loaded.key);
+            LOADED.clear();
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level == null || minecraft.getOverlay() != null) return;
         forgetPlayers();
         long end = System.nanoTime() + BUDGET;
+        Loaded loaded;
+        while ((loaded = LOADED.poll()) != null) {
+            if (loaded.generation != generation) continue;
+            if (loaded.stored == null || !fits(loaded.stored.levels())) {
+                ImpostorDisk.forget(loaded.key);
+                QUEUE.add(new Request(loaded.key, loaded.puppet));
+                continue;
+            }
+            QUEUED.remove(loaded.key);
+            if (SHEETS.containsKey(loaded.key)) continue;
+            int index = allocate(loaded.key);
+            if (index < 0) continue;
+            try {
+                place(loaded.key, index, loaded.stored.worldSize(), loaded.stored.levels());
+                loads++;
+            } catch (RuntimeException | LinkageError error) {
+                free(index);
+                fail(error);
+                return;
+            }
+        }
         while (!QUEUE.isEmpty()) {
             Request request = QUEUE.poll();
             if (request.puppet.level() != minecraft.level || SHEETS.containsKey(request.key)) {
@@ -1015,10 +1066,7 @@ public final class ImpostorAtlas {
             for (int view = 0; view < ImpostorViews.VIEWS; view++) {
                 views[view] = ImpostorPixels.mips(pictures[view], RENDER, ImpostorViews.TILE, MIPS);
             }
-            Page owner = PAGES.get(index / ROWS);
-            if (owner == null) return;
-            Sheet sheet = new Sheet(index, owner.rows, size);
-            PageTexture page = owner.texture;
+            int[][] levels = new int[MIPS][];
             for (int level = 0; level < MIPS; level++) {
                 int tile = ImpostorViews.TILE >> level;
                 int width = tile * ImpostorViews.VIEWS;
@@ -1030,11 +1078,11 @@ public final class ImpostorAtlas {
                         System.arraycopy(pixels, y * tile, strip, (tile - 1 - y) * width + view * tile, tile);
                     }
                 }
-                write(page, level, 0, sheet.row() * tile, width, tile, strip);
+                levels[level] = strip;
             }
+            if (!place(key, index, size, levels)) return;
             BAKING.remove(index);
-            SHEETS.put(key, sheet);
-            USED.put(key, System.currentTimeMillis());
+            if (!PLAYER.equals(key.type())) ImpostorDisk.write(key, size, levels);
         } catch (RuntimeException | LinkageError error) {
             if (generation == ImpostorAtlas.generation) fail(error);
         } finally {
@@ -1043,6 +1091,30 @@ public final class ImpostorAtlas {
                 if (BAKING.remove(index)) free(index);
             }
         }
+    }
+
+    /** Whether the levels read from disk have the size of a sheet's: written by another format otherwise. */
+    private static boolean fits(int[][] levels) {
+        if (levels.length != MIPS) return false;
+        for (int level = 0; level < MIPS; level++) {
+            int tile = ImpostorViews.TILE >> level;
+            if (levels[level] == null || levels[level].length != tile * ImpostorViews.VIEWS * tile) return false;
+        }
+        return true;
+    }
+
+    /** Writes a sheet's levels, its views side by side, into its row: it can be used. */
+    private static boolean place(ImpostorKey key, int index, double size, int[][] levels) {
+        Page owner = PAGES.get(index / ROWS);
+        if (owner == null) return false;
+        Sheet sheet = new Sheet(index, owner.rows, size);
+        for (int level = 0; level < MIPS; level++) {
+            int tile = ImpostorViews.TILE >> level;
+            write(owner.texture, level, 0, sheet.row() * tile, tile * ImpostorViews.VIEWS, tile, levels[level]);
+        }
+        SHEETS.put(key, sheet);
+        USED.put(key, System.currentTimeMillis());
+        return true;
     }
 
     /**

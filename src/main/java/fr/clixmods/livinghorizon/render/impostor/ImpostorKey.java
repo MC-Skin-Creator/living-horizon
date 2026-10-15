@@ -4,6 +4,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
 //? if >=1.20.5
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -19,6 +20,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
 
+import java.lang.reflect.RecordComponent;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -29,6 +31,7 @@ import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * What decides which picture a figure gets: its type, and everything about it that
@@ -67,9 +70,15 @@ public record ImpostorKey(String type, long appearance) {
 
     /**
      * Per kind of mob, the bits of each synched value seen changing on one figure again and
-     * again, -1 for the whole value: left out of its key. Kept until the game closes.
+     * again, -1 for the whole value: left out of its key. Kept with the sheets on disk
+     * ({@link ImpostorDisk}), so that a key worked out in the next game is the same.
      */
-    private static final Map<EntityType<?>, Map<Integer, Long>> RESTLESS = new HashMap<>();
+    private static final Map<String, Map<Integer, Long>> RESTLESS = new HashMap<>();
+    /** Bumped whenever {@link #RESTLESS} learns something, to know when to save it. */
+    private static int learnt;
+
+    /** Identity hashes in a value's text, which change from one game to the next. */
+    private static final Pattern IDENTITY = Pattern.compile("@[0-9a-f]{4,}");
 
     /** Names the game draws differently: upside down, in rainbow colours, as Toast. */
     private static final Set<String> SPECIAL_NAMES = Set.of("Dinnerbone", "Grumm", "jeb_", "Toast");
@@ -99,7 +108,7 @@ public record ImpostorKey(String type, long appearance) {
         if (KNOWN.size() > 4096) KNOWN.clear();
         Map<Integer, Object> values = values(entity);
         Map<Integer, Change> changes = known == null ? new HashMap<>() : known.changes;
-        if (known != null) learn(entity.getType(), known.values, values, changes, now);
+        if (known != null) learn(type(entity), known.values, values, changes, now);
         ImpostorKey key = compute(entity, values);
         KNOWN.put(entity, new Known(key, now, values, changes));
         return key;
@@ -107,6 +116,29 @@ public record ImpostorKey(String type, long appearance) {
 
     public static void forgetAll() {
         KNOWN.clear();
+    }
+
+    /** What has been learnt to leave out, a copy: by kind of mob, then by synched value. */
+    public static Map<String, Map<Integer, Long>> restless() {
+        Map<String, Map<Integer, Long>> copy = new HashMap<>();
+        RESTLESS.forEach((type, masks) -> copy.put(type, new HashMap<>(masks)));
+        return copy;
+    }
+
+    /** Takes back what an earlier game learnt, on top of what this one has. */
+    public static void restore(Map<String, Map<Integer, Long>> saved) {
+        saved.forEach((type, masks) -> masks.forEach((id, mask) ->
+                RESTLESS.computeIfAbsent(type, ignoredType -> new HashMap<>()).merge(id, mask, (x, y) -> x | y)));
+        KNOWN.clear();
+    }
+
+    /** Changes whenever something new is learnt. */
+    public static int learnt() {
+        return learnt;
+    }
+
+    private static String type(Entity entity) {
+        return EntityType.getKey(entity.getType()).toString();
     }
 
     /** The synched values of a figure that may show on its picture, by id. */
@@ -158,7 +190,7 @@ public record ImpostorKey(String type, long appearance) {
      * {@link #RESTLESS_WITHIN} is restless for its whole kind of mob, the bits that changed
      * both times for a number or flags, all of it otherwise.
      */
-    private static void learn(EntityType<?> type, Map<Integer, Object> before, Map<Integer, Object> after,
+    private static void learn(String type, Map<Integer, Object> before, Map<Integer, Object> after,
                               Map<Integer, Change> changes, long now) {
         Set<Integer> ids = new HashSet<>(before.keySet());
         ids.addAll(after.keySet());
@@ -169,7 +201,12 @@ public record ImpostorKey(String type, long appearance) {
             long changed = a != null && b != null ? a ^ b : -1L;
             Change last = changes.get(id);
             if (last != null && now - last.when < RESTLESS_WITHIN) {
-                RESTLESS.computeIfAbsent(type, ignoredType -> new HashMap<>()).merge(id, changed | last.bits, (x, y) -> x | y);
+                Map<Integer, Long> masks = RESTLESS.computeIfAbsent(type, ignoredType -> new HashMap<>());
+                long mask = masks.getOrDefault(id, 0L), more = mask | changed | last.bits;
+                if (more != mask) {
+                    masks.put(id, more);
+                    learnt++;
+                }
             }
             changes.put(id, new Change(now, changed));
         }
@@ -185,7 +222,8 @@ public record ImpostorKey(String type, long appearance) {
     }
 
     private static ImpostorKey compute(Entity entity, Map<Integer, Object> values) {
-        Map<Integer, Long> restless = RESTLESS.getOrDefault(entity.getType(), Map.of());
+        String type = type(entity);
+        Map<Integer, Long> restless = RESTLESS.getOrDefault(type, Map.of());
         long hash = 17;
         if (entity instanceof AbstractClientPlayer player) {
             // A skin was its texture alone before 1.20.2.
@@ -206,7 +244,7 @@ public record ImpostorKey(String type, long appearance) {
                 if (seen == 0) continue;
             } else {
                 if (mask != 0) continue;
-                seen = data.hashCode();
+                seen = stable(data);
             }
             hash = hash * 31 + id;
             hash = hash * 31 + seen;
@@ -214,7 +252,43 @@ public record ImpostorKey(String type, long appearance) {
         if (entity instanceof LivingEntity living) {
             for (EquipmentSlot slot : EquipmentSlot.values()) hash = hash * 31 + item(living.getItemBySlot(slot));
         }
-        return new ImpostorKey(EntityType.getKey(entity.getType()).toString(), hash);
+        return new ImpostorKey(type, hash);
+    }
+
+    /**
+     * A hash of a value that is the same from one game to the next, which a hash code often
+     * is not (an enum's, a registry entry's, an object's identity): the sheets saved on disk
+     * are found again by it. Records are hashed through their parts, registry entries by
+     * name, anything else by its text.
+     */
+    private static long stable(@Nullable Object value) {
+        if (value == null) return 0;
+        if (value instanceof Number || value instanceof Boolean || value instanceof String || value instanceof Character) {
+            return value.hashCode();
+        }
+        if (value instanceof Enum<?> constant) return constant.name().hashCode();
+        if (value instanceof Optional<?> optional) return optional.isPresent() ? 31 + stable(optional.get()) : 0;
+        if (value instanceof OptionalInt optional) return optional.isPresent() ? 31 + optional.getAsInt() : 0;
+        if (value instanceof Holder<?> holder) {
+            Optional<?> name = holder.unwrapKey();
+            return name.isPresent() ? name.get().toString().hashCode() : stable(holder.value());
+        }
+        if (value instanceof Record record) {
+            try {
+                long hash = 7;
+                for (RecordComponent part : record.getClass().getRecordComponents()) {
+                    hash = hash * 31 + stable(part.getAccessor().invoke(record));
+                }
+                return hash;
+            } catch (ReflectiveOperationException | RuntimeException ignored) {
+                // Not readable from here: its text then.
+            }
+        }
+        return text(value);
+    }
+
+    private static long text(Object value) {
+        return IDENTITY.matcher(String.valueOf(value)).replaceAll("").hashCode();
     }
 
     /**
@@ -222,21 +296,22 @@ public record ImpostorKey(String type, long appearance) {
      * helmet in the sun loses durability every few seconds, which would ask for a new sheet
      * each time.
      */
-    private static int item(ItemStack stack) {
+    private static long item(ItemStack stack) {
+        if (stack.isEmpty()) return 0;
+        long hash = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().hashCode();
         //? if >=1.20.5 {
         if (stack.has(DataComponents.DAMAGE)) {
             stack = stack.copy();
             stack.remove(DataComponents.DAMAGE);
         }
-        return ItemStack.hashItemAndComponents(stack);
+        return stack.getComponentsPatch().isEmpty() ? hash : hash * 31 + text(stack.getComponentsPatch());
         //?} else {
-        /*if (stack.isEmpty()) return 0;
-        net.minecraft.nbt.CompoundTag tag = stack.getTag();
+        /*net.minecraft.nbt.CompoundTag tag = stack.getTag();
         if (tag != null && tag.contains("Damage")) {
             tag = tag.copy();
             tag.remove("Damage");
         }
-        return java.util.Objects.hash(stack.getItem(), tag);
+        return tag == null ? hash : hash * 31 + text(tag);
         *///?}
     }
 

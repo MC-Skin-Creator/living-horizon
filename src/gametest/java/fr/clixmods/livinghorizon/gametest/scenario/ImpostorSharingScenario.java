@@ -19,7 +19,8 @@ import java.util.Set;
  * same and share one sheet, those with a helmet another, however worn by the sun it is.
  * Then a crowd of zombies, each in a helmet of its own colour, asked for again and again:
  * each is baked once, and the zombies' pages grow to hold them all. Last, a pig met again
- * in another world finds its sheet already baked.
+ * in another world finds its sheet already baked, and after a reload with the same packs,
+ * reads it back from disk.
  */
 public final class ImpostorSharingScenario implements Scenario {
     /** More looks than the largest page of a kind holds: 32. */
@@ -102,6 +103,20 @@ public final class ImpostorSharingScenario implements Scenario {
                 return false;
             });
             if (!kept) throw new AssertionError("A pig met again in another world was not found baked");
+
+            // As a resource reload with the same packs does: the sheets come back from disk.
+            int loads = context.computeOnClient(minecraft -> {
+                ImpostorAtlas.invalidate();
+                return ImpostorAtlas.loads();
+            });
+            context.runOnClient(ImpostorSharingScenario::requestAll);
+            context.waitTicks(40);
+            boolean read = context.computeOnClient(minecraft -> {
+                Scene.log("sharing from disk: loads=" + (ImpostorAtlas.loads() - loads)
+                        + " pig=" + (ImpostorAtlas.sheet(pig) != null));
+                return ImpostorAtlas.loads() > loads && ImpostorAtlas.sheet(pig) != null;
+            });
+            if (!read) throw new AssertionError("The pig's sheet was not read back from disk");
         }
     }
 
