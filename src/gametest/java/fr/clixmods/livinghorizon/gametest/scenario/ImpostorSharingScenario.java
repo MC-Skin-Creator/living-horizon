@@ -78,9 +78,10 @@ public final class ImpostorSharingScenario implements Scenario {
             Set<ImpostorKey> after = context.computeOnClient(minecraft -> baked());
             boolean failed = context.computeOnClient(minecraft -> ImpostorAtlas.failed());
             Scene.log("sharing crowd sheets before=" + before.size() + " after=" + after.size()
-                    + " same=" + before.equals(after) + " failed=" + failed);
+                    + " kept=" + after.containsAll(before) + " failed=" + failed);
             if (failed) throw new AssertionError("The impostor bake failed, see the log");
-            if (!before.equals(after)) throw new AssertionError("The crowd's sheets were baked over");
+            // New ones may come (a zombie burning in the sun dies: a new look), none may go.
+            if (!after.containsAll(before)) throw new AssertionError("The crowd's sheets were thrown away");
             if (after.size() < CROWD + 3) throw new AssertionError("Not every look was baked: " + after.size());
             Scene.screenshotAtlas(context, this);
             pig = context.computeOnClient(minecraft -> {

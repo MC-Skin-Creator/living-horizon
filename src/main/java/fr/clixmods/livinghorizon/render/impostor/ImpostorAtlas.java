@@ -152,26 +152,36 @@ public final class ImpostorAtlas {
      */
     public static final int MIPS = 4;
 
-    /** The feet stand this far down a tile, as a fraction of its height. */
-    public static final float FEET = 0.95f;
+    /**
+     * The feet stand this far down a tile, as a fraction of its height: above the strip
+     * {@link ImpostorRenderer} leaves out at the bottom of a tile, so they are not cut off.
+     */
+    public static final float FEET = 0.9f;
 
     /** Each view is drawn this many times larger than a tile, then averaged down. */
     private static final int SUPERSAMPLE = 2;
     private static final int RENDER = ImpostorViews.TILE * SUPERSAMPLE;
 
     /**
-     * Sheets down a kind of mob's first page, and down its largest: each new page of a kind
-     * holds twice as many as its last, up to a page 2048 pixels tall.
+     * Sheets down a kind of figure's first page, and down its largest: each new page of a kind
+     * holds twice as many as its last, up to a page about 2048 pixels tall.
      */
     private static final int FIRST_ROWS = 4, ROWS = 32;
-    /** Pixels across a page: one sheet, its views side by side. */
+    /** Pixels across a page of tiles at scale 1: one sheet, its views side by side. */
     public static final int PAGE_WIDTH = ImpostorViews.TILE * ImpostorViews.VIEWS;
+    /**
+     * Tiles at most this many times as large as {@link ImpostorViews#TILE}, for figures baked
+     * larger than their box says (see {@link Request}): as many pixels to the block as the
+     * others. A page holds tiles of one scale only.
+     */
+    private static final int MAX_SCALE = 3;
 
     /**
-     * Sheets the pages of the mobs may hold in all, and of the players. The mobs keep theirs:
-     * a world has only so many looks, met again from one world to the next. The players come
-     * and go: theirs are thrown away once unused for {@link #PLAYER_KEEP}, or when the pages
-     * are full. A sheet is about 170 KB of video memory.
+     * Sheets the pages of the mobs may hold in all, and of the players, counted at scale 1 (a
+     * sheet of scale 2 counts as 4). The mobs keep theirs: a world has only so many looks,
+     * met again from one world to the next. The players come and go: theirs are thrown away
+     * once unused for {@link #PLAYER_KEEP}, or when the pages are full. A sheet of scale 1 is
+     * about 170 KB of video memory.
      */
     private static final int MOB_ROWS = 1024, PLAYER_ROWS = 128;
     /** Milliseconds a player's sheet is kept once nobody draws or asks for it. */
@@ -212,9 +222,10 @@ public final class ImpostorAtlas {
 
     /**
      * Where a figure's pictures are: which page and row of it, how many rows the page has,
-     * and how big a tile is in blocks.
+     * how big a tile is in blocks, and how many times larger than {@link ImpostorViews#TILE}
+     * its tiles are.
      */
-    public record Sheet(int index, int rows, double worldSize) {
+    public record Sheet(int index, int rows, double worldSize, int scale) {
         public int page() {
             return index / ROWS;
         }
@@ -223,40 +234,90 @@ public final class ImpostorAtlas {
             return index % ROWS;
         }
 
+        /** Pixels along a side of one of its tiles. */
+        public int tile() {
+            return ImpostorViews.TILE * scale;
+        }
+
+        /** The left edge of a view's tile, as a fraction of the page's width. */
+        public float u(int view) {
+            return view / (float) ImpostorViews.VIEWS;
+        }
+
+        /** The top edge of its tiles, as a fraction of the page's height. */
+        public float v() {
+            return row() / (float) rows;
+        }
+
+        /** A tile's width, as a fraction of the page's. */
+        public float uSpan() {
+            return 1f / ImpostorViews.VIEWS;
+        }
+
+        /** A tile's height, as a fraction of the page's. */
+        public float vSpan() {
+            return 1f / rows;
+        }
+
+        /** Pixels across its page. */
+        public int pageWidth() {
+            return tile() * ImpostorViews.VIEWS;
+        }
+
         /** Pixels down its page. */
         public int pageHeight() {
-            return rows * ImpostorViews.TILE;
+            return rows * tile();
         }
     }
 
-    /** The pages of one kind of figure, each with the rows not yet taken. */
+    /** The pages of one kind of figure and one scale, each with the rows not yet taken. */
     private static final class Page {
         final String type;
-        final int rows;
+        final int scale, rows;
         final PageTexture texture;
         final Deque<Integer> free = new ArrayDeque<>();
 
-        Page(String type, int rows, PageTexture texture) {
+        Page(String type, int scale, int rows, PageTexture texture) {
             this.type = type;
+            this.scale = scale;
             this.rows = rows;
             this.texture = texture;
             for (int row = 0; row < rows; row++) free.add(row);
         }
     }
 
-    private record Request(ImpostorKey key, Entity puppet) {
-    }
-
     /** A sheet read from disk, to upload; no sheet when it could not be read, to bake instead. */
     private record Loaded(ImpostorKey key, Entity puppet, ImpostorDisk.@Nullable Stored stored, int generation) {
     }
 
+    /**
+     * A figure to bake, its picture {@code grow} times larger than {@link #size} gives: a
+     * figure longer than its box (a horse's muzzle, a sniffer) is baked again larger, into
+     * tiles as many times larger, so that it keeps its sharpness.
+     */
+    private record Request(ImpostorKey key, Entity puppet, double grow) {
+        int scale() {
+            return Math.clamp((int) Math.ceil(grow - 1e-6), 1, MAX_SCALE);
+        }
+
+        /** Pixels along a side of the target a view is drawn in. */
+        int render() {
+            return RENDER * scale();
+        }
+    }
+
+    /**
+     * How much larger a figure cut off by the very edge of its picture is baked again at
+     * least, and how much larger than {@link #size} a picture can get.
+     */
+    private static final double GROW = 1.3, MAX_GROW = MAX_SCALE;
+
     //? if >=1.21.6 {
     private static final class PageTexture extends AbstractTexture {
-        PageTexture(String label, int height) {
+        PageTexture(String label, int width, int height) {
             GpuDevice device = RenderSystem.getDevice();
             texture = device.createTexture(label, GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_TEXTURE_BINDING,
-                    COLOR, PAGE_WIDTH, height, 1, MIPS);
+                    COLOR, width, height, 1, MIPS);
             textureView = device.createTextureView(texture);
             // Smooth from far, but the pixels of the model when a figure is larger than its tile.
             //? if >=1.21.11 {
@@ -269,12 +330,12 @@ public final class ImpostorAtlas {
             CommandEncoder encoder = device.createCommandEncoder();
             // Nothing in it yet, at every level: the filter reads a little past each tile.
             for (int level = 0; level < MIPS; level++) {
-                int width = PAGE_WIDTH >> level, tall = height >> level;
-                try (NativeImage empty = new NativeImage(width, tall, true)) {
+                int wide = width >> level, tall = height >> level;
+                try (NativeImage empty = new NativeImage(wide, tall, true)) {
                     //? if >=26.2 {
                     /*encoder.writeToTexture(texture, empty, level, 0, 0, 0);
                     *///?} else {
-                    encoder.writeToTexture(texture, empty, level, 0, 0, 0, width, tall, 0, 0);
+                    encoder.writeToTexture(texture, empty, level, 0, 0, 0, wide, tall, 0, 0);
                     //?}
                 }
             }
@@ -298,18 +359,18 @@ public final class ImpostorAtlas {
     }
     //?} elif >=1.21.5 {
     /*private static final class PageTexture extends AbstractTexture {
-        PageTexture(String label, int height) {
+        PageTexture(String label, int width, int height) {
             GpuDevice device = RenderSystem.getDevice();
-            texture = device.createTexture(label, COLOR, PAGE_WIDTH, height, MIPS);
+            texture = device.createTexture(label, COLOR, width, height, MIPS);
             // Smooth from far, but the pixels of the model when a figure is larger than its tile.
             texture.setAddressMode(AddressMode.CLAMP_TO_EDGE, AddressMode.CLAMP_TO_EDGE);
             texture.setTextureFilter(FilterMode.LINEAR, FilterMode.NEAREST, true);
             CommandEncoder encoder = device.createCommandEncoder();
             // Nothing in it yet, at every level: the filter reads a little past each tile.
             for (int level = 0; level < MIPS; level++) {
-                int width = PAGE_WIDTH >> level, tall = height >> level;
-                try (NativeImage empty = new NativeImage(width, tall, true)) {
-                    encoder.writeToTexture(texture, empty, level, 0, 0, width, tall, 0, 0);
+                int wide = width >> level, tall = height >> level;
+                try (NativeImage empty = new NativeImage(wide, tall, true)) {
+                    encoder.writeToTexture(texture, empty, level, 0, 0, wide, tall, 0, 0);
                 }
             }
         }
@@ -317,7 +378,7 @@ public final class ImpostorAtlas {
     *///?} else {
     /*/^* A page as a plain OpenGL texture, its mip levels allocated and cleared up front. ^/
     private static final class PageTexture extends AbstractTexture {
-        PageTexture(String label, int height) {
+        PageTexture(String label, int width, int height) {
             bind();
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, MIPS - 1);
             // Smooth from far, but the pixels of the model when a figure is larger than its tile.
@@ -328,10 +389,10 @@ public final class ImpostorAtlas {
             unpack();
             // Nothing in it yet, at every level: the filter reads a little past each tile.
             for (int level = 0; level < MIPS; level++) {
-                int width = PAGE_WIDTH >> level, tall = height >> level;
-                ByteBuffer empty = MemoryUtil.memCalloc(width * tall * PIXEL_BYTES);
+                int wide = width >> level, tall = height >> level;
+                ByteBuffer empty = MemoryUtil.memCalloc(wide * tall * PIXEL_BYTES);
                 try {
-                    GL11.glTexImage2D(GL11.GL_TEXTURE_2D, level, GL11.GL_RGBA8, width, tall, 0, GL11.GL_RGBA,
+                    GL11.glTexImage2D(GL11.GL_TEXTURE_2D, level, GL11.GL_RGBA8, wide, tall, 0, GL11.GL_RGBA,
                             GL11.GL_UNSIGNED_BYTE, empty);
                 } finally {
                     MemoryUtil.memFree(empty);
@@ -362,10 +423,11 @@ public final class ImpostorAtlas {
     /** The pages by number, null where a player page was given back. */
     private static final List<@Nullable Page> PAGES = new ArrayList<>();
     //? if >=1.21.6 {
-    private static @Nullable Target target;
+    /** The targets views are drawn in, by scale. */
+    private static final @Nullable Target[] TARGETS = new Target[MAX_SCALE + 1];
     private static @Nullable Lighting lighting;
     //?} else {
-    /*private static @Nullable RenderTarget target;
+    /*private static final @Nullable RenderTarget[] TARGETS = new RenderTarget[MAX_SCALE + 1];
     /^* Our target while a figure is drawn, which the game then takes for its main one. ^/
     private static @Nullable RenderTarget drawing;
     *///?}
@@ -432,7 +494,7 @@ public final class ImpostorAtlas {
                     LOADED.add(new Loaded(key, puppet, error == null ? stored : null, asked)));
             return;
         }
-        QUEUE.add(new Request(key, puppet));
+        QUEUE.add(new Request(key, puppet, 1.0));
     }
 
     /** Sheets read from disk rather than baked, since the game started. */
@@ -449,10 +511,16 @@ public final class ImpostorAtlas {
         return PAGES.size();
     }
 
-    /** Rows down a page, 0 for a number not in use. */
-    public static int pageRows(int number) {
+    /** Pixels across a page, 0 for a number not in use. */
+    public static int pageWidth(int number) {
         Page page = number < PAGES.size() ? PAGES.get(number) : null;
-        return page == null ? 0 : page.rows;
+        return page == null ? 0 : PAGE_WIDTH * page.scale;
+    }
+
+    /** Pixels down a page, 0 for a number not in use. */
+    public static int pageHeight(int number) {
+        Page page = number < PAGES.size() ? PAGES.get(number) : null;
+        return page == null ? 0 : page.rows * ImpostorViews.TILE * page.scale;
     }
 
     public static int waiting() {
@@ -527,14 +595,14 @@ public final class ImpostorAtlas {
         Loaded loaded;
         while ((loaded = LOADED.poll()) != null) {
             if (loaded.generation != generation) continue;
-            if (loaded.stored == null || !fits(loaded.stored.levels())) {
+            if (loaded.stored == null || !fits(loaded.stored.levels(), loaded.stored.scale())) {
                 ImpostorDisk.forget(loaded.key);
-                QUEUE.add(new Request(loaded.key, loaded.puppet));
+                QUEUE.add(new Request(loaded.key, loaded.puppet, 1.0));
                 continue;
             }
             QUEUED.remove(loaded.key);
             if (SHEETS.containsKey(loaded.key)) continue;
-            int index = allocate(loaded.key);
+            int index = allocate(loaded.key, loaded.stored.scale());
             if (index < 0) continue;
             try {
                 place(loaded.key, index, loaded.stored.worldSize(), loaded.stored.levels());
@@ -553,6 +621,9 @@ public final class ImpostorAtlas {
             }
             try {
                 bake(minecraft, request);
+            } catch (LeftOut leftOut) {
+                // That one figure only: its renderer gives the mod nothing to draw.
+                continue;
             } catch (RuntimeException | LinkageError error) {
                 fail(error);
                 return;
@@ -566,6 +637,13 @@ public final class ImpostorAtlas {
         }
     }
 
+    /** A figure whose renderer gives no state ({@link GhostRenderer#extract}): its bake is dropped, not the others. */
+    private static final class LeftOut extends RuntimeException {
+        LeftOut() {
+            super(null, null, false, false);
+        }
+    }
+
     private static void fail(Throwable error) {
         failed = true;
         QUEUE.clear();
@@ -574,30 +652,30 @@ public final class ImpostorAtlas {
     }
 
     /**
-     * A free row on a page of the figure's kind, as an index: a new page when its pages are
-     * full, twice as tall as its last. When the pages of the mobs or of the players hold all
+     * A free row on a page of the figure's kind and of tiles {@code scale} times as large, as
+     * an index: a new page when its pages are full, twice as tall as its last. When the pages of the mobs or of the players hold all
      * they may, the sheet of the same kind unused for longest gives way, unless it is still in
      * use: then the figure waits, drawn as a model. -1 for none.
      */
-    private static int allocate(ImpostorKey key) {
+    private static int allocate(ImpostorKey key, int scale) {
         String type = key.type();
         int pagesOfType = 0;
         for (int number = 0; number < PAGES.size(); number++) {
             Page page = PAGES.get(number);
-            if (page == null || !page.type.equals(type)) continue;
+            if (page == null || !page.type.equals(type) || page.scale != scale) continue;
             pagesOfType++;
             if (!page.free.isEmpty()) return number * ROWS + page.free.pop();
         }
-        int rows = Math.min(ROWS, FIRST_ROWS << Math.min(pagesOfType, 3));
+        int rows = Math.min(ROWS / scale, FIRST_ROWS << Math.min(pagesOfType, 3));
         boolean player = PLAYER.equals(type);
-        if (taken(player) + rows <= (player ? PLAYER_ROWS : MOB_ROWS)) {
-            int number = open(type, rows);
+        if (taken(player) + rows * scale * scale <= (player ? PLAYER_ROWS : MOB_ROWS)) {
+            int number = open(type, scale, rows);
             return number * ROWS + PAGES.get(number).free.pop();
         }
         Iterator<Map.Entry<ImpostorKey, Sheet>> oldest = SHEETS.entrySet().iterator();
         while (oldest.hasNext()) {
             Map.Entry<ImpostorKey, Sheet> entry = oldest.next();
-            if (!entry.getKey().type().equals(type)) continue;
+            if (!entry.getKey().type().equals(type) || entry.getValue().scale() != scale) continue;
             // Least recently used first: the ones after it are in use too.
             if (inUse(entry.getKey(), IN_USE)) return -1;
             oldest.remove();
@@ -612,25 +690,26 @@ public final class ImpostorAtlas {
         return used != null && System.currentTimeMillis() - used < within;
     }
 
-    /** Rows of the pages of the players, or of the mobs. */
+    /** Rows of the pages of the players, or of the mobs, counted at scale 1. */
     private static int taken(boolean players) {
         int rows = 0;
         for (Page page : PAGES) {
-            if (page != null && PLAYER.equals(page.type) == players) rows += page.rows;
+            if (page != null && PLAYER.equals(page.type) == players) rows += page.rows * page.scale * page.scale;
         }
         return rows;
     }
 
-    /** A new page for a kind of figure, in the first number given back or after the last. */
-    private static int open(String type, int rows) {
+    /** A new page for a kind of figure and a scale, in the first number given back or after the last. */
+    private static int open(String type, int scale, int rows) {
         int number = PAGES.indexOf(null);
         if (number < 0) {
             number = PAGES.size();
             PAGES.add(null);
         }
-        PageTexture texture = new PageTexture("living horizon impostors " + number, rows * ImpostorViews.TILE);
+        int tile = ImpostorViews.TILE * scale;
+        PageTexture texture = new PageTexture("living horizon impostors " + number, tile * ImpostorViews.VIEWS, rows * tile);
         Minecraft.getInstance().getTextureManager().register(id(number), texture);
-        PAGES.set(number, new Page(type, rows, texture));
+        PAGES.set(number, new Page(type, scale, rows, texture));
         return number;
     }
 
@@ -672,6 +751,7 @@ public final class ImpostorAtlas {
     /** A figure's state for one view, still and lit evenly. */
     private static EntityRenderState staged(Minecraft minecraft, Entity puppet, int view) {
         EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), puppet, 1.0f);
+        if (state == null) throw new LeftOut();
         stage(state, view);
         // Water mobs were in water when last seen; a puppet is in no world.
         if (state instanceof LivingEntityRenderState living && GhostRenderer.livesInWater(puppet)) {
@@ -681,10 +761,10 @@ public final class ImpostorAtlas {
     }
 
     /** As the inventory does it: pixels for blocks, y down, so turned over to stand. */
-    private static PoseStack pose(double size) {
+    private static PoseStack pose(double size, int render) {
         PoseStack pose = new PoseStack();
-        float scale = (float) (RENDER / size);
-        pose.translate(RENDER / 2f, RENDER * FEET, 0f);
+        float scale = (float) (render / size);
+        pose.translate(render / 2f, render * FEET, 0f);
         pose.scale(scale, scale, -scale);
         pose.mulPose(new Quaternionf().rotateZ((float) Math.PI));
         return pose;
@@ -692,30 +772,32 @@ public final class ImpostorAtlas {
 
     //? if <1.21.6 {
     /*/^* The projection a view is drawn with: pixels, y down, as the GUI's. ^/
-    private static Matrix4f ortho() {
-        return new Matrix4f().setOrtho(0f, RENDER, RENDER, 0f, -1000f, 1000f);
+    private static Matrix4f ortho(int render) {
+        return new Matrix4f().setOrtho(0f, render, render, 0f, -1000f, 1000f);
     }
     *///?}
 
     //? if >=1.21.6 {
-    private static Target target() {
+    private static Target target(int scale) {
+        Target target = TARGETS[scale];
         if (target != null) return target;
+        int render = RENDER * scale;
         GpuDevice device = RenderSystem.getDevice();
         Target created = new Target();
         created.color = device.createTexture("living horizon impostor",
                 GpuTexture.USAGE_COPY_SRC | GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_TEXTURE_BINDING
                         | GpuTexture.USAGE_RENDER_ATTACHMENT,
-                COLOR, RENDER, RENDER, 1, 1);
+                COLOR, render, render, 1, 1);
         created.colorView = device.createTextureView(created.color);
         created.depth = device.createTexture("living horizon impostor depth",
-                GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_RENDER_ATTACHMENT, DEPTH, RENDER, RENDER, 1, 1);
+                GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_RENDER_ATTACHMENT, DEPTH, render, render, 1, 1);
         created.depthView = device.createTextureView(created.depth);
         //? if >=26.1 {
         /*created.projection = new ProjectionMatrixBuffer("living horizon impostor");
         *///?} else {
         created.projection = new CachedOrthoProjectionMatrixBuffer("living horizon impostor", -1000f, 1000f, true);
         //?}
-        target = created;
+        TARGETS[scale] = created;
         return created;
     }
 
@@ -729,20 +811,21 @@ public final class ImpostorAtlas {
 
     private static void bake(Minecraft minecraft, Request request) {
         Entity puppet = request.puppet;
-        double size = size(puppet);
-        int index = allocate(request.key);
+        double size = size(puppet) * request.grow;
+        int scale = request.scale(), render = request.render();
+        int index = allocate(request.key, scale);
         if (index < 0) {
             QUEUED.remove(request.key);
             return;
         }
         BAKING.add(index);
         GpuDevice device = RenderSystem.getDevice();
-        int bytes = RENDER * RENDER * PIXEL_BYTES;
+        int bytes = render * render * PIXEL_BYTES;
         GpuBuffer buffer = device.createBuffer(() -> "living horizon impostor read back",
                 GpuBuffer.USAGE_COPY_DST | GpuBuffer.USAGE_MAP_READ, /*? if >=1.21.11 {*/ (long) /*?} else {*/ /*(int) *//*?}*/ bytes * ImpostorViews.VIEWS);
         boolean sent = false;
         try {
-            Target target = target();
+            Target target = target(scale);
             //? if >=1.21.9 {
             EntityRenderDispatcher dispatcher = minecraft.getEntityRenderDispatcher();
             FeatureRenderDispatcher features = minecraft.gameRenderer.getFeatureRenderDispatcher();
@@ -759,19 +842,19 @@ public final class ImpostorAtlas {
                 //? if >=26.2 {
                 /*// Depth runs from 1 near to 0 far from 26.2.
                 encoder.clearColorAndDepthTextures(target.color, new Vector4f(0f), target.depth, 0.0);
-                target.ortho.setupOrtho(-1000f, 1000f, RENDER, RENDER, true);
+                target.ortho.setupOrtho(-1000f, 1000f, render, render, true);
                 RenderSystem.setProjectionMatrix(target.projection.getBuffer(target.ortho), ProjectionType.ORTHOGRAPHIC);
                 *///?} elif >=26.1 {
                 /*encoder.clearColorAndDepthTextures(target.color, 0, target.depth, 1.0);
                 RenderSystem.setProjectionMatrix(
-                        target.projection.getBuffer(new Matrix4f().setOrtho(0f, RENDER, RENDER, 0f, -1000f, 1000f)),
+                        target.projection.getBuffer(new Matrix4f().setOrtho(0f, render, render, 0f, -1000f, 1000f)),
                         ProjectionType.ORTHOGRAPHIC);
                 *///?} else {
                 encoder.clearColorAndDepthTextures(target.color, 0, target.depth, 1.0);
-                RenderSystem.setProjectionMatrix(target.projection.getBuffer(RENDER, RENDER), ProjectionType.ORTHOGRAPHIC);
+                RenderSystem.setProjectionMatrix(target.projection.getBuffer(render, render), ProjectionType.ORTHOGRAPHIC);
                 //?}
                 EntityRenderState state = staged(minecraft, puppet, view);
-                PoseStack pose = pose(size);
+                PoseStack pose = pose(size, render);
                 lighting().setupFor(Lighting.Entry.LEVEL);
                 //? if >=26.3 {
                 /*dispatcher.submit(state, new CameraRenderState(), 0.0, 0.0, 0.0, pose, target.storage);
@@ -794,7 +877,7 @@ public final class ImpostorAtlas {
                 *///?}
                 boolean last = view == ImpostorViews.VIEWS - 1;
                 encoder.copyTextureToBuffer(target.color, buffer, /*? if >=1.21.11 {*/ (long) /*?} else {*/ /*(int) *//*?}*/ bytes * view,
-                        last ? () -> readBack(request.key, index, size, buffer, generation) : () -> {
+                        last ? () -> readBack(request, index, size, buffer, generation) : () -> {
                         }, 0);
             }
             sent = true;
@@ -810,9 +893,11 @@ public final class ImpostorAtlas {
         }
     }
     //?} elif >=1.21.5 {
-    /*private static RenderTarget target() {
-        if (target == null) target = new TextureTarget("living horizon impostor", RENDER, RENDER, true);
-        return target;
+    /*private static RenderTarget target(int scale) {
+        if (TARGETS[scale] == null) {
+            TARGETS[scale] = new TextureTarget("living horizon impostor", RENDER * scale, RENDER * scale, true);
+        }
+        return TARGETS[scale];
     }
 
     /^*
@@ -821,21 +906,22 @@ public final class ImpostorAtlas {
      ^/
     private static void bake(Minecraft minecraft, Request request) {
         Entity puppet = request.puppet;
-        double size = size(puppet);
-        int index = allocate(request.key);
+        double size = size(puppet) * request.grow;
+        int scale = request.scale(), render = request.render();
+        int index = allocate(request.key, scale);
         if (index < 0) {
             QUEUED.remove(request.key);
             return;
         }
         BAKING.add(index);
         GpuDevice device = RenderSystem.getDevice();
-        int bytes = RENDER * RENDER * PIXEL_BYTES;
+        int bytes = render * render * PIXEL_BYTES;
         GpuBuffer buffer = device.createBuffer(() -> "living horizon impostor read back", BufferType.PIXEL_PACK,
                 BufferUsage.STATIC_READ, bytes * ImpostorViews.VIEWS);
         MultiBufferSource.BufferSource buffers = minecraft.renderBuffers().bufferSource();
         // Whatever is still pending goes where it belongs, before our target stands in.
         buffers.endBatch();
-        RenderTarget target = target();
+        RenderTarget target = target(scale);
         Matrix4fStack modelView = RenderSystem.getModelViewStack();
         FogParameters fog = RenderSystem.getShaderFog();
         RenderSystem.backupProjectionMatrix();
@@ -846,15 +932,15 @@ public final class ImpostorAtlas {
             CommandEncoder encoder = device.createCommandEncoder();
             RenderSystem.setShaderFog(FogParameters.NO_FOG);
             RenderSystem.setShaderLights(LIGHT_0, LIGHT_1);
-            RenderSystem.setProjectionMatrix(ortho(), ProjectionType.ORTHOGRAPHIC);
+            RenderSystem.setProjectionMatrix(ortho(render), ProjectionType.ORTHOGRAPHIC);
             int generation = ImpostorAtlas.generation;
             for (int view = 0; view < ImpostorViews.VIEWS; view++) {
                 encoder.clearColorAndDepthTextures(target.getColorTexture(), 0, target.getDepthTexture(), 1.0);
-                GhostRenderer.drawState(staged(minecraft, puppet, view), 0.0, 0.0, 0.0, pose(size), buffers, FULL_BRIGHT);
+                GhostRenderer.drawState(staged(minecraft, puppet, view), 0.0, 0.0, 0.0, pose(size, render), buffers, FULL_BRIGHT);
                 buffers.endBatch();
                 boolean last = view == ImpostorViews.VIEWS - 1;
                 encoder.copyTextureToBuffer(target.getColorTexture(), buffer, bytes * view,
-                        last ? () -> readBack(request.key, index, size, buffer, generation) : () -> {
+                        last ? () -> readBack(request, index, size, buffer, generation) : () -> {
                         }, 0);
             }
             sent = true;
@@ -874,13 +960,15 @@ public final class ImpostorAtlas {
     }
     *///?} else {
     /*/^* The eight views side by side, each in a square of its own. ^/
-    private static RenderTarget target() {
-        if (target != null) return target;
+    private static RenderTarget target(int scale) {
+        if (TARGETS[scale] != null) return TARGETS[scale];
+        int render = RENDER * scale;
         //? if >=1.21.2 {
-        target = new TextureTarget(RENDER * ImpostorViews.VIEWS, RENDER, true);
+        RenderTarget target = new TextureTarget(render * ImpostorViews.VIEWS, render, true);
         //?} else
-        //target = new TextureTarget(RENDER * ImpostorViews.VIEWS, RENDER, true, Minecraft.ON_OSX);
+        //RenderTarget target = new TextureTarget(render * ImpostorViews.VIEWS, render, true, Minecraft.ON_OSX);
         target.setClearColor(0f, 0f, 0f, 0f);
+        TARGETS[scale] = target;
         return target;
     }
 
@@ -890,8 +978,9 @@ public final class ImpostorAtlas {
      ^/
     private static void bake(Minecraft minecraft, Request request) {
         Entity puppet = request.puppet;
-        double size = size(puppet);
-        int index = allocate(request.key);
+        double size = size(puppet) * request.grow;
+        int scale = request.scale(), render = request.render();
+        int index = allocate(request.key, scale);
         if (index < 0) {
             QUEUED.remove(request.key);
             return;
@@ -900,7 +989,7 @@ public final class ImpostorAtlas {
         MultiBufferSource.BufferSource buffers = minecraft.renderBuffers().bufferSource();
         // Whatever is still pending goes where it belongs, before our target stands in.
         buffers.endBatch();
-        RenderTarget target = target();
+        RenderTarget target = target(scale);
         int[][] pictures = new int[ImpostorViews.VIEWS][];
         //? if >=1.20.5 {
         Matrix4fStack modelView = RenderSystem.getModelViewStack();
@@ -927,18 +1016,18 @@ public final class ImpostorAtlas {
             RenderSystem.depthMask(true);
             //? if >=1.21.2 {
             target.clear();
-            RenderSystem.setProjectionMatrix(ortho(), ProjectionType.ORTHOGRAPHIC);
+            RenderSystem.setProjectionMatrix(ortho(render), ProjectionType.ORTHOGRAPHIC);
             //?} else {
             /^target.clear(Minecraft.ON_OSX);
-            RenderSystem.setProjectionMatrix(ortho(), VertexSorting.ORTHOGRAPHIC_Z);
+            RenderSystem.setProjectionMatrix(ortho(render), VertexSorting.ORTHOGRAPHIC_Z);
             ^///?}
             target.bindWrite(true);
             for (int view = 0; view < ImpostorViews.VIEWS; view++) {
-                RenderSystem.viewport(view * RENDER, 0, RENDER, RENDER);
-                GhostRenderer.drawState(staged(minecraft, puppet, view), 0.0, 0.0, 0.0, pose(size), buffers, FULL_BRIGHT);
+                RenderSystem.viewport(view * render, 0, render, render);
+                GhostRenderer.drawState(staged(minecraft, puppet, view), 0.0, 0.0, 0.0, pose(size, render), buffers, FULL_BRIGHT);
                 buffers.endBatch();
             }
-            download(target, pictures);
+            download(target, pictures, render);
             drawn = true;
         } finally {
             drawing = null;
@@ -961,13 +1050,13 @@ public final class ImpostorAtlas {
                 QUEUED.remove(request.key);
             }
         }
-        store(request.key, index, size, pictures, generation);
+        store(request, index, size, pictures, generation);
     }
 
     /^* Reads the views back from our target: bottom row first, as the GPU device does. ^/
-    private static void download(RenderTarget target, int[][] pictures) {
-        int width = RENDER * ImpostorViews.VIEWS;
-        IntBuffer all = MemoryUtil.memAllocInt(width * RENDER);
+    private static void download(RenderTarget target, int[][] pictures, int render) {
+        int width = render * ImpostorViews.VIEWS;
+        IntBuffer all = MemoryUtil.memAllocInt(width * render);
         try {
             GlStateManager._bindTexture(target.getColorTextureId());
             GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 4);
@@ -976,8 +1065,8 @@ public final class ImpostorAtlas {
             GL11.glPixelStorei(GL11.GL_PACK_SKIP_ROWS, 0);
             GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, all);
             for (int view = 0; view < ImpostorViews.VIEWS; view++) {
-                int[] pixels = new int[RENDER * RENDER];
-                for (int y = 0; y < RENDER; y++) all.get(y * width + view * RENDER, pixels, y * RENDER, RENDER);
+                int[] pixels = new int[render * render];
+                for (int y = 0; y < render; y++) all.get(y * width + view * render, pixels, y * render, render);
                 pictures[view] = pixels;
             }
         } finally {
@@ -996,7 +1085,7 @@ public final class ImpostorAtlas {
 
     //? if >=1.21.5 {
     /** The views are read back: their pixels go on to {@link #store}. */
-    private static void readBack(ImpostorKey key, int index, double size, GpuBuffer buffer, int generation) {
+    private static void readBack(Request request, int index, double size, GpuBuffer buffer, int generation) {
         int[][] pictures = null;
         try {
             if (generation == ImpostorAtlas.generation) {
@@ -1010,7 +1099,7 @@ public final class ImpostorAtlas {
                 *///?}
                     ByteBuffer data = mapped.data().order(ByteOrder.LITTLE_ENDIAN);
                     for (int view = 0; view < ImpostorViews.VIEWS; view++) {
-                        read[view] = new int[RENDER * RENDER];
+                        read[view] = new int[request.render() * request.render()];
                         data.asIntBuffer().get(view * read[view].length, read[view]);
                     }
                 }
@@ -1021,7 +1110,7 @@ public final class ImpostorAtlas {
         } finally {
             buffer.close();
         }
-        store(key, index, size, pictures, generation);
+        store(request, index, size, pictures, generation);
     }
 
     /** Writes a strip of pixels into one level of a page, top row first. */
@@ -1057,18 +1146,27 @@ public final class ImpostorAtlas {
 
     /**
      * The views are drawn and read back, bottom row first: their levels go into the page,
-     * and the sheet can be used. No pictures when the read back failed.
+     * and the sheet can be used. No pictures when the read back failed. A figure cut off by
+     * the edge of its tiles is queued again, larger.
      */
-    private static void store(ImpostorKey key, int index, double size, int @Nullable [][] pictures, int generation) {
+    private static void store(Request request, int index, double size, int @Nullable [][] pictures, int generation) {
+        ImpostorKey key = request.key;
+        boolean again = false;
         try {
             if (generation != ImpostorAtlas.generation || pictures == null) return;
+            double growth = growth(pictures, request.render());
+            if (growth > 1.01 && request.grow < MAX_GROW) {
+                QUEUE.add(new Request(key, request.puppet, Math.min(MAX_GROW, request.grow * growth)));
+                again = true;
+                return;
+            }
             int[][][] views = new int[ImpostorViews.VIEWS][][];
             for (int view = 0; view < ImpostorViews.VIEWS; view++) {
-                views[view] = ImpostorPixels.mips(pictures[view], RENDER, ImpostorViews.TILE, MIPS);
+                views[view] = ImpostorPixels.mips(pictures[view], request.render(), ImpostorViews.TILE * request.scale(), MIPS);
             }
             int[][] levels = new int[MIPS][];
             for (int level = 0; level < MIPS; level++) {
-                int tile = ImpostorViews.TILE >> level;
+                int tile = ImpostorViews.TILE * request.scale() >> level;
                 int width = tile * ImpostorViews.VIEWS;
                 int[] strip = new int[width * tile];
                 for (int view = 0; view < ImpostorViews.VIEWS; view++) {
@@ -1082,22 +1180,22 @@ public final class ImpostorAtlas {
             }
             if (!place(key, index, size, levels)) return;
             BAKING.remove(index);
-            if (!PLAYER.equals(key.type())) ImpostorDisk.write(key, size, levels);
+            if (!PLAYER.equals(key.type())) ImpostorDisk.write(key, size, request.scale(), levels);
         } catch (RuntimeException | LinkageError error) {
             if (generation == ImpostorAtlas.generation) fail(error);
         } finally {
             if (generation == ImpostorAtlas.generation) {
-                QUEUED.remove(key);
+                if (!again) QUEUED.remove(key);
                 if (BAKING.remove(index)) free(index);
             }
         }
     }
 
     /** Whether the levels read from disk have the size of a sheet's: written by another format otherwise. */
-    private static boolean fits(int[][] levels) {
-        if (levels.length != MIPS) return false;
+    private static boolean fits(int[][] levels, int scale) {
+        if (levels.length != MIPS || scale < 1 || scale > MAX_SCALE) return false;
         for (int level = 0; level < MIPS; level++) {
-            int tile = ImpostorViews.TILE >> level;
+            int tile = ImpostorViews.TILE * scale >> level;
             if (levels[level] == null || levels[level].length != tile * ImpostorViews.VIEWS * tile) return false;
         }
         return true;
@@ -1107,14 +1205,24 @@ public final class ImpostorAtlas {
     private static boolean place(ImpostorKey key, int index, double size, int[][] levels) {
         Page owner = PAGES.get(index / ROWS);
         if (owner == null) return false;
-        Sheet sheet = new Sheet(index, owner.rows, size);
+        Sheet sheet = new Sheet(index, owner.rows, size, owner.scale);
         for (int level = 0; level < MIPS; level++) {
-            int tile = ImpostorViews.TILE >> level;
+            int tile = sheet.tile() >> level;
             write(owner.texture, level, 0, sheet.row() * tile, tile * ImpostorViews.VIEWS, tile, levels[level]);
         }
         SHEETS.put(key, sheet);
         USED.put(key, System.currentTimeMillis());
         return true;
+    }
+
+    /** How much larger the views must be drawn to stay within what their tiles show. */
+    private static double growth(int[][] pictures, int render) {
+        int hidden = (int) Math.ceil(ImpostorRenderer.INSET * render);
+        double growth = 1;
+        for (int[] picture : pictures) {
+            growth = Math.max(growth, ImpostorPixels.growth(picture, render, hidden, render * (1 - FEET), GROW));
+        }
+        return growth;
     }
 
     /**

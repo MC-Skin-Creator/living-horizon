@@ -2,7 +2,6 @@ package fr.clixmods.livinghorizon.gametest;
 
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
-import fr.clixmods.livinghorizon.render.impostor.ImpostorViews;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
@@ -75,6 +74,9 @@ public final class Scene {
             minecraft.options.fov().set(70);
             minecraft.options.renderDistance().set(12);
             minecraft.options.entityDistanceScaling().set(1.0);
+            // The menus' blur is drawn on the CPU here: frames of the loading screen slow enough
+            // with it for a new world to time out before it loads.
+            minecraft.options.menuBackgroundBlurriness().set(0);
             FarConfig defaults = new FarConfig();
             FarConfig config = FarConfig.get();
             // Field by field: the config object is the one the mod holds.
@@ -194,9 +196,9 @@ public final class Scene {
         @Override
         public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
             graphics.fill(0, 0, width, height, 0xFF7090B0);
-            int wide = ImpostorAtlas.PAGE_WIDTH, x = 0, y = 0, line = 0;
+            int x = 0, y = 0, line = 0;
             for (int number = 0; number < ImpostorAtlas.pages(); number++) {
-                int tall = ImpostorAtlas.pageRows(number) * ImpostorViews.TILE;
+                int wide = ImpostorAtlas.pageWidth(number), tall = ImpostorAtlas.pageHeight(number);
                 if (tall == 0) continue;
                 if (x + wide / 2 > width) {
                     x = 0;

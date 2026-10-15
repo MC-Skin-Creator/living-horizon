@@ -235,6 +235,12 @@ lives there.
 - A mob met up close keeps its exact look (the game's own save of it); one known only
   from the pack is built from kind, variant and age.
 - Coming back within range of a remembered mob that is not there forgets it.
+- **In single player** the server runs in the game itself: four times a second it is asked
+  where the remembered mobs are (`track/ServerMobs`). The ones it still moves - past the
+  distance it sends them at, but inside the simulation distance - are followed by their
+  copies, at its pace and facing the way they face, with no animation of their own; one
+  that dies there is forgotten. Otherwise the copy would stand where the mob was last seen
+  while the real one wandered off, and run or jump to it once it was sent again.
 - When a mob is remembered, the blocks within 8 blocks of it are read once
   (`track/MobPaths`, from loaded chunks or the far world, Voxy or Distant Horizons): in
   each column, the floor nearest its height with room above it. Grass, flowers, crops and
@@ -356,8 +362,10 @@ nothing, and the game no longer builds a render state and a model for it every f
   only 5% inside it; it keeps a picture until it has turned 8 degrees past the next one;
   and when its look changes, it keeps its old picture until the new one is baked.
 - **Sizes.** Each kind of figure has pages of its own, one sheet per row (512 pixels wide):
-  4 rows, then 8, 16, then 32. The mobs keep their sheets, up to 1024 in all; past that, an
-  unused sheet of the same kind gives way. The players' are thrown away after a minute
+  4 rows, then 8, 16, then 32. A figure baked larger to keep its sharpness (a horse's
+  muzzle) has tiles two or three times as large, on pages of that scale. The mobs keep their
+  sheets, up to 1024 in all (a larger sheet counts as several); past that, an unused sheet
+  of the same kind gives way. The players' are thrown away after a minute
   unused, up to 128. A sheet drawn or asked for in the last 10 seconds is never replaced.
 - **On disk.** `ImpostorDisk` keeps the mobs' sheets in
   `config/livinghorizon/impostors/<fingerprint>/`, so that a mob met in an earlier game is

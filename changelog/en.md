@@ -3,18 +3,35 @@
 ## Unreleased
 
 ### New
-- **Impostors on Minecraft 1.20.1 to 1.21.8** — far players and mobs are drawn as light pictures of themselves on these versions too, and the Impostor Manager shows them.
 - **Impostors** — mob pictures are saved on disk and reused the next time you play, so they are only drawn again after a change of resource packs, mods or game version.
+
+### Improved
+- **Mod icon** — a new pixel-art icon: Steve in front, and mobs, villagers, players and birds alive all the way to the mountains behind him.
+- **Single player** — distant mobs teleport or sprint to another spot far less often as you come back: they now follow the real mobs while the game still moves them, and disappear when those die.
+
+### Fixed
+- **Impostors screen** — two figures with the same name, such as villagers in different outfits, no longer swap places and flicker.
+- **Impostors** — the thin dark lines and black specks that sometimes showed along the top or bottom edge of far mobs are gone, and long mobs such as horses and sniffers are no longer cut off at the muzzle or tail.
+- **GeckoLib mobs on Minecraft 1.21.2 to 1.21.8** — a world no longer crashes a few seconds after loading when a mob from a GeckoLib mod was met far away; such mobs are not shown far away yet.
+- **Impostors** — the game no longer slows down with impostors on: the same mobs are no longer drawn into new pictures over and over, and mobs that look alike share one picture, kept from one world to the next.
+
+## 0.5.0 — 2026-10-13
+
+### New
+- **Impostors on Minecraft 1.20.1 to 1.21.8** — far players and mobs are drawn as light pictures of themselves on these versions too, and the Impostor Manager shows them.
 
 ### Fixed
 - **Forge 1.20.1 to 1.20.4** — the game no longer crashes on startup with the mod installed.
 - **Impostors screen on Minecraft 1.21.8 and older** — opening it no longer crashes the game.
 - **Joining a world** — mobs already around you when you join are drawn far away too, instead of only those met afterwards.
+
+## 0.4.2 — 2026-10-12
+
+### Fixed
 - **Mobs leaving your range** — a mob no longer vanishes for a few frames before its distant copy appears.
 - **Mobs leaving your range** — the distant copy now faces the way the mob did, instead of sometimes turning to another direction.
 - **Minecraft 1.21.9 to 26.1** — parts of distant mobs, such as a villager's clothes or a held item, no longer show through Voxy's terrain under shaders, nor through Distant Horizons' terrain.
 - **Minecraft 26.1 and later** — the see-through parts of distant mobs, such as a slime's outer layer, no longer show through Voxy's terrain under shaders, nor through Distant Horizons' terrain.
-- **Impostors** — the game no longer slows down with impostors on: the same mobs are no longer drawn into new pictures over and over, and mobs that look alike share one picture, kept from one world to the next.
 
 ## 0.4.1 — 2026-10-11
 

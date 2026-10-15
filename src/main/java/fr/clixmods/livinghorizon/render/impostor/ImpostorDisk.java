@@ -52,8 +52,11 @@ public final class ImpostorDisk {
     /** Sheet files kept in all: the ones read or written longest ago go first. */
     private static final int KEEP = 4096;
 
-    /** A sheet as read from disk: its size in blocks, and the rows of each mip level. */
-    public record Stored(double worldSize, int[][] levels) {
+    /**
+     * A sheet as read from disk: its size in blocks, how many times larger than a tile its
+     * tiles are, and the rows of each mip level.
+     */
+    public record Stored(double worldSize, int scale, int[][] levels) {
     }
 
     private static final ExecutorService IO = Executors.newSingleThreadExecutor(task -> {
@@ -99,6 +102,7 @@ public final class ImpostorDisk {
             try (DataInputStream in = new DataInputStream(new BufferedInputStream(new GZIPInputStream(Files.newInputStream(file))))) {
                 if (in.readInt() != MAGIC || in.readInt() != FORMAT) return null;
                 double worldSize = in.readDouble();
+                int scale = in.readInt();
                 int[][] levels = new int[in.readInt()][];
                 for (int level = 0; level < levels.length; level++) {
                     levels[level] = new int[in.readInt()];
@@ -106,7 +110,7 @@ public final class ImpostorDisk {
                 }
                 // Read again: kept over the ones not met for longer.
                 file.toFile().setLastModified(System.currentTimeMillis());
-                return new Stored(worldSize, levels);
+                return new Stored(worldSize, scale, levels);
             } catch (IOException | RuntimeException e) {
                 LivingHorizonClient.LOGGER.warn("Could not read the impostor {}, baking it again", file, e);
                 return null;
@@ -128,7 +132,7 @@ public final class ImpostorDisk {
     }
 
     /** Saves a mob's sheet just baked, and what has been learnt to leave out of keys. */
-    public static void write(ImpostorKey key, double worldSize, int[][] levels) {
+    public static void write(ImpostorKey key, double worldSize, int scale, int[][] levels) {
         Path root = folder();
         Path file = file(root, key);
         SAVED.add(key);
@@ -146,6 +150,7 @@ public final class ImpostorDisk {
                     out.writeInt(MAGIC);
                     out.writeInt(FORMAT);
                     out.writeDouble(worldSize);
+                    out.writeInt(scale);
                     out.writeInt(levels.length);
                     for (int[] level : levels) {
                         out.writeInt(level.length);

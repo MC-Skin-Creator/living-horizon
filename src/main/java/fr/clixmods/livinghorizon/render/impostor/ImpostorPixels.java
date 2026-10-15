@@ -55,6 +55,34 @@ public final class ImpostorPixels {
         return out;
     }
 
+    /**
+     * How many times larger a picture must be for its figure to stay out of the strip of
+     * {@code margin} pixels round it, which its tile does not show: 1 when it already does.
+     * The picture grows round the feet, {@code feet} pixels up from its bottom row (row 0).
+     * A figure that reaches the very edge goes on past it, by how much is not known: then
+     * at least {@code beyond}.
+     */
+    public static double growth(int[] picture, int size, int margin, double feet, double beyond) {
+        int left = size, right = -1, bottom = size, top = -1;
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                if (picture[y * size + x] >>> 24 < 128) continue;
+                left = Math.min(left, x);
+                right = Math.max(right, x);
+                bottom = Math.min(bottom, y);
+                top = Math.max(top, y);
+            }
+        }
+        if (right < 0) return 1;
+        // One pixel to spare: drawn larger, the figure's edge may round outwards.
+        double centre = size / 2.0, across = centre - margin - 1;
+        double growth = Math.max(1, Math.max(centre - left, right + 1 - centre) / across);
+        growth = Math.max(growth, (top + 1 - feet) / (size - margin - 1 - feet));
+        if (bottom < feet) growth = Math.max(growth, (feet - bottom) / Math.max(1, feet - margin - 1));
+        if (left == 0 || bottom == 0 || right == size - 1 || top == size - 1) growth = Math.max(growth, beyond);
+        return growth;
+    }
+
     /** A level as it is stored: coloured round the figure, its alpha a ramp through the cut. */
     static int[] cut(int[] level, int side) {
         int[] out = level.clone();
