@@ -263,7 +263,10 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Impostors baked over and over** (the game slows down with impostors on, the same figures
   appear again and again in the impostor screen): a figure's key changes while its look does
   not (a helmet worn by the sun changed its item, and the key, every few seconds; a pig's
-  random sound variant), or a kind of figure has more looks than its pages may hold.
+  random sound variant), or a kind of figure has more looks than its pages may hold. With the
+  pages full, "waiting" going round and round with the baked count stuck: a figure baked
+  small, grown, refused for lack of room and asked for again the next second. `room` squeezes
+  it into smaller tiles, or `REFUSED` keeps it a model for a while; `crowd` checks it.
   `ImpostorKey` leaves out what never shows (positions, times, owners, names, sound variants,
   an item's damage), names variants by their registry key so that a sheet is found again in
   the next world, and learns per kind of mob the values seen changing again and again

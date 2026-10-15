@@ -293,18 +293,27 @@ public final class ImpostorAtlas {
     /**
      * A figure to bake, its picture {@code grow} times larger than {@link #size} gives: a
      * figure longer than its box (a horse's muzzle, a sniffer) is baked again larger, into
-     * tiles as many times larger, so that it keeps its sharpness.
+     * tiles {@code scale} times larger, so that it keeps its sharpness. Squeezed into
+     * smaller tiles when the pages have no room for those: the whole figure, less sharp.
      */
-    private record Request(ImpostorKey key, Entity puppet, double grow) {
-        int scale() {
-            return Math.clamp((int) Math.ceil(grow - 1e-6), 1, MAX_SCALE);
+    private record Request(ImpostorKey key, Entity puppet, double grow, int scale) {
+        static Request of(ImpostorKey key, Entity puppet, double grow) {
+            return new Request(key, puppet, grow, Math.clamp((int) Math.ceil(grow - 1e-6), 1, MAX_SCALE));
+        }
+
+        /** Whether its tiles are smaller than its picture asks for. */
+        boolean squeezed() {
+            return scale < of(key, puppet, grow).scale;
         }
 
         /** Pixels along a side of the target a view is drawn in. */
         int render() {
-            return RENDER * scale();
+            return RENDER * scale;
         }
     }
+
+    /** Milliseconds a figure the pages had no room for waits before it is asked for again. */
+    private static final long REFUSED_FOR = 30_000L;
 
     /**
      * How much larger a figure cut off by the very edge of its picture is baked again at
@@ -416,8 +425,14 @@ public final class ImpostorAtlas {
     private static final Set<ImpostorKey> QUEUED = new HashSet<>();
     /** Sheets read from disk, handed over by the disk's thread. */
     private static final Queue<Loaded> LOADED = new ConcurrentLinkedQueue<>();
-    /** Sheets read from disk rather than baked, since the game started. */
-    private static int loads;
+    /** Sheets read from disk rather than baked, and views drawn, since the game started. */
+    private static int loads, bakes;
+    /** How much larger each figure was last baked: asked for again, it starts there. */
+    private static final Map<ImpostorKey, Double> GROWN = new HashMap<>();
+    /** Figures the pages had no room for, and when: not asked for again for a while. */
+    private static final Map<ImpostorKey, Long> REFUSED = new HashMap<>();
+    /** Figures whose renderer gives nothing to draw: never asked for again. */
+    private static final Set<ImpostorKey> UNDRAWABLE = new HashSet<>();
     /** Rows being baked: not free, not yet a sheet. */
     private static final Set<Integer> BAKING = new HashSet<>();
     /** The pages by number, null where a player page was given back. */
@@ -486,7 +501,7 @@ public final class ImpostorAtlas {
      * it counts as a use: the figures on hand keep their sheets.
      */
     public static void request(ImpostorKey key, Entity puppet) {
-        if (failed || sheet(key) != null || !QUEUED.add(key)) return;
+        if (failed || sheet(key) != null || UNDRAWABLE.contains(key) || refused(key) || !QUEUED.add(key)) return;
         // A mob met in an earlier game: read back rather than baked.
         if (!PLAYER.equals(key.type()) && ImpostorDisk.has(key)) {
             int asked = generation;
@@ -494,12 +509,25 @@ public final class ImpostorAtlas {
                     LOADED.add(new Loaded(key, puppet, error == null ? stored : null, asked)));
             return;
         }
-        QUEUE.add(new Request(key, puppet, 1.0));
+        QUEUE.add(Request.of(key, puppet, GROWN.getOrDefault(key, 1.0)));
+    }
+
+    private static boolean refused(ImpostorKey key) {
+        Long when = REFUSED.get(key);
+        if (when == null) return false;
+        if (System.currentTimeMillis() - when < REFUSED_FOR) return true;
+        REFUSED.remove(key);
+        return false;
     }
 
     /** Sheets read from disk rather than baked, since the game started. */
     public static int loads() {
         return loads;
+    }
+
+    /** Figures drawn to be baked since the game started, read back or not. */
+    public static int bakes() {
+        return bakes;
     }
 
     public static int sheets() {
@@ -570,6 +598,9 @@ public final class ImpostorAtlas {
         QUEUED.clear();
         BAKING.clear();
         LOADED.clear();
+        GROWN.clear();
+        REFUSED.clear();
+        UNDRAWABLE.clear();
         ImpostorKey.forgetAll();
         // The packs or the mods may have changed: the sheets on disk are looked for again.
         ImpostorDisk.reset();
@@ -597,13 +628,16 @@ public final class ImpostorAtlas {
             if (loaded.generation != generation) continue;
             if (loaded.stored == null || !fits(loaded.stored.levels(), loaded.stored.scale())) {
                 ImpostorDisk.forget(loaded.key);
-                QUEUE.add(new Request(loaded.key, loaded.puppet, 1.0));
+                QUEUE.add(Request.of(loaded.key, loaded.puppet, GROWN.getOrDefault(loaded.key, 1.0)));
                 continue;
             }
             QUEUED.remove(loaded.key);
             if (SHEETS.containsKey(loaded.key)) continue;
             int index = allocate(loaded.key, loaded.stored.scale());
-            if (index < 0) continue;
+            if (index < 0) {
+                REFUSED.put(loaded.key, System.currentTimeMillis());
+                continue;
+            }
             try {
                 place(loaded.key, index, loaded.stored.worldSize(), loaded.stored.levels());
                 loads++;
@@ -622,7 +656,8 @@ public final class ImpostorAtlas {
             try {
                 bake(minecraft, request);
             } catch (LeftOut leftOut) {
-                // That one figure only: its renderer gives the mod nothing to draw.
+                // That one figure only: its renderer gives the mod nothing to draw, now or later.
+                UNDRAWABLE.add(request.key);
                 continue;
             } catch (RuntimeException | LinkageError error) {
                 fail(error);
@@ -688,6 +723,21 @@ public final class ImpostorAtlas {
     private static boolean inUse(ImpostorKey key, long within) {
         Long used = USED.get(key);
         return used != null && System.currentTimeMillis() - used < within;
+    }
+
+    /**
+     * A row for a figure, in tiles as large as its picture asks for or, when the pages have no
+     * room for those, smaller ones. -1 for none: the figure is drawn as a model, and not asked
+     * for again for {@link #REFUSED_FOR}, rather than baked again every second for nothing.
+     */
+    private static int room(Request request) {
+        for (int scale = request.scale; scale >= 1; scale--) {
+            int index = allocate(request.key, scale);
+            if (index >= 0) return index;
+        }
+        QUEUED.remove(request.key);
+        REFUSED.put(request.key, System.currentTimeMillis());
+        return -1;
     }
 
     /** Rows of the pages of the players, or of the mobs, counted at scale 1. */
@@ -809,16 +859,15 @@ public final class ImpostorAtlas {
         return lighting;
     }
 
-    private static void bake(Minecraft minecraft, Request request) {
+    private static void bake(Minecraft minecraft, Request asked) {
+        int index = room(asked);
+        if (index < 0) return;
+        Request request = new Request(asked.key, asked.puppet, asked.grow, PAGES.get(index / ROWS).scale);
         Entity puppet = request.puppet;
         double size = size(puppet) * request.grow;
         int scale = request.scale(), render = request.render();
-        int index = allocate(request.key, scale);
-        if (index < 0) {
-            QUEUED.remove(request.key);
-            return;
-        }
         BAKING.add(index);
+        bakes++;
         GpuDevice device = RenderSystem.getDevice();
         int bytes = render * render * PIXEL_BYTES;
         GpuBuffer buffer = device.createBuffer(() -> "living horizon impostor read back",
@@ -904,16 +953,15 @@ public final class ImpostorAtlas {
      * Draws the views one by one into our target, which the game takes for its main one
      * meanwhile: this version has no output override to point the drawing elsewhere.
      ^/
-    private static void bake(Minecraft minecraft, Request request) {
+    private static void bake(Minecraft minecraft, Request asked) {
+        int index = room(asked);
+        if (index < 0) return;
+        Request request = new Request(asked.key, asked.puppet, asked.grow, PAGES.get(index / ROWS).scale);
         Entity puppet = request.puppet;
         double size = size(puppet) * request.grow;
         int scale = request.scale(), render = request.render();
-        int index = allocate(request.key, scale);
-        if (index < 0) {
-            QUEUED.remove(request.key);
-            return;
-        }
         BAKING.add(index);
+        bakes++;
         GpuDevice device = RenderSystem.getDevice();
         int bytes = render * render * PIXEL_BYTES;
         GpuBuffer buffer = device.createBuffer(() -> "living horizon impostor read back", BufferType.PIXEL_PACK,
@@ -976,16 +1024,15 @@ public final class ImpostorAtlas {
      * Draws the eight views side by side into our target, which the game takes for its main
      * one meanwhile, and reads them back at once.
      ^/
-    private static void bake(Minecraft minecraft, Request request) {
+    private static void bake(Minecraft minecraft, Request asked) {
+        int index = room(asked);
+        if (index < 0) return;
+        Request request = new Request(asked.key, asked.puppet, asked.grow, PAGES.get(index / ROWS).scale);
         Entity puppet = request.puppet;
         double size = size(puppet) * request.grow;
         int scale = request.scale(), render = request.render();
-        int index = allocate(request.key, scale);
-        if (index < 0) {
-            QUEUED.remove(request.key);
-            return;
-        }
         BAKING.add(index);
+        bakes++;
         MultiBufferSource.BufferSource buffers = minecraft.renderBuffers().bufferSource();
         // Whatever is still pending goes where it belongs, before our target stands in.
         buffers.endBatch();
@@ -1156,7 +1203,9 @@ public final class ImpostorAtlas {
             if (generation != ImpostorAtlas.generation || pictures == null) return;
             double growth = growth(pictures, request.render());
             if (growth > 1.01 && request.grow < MAX_GROW) {
-                QUEUE.add(new Request(key, request.puppet, Math.min(MAX_GROW, request.grow * growth)));
+                double grow = Math.min(MAX_GROW, request.grow * growth);
+                GROWN.put(key, grow);
+                QUEUE.add(Request.of(key, request.puppet, grow));
                 again = true;
                 return;
             }
@@ -1180,7 +1229,8 @@ public final class ImpostorAtlas {
             }
             if (!place(key, index, size, levels)) return;
             BAKING.remove(index);
-            if (!PLAYER.equals(key.type())) ImpostorDisk.write(key, size, request.scale(), levels);
+            // A squeezed sheet is not kept: the next game may have room for the sharp one.
+            if (!PLAYER.equals(key.type()) && !request.squeezed()) ImpostorDisk.write(key, size, request.scale(), levels);
         } catch (RuntimeException | LinkageError error) {
             if (generation == ImpostorAtlas.generation) fail(error);
         } finally {
