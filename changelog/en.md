@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Improved
+- **Mod icon** — a new pixel-art icon: Steve in front, and mobs, villagers, players and birds alive all the way to the mountains behind him.
 - **Single player** — distant mobs teleport or sprint to another spot far less often as you come back: they now follow the real mobs while the game still moves them, and disappear when those die.
 
 ## 0.5.0 — 2026-10-13
