@@ -8,6 +8,7 @@
 
 ### Fixed
 - **Impostors screen** — two figures with the same name, such as villagers in different outfits, no longer swap places and flicker.
+- **Impostors** — the thin dark lines and black specks that sometimes showed along the top or bottom edge of far mobs are gone, and long mobs such as horses and sniffers are no longer cut off at the muzzle or tail.
 
 ## 0.5.0 — 2026-10-13
 

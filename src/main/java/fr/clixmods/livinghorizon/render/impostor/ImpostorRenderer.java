@@ -44,10 +44,11 @@ public final class ImpostorRenderer {
 
     /**
      * Fraction of a tile left out on each side: half a pixel of the smallest level, which
-     * the filter would otherwise blend with the view next to it, a speck beside the figure.
-     * The quad is narrowed to match, so the picture keeps its size.
+     * the filter would otherwise blend with the tile next to it, a speck beside the figure.
+     * Above and below too: the tile above ends with another figure's feet, and the one
+     * below starts empty and black. The quad is shrunk to match, so the picture keeps its size.
      */
-    private static final float INSET = 0.5f / (ImpostorViews.TILE >> (ImpostorAtlas.MIPS - 1));
+    static final float INSET = 0.5f / (ImpostorViews.TILE >> (ImpostorAtlas.MIPS - 1));
 
     private static final List<Billboard> FRAME = new ArrayList<>();
     private static final List<Outlined> OUTLINED = new ArrayList<>();
@@ -102,13 +103,12 @@ public final class ImpostorRenderer {
 
     private static void quad(PoseStack.Pose at, VertexConsumer out, Billboard board, float rightX, float rightZ) {
         float half = (float) board.size * (0.5f - INSET);
-        float bottom = (float) -(1 - ImpostorAtlas.FEET) * (float) board.size;
-        float top = ImpostorAtlas.FEET * (float) board.size;
+        float bottom = (float) -(1 - ImpostorAtlas.FEET - INSET) * (float) board.size;
+        float top = (ImpostorAtlas.FEET - INSET) * (float) board.size;
         // A tile of the page, the top of the picture at the top.
-        float u0 = (board.sheet.column() * ImpostorViews.VIEWS + board.view + INSET) / ImpostorAtlas.TILES_ACROSS;
-        float u1 = u0 + (1f - 2 * INSET) / ImpostorAtlas.TILES_ACROSS;
-        float vTop = board.sheet.row() / (float) ImpostorAtlas.TILES_DOWN;
-        float vBottom = (board.sheet.row() + 1) / (float) ImpostorAtlas.TILES_DOWN;
+        float span = board.sheet.span();
+        float u0 = board.sheet.u(board.view) + INSET * span, u1 = u0 + (1f - 2 * INSET) * span;
+        float vTop = board.sheet.v() + INSET * span, vBottom = board.sheet.v() + (1f - INSET) * span;
         float lx = -rightX * half, lz = -rightZ * half, rx = rightX * half, rz = rightZ * half;
         float[] corners = {lx, bottom, lz, rx, bottom, rz, rx, top, rz, lx, top, lz};
         // Leant back round the middle of the figure, so that shader packs light it from above too.

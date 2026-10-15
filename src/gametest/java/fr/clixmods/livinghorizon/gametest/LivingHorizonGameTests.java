@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon.gametest;
 import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FollowedMobsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.ImpostorEdgesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
@@ -30,6 +31,7 @@ import java.util.stream.Collectors;
 public final class LivingHorizonGameTests implements FabricClientGameTest {
     private static final List<Scenario> SCENARIOS = List.of(
             new ImpostorsScenario(),
+            new ImpostorEdgesScenario(),
             new ImpostorScreenScenario(),
             new LightingScenario(),
             new RememberedMobsScenario(),

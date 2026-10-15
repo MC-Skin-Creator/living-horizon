@@ -260,6 +260,12 @@ come back, add it here in the same pull request: this file is what the next sess
   item target while `ImpostorAtlas.drawing()` is set. A render type that binds yet another
   target of the game's escapes it; before 1.21.5 the eight views share one target, each in its
   own viewport.
+- **Specks along an impostor's edge, or a figure cut off by its tile** (black dashes over a far
+  mob, a horse without its muzzle): the texture filter reads half a pixel of the smallest level
+  past each tile, so the quad and its UVs keep `ImpostorRenderer.INSET` clear on all four sides,
+  and the feet stand above it (`ImpostorAtlas.FEET`). A figure reaching into that strip is baked
+  again larger (`ImpostorPixels.growth`), into tiles as many times larger on a page of their own,
+  so that it keeps its pixels to the block. `impostoredges` shows both.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
