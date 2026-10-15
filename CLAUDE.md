@@ -247,6 +247,12 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Mobs near the player never drawn far away**, only those met later: the mob memory is opened
   on the first tick with a player, and opening clears the mobs sent so far, which the level may
   have loaded just before. `FarPlayerTracker` hands it the level's entities again once open.
+- **Distant mobs jumping or sprinting as the player comes back** (the copy runs or teleports to
+  the real mob once it is sent again): the server stops sending a mob at its tracking range
+  (160 blocks for animals, scaled by *Entity Distance*) but keeps moving it out to the
+  simulation distance, a square of chunks that reaches farther on its diagonals. In single
+  player `ServerMobs` asks the server where those are and the copies follow; on a server only
+  the data pack closes that gap.
 - **Impostors before 1.21.6** (empty or missing pictures, or a figure flashing over the screen
   at the start of a frame): the game has no output override there, so `ImpostorAtlas` bakes
   at the start of the frame (`GameRendererMixin`) into a target of its own, which
@@ -254,6 +260,12 @@ come back, add it here in the same pull request: this file is what the next sess
   item target while `ImpostorAtlas.drawing()` is set. A render type that binds yet another
   target of the game's escapes it; before 1.21.5 the eight views share one target, each in its
   own viewport.
+- **Specks along an impostor's edge, or a figure cut off by its tile** (black dashes over a far
+  mob, a horse without its muzzle): the texture filter reads half a pixel of the smallest level
+  past each tile, so the quad and its UVs keep `ImpostorRenderer.INSET` clear on all four sides,
+  and the feet stand above it (`ImpostorAtlas.FEET`). A figure reaching into that strip is baked
+  again larger (`ImpostorPixels.growth`), into tiles as many times larger on a page of their own,
+  so that it keeps its pixels to the block. `impostoredges` shows both.
 - **Crash extracting a distant mob on 1.21.2 to 1.21.8** (`NullPointerException` under
   `GhostRenderer.state`, often blamed on another mod's mixin into `extractRenderState`):
   GeckoLib 4's `createRenderState()` returns null and its `render` draws the entity it was

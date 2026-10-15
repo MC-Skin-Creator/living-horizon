@@ -74,6 +74,9 @@ public final class Scene {
             minecraft.options.fov().set(70);
             minecraft.options.renderDistance().set(12);
             minecraft.options.entityDistanceScaling().set(1.0);
+            // The menus' blur is drawn on the CPU here: frames of the loading screen slow enough
+            // with it for a new world to time out before it loads.
+            minecraft.options.menuBackgroundBlurriness().set(0);
             FarConfig defaults = new FarConfig();
             FarConfig config = FarConfig.get();
             // Field by field: the config object is the one the mod holds.
@@ -201,6 +204,14 @@ public final class Scene {
             //?} else {
             /*graphics.blit(net.minecraft.client.renderer.rendertype.RenderTypes::guiTextured, page, 0, 0, 0f, 0f, 854, 256, 854, 256, 2048, 2048);
             graphics.blit(net.minecraft.client.renderer.rendertype.RenderTypes::guiTextured, page, 0, 270, 0f, 0f, 512, 64, 2048, 256, 2048, 2048);
+            *///?}
+            // The second page, of larger tiles when a figure needed them: its first rows at half.
+            if (ImpostorAtlas.pages() < 2) return;
+            var large = ImpostorAtlas.id(1);
+            //? if >=1.21.6 {
+            graphics.blit(large, 0, 345, 854, 473, 0f, 1708f / 2048f, 0f, 256f / 2048f);
+            //?} else {
+            /*graphics.blit(net.minecraft.client.renderer.rendertype.RenderTypes::guiTextured, large, 0, 345, 0f, 0f, 854, 128, 1708, 256, 2048, 2048);
             *///?}
         }
 
