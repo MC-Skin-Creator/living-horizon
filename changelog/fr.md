@@ -2,6 +2,9 @@
 
 ## Prochaine version
 
+### Améliorations
+- **Icône du mod** — une nouvelle icône en pixel art : Steve au premier plan, et des créatures, des villageois, des joueurs et des oiseaux bien vivants jusqu'aux montagnes derrière lui.
+
 ## 0.5.0 — 2026-10-13
 
 ### Nouveautés

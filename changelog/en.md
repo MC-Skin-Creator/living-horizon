@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Improved
+- **Mod icon** — a new pixel-art icon: Steve in front, and mobs, villagers, players and birds alive all the way to the mountains behind him.
+
 ## 0.5.0 — 2026-10-13
 
 ### New
