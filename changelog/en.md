@@ -4,6 +4,7 @@
 
 ### Improved
 - **Mod icon** — a new pixel-art icon: Steve in front, and mobs, villagers, players and birds alive all the way to the mountains behind him.
+- **Single player** — distant mobs teleport or sprint to another spot far less often as you come back: they now follow the real mobs while the game still moves them, and disappear when those die.
 
 ### Fixed
 - **Impostors screen** — two figures with the same name, such as villagers in different outfits, no longer swap places and flicker.
