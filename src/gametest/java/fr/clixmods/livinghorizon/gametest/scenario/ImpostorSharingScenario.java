@@ -16,9 +16,10 @@ import java.util.Set;
 
 /**
  * Which figures share a sheet, and a crowd larger than the pages. Zombies with different
- * names look the same and share one sheet, those with a helmet another. Then more
- * zombies than the pages hold, each in a helmet of its own colour, asked for again and
- * again: once the pages are full, the sheets stay the same, none is baked over and over.
+ * names look the same and share one sheet, those with a helmet another, however worn by
+ * the sun it is. Then more zombies than the pages hold, each in a helmet of its own
+ * colour, asked for again and again: once the pages are full, the sheets stay the same,
+ * none is baked over and over.
  */
 public final class ImpostorSharingScenario implements Scenario {
     /** More figures than the pages hold: two pages of 128. */

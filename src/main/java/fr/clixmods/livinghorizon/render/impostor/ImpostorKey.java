@@ -3,6 +3,8 @@ package fr.clixmods.livinghorizon.render.impostor;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.core.BlockPos;
+//? if >=1.20.5
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -34,7 +36,7 @@ import java.util.UUID;
  * the same helmet and sword.
  *
  * <p>What a figure carries and never shows is left out: where its bed is, who owns it,
- * when its anger ends, its name. So is what keeps changing on it, a counter or a flag
+ * when its anger ends, its name, how worn its armour is. So is what keeps changing on it, a counter or a flag
  * that comes and goes (a dolphin drying, a spider climbing, a zombie raising its arms):
  * it is learnt per kind of mob, from the figures seen changing it again and again.
  * Counted in, it gave the same figure a new sheet every few seconds, and a crowd of them
@@ -202,16 +204,32 @@ public record ImpostorKey(String type, long appearance) {
             hash = hash * 31 + seen;
         }
         if (entity instanceof LivingEntity living) {
-            for (EquipmentSlot slot : EquipmentSlot.values()) {
-                //? if >=1.20.5 {
-                hash = hash * 31 + ItemStack.hashItemAndComponents(living.getItemBySlot(slot));
-                //?} else {
-                /*ItemStack stack = living.getItemBySlot(slot);
-                hash = hash * 31 + (stack.isEmpty() ? 0 : java.util.Objects.hash(stack.getItem(), stack.getTag()));
-                *///?}
-            }
+            for (EquipmentSlot slot : EquipmentSlot.values()) hash = hash * 31 + item(living.getItemBySlot(slot));
         }
         return new ImpostorKey(EntityType.getKey(entity.getType()).toString(), hash);
+    }
+
+    /**
+     * What an item worn or held looks like: the item and its data, but not how worn it is. A
+     * helmet in the sun loses durability every few seconds, which would ask for a new sheet
+     * each time.
+     */
+    private static int item(ItemStack stack) {
+        //? if >=1.20.5 {
+        if (stack.has(DataComponents.DAMAGE)) {
+            stack = stack.copy();
+            stack.remove(DataComponents.DAMAGE);
+        }
+        return ItemStack.hashItemAndComponents(stack);
+        //?} else {
+        /*if (stack.isEmpty()) return 0;
+        net.minecraft.nbt.CompoundTag tag = stack.getTag();
+        if (tag != null && tag.contains("Damage")) {
+            tag = tag.copy();
+            tag.remove("Damage");
+        }
+        return java.util.Objects.hash(stack.getItem(), tag);
+        *///?}
     }
 
     /** Ids are only unique along one line of classes: each list is checked for its own class. */
