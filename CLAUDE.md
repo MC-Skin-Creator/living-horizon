@@ -255,12 +255,15 @@ come back, add it here in the same pull request: this file is what the next sess
   target of the game's escapes it; before 1.21.5 the eight views share one target, each in its
   own viewport.
 - **Impostors baked over and over** (the game slows down with impostors on, the same figures
-  appear again and again in the impostor screen): either a figure's key changes while its
-  look does not (a helmet worn by the sun changed its item, and the key, every few seconds), or
-  more keys than the pages hold (`MAX_PAGES * PER_PAGE`). `ImpostorKey` leaves out what never
-  shows (positions, times, owners, names, an item's damage) and learns per kind of
-  mob the values seen changing again and again (`RESTLESS`); `ImpostorAtlas.allocate` never
-  evicts a sheet drawn or asked for within `IN_USE`. The `sharing` scenario checks both.
+  appear again and again in the impostor screen): a figure's key changes while its look does
+  not (a helmet worn by the sun changed its item, and the key, every few seconds; a pig's
+  random sound variant), or a kind of figure has more looks than its pages may hold.
+  `ImpostorKey` leaves out what never shows (positions, times, owners, names, sound variants,
+  an item's damage), names variants by their registry key so that a sheet is found again in
+  the next world, and learns per kind of mob the values seen changing again and again
+  (`RESTLESS`). `ImpostorAtlas` gives each kind of figure pages of its own (`Page`), keeps the
+  mobs' sheets, throws the players' away once unused, and never evicts a sheet drawn or asked
+  for within `IN_USE`. The `sharing` scenario checks all of it.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

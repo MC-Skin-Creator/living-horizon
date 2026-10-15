@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon.render.impostor;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 //? if >=1.20.5
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -133,6 +134,13 @@ public record ImpostorKey(String type, long appearance) {
             return inside instanceof BlockState ? inside : null;
         }
         if (data instanceof Component name) return special(name);
+        // A variant the server sends (a pig's, a wolf's) is a new object in every world: by name,
+        // the sheet baked in one world is found again in the next. A sound variant, picked at
+        // random, is heard and never seen.
+        if (data instanceof Holder<?> holder) {
+            Object name = holder.unwrapKey().<Object>map(Object::toString).orElse(holder);
+            return name.toString().contains("sound_variant") ? null : name;
+        }
         if (data instanceof Long || data instanceof BlockPos || data instanceof UUID) return null;
         // The parrots on a player's shoulders; on a mob, the id of another entity.
         if (data instanceof OptionalInt) return entity instanceof Player ? data : null;

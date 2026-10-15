@@ -105,10 +105,10 @@ public final class ImpostorRenderer {
         float bottom = (float) -(1 - ImpostorAtlas.FEET) * (float) board.size;
         float top = ImpostorAtlas.FEET * (float) board.size;
         // A tile of the page, the top of the picture at the top.
-        float u0 = (board.sheet.column() * ImpostorViews.VIEWS + board.view + INSET) / ImpostorAtlas.TILES_ACROSS;
-        float u1 = u0 + (1f - 2 * INSET) / ImpostorAtlas.TILES_ACROSS;
-        float vTop = board.sheet.row() / (float) ImpostorAtlas.TILES_DOWN;
-        float vBottom = (board.sheet.row() + 1) / (float) ImpostorAtlas.TILES_DOWN;
+        float u0 = (board.view + INSET) / ImpostorViews.VIEWS;
+        float u1 = u0 + (1f - 2 * INSET) / ImpostorViews.VIEWS;
+        float vTop = board.sheet.row() / (float) board.sheet.rows();
+        float vBottom = (board.sheet.row() + 1) / (float) board.sheet.rows();
         float lx = -rightX * half, lz = -rightZ * half, rx = rightX * half, rz = rightZ * half;
         float[] corners = {lx, bottom, lz, rx, bottom, rz, rx, top, rz, lx, top, lz};
         // Leant back round the middle of the figure, so that shader packs light it from above too.

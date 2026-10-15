@@ -15,14 +15,14 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Which figures share a sheet, and a crowd larger than the pages. Zombies with different
- * names look the same and share one sheet, those with a helmet another, however worn by
- * the sun it is. Then more zombies than the pages hold, each in a helmet of its own
- * colour, asked for again and again: once the pages are full, the sheets stay the same,
- * none is baked over and over.
+ * Which figures share a sheet, and which keep it. Zombies with different names look the
+ * same and share one sheet, those with a helmet another, however worn by the sun it is.
+ * Then a crowd of zombies, each in a helmet of its own colour, asked for again and again:
+ * each is baked once, and the zombies' pages grow to hold them all. Last, a pig met again
+ * in another world finds its sheet already baked.
  */
 public final class ImpostorSharingScenario implements Scenario {
-    /** More figures than the pages hold: two pages of 128. */
+    /** More looks than the largest page of a kind holds: 32. */
     private static final int CROWD = 300;
 
     @Override
@@ -36,7 +36,9 @@ public final class ImpostorSharingScenario implements Scenario {
             config.impostors = true;
             config.impostorDistance = 32;
         });
+        ImpostorKey pig;
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
+            Scene.command(world, "execute at @p run summon pig ~-12 ~ ~20 {NoAI:1b,PersistenceRequired:1b}");
             for (int i = 0; i < 8; i++) {
                 String helmet = i % 2 == 0 ? "" : "," + helmet("iron_helmet", "");
                 Scene.command(world, "execute at @p run summon zombie ~" + (i * 2 - 7) + " ~ ~20"
@@ -59,13 +61,13 @@ public final class ImpostorSharingScenario implements Scenario {
                         + " {NoAI:1b,PersistenceRequired:1b," + helmet("leather_helmet", dyed(colour)) + "}");
             }
             context.waitTicks(20);
-            // Asked for once a second, as the figures on hand are, until the pages are full.
+            // Asked for once a second, as the figures on hand are, until all are baked.
             for (int round = 0; round < 150; round++) {
                 context.runOnClient(ImpostorSharingScenario::requestAll);
                 context.waitTicks(20);
-                boolean full = context.computeOnClient(minecraft ->
-                        ImpostorAtlas.failed() || ImpostorAtlas.waiting() == 0 && ImpostorAtlas.sheets() >= 256);
-                if (full) break;
+                boolean done = context.computeOnClient(minecraft ->
+                        ImpostorAtlas.failed() || ImpostorAtlas.waiting() == 0 && ImpostorAtlas.sheets() >= CROWD + 3);
+                if (done) break;
             }
             Set<ImpostorKey> before = context.computeOnClient(minecraft -> baked());
             for (int round = 0; round < 5; round++) {
@@ -77,7 +79,29 @@ public final class ImpostorSharingScenario implements Scenario {
             Scene.log("sharing crowd sheets before=" + before.size() + " after=" + after.size()
                     + " same=" + before.equals(after) + " failed=" + failed);
             if (failed) throw new AssertionError("The impostor bake failed, see the log");
-            if (!before.equals(after)) throw new AssertionError("A full atlas kept baking sheets over");
+            if (!before.equals(after)) throw new AssertionError("The crowd's sheets were baked over");
+            if (after.size() < CROWD + 3) throw new AssertionError("Not every look was baked: " + after.size());
+            Scene.screenshotAtlas(context, this);
+            pig = context.computeOnClient(minecraft -> {
+                for (Entity entity : minecraft.level.entitiesForRendering()) {
+                    if (entity.getType() == EntityType.PIG) return ImpostorKey.of(entity);
+                }
+                throw new AssertionError("No pig");
+            });
+        }
+        try (TestSingleplayerContext world = Scene.flatWorld(context)) {
+            Scene.command(world, "execute at @p run summon pig ~-12 ~ ~20 {NoAI:1b,PersistenceRequired:1b}");
+            context.waitTicks(20);
+            boolean kept = context.computeOnClient(minecraft -> {
+                for (Entity entity : minecraft.level.entitiesForRendering()) {
+                    if (entity.getType() != EntityType.PIG) continue;
+                    ImpostorKey again = ImpostorKey.of(entity);
+                    Scene.log("sharing pig again=" + again.equals(pig) + " baked=" + (ImpostorAtlas.sheet(again) != null));
+                    return again.equals(pig) && ImpostorAtlas.sheet(again) != null;
+                }
+                return false;
+            });
+            if (!kept) throw new AssertionError("A pig met again in another world was not found baked");
         }
     }
 

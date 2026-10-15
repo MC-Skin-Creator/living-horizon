@@ -13,7 +13,7 @@
 - **Mobs leaving your range** — the distant copy now faces the way the mob did, instead of sometimes turning to another direction.
 - **Minecraft 1.21.9 to 26.1** — parts of distant mobs, such as a villager's clothes or a held item, no longer show through Voxy's terrain under shaders, nor through Distant Horizons' terrain.
 - **Minecraft 26.1 and later** — the see-through parts of distant mobs, such as a slime's outer layer, no longer show through Voxy's terrain under shaders, nor through Distant Horizons' terrain.
-- **Impostors** — the game no longer slows down with impostors on: the same mobs are no longer drawn into new pictures over and over, and mobs that look alike share one picture.
+- **Impostors** — the game no longer slows down with impostors on: the same mobs are no longer drawn into new pictures over and over, and mobs that look alike share one picture, kept from one world to the next.
 
 ## 0.4.1 — 2026-10-11
 

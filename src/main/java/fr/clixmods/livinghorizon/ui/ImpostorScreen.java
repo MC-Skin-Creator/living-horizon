@@ -239,22 +239,22 @@ public final class ImpostorScreen extends Screen {
     private static void blitView(GuiGraphics graphics, Identifier page, ImpostorAtlas.Sheet sheet, int view, int x, int y,
                                  int size) {
         //? if >=1.21.6 {
-        float u0 = (sheet.column() * ImpostorViews.VIEWS + view) / (float) ImpostorAtlas.TILES_ACROSS;
-        float u1 = u0 + 1f / ImpostorAtlas.TILES_ACROSS;
-        float v0 = sheet.row() / (float) ImpostorAtlas.TILES_DOWN;
-        float v1 = v0 + 1f / ImpostorAtlas.TILES_DOWN;
+        float u0 = view / (float) ImpostorViews.VIEWS;
+        float u1 = u0 + 1f / ImpostorViews.VIEWS;
+        float v0 = sheet.row() / (float) sheet.rows();
+        float v1 = v0 + 1f / sheet.rows();
         graphics.blit(page, x, y, x + size, y + size, u0, u1, v0, v1);
         //?} else {
         /*// In pixels of the page before 1.21.6.
-        int u = (sheet.column() * ImpostorViews.VIEWS + view) * ImpostorViews.TILE, v = sheet.row() * ImpostorViews.TILE;
-        int tile = ImpostorViews.TILE, side = ImpostorAtlas.PAGE_SIZE;
+        int u = view * ImpostorViews.TILE, v = sheet.row() * ImpostorViews.TILE;
+        int tile = ImpostorViews.TILE, wide = ImpostorAtlas.PAGE_WIDTH, tall = sheet.pageHeight();
         //? if >=1.21.2 {
-        graphics.blit(RenderTypes::guiTextured, page, x, y, u, v, size, size, tile, tile, side, side);
+        graphics.blit(RenderTypes::guiTextured, page, x, y, u, v, size, size, tile, tile, wide, tall);
         //?} else {
         /^// Blended, as the newer versions draw it: the pictures' edges are see-through.
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        graphics.blit(page, x, y, size, size, u, v, tile, tile, side, side);
+        graphics.blit(page, x, y, size, size, u, v, tile, tile, wide, tall);
         RenderSystem.disableBlend();
         ^///?}
         *///?}
