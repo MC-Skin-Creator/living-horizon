@@ -176,14 +176,22 @@ public final class ImpostorAtlas {
      */
     private static final int MAX_SCALE = 3;
 
+    /** Bytes of video memory a row of scale 1 takes: a strip of 512 by 64 pixels and its mip levels. */
+    private static final long ROW_BYTES = rowBytes();
     /**
-     * Sheets the pages of the mobs may hold in all, and of the players, counted at scale 1 (a
+     * Video memory the pages of the mobs may take in all: 1 GB. Taken only as looks are met (a
+     * world of 50 looks takes a few tens of MB), it bounds a server of endless variations.
+     */
+    private static final long MOB_MEMORY = 1L << 30;
+
+    /**
+     * Rows the pages of the mobs may hold in all, and of the players, counted at scale 1 (a
      * sheet of scale 2 counts as 4). The mobs keep theirs: a world has only so many looks,
      * met again from one world to the next. The players come and go: theirs are thrown away
-     * once unused for {@link #PLAYER_KEEP}, or when the pages are full. A sheet of scale 1 is
-     * about 170 KB of video memory.
+     * once unused for {@link #PLAYER_KEEP}, or when the pages are full (about 22 MB).
      */
-    private static final int MOB_ROWS = 1024, PLAYER_ROWS = 128;
+    private static int mobRows = (int) (MOB_MEMORY / ROW_BYTES);
+    private static final int PLAYER_ROWS = 128;
     /** Milliseconds a player's sheet is kept once nobody draws or asks for it. */
     private static final long PLAYER_KEEP = 60_000L;
     private static final String PLAYER = "minecraft:player";
@@ -703,7 +711,7 @@ public final class ImpostorAtlas {
         }
         int rows = Math.min(ROWS / scale, FIRST_ROWS << Math.min(pagesOfType, 3));
         boolean player = PLAYER.equals(type);
-        if (taken(player) + rows * scale * scale <= (player ? PLAYER_ROWS : MOB_ROWS)) {
+        if (taken(player) + rows * scale * scale <= (player ? PLAYER_ROWS : mobRows)) {
             int number = open(type, scale, rows);
             return number * ROWS + PAGES.get(number).free.pop();
         }
@@ -738,6 +746,20 @@ public final class ImpostorAtlas {
         QUEUED.remove(request.key);
         REFUSED.put(request.key, System.currentTimeMillis());
         return -1;
+    }
+
+    private static long rowBytes() {
+        long bytes = 0;
+        for (int level = 0; level < MIPS; level++) bytes += (long) (PAGE_WIDTH >> level) * (ImpostorViews.TILE >> level) * PIXEL_BYTES;
+        return bytes;
+    }
+
+    /**
+     * Rows the pages of the mobs may hold, in place of the 1 GB they may take, 0 for that again:
+     * for the game tests, which fill them with a few hundred figures.
+     */
+    public static void limitMobRows(int rows) {
+        mobRows = rows > 0 ? rows : (int) (MOB_MEMORY / ROW_BYTES);
     }
 
     /** Rows of the pages of the players, or of the mobs, counted at scale 1. */

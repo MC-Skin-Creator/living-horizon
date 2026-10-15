@@ -364,9 +364,11 @@ nothing, and the game no longer builds a render state and a model for it every f
 - **Sizes.** Each kind of figure has pages of its own, one sheet per row (512 pixels wide):
   4 rows, then 8, 16, then 32. A figure baked larger to keep its sharpness (a horse's
   muzzle) has tiles two or three times as large, on pages of that scale. The mobs keep their
-  sheets, up to 1024 in all (a larger sheet counts as several); past that, an unused sheet
-  of the same kind gives way. The players' are thrown away after a minute
-  unused, up to 128. A sheet drawn or asked for in the last 10 seconds is never replaced.
+  sheets, up to 1 GB of video memory in all, taken only as looks are met (a world of 50
+  looks takes a few tens of MB); past that, an unused sheet of the same kind gives way, or
+  the figure is baked into smaller tiles, or stays a model for 30 seconds. The players' are
+  thrown away after a minute unused, up to 128. A sheet drawn or asked for in the last 10
+  seconds is never replaced.
 - **On disk.** `ImpostorDisk` keeps the mobs' sheets in
   `config/livinghorizon/impostors/<fingerprint>/`, so that a mob met in an earlier game is
   read back rather than baked. The fingerprint is the game version, the resource packs

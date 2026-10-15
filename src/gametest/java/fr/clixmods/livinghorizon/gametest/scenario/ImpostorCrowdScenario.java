@@ -11,9 +11,10 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 
 /**
- * More looks than the pages may hold: horses, each in horse armour of its own colour, baked
- * larger than their box (their muzzle), asked for once a second as the figures on hand are.
- * Once the pages are full, the ones left out wait as models: nothing is baked over and over.
+ * More looks than the pages may hold, made smaller for the test: horses, each in horse armour
+ * of its own colour, baked larger than their box (their muzzle), asked for once a second as
+ * the figures on hand are. Once the pages are full, the ones left out are squeezed into
+ * smaller tiles or wait as models: nothing is baked over and over.
  */
 public final class ImpostorCrowdScenario implements Scenario {
     private static final int HORSES = 320;
@@ -26,6 +27,8 @@ public final class ImpostorCrowdScenario implements Scenario {
     @Override
     public void run(ClientGameTestContext context) {
         Scene.configure(context, config -> config.impostors = true);
+        // The pages may take 1 GB: a few hundred horses fill them only with less.
+        context.runOnClient(minecraft -> ImpostorAtlas.limitMobRows(1024));
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
             for (int i = 0; i < HORSES; i++) {
                 int colour = 0x100000 + i * 0x0F0F;
@@ -53,6 +56,8 @@ public final class ImpostorCrowdScenario implements Scenario {
             Scene.command(world, "kill @e[type=horse]");
             context.waitTicks(40);
             if (after > before) throw new AssertionError("A full atlas kept baking: " + (after - before) + " bakes in 5 s");
+        } finally {
+            context.runOnClient(minecraft -> ImpostorAtlas.limitMobRows(0));
         }
     }
 
