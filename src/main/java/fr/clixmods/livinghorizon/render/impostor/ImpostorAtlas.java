@@ -106,6 +106,7 @@ import java.nio.ByteOrder;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -172,6 +173,14 @@ public final class ImpostorAtlas {
 
     /** Nanoseconds a frame may spend baking. One sheet is always started. */
     private static final long BUDGET = 3_000_000L;
+
+    /**
+     * Milliseconds a sheet is kept after it was last drawn or asked for, however full the
+     * pages: longer than the second between two rounds of asking for every figure on hand.
+     * Giving way sooner, a crowd larger than the pages would bake its sheets over and over,
+     * each new one throwing out another still in use.
+     */
+    private static final long IN_USE = 10_000L;
 
     /**
      * The game's light in the world, as the picture is drawn: the drawing turns the figure
@@ -296,6 +305,8 @@ public final class ImpostorAtlas {
     *///?}
 
     private static final Map<ImpostorKey, Sheet> SHEETS = new LinkedHashMap<>(64, 0.75f, true);
+    /** When each sheet was last drawn or asked for. */
+    private static final Map<ImpostorKey, Long> USED = new HashMap<>();
     private static final Deque<Request> QUEUE = new ArrayDeque<>();
     /** Queued, or drawn and waiting for the read back. */
     private static final Set<ImpostorKey> QUEUED = new HashSet<>();
@@ -355,13 +366,17 @@ public final class ImpostorAtlas {
     /** The pictures of a figure, if baked. Counts as a use, so the sheets in use are kept. */
     public static @Nullable Sheet sheet(ImpostorKey key) {
         settle();
-        return SHEETS.get(key);
+        Sheet sheet = SHEETS.get(key);
+        if (sheet != null) USED.put(key, System.currentTimeMillis());
+        return sheet;
     }
 
-    /** Asks for a figure's pictures to be baked, within the next few frames. */
+    /**
+     * Asks for a figure's pictures to be baked, within the next few frames. Already baked,
+     * it counts as a use: the figures on hand keep their sheets.
+     */
     public static void request(ImpostorKey key, Entity puppet) {
-        settle();
-        if (failed || SHEETS.containsKey(key) || !QUEUED.add(key)) return;
+        if (failed || sheet(key) != null || !QUEUED.add(key)) return;
         QUEUE.add(new Request(key, puppet));
     }
 
@@ -409,6 +424,7 @@ public final class ImpostorAtlas {
         for (int page = 0; page < PAGES.size(); page++) minecraft.getTextureManager().release(id(page));
         PAGES.clear();
         SHEETS.clear();
+        USED.clear();
         QUEUE.clear();
         QUEUED.clear();
         FREE.clear();
@@ -462,12 +478,16 @@ public final class ImpostorAtlas {
     private static int allocate() {
         if (!FREE.isEmpty()) return FREE.pop();
         if (next < MAX_PAGES * PER_PAGE) return next++;
-        // Full: the sheet unused for longest gives way.
-        Iterator<Sheet> oldest = SHEETS.values().iterator();
+        // Full: the sheet unused for longest gives way, unless it is still in use. Then the
+        // figure waits, drawn as a model, until a sheet is no longer needed.
+        Iterator<Map.Entry<ImpostorKey, Sheet>> oldest = SHEETS.entrySet().iterator();
         if (!oldest.hasNext()) return -1;
-        Sheet evicted = oldest.next();
+        Map.Entry<ImpostorKey, Sheet> evicted = oldest.next();
+        Long used = USED.get(evicted.getKey());
+        if (used != null && System.currentTimeMillis() - used < IN_USE) return -1;
         oldest.remove();
-        return evicted.index;
+        USED.remove(evicted.getKey());
+        return evicted.getValue().index;
     }
 
     private static PageTexture page(int number) {
@@ -899,6 +919,7 @@ public final class ImpostorAtlas {
             }
             BAKING.remove(index);
             SHEETS.put(key, sheet);
+            USED.put(key, System.currentTimeMillis());
         } catch (RuntimeException | LinkageError error) {
             if (generation == ImpostorAtlas.generation) fail(error);
         } finally {

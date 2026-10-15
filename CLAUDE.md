@@ -254,6 +254,12 @@ come back, add it here in the same pull request: this file is what the next sess
   item target while `ImpostorAtlas.drawing()` is set. A render type that binds yet another
   target of the game's escapes it; before 1.21.5 the eight views share one target, each in its
   own viewport.
+- **Impostors baked over and over** (the game slows down with impostors on, the same figures
+  appear again and again in the impostor screen): either a figure's key changes while its
+  look does not, or more keys than the pages hold (`MAX_PAGES * PER_PAGE`). `ImpostorKey`
+  leaves out values that never show (positions, times, owners, names) and learns per kind of
+  mob the values seen changing again and again (`RESTLESS`); `ImpostorAtlas.allocate` never
+  evicts a sheet drawn or asked for within `IN_USE`. The `sharing` scenario checks both.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
