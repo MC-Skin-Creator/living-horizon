@@ -9,6 +9,7 @@
 ### Fixed
 - **Impostors screen** — two figures with the same name, such as villagers in different outfits, no longer swap places and flicker.
 - **Impostors** — the thin dark lines and black specks that sometimes showed along the top or bottom edge of far mobs are gone, and long mobs such as horses and sniffers are no longer cut off at the muzzle or tail.
+- **GeckoLib mobs on Minecraft 1.21.2 to 1.21.8** — a world no longer crashes a few seconds after loading when a mob from a GeckoLib mod was met far away; such mobs are not shown far away yet.
 
 ## 0.5.0 — 2026-10-13
 

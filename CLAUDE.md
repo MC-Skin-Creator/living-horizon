@@ -266,6 +266,11 @@ come back, add it here in the same pull request: this file is what the next sess
   and the feet stand above it (`ImpostorAtlas.FEET`). A figure reaching into that strip is baked
   again larger (`ImpostorPixels.growth`), into tiles as many times larger on a page of their own,
   so that it keeps its pixels to the block. `impostoredges` shows both.
+- **Crash extracting a distant mob on 1.21.2 to 1.21.8** (`NullPointerException` under
+  `GhostRenderer.state`, often blamed on another mod's mixin into `extractRenderState`):
+  GeckoLib 4's `createRenderState()` returns null and its `render` draws the entity it was
+  last handed. `GhostRenderer.drawable` leaves such types out (issue #67 is about drawing
+  them), and a renderer that throws while extracting is left out too, logged once.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

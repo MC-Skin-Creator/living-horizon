@@ -503,6 +503,9 @@ public final class ImpostorAtlas {
             }
             try {
                 bake(minecraft, request);
+            } catch (LeftOut leftOut) {
+                // That one figure only: its renderer gives the mod nothing to draw.
+                continue;
             } catch (RuntimeException | LinkageError error) {
                 fail(error);
                 return;
@@ -513,6 +516,13 @@ public final class ImpostorAtlas {
                 //?}
             }
             if (System.nanoTime() > end) return;
+        }
+    }
+
+    /** A figure whose renderer gives no state ({@link GhostRenderer#extract}): its bake is dropped, not the others. */
+    private static final class LeftOut extends RuntimeException {
+        LeftOut() {
+            super(null, null, false, false);
         }
     }
 
@@ -573,6 +583,7 @@ public final class ImpostorAtlas {
     /** A figure's state for one view, still and lit evenly. */
     private static EntityRenderState staged(Minecraft minecraft, Entity puppet, int view) {
         EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), puppet, 1.0f);
+        if (state == null) throw new LeftOut();
         stage(state, view);
         // Water mobs were in water when last seen; a puppet is in no world.
         if (state instanceof LivingEntityRenderState living && GhostRenderer.livesInWater(puppet)) {
