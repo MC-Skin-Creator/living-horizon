@@ -66,6 +66,9 @@ import java.util.concurrent.CompletableFuture;
  * When the server sends the real mob again, the copy walks up to it first: the real one
  * is only drawn once the copy stands where it is.
  *
+ * <p>In a single player world, where the server is right here, a remembered mob the server
+ * still moves is followed instead ({@link ServerMobs}): the copy walks where the real one is.
+ *
  * <p>Only mobs that stay put are worth remembering: animals do, hostile mobs despawn as
  * soon as nobody is around. Which ones is {@link FarConfig#mobTypes}, plus every mob with
  * a name tag ({@link FarConfig#rememberNamedMobs}). A memory is dropped
@@ -110,6 +113,10 @@ public final class MobMemory {
         transient double distance;
         /** Forgotten while still on the list being drawn: not drawn again, nor rebuilt. */
         transient boolean gone;
+        /** The single player server moves it now: the copy follows it instead of playing its animation. */
+        transient boolean simulated;
+        /** How the server last had it turned, body and head; NaN before its first answer. */
+        transient float serverBody = Float.NaN, serverHead = Float.NaN;
         /** Too small or too far for its animation to show; kept between ticks for the hysteresis. */
         transient boolean still;
         /** When it was last drawn, in nanoseconds; 0 if never. */
@@ -173,6 +180,8 @@ public final class MobMemory {
     private boolean selfKnown;
     /** Nanoseconds spent since the last tick building copies of mobs as they unloaded. */
     private long builtNow;
+    /** In a single player world, where the server has the remembered mobs. */
+    private final ServerMobs serverMobs = new ServerMobs();
 
     public List<Remembered> shown() {
         return shown;
@@ -254,6 +263,7 @@ public final class MobMemory {
         file = null;
         bound = null;
         selfKnown = false;
+        serverMobs.reset();
     }
 
     /** Puppets belong to one level. */
@@ -263,9 +273,11 @@ public final class MobMemory {
             mob.motion = null;
             mob.handover = null;
             mob.failed = false;
+            mob.simulated = false;
         }
         joining.clear();
         shown = List.of();
+        serverMobs.reset();
     }
 
     // --- What the server sends and stops sending ----------------------------------------
@@ -496,6 +508,7 @@ public final class MobMemory {
             return;
         }
         String dimension = level.dimension().identifier().toString();
+        followServer(level, dimension);
 
         if (clock % 20 == 0) {
             if (pack != null) sync(pack, scoreboard);
@@ -546,13 +559,15 @@ public final class MobMemory {
                 // Not drawn for a moment: it keeps its place, as a position and nothing more.
                 if (config.optFreezeHidden && mob.motion != null && mob.motion.placed()
                         && System.nanoTime() - mob.drawnAt > FREEZE_AFTER) {
+                    // Moved by the server meanwhile: there when it shows again, not running there.
+                    if (mob.simulated) mob.motion.jump(living, mob);
                     continue;
                 }
                 boolean roam = !still.contains(mob.type);
                 // Moved by the data pack: the blocks are read again around where it is now.
                 MobPaths.Choice choice = mob.choice;
                 if (choice != null && !choice.ground().around(mob.x, mob.z)) mob.choice = choice = null;
-                if (choice == null && roam && !mob.planning && reads < READS_PER_TICK) {
+                if (choice == null && roam && !mob.simulated && !mob.planning && reads < READS_PER_TICK) {
                     reads++;
                     mob.planning = true;
                     double x = mob.x, y = mob.y, z = mob.z;
@@ -641,6 +656,8 @@ public final class MobMemory {
             }
 
             Remembered mob = mobs.get(id);
+            // Followed on the single player server, which knows better than the pack's last report.
+            if (mob != null && mob.simulated) continue;
             if (mob == null) {
                 mob = new Remembered();
                 mob.id = id;
@@ -666,6 +683,56 @@ public final class MobMemory {
             if (mob.fromPack && isHere(mob) && !published.contains(mob.id) && !live.containsKey(mob.id)) dead.add(mob.id);
         }
         dead.forEach(this::forget);
+    }
+
+    /**
+     * In a single player world, where the server has the remembered mobs it no longer sends:
+     * those it still moves are followed by their copies, those that died there are forgotten.
+     * Asked every {@link ServerMobs#EVERY} ticks; each answer is applied as it comes.
+     */
+    private void followServer(ClientLevel level, String dimension) {
+        ServerMobs.Answer answer = serverMobs.answer();
+        if (answer != null) {
+            for (Remembered mob : mobs.values()) {
+                ServerMobs.Where where = answer.found().get(mob.id);
+                if (where == null || !mob.dimension.equals(dimension) || !isHere(mob)
+                        || live.containsKey(mob.id) || mob.handover != null) {
+                    mob.simulated = false;
+                    continue;
+                }
+                mob.simulated = where.simulated();
+                double moved = Math.abs(where.x() - mob.x) + Math.abs(where.y() - mob.y) + Math.abs(where.z() - mob.z);
+                if (moved > 0) {
+                    mob.x = where.x();
+                    mob.y = where.y();
+                    mob.z = where.z();
+                    dirty = true;
+                }
+                // Turned as the game drew it until the real one walks or turns: the server
+                // works out a body of its own for a mob standing still.
+                boolean turned = !Float.isNaN(mob.serverBody)
+                        && (where.body() != mob.serverBody || where.head() != mob.serverHead);
+                if (moved > 0.05 || turned) {
+                    mob.yaw = where.body();
+                    mob.head = where.head();
+                }
+                mob.serverBody = where.body();
+                mob.serverHead = where.head();
+            }
+            for (UUID id : answer.gone()) {
+                if (!live.containsKey(id)) forget(id);
+            }
+        }
+        if (clock % ServerMobs.EVERY != 0 || !serverMobs.idle()) return;
+        IntegratedServer local = Minecraft.getInstance().getSingleplayerServer();
+        if (local == null) return;
+        List<ServerMobs.Asked> asked = new ArrayList<>();
+        for (Remembered mob : mobs.values()) {
+            if (mob.dimension.equals(dimension) && isHere(mob) && !live.containsKey(mob.id) && mob.handover == null) {
+                asked.add(new ServerMobs.Asked(mob.id, mob.x, mob.y, mob.z, mob.simulated));
+            }
+        }
+        if (!asked.isEmpty()) serverMobs.ask(local, level.dimension(), asked);
     }
 
     /**

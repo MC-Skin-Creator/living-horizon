@@ -62,4 +62,32 @@ class ImpostorPixelsTest {
             assertEquals(0, alpha(level[0]));
         }
     }
+
+    @Test
+    void aFigureWithinWhatItsTileShowsNeedsNoLargerPicture() {
+        int[] picture = new int[16 * 16];
+        picture[4 * 16 + 8] = RED;
+        picture[12 * 16 + 3] = RED;
+        assertEquals(1.0, ImpostorPixels.growth(picture, 16, 2, 4, 1.3));
+        assertEquals(1.0, ImpostorPixels.growth(new int[16 * 16], 16, 2, 4, 1.3));
+    }
+
+    @Test
+    void aFigureInTheHiddenStripGrowsJustEnough() {
+        // Reaching column 1: 7 pixels left of the centre, where 5 are shown.
+        int[] picture = new int[16 * 16];
+        picture[4 * 16 + 1] = RED;
+        assertEquals(7 / 5.0, ImpostorPixels.growth(picture, 16, 2, 4, 1.3), 1e-9);
+        // Reaching row 14: 11 pixels above the feet, where 9 are shown.
+        picture = new int[16 * 16];
+        picture[14 * 16 + 8] = RED;
+        assertEquals(11 / 9.0, ImpostorPixels.growth(picture, 16, 2, 4, 1.3), 1e-9);
+    }
+
+    @Test
+    void aFigureCutByTheVeryEdgeGrowsAtLeastByTheGivenStep() {
+        int[] picture = new int[16 * 16];
+        picture[4 * 16 + 15] = RED;
+        assertEquals(1.6, ImpostorPixels.growth(picture, 16, 2, 4, 1.6), 1e-9);
+    }
 }

@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### New
+- **Impostors** — mob pictures are saved on disk and reused the next time you play, so they are only drawn again after a change of resource packs, mods or game version.
+
+### Improved
+- **Mod icon** — a new pixel-art icon: Steve in front, and mobs, villagers, players and birds alive all the way to the mountains behind him.
+- **Single player** — distant mobs teleport or sprint to another spot far less often as you come back: they now follow the real mobs while the game still moves them, and disappear when those die.
+
+### Fixed
+- **Impostors screen** — two figures with the same name, such as villagers in different outfits, no longer swap places and flicker.
+- **Impostors** — the thin dark lines and black specks that sometimes showed along the top or bottom edge of far mobs are gone, and long mobs such as horses and sniffers are no longer cut off at the muzzle or tail.
+- **GeckoLib mobs on Minecraft 1.21.2 to 1.21.8** — a world no longer crashes a few seconds after loading when a mob from a GeckoLib mod was met far away; such mobs are not shown far away yet.
+- **Impostors** — the game no longer slows down with impostors on: the same mobs are no longer drawn into new pictures over and over, and mobs that look alike share one picture, kept from one world to the next.
+
 ## 0.5.0 — 2026-10-13
 
 ### New

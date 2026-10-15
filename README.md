@@ -235,6 +235,12 @@ lives there.
 - A mob met up close keeps its exact look (the game's own save of it); one known only
   from the pack is built from kind, variant and age.
 - Coming back within range of a remembered mob that is not there forgets it.
+- **In single player** the server runs in the game itself: four times a second it is asked
+  where the remembered mobs are (`track/ServerMobs`). The ones it still moves - past the
+  distance it sends them at, but inside the simulation distance - are followed by their
+  copies, at its pace and facing the way they face, with no animation of their own; one
+  that dies there is forgotten. Otherwise the copy would stand where the mob was last seen
+  while the real one wandered off, and run or jump to it once it was sent again.
 - When a mob is remembered, the blocks within 8 blocks of it are read once
   (`track/MobPaths`, from loaded chunks or the far world, Voxy or Distant Horizons): in
   each column, the floor nearest its height with room above it. Grass, flowers, crops and
@@ -335,7 +341,8 @@ nothing, and the game no longer builds a render state and a model for it every f
   second, near or far, and baked a little each frame from the GUI pass (3 ms at most, one
   sheet at least), so they are ready when a figure crosses the distance. A figure whose
   sheet is missing is drawn as a model meanwhile. A resource reload throws every sheet
-  away and they are baked again.
+  away; they are read back from disk when nothing that changes a picture changed, baked
+  again otherwise.
 - **Older versions.** From 1.21.6 the views are drawn the way the GUI draws its pictures,
   through the game's output overrides. Before, they are drawn at the start of the frame
   into a target of the mod's own, which `MinecraftMixin` and `LevelRendererTargetMixin`
@@ -347,16 +354,31 @@ nothing, and the game no longer builds a render state and a model for it every f
   drawn.
 - **What counts as the same figure.** `ImpostorKey`: the type, the player's skin, the
   synched data that changes the look (variant, colour, profession, baby, pose; not health,
-  air, score or being on fire) and what it wears.
+  air, score or being on fire) and what it wears, however worn. Left out: what never shows
+  (positions, times, owners, names, sound variants) and, learnt per kind of mob, what keeps
+  changing on one (a dolphin drying, a zombie raising its arms). Hashed so that the same
+  figure has the same key in every world and every game: variants by name, records by parts.
 - **No blinking.** A figure becomes an impostor past `impostorDistance` and a model again
   only 5% inside it; it keeps a picture until it has turned 8 degrees past the next one;
   and when its look changes, it keeps its old picture until the new one is baked.
-- **Sizes.** Two pages of 128 sheets each; past that the sheet unused for longest is
-  replaced.
+- **Sizes.** Each kind of figure has pages of its own, one sheet per row (512 pixels wide):
+  4 rows, then 8, 16, then 32, every tile 64 pixels. A figure larger than its box (a
+  horse's muzzle) is drawn smaller in its tile rather than cut off: at a hundred blocks a
+  figure is a dozen pixels tall. Two looks whose pictures come out the same, pixel for
+  pixel, share one sheet. The mobs keep their sheets, up to 1 GB of video memory in all,
+  taken only as looks are met (a world of 50 looks takes a few MB); past that, an unused
+  sheet of the same kind gives way, or the figure stays a model for 30 seconds. The
+  players' are thrown away after a minute unused, up to 128. A sheet drawn or asked for in
+  the last 10 seconds is never replaced.
+- **On disk.** `ImpostorDisk` keeps the mobs' sheets in
+  `config/livinghorizon/impostors/<fingerprint>/`, so that a mob met in an earlier game is
+  read back rather than baked. The fingerprint is the game version, the resource packs
+  chosen and their files, the jars in `mods/` and the sheet format: when one changes, the
+  folder is thrown away. At most 4096 sheets, the ones met longest ago going first.
 - **Preview.** *Impostor Manager...* in the settings, or `/livinghorizon impostors`: every figure
   baked, its eight views, and its front view at 32, 16 and 8 screen pixels, as it looks
-  far away. *Bake again* throws every picture away and bakes the figures on hand anew,
-  even after a failed bake.
+  far away. *Bake again* throws every picture away, on disk too, and bakes the figures on
+  hand anew, even after a failed bake.
 - **Not impostors:** figures with a mount or a rider, players resting on the ground, the
   birds and the saucer's cow.
 

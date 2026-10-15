@@ -247,6 +247,12 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Mobs near the player never drawn far away**, only those met later: the mob memory is opened
   on the first tick with a player, and opening clears the mobs sent so far, which the level may
   have loaded just before. `FarPlayerTracker` hands it the level's entities again once open.
+- **Distant mobs jumping or sprinting as the player comes back** (the copy runs or teleports to
+  the real mob once it is sent again): the server stops sending a mob at its tracking range
+  (160 blocks for animals, scaled by *Entity Distance*) but keeps moving it out to the
+  simulation distance, a square of chunks that reaches farther on its diagonals. In single
+  player `ServerMobs` asks the server where those are and the copies follow; on a server only
+  the data pack closes that gap.
 - **Impostors before 1.21.6** (empty or missing pictures, or a figure flashing over the screen
   at the start of a frame): the game has no output override there, so `ImpostorAtlas` bakes
   at the start of the frame (`GameRendererMixin`) into a target of its own, which
@@ -254,6 +260,37 @@ come back, add it here in the same pull request: this file is what the next sess
   item target while `ImpostorAtlas.drawing()` is set. A render type that binds yet another
   target of the game's escapes it; before 1.21.5 the eight views share one target, each in its
   own viewport.
+- **Impostors baked over and over** (the game slows down with impostors on, the same figures
+  appear again and again in the impostor screen): a figure's key changes while its look does
+  not (a helmet worn by the sun changed its item, and the key, every few seconds; a pig's
+  random sound variant), or a kind of figure has more looks than its pages may hold. With the
+  pages full, "waiting" going round and round with the baked count stuck: a figure baked
+  small, grown, refused for lack of room and asked for again the next second. `room` squeezes
+  it into smaller tiles, or `REFUSED` keeps it a model for a while; `crowd` checks it. The same
+  figure twice in the impostor screen: two keys for one look (a value the picture does not show);
+  `ImpostorAtlas.place` compares the pixels and makes the second an alias of the first.
+  `ImpostorKey` leaves out what never shows (positions, times, owners, names, sound variants,
+  an item's damage), names variants by their registry key so that a sheet is found again in
+  the next world, and learns per kind of mob the values seen changing again and again
+  (`RESTLESS`). `ImpostorAtlas` gives each kind of figure pages of its own (`Page`), keeps the
+  mobs' sheets, throws the players' away once unused, and never evicts a sheet drawn or asked
+  for within `IN_USE`. `ImpostorDisk` keeps the mobs' sheets on disk under a fingerprint
+  (game, resource packs, mods): a sheet never read back from disk means its key is not
+  stable across games (an identity hash in `ImpostorKey.stable`). The `sharing` scenario
+  checks all of it, except across games: the client game tests start from an empty run
+  folder every time.
+- **Specks along an impostor's edge, or a figure cut off by its tile** (black dashes over a far
+  mob, a horse without its muzzle): the texture filter reads half a pixel of the smallest level
+  past each tile, so the quad and its UVs keep `ImpostorRenderer.INSET` clear on all four sides,
+  and the feet stand above it (`ImpostorAtlas.FEET`). A figure reaching into that strip is baked
+  again with more room round it (`ImpostorPixels.growth`), drawn smaller in a tile of the same 64
+  pixels: tiles two or three times larger took four or nine times the memory for a figure a dozen
+  pixels tall. `impostoredges` and `longmobs` show both.
+- **Crash extracting a distant mob on 1.21.2 to 1.21.8** (`NullPointerException` under
+  `GhostRenderer.state`, often blamed on another mod's mixin into `extractRenderState`):
+  GeckoLib 4's `createRenderState()` returns null and its `render` draws the entity it was
+  last handed. `GhostRenderer.drawable` leaves such types out (issue #67 is about drawing
+  them), and a renderer that throws while extracting is left out too, logged once.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
