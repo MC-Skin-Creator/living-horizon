@@ -2,8 +2,8 @@
 
 ## Prochaine version
 
-### Corrections
-- **En solo** — les créatures lointaines ne se téléportent plus et ne foncent plus vers un autre endroit quand tu reviens : elles suivent les vraies créatures dans leurs déplacements, et disparaissent quand celles-ci meurent.
+### Améliorations
+- **En solo** — les créatures lointaines se téléportent ou foncent bien moins souvent vers un autre endroit quand tu reviens : elles suivent désormais les vraies créatures tant que le jeu les fait bouger, et disparaissent quand celles-ci meurent.
 
 ## 0.5.0 — 2026-10-13
 
