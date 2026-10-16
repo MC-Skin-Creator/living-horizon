@@ -38,6 +38,14 @@ public final class Puppets {
     }
 
     /**
+     * Puts a puppet's hop at rest (a slime's squash, a rabbit's kick, a chicken's wings) while
+     * its impostor is baked, so that the pictures show it standing. Gives back what undoes it.
+     */
+    public static Runnable atRest(Entity entity) {
+        return MobGait.atRest(entity);
+    }
+
+    /**
      * Moves the legs as if the entity had walked this much; {@code scale} speeds a baby's
      * up, which the renderer itself did before 1.21.2.
      */

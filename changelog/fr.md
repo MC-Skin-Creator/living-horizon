@@ -2,6 +2,9 @@
 
 ## Prochaine version
 
+### Améliorations
+- **Créatures lointaines** — les slimes, les cubes de magma et les lapins se déplacent maintenant par bonds au lieu de glisser, le slime s'écrasant en retombant, et les poules battent des ailes en descendant d'un bloc.
+
 ### Corrections
 - **Ouverture d'un monde** — les créatures lointaines marchent et broutent dès le début, au lieu de seulement tourner sur elles-mêmes.
 
