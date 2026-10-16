@@ -36,8 +36,12 @@ public final class LanShareScenario implements Scenario {
     public void run(ClientGameTestContext context) {
         Path scores;
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
+            // The saved scoreboard moved under data/minecraft/ in 26.1.
             scores = context.computeOnClient(minecraft -> minecraft.getSingleplayerServer()
-                    .getWorldPath(LevelResource.ROOT).resolve("data").resolve("scoreboard.dat"));
+                    .getWorldPath(LevelResource.ROOT).resolve("data")
+                    //? if >=26.1
+                    /*.resolve("minecraft")*/
+                    .resolve("scoreboard.dat"));
             Scene.summon(world, "cow", 10, 10, 0);
             context.waitTicks(40);
             context.runOnClient(minecraft -> {
@@ -88,7 +92,8 @@ public final class LanShareScenario implements Scenario {
         }
         // Leaving the world removes what the share wrote: the saved scoreboard no longer has it.
         try {
-            byte[] saved = Files.exists(scores) ? new GZIPInputStream(Files.newInputStream(scores)).readAllBytes() : new byte[0];
+            if (!Files.exists(scores)) throw new AssertionError("no saved scoreboard at " + scores);
+            byte[] saved = new GZIPInputStream(Files.newInputStream(scores)).readAllBytes();
             if (new String(saved, StandardCharsets.ISO_8859_1).contains("lh.x")) {
                 throw new AssertionError("the objectives are still in the saved world");
             }
