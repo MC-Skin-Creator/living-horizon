@@ -140,6 +140,24 @@ class MobPathsTest {
     }
 
     @Test
+    void groundNotReadYetIsReadAgain() {
+        // The far world not open yet: nothing read around the cow, which stands for now.
+        assertFalse(MobPaths.stand(X, Y, Z).complete());
+        double[][] ground = ground(Double.NaN);
+        ground[R][R] = 64;
+        MobPaths.Choice partial = MobPaths.choose(new MobPaths.Ground(ground, X, Y, Z, false), WIDTH, 5);
+        assertNull(partial.animation());
+        assertFalse(partial.complete());
+        // Read again once it is there: the cow walks.
+        MobPaths.Choice read = choose(ground(64), WIDTH, 5);
+        assertTrue(read.complete());
+        assertNotNull(read.animation());
+        assertFalse(read.same(partial));
+        assertTrue(read.same(choose(ground(64), WIDTH, 5)));
+        assertTrue(MobPaths.free(X, Y, Z, 9).complete());
+    }
+
+    @Test
     void flyersStayAFewBlocksAround() {
         MobPaths.Choice choice = MobPaths.free(X, Y, Z, 9);
         assertNotNull(choice.animation());

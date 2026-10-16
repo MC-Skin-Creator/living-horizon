@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- **Opening a world** — distant mobs walk and graze from the start, instead of only turning on the spot.
+
 ## 0.6.0 — 2026-10-15
 
 ### New

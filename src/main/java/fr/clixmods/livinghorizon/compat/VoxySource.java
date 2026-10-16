@@ -25,6 +25,12 @@ final class VoxySource implements LodSource {
     private static final double STEP = 0.75;
     /** Sections each reader keeps acquired between reads: 256 KiB each in Voxy's memory. */
     private static final int CACHED_SECTIONS = 96;
+    /** A section Voxy did not have is asked for again after this long: it may have it by then. */
+    private static final long MISS_NANOS = 2_000_000_000L;
+
+    /** Where Voxy had nothing, and since when. */
+    private record Miss(long at) {
+    }
 
     private volatile boolean ready;
     private volatile boolean broken;
@@ -59,7 +65,7 @@ final class VoxySource implements LodSource {
         for (Cache cache : ALL_CACHES) releaseAll(cache);
     }
 
-    /** One reader's sections, for one world. */
+    /** One reader's sections, for one world; a {@link Miss} where Voxy had none. */
     private static final class Cache {
         final LinkedHashMap<Long, Object> sections = new LinkedHashMap<>(128, 0.75f, true);
         @Nullable Object world;
@@ -241,25 +247,26 @@ final class VoxySource implements LodSource {
     private long @Nullable [] section(Object world, int sx, int sy, int sz, long key) throws Throwable {
         LinkedHashMap<Long, Object> sections = CACHES.get().sections;
         Object section = sections.get(key);
-        if (section == null && !sections.containsKey(key)) {
+        if (section == null || section instanceof Miss miss && System.nanoTime() - miss.at() > MISS_NANOS) {
             section = (Object) acquire.invokeExact(world, 0, sx, sy, sz);
+            if (section == null) section = new Miss(System.nanoTime());
             sections.put(key, section);
             if (sections.size() > CACHED_SECTIONS) {
                 Iterator<Map.Entry<Long, Object>> oldest = sections.entrySet().iterator();
                 Object evicted = oldest.next().getValue();
                 oldest.remove();
-                if (evicted != null) {
+                if (!(evicted instanceof Miss)) {
                     int ignored = (int) release.invokeExact(evicted);
                 }
             }
         }
-        return section == null ? null : (long[]) data.invokeExact(section);
+        return section instanceof Miss ? null : (long[]) data.invokeExact(section);
     }
 
     private void releaseAll(Cache cache) {
         try {
             for (Object section : cache.sections.values()) {
-                if (section != null) {
+                if (!(section instanceof Miss)) {
                     int ignored = (int) release.invokeExact(section);
                 }
             }

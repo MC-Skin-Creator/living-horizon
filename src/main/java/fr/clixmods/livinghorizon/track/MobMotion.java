@@ -122,8 +122,9 @@ final class MobMotion {
         if (!placed) place(mob);
         following = 0;
         if (choice != playing) {
+            // Read again and the same as it plays already: it goes on rather than starting over.
+            if (choice == null || playing == null || !choice.same(playing)) started = clock;
             playing = choice;
-            started = clock;
         }
         int offset = (int) Math.floorMod(seed >> 17, 400L);
 

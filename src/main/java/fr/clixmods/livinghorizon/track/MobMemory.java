@@ -101,6 +101,8 @@ public final class MobMemory {
         /** The animation it plays, chosen from the blocks around where it is remembered; null until read. */
         transient volatile MobPaths.@Nullable Choice choice;
         transient volatile boolean planning;
+        /** Its ground was read with columns missing: when to read it again, and how many times it was. */
+        transient int replanAt, replans;
         /** Where its animation took it, where it looks. */
         transient @Nullable MobMotion motion;
         /** The real mob, sent again by the server, that the copy walks up to before it takes over. */
@@ -146,6 +148,11 @@ public final class MobMemory {
     private static final long FREEZE_AFTER = 500_000_000L;
     /** Grounds read per tick, at most: a few thousand blocks each, when the chunks are loaded. */
     private static final int READS_PER_TICK = 6;
+    /**
+     * Ticks before a ground read with columns missing is read again - the far world may not
+     * be open yet, as when the world was just entered - doubled each time, up to a minute.
+     */
+    private static final int REPLAN_FIRST = 40, REPLAN_MAX = 1200;
 
     private final Map<UUID, Remembered> mobs = new LinkedHashMap<>();
     /** The render distance, in blocks, as of the last tick. */
@@ -567,9 +574,13 @@ public final class MobMemory {
                 // Moved by the data pack: the blocks are read again around where it is now.
                 MobPaths.Choice choice = mob.choice;
                 if (choice != null && !choice.ground().around(mob.x, mob.z)) mob.choice = choice = null;
-                if (choice == null && roam && !mob.simulated && !mob.planning && reads < READS_PER_TICK) {
+                // Read with part of the far world missing: read again, now that it may be there.
+                boolean again = choice != null && !choice.complete() && clock >= mob.replanAt;
+                if ((choice == null || again) && roam && !mob.simulated && !mob.planning && reads < READS_PER_TICK) {
                     reads++;
                     mob.planning = true;
+                    if (choice == null) mob.replans = 0;
+                    mob.replanAt = clock + Math.min(REPLAN_MAX, REPLAN_FIRST << Math.min(mob.replans++, 5));
                     double x = mob.x, y = mob.y, z = mob.z;
                     long seed = seed(mob);
                     CompletableFuture<MobPaths.Choice> read = walker(living)

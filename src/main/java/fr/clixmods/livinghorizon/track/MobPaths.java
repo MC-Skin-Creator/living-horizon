@@ -31,6 +31,10 @@ import java.util.concurrent.CompletableFuture;
  * fits when all along it the ground is there and never climbs nor drops more than a
  * block at a time. The widest that fit are kept and one of them is chosen, by the mob's
  * UUID; with none, it stands and turns on the spot.
+ *
+ * <p>The far world may not be readable yet - Voxy and Distant Horizons open theirs a moment
+ * after the game's, and have nothing of ground they never saw. A choice made with columns
+ * missing says so ({@link Choice#complete()}), and the ground is read again later.
  */
 public final class MobPaths {
     /** Blocks around the mob that are read. */
@@ -54,6 +58,15 @@ public final class MobPaths {
 
     /** The animation a mob plays, laid on the ground it was chosen for; no animation: it stands. */
     public record Choice(Ground ground, MobAnimations.@Nullable Animation animation, double angle, boolean mirror) {
+        /** Every column around was read: false when some of the far world could not be, worth reading again. */
+        public boolean complete() {
+            return ground.complete;
+        }
+
+        /** Plays the same as another: the same animation, turned and mirrored the same way. */
+        public boolean same(Choice other) {
+            return animation == other.animation && angle == other.angle && mirror == other.mirror;
+        }
     }
 
     /**
@@ -83,10 +96,12 @@ public final class MobPaths {
         }
         if (far == 0) return CompletableFuture.completedFuture(choose(new Ground(ground, x, y, z), width, seed));
         return LodWorld.columns(Arrays.copyOf(farX, far), Arrays.copyOf(farZ, far), bottom, height).thenApply(read -> {
+            boolean complete = true;
             for (int k = 0; k < read.length; k++) {
                 if (read[k] != null) ground[farX[k] - bx + RADIUS][farZ[k] - bz + RADIUS] = floor(read[k], bottom, y);
+                else complete = false;
             }
-            return choose(new Ground(ground, x, y, z), width, seed);
+            return choose(new Ground(ground, x, y, z, complete), width, seed);
         });
     }
 
@@ -103,11 +118,11 @@ public final class MobPaths {
         return choose(new Ground(ground, x, y, z), 0, seed);
     }
 
-    /** Standing where it is: the ground around could not be read. */
+    /** Standing where it is: the ground around could not be read, so it is read again later. */
     public static Choice stand(double x, double y, double z) {
         double[][] ground = new double[SIZE][SIZE];
         for (double[] row : ground) Arrays.fill(row, Double.NaN);
-        return new Choice(new Ground(ground, x, y, z), null, 0, false);
+        return new Choice(new Ground(ground, x, y, z, false), null, 0, false);
     }
 
     /**
@@ -228,6 +243,8 @@ public final class MobPaths {
     /** The height of the ground around a mob, as read: NaN where it cannot stand. */
     public static final class Ground {
         final double x, z;
+        /** Every column was read; false when the far world had nothing for some of them. */
+        final boolean complete;
         private final int bx, bz;
         private final double[][] height;
 
@@ -236,8 +253,13 @@ public final class MobPaths {
          * floor(z) + j - RADIUS)}; the mob's own block is where it stands, whatever was read there.
          */
         Ground(double[][] ground, double x, double y, double z) {
+            this(ground, x, y, z, true);
+        }
+
+        Ground(double[][] ground, double x, double y, double z, boolean complete) {
             this.x = x;
             this.z = z;
+            this.complete = complete;
             bx = Mth.floor(x);
             bz = Mth.floor(z);
             height = new double[SIZE][];
