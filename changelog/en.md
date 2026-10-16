@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### New
+- **Players who logged off** — they live their life around where they left, as far as a village: they stroll, sit, look at chests and workstations, walk through doors to a bed at night, and raise a shield against monsters in sight and hits.
+- **Offline names** — players who logged off show their name marked *(offline)*, and aiming at one up close tells when they were last seen; a new switch hides them all.
+
 ### Improved
 - **Distant mobs** — slimes, magma cubes and rabbits now hop their way around instead of sliding, a slime squashing as it lands, and chickens flap their wings stepping down a block.
 

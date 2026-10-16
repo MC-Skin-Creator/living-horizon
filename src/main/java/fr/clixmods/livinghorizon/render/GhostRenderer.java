@@ -17,6 +17,7 @@ import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobMemory;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
+import fr.clixmods.livinghorizon.track.RestingPuppet;
 import fr.clixmods.livinghorizon.track.SharedPositions;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -37,6 +38,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import java.util.ArrayList;
 *///?}
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -553,27 +555,33 @@ public final class GhostRenderer {
                 || category == MobCategory.UNDERGROUND_WATER_CREATURE || category == MobCategory.AXOLOTLS;
     }
 
-    /** Players who logged off, lying or sitting where they were last. */
+    /**
+     * Players who logged off: standing, walking or on guard as the game would draw any
+     * player, or seated, lying on the ground or asleep in a bed.
+     */
     private static void rest(List<EntityRenderState> frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
                              Vec3 eye, float partialTick, FarConfig config) {
-        boolean sleep = "sleep".equals(config.offlinePose);
-        if (!sleep && !"sit".equals(config.offlinePose)) return;
+        if (!config.offlinePlayers) return;
         ClientLevel level = minecraft.level;
         if (level == null) return;
         RestingPlayers resting = FarPlayerTracker.get().resting();
         int dimension = SharedPositions.dimensionCode(level.dimension());
         for (RestingPlayers.Spot spot : resting.spots()) {
             if (spot.dimension() != dimension) continue;
-            Entity puppet = resting.puppet(level, spot);
-            if (puppet == null) continue;
+            RestingPuppet puppet = resting.puppet(level, spot);
             if (skipped(puppet, true)) continue;
             if (debug) DebugMarks.mark(puppet, Mark.PLAYER);
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
-            if (body instanceof LivingEntityRenderState living) {
+            if (body == null) continue;
+            RestingPuppet.Look look = puppet.look();
+            if (look != RestingPuppet.Look.STAND && body instanceof LivingEntityRenderState living) {
                 living.yRot = 0;
                 living.xRot = 0;
                 living.walkAnimationSpeed = 0;
-                if (sleep) {
+                if (look == RestingPuppet.Look.BED) {
+                    // In the bed: its sleeping position, so the game lays it along the bed.
+                    living.pose = Pose.SLEEPING;
+                } else if (look == RestingPuppet.Look.LIE) {
                     // Lying on the ground: the game lays a sleeper out along its body
                     // rotation when there is no bed, a little lower than on a mattress.
                     living.pose = Pose.SLEEPING;
@@ -581,12 +589,22 @@ public final class GhostRenderer {
                     body.y += 0.13;
                 }
             }
-            if (!sleep && body instanceof HumanoidRenderState humanoid) {
+            if (look == RestingPuppet.Look.SIT && body instanceof HumanoidRenderState humanoid) {
                 // The riding pose, without a mount: legs out in front, on the ground.
                 humanoid.isPassenger = true;
                 body.y -= 0.6;
             }
+            // Their name, marked offline, where the game would show it: close by, as for anyone.
+            Component name = config.offlineNames ? body.nameTag : null;
+            //? if >=1.21.2 {
+            if (name != null && (look == RestingPuppet.Look.BED || look == RestingPuppet.Look.LIE)
+                    && body.nameTagAttachment != null) {
+                // Lying down: just above the body, as the game puts a sleeper's name (the tag adds half a block).
+                body.nameTagAttachment = new Vec3(0, 0.3, 0);
+            }
+            //?}
             add(frame, minecraft, eye, body, null, true, Mark.PLAYER, config, spot.name());
+            body.nameTag = name;
         }
     }
 

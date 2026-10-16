@@ -112,8 +112,8 @@ The game itself lacks what these need, so they are left out rather than imitated
   far-off villages, and are hidden by the terrain pixel by pixel, shaders included.
 - **Look up.** Flocks, geese in a V, gulls on the coast, bats at night - and, now and
   then, a flying saucer taking a cow (`/livinghorizon ufo`).
-- **Find players where they left.** Someone who logged off stays asleep where they were,
-  until they come back.
+- **Find players where they left.** Someone who logged off lives their life where they
+  were - a stroll, a seat, a bed at night, a shield against monsters - until they come back.
 - **Tune it.** Everything is in the settings (see *Settings* below): which mobs, which
   birds, how many, how far.
 
@@ -146,7 +146,10 @@ The game itself lacks what these need, so they are left out rather than imitated
 | `birdSize` | `1` | times | How much bigger than life birds are drawn |
 | `ufo` | `true` | | The easter egg |
 | `depthOcclusion` | `true` | | The far terrain's depth (Voxy or Distant Horizons) on distant mobs and players, pixel by pixel (see *The far terrain's depth* below). Was `voxyOcclusion`. In *Debug...* |
-| `offlinePose` | `"sit"` | | A player who logged off: `"sleep"`, `"sit"` or `"hidden"` |
+| `offlinePlayers` | `true` | | Players who logged off are shown and remembered; off, neither |
+| `offlineLife` | `true` | | Players who logged off live their life around their spot (see below); off, they sit on it |
+| `offlineRoam` | `50` | blocks | How far from their spot they walk around and look for a bed or a chest, from 8 to 128 (50 is about a village) |
+| `offlineNames` | `true` | | Their name above them, marked offline, and when they were last seen under the crosshair |
 | `showVehicles` | `true` | | Draw the mount they were last seen on |
 | `renderTrackedVehiclesFar` | `true` | | Never cull a mount that carries another player |
 | `hideOccludedMobs` | `true` | | Do not draw distant mobs behind terrain at all (see *Mobs hidden by depth* below). In *Debug...*, with `depthOcclusion` |
@@ -168,6 +171,12 @@ The game itself lacks what these need, so they are left out rather than imitated
   game's mobs*), yellow too small (under about half a pixel), orange behind blocks, red
   outside the view, purple being built, grey past `maxDistantMobs`. A dot in the middle
   keeps them visible when the box is smaller than its lines.
+- **Test players who logged off**, to try that feature alone in single player:
+  `/livinghorizon debug offline test spawn [name] [minutes]` places one where you stand,
+  wearing your skin, logged off that many minutes ago (default `Sleeper1`, `Sleeper2`...,
+  just now); `... test clear` removes them; `... test list` shows everyone resting on this
+  server, where and since when. Test players are never written to the file: they are gone
+  at the next start.
 - **Labels**: state, kind, distance and size on screen, at a constant size.
 - **Outlines** (*Outlines...*): an outline seen through terrain around each kind of figure,
   each on its own switch, in the colours of the boxes - white the mobs and players the game
@@ -208,11 +217,42 @@ parses `pack.mcmeta` and the predicate with the game's own codecs.
 
 ### Players who logged off
 
-A player who logs off stays where they were last, asleep on the ground (or sitting, see
-`offlinePose`), until they come back. This is remembered per server across sessions, in
+A player who logs off stays around where they were last, until they come back.
+`offlinePlayers` off turns this off completely: nobody is shown, remembered or written to the
+file. This is remembered per server across sessions, in
 `config/livinghorizon/resting/<server>.json`. With the data pack, even players who logged
 off before you joined are there: the pack keeps everyone's last position, and their
 skin is fetched from Mojang by name.
+
+With `offlineLife` on (the default) they live their life there, as long as the blocks
+around are loaded (`track/RestingPuppet`), within `offlineRoam` blocks of their spot (50, about
+a village; up to 128): they stand and look around, sit down, stroll, stand in front of a
+chest, a crafting table or a villager's workstation and look at it. At night they walk to a
+free bed they can reach and sleep in it, or lie down where they are; in the morning they get
+up. They walk only where a player could (`track/Walkway`: one block up, two down, no corner
+cut, nothing walked through but doors and fence gates, which they cannot open), worked out on
+the client from the blocks it has: what is around is read a little every tick (600 spots per
+tick for all of them together), again every 30 seconds or when they find themselves off it,
+and each way is searched towards where they go. Monsters within 10 blocks and in plain sight
+put them on guard: an iron sword drawn, the shield up, eyes on the nearest, a step away when
+it comes closer than 3.5 blocks; they never fight. Safe indoors, behind walls, shut doors or
+windows, they do not mind them. A creeper blowing up within 7 blocks, in sight, throws them,
+shield up, and they walk back. Hit by you, they raise their shield. In lava or fire they show
+the swirls of fire resistance, under water those of water breathing. Where the blocks are not
+loaded, they only stand, sit or sleep where they are. With `offlineLife` off they sit on their
+spot.
+
+All of it is a picture on your client: nothing is sent to the server, they block nobody, and
+nothing can hurt them. Either way they keep to the ground: break the pile they sit on and
+they fall to the floor below; bury them and they reappear on top. Sitting, their own spot
+wins again once it has room and something under it, since that is where they will come back.
+With nothing below down to the bottom of the world, they stay where they are.
+
+Their name shows above them, followed by *(offline)*, as close as the game shows names (64
+blocks). Aiming at one from right next to it (3 blocks) shows, under the crosshair, when
+they were last seen, in the game's language; a player known only from the data pack shows
+as offline without a date. That time is kept in the file with their spot (`lastSeen`, milliseconds since 1970).
+`offlineNames` turns both off.
 
 ### Mobs far away
 
