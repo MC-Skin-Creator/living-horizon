@@ -25,7 +25,7 @@
   "livinghorizon.options.offlinePlayers": "Joueurs déconnectés",
   "livinghorizon.options.offlinePlayers.tooltip": "Les joueurs déconnectés restent là où ils étaient, jusqu'à leur retour. Désactivé : ils ne sont ni affichés ni retenus.",
   "livinghorizon.options.offlineNames": "Déconnectés : noms",
-  "livinghorizon.options.offlineNames.tooltip": "Le nom d'un joueur déconnecté au-dessus de lui, marqué hors ligne, d'aussi près que le jeu affiche les noms. Le regarder indique quand il a été vu pour la dernière fois.",
+  "livinghorizon.options.offlineNames.tooltip": "Le nom d'un joueur déconnecté au-dessus de lui, marqué hors ligne, d'aussi près que le jeu affiche les noms. Le viser juste à côté de lui indique quand il a été vu pour la dernière fois.",
   "livinghorizon.offline.tag": "(hors ligne)",
   "livinghorizon.offline.lastSeen": "%s — vu pour la dernière fois le %s",
   "livinghorizon.offline.unknown": "%s — hors ligne",

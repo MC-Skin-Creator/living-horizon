@@ -4,7 +4,7 @@
 
 ### New
 - **Players who logged off** — they fall when the blocks under them are broken, climb out when buried, and sleep in a bed if one is close by.
-- **Offline names** — players who logged off show their name marked *(offline)*, and looking at one tells when they were last seen; a new switch hides them all.
+- **Offline names** — players who logged off show their name marked *(offline)*, and aiming at one up close tells when they were last seen; a new switch hides them all.
 
 ## 0.6.0 — 2026-10-15
 

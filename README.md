@@ -234,9 +234,9 @@ within `offlineBedRadius` blocks of their spot is better still: they are shown a
 in it.
 
 Their name shows above them, followed by *(offline)*, as close as the game shows names (64
-blocks). Looking at one at any distance shows, under the crosshair, when they were last seen,
-in the game's language; a player known only from the data pack shows as offline without a
-date. That time is kept in the file with their spot (`lastSeen`, milliseconds since 1970).
+blocks). Aiming at one from right next to it (3 blocks) shows, under the crosshair, when
+they were last seen, in the game's language; a player known only from the data pack shows
+as offline without a date. That time is kept in the file with their spot (`lastSeen`, milliseconds since 1970).
 `offlineNames` turns both off.
 
 ### Mobs far away

@@ -87,8 +87,8 @@ public final class RestingPlayers {
     private @Nullable Path file;
     private @Nullable Spot lookedAt;
 
-    /** Blocks: farther than this, a sleeper is not looked for under the crosshair. */
-    private static final double MAX_AIM = 4096;
+    /** Blocks from the eye to the point aimed at on a sleeper: about the reach of a hand. */
+    private static final double MAX_AIM = 3;
 
     public Collection<Spot> spots() {
         return Collections.unmodifiableCollection(spots.values());
@@ -235,9 +235,8 @@ public final class RestingPlayers {
     }
 
     /**
-     * Finds the sleeper under the crosshair, at any distance, unless a block is in the way.
-     * Where it lies, sits or stands now, in a box a little wider far away, where it is a few
-     * pixels across.
+     * Finds the sleeper under the crosshair, right next to the player ({@link #MAX_AIM}),
+     * unless a block is in the way. Where it lies, sits or stands now.
      */
     void aim(Minecraft minecraft, FarConfig config) {
         lookedAt = null;
@@ -252,19 +251,22 @@ public final class RestingPlayers {
             RestingPuppet puppet = puppets.get(key(spot.name()));
             if (spot.dimension() != dimension || puppet == null) continue;
             double distance = eye.distanceTo(puppet.position());
-            if (distance > MAX_AIM || distance >= nearest) continue;
+            // The box reaches 1 block round its feet, its top 2 blocks over them.
+            if (distance > MAX_AIM + 2.5) continue;
             double height = puppet.standing() ? 1.9 : puppet.inBed() || "sleep".equals(config.offlinePose) ? 0.5 : 1.3;
             // A sleeper is 1.8 blocks long, whichever way it lies.
-            double half = (height < 1 ? 1.0 : 0.4) + distance * 0.004;
+            double half = height < 1 ? 1.0 : 0.4;
             AABB box = new AABB(puppet.getX() - half, puppet.getY() + 0.05, puppet.getZ() - half,
                     puppet.getX() + half, puppet.getY() + height, puppet.getZ() + half);
-            Optional<Vec3> hit = box.clip(eye, eye.add(look.scale(distance + 4)));
+            Optional<Vec3> hit = box.clip(eye, eye.add(look.scale(MAX_AIM)));
             if (hit.isEmpty()) continue;
+            double reach = eye.distanceTo(hit.get());
+            if (reach >= nearest) continue;
             // Terrain the client has, between the eye and the sleeper, hides it.
             BlockHitResult wall = level.clip(new ClipContext(eye, hit.get(), ClipContext.Block.VISUAL,
                     ClipContext.Fluid.NONE, camera));
             if (wall.getType() != HitResult.Type.MISS) continue;
-            nearest = distance;
+            nearest = reach;
             lookedAt = spot;
         }
     }

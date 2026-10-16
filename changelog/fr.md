@@ -4,7 +4,7 @@
 
 ### Nouveautés
 - **Joueurs déconnectés** — ils tombent quand on casse les blocs sous eux, ressortent quand on les ensevelit, et dorment dans un lit s'il y en a un tout près.
-- **Noms hors ligne** — les joueurs déconnectés affichent leur nom marqué *(hors ligne)*, et en regarder un indique quand il a été vu pour la dernière fois ; un nouvel interrupteur les masque tous.
+- **Noms hors ligne** — les joueurs déconnectés affichent leur nom marqué *(hors ligne)*, et en viser un de près indique quand il a été vu pour la dernière fois ; un nouvel interrupteur les masque tous.
 
 ## 0.6.0 — 2026-10-15
 

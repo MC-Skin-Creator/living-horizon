@@ -83,7 +83,7 @@ public final class FarConfig {
 
     /**
      * Their name above a player who logged off, marked offline, as close as the game shows
-     * names; and when they were last seen, under the crosshair, when looked at.
+     * names; and when they were last seen, under the crosshair, when aimed at from right next to them.
      */
     public boolean offlineNames = true;
 

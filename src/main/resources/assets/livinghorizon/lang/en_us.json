@@ -25,7 +25,7 @@
   "livinghorizon.options.offlinePlayers": "Logged-off players",
   "livinghorizon.options.offlinePlayers.tooltip": "Players who logged off stay where they were last, until they come back. Off: they are neither shown nor remembered.",
   "livinghorizon.options.offlineNames": "Logged off: names",
-  "livinghorizon.options.offlineNames.tooltip": "Their name above a player who logged off, marked offline, as close as the game shows names. Looking at them shows when they were last seen.",
+  "livinghorizon.options.offlineNames.tooltip": "Their name above a player who logged off, marked offline, as close as the game shows names. Aiming at them from right next to them shows when they were last seen.",
   "livinghorizon.offline.tag": "(offline)",
   "livinghorizon.offline.lastSeen": "%s — last seen %s",
   "livinghorizon.offline.unknown": "%s — offline",

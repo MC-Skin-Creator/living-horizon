@@ -69,8 +69,14 @@ public final class RestingScenario implements Scenario {
             check(context, "bed", GROUND + 0.6875, true);
             Scene.screenshot(context, this, "bed");
 
-            // Looking at them: their name above them, marked offline, and under the crosshair.
+            // Looking at them from 8 blocks: their name above them, nothing under the crosshair.
             Scene.command(world, "tp @a 0.5 " + GROUND + " 1.5 -23 7");
+            wait(context, world, 20);
+            aimed(context, false);
+            Scene.screenshot(context, this, "looked-at-far");
+
+            // Right next to them: who they are under the crosshair too.
+            Scene.command(world, "tp @a 3.5 " + GROUND + " 6 0 14");
             wait(context, world, 20);
             aimed(context, true);
             Scene.screenshot(context, this, "looked-at");
@@ -82,12 +88,17 @@ public final class RestingScenario implements Scenario {
             Scene.screenshot(context, this, "switched-off");
 
             // The debug command: a test player where the camera stands, logged off 90 minutes
-            // ago, then looked at from 6 blocks back (the date under the crosshair), then removed.
+            // ago, looked at from 6 blocks back (nothing under the crosshair), then from 2.5
+            // (the date under the crosshair), then removed.
             Scene.configure(context, config -> config.offlinePlayers = true);
             Scene.command(world, "tp @a 0.5 " + GROUND + " -10.5 0 0");
             wait(context, world, 10);
             clientCommand(context, "livinghorizon debug offline test spawn Tester 90");
             Scene.command(world, "tp @a 0.5 " + GROUND + " -16.5 0 10");
+            wait(context, world, 20);
+            boolean far = context.computeOnClient(minecraft -> FarPlayerTracker.get().resting().lookedAt() != null);
+            if (far) throw new AssertionError("resting test player: looked at from 6 blocks");
+            Scene.command(world, "tp @a 0.5 " + GROUND + " -13 0 18");
             wait(context, world, 20);
             String tester = context.computeOnClient(minecraft -> {
                 RestingPlayers resting = FarPlayerTracker.get().resting();
