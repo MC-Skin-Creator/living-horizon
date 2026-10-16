@@ -3,21 +3,28 @@ package fr.clixmods.livinghorizon.gametest.scenario;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
-import fr.clixmods.livinghorizon.track.LanShare;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 //? if >=26.2
 /*import net.minecraft.server.MinecraftServer;*/
 //? if <26.3
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.ReadOnlyScoreInfo;
 import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.ScoreHolder;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.zip.GZIPInputStream;
+
 /**
  * A world opened to LAN, with no data pack: the host's mod must publish the positions
- * through the scoreboard, and the client read them back as the pack's.
+ * through the scoreboard, the client read them back as the pack's, follow the host as it
+ * moves, and leave no objective in the world once it is closed.
  */
 public final class LanShareScenario implements Scenario {
     @Override
@@ -27,7 +34,10 @@ public final class LanShareScenario implements Scenario {
 
     @Override
     public void run(ClientGameTestContext context) {
+        Path scores;
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
+            scores = context.computeOnClient(minecraft -> minecraft.getSingleplayerServer()
+                    .getWorldPath(LevelResource.ROOT).resolve("data").resolve("scoreboard.dat"));
             Scene.summon(world, "cow", 10, 10, 0);
             context.waitTicks(40);
             context.runOnClient(minecraft -> {
@@ -63,15 +73,28 @@ public final class LanShareScenario implements Scenario {
                 Scene.log("lanshare host x=" + score.value() + " mobs published=" + mobs);
             });
 
-            // Leaving the world removes what the share wrote.
-            context.runOnClient(minecraft -> LanShare.close());
-            context.waitTicks(10);
+            // The host moves: the score follows within a publication or two.
+            Scene.command(world, "tp @a 40 ~ 0");
+            context.waitTicks(20);
             context.runOnClient(minecraft -> {
-                if (minecraft.getSingleplayerServer().getScoreboard().getObjective("lh.x") != null) {
-                    throw new AssertionError("the objectives are still in the world");
+                Scoreboard scoreboard = minecraft.level.getScoreboard();
+                ReadOnlyScoreInfo score = scoreboard.getPlayerScoreInfo(
+                        ScoreHolder.forNameOnly(minecraft.player.getScoreboardName()), scoreboard.getObjective("lh.x"));
+                if (score == null || Math.abs(score.value() - 400) > 10) {
+                    throw new AssertionError("host x after moving " + (score == null ? "none" : score.value()) + ", expected about 400");
                 }
-                Scene.log("lanshare cleaned up");
+                Scene.log("lanshare host moved, x=" + score.value());
             });
+        }
+        // Leaving the world removes what the share wrote: the saved scoreboard no longer has it.
+        try {
+            byte[] saved = Files.exists(scores) ? new GZIPInputStream(Files.newInputStream(scores)).readAllBytes() : new byte[0];
+            if (new String(saved, StandardCharsets.ISO_8859_1).contains("lh.x")) {
+                throw new AssertionError("the objectives are still in the saved world");
+            }
+            Scene.log("lanshare cleaned up, saved scoreboard " + saved.length + " bytes");
+        } catch (IOException e) {
+            throw new AssertionError("could not read the saved scoreboard " + scores, e);
         }
     }
 }
