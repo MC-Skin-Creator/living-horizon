@@ -41,8 +41,8 @@ public final class GhostBoat {
     private static final int LIFE = 4800;
     /** Height of the bench above the water, where the ghost sits. */
     private static final double SEAT = 0.3;
-    /** How far off it may drift, in blocks across: by chance, and when called. */
-    private static final double MIN = 50, MAX = 600, CALLED_MIN = 30, CALLED_MAX = 300;
+    /** How far off it may drift, in blocks across: one of the farther spots in sight is taken. */
+    private static final double MIN = 50, MAX = 600;
     /** Ticks a search may take. */
     private static final int SEARCH = 400;
 
@@ -72,8 +72,8 @@ public final class GhostBoat {
 
     /**
      * Looks for open water in sight, and sets the boat drifting there once it is read: by
-     * chance anywhere around, or because the player asked ({@code called}: in front of them,
-     * nearer; called again, it starts over). False if the easter eggs are off.
+     * chance anywhere around, or because the player asked ({@code called}: in front of them;
+     * called again, it starts over). False if the easter eggs are off.
      */
     public boolean summon(ClientLevel current, LocalPlayer self, boolean called) {
         if (!FarConfig.get().easterEggs || current.dimension() != Level.OVERWORLD) return false;
@@ -86,8 +86,7 @@ public final class GhostBoat {
         int[][] around = {{0, 0}, {4, 0}, {-4, 0}, {0, 4}, {0, -4}};
         for (int s = 0, i = 0; s < spots; s++) {
             double bearing = called ? look + random.nextGaussian() * 0.5 : random.nextDouble() * Math.PI * 2;
-            double distance = called ? CALLED_MIN + random.nextDouble() * (CALLED_MAX - CALLED_MIN)
-                    : MIN + random.nextDouble() * (MAX - MIN);
+            double distance = MIN + random.nextDouble() * (MAX - MIN);
             double cx = Mth.floor(self.getX() - Math.sin(bearing) * distance) + 0.5;
             double cz = Mth.floor(self.getZ() + Math.cos(bearing) * distance) + 0.5;
             for (int[] d : around) {
@@ -121,7 +120,8 @@ public final class GhostBoat {
                 searching = false;
                 List<Columns.Column> clear = new ArrayList<>();
                 for (int i = 0; i < seen.length; i++) if (seen[i]) clear.add(open.get(i));
-                if (!clear.isEmpty()) begin(clear.get(random.nextInt(clear.size())));
+                Columns.Column spot = Sight.far(clear, c -> Math.hypot(c.x() - eye.x, c.z() - eye.z), random);
+                if (spot != null) begin(spot);
             }, game);
         }, game);
         return true;

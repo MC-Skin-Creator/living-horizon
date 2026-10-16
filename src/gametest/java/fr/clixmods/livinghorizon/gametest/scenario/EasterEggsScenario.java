@@ -313,7 +313,7 @@ public final class EasterEggsScenario implements Scenario {
 
     /** 7: on a lake dug ahead, at night, and gone when the player comes near. */
     private void boat(ClientGameTestContext context, TestSingleplayerContext world) {
-        Scene.command(world, "execute at @p run fill ~-30 ~-1 ~30 ~30 ~-1 ~90 minecraft:water");
+        Scene.command(world, "execute at @p run fill ~-60 ~-1 ~30 ~60 ~-1 ~130 minecraft:water");
         Scene.command(world, "time set midnight");
         context.waitTicks(20);
         boolean on = context.computeOnClient(minecraft -> ambience().ghostBoat().summon(minecraft.level, minecraft.player, true));

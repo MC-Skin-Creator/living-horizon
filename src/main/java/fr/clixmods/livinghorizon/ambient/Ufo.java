@@ -141,7 +141,12 @@ public final class Ufo {
         Call call = !ahead.isEmpty() ? Call.AHEAD : !around.isEmpty() ? Call.AROUND : Call.NOTHING;
         if (call == Call.NOTHING) return call;
         List<MobMemory.Remembered> from = call == Call.AHEAD ? ahead : around;
-        MobMemory.Remembered chosen = from.get(random.nextInt(from.size()));
+        // One of the farther ones: the show is for the horizon.
+        MobMemory.Remembered chosen = Sight.far(from, mob -> {
+            Entity puppet = mob.puppet();
+            return puppet == null ? 0 : puppet.distanceTo(self);
+        }, random);
+        if (chosen == null) return Call.NOTHING;
         Entity remembered = chosen.puppet();
         LivingEntity made = memory.twin(chosen, level);
         if (remembered == null || made == null) return Call.NOTHING;

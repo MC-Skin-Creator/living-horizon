@@ -113,14 +113,22 @@ public final class Waver {
             Sight.of(level, self, eye, hx, hy, hz).thenAcceptAsync(seen -> {
                 if (generation.get() != mine) return;
                 searching = false;
+                // Among the highest in sight, the farthest: a summit against the sky, far off.
+                List<Columns.Column> seenTops = new ArrayList<>();
+                for (int i = 0; i < seen.length; i++) if (seen[i]) seenTops.add(standing.get(i));
+                seenTops.sort((a, b) -> Double.compare(b.y(), a.y()));
                 Columns.Column top = null;
-                for (int i = 0; i < seen.length; i++) {
-                    if (seen[i] && (top == null || standing.get(i).y() > top.y())) top = standing.get(i);
+                for (Columns.Column column : seenTops.subList(0, (seenTops.size() + 3) / 4)) {
+                    if (top == null || far(column, eye) > far(top, eye)) top = column;
                 }
                 if (top != null) begin(top, self);
             }, game);
         }, game);
         return true;
+    }
+
+    private static double far(Columns.Column column, Vec3 eye) {
+        return Math.hypot(column.x() - eye.x, column.z() - eye.z);
     }
 
     private void begin(Columns.Column top, LocalPlayer self) {

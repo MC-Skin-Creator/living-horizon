@@ -226,8 +226,8 @@ public final class Herobrine {
         }
         searching = false;
         search = null;
-        if (current.clear().isEmpty()) return;
-        Vec3 head = current.clear().get(random.nextInt(current.clear().size()));
+        Vec3 head = Sight.far(current.clear(), h -> Math.hypot(h.x - self.getX(), h.z - self.getZ()), random);
+        if (head == null) return;
         RemotePlayer made = Puppets.player(level, new GameProfile(STEVE, ""));
         made.setPos(head.x, head.y - 1.6, head.z);
         face(made, self);

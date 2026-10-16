@@ -60,7 +60,7 @@ public final class SaucerPass {
         // Its way runs square to a line from the player, some way out along it.
         double look = called ? Math.toRadians(self.getYRot()) + random.nextGaussian() * 0.15 : random.nextDouble() * Math.PI * 2;
         double fx = -Math.sin(look), fz = Math.cos(look);
-        double ahead = 220 + random.nextDouble() * 180, side = random.nextBoolean() ? 1 : -1;
+        double ahead = 300 + random.nextDouble() * 300, side = random.nextBoolean() ? 1 : -1;
         dirX = -fz * side;
         dirZ = fx * side;
         x = xo = self.getX() + fx * ahead - dirX * HALF;

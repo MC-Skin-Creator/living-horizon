@@ -154,20 +154,24 @@ public final class Bigfoot {
             Sight.of(current, self, eye, hx, hy, hz).thenAcceptAsync(sight -> {
                 if (generation.get() != mine) return;
                 searching = false;
-                // Seen somewhere along: far before near, out of sight at the start before not.
-                int best = -1, bestRank = -1;
+                // Seen somewhere along: far before near, out of sight at the start before not,
+                // then one of the farther of those.
+                List<Integer> ways = new ArrayList<>();
+                int bestRank = -1;
                 for (int i = 0; i < forest.size(); i++) {
                     int along = 0;
                     for (int k = 1; k <= ALONG; k++) if (sight[i * (ALONG + 1) + k]) along++;
                     if (along < IN_SIGHT) continue;
                     int rank = (distances[forest.get(i)] >= MIN ? 2 : 0) + (sight[i * (ALONG + 1)] ? 0 : 1);
-                    if (rank > bestRank || rank == bestRank && random.nextBoolean()) {
-                        best = i;
+                    if (rank > bestRank) ways.clear();
+                    if (rank >= bestRank) {
+                        ways.add(i);
                         bestRank = rank;
                     }
                 }
-                if (best < 0) return;
-                int w = forest.get(best);
+                Integer chosen = Sight.far(ways, i -> distances[forest.get(i)], random);
+                if (chosen == null) return;
+                int best = chosen, w = forest.get(best);
                 double[] ys = new double[ALONG + 1];
                 boolean[] seenAt = new boolean[ALONG + 1];
                 for (int k = 0; k <= ALONG; k++) {

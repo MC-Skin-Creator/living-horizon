@@ -43,8 +43,8 @@ public final class Ghosts {
     static final int ALPHA = 65;
     /** Blocks per tick it walks; how close the player may come before it vanishes. */
     private static final double PACE = 0.045, NEAR = 10;
-    /** How far off it may walk, in blocks across: from {@link #MIN}, to {@link #MAX} by chance, {@link #CALLED_MAX} when called. */
-    private static final double MIN = 22, MAX = 320, CALLED_MAX = 160;
+    /** How far off it may walk, in blocks across: one of the farther ways in sight is taken. */
+    private static final double MIN = 22, MAX = 320;
     /** Ways tried; stretches each way is read in. */
     private static final int WAYS = 40, ALONG = 4;
     /** Ticks it stands looking at the player before it vanishes; ticks a search may take. */
@@ -78,8 +78,8 @@ public final class Ghosts {
 
     /**
      * Looks for a way in sight anywhere around the player, and walks it once it is read: by
-     * chance, or because the player asked ({@code called}: in front of them, nearer; called
-     * again, it starts over). False if the easter eggs are off.
+     * chance, or because the player asked ({@code called}: in front of them; called again, it
+     * starts over). False if the easter eggs are off.
      */
     public boolean summon(ClientLevel current, LocalPlayer self, boolean called) {
         if (!FarConfig.get().easterEggs || current.dimension() != Level.OVERWORLD) return false;
@@ -89,9 +89,11 @@ public final class Ghosts {
         int steps = 160 + random.nextInt(100);
         double way = steps * PACE;
         double[] xs = new double[WAYS * (ALONG + 1)], zs = new double[xs.length], dirs = new double[WAYS * 2];
+        double[] distances = new double[WAYS];
         for (int w = 0; w < WAYS; w++) {
             double bearing = called ? look + random.nextGaussian() * 0.5 : random.nextDouble() * Math.PI * 2;
-            double distance = MIN + random.nextDouble() * ((called ? CALLED_MAX : MAX) - MIN);
+            double distance = MIN + random.nextDouble() * (MAX - MIN);
+            distances[w] = distance;
             double sx = self.getX() - Math.sin(bearing) * distance, sz = self.getZ() + Math.cos(bearing) * distance;
             double heading = random.nextDouble() * Math.PI * 2;
             dirs[2 * w] = -Math.sin(heading);
@@ -132,8 +134,8 @@ public final class Ghosts {
                 searching = false;
                 List<Integer> clear = new ArrayList<>();
                 for (int i = 0; i < seen.length; i++) if (seen[i]) clear.add(dry.get(i));
-                if (clear.isEmpty()) return;
-                int w = clear.get(random.nextInt(clear.size()));
+                Integer w = Sight.far(clear, i -> distances[i], random);
+                if (w == null) return;
                 double[] ys = new double[ALONG + 1];
                 for (int k = 0; k <= ALONG; k++) ys[k] = columns[w * (ALONG + 1) + k].y();
                 begin(columns[w * (ALONG + 1)], dirs[2 * w], dirs[2 * w + 1], ys, way, steps);

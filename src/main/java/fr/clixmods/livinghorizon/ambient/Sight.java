@@ -4,11 +4,15 @@ import fr.clixmods.livinghorizon.compat.LodWorld;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.ToDoubleFunction;
 
 /**
  * What the player could see, turning their head: points in sight of their eye, through the
@@ -17,6 +21,18 @@ import java.util.concurrent.CompletableFuture;
  */
 final class Sight {
     private Sight() {
+    }
+
+    /**
+     * One of the farther half of {@code spots}, by {@code distance} from the player: the near
+     * ones are the ones most often in sight, and the easter eggs are for the horizon. Null if
+     * there is none.
+     */
+    static <T> @Nullable T far(List<T> spots, ToDoubleFunction<T> distance, RandomSource random) {
+        if (spots.isEmpty()) return null;
+        List<T> sorted = new ArrayList<>(spots);
+        sorted.sort(Comparator.comparingDouble(distance).reversed());
+        return sorted.get(random.nextInt((sorted.size() + 1) / 2));
     }
 
     /**
