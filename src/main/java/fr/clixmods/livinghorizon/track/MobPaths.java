@@ -14,6 +14,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -31,6 +32,12 @@ import java.util.concurrent.CompletableFuture;
  * fits when all along it the ground is there and never climbs nor drops more than a
  * block at a time. The widest that fit are kept and one of them is chosen, by the mob's
  * UUID; with none, it stands and turns on the spot.
+ *
+ * <p>The far world may not be readable yet - Voxy and Distant Horizons open theirs a moment
+ * after the game's, and have nothing of ground they never saw. A choice made with columns
+ * missing says so ({@link Choice#complete()}), and the ground is read again later. A ground
+ * read whole is saved with the mob ({@link Ground#save()}): the next time the world is
+ * entered, the mob walks on it at once, whatever the far world knows.
  */
 public final class MobPaths {
     /** Blocks around the mob that are read. */
@@ -54,6 +61,15 @@ public final class MobPaths {
 
     /** The animation a mob plays, laid on the ground it was chosen for; no animation: it stands. */
     public record Choice(Ground ground, MobAnimations.@Nullable Animation animation, double angle, boolean mirror) {
+        /** Every column around was read: false when some of the far world could not be, worth reading again. */
+        public boolean complete() {
+            return ground.complete;
+        }
+
+        /** Plays the same as another: the same animation, turned and mirrored the same way. */
+        public boolean same(Choice other) {
+            return animation == other.animation && angle == other.angle && mirror == other.mirror;
+        }
     }
 
     /**
@@ -83,10 +99,12 @@ public final class MobPaths {
         }
         if (far == 0) return CompletableFuture.completedFuture(choose(new Ground(ground, x, y, z), width, seed));
         return LodWorld.columns(Arrays.copyOf(farX, far), Arrays.copyOf(farZ, far), bottom, height).thenApply(read -> {
+            boolean complete = true;
             for (int k = 0; k < read.length; k++) {
                 if (read[k] != null) ground[farX[k] - bx + RADIUS][farZ[k] - bz + RADIUS] = floor(read[k], bottom, y);
+                else complete = false;
             }
-            return choose(new Ground(ground, x, y, z), width, seed);
+            return choose(new Ground(ground, x, y, z, complete), width, seed);
         });
     }
 
@@ -103,11 +121,11 @@ public final class MobPaths {
         return choose(new Ground(ground, x, y, z), 0, seed);
     }
 
-    /** Standing where it is: the ground around could not be read. */
+    /** Standing where it is: the ground around could not be read, so it is read again later. */
     public static Choice stand(double x, double y, double z) {
         double[][] ground = new double[SIZE][SIZE];
         for (double[] row : ground) Arrays.fill(row, Double.NaN);
-        return new Choice(new Ground(ground, x, y, z), null, 0, false);
+        return new Choice(new Ground(ground, x, y, z, false), null, 0, false);
     }
 
     /**
@@ -227,7 +245,9 @@ public final class MobPaths {
 
     /** The height of the ground around a mob, as read: NaN where it cannot stand. */
     public static final class Ground {
-        final double x, z;
+        final double x, y, z;
+        /** Every column was read; false when the far world had nothing for some of them. */
+        final boolean complete;
         private final int bx, bz;
         private final double[][] height;
 
@@ -236,14 +256,61 @@ public final class MobPaths {
          * floor(z) + j - RADIUS)}; the mob's own block is where it stands, whatever was read there.
          */
         Ground(double[][] ground, double x, double y, double z) {
+            this(ground, x, y, z, true);
+        }
+
+        Ground(double[][] ground, double x, double y, double z, boolean complete) {
             this.x = x;
+            this.y = y;
             this.z = z;
+            this.complete = complete;
             bx = Mth.floor(x);
             bz = Mth.floor(z);
             height = new double[SIZE][];
             for (int i = 0; i < SIZE; i++) height[i] = ground[i].clone();
             double own = height[RADIUS][RADIUS];
             if (Double.isNaN(own) || Math.abs(own - y) > LEVEL) height[RADIUS][RADIUS] = y;
+        }
+
+        /** Where nothing could stand, in a saved ground. */
+        private static final byte NONE = Byte.MIN_VALUE;
+
+        /**
+         * This ground in a few hundred characters, for the memory file: where it was read, then
+         * every column's height in sixteenths of a block from the mob's own block.
+         */
+        public String save() {
+            byte[] heights = new byte[SIZE * SIZE];
+            int base = Mth.floor(y);
+            for (int i = 0; i < SIZE; i++) {
+                for (int j = 0; j < SIZE; j++) {
+                    double h = height[i][j];
+                    heights[i * SIZE + j] = Double.isNaN(h) ? NONE : (byte) Mth.clamp(Math.round((h - base) * 16), -127, 127);
+                }
+            }
+            return x + " " + y + " " + z + " " + Base64.getEncoder().encodeToString(heights);
+        }
+
+        /** A ground written by {@link #save()}; null if it cannot be read. */
+        public static @Nullable Ground load(String saved) {
+            try {
+                String[] parts = saved.split(" ");
+                if (parts.length != 4) return null;
+                double x = Double.parseDouble(parts[0]), y = Double.parseDouble(parts[1]), z = Double.parseDouble(parts[2]);
+                byte[] heights = Base64.getDecoder().decode(parts[3]);
+                if (heights.length != SIZE * SIZE) return null;
+                int base = Mth.floor(y);
+                double[][] ground = new double[SIZE][SIZE];
+                for (int i = 0; i < SIZE; i++) {
+                    for (int j = 0; j < SIZE; j++) {
+                        byte h = heights[i * SIZE + j];
+                        ground[i][j] = h == NONE ? Double.NaN : base + h / 16.0;
+                    }
+                }
+                return new Ground(ground, x, y, z, true);
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
         }
 
         /** Read around this very spot. */

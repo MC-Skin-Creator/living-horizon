@@ -2,6 +2,9 @@
 
 ## Prochaine version
 
+### Corrections
+- **Ouverture d'un monde** — les créatures lointaines marchent et broutent dès le début, au lieu de seulement tourner sur elles-mêmes.
+
 ## 0.6.0 — 2026-10-15
 
 ### Nouveautés

@@ -253,6 +253,13 @@ come back, add it here in the same pull request: this file is what the next sess
   simulation distance, a square of chunks that reaches farther on its diagonals. In single
   player `ServerMobs` asks the server where those are and the copies follow; on a server only
   the data pack closes that gap.
+- **Distant mobs only turning on the spot**, never walking, after the world was opened, while
+  those met since walk: their ground was read (`MobPaths.plan`) where the far world had nothing
+  (Voxy or Distant Horizons not open yet, or Voxy turned off for the session by one failed
+  read as its world opened: `VoxySource.fail` now pauses 20 s, as `DhSource` does), and the
+  mob got no animation. A ground read whole is saved with the mob (`Remembered.ground`,
+  `MobPaths.Ground.save`) and walked on at once in the next session; a choice read with
+  columns missing is not `complete()` and is read again, later and later.
 - **Impostors before 1.21.6** (empty or missing pictures, or a figure flashing over the screen
   at the start of a frame): the game has no output override there, so `ImpostorAtlas` bakes
   at the start of the frame (`GameRendererMixin`) into a target of its own, which
