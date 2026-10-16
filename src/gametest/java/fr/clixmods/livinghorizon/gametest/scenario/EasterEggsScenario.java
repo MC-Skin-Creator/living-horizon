@@ -10,7 +10,10 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.player.RemotePlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -135,9 +138,11 @@ public final class EasterEggsScenario implements Scenario {
         context.runOnClient(minecraft -> Scene.log("eggs ee1 cow taken at "
                 + (ambience().ufo().cow() == null ? "nowhere" : ambience().ufo().cow().position())));
         Scene.screenshot(context, this, "ee1-lift");
-        for (int i = 0; i < 600 && context.computeOnClient(minecraft -> ambience().ufo().busy()); i += 20) {
-            context.waitTicks(20);
-        }
+        // Away to the horizon, slowly: still to be seen fifteen seconds on.
+        context.waitTicks(300);
+        if (!context.computeOnClient(minecraft -> ambience().ufo().busy())) throw new AssertionError("ee1 gone too soon");
+        Scene.screenshot(context, this, "ee1-away");
+        stop(context);
         context.runOnClient(minecraft -> minecraft.options.fov().set(70));
     }
 
@@ -149,6 +154,16 @@ public final class EasterEggsScenario implements Scenario {
             RemotePlayer him = ambience().herobrine().figure();
             return him == null ? null : him.position();
         }, "ee4");
+        // Called again, he goes and stands somewhere else.
+        RemotePlayer first = context.computeOnClient(minecraft -> {
+            RemotePlayer him = ambience().herobrine().figure();
+            ambience().herobrine().summon(minecraft.level, minecraft.player, true);
+            return him;
+        });
+        await(context, () -> {
+            RemotePlayer him = ambience().herobrine().figure();
+            return him == null || him == first ? null : him.position();
+        }, "ee4 again");
         Scene.screenshot(context, this, "ee4-corner");
         // Closer, 28 blocks (he goes under 24), looking at him: his eyes. Three degrees to the
         // side keep the crosshair off his face and still count as looking at him (8).
@@ -178,29 +193,45 @@ public final class EasterEggsScenario implements Scenario {
         });
     }
 
-    /** 3: the ghosts, at night, and gone when the player comes near. */
+    /** 3: the ghost, at night, on dry ground only, and gone when the player comes near. */
     private void ghosts(ClientGameTestContext context, TestSingleplayerContext world) {
+        Scene.command(world, "tp @a 0 ~ -160 0 0");
+        // Water over much of what lies ahead: it walks where the ground is dry.
+        Scene.command(world, "execute at @p run fill ~-40 ~-1 ~16 ~40 ~-1 ~96 minecraft:water");
         Scene.command(world, "time set midnight");
-        boolean on = context.computeOnClient(minecraft -> ambience().ghosts().summon(minecraft.level, minecraft.player, true));
-        if (!on) throw new AssertionError("ee3 found no spot");
-        context.runOnClient(minecraft -> minecraft.options.fov().set(40));
-        context.waitTicks(60);
-        Scene.screenshot(context, this, "ee3-night");
-        Scene.command(world, "time set noon");
         context.waitTicks(20);
-        Scene.screenshot(context, this, "ee3-day");
-        Vec3 first = context.computeOnClient(minecraft -> {
-            RemotePlayer leader = ambience().ghosts().figures().get(0);
-            Scene.log("eggs ee3 " + ambience().ghosts().figures().size() + " at " + leader.position());
-            return leader.position();
+        boolean on = context.computeOnClient(minecraft -> ambience().ghosts().summon(minecraft.level, minecraft.player, true));
+        if (!on) throw new AssertionError("ee3 did not start");
+        Vec3 first = await(context, () -> ambience().ghosts().position(), "ee3");
+        context.runOnClient(minecraft -> {
+            Scene.log("eggs ee3 at " + first + ", " + (int) first.distanceTo(minecraft.player.position()) + " blocks");
+            lookAt(minecraft.player, first.x, first.y + 1.0, first.z);
+            minecraft.options.fov().set(30);
         });
-        Scene.command(world, "tp @a " + (first.x + 3) + " ~ " + first.z);
+        for (int i = 0; i < 60; i += 5) {
+            context.waitTicks(5);
+            context.runOnClient(minecraft -> {
+                Vec3 at = ambience().ghosts().position();
+                if (at == null) throw new AssertionError("ee3 gone too soon");
+                int x = Mth.floor(at.x), z = Mth.floor(at.z);
+                int top = minecraft.level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+                if (!minecraft.level.getFluidState(new BlockPos(x, top - 1, z)).isEmpty()) {
+                    throw new AssertionError("ee3 over water at " + at);
+                }
+            });
+        }
+        Scene.screenshot(context, this, "ee3-night");
+        Vec3 now = context.computeOnClient(minecraft -> ambience().ghosts().position());
+        Scene.command(world, "tp @a " + (now.x + 3) + " ~ " + now.z);
         context.waitTicks(10);
         if (context.computeOnClient(minecraft -> ambience().ghosts().busy())) {
-            throw new AssertionError("ee3 still there with the player next to them");
+            throw new AssertionError("ee3 still there with the player next to it");
         }
         context.runOnClient(minecraft -> minecraft.options.fov().set(70));
+        Scene.command(world, "time set noon");
         Scene.command(world, "tp @a 0 ~ -160 0 0");
+        context.waitTicks(5);
+        Scene.command(world, "execute at @p run fill ~-40 ~-1 ~16 ~40 ~-1 ~96 minecraft:grass_block");
         context.waitTicks(20);
     }
 
@@ -216,30 +247,36 @@ public final class EasterEggsScenario implements Scenario {
         Scene.screenshot(context, this, "ee2-cruise");
         context.waitTicks(110);
         Scene.screenshot(context, this, "ee2-stop");
-        for (int i = 0; i < 400 && context.computeOnClient(minecraft -> ambience().pass().busy()); i += 20) {
-            context.waitTicks(20);
-        }
-        if (context.computeOnClient(minecraft -> ambience().pass().busy())) throw new AssertionError("ee2 never left");
+        // Away to the horizon, slowly: still to be seen ten seconds on.
+        context.waitTicks(200);
+        if (!context.computeOnClient(minecraft -> ambience().pass().busy())) throw new AssertionError("ee2 gone too soon");
+        Scene.screenshot(context, this, "ee2-away");
+        stop(context);
         context.runOnClient(minecraft -> {
             minecraft.options.renderDistance().set(16);
             minecraft.player.setXRot(0f);
         });
     }
 
-    /** 5: on the highest point ahead (all the same here), waving, then gone. */
+    /** 5: on the highest point ahead (all the same here), waving from the corner of the eye, gone once looked at. */
     private void waver(ClientGameTestContext context) {
         boolean on = context.computeOnClient(minecraft -> ambience().waver().summon(minecraft.level, minecraft.player, true));
         if (!on) throw new AssertionError("ee5 did not start");
         Vec3 at = await(context, () -> ambience().waver().position(), "ee5");
         context.runOnClient(minecraft -> {
             Scene.log("eggs ee5 at " + at + ", " + (int) at.distanceTo(minecraft.player.position()) + " blocks");
+            // Six degrees to the side: in view, not looked at.
             lookAt(minecraft.player, at.x, at.y + 1.2, at.z);
+            minecraft.player.setYRot(minecraft.player.getYRot() + 6f);
             minecraft.options.fov().set(30);
         });
         context.waitTicks(45);
+        if (!context.computeOnClient(minecraft -> ambience().waver().busy())) throw new AssertionError("ee5 gone before being looked at");
         Scene.screenshot(context, this, "ee5-wave");
-        context.waitTicks(80);
-        if (context.computeOnClient(minecraft -> ambience().waver().busy())) throw new AssertionError("ee5 never left");
+        context.runOnClient(minecraft -> lookAt(minecraft.player, at.x, at.y + 1.2, at.z));
+        context.waitTicks(3);
+        if (context.computeOnClient(minecraft -> ambience().waver().busy())) throw new AssertionError("ee5 still there once looked at");
+        Scene.screenshot(context, this, "ee5-gone");
         context.runOnClient(minecraft -> minecraft.options.fov().set(70));
     }
 
@@ -296,6 +333,13 @@ public final class EasterEggsScenario implements Scenario {
         }
         context.runOnClient(minecraft -> minecraft.options.fov().set(70));
         Scene.command(world, "time set noon");
+    }
+
+    /** Ends whatever easter egg is under way: the switch off and on again. */
+    private static void stop(ClientGameTestContext context) {
+        Scene.configure(context, config -> config.easterEggs = false);
+        context.waitTicks(2);
+        Scene.configure(context, config -> config.easterEggs = true);
     }
 
     /** What an easter egg that looks for its place found, once it has: a few seconds at most. */

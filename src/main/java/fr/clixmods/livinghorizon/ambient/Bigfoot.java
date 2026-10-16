@@ -10,26 +10,35 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Holder;
-import net.minecraft.tags.BiomeTags;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
- * Easter egg 6: now and then, day or night, far off in a forest, a big hairy figure walks
- * across the player's view among the trees, turns its head to look at them once, walks on,
- * and is gone as soon as something stands between them - a trunk, a rock - or the player
- * comes near. Only on this screen.
+ * Easter egg 6: now and then, day or night, far off in a forest anywhere around the player,
+ * as far as the horizon, a big hairy figure walks across their line of sight, turns its head
+ * to look at them once, walks on, and is gone as soon as something stands between them - a
+ * trunk, a rock - or the player comes near. Only on this screen.
  *
- * <p>The figure is drawn of boxes ({@link BoxFigure}), on the ground under the trees, in
- * the light where it walks. It starts out of sight where it can, and once it has been in
- * sight a while, the first obstacle that hides it is where it goes.
+ * <p>Its way is read in the loaded chunks or the far world ({@link Columns}): in a forest, on
+ * ground, never on the leaves the far world shows over its trees, so out there it walks where
+ * the ground shows (a clearing, the edge of the wood). Part of its way must be in sight
+ * ({@link Sight}): in a forest too thick to see into (a jungle), a way all under the leaves
+ * would never be seen. It starts out of sight where it can, and once it has been in sight a
+ * while, the first obstacle that hides it is where it goes. The figure is drawn of boxes
+ * ({@link BoxFigure}), in the light where it walks.
  *
  * <p>Secret: nothing a player reads (settings, README, changelog) says what it is.
  */
@@ -38,27 +47,40 @@ public final class Bigfoot {
             1.0f, 0.36f, 1.0f, 0.95f, 0.6f, 1.25f, 0.3f, 0.55f, 0.1f, 0x5E4329, 0x8C7058);
     /** Blocks per tick it walks; blocks across under which it goes. */
     private static final double PACE = 0.075, NEAR = 18;
-    /** How far off it walks, in blocks across: in the loaded chunks, where the trees are. */
-    private static final double MIN = 80, MAX = 180;
+    /**
+     * How far off it walks, in blocks across: from {@link #MIN} to {@link #MAX}; nearer, from
+     * {@link #CLOSE}, only where the trees hide everything farther.
+     */
+    private static final double MIN = 80, MAX = 400, CLOSE = 30;
+    /** Ways tried; stretches each way is read in; points of it in sight, at least. */
+    private static final int WAYS = 64, ALONG = 6, IN_SIGHT = 2;
     /** Ticks it keeps its head turned to the player. */
     private static final int LOOK = 40;
     /** Ticks in sight before an obstacle may take it; ticks hidden that do; ticks it walks on, at most, to find one. */
     private static final int SEEN = 40, HIDDEN = 4, LONGER = 400;
+    /** Ticks a search may take. */
+    private static final int SEARCH = 400;
 
     private final EggCalendar calendar;
     private final RandomSource random = RandomSource.create();
-    private boolean active;
-    private double x, y, z, xo, yo, zo, dirX, dirZ, walked;
+    /** Counts the searches: a read that comes back for one given up or replaced is dropped. */
+    private final AtomicInteger generation = new AtomicInteger();
+    private @Nullable ClientLevel level;
+    private boolean searching, active, called;
+    private double x, y, z, xo, yo, zo, dirX, dirZ, walked, length;
+    /** Its way, where it is not loaded: the ground at each point read, and whether it is in sight there. */
+    private double[] heights = new double[0];
+    private boolean[] inSight = new boolean[0];
     private float yaw, headYaw, headYawO;
-    private int age, steps, lookAt, light, idle, seen, hidden;
+    private int age, steps, lookAt, light, idle, seen, hidden, searchAge;
 
     Bigfoot(EggCalendar calendar) {
         this.calendar = calendar;
     }
 
-    /** Under way: no other easter egg starts meanwhile. */
+    /** On its way or under way: no other easter egg starts meanwhile. */
     public boolean busy() {
-        return active;
+        return searching || active;
     }
 
     /** Where it walks, while it is there. */
@@ -67,57 +89,133 @@ public final class Bigfoot {
     }
 
     /**
-     * Starts it walking across the view somewhere ahead, far off in a forest: by chance, or
-     * because the player asked ({@code called}: straighter in front of them). False if the
-     * easter eggs are off or no forest ground was found.
+     * Looks for a way across the line of sight, in a forest anywhere around the player, and
+     * walks it once it is read: by chance, or because they asked ({@code called}: in front of
+     * them where it can; called again, it starts over). False if the easter eggs are off.
      */
-    public boolean summon(ClientLevel level, LocalPlayer self, boolean called) {
-        if (!FarConfig.get().easterEggs || level.dimension() != Level.OVERWORLD) return false;
-        if (active) return true;
+    public boolean summon(ClientLevel current, LocalPlayer self, boolean called) {
+        if (!FarConfig.get().easterEggs || current.dimension() != Level.OVERWORLD) return false;
+        if (busy() && !called) return true;
+        clear();
         double look = Math.toRadians(self.getYRot());
-        Vec3 eye = self.getEyePosition();
-        for (int attempt = 0; attempt < 48; attempt++) {
-            double bearing = look + random.nextGaussian() * (called ? 0.35 : 0.6);
-            double distance = MIN + random.nextDouble() * (MAX - MIN);
-            double sx = self.getX() - Math.sin(bearing) * distance, sz = self.getZ() + Math.cos(bearing) * distance;
-            double sy = ground(level, sx, sz);
-            if (Double.isNaN(sy) || !forest(level, sx, sy, sz)) continue;
-            // Across the view, from a few blocks before the spot: out of sight there, if it can be.
+        int walk = 220 + random.nextInt(100);
+        double way = walk * PACE;
+        double[] xs = new double[WAYS * (ALONG + 1)], zs = new double[xs.length], dirs = new double[WAYS * 2];
+        double[] distances = new double[WAYS];
+        for (int w = 0; w < WAYS; w++) {
+            double bearing = called && w % 2 == 0 ? look + random.nextGaussian() * 0.5 : random.nextDouble() * Math.PI * 2;
+            // Most far off; a few nearer, for where the trees hide everything farther.
+            boolean far = w < WAYS * 3 / 4;
+            double distance = far ? MIN + random.nextDouble() * (MAX - MIN) : CLOSE + random.nextDouble() * (MIN - CLOSE);
+            distances[w] = distance;
+            // Across the line of sight, from a few blocks before the spot.
             double side = random.nextBoolean() ? 1 : -1;
             double ax = Math.cos(bearing) * side, az = Math.sin(bearing) * side;
-            double bx = sx - ax * 8, bz = sz - az * 8, start = ground(level, bx, bz);
-            double by = Double.isNaN(start) ? sy : start;
-            if (attempt < 24 && visible(level, self, eye, bx, by, bz)) continue;
-            dirX = ax;
-            dirZ = az;
-            x = xo = bx;
-            z = zo = bz;
-            y = yo = by;
-            yaw = (float) Math.toDegrees(Math.atan2(-dirX, dirZ));
-            headYaw = headYawO = 0f;
-            steps = 220 + random.nextInt(100);
-            lookAt = steps * 2 / 5;
-            walked = 0;
-            age = 0;
-            seen = hidden = 0;
-            light = BoxFigure.light(level, x, y, z);
-            active = true;
-            return true;
+            double sx = self.getX() - Math.sin(bearing) * distance - ax * 8;
+            double sz = self.getZ() + Math.cos(bearing) * distance - az * 8;
+            dirs[2 * w] = ax;
+            dirs[2 * w + 1] = az;
+            for (int k = 0; k <= ALONG; k++) {
+                xs[w * (ALONG + 1) + k] = sx + ax * way * k / ALONG;
+                zs[w * (ALONG + 1) + k] = sz + az * way * k / ALONG;
+            }
         }
-        return false;
+        this.called = called;
+        level = current;
+        searching = true;
+        searchAge = 0;
+        int mine = generation.get();
+        Executor game = Minecraft.getInstance();
+        Vec3 eye = self.getEyePosition();
+        Columns.read(current, xs, zs).thenAcceptAsync(columns -> {
+            if (generation.get() != mine) return;
+            // On ground all along, in a forest most of the way, no step too high to walk.
+            List<Integer> forest = new ArrayList<>();
+            for (int w = 0; w < WAYS; w++) {
+                boolean ok = true;
+                int trees = 0;
+                for (int k = 0; k <= ALONG && ok; k++) {
+                    Columns.Column column = columns[w * (ALONG + 1) + k];
+                    ok = column.dry() && (k == 0 || Math.abs(column.y() - columns[w * (ALONG + 1) + k - 1].y()) <= 4);
+                    if (forest(column.biome())) trees++;
+                }
+                if (ok && trees * 2 > ALONG) forest.add(w);
+            }
+            int points = forest.size() * (ALONG + 1);
+            double[] hx = new double[points], hy = new double[points], hz = new double[points];
+            for (int i = 0; i < forest.size(); i++) {
+                for (int k = 0; k <= ALONG; k++) {
+                    Columns.Column column = columns[forest.get(i) * (ALONG + 1) + k];
+                    hx[i * (ALONG + 1) + k] = column.x();
+                    hy[i * (ALONG + 1) + k] = column.y() + 2.3;
+                    hz[i * (ALONG + 1) + k] = column.z();
+                }
+            }
+            Sight.of(current, self, eye, hx, hy, hz).thenAcceptAsync(sight -> {
+                if (generation.get() != mine) return;
+                searching = false;
+                // Seen somewhere along: far before near, out of sight at the start before not.
+                int best = -1, bestRank = -1;
+                for (int i = 0; i < forest.size(); i++) {
+                    int along = 0;
+                    for (int k = 1; k <= ALONG; k++) if (sight[i * (ALONG + 1) + k]) along++;
+                    if (along < IN_SIGHT) continue;
+                    int rank = (distances[forest.get(i)] >= MIN ? 2 : 0) + (sight[i * (ALONG + 1)] ? 0 : 1);
+                    if (rank > bestRank || rank == bestRank && random.nextBoolean()) {
+                        best = i;
+                        bestRank = rank;
+                    }
+                }
+                if (best < 0) return;
+                int w = forest.get(best);
+                double[] ys = new double[ALONG + 1];
+                boolean[] seenAt = new boolean[ALONG + 1];
+                for (int k = 0; k <= ALONG; k++) {
+                    ys[k] = columns[w * (ALONG + 1) + k].y();
+                    seenAt[k] = sight[best * (ALONG + 1) + k];
+                }
+                begin(current, xs[w * (ALONG + 1)], zs[w * (ALONG + 1)], dirs[2 * w], dirs[2 * w + 1], ys, seenAt, way, walk);
+            }, game);
+        }, game);
+        return true;
+    }
+
+    private void begin(ClientLevel current, double sx, double sz, double ax, double az,
+                       double[] ys, boolean[] seenAt, double way, int walk) {
+        if (!called) calendar.shown(6);
+        dirX = ax;
+        dirZ = az;
+        x = xo = sx;
+        z = zo = sz;
+        heights = ys;
+        inSight = seenAt;
+        double ground = ground(current, x, z);
+        y = yo = Double.isNaN(ground) ? ys[0] : ground;
+        yaw = (float) Math.toDegrees(Math.atan2(-dirX, dirZ));
+        headYaw = headYawO = 0f;
+        length = way;
+        steps = walk;
+        lookAt = steps * 2 / 5;
+        walked = 0;
+        age = 0;
+        seen = hidden = 0;
+        light = BoxFigure.light(current, x, y, z);
+        active = true;
     }
 
     /** {@code quiet}: no other easter egg under way, so this one may start by chance. */
-    public void tick(ClientLevel level, LocalPlayer self, boolean enabled, boolean quiet) {
-        if (!enabled) {
-            active = false;
+    public void tick(ClientLevel current, LocalPlayer self, boolean enabled, boolean quiet) {
+        if (busy() && (!enabled || current != level)) clear();
+        if (!enabled) return;
+        if (searching) {
+            if (++searchAge > SEARCH) clear();
             return;
         }
         if (!active) {
-            // Rare, day or night: about once in an hour and a half, where a forest stands ahead.
+            // Rare, day or night: about once in an hour and a half, where a forest stands around.
             if (++idle > 6000 && quiet && random.nextInt(108000) == 0) {
                 idle = 0;
-                if (summon(level, self, false)) calendar.shown(6);
+                summon(current, self, false);
             }
             return;
         }
@@ -129,43 +227,69 @@ public final class Bigfoot {
         x += dirX * PACE;
         z += dirZ * PACE;
         walked += PACE;
-        double ground = ground(level, x, z);
-        if (!Double.isNaN(ground)) y += (ground - y) * 0.3;
+        double ground = ground(current, x, z);
+        if (Double.isNaN(ground)) ground = alongWay();
+        y += (ground - y) * 0.3;
         // Once on its way, it turns its head to the player, then looks ahead again.
         float toPlayer = Mth.wrapDegrees((float) Math.toDegrees(Math.atan2(-(self.getX() - x), self.getZ() - z)) - yaw);
         float wanted = age > lookAt && age < lookAt + LOOK ? Mth.clamp(toPlayer, -100f, 100f) : 0f;
         headYaw += Mth.clamp(wanted - headYaw, -8f, 8f);
-        light = BoxFigure.light(level, x, y, z);
+        light = BoxFigure.light(current, x, y, z);
         // Seen for a while, it goes behind the first thing that hides it; past its walk, as soon
         // as something does, or anyway a little later.
-        if (visible(level, self, self.getEyePosition(), x, y, z)) {
+        if (visible(current, self)) {
             seen++;
             hidden = 0;
         } else {
             hidden++;
         }
         boolean gone = hidden >= HIDDEN && (seen >= SEEN || age > steps);
-        if (gone || age > steps + LONGER || Math.hypot(self.getX() - x, self.getZ() - z) < NEAR) active = false;
+        if (gone || age > steps + LONGER || Math.hypot(self.getX() - x, self.getZ() - z) < NEAR) clear();
     }
 
-    /** Its head or its chest in sight of the player's eye. */
-    private static boolean visible(ClientLevel level, LocalPlayer self, Vec3 eye, double x, double y, double z) {
+    private void clear() {
+        generation.incrementAndGet();
+        searching = active = false;
+        level = null;
+    }
+
+    /** The ground read along its way, where it is now: between two points, linearly. */
+    private double alongWay() {
+        double f = Mth.clamp(walked / length, 0, 1) * ALONG;
+        int i = Math.min(ALONG - 1, (int) f);
+        return Mth.lerp(f - i, heights[i], heights[i + 1]);
+    }
+
+    /**
+     * In sight of the player: its head or its chest through the loaded blocks; where it is not
+     * loaded, as the far world said of the nearest point of its way.
+     */
+    private boolean visible(ClientLevel level, LocalPlayer self) {
+        if (!level.hasChunk(Mth.floor(x) >> 4, Mth.floor(z) >> 4)) {
+            return inSight[(int) Math.round(Mth.clamp(walked / length, 0, 1) * ALONG)];
+        }
+        Vec3 eye = self.getEyePosition();
         return Ghosts.inSight(level, self, eye, x, y + 2.3, z) || Ghosts.inSight(level, self, eye, x, y + 1.4, z);
     }
 
-    /** Forest, taiga or jungle. */
-    private static boolean forest(ClientLevel level, double x, double y, double z) {
-        Holder<Biome> biome = level.getBiome(BlockPos.containing(x, y, z));
-        return biome.is(BiomeTags.IS_FOREST) || biome.is(BiomeTags.IS_TAIGA) || biome.is(BiomeTags.IS_JUNGLE);
+    /** A forest, by the name of its biome: forest, taiga, jungle, woods, groves, pale gardens. */
+    private static boolean forest(String biome) {
+        String id = biome.toLowerCase(Locale.ROOT);
+        return id.contains("forest") || id.contains("taiga") || id.contains("jungle") || id.contains("wood")
+                || id.contains("grove") || id.contains("pale_garden");
     }
 
-    /** The ground of a column, under its trees: below the trunks the heightmap stands on. NaN where not loaded. */
+    /** The ground of a loaded column, under its trees: below the trunks and bamboo the heightmap stands on. NaN where not loaded. */
     private static double ground(ClientLevel level, double x, double z) {
         int bx = Mth.floor(x), bz = Mth.floor(z);
         if (!level.hasChunk(bx >> 4, bz >> 4)) return Double.NaN;
         BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos(
                 bx, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, bx, bz) - 1, bz);
-        for (int i = 0; i < 32 && level.getBlockState(at).is(BlockTags.LOGS); i++) at.move(0, -1, 0);
+        for (int i = 0; i < 32; i++) {
+            BlockState state = level.getBlockState(at);
+            if (!state.is(BlockTags.LOGS) && !state.is(Blocks.BAMBOO)) break;
+            at.move(0, -1, 0);
+        }
         return at.getY() + 1;
     }
 

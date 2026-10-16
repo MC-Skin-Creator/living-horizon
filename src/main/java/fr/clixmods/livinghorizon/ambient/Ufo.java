@@ -55,12 +55,16 @@ public final class Ufo {
     static final int BRIGHT = LightTexture.FULL_BRIGHT, LIT = LightTexture.pack(0, 15);
     private static final String COW = "minecraft:cow";
 
-    /** Ticks of the show: arrive, beam on, lift, beam off, wait, climb away, dash off. */
+    /** Ticks of the show: arrive, beam on, lift, beam off, wait, then away. */
     private static final int ARRIVED = 240, BEAM = 300, LIFTED = 480, TAKEN = 500, GONE = 520;
-    /** The slow climb into the distance (15 seconds), then the sudden dash (1.5 seconds). */
-    private static final int CLIMB = 300, DASH = 30, DASH_AT = GONE + CLIMB, END = DASH_AT + DASH;
-    /** Where the climb ends, in blocks: along the way out, and up. */
-    private static final double CLIMB_OUT = 550, CLIMB_UP = 280;
+    /**
+     * Away, slowly to the horizon: blocks per tick it gains, up to its speed; blocks it climbs
+     * for each it goes out. It is gone once a pixel or so on screen, or after five minutes.
+     */
+    private static final double AWAY_GAIN = 0.02, AWAY_SPEED = 4, AWAY_RISE = 0.3;
+    private static final int AWAY_LONGEST = 6000;
+    /** Blocks across the saucer, its rim; screen pixels under which it is too small to see. */
+    private static final double WIDTH = 14, TINY = 1.0;
     /** Blocks from the ground to the saucer's middle while it hovers. */
     private static final double HOVER = 16;
     /** How far the remembered cow may be, in blocks across: when called, and by chance. */
@@ -91,6 +95,8 @@ public final class Ufo {
     private @Nullable LivingEntity twin;
     private double groundX, groundY, groundZ;
     private double fromX, fromY, fromZ, awayX, awayZ;
+    /** Blocks it has gone on its way off, and how fast it goes. */
+    private double out, awaySpeed;
     private double x, y, z, xo, yo, zo;
     private float spin, spinO, tilt, tiltO, beam, beamO, heading;
     private @Nullable LivingEntity cow;
@@ -112,9 +118,9 @@ public final class Ufo {
     }
 
     /**
-     * Starts the show over a cow this client remembers, an adult one drawn far away: by
-     * chance, ahead of the player, or because they asked ({@code called}: nearer, and
-     * anywhere around if none is ahead).
+     * Starts the show over a cow this client remembers, an adult one drawn far away, ahead of
+     * the player where there is one, anywhere around otherwise: by chance, or because they
+     * asked ({@code called}: nearer).
      */
     public Call summon(ClientLevel level, LocalPlayer self, boolean called) {
         if (!FarConfig.get().easterEggs || level.dimension() != Level.OVERWORLD) return Call.NOTHING;
@@ -132,7 +138,7 @@ public final class Ufo {
             if (across < close || across > far) continue;
             ((dx * lookX + dz * lookZ) / across > AHEAD ? ahead : around).add(mob);
         }
-        Call call = !ahead.isEmpty() ? Call.AHEAD : called && !around.isEmpty() ? Call.AROUND : Call.NOTHING;
+        Call call = !ahead.isEmpty() ? Call.AHEAD : !around.isEmpty() ? Call.AROUND : Call.NOTHING;
         if (call == Call.NOTHING) return call;
         List<MobMemory.Remembered> from = call == Call.AHEAD ? ahead : around;
         MobMemory.Remembered chosen = from.get(random.nextInt(from.size()));
@@ -182,7 +188,7 @@ public final class Ufo {
             begin(self, ground[0], ground[1], ground[2]);
             return;
         }
-        step();
+        step(self);
     }
 
     /** Picks a spot beside the remembered cow and finds its ground, here or in the far world. */
@@ -195,8 +201,11 @@ public final class Ufo {
             boolean wet = !level.getFluidState(new BlockPos(gx, top - 1, gz)).isEmpty();
             foundGround.set(new double[]{sx, wet ? Double.NaN : top, sz});
         } else {
-            LodWorld.surface(gx, gz).thenAccept(surface -> foundGround.set(new double[]{sx,
-                    surface.isPresent() && !surface.get().water() ? surface.get().y() + 1 : Double.NaN, sz}));
+            LodWorld.surface(gx, gz).handle((surface, error) -> {
+                foundGround.set(new double[]{sx,
+                        surface != null && surface.isPresent() && !surface.get().water() ? surface.get().y() + 1 : Double.NaN, sz});
+                return null;
+            });
         }
     }
 
@@ -229,11 +238,12 @@ public final class Ufo {
         z = zo = fromZ;
         heading = (float) Math.toDegrees(Math.atan2(-(gx - fromX), gz - fromZ));
         age = 0;
+        out = awaySpeed = 0;
         beam = beamO = tilt = tiltO = 0f;
         active = true;
     }
 
-    private void step() {
+    private void step(LocalPlayer self) {
         age++;
         xo = x;
         yo = y;
@@ -258,23 +268,16 @@ public final class Ufo {
             if (age > ARRIVED && age <= BEAM) beam = (age - ARRIVED) / (float) (BEAM - ARRIVED);
             if (age > LIFTED) beam = Math.max(0f, 1f - (age - LIFTED) / (float) (TAKEN - LIFTED));
         } else {
-            // Off: a long, slow climb into the distance, then a sudden dash.
+            // Off: slowly faster, climbing a little, to the horizon, until it is a speck.
             int k = age - GONE;
             heading = (float) Math.toDegrees(Math.atan2(-awayX, awayZ));
-            double t = Math.min(k, CLIMB) / (double) CLIMB, ease = 0.5 * t + 0.5 * t * t;
-            double out = CLIMB_OUT * ease, up = CLIMB_UP * ease;
-            if (age > DASH_AT) {
-                // Along the climb's own line, from the speed it had, faster every tick.
-                int j = age - DASH_AT;
-                double speed = Math.hypot(CLIMB_OUT, CLIMB_UP) * 1.5 / CLIMB;
-                double length = Math.hypot(CLIMB_OUT, CLIMB_UP), run = speed * j + 1.2 * j * j;
-                out += CLIMB_OUT / length * run;
-                up += CLIMB_UP / length * run;
-            }
+            awaySpeed = Math.min(AWAY_SPEED, awaySpeed + AWAY_GAIN);
+            out += awaySpeed;
             x = groundX + awayX * out;
             z = groundZ + awayZ * out;
-            y = hoverY + up;
+            y = groundY + HOVER + out * AWAY_RISE;
             tilt = Math.min(25f, k * 0.15f);
+            if (tiny(self.getEyePosition().distanceTo(new Vec3(x, y, z))) || k > AWAY_LONGEST) active = false;
         }
 
         if (cow != null) {
@@ -298,7 +301,11 @@ public final class Ufo {
             cow.tickCount++;
             cowShown = age <= LIFTED + 4;
         }
-        if (age >= END) active = false;
+    }
+
+    /** A saucer this far off is a pixel or so on screen, as this frame is projected. */
+    static boolean tiny(double distance) {
+        return WIDTH / distance * DepthFar.pixelsPerRadian(Minecraft.getInstance()) < TINY;
     }
 
     // --- Drawing --------------------------------------------------------------------------

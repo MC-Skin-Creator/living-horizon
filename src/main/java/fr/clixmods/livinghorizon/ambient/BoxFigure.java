@@ -1,10 +1,12 @@
 package fr.clixmods.livinghorizon.ambient;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import fr.clixmods.livinghorizon.render.Sink;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.LightLayer;
 
@@ -31,28 +33,36 @@ final class BoxFigure {
      * up), {@code headYaw} turns the head from the body.
      */
     static void draw(PoseStack pose, Sink collector, Shape shape, float swing, float raise, float headYaw, int light) {
+        draw(pose, collector, shape, swing, raise, headYaw, light, Ufo.SOLID, 255, false);
+    }
+
+    /**
+     * The same in a render type of its own, see-through as much as {@code alpha} says (for a
+     * translucent one); {@code seated}, the legs straight out in front from the hips.
+     */
+    static void draw(PoseStack pose, Sink collector, Shape shape, float swing, float raise, float headYaw, int light,
+                     RenderType type, int alpha, boolean seated) {
         float hip = shape.leg(), shoulder = shape.leg() + shape.body();
         float bw = shape.bodyWidth() / 2, bd = shape.bodyDepth() / 2;
         float lw = shape.legWidth() / 2;
-        limb(pose, collector, -lw, hip, swing, 0, -lw, lw, shape.legWidth(), shape.leg(), shape.fur(), light);
-        limb(pose, collector, lw, hip, -swing, 0, -lw, lw, shape.legWidth(), shape.leg(), shape.fur(), light);
-        int fur = shape.fur();
-        collector.draw(pose, Ufo.SOLID, (at, out) -> Ufo.box(at, out, -bw, hip, -bd, bw, shoulder, bd,
-                red(fur), green(fur), blue(fur), light));
+        Paint fur = new Paint(type, shape.fur(), alpha, light);
+        limb(pose, collector, -lw, hip, seated ? -90 : swing, 0, -lw, lw, shape.legWidth(), shape.leg(), fur);
+        limb(pose, collector, lw, hip, seated ? -90 : -swing, 0, -lw, lw, shape.legWidth(), shape.leg(), fur);
+        collector.draw(pose, type, (at, out) -> fur.box(at, out, -bw, hip, -bd, bw, shoulder, bd));
         // Each arm turns on its inner top corner, against the body, a little under the shoulder
         // line as a model's arm is: raised, it stays on the shoulder.
         float aw = shape.armWidth(), socket = shoulder - aw * 0.3f;
-        limb(pose, collector, -bw, socket, -swing, raise, -aw, 0, aw, shape.arm(), fur, light);
-        limb(pose, collector, bw, socket, swing, 0, 0, aw, aw, shape.arm(), fur, light);
+        limb(pose, collector, -bw, socket, -swing, raise, -aw, 0, aw, shape.arm(), fur);
+        limb(pose, collector, bw, socket, swing, 0, 0, aw, aw, shape.arm(), fur);
 
         float h = shape.head() / 2;
         int face = shape.face();
         pose.pushPose();
         pose.translate(0, shoulder, shape.headForward());
         pose.mulPose(Axis.YP.rotationDegrees(headYaw));
-        collector.draw(pose, Ufo.SOLID, (at, out) -> {
-            Ufo.box(at, out, -h, 0, -h, h, 2 * h, h, red(fur), green(fur), blue(fur), light);
-            if (face != fur) {
+        collector.draw(pose, type, (at, out) -> {
+            fur.box(at, out, -h, 0, -h, h, 2 * h, h);
+            if (face != shape.fur()) {
                 Ufo.box(at, out, -h * 0.7f, h * 0.25f, h, h * 0.7f, h * 1.35f, h + 0.01f,
                         red(face), green(face), blue(face), light);
                 // Eyes, dark, under the brow.
@@ -71,15 +81,22 @@ final class BoxFigure {
      * it: swung forwards or back, then lifted sideways.
      */
     private static void limb(PoseStack pose, Sink collector, float x, float y, float swing, float raise,
-                             float x0, float x1, float depth, float length, int colour, int light) {
+                             float x0, float x1, float depth, float length, Paint paint) {
         float d = depth / 2;
         pose.pushPose();
         pose.translate(x, y, 0);
         if (raise != 0) pose.mulPose(Axis.ZP.rotationDegrees(raise));
         pose.mulPose(Axis.XP.rotationDegrees(swing));
-        collector.draw(pose, Ufo.SOLID, (at, out) -> Ufo.box(at, out, x0, -length, -d, x1, 0, d,
-                red(colour), green(colour), blue(colour), light));
+        collector.draw(pose, paint.type(), (at, out) -> paint.box(at, out, x0, -length, -d, x1, 0, d));
         pose.popPose();
+    }
+
+    /** How a box of the figure is drawn: its render type, colour, alpha and light. */
+    private record Paint(RenderType type, int colour, int alpha, int light) {
+        void box(PoseStack.Pose at, VertexConsumer out,
+                 float x0, float y0, float z0, float x1, float y1, float z1) {
+            Ufo.box(at, out, x0, y0, z0, x1, y1, z1, red(colour), green(colour), blue(colour), alpha, light);
+        }
     }
 
     /**

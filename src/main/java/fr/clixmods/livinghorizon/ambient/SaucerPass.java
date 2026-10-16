@@ -14,20 +14,21 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Easter egg 2: now and then, high up, the saucer of {@link Ufo} crosses the sky in front
- * of the player, stops dead for a moment, and darts off another way. Only on this screen.
+ * Easter egg 2: now and then, high up, the saucer of {@link Ufo} crosses the sky somewhere
+ * around the player, stops dead for a moment, and goes off another way, to the horizon,
+ * until it is a speck. Only on this screen.
  *
  * <p>Secret: nothing a player reads (settings, README, changelog) says what it is.
  */
 public final class SaucerPass {
-    /** Blocks per tick while it cruises; how much faster it goes every tick of its dash. */
-    private static final double CRUISE = 3.5, DASH_GAIN = 0.6;
-    /** Ticks of the dash, after which it is too far and too small to be seen. */
-    private static final int DASH = 60;
+    /** Blocks per tick while it cruises; blocks per tick it gains on its way off, up to its speed. */
+    private static final double CRUISE = 3.5, AWAY_GAIN = 0.03, AWAY_SPEED = 4;
+    /** Ticks it goes on its way off at most: before that, it is gone once a pixel or so on screen. */
+    private static final int AWAY_LONGEST = 6000;
     /** Half the length of its way across, in blocks. */
     private static final double HALF = 650;
 
-    private enum Phase { CRUISE, HOVER, DASH }
+    private enum Phase { CRUISE, HOVER, AWAY }
 
     private final EggCalendar calendar;
     private final RandomSource random = RandomSource.create();
@@ -35,8 +36,8 @@ public final class SaucerPass {
     private Phase phase = Phase.CRUISE;
     private int age, timer, idle;
     private double x, y, z, xo, yo, zo, hoverY;
-    /** Which way it cruises, flat; which way it dashes off, climbing. */
-    private double dirX, dirZ, dashX, dashY, dashZ;
+    /** Which way it cruises, flat; which way it goes off, climbing a little. */
+    private double dirX, dirZ, awayX, awayY, awayZ;
     private double stopAt, travelled, speed;
     private float heading, tilt, tiltO, spin, spinO;
 
@@ -50,14 +51,14 @@ public final class SaucerPass {
     }
 
     /**
-     * Starts a pass across the sky ahead of the player: by chance, or because they asked
-     * ({@code called}: straighter in front of them). False if the easter eggs are off.
+     * Starts a pass across the sky around the player: by chance anywhere, or because they
+     * asked ({@code called}: in front of them). False if the easter eggs are off.
      */
     public boolean summon(ClientLevel level, LocalPlayer self, boolean called) {
         if (!FarConfig.get().easterEggs || level.dimension() != Level.OVERWORLD) return false;
         if (active) return true;
-        // Its way runs square to where the player looks, some way ahead of them.
-        double look = Math.toRadians(self.getYRot()) + random.nextGaussian() * (called ? 0.15 : 0.5);
+        // Its way runs square to a line from the player, some way out along it.
+        double look = called ? Math.toRadians(self.getYRot()) + random.nextGaussian() * 0.15 : random.nextDouble() * Math.PI * 2;
         double fx = -Math.sin(look), fz = Math.cos(look);
         double ahead = 220 + random.nextDouble() * 180, side = random.nextBoolean() ? 1 : -1;
         dirX = -fz * side;
@@ -116,26 +117,27 @@ public final class SaucerPass {
                 y = hoverY + 0.6 * Math.sin(age * 0.2);
                 tilt = 0f;
                 if (--timer <= 0) {
-                    // Off another way, climbing, faster every tick.
+                    // Off another way, to the horizon, climbing a little, slowly faster.
                     double turn = (random.nextBoolean() ? 1 : -1) * (0.4 + random.nextDouble() * 0.8);
                     double nx = dirX * Math.cos(turn) - dirZ * Math.sin(turn);
                     double nz = dirX * Math.sin(turn) + dirZ * Math.cos(turn);
-                    double up = 0.25 + random.nextDouble() * 0.35, length = Math.sqrt(1 + up * up);
-                    dashX = nx / length;
-                    dashY = up / length;
-                    dashZ = nz / length;
+                    double up = 0.08 + random.nextDouble() * 0.12, length = Math.sqrt(1 + up * up);
+                    awayX = nx / length;
+                    awayY = up / length;
+                    awayZ = nz / length;
                     heading = (float) Math.toDegrees(Math.atan2(-nx, nz));
-                    speed = 0.5;
-                    phase = Phase.DASH;
+                    speed = 0.2;
+                    timer = 0;
+                    phase = Phase.AWAY;
                 }
             }
-            case DASH -> {
-                speed += DASH_GAIN;
-                x += dashX * speed;
-                y += dashY * speed;
-                z += dashZ * speed;
-                tilt = Math.min(25f, tilt + 3f);
-                if (++timer > DASH) active = false;
+            case AWAY -> {
+                speed = Math.min(AWAY_SPEED, speed + AWAY_GAIN);
+                x += awayX * speed;
+                y += awayY * speed;
+                z += awayZ * speed;
+                tilt = Math.min(20f, tilt + 0.5f);
+                if (Ufo.tiny(self.getEyePosition().distanceTo(new Vec3(x, y, z))) || ++timer > AWAY_LONGEST) active = false;
             }
         }
     }

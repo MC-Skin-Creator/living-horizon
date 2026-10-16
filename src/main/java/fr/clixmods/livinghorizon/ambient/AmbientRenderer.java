@@ -53,6 +53,7 @@ public final class AmbientRenderer {
             ambience.herobrine().submit(pose, camera, collector, partial);
             ambience.waver().submit(pose, camera, collector, partial);
             ambience.bigfoot().submit(pose, camera, collector, partial);
+            ambience.ghosts().submit(pose, camera, collector, partial);
             ambience.ghostBoat().submit(pose, camera, collector, partial);
         }
         for (Ambience.Flyer bird : FarPlayerTracker.get().ambience().flyers()) {

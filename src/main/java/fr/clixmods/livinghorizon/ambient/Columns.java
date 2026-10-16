@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon.ambient;
 import fr.clixmods.livinghorizon.compat.LodWorld;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.levelgen.Heightmap;
 
@@ -16,10 +17,19 @@ import java.util.concurrent.CompletableFuture;
  * thread where it is not.
  */
 final class Columns {
-    /** One column: the height to stand at, whether that is water, its biome. NaN where nothing is known. */
-    record Column(double x, double z, double y, boolean water, String biome) {
+    /**
+     * One column: the height to stand at, whether that is water, its biome; NaN where
+     * nothing is known. {@code canopy}: the far world's top is leaves, the ground under them
+     * unknown (a loaded column gives the ground under its trees).
+     */
+    record Column(double x, double z, double y, boolean water, String biome, boolean canopy) {
         boolean known() {
             return !Double.isNaN(y);
+        }
+
+        /** Known ground, out of the water and under no leaves: somewhere to walk. */
+        boolean dry() {
+            return known() && !water && !canopy;
         }
     }
 
@@ -39,7 +49,7 @@ final class Columns {
             int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, bx, bz);
             BlockPos under = new BlockPos(bx, top - 1, bz);
             String biome = level.getBiome(under).unwrapKey().map(key -> key.identifier().toString()).orElse("");
-            found[i] = new Column(xs[i], zs[i], top, !level.getFluidState(under).isEmpty(), biome);
+            found[i] = new Column(xs[i], zs[i], top, !level.getFluidState(under).isEmpty(), biome, false);
         }
         if (far.isEmpty()) return CompletableFuture.completedFuture(found);
         int[] fx = new int[far.size()], fz = new int[far.size()];
@@ -47,12 +57,14 @@ final class Columns {
             fx[k] = Mth.floor(xs[far.get(k)]);
             fz[k] = Mth.floor(zs[far.get(k)]);
         }
-        return LodWorld.surfaces(fx, fz).thenApply(surfaces -> {
+        return LodWorld.surfaces(fx, fz).handle((surfaces, error) -> {
+            // A far world that fails leaves those columns unknown, never the search hanging.
             for (int k = 0; k < far.size(); k++) {
                 int i = far.get(k);
-                LodWorld.Surface surface = surfaces[k];
-                found[i] = surface == null ? new Column(xs[i], zs[i], Double.NaN, false, "")
-                        : new Column(xs[i], zs[i], surface.y() + 1, surface.water(), surface.biome());
+                LodWorld.Surface surface = surfaces == null ? null : surfaces[k];
+                found[i] = surface == null ? new Column(xs[i], zs[i], Double.NaN, false, "", false)
+                        : new Column(xs[i], zs[i], surface.y() + 1, surface.water(), surface.biome(),
+                        surface.block() != null && surface.block().is(BlockTags.LEAVES));
             }
             return found;
         });

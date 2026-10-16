@@ -1,6 +1,5 @@
 package fr.clixmods.livinghorizon.ambient;
 
-import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
@@ -8,11 +7,9 @@ import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
-import fr.clixmods.livinghorizon.track.Puppets;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.player.RemotePlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
@@ -23,17 +20,17 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Easter egg 7: some night, out on open water, an empty rowing boat drifts, pale and
- * see-through, a ghost sitting in it, see-through as well; both are gone when the player
- * comes near. Only on this screen.
+ * Easter egg 7: some night, out on open water anywhere around the player, as far as the
+ * horizon, a rowing boat drifts, pale and see-through, a ghost sitting in it; both are gone
+ * when the player comes near. Only on this screen.
  *
- * <p>The water is found in a fan of columns ahead, loaded or in the far world
- * ({@link Columns}), each with water all round. The boat is drawn of glowing translucent
- * boxes; the ghost is a player of no one, seated, drawn see-through as {@link Ghosts} are.
+ * <p>The water is found in rings of columns all around, loaded or in the far world
+ * ({@link Columns}), each with water all round, in sight ({@link Sight}). The boat and the
+ * ghost are drawn of glowing, see-through boxes, the ghost as {@link Ghosts} are.
  *
  * <p>Secret: nothing a player reads (settings, README, changelog) says what it is.
  */
@@ -44,16 +41,20 @@ public final class GhostBoat {
     private static final int LIFE = 4800;
     /** Height of the bench above the water, where the ghost sits. */
     private static final double SEAT = 0.3;
+    /** How far off it may drift, in blocks across: by chance, and when called. */
+    private static final double MIN = 50, MAX = 600, CALLED_MIN = 30, CALLED_MAX = 300;
+    /** Ticks a search may take. */
+    private static final int SEARCH = 400;
 
     private final EggCalendar calendar;
     private final RandomSource random = RandomSource.create();
-    private final AtomicReference<Columns.Column @Nullable []> found = new AtomicReference<>();
-    private @Nullable RemotePlayer rider;
+    /** Counts the searches: a read that comes back for one given up or replaced is dropped. */
+    private final AtomicInteger generation = new AtomicInteger();
     private @Nullable ClientLevel level;
     private boolean searching, active, called;
     private double x, y, z, xo, yo, zo, surface, dirX, dirZ;
     private float yaw, yawO, turn;
-    private int age, idle;
+    private int age, idle, searchAge;
 
     GhostBoat(EggCalendar calendar) {
         this.calendar = calendar;
@@ -69,41 +70,60 @@ public final class GhostBoat {
         return active ? new Vec3(x, y, z) : null;
     }
 
-    /** The ghost in the boat, to draw seated. */
-    public @Nullable RemotePlayer rider() {
-        return active ? rider : null;
-    }
-
     /**
-     * Looks for open water ahead, and sets the boat drifting there once it is read: by
-     * chance, or because the player asked ({@code called}: nearer). False if the easter eggs
-     * are off.
+     * Looks for open water in sight, and sets the boat drifting there once it is read: by
+     * chance anywhere around, or because the player asked ({@code called}: in front of them,
+     * nearer; called again, it starts over). False if the easter eggs are off.
      */
     public boolean summon(ClientLevel current, LocalPlayer self, boolean called) {
         if (!FarConfig.get().easterEggs || current.dimension() != Level.OVERWORLD) return false;
-        if (busy()) return true;
-        int bearings = 7, rings = 6;
+        if (busy() && !called) return true;
+        clear();
+        int spots = 84;
         double look = Math.toRadians(self.getYRot());
         // Each spot and four around it, four blocks away: water all round is open water.
-        double[] xs = new double[bearings * rings * 5], zs = new double[xs.length];
+        double[] xs = new double[spots * 5], zs = new double[xs.length];
         int[][] around = {{0, 0}, {4, 0}, {-4, 0}, {0, 4}, {0, -4}};
-        for (int b = 0, i = 0; b < bearings; b++) {
-            double bearing = look + (b - (bearings - 1) / 2.0) * 0.13;
-            for (int r = 0; r < rings; r++) {
-                double distance = called ? 30 + r * 15 : 50 + r * 18;
-                double cx = Mth.floor(self.getX() - Math.sin(bearing) * distance) + 0.5;
-                double cz = Mth.floor(self.getZ() + Math.cos(bearing) * distance) + 0.5;
-                for (int[] d : around) {
-                    xs[i] = cx + d[0];
-                    zs[i++] = cz + d[1];
-                }
+        for (int s = 0, i = 0; s < spots; s++) {
+            double bearing = called ? look + random.nextGaussian() * 0.5 : random.nextDouble() * Math.PI * 2;
+            double distance = called ? CALLED_MIN + random.nextDouble() * (CALLED_MAX - CALLED_MIN)
+                    : MIN + random.nextDouble() * (MAX - MIN);
+            double cx = Mth.floor(self.getX() - Math.sin(bearing) * distance) + 0.5;
+            double cz = Mth.floor(self.getZ() + Math.cos(bearing) * distance) + 0.5;
+            for (int[] d : around) {
+                xs[i] = cx + d[0];
+                zs[i++] = cz + d[1];
             }
         }
         this.called = called;
         level = current;
-        found.set(null);
-        Columns.read(current, xs, zs).thenAccept(found::set);
         searching = true;
+        searchAge = 0;
+        int mine = generation.get();
+        Executor game = Minecraft.getInstance();
+        Vec3 eye = self.getEyePosition();
+        Columns.read(current, xs, zs).thenAcceptAsync(columns -> {
+            if (generation.get() != mine) return;
+            List<Columns.Column> open = new ArrayList<>();
+            for (int i = 0; i < columns.length; i += 5) {
+                boolean water = true;
+                for (int k = 0; k < 5; k++) water &= columns[i + k].known() && columns[i + k].water();
+                if (water) open.add(columns[i]);
+            }
+            double[] hx = new double[open.size()], hy = new double[open.size()], hz = new double[open.size()];
+            for (int i = 0; i < open.size(); i++) {
+                hx[i] = open.get(i).x();
+                hy[i] = open.get(i).y() + 0.8;
+                hz[i] = open.get(i).z();
+            }
+            Sight.of(current, self, eye, hx, hy, hz).thenAcceptAsync(seen -> {
+                if (generation.get() != mine) return;
+                searching = false;
+                List<Columns.Column> clear = new ArrayList<>();
+                for (int i = 0; i < seen.length; i++) if (seen[i]) clear.add(open.get(i));
+                if (!clear.isEmpty()) begin(clear.get(random.nextInt(clear.size())));
+            }, game);
+        }, game);
         return true;
     }
 
@@ -120,17 +140,7 @@ public final class GhostBoat {
             return;
         }
         if (searching) {
-            Columns.Column[] columns = found.getAndSet(null);
-            if (columns == null) return;
-            searching = false;
-            List<Columns.Column> open = new ArrayList<>();
-            for (int i = 0; i < columns.length; i += 5) {
-                boolean water = true;
-                for (int k = 0; k < 5; k++) water &= columns[i + k].known() && columns[i + k].water();
-                if (water) open.add(columns[i]);
-            }
-            if (open.isEmpty()) return;
-            begin(current, open.get(random.nextInt(open.size())));
+            if (++searchAge > SEARCH) clear();
             return;
         }
         age++;
@@ -146,26 +156,13 @@ public final class GhostBoat {
         }
         yaw += turn;
         y = surface + 0.04 * Math.sin(age * 0.05);
-        RemotePlayer ghost = rider;
-        if (ghost != null) {
-            ghost.setOldPosAndRot();
-            ghost.yBodyRotO = ghost.yBodyRot;
-            ghost.yHeadRotO = ghost.yHeadRot;
-            ghost.setPos(x, y + SEAT, z);
-            ghost.setYRot(yaw);
-            ghost.yBodyRot = yaw;
-            // Looking out over the water, this way and that.
-            ghost.yHeadRot = yaw + 35f * (float) Math.sin(age * 0.01);
-            Puppets.walk(ghost, 0f, 0.4f, 1f);
-            ghost.tickCount++;
-        }
         if (age > LIFE || Math.hypot(self.getX() - x, self.getZ() - z) < NEAR
                 || (!called && current.isBrightOutside())) {
             clear();
         }
     }
 
-    private void begin(ClientLevel current, Columns.Column spot) {
+    private void begin(Columns.Column spot) {
         if (!called) calendar.shown(7);
         x = xo = spot.x();
         z = zo = spot.z();
@@ -176,21 +173,12 @@ public final class GhostBoat {
         dirZ = Math.cos(drift);
         yaw = yawO = random.nextFloat() * 360f;
         turn = (random.nextBoolean() ? 1 : -1) * (0.05f + random.nextFloat() * 0.1f);
-        RemotePlayer ghost = Puppets.player(current, new GameProfile(UUID.randomUUID(), ""));
-        ghost.setInvisible(true);
-        ghost.setPos(x, y + SEAT, z);
-        ghost.setYRot(yaw);
-        ghost.yBodyRot = ghost.yBodyRotO = ghost.yHeadRot = ghost.yHeadRotO = yaw;
-        ghost.setOldPosAndRot();
-        Ghosts.seeThrough(ghost, true);
-        rider = ghost;
         age = 0;
         active = true;
     }
 
     private void clear() {
-        if (rider != null) Ghosts.seeThrough(rider, false);
-        rider = null;
+        generation.incrementAndGet();
         active = searching = false;
         level = null;
     }
@@ -219,12 +207,16 @@ public final class GhostBoat {
         pose.mulPose(Axis.YP.rotationDegrees(-Mth.rotLerp(partial, yawO, yaw)));
         pose.mulPose(Axis.ZP.rotationDegrees(rock));
         collector.draw(pose, Ufo.GLOW, GhostBoat::hull);
+        // The ghost on the bench, looking out over the water, this way and that.
+        pose.translate(0f, (float) SEAT - Ghosts.SHAPE.leg(), 0f);
+        float look = 35f * (float) Math.sin((age + partial) * 0.01);
+        BoxFigure.draw(pose, collector, Ghosts.SHAPE, 0f, 0f, -look, Ufo.BRIGHT, Ufo.GLOW, Ghosts.ALPHA, true);
         pose.popPose();
     }
 
     /** A rowing boat, pale and see-through: its floor, its four sides, a bench across. */
     private static void hull(PoseStack.Pose at, VertexConsumer out) {
-        int r = 205, g = 228, b = 255, a = 70, light = Ufo.BRIGHT;
+        int r = 140, g = 158, b = 190, a = 50, light = Ufo.BRIGHT;
         // Half its width and length, the height of its sides, the thickness of a plank.
         float w = 0.62f, l = 0.88f, h = 0.42f, t = 0.08f;
         Ufo.box(at, out, -w, -0.05f, -l, w, t - 0.05f, l, r, g, b, a, light);

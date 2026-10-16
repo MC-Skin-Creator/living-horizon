@@ -57,7 +57,7 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "debug"), b -> minecraft.setScreen(new DebugScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "debug.tooltip"))).build(),
-                null);
+                bool("easterEggs", c.easterEggs, v -> c.easterEggs = v).createButton(minecraft.options, 0, 0, 150));
 
         header(Component.translatable(KEY + "impostorsSection"));
         list.addSmall(
@@ -108,8 +108,7 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 integer("birdDensity", 0, 500, c.birdDensity, v -> c.birdDensity = v),
                 blocks("birdMaxDistance", 100, 3000, c.birdMaxDistance, v -> c.birdMaxDistance = v),
                 integer("birdMinHeight", 0, 200, c.birdMinHeight, v -> c.birdMinHeight = v),
-                integer("birdSize", 1, 6, c.birdSize, v -> c.birdSize = v),
-                bool("easterEggs", c.easterEggs, v -> c.easterEggs = v));
+                integer("birdSize", 1, 6, c.birdSize, v -> c.birdSize = v));
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "chooseBirds"), b -> minecraft.setScreen(new BirdTypesScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "chooseBirds.tooltip"))).build(),

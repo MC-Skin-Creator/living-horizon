@@ -24,17 +24,19 @@ import org.jspecify.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Easter egg 4: from the second or third day the player lives in a world, every night, a
- * figure in Steve's skin with white eyes stands somewhere far off - up to 500 blocks - and
- * watches them. Once they look him in the eyes he is gone three to five seconds later, and
- * does not come back for two to four days; until then he comes back every night. He goes
+ * figure in Steve's skin with white eyes stands somewhere far off around them - up to 500
+ * blocks - and watches them. Once they look him in the eyes he is gone three to five seconds
+ * later, and does not come back for two to four days; until then he comes back every night. He goes
  * as well at dawn, or if they come near. Only on this screen.
  *
  * <p>The figure is a player of no one, in the default skin the game picks from its id:
- * Steve's for {@link #STEVE}. The white eyes are two small boxes drawn over its face. His
+ * Steve's for {@link #STEVE}. The white eyes are two small boxes drawn over its face, the
+ * size of the eyes of the skin, however far he stands. His
  * spot is read in the loaded chunks or the far world ({@link Columns}), and must be in
  * sight: through the loaded blocks, or past the far world's terrain ({@link LodWorld#blocked}).
  * His nights are kept by the {@link EggCalendar}; he keeps out of the other easter eggs' way.
@@ -49,8 +51,10 @@ public final class Herobrine {
     static final UUID STEVE = new UUID(0L, 15L);
     /** Blocks: he goes if the player comes this close, or this far. */
     private static final double NEAR = 24, LOST = 600;
-    /** How far off he may stand, in blocks across. */
-    private static final double MIN = 60, MAX = 500;
+    /** How far off he may stand, in blocks across; when called, from {@link #CALLED} on. */
+    private static final double MIN = 60, MAX = 500, CALLED = 80;
+    /** Ticks a search may take before it is given up: a far world that does not answer. */
+    private static final int SEARCH = 400;
     /** Ticks he waits, when called, to be seen before he goes anyway. */
     private static final int PATIENCE = 1800;
     /** Glowing and unshaded, the way the game draws a spider's eyes: the white texel of the bird sheet. */
@@ -59,8 +63,6 @@ public final class Herobrine {
     private static final float PIXEL = 0.9375f / 16f;
     /** Pixels from the feet to the neck, where the head turns. */
     private static final float NECK = 1.501f * 16f;
-    /** Screen pixels an eye is tall at least, by night. */
-    private static final double MIN_PIXELS = 1.2;
 
     /** Spots found standing, in sight through the loaded blocks; the far ones still to check. */
     private record Search(List<Vec3> clear, List<Vec3> far) {
@@ -70,12 +72,14 @@ public final class Herobrine {
     private final RandomSource random = RandomSource.create();
     private final AtomicReference<Columns.Column @Nullable []> found = new AtomicReference<>();
     private final AtomicReference<boolean @Nullable []> farSight = new AtomicReference<>();
+    /** Counts the searches: a read that comes back for one given up or replaced is dropped. */
+    private final AtomicInteger generation = new AtomicInteger();
     private @Nullable Search search;
     private @Nullable RemotePlayer figure;
     private boolean searching, called;
     /** Ticks into the night before he comes; -1 by day. */
     private int wait = -1;
-    private int age, leaveIn;
+    private int age, leaveIn, searchAge;
 
     Herobrine(EggCalendar calendar) {
         this.calendar = calendar;
@@ -93,20 +97,22 @@ public final class Herobrine {
 
     /**
      * Looks for a spot in sight, and stands there once it is read: by night, or because the
-     * player asked ({@code called}: nearer, and more in front of them). False if the easter
-     * eggs are off.
+     * player asked ({@code called}: more in front of them, anywhere from {@link #CALLED} to
+     * {@link #MAX} blocks off; called again, he goes and stands somewhere else). False if the
+     * easter eggs are off.
      */
     public boolean summon(ClientLevel level, LocalPlayer self, boolean called) {
         if (!FarConfig.get().easterEggs || level.dimension() != Level.OVERWORLD) return false;
-        if (busy()) return true;
+        if (busy() && !called) return true;
+        figure = null;
         int count = 48;
         double yaw = Math.toRadians(self.getYRot());
         double[] xs = new double[count], zs = new double[count];
         for (int i = 0; i < count; i++) {
-            // Anywhere the player may turn their eyes to, nearer more often than farther.
-            double bearing = yaw + (random.nextDouble() * 2 - 1) * (called ? 0.5 : 1.2);
+            // Anywhere around, nearer more often than farther; in front of the player when called.
+            double bearing = called ? yaw + (random.nextDouble() * 2 - 1) * 0.5 : random.nextDouble() * Math.PI * 2;
             double t = random.nextDouble();
-            double distance = called ? 40 + t * 60 : MIN + t * t * (MAX - MIN);
+            double distance = called ? CALLED + t * (MAX - CALLED) : MIN + t * t * (MAX - MIN);
             xs[i] = Mth.floor(self.getX() - Math.sin(bearing) * distance) + 0.5;
             zs[i] = Mth.floor(self.getZ() + Math.cos(bearing) * distance) + 0.5;
         }
@@ -114,8 +120,12 @@ public final class Herobrine {
         found.set(null);
         farSight.set(null);
         search = null;
-        Columns.read(level, xs, zs).thenAccept(found::set);
+        int mine = generation.incrementAndGet();
+        Columns.read(level, xs, zs).thenAccept(columns -> {
+            if (generation.get() == mine) found.set(columns);
+        });
         searching = true;
+        searchAge = 0;
         return true;
     }
 
@@ -136,6 +146,12 @@ public final class Herobrine {
             wait = 600 + random.nextInt(1200);
         }
         if (searching) {
+            if (++searchAge > SEARCH) {
+                generation.incrementAndGet();
+                searching = false;
+                search = null;
+                return;
+            }
             search(level, self);
             return;
         }
@@ -155,17 +171,13 @@ public final class Herobrine {
         Puppets.walk(him, 0f, 0.4f, 1f);
         him.tickCount++;
 
-        Vec3 eye = self.getEyePosition();
         Vec3 head = new Vec3(him.getX(), him.getY() + 1.6, him.getZ());
-        Vec3 to = head.subtract(eye);
-        double across = Math.hypot(to.x, to.z), distance = to.length();
+        double across = Math.hypot(head.x - self.getX(), head.z - self.getZ());
         if (across < NEAR || across > LOST || (!called && !night)) {
             figure = null;
             return;
         }
-        // In the eyes: the middle of the view on him, tighter the farther he stands.
-        double cone = Math.max(Math.toRadians(1), Math.atan2(3, distance));
-        if (leaveIn < 0 && self.getViewVector(1f).dot(to.normalize()) > Math.cos(cone) && inSight(level, self, eye, head)) {
+        if (leaveIn < 0 && lookedAt(level, self, head)) {
             // Seen: three to five seconds more, and not back for days.
             leaveIn = 60 + random.nextInt(41);
             if (!called) calendar.watcherSeen();
@@ -182,7 +194,7 @@ public final class Herobrine {
             Vec3 eye = self.getEyePosition();
             List<Vec3> clear = new ArrayList<>(), far = new ArrayList<>();
             for (Columns.Column column : columns) {
-                if (!column.known() || column.water()) continue;
+                if (!column.dry()) continue;
                 Vec3 head = new Vec3(column.x(), column.y() + 1.6, column.z());
                 if (!level.hasChunk(Mth.floor(column.x()) >> 4, Mth.floor(column.z()) >> 4)) {
                     far.add(head);
@@ -199,7 +211,10 @@ public final class Herobrine {
                     ys[i] = far.get(i).y;
                     zs[i] = far.get(i).z;
                 }
-                LodWorld.blocked(eye, xs, ys, zs, 1.0).thenAccept(blocked -> farSight.set(blocked == null ? new boolean[0] : blocked));
+                int mine = generation.get();
+                LodWorld.blocked(eye, xs, ys, zs, 1.0).thenAccept(blocked -> {
+                    if (generation.get() == mine) farSight.set(blocked == null ? new boolean[0] : blocked);
+                });
                 return;
             }
         } else {
@@ -225,6 +240,16 @@ public final class Herobrine {
         if (!called) calendar.watcherCame();
     }
 
+    /**
+     * The player looks at this point, in the eyes for him: the middle of their view on it,
+     * tighter the farther it stands, and nothing loaded in between.
+     */
+    static boolean lookedAt(ClientLevel level, LocalPlayer self, Vec3 point) {
+        Vec3 eye = self.getEyePosition(), to = point.subtract(eye);
+        double cone = Math.max(Math.toRadians(1), Math.atan2(3, to.length()));
+        return self.getViewVector(1f).dot(to.normalize()) > Math.cos(cone) && inSight(level, self, eye, point);
+    }
+
     /** Nothing between the player's eye and his head: the loaded blocks where he stands in them. */
     private static boolean inSight(ClientLevel level, LocalPlayer self, Vec3 eye, Vec3 head) {
         if (!level.hasChunk(Mth.floor(head.x) >> 4, Mth.floor(head.z) >> 4)) return true;
@@ -241,9 +266,8 @@ public final class Herobrine {
     }
 
     /**
-     * His white eyes, over the face the game draws: brought closer and smaller with him past
-     * the far plane, and by night never under a pixel or so on screen - two points of light in
-     * the dark, where his unlit figure is lost a long way off.
+     * His white eyes, over the face the game draws, the size of the skin's own: brought
+     * closer and smaller with him past the far plane, the same on screen.
      */
     public void submit(PoseStack pose, Vec3 camera, Sink collector, float partial) {
         RemotePlayer him = figure;
@@ -255,33 +279,25 @@ public final class Herobrine {
         double distance = Math.sqrt(px * px + py * py + pz * pz);
         double reach = DepthFar.of(minecraft) * 0.95;
         float pull = distance > reach ? (float) (reach / distance) : 1f;
-        float grow = 1f;
-        if (minecraft.level != null && !minecraft.level.isBrightOutside()) {
-            double fov = Math.toRadians(minecraft.options.fov().get());
-            double pixels = PIXEL / distance * minecraft.getWindow().getHeight() / (2 * Math.tan(fov / 2));
-            if (pixels < MIN_PIXELS) grow = (float) (MIN_PIXELS / pixels);
-        }
-        float size = grow;
         pose.pushPose();
         pose.translate((float) (px * pull), (float) (py * pull), (float) (pz * pull));
         pose.scale(pull, pull, pull);
         pose.mulPose(Axis.YP.rotationDegrees(-Mth.rotLerp(partial, him.yHeadRotO, him.yHeadRot)));
-        collector.draw(pose, EYES, (at, out) -> eyes(at, out, size));
+        collector.draw(pose, EYES, Herobrine::eyes);
         pose.popPose();
     }
 
     /**
      * Both eyes of Steve's face, two pixels each, made white: the fifth row of the face
-     * from the top, three and four pixels above the neck, a pixel in from each side;
-     * {@code grow} times as big round their middles.
+     * from the top, three and four pixels above the neck, a pixel in from each side.
      */
-    private static void eyes(PoseStack.Pose at, VertexConsumer out, float grow) {
-        float middle = (NECK + 3.5f) * PIXEL, half = 0.5f * PIXEL * grow;
+    private static void eyes(PoseStack.Pose at, VertexConsumer out) {
+        float middle = (NECK + 3.5f) * PIXEL, half = 0.5f * PIXEL;
         // Just in front of the face, behind the hat layer half a pixel out.
         float near = 4.05f * PIXEL, far = 4.25f * PIXEL;
         for (int side = -1; side <= 1; side += 2) {
-            float centre = side * 2 * PIXEL, width = PIXEL * grow;
-            Ufo.box(at, out, centre - width, middle - half, near, centre + width, middle + half, far,
+            float centre = side * 2 * PIXEL;
+            Ufo.box(at, out, centre - PIXEL, middle - half, near, centre + PIXEL, middle + half, far,
                     255, 255, 255, Ufo.BRIGHT);
         }
     }
