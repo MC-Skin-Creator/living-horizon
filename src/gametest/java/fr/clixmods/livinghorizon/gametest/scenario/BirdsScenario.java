@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.gametest.scenario;
 
 import fr.clixmods.livinghorizon.ambient.Ambience.Species;
+import fr.clixmods.livinghorizon.ambient.BirdFigure;
 import fr.clixmods.livinghorizon.ambient.PosedBirds;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
@@ -144,8 +145,11 @@ public final class BirdsScenario implements Scenario {
         context.runOnClient(minecraft -> minecraft.options.fov().set(40));
         Scene.screenshot(context, this, "3d-far-models");
         Scene.configure(context, config -> config.impostors = true);
-        context.waitFor(minecraft -> ImpostorAtlas.failed() || ImpostorAtlas.sheets() > 0 && ImpostorAtlas.waiting() == 0, 2400);
-        context.runOnClient(minecraft -> Scene.log("birds impostors baked=" + ImpostorAtlas.sheets()
+        // Every sheet of every species, perched and flying: other scenarios may have left
+        // sheets of their own in the atlas, so the birds' are counted.
+        int wanted = SPECIES.length * (BirdFigure.all(Species.GULL, false).size() + BirdFigure.all(Species.GULL, true).size());
+        context.waitFor(minecraft -> ImpostorAtlas.failed() || birdSheets() >= wanted, 2400);
+        context.runOnClient(minecraft -> Scene.log("birds impostors baked=" + birdSheets() + "/" + wanted
                 + " waiting=" + ImpostorAtlas.waiting() + " failed=" + ImpostorAtlas.failed()));
         if (context.computeOnClient(minecraft -> ImpostorAtlas.failed())) {
             throw new AssertionError("The bird impostors could not be baked, see the log");
@@ -161,6 +165,15 @@ public final class BirdsScenario implements Scenario {
         Scene.configure(context, config -> config.impostorDistance = 8);
         sky(context, "3d-impostors");
         Scene.screenshotAtlas(context, this);
+    }
+
+    /** The bird sheets in the atlas. */
+    private static int birdSheets() {
+        int count = 0;
+        for (ImpostorAtlas.Baked baked : ImpostorAtlas.baked()) {
+            if (baked.key().type().startsWith(BirdFigure.KEY)) count++;
+        }
+        return count;
     }
 
     /** Geese in a V, two buzzards circling, a cloud of starlings, gulls lower down. */

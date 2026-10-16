@@ -41,7 +41,7 @@ public record BirdFigure(Ambience.Species species, boolean perched, int beat, in
     }
 
     /** Every sheet of a species in one pose, to bake them together. */
-    static List<BirdFigure> all(Ambience.Species species, boolean perched) {
+    public static List<BirdFigure> all(Ambience.Species species, boolean perched) {
         List<BirdFigure> all = new ArrayList<>();
         for (int beat = 0; beat < (perched ? 1 : BEATS.length); beat++) {
             for (int height = 0; height < (perched ? PERCHED : FLYING).length; height++) {
