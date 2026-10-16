@@ -285,7 +285,12 @@ lives there.
   cliff, never over a fence. One of the widest that fit is played; with none, it turns on
   the spot. Nothing is computed while it plays but a point of the animation (`track/MobMotion`).
 - Head glances come at their own pace; animals graze in the pauses the animation has.
-- A copy never jumps. When the pack reports a drawn mob somewhere else, it walks to the
+- Each kind covers the way as its real one does (`track/MobGait`): most walk; slimes, magma
+  cubes and rabbits hop, still on the ground between two hops and along an arc in the air,
+  a slime stretching as it leaves the ground and squashing as it lands, a rabbit's legs
+  kicking. A chicken flaps while it steps up or down a block. Impostors are baked with all
+  of it at rest.
+- A copy never jumps from one place to another. When the pack reports a drawn mob somewhere else, it walks to the
   new spot in a straight line (the ground there is read again meanwhile), then plays the
   animation chosen there.
 - Coming up to the distance where the server starts sending a mob (`MobMotion.home`), its
@@ -296,7 +301,8 @@ lives there.
 - A mob shorter on screen than `animationMinPixels` (10 by default, 0 always animates) plays
   no walking or idle animation: it keeps sliding along its animation and turning, every
   tick, but its legs stay still (`optStillTiny`). It resumes at that size plus a quarter and
-  a pixel, so it never flickers. `animationMaxDistance` (blocks, 0 no limit) also stills
+  a pixel, so it never flickers. Sizes are counted with the field of view the frame is really
+  projected with (`DepthFar.pixelsPerRadian`), so a spyglass's zoom counts. `animationMaxDistance` (blocks, 0 no limit) also stills
   every mob past it, however big (`MobMemory.isStill`).
 - With `optFreezeHidden` (debug screen, off by default), a copy that has not been drawn for
   half a second - out of view, hidden, too small - is not ticked at all: no animation, no

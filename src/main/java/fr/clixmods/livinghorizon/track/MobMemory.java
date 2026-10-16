@@ -6,6 +6,7 @@ import com.google.gson.reflect.TypeToken;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.platform.Platform;
+import fr.clixmods.livinghorizon.render.DepthFar;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.client.Minecraft;
@@ -96,11 +97,20 @@ public final class MobMemory {
         boolean fromPack;
         /** Wore a name tag when last seen. */
         boolean named;
+        /**
+         * The ground around it, read whole where it was last remembered ({@link MobPaths.Ground#save()}):
+         * it walks on it from the start next time, before the far world is read, or where it knows nothing.
+         */
+        @Nullable String ground;
 
         transient @Nullable Entity puppet;
         /** The animation it plays, chosen from the blocks around where it is remembered; null until read. */
         transient volatile MobPaths.@Nullable Choice choice;
         transient volatile boolean planning;
+        /** Its ground was read with columns missing: when to read it again, and how many times it was. */
+        transient int replanAt, replans;
+        /** The choice whose ground is saved in {@link #ground}. */
+        transient MobPaths.@Nullable Choice saved;
         /** Where its animation took it, where it looks. */
         transient @Nullable MobMotion motion;
         /** The real mob, sent again by the server, that the copy walks up to before it takes over. */
@@ -146,6 +156,11 @@ public final class MobMemory {
     private static final long FREEZE_AFTER = 500_000_000L;
     /** Grounds read per tick, at most: a few thousand blocks each, when the chunks are loaded. */
     private static final int READS_PER_TICK = 6;
+    /**
+     * Ticks before a ground read with columns missing is read again - the far world may not
+     * be open yet, as when the world was just entered - doubled each time, up to a minute.
+     */
+    private static final int REPLAN_FIRST = 40, REPLAN_MAX = 1200;
 
     private final Map<UUID, Remembered> mobs = new LinkedHashMap<>();
     /** The render distance, in blocks, as of the last tick. */
@@ -567,9 +582,22 @@ public final class MobMemory {
                 // Moved by the data pack: the blocks are read again around where it is now.
                 MobPaths.Choice choice = mob.choice;
                 if (choice != null && !choice.ground().around(mob.x, mob.z)) mob.choice = choice = null;
-                if (choice == null && roam && !mob.simulated && !mob.planning && reads < READS_PER_TICK) {
+                // Read with part of the far world missing: read again, now that it may be there.
+                boolean again = choice != null && !choice.complete() && clock >= mob.replanAt;
+                if (choice == null && roam && !mob.simulated && !mob.planning && mob.ground != null) {
+                    // Saved with it: the ground it was last seen on, if it is still where it was.
+                    MobPaths.Ground saved = MobPaths.Ground.load(mob.ground);
+                    if (saved != null && saved.around(mob.x, mob.z) && walker(living)) {
+                        mob.choice = choice = mob.saved = MobPaths.choose(saved, living.getBbWidth(), seed(mob));
+                    } else {
+                        mob.ground = null;
+                    }
+                }
+                if ((choice == null || again) && roam && !mob.simulated && !mob.planning && reads < READS_PER_TICK) {
                     reads++;
                     mob.planning = true;
+                    if (choice == null) mob.replans = 0;
+                    mob.replanAt = clock + Math.min(REPLAN_MAX, REPLAN_FIRST << Math.min(mob.replans++, 5));
                     double x = mob.x, y = mob.y, z = mob.z;
                     long seed = seed(mob);
                     CompletableFuture<MobPaths.Choice> read = walker(living)
@@ -579,6 +607,12 @@ public final class MobMemory {
                         mob.choice = found != null ? found : MobPaths.stand(x, y, z);
                         mob.planning = false;
                     });
+                }
+                // Read whole: kept with it, for the next time the world is entered.
+                if (choice != null && choice != mob.saved && choice.complete() && walker(living)) {
+                    mob.saved = choice;
+                    mob.ground = choice.ground().save();
+                    dirty = true;
                 }
                 mob.still = isStill(living, mob, config, pixelsPerRadian);
                 boolean tiny = mob.still;
@@ -610,9 +644,7 @@ public final class MobMemory {
 
     /** How many pixels a radian is across the screen, as the renderer counts them. */
     private static double pixelsPerRadian() {
-        Minecraft minecraft = Minecraft.getInstance();
-        double fov = Math.toRadians(minecraft.options.fov().get());
-        return Math.max(1, minecraft.getWindow().getHeight()) / (2.0 * Math.tan(fov / 2));
+        return DepthFar.pixelsPerRadian(Minecraft.getInstance());
     }
 
     /**

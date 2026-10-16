@@ -6,6 +6,13 @@
 - **Players who logged off** — they live their life where they left: they stroll, sit, look at chests and workstations, walk to a bed at night, and raise a shield against monsters and hits.
 - **Offline names** — players who logged off show their name marked *(offline)*, and aiming at one up close tells when they were last seen; a new switch hides them all.
 
+### Improved
+- **Distant mobs** — slimes, magma cubes and rabbits now hop their way around instead of sliding, a slime squashing as it lands, and chickens flap their wings stepping down a block.
+
+### Fixed
+- **Spyglass** — distant mobs seen through a spyglass are measured at their zoomed size: *Animation size* now matches what you see, and they keep walking when they look big.
+- **Opening a world** — distant mobs walk and graze from the start, instead of only turning on the spot.
+
 ## 0.6.0 — 2026-10-15
 
 ### New

@@ -6,6 +6,13 @@
 - **Joueurs déconnectés** — ils vivent leur vie là où ils sont partis : ils se promènent, s'assoient, regardent les coffres et les blocs de métier, vont au lit la nuit, et lèvent un bouclier face aux monstres et aux coups.
 - **Noms hors ligne** — les joueurs déconnectés affichent leur nom marqué *(hors ligne)*, et en viser un de près indique quand il a été vu pour la dernière fois ; un nouvel interrupteur les masque tous.
 
+### Améliorations
+- **Créatures lointaines** — les slimes, les cubes de magma et les lapins se déplacent maintenant par bonds au lieu de glisser, le slime s'écrasant en retombant, et les poules battent des ailes en descendant d'un bloc.
+
+### Corrections
+- **Longue-vue** — les créatures lointaines vues à la longue-vue sont mesurées à leur taille zoomée : *Taille animation* correspond maintenant à ce qu'on voit, et elles continuent de marcher quand elles paraissent grosses.
+- **Ouverture d'un monde** — les créatures lointaines marchent et broutent dès le début, au lieu de seulement tourner sur elles-mêmes.
+
 ## 0.6.0 — 2026-10-15
 
 ### Nouveautés
