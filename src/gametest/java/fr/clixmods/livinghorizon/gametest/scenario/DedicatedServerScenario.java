@@ -5,7 +5,6 @@ import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerContext;
-import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerConnection;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.ReadOnlyScoreInfo;
 import net.minecraft.world.scores.ScoreHolder;
@@ -43,7 +42,8 @@ public final class DedicatedServerScenario implements Scenario {
             if (clock[1] <= clock[0]) throw new AssertionError("the dedicated server's clock does not move: " + clock[0] + " then " + clock[1]);
             Scene.log("dedicated clock " + clock[0] + " -> " + clock[1]);
 
-            try (TestServerConnection connection = server.connect()) {
+            // Its type was renamed in the Fabric API for 26.3; both close the connection.
+            try (var connection = server.connect()) {
                 // The scoreboard is all this needs: no waiting for the chunks, slow to make without a graphics card.
                 context.waitTicks(60);
                 server.runCommand("tp @a 30 ~ 0");
