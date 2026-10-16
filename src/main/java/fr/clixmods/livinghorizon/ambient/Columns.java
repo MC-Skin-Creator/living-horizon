@@ -1,7 +1,9 @@
 package fr.clixmods.livinghorizon.ambient;
 
 import fr.clixmods.livinghorizon.compat.LodWorld;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
@@ -14,7 +16,12 @@ import java.util.concurrent.CompletableFuture;
 /**
  * The top of many columns at once, for the easter eggs that look for a place: read here
  * where the chunk is loaded, from the far world (Voxy, Distant Horizons) off the game's
- * thread where it is not.
+ * thread where it is not, and only where something is drawn.
+ *
+ * <p>Inside the game's render distance the far world draws nothing: a chunk there not loaded
+ * yet is a hole, whatever the far world knows of it. Past it, the far world draws only so far,
+ * and its fog hides the end ({@link LodWorld#clearDistance}). A column in neither is left
+ * unknown.
  */
 final class Columns {
     /**
@@ -40,10 +47,16 @@ final class Columns {
     static CompletableFuture<Column[]> read(ClientLevel level, double[] xs, double[] zs) {
         Column[] found = new Column[xs.length];
         List<Integer> far = new ArrayList<>();
+        Minecraft minecraft = Minecraft.getInstance();
+        LocalPlayer self = minecraft.player;
+        // Where the far world draws: past the game's own chunks, as far as it is clear of fog.
+        double from = minecraft.options.getEffectiveRenderDistance() * 16 + 16, to = LodWorld.clearDistance();
         for (int i = 0; i < xs.length; i++) {
             int bx = Mth.floor(xs[i]), bz = Mth.floor(zs[i]);
             if (!level.hasChunk(bx >> 4, bz >> 4)) {
-                far.add(i);
+                double across = self == null ? 0 : Math.hypot(xs[i] - self.getX(), zs[i] - self.getZ());
+                if (across >= from && across <= to) far.add(i);
+                else found[i] = new Column(xs[i], zs[i], Double.NaN, false, "", false);
                 continue;
             }
             int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, bx, bz);
