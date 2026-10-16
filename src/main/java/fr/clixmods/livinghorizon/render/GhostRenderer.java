@@ -114,7 +114,7 @@ public final class GhostRenderer {
         // Half the screen's diagonal, as an angle, with a margin for a quick turn of the head.
         double aspect = width / (double) height;
         viewAngle = Math.atan(Math.tan(fov / 2) * Math.sqrt(1 + aspect * aspect)) + 0.15;
-        pixelsPerRadian = height / (2.0 * Math.tan(fov / 2));
+        pixelsPerRadian = DepthFar.pixelsPerRadian(minecraft);
         drawnRange = minecraft.options.getEffectiveRenderDistance() * 16 - 16;
         debug = DebugMarks.active();
         if (debug) DebugMarks.begin(eye, pixelsPerRadian);
@@ -619,8 +619,7 @@ public final class GhostRenderer {
 
         double boost = 1.0;
         if (config.minApparentPixels > 0) {
-            double fov = Math.toRadians(minecraft.options.fov().get());
-            double pixelsPerRadian = minecraft.getWindow().getHeight() / (2.0 * Math.tan(fov / 2.0));
+            double pixelsPerRadian = DepthFar.pixelsPerRadian(minecraft);
             // The longest side: a sleeper is 1.8 blocks long and 0.2 high.
             double extent = Math.max(1.8, Math.max(body.boundingBoxHeight, body.boundingBoxWidth)) * size;
             double apparent = extent / distance * pixelsPerRadian;

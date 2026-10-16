@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Fixed
+- **Spyglass** — distant mobs seen through a spyglass are measured at their zoomed size: *Animation size* now matches what you see, and they keep walking when they look big.
 - **Opening a world** — distant mobs walk and graze from the start, instead of only turning on the spot.
 
 ## 0.6.0 — 2026-10-15

@@ -3,6 +3,7 @@
 ## Prochaine version
 
 ### Corrections
+- **Longue-vue** — les créatures lointaines vues à la longue-vue sont mesurées à leur taille zoomée : *Taille animation* correspond maintenant à ce qu'on voit, et elles continuent de marcher quand elles paraissent grosses.
 - **Ouverture d'un monde** — les créatures lointaines marchent et broutent dès le début, au lieu de seulement tourner sur elles-mêmes.
 
 ## 0.6.0 — 2026-10-15

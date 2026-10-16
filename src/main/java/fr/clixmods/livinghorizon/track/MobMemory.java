@@ -6,6 +6,7 @@ import com.google.gson.reflect.TypeToken;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.platform.Platform;
+import fr.clixmods.livinghorizon.render.DepthFar;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.client.Minecraft;
@@ -643,9 +644,7 @@ public final class MobMemory {
 
     /** How many pixels a radian is across the screen, as the renderer counts them. */
     private static double pixelsPerRadian() {
-        Minecraft minecraft = Minecraft.getInstance();
-        double fov = Math.toRadians(minecraft.options.fov().get());
-        return Math.max(1, minecraft.getWindow().getHeight()) / (2.0 * Math.tan(fov / 2));
+        return DepthFar.pixelsPerRadian(Minecraft.getInstance());
     }
 
     /**
