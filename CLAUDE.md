@@ -332,6 +332,12 @@ come back, add it here in the same pull request: this file is what the next sess
   bird is stood again on what is under it. Birds jumping in a loop: a move is a flight once it
   is long, so a target is only moved in from a column's edge (never re-drawn on the block), and a
   duck swims as far as the water goes on (`Perchers.swims`). The `perchers` scenario counts all three.
+- **A dedicated server crashes on load with the mod** ("Attempted to load class
+  net/minecraft/client/... for invalid dist DEDICATED_SERVER"): something the server loads
+  reaches a client class. Forge's `@Mod` has no side, so it sits on `LivingHorizonForge`,
+  which builds `LivingHorizonClient` on a client only; never put it back on the client class.
+  Check a server by installing the loader's server from its installer, the jar in `mods/`,
+  and reading the console for "no data pack on this server".
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
