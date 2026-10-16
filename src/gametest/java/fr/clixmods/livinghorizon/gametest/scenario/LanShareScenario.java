@@ -6,6 +6,8 @@ import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.LanShare;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+//? if >=26.2
+/*import net.minecraft.server.MinecraftServer;*/
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.ReadOnlyScoreInfo;
@@ -31,7 +33,13 @@ public final class LanShareScenario implements Scenario {
                 if (FarPlayerTracker.get().sharing()) throw new AssertionError("sharing before the world is opened to LAN");
             });
 
+            // 26.2 asks who may join: the LAN.
+            //? if >=26.2 {
+            /*context.runOnClient(minecraft -> minecraft.getSingleplayerServer()
+                    .publishServer(MinecraftServer.MultiplayerScope.LAN, GameType.SURVIVAL, false, 25599));
+            *///?} else {
             context.runOnClient(minecraft -> minecraft.getSingleplayerServer().publishServer(GameType.SURVIVAL, false, 25599));
+            //?}
             context.waitTicks(60);
 
             context.runOnClient(minecraft -> {
