@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Improved
+- **Distant mobs** — slimes, magma cubes and rabbits now hop their way around instead of sliding, a slime squashing as it lands, and chickens flap their wings stepping down a block.
+
 ### Fixed
 - **Spyglass** — distant mobs seen through a spyglass are measured at their zoomed size: *Animation size* now matches what you see, and they keep walking when they look big.
 - **Opening a world** — distant mobs walk and graze from the start, instead of only turning on the spot.

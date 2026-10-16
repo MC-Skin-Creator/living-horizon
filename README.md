@@ -251,7 +251,12 @@ lives there.
   cliff, never over a fence. One of the widest that fit is played; with none, it turns on
   the spot. Nothing is computed while it plays but a point of the animation (`track/MobMotion`).
 - Head glances come at their own pace; animals graze in the pauses the animation has.
-- A copy never jumps. When the pack reports a drawn mob somewhere else, it walks to the
+- Each kind covers the way as its real one does (`track/MobGait`): most walk; slimes, magma
+  cubes and rabbits hop, still on the ground between two hops and along an arc in the air,
+  a slime stretching as it leaves the ground and squashing as it lands, a rabbit's legs
+  kicking. A chicken flaps while it steps up or down a block. Impostors are baked with all
+  of it at rest.
+- A copy never jumps from one place to another. When the pack reports a drawn mob somewhere else, it walks to the
   new spot in a straight line (the ground there is read again meanwhile), then plays the
   animation chosen there.
 - Coming up to the distance where the server starts sending a mob (`MobMotion.home`), its

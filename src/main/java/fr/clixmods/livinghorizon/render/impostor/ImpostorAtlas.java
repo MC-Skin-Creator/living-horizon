@@ -89,6 +89,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
+import fr.clixmods.livinghorizon.track.Puppets;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
@@ -688,6 +689,7 @@ public final class ImpostorAtlas {
                 QUEUED.remove(request.key);
                 continue;
             }
+            Runnable back = Puppets.atRest(request.puppet);
             try {
                 bake(minecraft, request);
             } catch (LeftOut leftOut) {
@@ -698,6 +700,7 @@ public final class ImpostorAtlas {
                 fail(error);
                 return;
             } finally {
+                back.run();
                 //? if >=1.21.6 && <26.3 {
                 RenderSystem.outputColorTextureOverride = null;
                 RenderSystem.outputDepthTextureOverride = null;
