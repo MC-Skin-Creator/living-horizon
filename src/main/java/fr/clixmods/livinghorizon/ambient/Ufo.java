@@ -129,6 +129,8 @@ public final class Ufo {
         int limit = FarConfig.get().mobMaxDistance;
         double close = called ? CALLED_MIN : CHANCE_MIN, far = called ? CALLED_MAX : CHANCE_MAX;
         if (limit > 0) far = Math.min(far, limit);
+        // No farther than the terrain is drawn and clear of fog.
+        far = Math.min(far, Sight.reach());
         double yaw = Math.toRadians(self.getYRot()), lookX = -Math.sin(yaw), lookZ = Math.cos(yaw);
         List<MobMemory.Remembered> ahead = new ArrayList<>(), around = new ArrayList<>();
         for (MobMemory.Remembered mob : memory.shown()) {

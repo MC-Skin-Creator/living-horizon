@@ -79,6 +79,12 @@ public final class GhostBoat {
         if (!FarConfig.get().easterEggs || current.dimension() != Level.OVERWORLD) return false;
         if (busy() && !called) return true;
         clear();
+        // No farther than the terrain is drawn and clear of fog.
+        double far = Math.min(MAX, Sight.reach());
+        if (far <= MIN) {
+            if (called) EggLog.nowhere(7);
+            return false;
+        }
         int spots = 84;
         double look = Math.toRadians(self.getYRot());
         // Each spot and four around it, four blocks away: water all round is open water.
@@ -86,7 +92,7 @@ public final class GhostBoat {
         int[][] around = {{0, 0}, {4, 0}, {-4, 0}, {0, 4}, {0, -4}};
         for (int s = 0, i = 0; s < spots; s++) {
             double bearing = called ? look + random.nextGaussian() * 0.5 : random.nextDouble() * Math.PI * 2;
-            double distance = MIN + random.nextDouble() * (MAX - MIN);
+            double distance = MIN + random.nextDouble() * (far - MIN);
             double cx = Mth.floor(self.getX() - Math.sin(bearing) * distance) + 0.5;
             double cz = Mth.floor(self.getZ() + Math.cos(bearing) * distance) + 0.5;
             for (int[] d : around) {

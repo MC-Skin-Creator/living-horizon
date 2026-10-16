@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.ambient;
 
 import fr.clixmods.livinghorizon.compat.LodWorld;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
@@ -21,6 +22,16 @@ import java.util.function.ToDoubleFunction;
  */
 final class Sight {
     private Sight() {
+    }
+
+    /**
+     * Blocks across from the player within which the terrain is drawn and clear of fog: the
+     * game's own render distance, or the far world's as far as its fog leaves it clear. Past
+     * it an easter egg would stand in the fog, over terrain no one sees.
+     */
+    static double reach() {
+        Minecraft minecraft = Minecraft.getInstance();
+        return Math.max(minecraft.options.getEffectiveRenderDistance() * 16 * 0.9, LodWorld.clearDistance());
     }
 
     /**

@@ -105,6 +105,12 @@ public final class Herobrine {
         if (!FarConfig.get().easterEggs || level.dimension() != Level.OVERWORLD) return false;
         if (busy() && !called) return true;
         figure = null;
+        // No farther than the terrain is drawn and clear of fog.
+        double near = called ? CALLED : MIN, far = Math.min(MAX, Sight.reach());
+        if (far <= near) {
+            if (called) EggLog.nowhere(4);
+            return false;
+        }
         int count = 48;
         double yaw = Math.toRadians(self.getYRot());
         double[] xs = new double[count], zs = new double[count];
@@ -112,7 +118,7 @@ public final class Herobrine {
             // Anywhere around, nearer more often than farther; in front of the player when called.
             double bearing = called ? yaw + (random.nextDouble() * 2 - 1) * 0.5 : random.nextDouble() * Math.PI * 2;
             double t = random.nextDouble();
-            double distance = called ? CALLED + t * (MAX - CALLED) : MIN + t * t * (MAX - MIN);
+            double distance = called ? near + t * (far - near) : near + t * t * (far - near);
             xs[i] = Mth.floor(self.getX() - Math.sin(bearing) * distance) + 0.5;
             zs[i] = Mth.floor(self.getZ() + Math.cos(bearing) * distance) + 0.5;
         }

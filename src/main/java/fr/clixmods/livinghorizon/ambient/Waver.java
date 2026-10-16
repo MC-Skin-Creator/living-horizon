@@ -78,13 +78,19 @@ public final class Waver {
         if (!FarConfig.get().easterEggs || level.dimension() != Level.OVERWORLD) return false;
         if (busy() && !called) return true;
         clear();
+        // No farther than the terrain is drawn and clear of fog.
+        double far = Math.min(MAX, Sight.reach());
+        if (far <= MIN) {
+            if (called) EggLog.nowhere(5);
+            return false;
+        }
         int bearings = called ? 11 : 32, rings = 10;
         double look = Math.toRadians(self.getYRot());
         double[] xs = new double[bearings * rings], zs = new double[bearings * rings];
         for (int b = 0, i = 0; b < bearings; b++) {
             double bearing = called ? look + (b - (bearings - 1) / 2.0) * 0.09 : (b + random.nextDouble()) * Math.PI * 2 / bearings;
             for (int r = 0; r < rings; r++, i++) {
-                double distance = MIN + (r + random.nextDouble()) * (MAX - MIN) / rings;
+                double distance = MIN + (r + random.nextDouble()) * (far - MIN) / rings;
                 xs[i] = Mth.floor(self.getX() - Math.sin(bearing) * distance) + 0.5;
                 zs[i] = Mth.floor(self.getZ() + Math.cos(bearing) * distance) + 0.5;
             }

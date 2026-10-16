@@ -85,6 +85,12 @@ public final class Ghosts {
         if (!FarConfig.get().easterEggs || current.dimension() != Level.OVERWORLD) return false;
         if (busy() && !called) return true;
         clear();
+        // No farther than the terrain is drawn and clear of fog.
+        double far = Math.min(MAX, Sight.reach());
+        if (far <= MIN) {
+            if (called) EggLog.nowhere(3);
+            return false;
+        }
         double look = Math.toRadians(self.getYRot());
         int steps = 160 + random.nextInt(100);
         double way = steps * PACE;
@@ -92,7 +98,7 @@ public final class Ghosts {
         double[] distances = new double[WAYS];
         for (int w = 0; w < WAYS; w++) {
             double bearing = called ? look + random.nextGaussian() * 0.5 : random.nextDouble() * Math.PI * 2;
-            double distance = MIN + random.nextDouble() * (MAX - MIN);
+            double distance = MIN + random.nextDouble() * (far - MIN);
             distances[w] = distance;
             double sx = self.getX() - Math.sin(bearing) * distance, sz = self.getZ() + Math.cos(bearing) * distance;
             double heading = random.nextDouble() * Math.PI * 2;

@@ -97,6 +97,12 @@ public final class Bigfoot {
         if (!FarConfig.get().easterEggs || current.dimension() != Level.OVERWORLD) return false;
         if (busy() && !called) return true;
         clear();
+        // No farther than the terrain is drawn and clear of fog.
+        double reach = Sight.reach();
+        if (reach <= CLOSE) {
+            if (called) EggLog.nowhere(6);
+            return false;
+        }
         double look = Math.toRadians(self.getYRot());
         int walk = 220 + random.nextInt(100);
         double way = walk * PACE;
@@ -105,8 +111,9 @@ public final class Bigfoot {
         for (int w = 0; w < WAYS; w++) {
             double bearing = called && w % 2 == 0 ? look + random.nextGaussian() * 0.5 : random.nextDouble() * Math.PI * 2;
             // Most far off; a few nearer, for where the trees hide everything farther.
-            boolean far = w < WAYS * 3 / 4;
-            double distance = far ? MIN + random.nextDouble() * (MAX - MIN) : CLOSE + random.nextDouble() * (MIN - CLOSE);
+            boolean far = w < WAYS * 3 / 4 && reach > MIN;
+            double distance = far ? MIN + random.nextDouble() * (Math.min(MAX, reach) - MIN)
+                    : CLOSE + random.nextDouble() * (Math.min(MIN, reach) - CLOSE);
             distances[w] = distance;
             // Across the line of sight, from a few blocks before the spot.
             double side = random.nextBoolean() ? 1 : -1;

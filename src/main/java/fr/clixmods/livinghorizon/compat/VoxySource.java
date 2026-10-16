@@ -126,6 +126,39 @@ final class VoxySource implements LodSource {
         return true;
     }
 
+    /**
+     * Voxy's render distance, from its settings: {@code sectionRenderDistance} times 512
+     * blocks (its menu shows it times 32, in chunks); half of that while its fog or fade is
+     * on, which hides the far part. 0 with its rendering off, or a version this does not know.
+     */
+    @Override
+    public double clearDistance() {
+        try {
+            Class<?> type = Class.forName("me.cortex.voxy.client.config.VoxyConfig");
+            Object config = type.getField("CONFIG").get(null);
+            if (config == null) return 0;
+            try {
+                if (!(boolean) type.getMethod("isRenderingEnabled").invoke(config)) return 0;
+            } catch (NoSuchMethodException e) {
+                // A version without it: drawing, as far as this can tell.
+            }
+            double drawn = type.getField("sectionRenderDistance").getFloat(config) * 512.0;
+            return drawn * (fogged(type, config) ? 0.5 : 0.9);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return 0;
+        }
+    }
+
+    /** Voxy's fog or fade on: its {@code getFogMode()} from 0.2.19, {@code useEnvironmentalFog} before. */
+    private static boolean fogged(Class<?> type, Object config) throws ReflectiveOperationException {
+        try {
+            Object mode = type.getMethod("getFogMode").invoke(config);
+            return mode.getClass().getField("hasFog").getBoolean(mode) || mode.getClass().getField("hasFade").getBoolean(mode);
+        } catch (NoSuchMethodException e) {
+            return type.getField("useEnvironmentalFog").getBoolean(config);
+        }
+    }
+
     @Override
     public void fail(Throwable e) {
         // Not for good: a world closing or opening as the player joins fails one read ("World
