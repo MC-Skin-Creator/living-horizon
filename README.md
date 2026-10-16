@@ -172,6 +172,12 @@ The game itself lacks what these need, so they are left out rather than imitated
   game's mobs*), yellow too small (under about half a pixel), orange behind blocks, red
   outside the view, purple being built, grey past `maxDistantMobs`. A dot in the middle
   keeps them visible when the box is smaller than its lines.
+- **Test players who logged off**, to try that feature alone in single player:
+  `/livinghorizon debug offline test spawn [name] [minutes]` places one where you stand,
+  wearing your skin, logged off that many minutes ago (default `Sleeper1`, `Sleeper2`...,
+  just now); `... test clear` removes them; `... test list` shows everyone resting on this
+  server, where and since when. Test players are never written to the file: they are gone
+  at the next start.
 - **Labels**: state, kind, distance and size on screen, at a constant size.
 - **Outlines** (*Outlines...*): an outline seen through terrain around each kind of figure,
   each on its own switch, in the colours of the boxes - white the mobs and players the game

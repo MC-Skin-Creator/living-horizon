@@ -82,6 +82,8 @@ public final class RestingPlayers {
     private final Map<String, Spot> spots = new LinkedHashMap<>();
     private final Map<String, RestingPuppet> puppets = new HashMap<>();
     private final Set<String> lookups = new HashSet<>();
+    /** Test players placed with {@code /livinghorizon debug offline test}: never written to the file. */
+    private final Set<String> fakes = new HashSet<>();
     private @Nullable Path file;
     private @Nullable Spot lookedAt;
 
@@ -109,6 +111,7 @@ public final class RestingPlayers {
     void close() {
         save();
         spots.clear();
+        fakes.clear();
         puppets.clear();
         lookedAt = null;
         file = null;
@@ -146,6 +149,7 @@ public final class RestingPlayers {
 
     /** Back online. */
     void wake(String name) {
+        fakes.remove(key(name));
         if (spots.remove(key(name)) != null) {
             puppets.remove(key(name));
             if (lookedAt != null && key(lookedAt.name()).equals(key(name))) lookedAt = null;
@@ -176,9 +180,43 @@ public final class RestingPlayers {
         //?}
     }
 
+    // --- Test players --------------------------------------------------------------------
+
+    /**
+     * A test player who logged off {@code minutesAgo} minutes ago, here, wearing the skin of
+     * {@code skin}: shown like any other until {@link #clearFakes}, but never written to the
+     * file, so gone at the next start.
+     */
+    public void fake(String name, GameProfile skin, int dimension, double x, double y, double z, float yaw,
+                     long minutesAgo) {
+        Property textures = skinOf(skin);
+        fakes.add(key(name));
+        put(new Spot(name, null, textures == null ? null : Profiles.value(textures),
+                textures == null ? null : Profiles.signature(textures), dimension, x, y, z, yaw,
+                System.currentTimeMillis() - minutesAgo * 60_000));
+    }
+
+    /** Whether this resting player is a test one. */
+    public boolean isFake(Spot spot) {
+        return fakes.contains(key(spot.name()));
+    }
+
+    /** Removes every test player; how many there were. */
+    public int clearFakes() {
+        int count = 0;
+        for (String name : List.copyOf(fakes)) {
+            if (spots.remove(name) != null) count++;
+            puppets.remove(name);
+            if (lookedAt != null && key(lookedAt.name()).equals(name)) lookedAt = null;
+        }
+        fakes.clear();
+        return count;
+    }
+
     /** Wakes everyone up: nobody rests anywhere any more, here and in the file. */
     public void forgetAll() {
         spots.clear();
+        fakes.clear();
         puppets.clear();
         lookedAt = null;
         save();
@@ -247,7 +285,7 @@ public final class RestingPlayers {
         try {
             Files.createDirectories(file.getParent());
             try (Writer writer = Files.newBufferedWriter(file)) {
-                write(spots.values(), writer);
+                write(spots.values().stream().filter(spot -> !fakes.contains(key(spot.name()))).toList(), writer);
             }
         } catch (IOException e) {
             LivingHorizonClient.LOGGER.warn("Could not write {}", file, e);

@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.command;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import fr.clixmods.livinghorizon.FarConfig;
@@ -10,9 +11,12 @@ import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.LodWorld;
 import fr.clixmods.livinghorizon.debug.DebugHud;
 import fr.clixmods.livinghorizon.track.FarPlayer;
+import fr.clixmods.livinghorizon.track.LastSeen;
 import fr.clixmods.livinghorizon.track.Profiles;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobScan;
+import fr.clixmods.livinghorizon.track.RestingPlayers;
+import fr.clixmods.livinghorizon.track.SharedPositions;
 import fr.clixmods.livinghorizon.ui.FarConfigScreen;
 import fr.clixmods.livinghorizon.ui.ImpostorScreen;
 import net.minecraft.client.Minecraft;
@@ -21,7 +25,9 @@ import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
+import org.jspecify.annotations.Nullable;
 
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.Locale;
 import java.util.function.Function;
@@ -90,7 +96,8 @@ public final class LivingHorizonCommand {
                             source.apply(c.getSource()).feedback(Component.translatable(
                                     on ? "livinghorizon.debug.on" : "livinghorizon.debug.off"));
                             return 1;
-                        }))
+                        })
+                                .then(offlineTests(source)))
                         .then(LiteralArgumentBuilder.<S>literal("scan")
                                 .executes(c -> scan(source.apply(c.getSource()), FarConfig.get().scanRadius))
                                 .then(RequiredArgumentBuilder.<S, Integer>argument("radius",
@@ -114,6 +121,90 @@ public final class LivingHorizonCommand {
                             client.execute(() -> client.setScreen(new ImpostorScreen(null)));
                             return 1;
                         }));
+    }
+
+    /**
+     * {@code /livinghorizon debug offline test ...}: test players who logged off, to try the
+     * feature alone. {@code spawn [name] [minutes]} places one where you stand, wearing your
+     * skin, logged off that many minutes ago; {@code clear} removes them; {@code list} shows
+     * everyone resting on this server. Test players are never written to the file.
+     */
+    private static <S> LiteralArgumentBuilder<S> offlineTests(Function<S, Source> source) {
+        return LiteralArgumentBuilder.<S>literal("offline").then(LiteralArgumentBuilder.<S>literal("test")
+                .then(LiteralArgumentBuilder.<S>literal("spawn")
+                        .executes(c -> spawnOffline(source.apply(c.getSource()), null, 0))
+                        .then(RequiredArgumentBuilder.<S, String>argument("name", StringArgumentType.word())
+                                .executes(c -> spawnOffline(source.apply(c.getSource()),
+                                        StringArgumentType.getString(c, "name"), 0))
+                                .then(RequiredArgumentBuilder.<S, Integer>argument("minutes", IntegerArgumentType.integer(0))
+                                        .executes(c -> spawnOffline(source.apply(c.getSource()),
+                                                StringArgumentType.getString(c, "name"),
+                                                IntegerArgumentType.getInteger(c, "minutes"))))))
+                .then(LiteralArgumentBuilder.<S>literal("clear").executes(c -> {
+                    int removed = FarPlayerTracker.get().resting().clearFakes();
+                    source.apply(c.getSource()).feedback(Component.translatable("livinghorizon.offline.test.cleared", removed));
+                    return removed;
+                }))
+                .then(LiteralArgumentBuilder.<S>literal("list").executes(c -> listOffline(source.apply(c.getSource())))));
+    }
+
+    private static int spawnOffline(Source source, @Nullable String name, int minutesAgo) {
+        Player self = source.player();
+        ClientPacketListener connection = source.client().getConnection();
+        if (self == null || connection == null) return 0;
+        RestingPlayers resting = FarPlayerTracker.get().resting();
+        if (name == null) {
+            int n = 1;
+            while (taken(resting, "Sleeper" + n)) n++;
+            name = "Sleeper" + n;
+        }
+        if (name.length() > 16) {
+            source.feedback(Component.translatable("livinghorizon.offline.test.long", name));
+            return 0;
+        }
+        for (PlayerInfo info : connection.getOnlinePlayers()) {
+            if (Profiles.name(info.getProfile()).equalsIgnoreCase(name)) {
+                // Online: they would be woken up on the next tick.
+                source.feedback(Component.translatable("livinghorizon.offline.test.online", name));
+                return 0;
+            }
+        }
+        resting.fake(name, self.getGameProfile(), SharedPositions.dimensionCode(self.level().dimension()),
+                self.getX(), self.getY(), self.getZ(), self.getYRot(), minutesAgo);
+        source.feedback(Component.translatable("livinghorizon.offline.test.spawned", name));
+        if (!FarConfig.get().offlinePlayers) {
+            source.feedback(Component.translatable("livinghorizon.offline.test.switchedOff", name));
+        }
+        return 1;
+    }
+
+    private static boolean taken(RestingPlayers resting, String name) {
+        for (RestingPlayers.Spot spot : resting.spots()) {
+            if (spot.name().equalsIgnoreCase(name)) return true;
+        }
+        return false;
+    }
+
+    /** Everyone resting on this server: where, and since when. */
+    private static int listOffline(Source source) {
+        RestingPlayers resting = FarPlayerTracker.get().resting();
+        Collection<RestingPlayers.Spot> spots = resting.spots();
+        if (spots.isEmpty()) {
+            source.feedback(Component.translatable("livinghorizon.offline.test.none"));
+            return 0;
+        }
+        source.feedback(Component.translatable("livinghorizon.offline.test.header", spots.size()));
+        String language = source.client().getLanguageManager().getSelected();
+        for (RestingPlayers.Spot spot : spots) {
+            String date = LastSeen.format(spot.lastSeen(), language, ZoneId.systemDefault());
+            source.feedback(Component.translatable("livinghorizon.offline.test.line",
+                    spot.name(),
+                    Component.translatable("livinghorizon.offline.test.dimension." + Math.clamp(spot.dimension(), 0, 3)),
+                    Math.round(spot.x()), Math.round(spot.y()), Math.round(spot.z()),
+                    date == null ? Component.translatable("livinghorizon.offline.test.unknown") : Component.literal(date),
+                    resting.isFake(spot) ? Component.translatable("livinghorizon.offline.test.mark") : Component.empty()));
+        }
+        return spots.size();
     }
 
     /** {@code /livinghorizon scan [radius]}: the mobs of the chunks around, read from a single player world. */

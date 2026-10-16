@@ -80,7 +80,37 @@ public final class RestingScenario implements Scenario {
             wait(context, world, 20);
             aimed(context, false);
             Scene.screenshot(context, this, "switched-off");
+
+            // The debug command: a test player where the camera stands, logged off 90 minutes
+            // ago, then looked at from 6 blocks back (the date under the crosshair), then removed.
+            Scene.configure(context, config -> config.offlinePlayers = true);
+            Scene.command(world, "tp @a 0.5 " + GROUND + " -10.5 0 0");
+            wait(context, world, 10);
+            clientCommand(context, "livinghorizon debug offline test spawn Tester 90");
+            Scene.command(world, "tp @a 0.5 " + GROUND + " -16.5 0 10");
+            wait(context, world, 20);
+            String tester = context.computeOnClient(minecraft -> {
+                RestingPlayers resting = FarPlayerTracker.get().resting();
+                RestingPlayers.Spot spot = resting.lookedAt();
+                if (spot == null || !spot.name().equals("Tester") || !resting.isFake(spot)) return "looked at " + spot;
+                long minutes = (System.currentTimeMillis() - spot.lastSeen()) / 60_000;
+                return minutes >= 89 && minutes <= 91 ? null : "logged off " + minutes + " minutes ago";
+            });
+            if (tester != null) throw new AssertionError("resting test player: " + tester);
+            Scene.log("resting test player looked at");
+            Scene.screenshot(context, this, "test-player");
+            clientCommand(context, "livinghorizon debug offline test clear");
+            wait(context, world, 10);
+            boolean gone = context.computeOnClient(minecraft -> FarPlayerTracker.get().resting().spots().stream()
+                    .noneMatch(spot -> spot.name().equals("Tester")));
+            if (!gone) throw new AssertionError("resting test player still there after clear");
+            Scene.log("resting test player cleared");
         }
+    }
+
+    /** Types a command in the chat, as the player would: the mod's commands run on the client. */
+    private static void clientCommand(ClientGameTestContext context, String command) {
+        context.runOnClient(minecraft -> minecraft.player.connection.sendCommand(command));
     }
 
     /** Waits, moving the pack's clock as the pack does, so that its scores stay trusted. */
