@@ -2,6 +2,26 @@
 
 ## Prochaine version
 
+### Corrections
+- **Ouverture d'un monde** — les créatures lointaines marchent et broutent dès le début, au lieu de seulement tourner sur elles-mêmes.
+
+## 0.6.0 — 2026-10-15
+
+### Nouveautés
+- **Imposteurs** — les images des créatures sont enregistrées sur le disque et réutilisées à la partie suivante : elles ne sont redessinées qu'après un changement de packs de ressources, de mods ou de version du jeu.
+
+### Améliorations
+- **Icône du mod** — une nouvelle icône en pixel art : Steve au premier plan, et des créatures, des villageois, des joueurs et des oiseaux bien vivants jusqu'aux montagnes derrière lui.
+- **En solo** — les créatures lointaines se téléportent ou foncent bien moins souvent vers un autre endroit quand tu reviens : elles suivent désormais les vraies créatures tant que le jeu les fait bouger, et disparaissent quand celles-ci meurent.
+
+### Corrections
+- **Écran des imposteurs** — deux silhouettes du même nom, comme des villageois aux tenues différentes, n'échangent plus leur place en clignotant.
+- **Imposteurs** — les fins traits sombres et les pixels noirs qui apparaissaient parfois en haut ou en bas des créatures lointaines ont disparu, et les créatures longues comme les chevaux et les renifleurs ne sont plus coupées au museau ou à la queue.
+- **Créatures GeckoLib sur Minecraft 1.21.2 à 1.21.8** — un monde ne plante plus quelques secondes après son chargement quand une créature d'un mod GeckoLib a été croisée au loin ; ces créatures ne sont pas encore montrées au loin.
+- **Imposteurs** — le jeu ne ralentit plus avec les imposteurs activés : les mêmes créatures ne sont plus redessinées en boucle dans de nouvelles images, et les créatures qui se ressemblent partagent une seule image, gardée d'un monde à l'autre.
+
+## 0.5.0 — 2026-10-13
+
 ### Nouveautés
 - **Imposteurs sur Minecraft 1.20.1 à 1.21.8** — les joueurs et créatures lointains sont dessinés en images légères d'eux-mêmes sur ces versions aussi, et le Gestionnaire d'imposteurs les montre.
 
@@ -10,6 +30,10 @@
 - **Forge 1.20.1 à 1.20.4** — le jeu ne plante plus au démarrage avec le mod installé.
 - **Écran des imposteurs sur Minecraft 1.21.8 et avant** — l'ouvrir ne fait plus planter le jeu.
 - **En rejoignant un monde** — les créatures déjà autour de toi à ton arrivée sont elles aussi dessinées au loin, et plus seulement celles rencontrées ensuite.
+
+## 0.4.2 — 2026-10-12
+
+### Corrections
 - **Créatures qui s'éloignent** — une créature ne disparaît plus pendant quelques images avant que sa copie lointaine n'apparaisse.
 - **Créatures qui s'éloignent** — la copie lointaine regarde maintenant dans la même direction que la créature, au lieu de parfois se tourner ailleurs.
 - **Minecraft 1.21.9 à 26.1** — des morceaux de créatures lointaines, comme les vêtements d'un villageois ou un objet tenu en main, ne traversent plus le terrain de Voxy avec les shaders, ni celui de Distant Horizons.

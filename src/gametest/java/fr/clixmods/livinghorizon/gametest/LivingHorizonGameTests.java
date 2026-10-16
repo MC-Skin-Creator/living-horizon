@@ -2,6 +2,12 @@ package fr.clixmods.livinghorizon.gametest;
 
 import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.FollowedMobsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.ImpostorCrowdScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.ImpostorEdgesScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.ImpostorLongMobsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.ImpostorScreenScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.ImpostorSharingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
@@ -28,13 +34,19 @@ import java.util.stream.Collectors;
 public final class LivingHorizonGameTests implements FabricClientGameTest {
     private static final List<Scenario> SCENARIOS = List.of(
             new ImpostorsScenario(),
+            new ImpostorSharingScenario(),
+            new ImpostorCrowdScenario(),
+            new ImpostorEdgesScenario(),
+            new ImpostorLongMobsScenario(),
+            new ImpostorScreenScenario(),
             new LightingScenario(),
             new RememberedMobsScenario(),
             new OutlinesScenario(),
             new OptionsScreenScenario(),
             new DepthViewScenario(),
             new EntityDepthScenario(),
-            new UnloadScenario());
+            new UnloadScenario(),
+            new FollowedMobsScenario());
 
     @Override
     public void runTest(ClientGameTestContext context) {

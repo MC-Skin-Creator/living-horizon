@@ -46,6 +46,14 @@ public final class ImpostorScreen extends Screen {
     private double scroll;
     private boolean dragging;
     private static final int BAR_WIDTH = 6;
+    /**
+     * By name, then by key: the atlas hands its figures out in order of last use, which the
+     * world changes every frame, so two figures with one name would swap rows every frame.
+     */
+    private static final Comparator<ImpostorAtlas.Baked> ORDER = Comparator
+            .comparing((ImpostorAtlas.Baked row) -> name(row).getString().toLowerCase(Locale.ROOT))
+            .thenComparing(row -> row.key().type())
+            .thenComparingLong(row -> row.key().appearance());
 
     public ImpostorScreen(@Nullable Screen parent) {
         super(Component.translatable(KEY + "title"));
@@ -101,7 +109,7 @@ public final class ImpostorScreen extends Screen {
 
         // A copy to sort: before 1.21.9 the atlas hands out List.of(), which refuses sort.
         rows = new ArrayList<>(ImpostorAtlas.baked());
-        rows.sort(Comparator.comparing(row -> name(row).getString().toLowerCase(Locale.ROOT)));
+        rows.sort(ORDER);
         scroll = Mth.clamp(scroll, 0, maxScroll());
 
         if (rows.isEmpty()) {
@@ -239,22 +247,19 @@ public final class ImpostorScreen extends Screen {
     private static void blitView(GuiGraphics graphics, Identifier page, ImpostorAtlas.Sheet sheet, int view, int x, int y,
                                  int size) {
         //? if >=1.21.6 {
-        float u0 = (sheet.column() * ImpostorViews.VIEWS + view) / (float) ImpostorAtlas.TILES_ACROSS;
-        float u1 = u0 + 1f / ImpostorAtlas.TILES_ACROSS;
-        float v0 = sheet.row() / (float) ImpostorAtlas.TILES_DOWN;
-        float v1 = v0 + 1f / ImpostorAtlas.TILES_DOWN;
-        graphics.blit(page, x, y, x + size, y + size, u0, u1, v0, v1);
+        float u0 = sheet.u(view), v0 = sheet.v();
+        graphics.blit(page, x, y, x + size, y + size, u0, u0 + sheet.uSpan(), v0, v0 + sheet.vSpan());
         //?} else {
         /*// In pixels of the page before 1.21.6.
-        int u = (sheet.column() * ImpostorViews.VIEWS + view) * ImpostorViews.TILE, v = sheet.row() * ImpostorViews.TILE;
-        int tile = ImpostorViews.TILE, side = ImpostorAtlas.PAGE_SIZE;
+        int tile = sheet.tile(), wide = sheet.pageWidth(), tall = sheet.pageHeight();
+        int u = view * tile, v = sheet.row() * tile;
         //? if >=1.21.2 {
-        graphics.blit(RenderTypes::guiTextured, page, x, y, u, v, size, size, tile, tile, side, side);
+        graphics.blit(RenderTypes::guiTextured, page, x, y, u, v, size, size, tile, tile, wide, tall);
         //?} else {
         /^// Blended, as the newer versions draw it: the pictures' edges are see-through.
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        graphics.blit(page, x, y, size, size, u, v, tile, tile, side, side);
+        graphics.blit(page, x, y, size, size, u, v, tile, tile, wide, tall);
         RenderSystem.disableBlend();
         ^///?}
         *///?}

@@ -47,7 +47,7 @@ public final class ImpostorsScenario implements Scenario {
             context.waitTicks(80);
             boolean failed = context.computeOnClient(minecraft -> {
                 Scene.log("impostors baked=" + ImpostorAtlas.sheets() + " waiting=" + ImpostorAtlas.waiting()
-                        + " failed=" + ImpostorAtlas.failed());
+                        + " from disk=" + ImpostorAtlas.loads() + " failed=" + ImpostorAtlas.failed());
                 return ImpostorAtlas.failed();
             });
             if (failed) throw new AssertionError("The impostor bake failed, see the log");
