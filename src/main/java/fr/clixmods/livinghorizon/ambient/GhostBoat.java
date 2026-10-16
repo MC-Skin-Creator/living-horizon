@@ -121,7 +121,12 @@ public final class GhostBoat {
                 List<Columns.Column> clear = new ArrayList<>();
                 for (int i = 0; i < seen.length; i++) if (seen[i]) clear.add(open.get(i));
                 Columns.Column spot = Sight.far(clear, c -> Math.hypot(c.x() - eye.x, c.z() - eye.z), random);
-                if (spot != null) begin(spot);
+                if (spot == null) {
+                    if (called) EggLog.nowhere(7);
+                    return;
+                }
+                begin(spot);
+                EggLog.came(7, x, y, z, self, called);
             }, game);
         }, game);
         return true;

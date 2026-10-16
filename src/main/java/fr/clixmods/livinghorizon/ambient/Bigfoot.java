@@ -170,7 +170,10 @@ public final class Bigfoot {
                     }
                 }
                 Integer chosen = Sight.far(ways, i -> distances[forest.get(i)], random);
-                if (chosen == null) return;
+                if (chosen == null) {
+                    if (called) EggLog.nowhere(6);
+                    return;
+                }
                 int best = chosen, w = forest.get(best);
                 double[] ys = new double[ALONG + 1];
                 boolean[] seenAt = new boolean[ALONG + 1];
@@ -179,6 +182,7 @@ public final class Bigfoot {
                     seenAt[k] = sight[best * (ALONG + 1) + k];
                 }
                 begin(current, xs[w * (ALONG + 1)], zs[w * (ALONG + 1)], dirs[2 * w], dirs[2 * w + 1], ys, seenAt, way, walk);
+                EggLog.came(6, x, y, z, self, called);
             }, game);
         }, game);
         return true;

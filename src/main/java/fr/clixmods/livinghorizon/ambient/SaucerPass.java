@@ -68,6 +68,7 @@ public final class SaucerPass {
         y = yo = Math.max(self.getY(), level.getSeaLevel()) + 110 + random.nextDouble() * 70;
         // It stops about in front of the player.
         stopAt = HALF + random.nextGaussian() * 60;
+        EggLog.came(2, x + dirX * stopAt, y, z + dirZ * stopAt, self, called);
         travelled = 0;
         heading = (float) Math.toDegrees(Math.atan2(-dirX, dirZ));
         tilt = tiltO = 14f;

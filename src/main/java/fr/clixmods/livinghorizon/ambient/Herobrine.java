@@ -227,7 +227,10 @@ public final class Herobrine {
         searching = false;
         search = null;
         Vec3 head = Sight.far(current.clear(), h -> Math.hypot(h.x - self.getX(), h.z - self.getZ()), random);
-        if (head == null) return;
+        if (head == null) {
+            if (called) EggLog.nowhere(4);
+            return;
+        }
         RemotePlayer made = Puppets.player(level, new GameProfile(STEVE, ""));
         made.setPos(head.x, head.y - 1.6, head.z);
         face(made, self);
@@ -235,6 +238,7 @@ public final class Herobrine {
         made.yHeadRotO = made.yHeadRot;
         made.setOldPosAndRot();
         figure = made;
+        EggLog.came(4, made.getX(), made.getY(), made.getZ(), self, called);
         age = 0;
         leaveIn = -1;
         if (!called) calendar.watcherCame();

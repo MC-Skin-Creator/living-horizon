@@ -105,8 +105,9 @@ say which class is which). Players find them; nothing they read gives one away:
 - each is called by number, `/livinghorizon ee1`, `ee2` and so on, never by a name that
   says what it is, and only in a game started with `-Dlh.ee=true`: without it the
   commands are not there at all, not even among the suggestions, so nothing in the game
-  tells a player which easter eggs there are. Its lang keys are `livinghorizon.eeN.*`, and
-  `livinghorizon.ee.nothing` when it cannot come;
+  tells a player which easter eggs there are. The same switch (`ambient/EggLog`) writes in
+  the log where each one comes; without it the log says nothing of them. Its lang keys are
+  `livinghorizon.eeN.*`, and `livinghorizon.ee.nothing` when it cannot come;
 - by chance, only as `ambient/EggCalendar` allows: each from a day of its own (days lived in
   that world, counted at dawn), two to four days apart, one at a time; the watcher (ee4)
   keeps nights of his own and stays out of the others' way. The commands skip all of it;

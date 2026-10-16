@@ -139,7 +139,10 @@ public final class Ufo {
             ((dx * lookX + dz * lookZ) / across > AHEAD ? ahead : around).add(mob);
         }
         Call call = !ahead.isEmpty() ? Call.AHEAD : !around.isEmpty() ? Call.AROUND : Call.NOTHING;
-        if (call == Call.NOTHING) return call;
+        if (call == Call.NOTHING) {
+            if (called) EggLog.nowhere(1);
+            return call;
+        }
         List<MobMemory.Remembered> from = call == Call.AHEAD ? ahead : around;
         // One of the farther ones: the show is for the horizon.
         MobMemory.Remembered chosen = Sight.far(from, mob -> {
@@ -215,6 +218,7 @@ public final class Ufo {
     }
 
     private void begin(LocalPlayer self, double gx, double gy, double gz) {
+        EggLog.came(1, gx, gy, gz, self, called);
         LivingEntity taken = twin;
         twin = null;
         searching = false;

@@ -7,6 +7,7 @@ import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Stats;
+import fr.clixmods.livinghorizon.ambient.EggLog;
 import fr.clixmods.livinghorizon.ambient.Ufo;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.LodWorld;
@@ -226,11 +227,11 @@ public final class LivingHorizonCommand {
     }
 
     /**
-     * The easter eggs' commands, for whoever works on them: the game started with
-     * {@code -Dlh.ee=true}. Without it they are not there at all, not even among
-     * the suggestions: nothing in the game tells a player which easter eggs there are.
+     * The easter eggs' commands, for whoever works on them ({@link EggLog#ON}). Without it
+     * they are not there at all, not even among the suggestions: nothing in the game tells a
+     * player which easter eggs there are.
      */
-    private static final boolean EGGS = Boolean.getBoolean("lh.ee");
+    private static final boolean EGGS = EggLog.ON;
 
     /** What an easter egg answers when it cannot come: the off switch, the wrong place. */
     private static final String NOTHING = "livinghorizon.ee.nothing";

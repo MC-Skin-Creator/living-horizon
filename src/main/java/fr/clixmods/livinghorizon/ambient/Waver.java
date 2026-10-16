@@ -122,6 +122,7 @@ public final class Waver {
                     if (top == null || far(column, eye) > far(top, eye)) top = column;
                 }
                 if (top != null) begin(top, self);
+                else if (called) EggLog.nowhere(5);
             }, game);
         }, game);
         return true;
@@ -132,6 +133,7 @@ public final class Waver {
     }
 
     private void begin(Columns.Column top, LocalPlayer self) {
+        EggLog.came(5, top.x(), top.y(), top.z(), self, called);
         if (!called) calendar.shown(5);
         x = top.x();
         y = top.y();

@@ -135,10 +135,14 @@ public final class Ghosts {
                 List<Integer> clear = new ArrayList<>();
                 for (int i = 0; i < seen.length; i++) if (seen[i]) clear.add(dry.get(i));
                 Integer w = Sight.far(clear, i -> distances[i], random);
-                if (w == null) return;
+                if (w == null) {
+                    if (called) EggLog.nowhere(3);
+                    return;
+                }
                 double[] ys = new double[ALONG + 1];
                 for (int k = 0; k <= ALONG; k++) ys[k] = columns[w * (ALONG + 1) + k].y();
                 begin(columns[w * (ALONG + 1)], dirs[2 * w], dirs[2 * w + 1], ys, way, steps);
+                EggLog.came(3, x, floor, z, self, called);
             }, game);
         }, game);
         return true;
