@@ -5,9 +5,6 @@
 ### New
 - **Impostors on Minecraft 1.20.1 to 1.21.8** — far players and mobs are drawn as light pictures of themselves on these versions too, and the Impostor Manager shows them.
 
-### Improved
-- **Animation size** — the default is now 5 pixels instead of 10, so distant mobs keep their walking and idle animations until they are really tiny. A setting left at 10 moves to 5.
-
 ### Fixed
 - **Spyglass** — distant mobs seen through a spyglass are measured at their zoomed size: *Animation size* now matches what you see, and they keep walking when they look big.
 - **Forge 1.20.1 to 1.20.4** — the game no longer crashes on startup with the mod installed.
