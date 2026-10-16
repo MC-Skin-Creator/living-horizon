@@ -227,10 +227,10 @@ public final class LivingHorizonCommand {
 
     /**
      * The easter eggs' commands, for whoever works on them: the game started with
-     * {@code -Dlivinghorizon.ee=true}. Without it they are not there at all, not even among
+     * {@code -Dlh.ee=true}. Without it they are not there at all, not even among
      * the suggestions: nothing in the game tells a player which easter eggs there are.
      */
-    private static final boolean EGGS = Boolean.getBoolean("livinghorizon.ee");
+    private static final boolean EGGS = Boolean.getBoolean("lh.ee");
 
     /** What an easter egg answers when it cannot come: the off switch, the wrong place. */
     private static final String NOTHING = "livinghorizon.ee.nothing";
