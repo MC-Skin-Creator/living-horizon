@@ -6,9 +6,50 @@
 - **Joueurs déconnectés** — ils tombent quand on casse les blocs sous eux, ressortent quand on les ensevelit, et dorment dans un lit s'il y en a un tout près.
 - **Noms hors ligne** — les joueurs déconnectés affichent leur nom marqué *(hors ligne)*, et en regarder un indique quand il a été vu pour la dernière fois ; un nouvel interrupteur les masque tous.
 
+## 0.6.0 — 2026-10-15
+
+### Nouveautés
+- **Imposteurs** — les images des créatures sont enregistrées sur le disque et réutilisées à la partie suivante : elles ne sont redessinées qu'après un changement de packs de ressources, de mods ou de version du jeu.
+
+### Améliorations
+- **Icône du mod** — une nouvelle icône en pixel art : Steve au premier plan, et des créatures, des villageois, des joueurs et des oiseaux bien vivants jusqu'aux montagnes derrière lui.
+- **En solo** — les créatures lointaines se téléportent ou foncent bien moins souvent vers un autre endroit quand tu reviens : elles suivent désormais les vraies créatures tant que le jeu les fait bouger, et disparaissent quand celles-ci meurent.
+
+### Corrections
+- **Écran des imposteurs** — deux silhouettes du même nom, comme des villageois aux tenues différentes, n'échangent plus leur place en clignotant.
+- **Imposteurs** — les fins traits sombres et les pixels noirs qui apparaissaient parfois en haut ou en bas des créatures lointaines ont disparu, et les créatures longues comme les chevaux et les renifleurs ne sont plus coupées au museau ou à la queue.
+- **Créatures GeckoLib sur Minecraft 1.21.2 à 1.21.8** — un monde ne plante plus quelques secondes après son chargement quand une créature d'un mod GeckoLib a été croisée au loin ; ces créatures ne sont pas encore montrées au loin.
+- **Imposteurs** — le jeu ne ralentit plus avec les imposteurs activés : les mêmes créatures ne sont plus redessinées en boucle dans de nouvelles images, et les créatures qui se ressemblent partagent une seule image, gardée d'un monde à l'autre.
+
+## 0.5.0 — 2026-10-13
+
+### Nouveautés
+- **Imposteurs sur Minecraft 1.20.1 à 1.21.8** — les joueurs et créatures lointains sont dessinés en images légères d'eux-mêmes sur ces versions aussi, et le Gestionnaire d'imposteurs les montre.
+
+### Corrections
+- **Forge 1.20.1 à 1.20.4** — le jeu ne plante plus au démarrage avec le mod installé.
+- **Écran des imposteurs sur Minecraft 1.21.8 et avant** — l'ouvrir ne fait plus planter le jeu.
+- **En rejoignant un monde** — les créatures déjà autour de toi à ton arrivée sont elles aussi dessinées au loin, et plus seulement celles rencontrées ensuite.
+
+## 0.4.2 — 2026-10-12
+
+### Corrections
+- **Créatures qui s'éloignent** — une créature ne disparaît plus pendant quelques images avant que sa copie lointaine n'apparaisse.
+- **Créatures qui s'éloignent** — la copie lointaine regarde maintenant dans la même direction que la créature, au lieu de parfois se tourner ailleurs.
+- **Minecraft 1.21.9 à 26.1** — des morceaux de créatures lointaines, comme les vêtements d'un villageois ou un objet tenu en main, ne traversent plus le terrain de Voxy avec les shaders, ni celui de Distant Horizons.
+- **Minecraft 26.1 et plus** — les parties transparentes des créatures lointaines, comme l'enveloppe d'un slime, ne traversent plus le terrain de Voxy avec les shaders, ni celui de Distant Horizons.
+
+## 0.4.1 — 2026-10-11
+
 ### Corrections
 - **Shaders** — les silhouettes lointaines affichées en imposteurs ne sont plus sombres avec les shaders d'Iris comme Photon ou Complementary : elles prennent le soleil comme les vrais modèles.
-- **Photon avec Voxy** — les créatures lointaines ne portent plus l'ombre du terrain situé derrière elles.
+- **Photon avec Voxy** — les créatures lointaines ne portent plus l'ombre du terrain situé derrière elles, et l'eau de Voxy reste telle quelle.
+- **Shaders sur Minecraft 26.2 et plus** — les créatures lointaines se cachent derrière les collines de Voxy et de Distant Horizons avec un pack de shaders, anciennes versions d'Iris comprises, comme sans.
+- **Minecraft 26.1** — les créatures lointaines se cachent derrière les collines de Voxy et de Distant Horizons, comme sur les autres versions.
+- **Voxy 0.2.18** — le mod lit de nouveau le terrain de Voxy : les créatures lointaines s'y tiennent et se cachent derrière ses collines.
+- **Distant Horizons sur Minecraft 26.3 avec Iris installé** — les créatures lointaines se cachent de nouveau derrière les collines de Distant Horizons.
+- **Voxy sur Minecraft 26.3 avec un pack de shaders** — les créatures lointaines se cachent derrière les collines de Voxy.
+- **Distant Horizons avec la résolution réduite de Photon** — les créatures lointaines se cachent derrière les bonnes collines, et non derrière des collines décalées à l'écran.
 
 ## 0.4.0 — 2026-10-10
 
@@ -19,7 +60,6 @@
 
 ### Corrections
 - **Créatures lointaines noires** — sans shaders, les créatures lointaines ne deviennent plus noires par moments, surtout en vol.
-- **Pause** — en solo, les créatures, les joueurs et les oiseaux lointains se figent maintenant quand le jeu est en pause.
 
 ## 0.3.2 — 2026-10-09
 

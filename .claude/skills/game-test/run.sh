@@ -47,11 +47,19 @@ if [[ "${JAVA_TOOL_OPTIONS:-}" =~ -Dhttps\.proxyHost=([^ ]+) ]]; then
     } >>"$props"
 fi
 
+# The game version the node runs: the last of its mod.mc_releases, 1.21.11 for the active one.
+GAME_VERSION="$(python3 - "$ROOT/stonecutter.properties.toml" "${LH_NODE:-1.21.11}" <<'PY'
+import sys, tomllib
+with open(sys.argv[1], "rb") as f:
+    print(tomllib.load(f)[sys.argv[2]]["mod"]["mc_releases"][-1])
+PY
+)" || { echo "game-test: no node ${LH_NODE:-1.21.11} in stonecutter.properties.toml"; exit 2; }
+
 # The latest release, or beta when there is none, of a Modrinth project for this version.
 download() {
     local project="$1" url
     [ -s "$MODS/$project.jar" ] && return 0
-    url="$(curl -sS "https://api.modrinth.com/v2/project/$project/version?game_versions=%5B%221.21.11%22%5D&loaders=%5B%22fabric%22%5D" \
+    url="$(curl -sS "https://api.modrinth.com/v2/project/$project/version?game_versions=%5B%22$GAME_VERSION%22%5D&loaders=%5B%22fabric%22%5D" \
         | python3 -c 'import json,sys
 versions = json.load(sys.stdin)
 chosen = next((v for v in versions if v["version_type"] == "release"), versions[0] if versions else None)
@@ -61,7 +69,7 @@ print([f["url"] for f in chosen["files"] if f["primary"]][0] if chosen else "")'
 
 MOD_ARGS=()
 if [ "$WITH_SODIUM" = 1 ]; then
-    MODS="$ROOT/build/game-test-mods"
+    MODS="$ROOT/build/game-test-mods/$GAME_VERSION"
     mkdir -p "$MODS"
     download sodium
     if [ -n "$SHADERS" ]; then

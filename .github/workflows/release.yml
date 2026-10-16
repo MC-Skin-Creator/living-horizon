@@ -31,13 +31,15 @@ concurrency:
 env:
   # The project ids are public, so they are repository *variables*, not secrets:
   # Settings > Secrets and variables > Actions > Variables. The tokens are secrets
-  # (MODRINTH_TOKEN, CURSEFORGE_TOKEN). Without a token and an id, a platform is skipped.
+  # (MODRINTH_TOKEN, CURSEFORGE_TOKEN, NEXUSMODS_TOKEN). Without a token and an id, a
+  # platform is skipped. NEXUSMODS_ID is the number in the Nexus page's URL.
   MODRINTH_ID: ${{ vars.MODRINTH_ID }}
   CURSEFORGE_ID: ${{ vars.CURSEFORGE_ID }}
+  NEXUSMODS_ID: ${{ vars.NEXUSMODS_ID }}
 
-# Five jobs, so the slow part runs in parallel and nothing is tagged before every jar
+# Six jobs, so the slow part runs in parallel and nothing is tagged before every jar
 # exists: the version is worked out once, each target builds on its own runner, then
-# the release, the uploads and the announcement follow.
+# the release, the uploads, the Nexus changelog and the announcement follow.
 jobs:
   version:
     runs-on: ubuntu-latest
@@ -283,7 +285,8 @@ jobs:
   # Stable releases only: the -dev builds are untested previews and stay on GitHub.
   # One Modrinth and CurseForge version per jar, each marked with the game releases its
   # TOML table lists and with its release type there - beta unless its table says
-  # otherwise. Skipped, not failed, while the token or the id of a platform is missing.
+  # otherwise. One Nexus Mods file per jar too, named after its target. Skipped, not
+  # failed, while the token or the id of a platform is missing.
   publish:
     needs: [version, release]
     if: needs.version.outputs.channel == 'stable'
@@ -297,10 +300,11 @@ jobs:
     env:
       MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
       CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+      NEXUSMODS_TOKEN: ${{ secrets.NEXUSMODS_TOKEN }}
 
     steps:
       - name: Fetch the jar
-        if: env.MODRINTH_TOKEN != '' || env.CURSEFORGE_TOKEN != ''
+        if: env.MODRINTH_TOKEN != '' || env.CURSEFORGE_TOKEN != '' || (env.NEXUSMODS_TOKEN != '' && env.NEXUSMODS_ID != '')
         uses: actions/download-artifact@v4
         with:
           name: files-${{ matrix.target.node }}
@@ -308,11 +312,15 @@ jobs:
 
       - name: Name the version
         # The jar's own name carries the version string and the game version it was
-        # built on: livinghorizon-0.1.0+mc1.21.11.jar.
-        if: env.MODRINTH_TOKEN != '' || env.CURSEFORGE_TOKEN != ''
+        # built on: livinghorizon-0.1.0+mc1.21.11.jar. Nexus has no loader or game
+        # version fields, so its file is named after the target instead, a name that
+        # stays the same from one release to the next: "Living Horizon (Fabric 26.1.x)".
+        if: env.MODRINTH_TOKEN != '' || env.CURSEFORGE_TOKEN != '' || (env.NEXUSMODS_TOKEN != '' && env.NEXUSMODS_ID != '')
         id: name
         env:
           LOADER: ${{ matrix.target.loader }}
+          NODE: ${{ matrix.target.node }}
+          RELEASES: ${{ matrix.target.releases }}
         run: |
           set -euo pipefail
           jar=$(find files -name '*.jar')
@@ -321,15 +329,19 @@ jobs:
           game=${full#*+mc}
           game=${game%-"$LOADER"}
           case "$LOADER" in
-            fabric) label="$game" ;;
-            quilt) label="Quilt $game" ;;
-            neoforge) label="NeoForge $game" ;;
-            forge) label="Forge $game" ;;
+            fabric) label="$game"; loader=Fabric ;;
+            quilt) label="Quilt $game"; loader=Quilt ;;
+            neoforge) label="NeoForge $game"; loader=NeoForge ;;
+            forge) label="Forge $game"; loader=Forge ;;
           esac
+          needs=''
+          case "$LOADER" in fabric|quilt) needs=' Needs the Fabric API.' ;; esac
           {
             echo "jar=${jar}"
             echo "version=${full}"
             echo "label=${label}"
+            echo "nexus_name=Living Horizon (${loader} ${NODE%-"$LOADER"})"
+            echo "nexus_description=${loader}, Minecraft $(echo "$RELEASES" | paste -sd, - | sed 's/,/, /g').${needs}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Publish to Modrinth and CurseForge
@@ -357,6 +369,51 @@ jobs:
           # The player changelog of this version, shown in the Changelog tab of Modrinth
           # and on the file page of CurseForge.
           changelog: ${{ needs.release.outputs.changelog }}
+
+      - name: Fetch the Nexus Mods script
+        if: ${{ !cancelled() && env.NEXUSMODS_TOKEN != '' && env.NEXUSMODS_ID != '' }}
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+          path: repo
+
+      - name: Publish to Nexus Mods
+        # Not held back by a Modrinth or CurseForge failure: each platform stands alone.
+        # The first release creates the file on the page, the next ones add a version
+        # to it and archive the previous one.
+        if: ${{ !cancelled() && env.NEXUSMODS_TOKEN != '' && env.NEXUSMODS_ID != '' }}
+        env:
+          JAR: ${{ steps.name.outputs.jar }}
+          NAME: ${{ steps.name.outputs.nexus_name }}
+          DESCRIPTION: ${{ steps.name.outputs.nexus_description }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          node repo/.github/scripts/nexus-publish.js file \
+            --jar "$JAR" --name "$NAME" --version "$VERSION" --description "$DESCRIPTION"
+
+  # The page's changelog, once per release rather than once per file, after the files.
+  # Never blocking: nothing depends on it.
+  nexus-changelog:
+    needs: [version, release, publish]
+    if: always() && needs.version.outputs.channel == 'stable' && needs.release.result == 'success'
+    runs-on: ubuntu-latest
+    env:
+      NEXUSMODS_TOKEN: ${{ secrets.NEXUSMODS_TOKEN }}
+    steps:
+      - name: Fetch the Nexus Mods script
+        if: env.NEXUSMODS_TOKEN != '' && env.NEXUSMODS_ID != ''
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Add the changelog on Nexus Mods
+        if: env.NEXUSMODS_TOKEN != '' && env.NEXUSMODS_ID != ''
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          NOTES: ${{ needs.release.outputs.changelog }}
+        run: |
+          printf '%s\n' "$NOTES" > notes.md
+          node .github/scripts/nexus-publish.js changelog --version "$VERSION" --notes notes.md
 
   # Last, and never blocking: nothing depends on this job, so a Discord hiccup cannot
   # undo a release that is already on GitHub, Modrinth and CurseForge. It reads the

@@ -10,6 +10,10 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 //? if >=1.21.9
 import net.minecraft.client.input.MouseButtonEvent;
+//? if <1.21.2
+//import com.mojang.blaze3d.systems.RenderSystem;
+//? if >=1.21.2 && <1.21.6
+//import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -17,6 +21,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EntityType;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -41,6 +46,14 @@ public final class ImpostorScreen extends Screen {
     private double scroll;
     private boolean dragging;
     private static final int BAR_WIDTH = 6;
+    /**
+     * By name, then by key: the atlas hands its figures out in order of last use, which the
+     * world changes every frame, so two figures with one name would swap rows every frame.
+     */
+    private static final Comparator<ImpostorAtlas.Baked> ORDER = Comparator
+            .comparing((ImpostorAtlas.Baked row) -> name(row).getString().toLowerCase(Locale.ROOT))
+            .thenComparing(row -> row.key().type())
+            .thenComparingLong(row -> row.key().appearance());
 
     public ImpostorScreen(@Nullable Screen parent) {
         super(Component.translatable(KEY + "title"));
@@ -94,17 +107,16 @@ public final class ImpostorScreen extends Screen {
         graphics.drawCenteredString(font, title, width / 2, 8, NAME_COLOR);
         graphics.drawCenteredString(font, status(), width / 2, 22, DIM);
 
-        rows = ImpostorAtlas.baked();
-        rows.sort(Comparator.comparing(row -> name(row).getString().toLowerCase(Locale.ROOT)));
+        // A copy to sort: before 1.21.9 the atlas hands out List.of(), which refuses sort.
+        rows = new ArrayList<>(ImpostorAtlas.baked());
+        rows.sort(ORDER);
         scroll = Mth.clamp(scroll, 0, maxScroll());
 
         if (rows.isEmpty()) {
             graphics.drawCenteredString(font, Component.translatable(KEY + "empty"), width / 2, TOP + 20, DIM);
             return;
         }
-        // There are pictures to show from 1.21.9 only; before, the list is always empty.
-        //? if >=1.21.9 {
-        int tile = tile(), left = 10, scale = minecraft.getWindow().getGuiScale();
+        int tile = tile(), left = 10, scale = (int) minecraft.getWindow().getGuiScale();
         graphics.enableScissor(0, TOP, width, bottom());
         int y = TOP - (int) scroll;
         for (ImpostorAtlas.Baked row : rows) {
@@ -112,7 +124,6 @@ public final class ImpostorScreen extends Screen {
             y += rowHeight();
         }
         graphics.disableScissor();
-        //?}
         drawScrollBar(graphics);
     }
 
@@ -200,7 +211,6 @@ public final class ImpostorScreen extends Screen {
     }
     *///?}
 
-    //? if >=1.21.9 {
     private void drawRow(GuiGraphics graphics, ImpostorAtlas.Baked row, int x, int y, int tile, int scale) {
         graphics.drawString(font, name(row), x, y + tile / 2 - 4, NAME_COLOR);
         x += NAME;
@@ -216,24 +226,44 @@ public final class ImpostorScreen extends Screen {
         for (int size : FAR) {
             int room = Mth.ceil(size / (float) scale);
             graphics.fill(x, y, x + room, y + room, SKY);
+            // The GUI's pose is a 2D one from 1.21.6.
+            //? if >=1.21.6 {
             graphics.pose().pushMatrix();
             graphics.pose().translate(x, y);
             graphics.pose().scale(1f / scale);
             blitView(graphics, page, sheet, 0, 0, 0, size);
             graphics.pose().popMatrix();
+            //?} else {
+            /*graphics.pose().pushPose();
+            graphics.pose().translate(x, y, 0f);
+            graphics.pose().scale(1f / scale, 1f / scale, 1f);
+            blitView(graphics, page, sheet, 0, 0, 0, size);
+            graphics.pose().popPose();
+            *///?}
             x += room + GAP;
         }
     }
 
     private static void blitView(GuiGraphics graphics, Identifier page, ImpostorAtlas.Sheet sheet, int view, int x, int y,
                                  int size) {
-        float u0 = (sheet.column() * ImpostorViews.VIEWS + view) / (float) ImpostorAtlas.TILES_ACROSS;
-        float u1 = u0 + 1f / ImpostorAtlas.TILES_ACROSS;
-        float v0 = sheet.row() / (float) ImpostorAtlas.TILES_DOWN;
-        float v1 = v0 + 1f / ImpostorAtlas.TILES_DOWN;
-        graphics.blit(page, x, y, x + size, y + size, u0, u1, v0, v1);
+        //? if >=1.21.6 {
+        float u0 = sheet.u(view), v0 = sheet.v();
+        graphics.blit(page, x, y, x + size, y + size, u0, u0 + sheet.uSpan(), v0, v0 + sheet.vSpan());
+        //?} else {
+        /*// In pixels of the page before 1.21.6.
+        int tile = sheet.tile(), wide = sheet.pageWidth(), tall = sheet.pageHeight();
+        int u = view * tile, v = sheet.row() * tile;
+        //? if >=1.21.2 {
+        graphics.blit(RenderTypes::guiTextured, page, x, y, u, v, size, size, tile, tile, wide, tall);
+        //?} else {
+        /^// Blended, as the newer versions draw it: the pictures' edges are see-through.
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        graphics.blit(page, x, y, size, size, u, v, tile, tile, wide, tall);
+        RenderSystem.disableBlend();
+        ^///?}
+        *///?}
     }
-    //?}
 
     private static Component name(ImpostorAtlas.Baked row) {
         return BuiltInRegistries.ENTITY_TYPE.getOptional(Identifier.tryParse(row.key().type())).map(EntityType::getDescription)

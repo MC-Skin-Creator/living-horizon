@@ -74,6 +74,24 @@ an older node is checked by starting its client.
 Mod and dependency versions live in `stonecutter.properties.toml`, never hardcoded
 in the build scripts. The README describes how each part works.
 
+## Never change another mod's rendering
+
+The mod draws its own figures and nothing else. Voxy, Distant Horizons, Iris and shader packs
+must look exactly the same with Living Horizon installed as without it:
+
+- read their buffers and state, never write into them: no depth, colour or texture of
+  theirs is changed. The one exception is our own figures' pixels: where one of our mobs is
+  drawn in front of everything, its depth may be given to them (Photon's shadows read Voxy's
+  depth there), never a pixel more, with a switch to turn it off (`optVoxyShadows`);
+- whatever is put into the game's own buffers to draw our figures (the far terrain's depth
+  merged around the entities) is put back before anyone else reads them;
+- if our figures only look right by changing what another mod draws, leave them as they are
+  and say so: a visible change to Voxy's water, a pack's shadows or Distant Horizons' terrain
+  is never an acceptable price.
+
+Writing the mobs into Voxy's depth over the whole screen, for Photon's shadows, broke Voxy's
+water under Photon. Check any change to `compat/` against this section.
+
 ## Branch model: Git Flow
 
 Trimmed Git Flow.
@@ -98,7 +116,10 @@ into either.** All work, including work done by an AI agent, happens on a `featu
 the task — merging is a human decision, made after review, every time, no matter how
 small the change or how green the CI.
 
-After a release, merge `main` back into `develop` so it picks up the version commit.
+`develop` never falls behind `main`: `.github/workflows/sync-develop.yml` runs after every
+push to `main` and after every release from `main`. It fast-forwards `develop` to `main`
+when everything on `develop` has shipped, merges `main` into it otherwise, and opens a
+`main` → `develop` pull request when the merge conflicts or the push is refused.
 
 ## CI and releases
 
@@ -108,7 +129,7 @@ what checks a change; a pull request is not done until it is green.
 
 `.github/workflows/release.yml` runs on every push to `main` and `develop` (except doc-only
 ones). A push to `develop` publishes a GitHub pre-release `vX.Y.Z-dev.N` only: no tag
-baseline, no commit back, no Modrinth, CurseForge or Discord. A push to `main` does this:
+baseline, no commit back, no Modrinth, CurseForge, Nexus Mods or Discord. A push to `main` does this:
 
 - `.github/scripts/next-version.sh` derives the version from the conventional-commit
   subjects since the last tag: `feat` is a minor, `fix`/`perf` a patch, a breaking change
@@ -121,7 +142,11 @@ baseline, no commit back, no Modrinth, CurseForge or Discord. A push to `main` d
   data pack zip. Below 1.0.0 it is a pre-release titled `vX.Y.Z (beta)`.
 - Modrinth and CurseForge are published by `mc-publish` when `MODRINTH_TOKEN` /
   `CURSEFORGE_TOKEN` (secrets) and `MODRINTH_ID` / `CURSEFORGE_ID` (repository variables)
-  exist, and skipped otherwise. The Discord announcement uses `DISCORD_WEBHOOK_EN` / `_FR`.
+  exist, and skipped otherwise. Nexus Mods is published by `.github/scripts/nexus-publish.js`
+  (its v3 API) when `NEXUSMODS_TOKEN` (secret) and `NEXUSMODS_ID` (variable, the number in
+  the page's URL) exist: one file per target, found by its name ("Living Horizon (Fabric
+  26.1.x)"), created on the first release and given a new version on the next ones. The API
+  cannot create the page itself. The Discord announcement uses `DISCORD_WEBHOOK_EN` / `_FR`.
 
 The mod version is `mod.version` in `stonecutter.properties.toml`; the Minecraft version
 never touches it.
@@ -152,6 +177,38 @@ come back, add it here in the same pull request: this file is what the next sess
   `createSoftCache` (a null cache). Compare its API across versions by downloading the jars
   from Modrinth and running `javap` on the classes these two reach; a new requirement on
   its API gets a fallback, never a dead end.
+- **Which call draws the world's entities** changes between versions, and `FarDepth.before` /
+  `after` must bracket that one: `renderAllFeatures` up to 1.21.11, `renderSolidFeatures` on
+  26.1 (where `renderAllFeatures` draws the hand, after a depth clear: an empty depth view),
+  `PreparedFrame.executeSolid` from 26.2. Never across into the translucent step: Iris copies
+  the game's depth for the pack just before it (`beginTranslucents`, at the call to
+  `renderTranslucentFeatures` / `executeTranslucent` / `executeClassicTransparency`), and a copy
+  holding Voxy's terrain changes how the pack shades it (a far mountain shaded differently with
+  *Far depth* on). The translucent step has a bracket of its own, opened inside the call, after
+  the copy (`FarDepth.beforeTranslucent` / `afterTranslucent`).
+- **Part of a mob through the far terrain** (a villager's clothes or arms behind a Voxy wall,
+  not its head; under shaders with Voxy, or with Distant Horizons): from 1.21.9 to 26.1 the
+  bracketed call only fills the world's buffer source, and the game draws the last batch and
+  the fixed buffers after it. `FeatureRenderDispatcherMixin` ends the batch before `FarDepth.after`.
+  Seen with many mobs on screen: the occlusion queries fall behind (`IN_FLIGHT_MAX`, `MAX_AGE`),
+  the mobs behind terrain are drawn, and the depth alone hides them.
+- **Translucent parts through the far terrain** (a slime's outer layer behind a Voxy hill, its
+  core hidden; missing from the depth view): from 26.1 they are drawn in the translucent step,
+  after the solid bracket. The late bracket covers it, for the dispatcher (26.1) or prepared frame
+  (26.2) whose solid step was bracketed only: Iris draws the hand with one of its own in between.
+- **Voxy version.** `FarDepth` and `VoxySource` reach Voxy by reflection; a renamed class turns
+  both off ("Voxy found, but not the version this mod knows"). 0.2.18 renamed
+  `IGetVoxyRenderSystem` to `IVoxyRenderSystemHolder` (`VoxySource.renderSystemGetter` tries
+  both). Check a new version with `javap` on its jar from Modrinth, as for Distant Horizons.
+- **Distant Horizons' rendering engine** (from 3.3: Blaze3D or OpenGL). With Iris installed,
+  pack on or off, it switches itself to OpenGL and fills only `getDhDepthTextureGlId`; the
+  Blaze3D wrapper the game's GPU device path reads stays empty ("has no depth texture").
+  `FarDepth.gpuPath` falls back to the OpenGL path when `DhDepth.drawsWithOpenGl`.
+- **Distant Horizons under a shader pack from 26.2** (depth view flat grey, or a grey veil, under
+  shaders only): Iris draws its terrain with Iris's near and far planes, but in the depth layout
+  Distant Horizons reports (`getDepthRange`, `getDepthDirection`: reversed and 0..1 on 26.2,
+  empty at 0). Measured: sky 0, ground at 53 blocks 0.067, horizon 0.005. `DhDepth.terms`
+  combines the two from 26.2 only; older versions keep OpenGL's -1..1.
 - **Before 1.21.5** the game's depth texture has an unsized format (`GL_DEPTH_COMPONENT`):
   `glTextureStorage2D` refuses it, so anything copied from it is allocated the way the game
   allocates its own. A copy "with no size" or an all-white depth view is this.
@@ -161,15 +218,79 @@ come back, add it here in the same pull request: this file is what the next sess
   left corner of the depth texture and tells Voxy so with `useViewportDims` and `renderScale`
   in its `voxy.json`; Voxy's viewport `width`/`height` is that corner. `FarDepth.notePicture`
   reads it, and anything drawn into or read from the game's depth must stay inside it.
+  Distant Horizons is not told: `FarDepth.packScale` reads Photon's own options
+  (`TAAU`, `TAAU_RENDER_SCALE`) from Iris, the value its `voxy.json` gives Voxy.
 - **Terrain shadows across distant mobs** (Photon with Voxy, the edge of a ledge's shadow on a
   mob standing in front of it): the pack shades fragments past the render distance plus 64
-  blocks with shadows marched through Voxy's own depth, from the point that depth gives. The
-  mobs must be in it: `FarDepth.intoVoxy` writes them there after the entities are drawn, so
-  check that it runs (Voxy's pipeline, `renderToVanillaDepth` off, something drawn far).
+  blocks with shadows marched through Voxy's own depth. `FarDepth.intoVoxy` writes our figures
+  there, inside the screen rectangles `FarDepth.figure` collects, past the render distance and
+  only where they were just drawn; anything wider (Voxy's water gone under Photon) is a bug.
 - **Flat geometry lit wrong under shaders** (impostors, bird silhouettes dark or lit from
   the wrong side): Iris throws away the normal given to a quad and computes it from its
   corners, counter-clockwise. `ImpostorLean` moves an impostor's corners along their lines of
   sight so that its own plane faces where the light should come from.
+- **Far terrain depth lost under shaders from 26.2** (depth view empty or uniform, nothing
+  hidden behind the far terrain, only with a pack on): Iris's shadow pass draws its entities
+  through the same `PreparedFrame.executeSolid` / `executeTranslucent` steps as the world,
+  after the world's are submitted. `FarDepth.before` / `after` skip it
+  (`IrisApi.isRenderingShadowPass`), or it takes the bracket meant for the world's entities.
+- **Depth view all white under shaders on 26.2** (Iris 1.11.2 or older): those versions
+  register their `UndoReverseZ` mixins and draw the world in OpenGL's usual depth while a
+  pack is on (1.11.4 and later keep 26.2's reversed one). Whatever reads the game's depth
+  with OpenGL follows `DepthFar.reversed()`, read from the projection, never `REVERSED`.
+- **Voxy's terrain missing from the depth on 26.3** (merge "on", depth view without it): Voxy's
+  `transformBlitDepth` keeps the depth comparison it finds, and from 26.3 the world's pass is
+  already open when `FarDepth.merge` runs. The merge sets it itself there, as `mergeDh` does.
+- **Far terrain flickering under Photon on 26.3 with Distant Horizons** (garbage colours on the
+  far scene, Iris logs "the Opaque + Translucent pass ran with shaders on"): Distant Horizons
+  3.3.2 with Iris 1.11.6, not this mod. Gone with Distant Horizons 3.3.4 and Iris 1.11.7.
+- **Mobs near the player never drawn far away**, only those met later: the mob memory is opened
+  on the first tick with a player, and opening clears the mobs sent so far, which the level may
+  have loaded just before. `FarPlayerTracker` hands it the level's entities again once open.
+- **Distant mobs jumping or sprinting as the player comes back** (the copy runs or teleports to
+  the real mob once it is sent again): the server stops sending a mob at its tracking range
+  (160 blocks for animals, scaled by *Entity Distance*) but keeps moving it out to the
+  simulation distance, a square of chunks that reaches farther on its diagonals. In single
+  player `ServerMobs` asks the server where those are and the copies follow; on a server only
+  the data pack closes that gap.
+- **Impostors before 1.21.6** (empty or missing pictures, or a figure flashing over the screen
+  at the start of a frame): the game has no output override there, so `ImpostorAtlas` bakes
+  at the start of the frame (`GameRendererMixin`) into a target of its own, which
+  `MinecraftMixin` and `LevelRendererTargetMixin` hand out as the main target and the Fabulous
+  item target while `ImpostorAtlas.drawing()` is set. A render type that binds yet another
+  target of the game's escapes it; before 1.21.5 the eight views share one target, each in its
+  own viewport.
+- **Impostors baked over and over** (the game slows down with impostors on, the same figures
+  appear again and again in the impostor screen): a figure's key changes while its look does
+  not (a helmet worn by the sun changed its item, and the key, every few seconds; a pig's
+  random sound variant), or a kind of figure has more looks than its pages may hold. With the
+  pages full, "waiting" going round and round with the baked count stuck: a figure baked
+  small, grown, refused for lack of room and asked for again the next second. `room` squeezes
+  it into smaller tiles, or `REFUSED` keeps it a model for a while; `crowd` checks it. The same
+  figure twice in the impostor screen: two keys for one look (a value the picture does not show);
+  `ImpostorAtlas.place` compares the pixels and makes the second an alias of the first.
+  `ImpostorKey` leaves out what never shows (positions, times, owners, names, sound variants,
+  an item's damage), names variants by their registry key so that a sheet is found again in
+  the next world, and learns per kind of mob the values seen changing again and again
+  (`RESTLESS`). `ImpostorAtlas` gives each kind of figure pages of its own (`Page`), keeps the
+  mobs' sheets, throws the players' away once unused, and never evicts a sheet drawn or asked
+  for within `IN_USE`. `ImpostorDisk` keeps the mobs' sheets on disk under a fingerprint
+  (game, resource packs, mods): a sheet never read back from disk means its key is not
+  stable across games (an identity hash in `ImpostorKey.stable`). The `sharing` scenario
+  checks all of it, except across games: the client game tests start from an empty run
+  folder every time.
+- **Specks along an impostor's edge, or a figure cut off by its tile** (black dashes over a far
+  mob, a horse without its muzzle): the texture filter reads half a pixel of the smallest level
+  past each tile, so the quad and its UVs keep `ImpostorRenderer.INSET` clear on all four sides,
+  and the feet stand above it (`ImpostorAtlas.FEET`). A figure reaching into that strip is baked
+  again with more room round it (`ImpostorPixels.growth`), drawn smaller in a tile of the same 64
+  pixels: tiles two or three times larger took four or nine times the memory for a figure a dozen
+  pixels tall. `impostoredges` and `longmobs` show both.
+- **Crash extracting a distant mob on 1.21.2 to 1.21.8** (`NullPointerException` under
+  `GhostRenderer.state`, often blamed on another mod's mixin into `extractRenderState`):
+  GeckoLib 4's `createRenderState()` returns null and its `render` draws the entity it was
+  last handed. `GhostRenderer.drawable` leaves such types out (issue #67 is about drawing
+  them), and a renderer that throws while extracting is left out too, logged once.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

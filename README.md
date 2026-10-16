@@ -94,8 +94,7 @@ number of mobs, the bird amount a percentage.
 
 The game itself lacks what these need, so they are left out rather than imitated:
 
-- **Impostors** (and their preview screen) and the **outlines** need the feature
-  renderers of 1.21.9: before, distant figures are always drawn as full models.
+- The **outlines** need the feature renderers of 1.21.9.
 - The lines of the **F3 screen** need its entry list of 1.21.9; the mod's own debug panel
   works on every version.
 - Players past the server's range are placed by the **locator bar**, which came in 1.21.6:
@@ -255,6 +254,12 @@ lives there.
 - A mob met up close keeps its exact look (the game's own save of it); one known only
   from the pack is built from kind, variant and age.
 - Coming back within range of a remembered mob that is not there forgets it.
+- **In single player** the server runs in the game itself: four times a second it is asked
+  where the remembered mobs are (`track/ServerMobs`). The ones it still moves - past the
+  distance it sends them at, but inside the simulation distance - are followed by their
+  copies, at its pace and facing the way they face, with no animation of their own; one
+  that dies there is forgotten. Otherwise the copy would stand where the mob was last seen
+  while the real one wandered off, and run or jump to it once it was sent again.
 - When a mob is remembered, the blocks within 8 blocks of it are read once
   (`track/MobPaths`, from loaded chunks or the far world, Voxy or Distant Horizons): in
   each column, the floor nearest its height with room above it. Grass, flowers, crops and
@@ -355,19 +360,44 @@ nothing, and the game no longer builds a render state and a model for it every f
   second, near or far, and baked a little each frame from the GUI pass (3 ms at most, one
   sheet at least), so they are ready when a figure crosses the distance. A figure whose
   sheet is missing is drawn as a model meanwhile. A resource reload throws every sheet
-  away and they are baked again.
+  away; they are read back from disk when nothing that changes a picture changed, baked
+  again otherwise.
+- **Older versions.** From 1.21.6 the views are drawn the way the GUI draws its pictures,
+  through the game's output overrides. Before, they are drawn at the start of the frame
+  into a target of the mod's own, which `MinecraftMixin` and `LevelRendererTargetMixin`
+  hand the game as its main target and its Fabulous item target while a figure is drawn:
+  on 1.21.5 one view at a time through the GPU device, before 1.21.5 the eight views side
+  by side in plain OpenGL, read back at once and written into a page with its mip levels.
+  Before 1.21.2, with no render states, the figure is posed through the mod's stand-ins
+  (`render/state/`), which set the entity's body, head, stride and age for the time it is
+  drawn.
 - **What counts as the same figure.** `ImpostorKey`: the type, the player's skin, the
   synched data that changes the look (variant, colour, profession, baby, pose; not health,
-  air, score or being on fire) and what it wears.
+  air, score or being on fire) and what it wears, however worn. Left out: what never shows
+  (positions, times, owners, names, sound variants) and, learnt per kind of mob, what keeps
+  changing on one (a dolphin drying, a zombie raising its arms). Hashed so that the same
+  figure has the same key in every world and every game: variants by name, records by parts.
 - **No blinking.** A figure becomes an impostor past `impostorDistance` and a model again
   only 5% inside it; it keeps a picture until it has turned 8 degrees past the next one;
   and when its look changes, it keeps its old picture until the new one is baked.
-- **Sizes.** Two pages of 128 sheets each; past that the sheet unused for longest is
-  replaced.
+- **Sizes.** Each kind of figure has pages of its own, one sheet per row (512 pixels wide):
+  4 rows, then 8, 16, then 32, every tile 64 pixels. A figure larger than its box (a
+  horse's muzzle) is drawn smaller in its tile rather than cut off: at a hundred blocks a
+  figure is a dozen pixels tall. Two looks whose pictures come out the same, pixel for
+  pixel, share one sheet. The mobs keep their sheets, up to 1 GB of video memory in all,
+  taken only as looks are met (a world of 50 looks takes a few MB); past that, an unused
+  sheet of the same kind gives way, or the figure stays a model for 30 seconds. The
+  players' are thrown away after a minute unused, up to 128. A sheet drawn or asked for in
+  the last 10 seconds is never replaced.
+- **On disk.** `ImpostorDisk` keeps the mobs' sheets in
+  `config/livinghorizon/impostors/<fingerprint>/`, so that a mob met in an earlier game is
+  read back rather than baked. The fingerprint is the game version, the resource packs
+  chosen and their files, the jars in `mods/` and the sheet format: when one changes, the
+  folder is thrown away. At most 4096 sheets, the ones met longest ago going first.
 - **Preview.** *Impostor Manager...* in the settings, or `/livinghorizon impostors`: every figure
   baked, its eight views, and its front view at 32, 16 and 8 screen pixels, as it looks
-  far away. *Bake again* throws every picture away and bakes the figures on hand anew,
-  even after a failed bake.
+  far away. *Bake again* throws every picture away, on disk too, and bakes the figures on
+  hand anew, even after a failed bake.
 - **Not impostors:** figures with a mount or a rider, players resting on the ground, the
   birds and the saucer's cow.
 
@@ -382,20 +412,25 @@ With a shader pack that keeps Voxy's terrain out of the game's depth buffer (Pho
 `excludeLodsFromVanillaDepth`), anything drawn past the render distance would show through
 Voxy's mountains. `compat/FarDepth` writes Voxy's depth into the game's - with Voxy's own
 depth blit - just before the entities are drawn, and puts the original back just after,
-except where an entity was drawn. Distant mobs are then hidden by Voxy terrain pixel by
-pixel, and the pack still finds the depth it expects. Without a pack, Voxy does this itself.
+except where an entity was drawn. Up to 26.1 the game's call only fills its buffers and
+draws what is left in them after it (the last kind of model, items, block sheets): that is
+drawn before the original comes back. From 26.1 the translucent parts (a slime's outer layer)
+are drawn in a step of their own, just after Iris copies the depth for the pack: Voxy's depth
+goes back in at the start of that step and out at its end. Distant mobs are then hidden by
+Voxy terrain pixel by pixel, and the pack still finds the depth it expects. Without a pack,
+Voxy does this itself.
 Under a pack's render scale (Photon's TAAU), the pack draws the world in the bottom left
 corner of the depth texture and says so to Voxy (`useViewportDims`): Voxy's depth, the depth
 view and the occlusion queries all go in that corner too.
 
 The other way round, such a pack also reads Voxy's own depth textures (`vxDepthTexOpaque`,
 `vxDepthTexTrans`) where the game's depth ends. Photon's screen-space shadows, used past its
-shadow map, start from the point Voxy's depth gives for any fragment farther than the render
-distance plus 64 blocks: at a distant mob, the terrain behind it, whose shadow then fell
-across the mob. Right after the entities are drawn, `FarDepth` writes them into both of
-Voxy's depth textures wherever they are nearer than its terrain, converted from the game's
-projection to Voxy's. Only nearer values are written, so a pack that takes the nearer of the
-two depths, or reads Voxy's only where the game's is empty (Complementary), sees no change.
+shadow map, start from the point Voxy's depth gives: at a distant mob, the terrain behind it,
+whose shadow then fell across the mob. Right after the entities are drawn, `FarDepth` writes
+our figures into both of Voxy's depth textures, and nothing else: only inside the screen
+rectangles of the figures drawn past the render distance (`FarDepth.figure`), only where they
+were just drawn, past the render distance and nearer than Voxy's terrain. Anywhere else what
+Voxy draws is left exactly as it is. *Voxy shadows* (`optVoxyShadows`) turns it off.
 
 ### Mobs hidden by depth
 

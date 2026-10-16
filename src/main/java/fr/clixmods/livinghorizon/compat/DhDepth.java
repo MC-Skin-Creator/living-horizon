@@ -153,7 +153,18 @@ final class DhDepth {
             float near = iris[0], far = iris[1];
             a = (far + near) / (near - far);
             b = 2.0f * far * near / (near - far);
+            //? if >=26.2 {
+            /*// From 26.2 Iris draws Distant Horizons' terrain with Iris's planes but in Distant
+            // Horizons' own depth layout - reversed and 0..1 as the game's, empty at 0 - which it
+            // reports: Iris's planes, in the layout Distant Horizons gives (signed set above).
+            boolean reversed = depthDirection != null && farDepth != null
+                    && farDepth.getFloat(depthDirection.invoke(proxy)) < 0.5f;
+            float n = reversed ? far : near, f = reversed ? near : far;
+            a = signed ? (f + n) / (n - f) : f / (n - f);
+            b = signed ? 2.0f * f * n / (n - f) : n * f / (n - f);
+            *///?} else {
             signed = true;
+            //?}
         }
         if (Math.abs(b) < 1.0e-6f) return none("Distant Horizons has no projection yet");
         float nothing = depthDirection == null || farDepth == null ? 1.0f : farDepth.getFloat(depthDirection.invoke(proxy));
@@ -209,6 +220,23 @@ final class DhDepth {
             return (int) objects[0].getClass().getMethod("glId").invoke(objects[0]);
         } catch (NoSuchMethodException e) {
             return 0; // not an OpenGL texture: Vulkan
+        }
+    }
+
+    /**
+     * Whether Distant Horizons draws its terrain with OpenGL itself rather than through the
+     * game's GPU device: its rendering engine setting, which it turns to OpenGL whenever Iris
+     * is installed. Its depth is then an OpenGL texture, and no texture of the game's.
+     */
+    static boolean drawsWithOpenGl() {
+        if (broken || renderProxy == null || depthTexture == null) return false;
+        try {
+            Object proxy = renderProxy.get(null);
+            if (proxy == null) return false;
+            Object result = depthTexture.invoke(proxy);
+            return success.getBoolean(result) && payload.get(result) instanceof Integer id && id > 0;
+        } catch (ReflectiveOperationException e) {
+            return false;
         }
     }
 

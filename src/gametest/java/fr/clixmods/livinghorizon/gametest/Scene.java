@@ -74,6 +74,9 @@ public final class Scene {
             minecraft.options.fov().set(70);
             minecraft.options.renderDistance().set(12);
             minecraft.options.entityDistanceScaling().set(1.0);
+            // The menus' blur is drawn on the CPU here: frames of the loading screen slow enough
+            // with it for a new world to time out before it loads.
+            minecraft.options.menuBackgroundBlurriness().set(0);
             FarConfig defaults = new FarConfig();
             FarConfig config = FarConfig.get();
             // Field by field: the config object is the one the mod holds.
@@ -139,18 +142,20 @@ public final class Scene {
         }
     }
 
-    /** Takes a screenshot after letting a few frames settle. */
-    public static void screenshot(ClientGameTestContext context, Scenario scenario, String name) {
+    /** Takes a screenshot after letting a few frames settle; where it was saved. */
+    public static java.nio.file.Path screenshot(ClientGameTestContext context, Scenario scenario, String name) {
         context.waitTicks(5);
-        log("screenshot " + context.takeScreenshot(scenario.name() + "-" + name));
+        java.nio.file.Path path = context.takeScreenshot(scenario.name() + "-" + name);
+        log("screenshot " + path);
+        return path;
     }
 
     /**
      * The last frame the game drew itself, as it is on screen. A test screenshot draws a
      * frame of its own, outside the game's loop, where the debug gizmos (boxes, crosses)
-     * cannot be collected: this one has them. Saved next to the other screenshots.
+     * cannot be collected: this one has them. Saved next to the other screenshots; where.
      */
-    public static void screenshotFrame(ClientGameTestContext context, Scenario scenario, String name) {
+    public static java.nio.file.Path screenshotFrame(ClientGameTestContext context, Scenario scenario, String name) {
         context.waitTicks(5);
         //? if >=1.21.11 {
         java.nio.file.Path path = net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir()
@@ -169,19 +174,20 @@ public final class Scene {
         while (!saved.isDone()) context.waitTick();
         saved.join();
         log("screenshot " + path);
+        return path;
         //?} else {
-        /*screenshot(context, scenario, name);
+        /*return screenshot(context, scenario, name);
         *///?}
     }
 
-    /** The first impostor page as it is in memory: the first four rows of sheets, at 1:1. */
+    /** The impostor pages as they are in memory, at half size, side by side. */
     public static void screenshotAtlas(ClientGameTestContext context, Scenario scenario) {
         context.setScreen(AtlasScreen::new);
         screenshot(context, scenario, "atlas");
         context.setScreen(() -> null);
     }
 
-    /** The impostor page, for {@link #screenshotAtlas}. */
+    /** The impostor pages, for {@link #screenshotAtlas}. */
     private static final class AtlasScreen extends Screen {
         AtlasScreen() {
             super(Component.literal("atlas"));
@@ -190,13 +196,24 @@ public final class Scene {
         @Override
         public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
             graphics.fill(0, 0, width, height, 0xFF7090B0);
-            // Impostors, and so a page to show, exist from 1.21.9.
-            //? if >=1.21.9 {
-            var page = ImpostorAtlas.id(0);
-            // 1:1 the first 854 pixels of the first four rows, then two sheets per row at a quarter.
-            graphics.blit(page, 0, 0, 854, 256, 0f, 854f / 2048f, 0f, 256f / 2048f);
-            graphics.blit(page, 0, 270, 512, 334, 0f, 1f, 0f, 256f / 2048f);
-            //?}
+            int x = 0, y = 0, line = 0;
+            for (int number = 0; number < ImpostorAtlas.pages(); number++) {
+                int wide = ImpostorAtlas.pageWidth(number), tall = ImpostorAtlas.pageHeight(number);
+                if (tall == 0) continue;
+                if (x + wide / 2 > width) {
+                    x = 0;
+                    y += line + 8;
+                    line = 0;
+                }
+                var page = ImpostorAtlas.id(number);
+                //? if >=1.21.6 {
+                graphics.blit(page, x, y, x + wide / 2, y + tall / 2, 0f, 1f, 0f, 1f);
+                //?} else {
+                /*graphics.blit(net.minecraft.client.renderer.rendertype.RenderTypes::guiTextured, page, x, y, 0f, 0f, wide / 2, tall / 2, wide, tall, wide, tall);
+                *///?}
+                x += wide / 2 + 8;
+                line = Math.max(line, tall / 2);
+            }
         }
 
         @Override

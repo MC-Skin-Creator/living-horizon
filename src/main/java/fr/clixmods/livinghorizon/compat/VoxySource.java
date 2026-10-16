@@ -125,9 +125,21 @@ final class VoxySource implements LodSource {
         LivingHorizonClient.LOGGER.warn("Reading Voxy's world turned off: Voxy did not answer as expected", e);
     }
 
+    /**
+     * The class whose static {@code getNullable()} gives Voxy's render system: renamed
+     * {@code IVoxyRenderSystemHolder} in 0.2.18, {@code IGetVoxyRenderSystem} before.
+     */
+    static Class<?> renderSystemGetter() throws ClassNotFoundException {
+        try {
+            return Class.forName("me.cortex.voxy.client.core.IVoxyRenderSystemHolder");
+        } catch (ClassNotFoundException e) {
+            return Class.forName("me.cortex.voxy.client.core.IGetVoxyRenderSystem");
+        }
+    }
+
     private void link() throws ReflectiveOperationException {
         MethodHandles.Lookup lookup = MethodHandles.publicLookup();
-        Class<?> getter = Class.forName("me.cortex.voxy.client.core.IGetVoxyRenderSystem");
+        Class<?> getter = renderSystemGetter();
         Class<?> system = Class.forName("me.cortex.voxy.client.core.VoxyRenderSystem");
         Class<?> worldEngine = Class.forName("me.cortex.voxy.common.world.WorldEngine");
         Class<?> section = Class.forName("me.cortex.voxy.common.world.WorldSection");

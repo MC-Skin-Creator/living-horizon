@@ -225,6 +225,13 @@ public final class FarConfig {
      * its terrain over the distant mobs.
      */
     public boolean optDhFade = true;
+    /**
+     * Under a shader pack that shades past the render distance from Voxy's own depth (Photon),
+     * our far figures are written into it, on their own pixels only, so that the terrain behind
+     * them does not cast its shadow across them (see {@code FarDepth.intoVoxy}). Off: nothing of
+     * Voxy's is ever written, and those shadows show on distant mobs.
+     */
+    public boolean optVoxyShadows = true;
     /** Saved mobs are read off the game's thread and built within 2 ms per tick. */
     public boolean optBackgroundBuild = true;
     /** A mob only a few pixels high on screen plays no walking or idle animation: it only slides and turns. */

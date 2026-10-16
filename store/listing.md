@@ -1,6 +1,6 @@
-# Store listing: Modrinth and CurseForge
+# Store listing: Modrinth, CurseForge and Nexus Mods
 
-Everything to fill in on the two platforms, field by field. Not shipped in the jar, and a
+Everything to fill in on the three platforms, field by field. Not shipped in the jar, and a
 change here does not trigger a release (`**.md` is ignored by `release.yml`).
 
 Do first: **make the GitHub repository public.** It is private today, and a project
@@ -74,6 +74,30 @@ Modrinth, plus **Client** and the Java version (17 up to 1.20.4, 21 up to 1.21.1
 optional, where they have a CurseForge page.
 
 CurseForge reviews a new project before it goes public; it takes from hours to days.
+
+## Nexus Mods: the mod
+
+The API cannot create a page: create it by hand, once, under the game **Minecraft** (domain
+`minecraft`; Nexus has no separate Java or Bedrock game). The page is
+`https://www.nexusmods.com/minecraft/mods/1376`, so the repository variable `NEXUSMODS_ID` is
+`1376`, beside the `NEXUSMODS_TOKEN` secret (an API key from the account's settings).
+
+| Field | Value |
+|---|---|
+| Name | `Living Horizon` |
+| Category | **Miscellaneous** (no category fits a client-side visual mod better) |
+| Summary | the CurseForge one |
+| Description | the block below, in Nexus's editor (BBCode: headings and lists by hand) |
+| Requirements | Fabric API (off-site link to Modrinth), noted "Fabric and Quilt only"; Voxy, Distant Horizons and Mod Menu as optional, in the description |
+| Permissions | the Living Horizon License: no modified upload, no asset reuse, redistribution of the unchanged jar with credit, link to `LICENSE` |
+| AI content | Nexus asks every page to declare generative AI use: tick it and say what for |
+| Images | a banner of about 1400x400 and the gallery below, in 16:9 |
+
+Files: none by hand. The release workflow creates one file per jar, named after its target
+(`Living Horizon (Fabric 1.21.11)`, `(NeoForge 26.2.x)`, ...), with the loader and game
+versions in its description, then adds a version to that same file on every release and
+archives the previous one. The page's changelog gets the release notes once per release.
+Renaming a file on Nexus makes the next release create a new one beside it.
 
 ## Modrinth and CurseForge: the data pack
 

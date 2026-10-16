@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.render;
 
 import fr.clixmods.livinghorizon.FarConfig;
+import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Stats;
 import fr.clixmods.livinghorizon.ambient.Ambience;
 import fr.clixmods.livinghorizon.compat.FarDepth;
@@ -163,6 +164,7 @@ public final class GhostRenderer {
 
     public static void beginFrame() {
         OcclusionQueries.beginFrame();
+        FarDepth.beginFigures();
         EXTRACTED.clear();
         TRANSFORMS.clear();
         glowing = false;
@@ -212,15 +214,57 @@ public final class GhostRenderer {
         return glowing;
     }
 
-    /** The state of an entity as its renderer sees it this frame. */
-    private static EntityRenderState extract(EntityRenderDispatcher dispatcher, Entity entity, float partialTick) {
-        //? if >=1.21.9 {
-        return dispatcher.extractEntity(entity, partialTick);
-        //?} elif >=1.21.2 {
-        /*return state(renderer(dispatcher, entity), entity, partialTick);
-        *///?} else {
-        /*return EntityRenderState.of(entity, partialTick);
+    /**
+     * The state of an entity as its renderer sees it this frame; the impostors are baked from
+     * it too. Null when its renderer cannot give one: that entity is not drawn far away.
+     */
+    public static @Nullable EntityRenderState extract(EntityRenderDispatcher dispatcher, Entity entity, float partialTick) {
+        if (!drawable(dispatcher, entity)) return null;
+        try {
+            //? if >=1.21.9 {
+            return dispatcher.extractEntity(entity, partialTick);
+            //?} elif >=1.21.2 {
+            /*return state(renderer(dispatcher, entity), entity, partialTick);
+            *///?} else {
+            /*return EntityRenderState.of(entity, partialTick);
+            *///?}
+        } catch (RuntimeException | LinkageError error) {
+            // Another mod's renderer, called for an entity in no world: never worth a crash.
+            leaveOut(entity.getType(), error);
+            return null;
+        }
+    }
+
+    /** Entity types whose renderer gave no state, or failed: never drawn far away again. */
+    private static final Set<EntityType<?>> LEFT_OUT = Collections.newSetFromMap(new IdentityHashMap<>());
+    //? if >=1.21.2 && <1.21.9
+    /*private static final Set<EntityType<?>> PROBED = Collections.newSetFromMap(new IdentityHashMap<>());*/
+
+    /**
+     * Whether this entity's renderer can give the mod a state of its own. Before 1.21.9,
+     * GeckoLib 4's gives none: it only keeps the one it reuses, for the entity it was last
+     * handed, and draws that entity whatever state it is given.
+     */
+    public static boolean drawable(EntityRenderDispatcher dispatcher, Entity entity) {
+        EntityType<?> type = entity.getType();
+        if (LEFT_OUT.contains(type)) return false;
+        //? if >=1.21.2 && <1.21.9 {
+        /*if (PROBED.add(type) && dispatcher.getRenderer(entity).createRenderState() == null) {
+            leaveOut(type, null);
+            return false;
+        }
         *///?}
+        return true;
+    }
+
+    private static void leaveOut(EntityType<?> type, @Nullable Throwable error) {
+        if (!LEFT_OUT.add(type)) return;
+        String id = EntityType.getKey(type).toString();
+        if (error == null) {
+            LivingHorizonClient.LOGGER.warn("{} is not drawn far away: its renderer gives no render state", id);
+        } else {
+            LivingHorizonClient.LOGGER.warn("{} is not drawn far away: its renderer failed", id, error);
+        }
     }
 
     //? if >=1.21.2 && <1.21.9 {
@@ -247,8 +291,8 @@ public final class GhostRenderer {
             new IdentityHashMap<>();
 
     @SuppressWarnings("unchecked")
-    private static <S extends EntityRenderState> void drawState(S state, double x, double y, double z, PoseStack pose,
-                                                               MultiBufferSource buffers, int light) {
+    public static <S extends EntityRenderState> void drawState(S state, double x, double y, double z, PoseStack pose,
+                                                              MultiBufferSource buffers, int light) {
         var renderer = (net.minecraft.client.renderer.entity.EntityRenderer<?, S>) RENDERERS.get(state);
         if (renderer == null) return;
         Vec3 offset = renderer.getRenderOffset(state);
@@ -263,8 +307,8 @@ public final class GhostRenderer {
      * the mod changed in its state given to the entity for that time.
      ^/
     @SuppressWarnings("unchecked")
-    private static void drawState(EntityRenderState state, double x, double y, double z, PoseStack pose,
-                                  MultiBufferSource buffers, int light) {
+    public static void drawState(EntityRenderState state, double x, double y, double z, PoseStack pose,
+                                 MultiBufferSource buffers, int light) {
         Entity entity = state.entity;
         var renderer = (net.minecraft.client.renderer.entity.EntityRenderer<Entity>)
                 Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(entity);
@@ -563,7 +607,7 @@ public final class GhostRenderer {
         }
     }
 
-    private static void add(List<EntityRenderState> frame, Minecraft minecraft, Vec3 eye, EntityRenderState body,
+    private static void add(List<EntityRenderState> frame, Minecraft minecraft, Vec3 eye, @Nullable EntityRenderState body,
                             @Nullable EntityRenderState mount, boolean puppet, Mark kind, FarConfig config,
                             @Nullable Object who) {
         add(frame, minecraft, eye, body, mount, puppet, kind, config, who, 1.0);
@@ -573,9 +617,10 @@ public final class GhostRenderer {
      * @param kind what it is, for its outline: {@link Mark#PLAYER}, {@link Mark#FAKE} or {@link Mark#LIVE}
      * @param size drawn this many times bigger, around the feet
      */
-    private static void add(List<EntityRenderState> frame, Minecraft minecraft, Vec3 eye, EntityRenderState body,
+    private static void add(List<EntityRenderState> frame, Minecraft minecraft, Vec3 eye, @Nullable EntityRenderState body,
                             @Nullable EntityRenderState mount, boolean puppet, Mark kind, FarConfig config,
                             @Nullable Object who, double size) {
+        if (body == null) return;
         double ax = body.x - eye.x, ay = body.y - eye.y, az = body.z - eye.z;
         double distance = Math.sqrt(ax * ax + ay * ay + az * az);
         if (distance < 1e-3) return;
@@ -600,6 +645,11 @@ public final class GhostRenderer {
         }
 
         Transform transform = new Transform(ax, ay, az, pull, pull * boost * size);
+        if (distance > drawnRange) {
+            // Where it shows on screen: as big as drawn, around its middle, a mount included.
+            double extent = Math.max(1.8, Math.max(body.boundingBoxHeight, body.boundingBoxWidth)) * size * boost;
+            FarDepth.figure(ax, ay + extent * 0.5, az, extent * (mount == null ? 0.75 : 1.5));
+        }
         LocalPlayer self = minecraft.player;
         ClientLevel level = minecraft.level;
         for (EntityRenderState state : mount == null ? new EntityRenderState[]{body} : new EntityRenderState[]{mount, body}) {
@@ -710,7 +760,8 @@ public final class GhostRenderer {
      */
     private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config) {
         if (!ImpostorAtlas.usable() || !(entity instanceof LivingEntity living)
-                || entity.isPassenger() || entity.isVehicle()) {
+                || entity.isPassenger() || entity.isVehicle()
+                || !drawable(minecraft.getEntityRenderDispatcher(), entity)) {
             return false;
         }
         double x = Mth.lerp(partialTick, entity.xOld, entity.getX());
@@ -749,6 +800,10 @@ public final class GhostRenderer {
         if (outline != 0 && ImpostorRenderer.OUTLINES) glowing = true;
         ImpostorRenderer.add(new ImpostorRenderer.Billboard(ax * pull, ay * pull, az * pull,
                 sheet.worldSize() * pull * boost, sheet, view, light, outline));
+        if (distance > drawnRange) {
+            double extent = sheet.worldSize() * boost;
+            FarDepth.figure(ax, ay + extent * 0.5, az, extent * 0.75);
+        }
         return true;
     }
 
