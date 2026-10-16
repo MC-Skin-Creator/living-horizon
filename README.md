@@ -112,8 +112,8 @@ The game itself lacks what these need, so they are left out rather than imitated
   far-off villages, and are hidden by the terrain pixel by pixel, shaders included.
 - **Look up.** Flocks, geese in a V, gulls on the coast, bats at night - and, now and
   then, a flying saucer taking a cow (`/livinghorizon ufo`).
-- **Find players where they left.** Someone who logged off stays asleep where they were,
-  until they come back.
+- **Find players where they left.** Someone who logged off lives their life where they
+  were - a stroll, a seat, a bed at night, a shield against monsters - until they come back.
 - **Tune it.** Everything is in the settings (see *Settings* below): which mobs, which
   birds, how many, how far.
 
@@ -147,10 +147,8 @@ The game itself lacks what these need, so they are left out rather than imitated
 | `ufo` | `true` | | The easter egg |
 | `depthOcclusion` | `true` | | The far terrain's depth (Voxy or Distant Horizons) on distant mobs and players, pixel by pixel (see *The far terrain's depth* below). Was `voxyOcclusion`. In *Debug...* |
 | `offlinePlayers` | `true` | | Players who logged off are shown and remembered; off, neither |
-| `offlinePose` | `"sit"` | | A player who logged off: `"sleep"` or `"sit"` |
+| `offlineLife` | `true` | | Players who logged off live their life around their spot (see below); off, they sit on it |
 | `offlineNames` | `true` | | Their name above them, marked offline, and when they were last seen under the crosshair |
-| `offlineOnGround` | `true` | | A player who logged off falls when what they rest on breaks, and climbs out when buried |
-| `offlineBedRadius` | `4` | blocks | A player who logged off this close to a free bed lies in it; `0` never |
 | `showVehicles` | `true` | | Draw the mount they were last seen on |
 | `renderTrackedVehiclesFar` | `true` | | Never cull a mount that carries another player |
 | `hideOccludedMobs` | `true` | | Do not draw distant mobs behind terrain at all (see *Mobs hidden by depth* below). In *Debug...*, with `depthOcclusion` |
@@ -218,20 +216,31 @@ parses `pack.mcmeta` and the predicate with the game's own codecs.
 
 ### Players who logged off
 
-A player who logs off stays where they were last, sitting on the ground (or asleep, see
-`offlinePose`), until they come back. `offlinePlayers` off turns this off completely: nobody
-is shown, remembered or written to the file. This is remembered per server across sessions, in
+A player who logs off stays around where they were last, until they come back.
+`offlinePlayers` off turns this off completely: nobody is shown, remembered or written to the
+file. This is remembered per server across sessions, in
 `config/livinghorizon/resting/<server>.json`. With the data pack, even players who logged
 off before you joined are there: the pack keeps everyone's last position, and their
 skin is fetched from Mojang by name.
 
-Where the blocks around them are loaded, they keep to those blocks (`offlineOnGround`):
-break the pile they sit on and they fall to the floor below, standing up for a moment
-as they land; bury them and they reappear on top. Their own spot always wins once it
-has room and something under it again, since that is where they will come back. With
-nothing below down to the bottom of the world, they stay where they are. A free bed
-within `offlineBedRadius` blocks of their spot is better still: they are shown asleep
-in it.
+With `offlineLife` on (the default) they live their life there, as long as the blocks
+around are loaded (`track/RestingPuppet`): they stand and look around, sit down, stroll
+within 6 blocks of their spot, stand in front of a chest, a crafting table or a villager's
+workstation and look at it. At night they walk to a free bed they can reach and sleep in it,
+or lie down where they are; in the morning they get up. They walk only where a player could
+(`track/Walkway`: one block up, two down, no corner cut, nothing walked through), worked out
+on the client from the blocks it has. Monsters within 10 blocks put them on guard: an iron
+sword drawn, the shield up, eyes on the nearest, a step away when it comes closer than 3.5
+blocks; they never fight. A creeper blowing up within 7 blocks throws them, shield up, and
+they walk back. Hit by you, they raise their shield. In lava or fire they show the swirls of
+fire resistance, under water those of water breathing. Where the blocks are not loaded, they
+only stand, sit or sleep where they are. With `offlineLife` off they sit on their spot.
+
+All of it is a picture on your client: nothing is sent to the server, they block nobody, and
+nothing can hurt them. Either way they keep to the ground: break the pile they sit on and
+they fall to the floor below; bury them and they reappear on top. Sitting, their own spot
+wins again once it has room and something under it, since that is where they will come back.
+With nothing below down to the bottom of the world, they stay where they are.
 
 Their name shows above them, followed by *(offline)*, as close as the game shows names (64
 blocks). Aiming at one from right next to it (3 blocks) shows, under the crosshair, when

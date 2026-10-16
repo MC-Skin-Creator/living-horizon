@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### New
-- **Players who logged off** — they fall when the blocks under them are broken, climb out when buried, and sleep in a bed if one is close by.
+- **Players who logged off** — they live their life where they left: they stroll, sit, look at chests and workstations, walk to a bed at night, and raise a shield against monsters and hits.
 - **Offline names** — players who logged off show their name marked *(offline)*, and aiming at one up close tells when they were last seen; a new switch hides them all.
 
 ## 0.6.0 — 2026-10-15

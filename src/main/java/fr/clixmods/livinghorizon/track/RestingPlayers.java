@@ -86,6 +86,7 @@ public final class RestingPlayers {
     private final Set<String> fakes = new HashSet<>();
     private @Nullable Path file;
     private @Nullable Spot lookedAt;
+    private boolean wasAttacking;
 
     /** Blocks from the eye to the point aimed at on a sleeper: about the reach of a hand. */
     private static final double MAX_AIM = 3;
@@ -236,24 +237,35 @@ public final class RestingPlayers {
 
     /**
      * Finds the sleeper under the crosshair, right next to the player ({@link #MAX_AIM}),
-     * unless a block is in the way. Where it lies, sits or stands now.
+     * unless a block is in the way, where it lies, sits or stands now; and tells it when the
+     * player hits it.
      */
     void aim(Minecraft minecraft, FarConfig config) {
         lookedAt = null;
+        // A click of the attack button, not a held one breaking a block.
+        boolean attacking = minecraft.screen == null && minecraft.options.keyAttack.isDown();
+        boolean struck = attacking && !wasAttacking;
+        wasAttacking = attacking;
         Entity camera = minecraft.getCameraEntity();
         ClientLevel level = minecraft.level;
-        if (!config.offlinePlayers || !config.offlineNames || camera == null || level == null) return;
+        if (!config.offlinePlayers || camera == null || level == null) return;
+        if (!config.offlineNames && !(struck && config.offlineLife)) return;
         Vec3 eye = camera.getEyePosition();
         Vec3 look = camera.getViewVector(1.0f);
         int dimension = SharedPositions.dimensionCode(level.dimension());
         double nearest = Double.MAX_VALUE;
+        Spot aimed = null;
         for (Spot spot : spots.values()) {
             RestingPuppet puppet = puppets.get(key(spot.name()));
             if (spot.dimension() != dimension || puppet == null) continue;
             double distance = eye.distanceTo(puppet.position());
             // The box reaches 1 block round its feet, its top 2 blocks over them.
             if (distance > MAX_AIM + 2.5) continue;
-            double height = puppet.standing() ? 1.9 : puppet.inBed() || "sleep".equals(config.offlinePose) ? 0.5 : 1.3;
+            double height = switch (puppet.look()) {
+                case STAND -> 1.9;
+                case SIT -> 1.3;
+                case LIE, BED -> 0.5;
+            };
             // A sleeper is 1.8 blocks long, whichever way it lies.
             double half = height < 1 ? 1.0 : 0.4;
             AABB box = new AABB(puppet.getX() - half, puppet.getY() + 0.05, puppet.getZ() - half,
@@ -267,17 +279,22 @@ public final class RestingPlayers {
                     ClipContext.Fluid.NONE, camera));
             if (wall.getType() != HitResult.Type.MISS) continue;
             nearest = reach;
-            lookedAt = spot;
+            aimed = spot;
         }
+        if (aimed == null) return;
+        if (config.offlineNames) lookedAt = aimed;
+        // Hit: it raises its shield. Nothing reaches the server: the hit lands on whatever is behind.
+        if (struck && config.offlineLife) puppets.get(key(aimed.name())).strike(eye);
     }
 
-    /** Keeps the idle animations (breathing, arms) going, and every sleeper in a bed or on the ground. */
+    /** Every one of them lives a tick: idle animations, their life around their spot, the ground under them. */
     void tick(ClientLevel level, FarConfig config) {
         Set<BlockPos> beds = new HashSet<>();
         for (RestingPuppet puppet : puppets.values()) {
             if (puppet.bed() != null) beds.add(puppet.bed());
         }
-        for (RestingPuppet puppet : puppets.values()) puppet.tick(level, config, beds);
+        boolean night = !level.isBrightOutside();
+        for (RestingPuppet puppet : puppets.values()) puppet.tick(level, config, beds, night);
     }
 
     // --- File --------------------------------------------------------------------------

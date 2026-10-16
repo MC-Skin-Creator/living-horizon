@@ -3,7 +3,7 @@
 ## Prochaine version
 
 ### Nouveautés
-- **Joueurs déconnectés** — ils tombent quand on casse les blocs sous eux, ressortent quand on les ensevelit, et dorment dans un lit s'il y en a un tout près.
+- **Joueurs déconnectés** — ils vivent leur vie là où ils sont partis : ils se promènent, s'assoient, regardent les coffres et les blocs de métier, vont au lit la nuit, et lèvent un bouclier face aux monstres et aux coups.
 - **Noms hors ligne** — les joueurs déconnectés affichent leur nom marqué *(hors ligne)*, et en viser un de près indique quand il a été vu pour la dernière fois ; un nouvel interrupteur les masque tous.
 
 ## 0.6.0 — 2026-10-15

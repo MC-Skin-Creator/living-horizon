@@ -556,13 +556,12 @@ public final class GhostRenderer {
     }
 
     /**
-     * Players who logged off, lying or sitting where they were last - or asleep in a bed
-     * nearby, or on their feet for a moment when what they rested on gave way.
+     * Players who logged off: standing, walking or on guard as the game would draw any
+     * player, or seated, lying on the ground or asleep in a bed.
      */
     private static void rest(List<EntityRenderState> frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
                              Vec3 eye, float partialTick, FarConfig config) {
         if (!config.offlinePlayers) return;
-        boolean sleep = "sleep".equals(config.offlinePose);
         ClientLevel level = minecraft.level;
         if (level == null) return;
         RestingPlayers resting = FarPlayerTracker.get().resting();
@@ -573,15 +572,16 @@ public final class GhostRenderer {
             if (skipped(puppet, true)) continue;
             if (debug) DebugMarks.mark(puppet, Mark.PLAYER);
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
-            boolean lying = !puppet.inBed() && !puppet.standing();
-            if (body instanceof LivingEntityRenderState living) {
+            if (body == null) continue;
+            RestingPuppet.Look look = puppet.look();
+            if (look != RestingPuppet.Look.STAND && body instanceof LivingEntityRenderState living) {
                 living.yRot = 0;
                 living.xRot = 0;
                 living.walkAnimationSpeed = 0;
-                if (puppet.inBed()) {
+                if (look == RestingPuppet.Look.BED) {
                     // In the bed: its sleeping position, so the game lays it along the bed.
                     living.pose = Pose.SLEEPING;
-                } else if (lying && sleep) {
+                } else if (look == RestingPuppet.Look.LIE) {
                     // Lying on the ground: the game lays a sleeper out along its body
                     // rotation when there is no bed, a little lower than on a mattress.
                     living.pose = Pose.SLEEPING;
@@ -589,7 +589,7 @@ public final class GhostRenderer {
                     body.y += 0.13;
                 }
             }
-            if (lying && !sleep && body instanceof HumanoidRenderState humanoid) {
+            if (look == RestingPuppet.Look.SIT && body instanceof HumanoidRenderState humanoid) {
                 // The riding pose, without a mount: legs out in front, on the ground.
                 humanoid.isPassenger = true;
                 body.y -= 0.6;
@@ -597,7 +597,8 @@ public final class GhostRenderer {
             // Their name, marked offline, where the game would show it: close by, as for anyone.
             Component name = config.offlineNames ? body.nameTag : null;
             //? if >=1.21.2 {
-            if (name != null && (puppet.inBed() || lying && sleep) && body.nameTagAttachment != null) {
+            if (name != null && (look == RestingPuppet.Look.BED || look == RestingPuppet.Look.LIE)
+                    && body.nameTagAttachment != null) {
                 // Lying down: just above the body, as the game puts a sleeper's name (the tag adds half a block).
                 body.nameTagAttachment = new Vec3(0, 0.3, 0);
             }

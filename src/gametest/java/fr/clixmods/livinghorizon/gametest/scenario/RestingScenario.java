@@ -4,17 +4,28 @@ import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
+import fr.clixmods.livinghorizon.track.RestingPuppet;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
+
+import java.util.function.Function;
 
 /**
- * A player who logged off, sitting on a pillar 6 blocks ahead. The data pack's scores are
- * written by hand, as the pack would: the sleeper is someone who left before. The pillar
- * is broken (they fall to the ground), they are buried (they reappear on top), the pillar
- * is built again (back on it), then a bed is put next to it (asleep in the bed). Then the
- * camera looks at them (their name, and under the crosshair that they are offline), and
- * the logged-off players are switched off.
+ * A player who logged off, 8 blocks ahead. The data pack's scores are written by hand, as
+ * the pack would: the sleeper is someone who left before.
+ *
+ * <p>Seated first ({@code offlineLife} off), on a pillar: the pillar is broken (they fall),
+ * they are looked at from afar (their name only) and from close by (when they were last seen
+ * too), buried (they reappear on top), the pillar built again (back on it). Then they live:
+ * at night they walk to a bed (never a jump of more than a stroll), in the morning they get
+ * up and stay around; hit, they raise a shield; a monster near, they draw a sword and stay on
+ * guard until it is gone; a creeper blowing up throws them, and they walk back. Last, the
+ * switch that hides them all, and the debug command's test player.
  */
 public final class RestingScenario implements Scenario {
     private static final String NAME = "LH_Sleeper";
@@ -28,7 +39,11 @@ public final class RestingScenario implements Scenario {
 
     @Override
     public void run(ClientGameTestContext context) {
+        Scene.configure(context, config -> config.offlineLife = false);
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
+            // Renamed in 1.21.11: one of the two is refused.
+            Scene.command(world, "gamerule mobGriefing false");
+            Scene.command(world, "gamerule mob_griefing false");
             Scene.command(world, "fill 0 " + GROUND + " 8 0 " + (GROUND + 2) + " 8 stone");
             // The pack's four objectives, shown in sidebars nobody sees so that the client gets them.
             String[] slots = {"black", "dark_blue", "dark_green", "dark_aqua"};
@@ -43,7 +58,7 @@ public final class RestingScenario implements Scenario {
             Scene.command(world, "scoreboard players set " + NAME + " lh.y " + (GROUND + 3) * 10);
             Scene.command(world, "scoreboard players set " + NAME + " lh.z 85");
             Scene.command(world, "scoreboard players set " + NAME + " lh.m 180");
-            Scene.command(world, "tp @a 0.5 " + GROUND + " 1.5 0 0");
+            Scene.command(world, "tp @a 0.5 " + GROUND + " 0.5 0 0");
             wait(context, world, 60);
             check(context, "pillar", GROUND + 3, false);
             Scene.screenshot(context, this, "pillar");
@@ -53,6 +68,19 @@ public final class RestingScenario implements Scenario {
             check(context, "fallen", GROUND, false);
             Scene.screenshot(context, this, "fallen");
 
+            // Looking at them from 8 blocks: their name above them, nothing under the crosshair.
+            Scene.command(world, "tp @a 0.5 " + GROUND + " 0.5 0 10");
+            wait(context, world, 20);
+            aimed(context, false);
+            Scene.screenshot(context, this, "looked-at-far");
+
+            // Right next to them: who they are under the crosshair too.
+            Scene.command(world, "tp @a 0.5 " + GROUND + " 6 0 20");
+            wait(context, world, 20);
+            aimed(context, true);
+            Scene.screenshot(context, this, "looked-at");
+
+            Scene.command(world, "tp @a 0.5 " + GROUND + " 0.5 0 0");
             Scene.command(world, "fill 0 " + GROUND + " 8 0 " + (GROUND + 1) + " 8 dirt");
             wait(context, world, 20);
             check(context, "buried", GROUND + 2, false);
@@ -63,23 +91,95 @@ public final class RestingScenario implements Scenario {
             check(context, "rebuilt", GROUND + 3, false);
             Scene.screenshot(context, this, "rebuilt");
 
-            Scene.command(world, "setblock 3 " + GROUND + " 9 red_bed[facing=north,part=foot]");
-            Scene.command(world, "setblock 3 " + GROUND + " 8 red_bed[facing=north,part=head]");
-            wait(context, world, 40);
-            check(context, "bed", GROUND + 0.6875, true);
-            Scene.screenshot(context, this, "bed");
+            // Living now, at night, with a bed a few blocks away: they walk to it.
+            Scene.command(world, "fill 0 " + GROUND + " 8 0 " + (GROUND + 2) + " 8 air");
+            Scene.command(world, "setblock 4 " + GROUND + " 9 red_bed[facing=north,part=foot]");
+            Scene.command(world, "setblock 4 " + GROUND + " 8 red_bed[facing=north,part=head]");
+            Scene.command(world, "time set midnight");
+            Scene.configure(context, config -> config.offlineLife = true);
+            Vec3 last = sleeper(context, p -> p.position());
+            boolean inBed = false;
+            for (int i = 0; i < 40 && !inBed; i++) {
+                wait(context, world, 10);
+                Vec3 now = sleeper(context, p -> p.position());
+                // Across, not down: falling off the broken pillar is quick.
+                double across = Math.hypot(now.x - last.x, now.z - last.z);
+                if (across > 1.6) {
+                    throw new AssertionError("resting: moved " + across + " blocks in 10 ticks: teleported, not walked");
+                }
+                last = now;
+                inBed = sleeper(context, RestingPuppet::inBed);
+            }
+            Scene.log("resting in bed at night: " + inBed);
+            if (!inBed) throw new AssertionError("resting: not in the bed after 400 ticks of night");
+            Scene.screenshot(context, this, "bed-night");
 
-            // Looking at them from 8 blocks: their name above them, nothing under the crosshair.
-            Scene.command(world, "tp @a 0.5 " + GROUND + " 1.5 -23 7");
-            wait(context, world, 20);
-            aimed(context, false);
-            Scene.screenshot(context, this, "looked-at-far");
+            // Morning: up, and around their spot.
+            Scene.command(world, "time set noon");
+            wait(context, world, 300);
+            boolean stillInBed = sleeper(context, RestingPuppet::inBed);
+            double away = sleeper(context, p -> Math.hypot(p.getX() - 0.5, p.getZ() - 8.5));
+            Scene.log("resting day: in bed " + stillInBed + ", " + away + " blocks from their spot");
+            if (stillInBed || away > 10) throw new AssertionError("resting: in bed " + stillInBed + " at noon, " + away + " blocks away");
+            Scene.screenshot(context, this, "day");
 
-            // Right next to them: who they are under the crosshair too.
-            Scene.command(world, "tp @a 3.5 " + GROUND + " 6 0 14");
-            wait(context, world, 20);
-            aimed(context, true);
-            Scene.screenshot(context, this, "looked-at");
+            // Hit: the shield goes up.
+            context.runOnClient(minecraft -> {
+                RestingPuppet puppet = puppet(minecraft);
+                Vec3 at = puppet.position().add(0, 0.6, 0);
+                Vec3 eye = at.add(0, 1.0, -2.0);
+                double dx = at.x - eye.x, dy = at.y - eye.y, dz = at.z - eye.z;
+                float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+                float pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz)));
+                minecraft.player.setPos(eye.x, eye.y - minecraft.player.getEyeHeight(), eye.z);
+                minecraft.player.setYRot(yaw);
+                minecraft.player.setXRot(pitch);
+                minecraft.options.keyAttack.setDown(true);
+            });
+            context.waitTicks(2);
+            context.runOnClient(minecraft -> minecraft.options.keyAttack.setDown(false));
+            boolean blocking = sleeper(context, RestingPuppet::blocking);
+            Scene.log("resting hit: shield up " + blocking);
+            Scene.screenshot(context, this, "shield");
+            if (!blocking) throw new AssertionError("resting: no shield up after a hit");
+
+            // A monster two blocks away: sword drawn, shield up, eyes on it; gone, calm again.
+            Vec3 spot = sleeper(context, p -> p.position());
+            Scene.command(world, "tp @a " + (spot.x + 8) + " " + GROUND + " " + spot.z + " 90 10");
+            Scene.command(world, "summon husk " + (spot.x + 2) + " " + spot.y + " " + spot.z + " {NoAI:1b}");
+            wait(context, world, 30);
+            boolean guarding = sleeper(context, p -> p.guarding() && p.blocking()
+                    && p.getMainHandItem().is(Items.IRON_SWORD));
+            Scene.log("resting monster near: on guard " + guarding);
+            Scene.screenshot(context, this, "guard");
+            if (!guarding) throw new AssertionError("resting: not on guard with a husk two blocks away");
+            Scene.command(world, "kill @e[type=husk]");
+            wait(context, world, 140);
+            boolean calm = sleeper(context, p -> !p.guarding() && !p.blocking() && p.getMainHandItem().isEmpty());
+            Scene.log("resting monster gone: calm " + calm);
+            if (!calm) throw new AssertionError("resting: still on guard once the husk is gone");
+
+            // A creeper blowing up next to them: thrown, then back where they stood.
+            Vec3 before = sleeper(context, p -> p.position());
+            Scene.command(world, "tp @a " + (before.x + 12) + " " + GROUND + " " + before.z + " 90 10");
+            Scene.command(world, "summon creeper " + (before.x + 2) + " " + before.y + " " + before.z
+                    + " {NoAI:1b,Fuse:30,ignited:1b}");
+            boolean thrown = false;
+            Vec3 stood = before;
+            for (int i = 0; i < 80 && !thrown; i++) {
+                context.waitTick();
+                Vec3 now = sleeper(context, p -> p.position());
+                thrown = sleeper(context, RestingPuppet::thrown);
+                if (!thrown) stood = now;
+            }
+            Scene.log("resting creeper: thrown " + thrown);
+            if (!thrown) throw new AssertionError("resting: not thrown by the creeper");
+            Scene.screenshot(context, this, "thrown");
+            wait(context, world, 200);
+            Vec3 back = sleeper(context, p -> p.position());
+            double off = Math.hypot(back.x - stood.x, back.z - stood.z);
+            Scene.log("resting creeper: " + off + " blocks from where they stood");
+            if (off > 1.5) throw new AssertionError("resting: did not walk back after the blast, " + off + " blocks off");
 
             // Switched off: neither shown nor looked at.
             Scene.configure(context, config -> config.offlinePlayers = false);
@@ -102,9 +202,9 @@ public final class RestingScenario implements Scenario {
             wait(context, world, 20);
             String tester = context.computeOnClient(minecraft -> {
                 RestingPlayers resting = FarPlayerTracker.get().resting();
-                RestingPlayers.Spot spot = resting.lookedAt();
-                if (spot == null || !spot.name().equals("Tester") || !resting.isFake(spot)) return "looked at " + spot;
-                long minutes = (System.currentTimeMillis() - spot.lastSeen()) / 60_000;
+                RestingPlayers.Spot seen = resting.lookedAt();
+                if (seen == null || !seen.name().equals("Tester") || !resting.isFake(seen)) return "looked at " + seen;
+                long minutes = (System.currentTimeMillis() - seen.lastSeen()) / 60_000;
                 return minutes >= 89 && minutes <= 91 ? null : "logged off " + minutes + " minutes ago";
             });
             if (tester != null) throw new AssertionError("resting test player: " + tester);
@@ -113,7 +213,7 @@ public final class RestingScenario implements Scenario {
             clientCommand(context, "livinghorizon debug offline test clear");
             wait(context, world, 10);
             boolean gone = context.computeOnClient(minecraft -> FarPlayerTracker.get().resting().spots().stream()
-                    .noneMatch(spot -> spot.name().equals("Tester")));
+                    .noneMatch(s -> s.name().equals("Tester")));
             if (!gone) throw new AssertionError("resting test player still there after clear");
             Scene.log("resting test player cleared");
         }
@@ -132,6 +232,20 @@ public final class RestingScenario implements Scenario {
         }
     }
 
+    private static RestingPuppet puppet(Minecraft minecraft) {
+        ClientLevel level = minecraft.level;
+        RestingPlayers resting = FarPlayerTracker.get().resting();
+        for (RestingPlayers.Spot spot : resting.spots()) {
+            if (spot.name().equals(NAME) && level != null) return resting.puppet(level, spot);
+        }
+        throw new AssertionError("resting: no sleeper");
+    }
+
+    /** Something about the sleeper, read on the client. */
+    private static <T> T sleeper(ClientGameTestContext context, Function<RestingPuppet, T> read) {
+        return context.computeOnClient(minecraft -> read.apply(puppet(minecraft)));
+    }
+
     /** Fails the run unless the sleeper is (or is not) the one under the crosshair. */
     private static void aimed(ClientGameTestContext context, boolean expected) {
         String aimed = context.computeOnClient(minecraft -> {
@@ -146,18 +260,11 @@ public final class RestingScenario implements Scenario {
 
     /** Logs where the sleeper is, and fails the run when it is not where it should be. */
     private static void check(ClientGameTestContext context, String step, double y, boolean bed) {
-        String where = context.computeOnClient(minecraft -> {
-            ClientLevel level = minecraft.level;
-            RestingPlayers resting = FarPlayerTracker.get().resting();
-            for (RestingPlayers.Spot spot : resting.spots()) {
-                if (!spot.name().equals(NAME) || level == null) continue;
-                var puppet = resting.puppet(level, spot);
-                Scene.log("resting " + step + " y=" + puppet.getY() + " bed=" + puppet.inBed()
-                        + " standing=" + puppet.standing());
-                return Math.abs(puppet.getY() - y) < 1e-3 && puppet.inBed() == bed ? null
-                        : "y=" + puppet.getY() + " bed=" + puppet.inBed();
-            }
-            return "no sleeper";
+        @Nullable String where = context.computeOnClient(minecraft -> {
+            RestingPuppet puppet = puppet(minecraft);
+            Scene.log("resting " + step + " y=" + puppet.getY() + " bed=" + puppet.inBed() + " look=" + puppet.look());
+            return Math.abs(puppet.getY() - y) < 1e-3 && puppet.inBed() == bed ? null
+                    : "y=" + puppet.getY() + " bed=" + puppet.inBed();
         });
         if (where != null) throw new AssertionError("resting " + step + ": expected y=" + y + " bed=" + bed + ", got " + where);
     }
