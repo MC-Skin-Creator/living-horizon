@@ -141,7 +141,7 @@ public final class FarPlayerTracker {
             warnedNoPack = true;
             if (!shared.active() && minecraft.getSingleplayerServer() == null) {
                 LivingHorizonClient.LOGGER.warn("Living Horizon: no data pack found on this server, so distant players are not shown. "
-                        + "Install the data pack in the world, or ask the host to open a LAN world with the mod.");
+                        + "Put the mod in the server's mods folder, install the data pack, or ask the host of a LAN world to use the mod.");
             }
         }
 
