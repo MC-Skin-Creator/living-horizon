@@ -45,6 +45,14 @@ public final class EasterEggsScenario implements Scenario {
                 minecraft.options.renderDistance().set(16);
             });
             context.waitTicks(60);
+            // Their commands are for whoever works on them: not there for a player.
+            boolean hidden = context.computeOnClient(minecraft -> {
+                var root = net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.getActiveDispatcher()
+                        .getRoot().getChild("livinghorizon");
+                var egg = root == null ? null : root.getChild("ee1");
+                return egg != null && !egg.canUse(null);
+            });
+            if (!hidden) throw new AssertionError("the easter eggs' commands are there for players");
             // First, while nothing else may come by chance: no cow is remembered yet.
             calendar(context, world);
             ufo(context, world);

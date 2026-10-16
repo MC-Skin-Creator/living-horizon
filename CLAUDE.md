@@ -103,8 +103,10 @@ say which class is which). Players find them; nothing they read gives one away:
 - one settings switch covers them all, `easterEggs` ("Easter eggs", a tooltip that says
   nothing of what they are);
 - each is called by number, `/livinghorizon ee1`, `ee2` and so on, never by a name that
-  says what it is; its lang keys are `livinghorizon.eeN.*`, and `livinghorizon.ee.nothing`
-  when it cannot come;
+  says what it is, and only in a game started with `-Dlivinghorizon.ee=true`: without it the
+  commands are not there at all, not even among the suggestions, so nothing in the game
+  tells a player which easter eggs there are. Its lang keys are `livinghorizon.eeN.*`, and
+  `livinghorizon.ee.nothing` when it cannot come;
 - by chance, only as `ambient/EggCalendar` allows: each from a day of its own (days lived in
   that world, counted at dawn), two to four days apart, one at a time; the watcher (ee4)
   keeps nights of his own and stays out of the others' way. The commands skip all of it;

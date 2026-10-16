@@ -107,8 +107,8 @@ public final class LivingHorizonCommand {
                                 .then(RequiredArgumentBuilder.<S, Integer>argument("radius",
                                                 IntegerArgumentType.integer(MobScan.MIN_RADIUS))
                                         .executes(c -> scan(source.apply(c.getSource()), IntegerArgumentType.getInteger(c, "radius")))))
-                        // The easter eggs, numbered: a name would say what they are.
-                        .then(LiteralArgumentBuilder.<S>literal("ee1").executes(c -> {
+                        // The easter eggs, numbered, and only for whoever works on them (EGGS).
+                        .then(LiteralArgumentBuilder.<S>literal("ee1").requires(c -> EGGS).executes(c -> {
                             Minecraft client = source.apply(c.getSource()).client();
                             if (client.level == null || client.player == null) return 0;
                             Ufo.Call call = FarPlayerTracker.get().ambience().ufo().summon(client.level, client.player, true);
@@ -116,17 +116,17 @@ public final class LivingHorizonCommand {
                                     ? NOTHING : "livinghorizon.ee1." + call.name().toLowerCase(Locale.ROOT)));
                             return call == Ufo.Call.NOTHING ? 0 : 1;
                         }))
-                        .then(LiteralArgumentBuilder.<S>literal("ee2").executes(c -> egg(source.apply(c.getSource()), "ee2",
+                        .then(LiteralArgumentBuilder.<S>literal("ee2").requires(c -> EGGS).executes(c -> egg(source.apply(c.getSource()), "ee2",
                                 (level, player) -> FarPlayerTracker.get().ambience().pass().summon(level, player, true))))
-                        .then(LiteralArgumentBuilder.<S>literal("ee3").executes(c -> egg(source.apply(c.getSource()), "ee3",
+                        .then(LiteralArgumentBuilder.<S>literal("ee3").requires(c -> EGGS).executes(c -> egg(source.apply(c.getSource()), "ee3",
                                 (level, player) -> FarPlayerTracker.get().ambience().ghosts().summon(level, player, true))))
-                        .then(LiteralArgumentBuilder.<S>literal("ee4").executes(c -> egg(source.apply(c.getSource()), "ee4",
+                        .then(LiteralArgumentBuilder.<S>literal("ee4").requires(c -> EGGS).executes(c -> egg(source.apply(c.getSource()), "ee4",
                                 (level, player) -> FarPlayerTracker.get().ambience().herobrine().summon(level, player, true))))
-                        .then(LiteralArgumentBuilder.<S>literal("ee5").executes(c -> egg(source.apply(c.getSource()), "ee5",
+                        .then(LiteralArgumentBuilder.<S>literal("ee5").requires(c -> EGGS).executes(c -> egg(source.apply(c.getSource()), "ee5",
                                 (level, player) -> FarPlayerTracker.get().ambience().waver().summon(level, player, true))))
-                        .then(LiteralArgumentBuilder.<S>literal("ee6").executes(c -> egg(source.apply(c.getSource()), "ee6",
+                        .then(LiteralArgumentBuilder.<S>literal("ee6").requires(c -> EGGS).executes(c -> egg(source.apply(c.getSource()), "ee6",
                                 (level, player) -> FarPlayerTracker.get().ambience().bigfoot().summon(level, player, true))))
-                        .then(LiteralArgumentBuilder.<S>literal("ee7").executes(c -> egg(source.apply(c.getSource()), "ee7",
+                        .then(LiteralArgumentBuilder.<S>literal("ee7").requires(c -> EGGS).executes(c -> egg(source.apply(c.getSource()), "ee7",
                                 (level, player) -> FarPlayerTracker.get().ambience().ghostBoat().summon(level, player, true))))
                         .then(LiteralArgumentBuilder.<S>literal("config").executes(c -> {
                             // After the chat screen, which closes once the command has run.
@@ -225,7 +225,13 @@ public final class LivingHorizonCommand {
         return spots.size();
     }
 
-    /** {@code /livinghorizon scan [radius]}: the mobs of the chunks around, read from a single player world. */
+    /**
+     * The easter eggs' commands, for whoever works on them: the game started with
+     * {@code -Dlivinghorizon.ee=true}. Without it they are not there at all, not even among
+     * the suggestions: nothing in the game tells a player which easter eggs there are.
+     */
+    private static final boolean EGGS = Boolean.getBoolean("livinghorizon.ee");
+
     /** What an easter egg answers when it cannot come: the off switch, the wrong place. */
     private static final String NOTHING = "livinghorizon.ee.nothing";
 
@@ -238,6 +244,7 @@ public final class LivingHorizonCommand {
         return on ? 1 : 0;
     }
 
+    /** {@code /livinghorizon scan [radius]}: the mobs of the chunks around, read from a single player world. */
     private static int scan(Source source, int radius) {
         Minecraft client = source.client();
         // After the command has run, outside the command dispatcher.
