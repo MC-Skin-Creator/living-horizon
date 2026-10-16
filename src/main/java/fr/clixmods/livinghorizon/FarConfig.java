@@ -54,7 +54,7 @@ public final class FarConfig {
     @SerializedName(value = "depthOcclusion", alternate = "voxyOcclusion")
     public boolean depthOcclusion = true;
 
-    private static final int CURRENT = 8;
+    private static final int CURRENT = 9;
 
     /** Skinned figures, which Distant Friends uses as its fake players: shown, standing still. */
     private static final String MANNEQUIN = "minecraft:mannequin";
@@ -217,7 +217,7 @@ public final class FarConfig {
      * Pixels: a distant mob shorter than this on screen plays no walking or idle animation (it
      * resumes a little above, so it never flickers). 0 always animates. Needs {@link #optStillTiny}.
      */
-    public int animationMinPixels = 10;
+    public int animationMinPixels = 5;
     /** Blocks: past this, no distant mob plays an animation, however big it looks. 0 is no limit. */
     public int animationMaxDistance = 0;
     /** A copy that was not drawn for a moment (out of view, hidden, too small) stays where it is: no animation, no path read. */
@@ -330,6 +330,10 @@ public final class FarConfig {
             }
             instance.glowOutline = null;
             instance.debugOutlines = null;
+        }
+        if (instance.version < 9 && instance.animationMinPixels == 10) {
+            // 10 pixels stilled mobs still big enough to see walk: whoever kept it gets the new default.
+            instance.animationMinPixels = 5;
         }
         instance.version = CURRENT;
         save();
