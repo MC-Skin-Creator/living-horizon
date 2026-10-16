@@ -47,8 +47,14 @@ public final class EasterEggsScenario implements Scenario {
             context.waitTicks(60);
             // Their commands are for whoever works on them: not there for a player.
             boolean hidden = context.computeOnClient(minecraft -> {
+                // The Fabric API renamed ClientCommandManager to ClientCommands on 26.1.
+                //? if <26.1 {
                 var root = net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.getActiveDispatcher()
                         .getRoot().getChild("livinghorizon");
+                //?} else {
+                /*var root = net.fabricmc.fabric.api.client.command.v2.ClientCommands.getActiveDispatcher()
+                        .getRoot().getChild("livinghorizon");
+                *///?}
                 var egg = root == null ? null : root.getChild("ee1");
                 return egg != null && !egg.canUse(null);
             });
