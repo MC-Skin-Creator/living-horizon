@@ -96,6 +96,11 @@ public final class MobMemory {
         boolean fromPack;
         /** Wore a name tag when last seen. */
         boolean named;
+        /**
+         * The ground around it, read whole where it was last remembered ({@link MobPaths.Ground#save()}):
+         * it walks on it from the start next time, before the far world is read, or where it knows nothing.
+         */
+        @Nullable String ground;
 
         transient @Nullable Entity puppet;
         /** The animation it plays, chosen from the blocks around where it is remembered; null until read. */
@@ -103,6 +108,8 @@ public final class MobMemory {
         transient volatile boolean planning;
         /** Its ground was read with columns missing: when to read it again, and how many times it was. */
         transient int replanAt, replans;
+        /** The choice whose ground is saved in {@link #ground}. */
+        transient MobPaths.@Nullable Choice saved;
         /** Where its animation took it, where it looks. */
         transient @Nullable MobMotion motion;
         /** The real mob, sent again by the server, that the copy walks up to before it takes over. */
@@ -576,6 +583,15 @@ public final class MobMemory {
                 if (choice != null && !choice.ground().around(mob.x, mob.z)) mob.choice = choice = null;
                 // Read with part of the far world missing: read again, now that it may be there.
                 boolean again = choice != null && !choice.complete() && clock >= mob.replanAt;
+                if (choice == null && roam && !mob.simulated && !mob.planning && mob.ground != null) {
+                    // Saved with it: the ground it was last seen on, if it is still where it was.
+                    MobPaths.Ground saved = MobPaths.Ground.load(mob.ground);
+                    if (saved != null && saved.around(mob.x, mob.z) && walker(living)) {
+                        mob.choice = choice = mob.saved = MobPaths.choose(saved, living.getBbWidth(), seed(mob));
+                    } else {
+                        mob.ground = null;
+                    }
+                }
                 if ((choice == null || again) && roam && !mob.simulated && !mob.planning && reads < READS_PER_TICK) {
                     reads++;
                     mob.planning = true;
@@ -590,6 +606,12 @@ public final class MobMemory {
                         mob.choice = found != null ? found : MobPaths.stand(x, y, z);
                         mob.planning = false;
                     });
+                }
+                // Read whole: kept with it, for the next time the world is entered.
+                if (choice != null && choice != mob.saved && choice.complete() && walker(living)) {
+                    mob.saved = choice;
+                    mob.ground = choice.ground().save();
+                    dirty = true;
                 }
                 mob.still = isStill(living, mob, config, pixelsPerRadian);
                 boolean tiny = mob.still;

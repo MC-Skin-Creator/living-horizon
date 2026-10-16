@@ -14,6 +14,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -34,7 +35,9 @@ import java.util.concurrent.CompletableFuture;
  *
  * <p>The far world may not be readable yet - Voxy and Distant Horizons open theirs a moment
  * after the game's, and have nothing of ground they never saw. A choice made with columns
- * missing says so ({@link Choice#complete()}), and the ground is read again later.
+ * missing says so ({@link Choice#complete()}), and the ground is read again later. A ground
+ * read whole is saved with the mob ({@link Ground#save()}): the next time the world is
+ * entered, the mob walks on it at once, whatever the far world knows.
  */
 public final class MobPaths {
     /** Blocks around the mob that are read. */
@@ -242,7 +245,7 @@ public final class MobPaths {
 
     /** The height of the ground around a mob, as read: NaN where it cannot stand. */
     public static final class Ground {
-        final double x, z;
+        final double x, y, z;
         /** Every column was read; false when the far world had nothing for some of them. */
         final boolean complete;
         private final int bx, bz;
@@ -258,6 +261,7 @@ public final class MobPaths {
 
         Ground(double[][] ground, double x, double y, double z, boolean complete) {
             this.x = x;
+            this.y = y;
             this.z = z;
             this.complete = complete;
             bx = Mth.floor(x);
@@ -266,6 +270,47 @@ public final class MobPaths {
             for (int i = 0; i < SIZE; i++) height[i] = ground[i].clone();
             double own = height[RADIUS][RADIUS];
             if (Double.isNaN(own) || Math.abs(own - y) > LEVEL) height[RADIUS][RADIUS] = y;
+        }
+
+        /** Where nothing could stand, in a saved ground. */
+        private static final byte NONE = Byte.MIN_VALUE;
+
+        /**
+         * This ground in a few hundred characters, for the memory file: where it was read, then
+         * every column's height in sixteenths of a block from the mob's own block.
+         */
+        public String save() {
+            byte[] heights = new byte[SIZE * SIZE];
+            int base = Mth.floor(y);
+            for (int i = 0; i < SIZE; i++) {
+                for (int j = 0; j < SIZE; j++) {
+                    double h = height[i][j];
+                    heights[i * SIZE + j] = Double.isNaN(h) ? NONE : (byte) Mth.clamp(Math.round((h - base) * 16), -127, 127);
+                }
+            }
+            return x + " " + y + " " + z + " " + Base64.getEncoder().encodeToString(heights);
+        }
+
+        /** A ground written by {@link #save()}; null if it cannot be read. */
+        public static @Nullable Ground load(String saved) {
+            try {
+                String[] parts = saved.split(" ");
+                if (parts.length != 4) return null;
+                double x = Double.parseDouble(parts[0]), y = Double.parseDouble(parts[1]), z = Double.parseDouble(parts[2]);
+                byte[] heights = Base64.getDecoder().decode(parts[3]);
+                if (heights.length != SIZE * SIZE) return null;
+                int base = Mth.floor(y);
+                double[][] ground = new double[SIZE][SIZE];
+                for (int i = 0; i < SIZE; i++) {
+                    for (int j = 0; j < SIZE; j++) {
+                        byte h = heights[i * SIZE + j];
+                        ground[i][j] = h == NONE ? Double.NaN : base + h / 16.0;
+                    }
+                }
+                return new Ground(ground, x, y, z, true);
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
         }
 
         /** Read around this very spot. */

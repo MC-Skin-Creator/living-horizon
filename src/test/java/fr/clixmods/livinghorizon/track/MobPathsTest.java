@@ -158,6 +158,30 @@ class MobPathsTest {
     }
 
     @Test
+    void savedGroundComesBackTheSame() {
+        double[][] ground = ground(64);
+        ground[R + 2][R] = 64.5;
+        ground[R][R + 3] = 64.9375;
+        ground[R - 1][R - 1] = 63;
+        ground[0][0] = Double.NaN;
+        MobPaths.Ground read = new MobPaths.Ground(ground, X, Y, Z);
+        MobPaths.Ground saved = MobPaths.Ground.load(read.save());
+        assertNotNull(saved);
+        assertTrue(saved.complete);
+        assertTrue(saved.around(X, Z));
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j++) {
+                double x = BX + i - R + 0.5, z = BZ + j - R + 0.5;
+                assertEquals(read.height(x, z), saved.height(x, z), 1e-9);
+            }
+        }
+        // The same ground, the same walk.
+        assertTrue(MobPaths.choose(read, WIDTH, 5).same(MobPaths.choose(saved, WIDTH, 5)));
+        assertNull(MobPaths.Ground.load("not a ground"));
+        assertNull(MobPaths.Ground.load("1 2 3 AAAA"));
+    }
+
+    @Test
     void flyersStayAFewBlocksAround() {
         MobPaths.Choice choice = MobPaths.free(X, Y, Z, 9);
         assertNotNull(choice.animation());

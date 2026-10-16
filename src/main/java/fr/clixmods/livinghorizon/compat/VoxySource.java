@@ -34,6 +34,8 @@ final class VoxySource implements LodSource {
 
     private volatile boolean ready;
     private volatile boolean broken;
+    /** After a failed read, nothing is read until then: Voxy's world may only have been closing or opening. */
+    private volatile long pausedUntil;
     private volatile @Nullable String failure;
     private MethodHandle renderSystem, engine, acquire, data, release, mapper, opacity, isAir, isLive;
     private MethodHandle biomeId, biomeEntries, biomeName, blockState, blockId;
@@ -105,7 +107,7 @@ final class VoxySource implements LodSource {
 
     @Override
     public synchronized boolean available() {
-        if (broken) return false;
+        if (broken || System.nanoTime() < pausedUntil) return false;
         if (!ready) {
             ready = true;
             if (!Platform.isModLoaded("voxy")) {
@@ -126,9 +128,11 @@ final class VoxySource implements LodSource {
 
     @Override
     public void fail(Throwable e) {
-        broken = true;
+        // Not for good: a world closing or opening as the player joins fails one read ("World
+        // is not live"), and the mobs would then find no ground until the game restarted.
+        pausedUntil = System.nanoTime() + 20_000_000_000L;
         failure = "Voxy did not answer as expected: " + e;
-        LivingHorizonClient.LOGGER.warn("Reading Voxy's world turned off: Voxy did not answer as expected", e);
+        LivingHorizonClient.LOGGER.warn("Reading Voxy's world paused for 20 seconds: it did not answer as expected", e);
     }
 
     /**
