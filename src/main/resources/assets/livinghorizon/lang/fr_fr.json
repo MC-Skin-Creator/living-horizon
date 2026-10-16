@@ -22,6 +22,8 @@
   "livinghorizon.options.offlinePlayers.tooltip": "Les joueurs déconnectés restent là où ils étaient, jusqu'à leur retour. Désactivé : ils ne sont ni affichés ni retenus.",
   "livinghorizon.options.offlineLife": "Déconnectés vivants",
   "livinghorizon.options.offlineLife.tooltip": "Activé : les joueurs déconnectés vivent leur vie là où ils sont partis. Ils se promènent, regardent autour d'eux, s'assoient, restent devant les coffres et les blocs de métier, vont la nuit dans un lit qu'ils peuvent atteindre, et lèvent un bouclier quand on les frappe ou quand des monstres approchent. Désactivé : ils restent assis là où ils se sont déconnectés.",
+  "livinghorizon.options.offlineRoam": "Zone des déconnectés",
+  "livinghorizon.options.offlineRoam.tooltip": "Jusqu'où, autour de l'endroit où ils se sont déconnectés, les joueurs déconnectés se promènent et cherchent un lit, un coffre ou un bloc de métier. 50 blocs, c'est à peu près un village.",
   "livinghorizon.options.offlineNames": "Pseudo des déconnectés",
   "livinghorizon.options.offlineNames.tooltip": "Le pseudo d'un joueur déconnecté au-dessus de lui, marqué hors ligne, d'aussi près que le jeu affiche les noms. Le viser juste à côté de lui indique quand il a été vu pour la dernière fois.",
   "livinghorizon.offline.tag": "(hors ligne)",

@@ -1,21 +1,30 @@
 package fr.clixmods.livinghorizon.track;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.Random;
+import java.util.Set;
 
 /**
- * Where a player who logged off can walk, around the place where it stands: every spot a
- * player could stand on and reach on foot, as a player would - a step up of one block, a
- * drop of two at most, no corner cut, nothing walked through. Worked out on the client from
- * the blocks it has, for the figure alone: nothing is sent anywhere.
+ * Where a player who logged off can walk: every spot a player could stand on and reach on
+ * foot, as a player would - a step up of one block, a drop of two at most, no corner cut,
+ * nothing walked through. Worked out on the client from the blocks it has, for the figure
+ * alone: nothing is sent anywhere.
  *
- * <p>The blocks are read through {@link Ground}, so that this is tested without a world.
+ * <p>Two searches share what they read of the blocks: a {@link Survey} of everything
+ * reachable around a spot (a village's worth: where to stroll, which beds and chests are in
+ * reach), and a {@link Route} to one spot, guided towards it. Both grow a little at a time,
+ * so that a large area is read over several ticks. The blocks are read through
+ * {@link Ground}, so that this is tested without a world.
  */
 public final class Walkway {
     /** What a spot is like: the height a player stands at with its feet in that block, or NaN. */
@@ -41,87 +50,211 @@ public final class Walkway {
 
     private final Ground ground;
     private final Map<Long, Double> heights = new HashMap<>();
-    private final Map<Long, Step> steps = new HashMap<>();
-    private final Map<Long, Long> previous = new HashMap<>();
 
-    private Walkway(Ground ground) {
+    public Walkway(Ground ground) {
         this.ground = ground;
     }
 
+    /** Forgets the blocks read so far: they may have changed. */
+    public void forget() {
+        heights.clear();
+    }
+
     /**
-     * Every spot reachable from the one with its feet in block ({@code x}, {@code y}, {@code z}),
-     * at most {@code radius} blocks across from ({@code cx}, {@code cz}) and {@code budget} spots
-     * in all, nearest first. Null when no one can stand there.
+     * A survey grown to its end at once: every spot reachable from the one with its feet in
+     * block ({@code x}, {@code y}, {@code z}), at most {@code radius} blocks across from
+     * ({@code cx}, {@code cz}) and {@code budget} spots in all. Null when no one can stand there.
      */
-    public static Walkway around(Ground ground, int x, int y, int z, int cx, int cz, int radius, int budget) {
-        Walkway walkway = new Walkway(ground);
-        Step start = walkway.step(x, y, z);
-        if (start == null) {
-            // Standing a little inside a block or above it: the spot next to its feet.
-            start = walkway.step(x, y + 1, z);
-            if (start == null) start = walkway.step(x, y - 1, z);
+    public static @Nullable Survey around(Ground ground, int x, int y, int z, int cx, int cz, int radius, int budget) {
+        Survey survey = new Walkway(ground).survey(x, y, z, cx, cz, radius, budget);
+        if (survey != null) survey.grow(Integer.MAX_VALUE);
+        return survey;
+    }
+
+    /** A survey from this spot, to {@link Survey#grow grow}; null when no one can stand there. */
+    public @Nullable Survey survey(int x, int y, int z, int cx, int cz, int radius, int budget) {
+        Step start = start(x, y, z);
+        return start == null ? null : new Survey(start, cx, cz, radius, budget);
+    }
+
+    /**
+     * A way from the spot with its feet in block ({@code x}, {@code y}, {@code z}) to
+     * {@code target}, staying within {@code radius} of ({@code cx}, {@code cz}); null when
+     * no one can stand at the start.
+     */
+    public @Nullable Route route(int x, int y, int z, Step target, int cx, int cz, int radius, int budget) {
+        Step start = start(x, y, z);
+        return start == null ? null : new Route(start, target, cx, cz, radius, budget);
+    }
+
+    /** The spot at the feet: in their block, or the one above or below when a little inside or over it. */
+    private @Nullable Step start(int x, int y, int z) {
+        Step start = step(x, y, z);
+        if (start == null) start = step(x, y + 1, z);
+        if (start == null) start = step(x, y - 1, z);
+        return start;
+    }
+
+    /** Everything reachable from a spot, nearest first. */
+    public final class Survey {
+        private final Map<Long, Step> steps = new HashMap<>();
+        private final Map<Long, Long> previous = new HashMap<>();
+        private final Map<Long, Double> costs = new HashMap<>();
+        private final PriorityQueue<Open> open = new PriorityQueue<>((a, b) -> Double.compare(a.cost(), b.cost()));
+        private final int cx, cz, budget;
+        private final double limit;
+        private @Nullable List<Step> spots;
+
+        private Survey(Step start, int cx, int cz, int radius, int budget) {
+            this.cx = cx;
+            this.cz = cz;
+            this.budget = budget;
+            this.limit = (radius + 0.5) * (radius + 0.5);
+            costs.put(key(start), 0.0);
+            open.add(new Open(start, 0, 0));
         }
-        if (start == null) return null;
-        walkway.spread(start, cx, cz, radius, budget);
-        return walkway;
+
+        /** Reads up to {@code spots} more spots; true once there is nothing more to read. */
+        public boolean grow(int spots) {
+            int read = 0;
+            while (!open.isEmpty() && steps.size() < budget && read < spots) {
+                Open next = open.poll();
+                Step at = next.step();
+                long atKey = key(at);
+                if (steps.containsKey(atKey)) continue;
+                steps.put(atKey, at);
+                read++;
+                for (int[] d : DIRECTIONS) {
+                    Step to = neighbour(at, d[0], d[1]);
+                    if (to == null || to.distanceSqr(cx, cz) > limit) continue;
+                    long toKey = key(to);
+                    if (steps.containsKey(toKey)) continue;
+                    double cost = next.cost() + cost(at, to, d);
+                    Double known = costs.get(toKey);
+                    if (known != null && known <= cost) continue;
+                    costs.put(toKey, cost);
+                    previous.put(toKey, atKey);
+                    open.add(new Open(to, cost, cost));
+                }
+            }
+            return done();
+        }
+
+        public boolean done() {
+            return open.isEmpty() || steps.size() >= budget;
+        }
+
+        /** The spots reached so far. */
+        public List<Step> spots() {
+            if (spots == null || spots.size() != steps.size()) spots = new ArrayList<>(steps.values());
+            return spots;
+        }
+
+        /** Whether a player can stand with its feet in this block, and reach it from the start. */
+        public @Nullable Step reached(int x, int y, int z) {
+            return steps.get(key(x, y, z));
+        }
+
+        /** The way from the start to a spot reached, the start left out; empty if it is the start. */
+        public List<Step> pathTo(Step target) {
+            return walk(target, steps, previous);
+        }
     }
 
-    /** The spots reached, nearest first. */
-    public List<Step> spots() {
-        return new ArrayList<>(steps.values());
+    /** The way to one spot, searched towards it first. */
+    public final class Route {
+        private final Map<Long, Step> closed = new HashMap<>();
+        private final Map<Long, Long> previous = new HashMap<>();
+        private final Map<Long, Double> costs = new HashMap<>();
+        private final PriorityQueue<Open> open = new PriorityQueue<>((a, b) -> Double.compare(a.rank(), b.rank()));
+        private final Step target;
+        private final int cx, cz, budget;
+        private final double limit;
+        private boolean finished;
+        private @Nullable List<Step> path;
+
+        private Route(Step start, Step target, int cx, int cz, int radius, int budget) {
+            this.target = target;
+            this.cx = cx;
+            this.cz = cz;
+            this.budget = budget;
+            this.limit = (radius + 0.5) * (radius + 0.5);
+            costs.put(key(start), 0.0);
+            open.add(new Open(start, 0, guess(start)));
+        }
+
+        /** Reads up to {@code spots} more spots; true once the way is found, or known not to be. */
+        public boolean grow(int spots) {
+            int read = 0;
+            while (!finished && read < spots) {
+                if (open.isEmpty() || closed.size() >= budget) {
+                    finished = true;
+                    break;
+                }
+                Open next = open.poll();
+                Step at = next.step();
+                long atKey = key(at);
+                if (closed.containsKey(atKey)) continue;
+                closed.put(atKey, at);
+                read++;
+                if (at.x() == target.x() && at.y() == target.y() && at.z() == target.z()) {
+                    path = walk(at, closed, previous);
+                    finished = true;
+                    break;
+                }
+                for (int[] d : DIRECTIONS) {
+                    Step to = neighbour(at, d[0], d[1]);
+                    if (to == null || to.distanceSqr(cx, cz) > limit) continue;
+                    long toKey = key(to);
+                    if (closed.containsKey(toKey)) continue;
+                    double cost = next.cost() + cost(at, to, d);
+                    Double known = costs.get(toKey);
+                    if (known != null && known <= cost) continue;
+                    costs.put(toKey, cost);
+                    previous.put(toKey, atKey);
+                    open.add(new Open(to, cost, cost + guess(to)));
+                }
+            }
+            return finished;
+        }
+
+        public boolean done() {
+            return finished;
+        }
+
+        /** The way, the start left out; null while searching, or when there is none. */
+        public @Nullable List<Step> path() {
+            return path;
+        }
+
+        private double guess(Step step) {
+            double dx = step.x() - target.x(), dy = step.height() - target.height(), dz = step.z() - target.z();
+            return Math.sqrt(dx * dx + dz * dz) + Math.abs(dy) * 0.5;
+        }
     }
 
-    /** Whether a player can stand with its feet in this block, and reach it from the start. */
-    public Step reached(int x, int y, int z) {
-        return steps.get(key(x, y, z));
+    private record Open(Step step, double cost, double rank) {
     }
 
-    /** The way from the start to a spot reached, the start left out; empty if it is the start. */
-    public List<Step> pathTo(Step target) {
+    private static double cost(Step at, Step to, int[] d) {
+        return (d[0] != 0 && d[1] != 0 ? 1.414 : 1.0) + Math.max(0, to.height() - at.height()) * 0.5;
+    }
+
+    private static List<Step> walk(Step target, Map<Long, Step> steps, Map<Long, Long> previous) {
         Deque<Step> path = new ArrayDeque<>();
-        long at = key(target.x(), target.y(), target.z());
-        while (previous.containsKey(at)) {
-            path.addFirst(steps.get(at));
+        Set<Long> seen = new HashSet<>();
+        long at = key(target);
+        while (previous.containsKey(at) && seen.add(at)) {
+            Step step = steps.get(at);
+            if (step == null) break;
+            path.addFirst(step);
             at = previous.get(at);
         }
         return new ArrayList<>(path);
     }
 
-    private void spread(Step start, int cx, int cz, int radius, int budget) {
-        record Open(Step step, double cost) {
-        }
-        Map<Long, Double> costs = new HashMap<>();
-        PriorityQueue<Open> open = new PriorityQueue<>((a, b) -> Double.compare(a.cost(), b.cost()));
-        long startKey = key(start.x(), start.y(), start.z());
-        costs.put(startKey, 0.0);
-        open.add(new Open(start, 0));
-        double limit = (radius + 0.5) * (radius + 0.5);
-        while (!open.isEmpty() && steps.size() < budget) {
-            Open next = open.poll();
-            Step at = next.step();
-            long atKey = key(at.x(), at.y(), at.z());
-            if (steps.containsKey(atKey)) continue;
-            steps.put(atKey, at);
-            for (int[] d : DIRECTIONS) {
-                Step to = neighbour(at, d[0], d[1]);
-                if (to == null || to.distanceSqr(cx, cz) > limit) continue;
-                long toKey = key(to.x(), to.y(), to.z());
-                if (steps.containsKey(toKey)) continue;
-                double cost = next.cost() + (d[0] != 0 && d[1] != 0 ? 1.414 : 1.0)
-                        + Math.max(0, to.height() - at.height()) * 0.5;
-                Double known = costs.get(toKey);
-                if (known != null && known <= cost) continue;
-                costs.put(toKey, cost);
-                previous.put(toKey, atKey);
-                open.add(new Open(to, cost));
-            }
-        }
-        // A spot reached last may have been given a parent it was never reached through.
-        previous.keySet().retainAll(steps.keySet());
-    }
-
     /** The spot one block over, a step up, level or down; for a diagonal, both sides must be open. */
-    private Step neighbour(Step from, int dx, int dz) {
+    private @Nullable Step neighbour(Step from, int dx, int dz) {
         Step to = over(from, from.x() + dx, from.z() + dz);
         if (to == null || dx == 0 || dz == 0) return to;
         Step side = over(from, from.x() + dx, from.z());
@@ -130,26 +263,18 @@ public final class Walkway {
         return to;
     }
 
-    private Step over(Step from, int x, int z) {
+    private @Nullable Step over(Step from, int x, int z) {
         for (int dy : new int[]{0, 1, -1, -2}) {
             Step to = step(x, from.y() + dy, z);
             if (to == null) continue;
             double rise = to.height() - from.height();
             if (rise > CLIMB || -rise > DROP) continue;
-            // Going up, the head must clear the block above where it stands now.
-            if (rise > 0.6 && step(from.x(), to.y(), from.z()) == null && Double.isNaN(clear(from, to))) continue;
             return to;
         }
         return null;
     }
 
-    /** Room above the feet to jump: the spot over its own block, if any; NaN when there is none. */
-    private double clear(Step from, Step to) {
-        double h = height(from.x(), from.y() + 1, from.z());
-        return Double.isNaN(h) && height(from.x(), from.y(), from.z()) == from.height() ? 0 : h;
-    }
-
-    private Step step(int x, int y, int z) {
+    private @Nullable Step step(int x, int y, int z) {
         double h = height(x, y, z);
         return Double.isNaN(h) ? null : new Step(x, y, z, h);
     }
@@ -158,12 +283,16 @@ public final class Walkway {
         return heights.computeIfAbsent(key(x, y, z), k -> ground.stand(x, y, z));
     }
 
+    private static long key(Step step) {
+        return key(step.x(), step.y(), step.z());
+    }
+
     static long key(int x, int y, int z) {
         return ((long) (x & 0x3FFFFFF) << 38) | ((long) (z & 0x3FFFFFF) << 12) | (y & 0xFFF);
     }
 
     /** The spots in a random order, for picking one. */
-    static List<Step> shuffled(List<Step> spots, java.util.Random random) {
+    static List<Step> shuffled(List<Step> spots, Random random) {
         List<Step> copy = new ArrayList<>(spots);
         Collections.shuffle(copy, random);
         return copy;

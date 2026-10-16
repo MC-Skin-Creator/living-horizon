@@ -22,10 +22,11 @@ import java.util.function.Function;
  * <p>Seated first ({@code offlineLife} off), on a pillar: the pillar is broken (they fall),
  * they are looked at from afar (their name only) and from close by (when they were last seen
  * too), buried (they reappear on top), the pillar built again (back on it). Then they live:
- * at night they walk to a bed (never a jump of more than a stroll), in the morning they get
- * up and stay around; hit, they raise a shield; a monster near, they draw a sword and stay on
- * guard until it is gone; a creeper blowing up throws them, and they walk back. Last, the
- * switch that hides them all, and the debug command's test player.
+ * at night they walk to a bed in a hut, through its shut door (never a jump of more than a
+ * stroll), in the morning they get up and stay around; hit, they raise a shield; a monster
+ * they cannot see leaves them calm, one in sight puts them on guard, sword drawn, until it is
+ * gone; a creeper blowing up throws them, and they walk back. Last, the switch that hides
+ * them all, and the debug command's test player.
  */
 public final class RestingScenario implements Scenario {
     private static final String NAME = "LH_Sleeper";
@@ -91,8 +92,13 @@ public final class RestingScenario implements Scenario {
             check(context, "rebuilt", GROUND + 3, false);
             Scene.screenshot(context, this, "rebuilt");
 
-            // Living now, at night, with a bed a few blocks away: they walk to it.
+            // Living now, at night, with a bed a few blocks away in a hut whose door is shut:
+            // they walk to it, through the door.
             Scene.command(world, "fill 0 " + GROUND + " 8 0 " + (GROUND + 2) + " 8 air");
+            Scene.command(world, "fill 2 " + (GROUND - 1) + " 6 6 " + (GROUND + 2) + " 11 oak_planks hollow");
+            Scene.command(world, "fill 3 " + (GROUND + 2) + " 7 5 " + (GROUND + 2) + " 10 air");
+            Scene.command(world, "setblock 4 " + GROUND + " 6 oak_door[half=lower,facing=north]");
+            Scene.command(world, "setblock 4 " + (GROUND + 1) + " 6 oak_door[half=upper,facing=north]");
             Scene.command(world, "setblock 4 " + GROUND + " 9 red_bed[facing=north,part=foot]");
             Scene.command(world, "setblock 4 " + GROUND + " 8 red_bed[facing=north,part=head]");
             Scene.command(world, "time set midnight");
@@ -109,31 +115,32 @@ public final class RestingScenario implements Scenario {
                 }
                 last = now;
                 inBed = sleeper(context, RestingPuppet::inBed);
+                if (i % 5 == 0) Scene.log("resting night " + i + ": " + now + " " + sleeper(context, RestingPuppet::state));
             }
             Scene.log("resting in bed at night: " + inBed);
             if (!inBed) throw new AssertionError("resting: not in the bed after 400 ticks of night");
             Scene.screenshot(context, this, "bed-night");
 
-            // Morning: up, and around their spot.
+            // Morning: up, and around their spot. The hut goes, to see them in the open.
             Scene.command(world, "time set noon");
+            Scene.command(world, "fill 2 " + GROUND + " 6 6 " + (GROUND + 2) + " 11 air");
             wait(context, world, 300);
             boolean stillInBed = sleeper(context, RestingPuppet::inBed);
             double away = sleeper(context, p -> Math.hypot(p.getX() - 0.5, p.getZ() - 8.5));
             Scene.log("resting day: in bed " + stillInBed + ", " + away + " blocks from their spot");
-            if (stillInBed || away > 10) throw new AssertionError("resting: in bed " + stillInBed + " at noon, " + away + " blocks away");
+            if (stillInBed || away > 52) throw new AssertionError("resting: in bed " + stillInBed + " at noon, " + away + " blocks away");
             Scene.screenshot(context, this, "day");
 
-            // Hit: the shield goes up.
+            // Hit: the shield goes up. Two blocks north of them, facing them, then a click.
+            Vec3 near = sleeper(context, p -> p.position());
+            Scene.command(world, "tp @a " + near.x + " " + near.y + " " + (near.z - 2) + " 0 20");
+            context.waitTicks(3);
             context.runOnClient(minecraft -> {
-                RestingPuppet puppet = puppet(minecraft);
-                Vec3 at = puppet.position().add(0, 0.6, 0);
-                Vec3 eye = at.add(0, 1.0, -2.0);
+                Vec3 at = puppet(minecraft).position().add(0, 0.6, 0);
+                Vec3 eye = minecraft.player.getEyePosition();
                 double dx = at.x - eye.x, dy = at.y - eye.y, dz = at.z - eye.z;
-                float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
-                float pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz)));
-                minecraft.player.setPos(eye.x, eye.y - minecraft.player.getEyeHeight(), eye.z);
-                minecraft.player.setYRot(yaw);
-                minecraft.player.setXRot(pitch);
+                minecraft.player.setYRot((float) Math.toDegrees(Math.atan2(-dx, dz)));
+                minecraft.player.setXRot((float) -Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz))));
                 minecraft.options.keyAttack.setDown(true);
             });
             context.waitTicks(2);
@@ -143,9 +150,24 @@ public final class RestingScenario implements Scenario {
             Scene.screenshot(context, this, "shield");
             if (!blocking) throw new AssertionError("resting: no shield up after a hit");
 
-            // A monster two blocks away: sword drawn, shield up, eyes on it; gone, calm again.
+            // A monster they cannot see, shut in a box of stone: no need for a shield.
             Vec3 spot = sleeper(context, p -> p.position());
             Scene.command(world, "tp @a " + (spot.x + 8) + " " + GROUND + " " + spot.z + " 90 10");
+            int bx = (int) Math.floor(spot.x) + 4, bz = (int) Math.floor(spot.z);
+            Scene.command(world, "fill " + (bx - 1) + " " + (GROUND - 1) + " " + (bz - 1) + " " + (bx + 1) + " "
+                    + (GROUND + 3) + " " + (bz + 1) + " stone hollow");
+            Scene.command(world, "summon husk " + (bx + 0.5) + " " + GROUND + " " + (bz + 0.5) + " {NoAI:1b}");
+            wait(context, world, 30);
+            boolean unseen = sleeper(context, p -> !p.guarding() && !p.blocking());
+            Scene.log("resting monster out of sight: calm " + unseen);
+            if (!unseen) throw new AssertionError("resting: on guard against a husk shut in a box");
+            Scene.command(world, "kill @e[type=husk]");
+            Scene.command(world, "fill " + (bx - 1) + " " + GROUND + " " + (bz - 1) + " " + (bx + 1) + " "
+                    + (GROUND + 3) + " " + (bz + 1) + " air");
+            wait(context, world, 10);
+
+            // A monster two blocks away: sword drawn, shield up, eyes on it; gone, calm again.
+            spot = sleeper(context, p -> p.position());
             Scene.command(world, "summon husk " + (spot.x + 2) + " " + spot.y + " " + spot.z + " {NoAI:1b}");
             wait(context, world, 30);
             boolean guarding = sleeper(context, p -> p.guarding() && p.blocking()

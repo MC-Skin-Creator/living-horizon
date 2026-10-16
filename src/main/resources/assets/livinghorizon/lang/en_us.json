@@ -22,6 +22,8 @@
   "livinghorizon.options.offlinePlayers.tooltip": "Players who logged off stay where they were, until they come back. Off: they are neither shown nor remembered.",
   "livinghorizon.options.offlineLife": "Offline players live",
   "livinghorizon.options.offlineLife.tooltip": "On: players who logged off live their life where they left. They stroll, look around, sit down, stand in front of chests and workstations, go to a bed they can reach at night, and raise a shield when hit or when monsters come near. Off: they sit where they logged off.",
+  "livinghorizon.options.offlineRoam": "Offline players' range",
+  "livinghorizon.options.offlineRoam.tooltip": "How far from where they logged off players who logged off walk around, and look for a bed, a chest or a workstation. 50 blocks is about a village.",
   "livinghorizon.options.offlineNames": "Offline players' names",
   "livinghorizon.options.offlineNames.tooltip": "Their name above a player who logged off, marked offline, as close as the game shows names. Aiming at them from right next to them shows when they were last seen.",
   "livinghorizon.offline.tag": "(offline)",

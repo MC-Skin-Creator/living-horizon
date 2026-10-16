@@ -40,7 +40,7 @@ class WalkwayTest {
     @Test
     void walksAcrossAFloor() {
         Blocks ground = new Blocks().floor(0, -10, 10);
-        Walkway map = Walkway.around(ground, 0, 1, 0, 0, 0, 5, 1000);
+        Walkway.Survey map = Walkway.around(ground, 0, 1, 0, 0, 0, 5, 1000);
         assertNotNull(map);
         Walkway.Step far = map.reached(4, 1, 3);
         assertNotNull(far);
@@ -52,7 +52,7 @@ class WalkwayTest {
 
     @Test
     void keepsWithinItsRadius() {
-        Walkway map = Walkway.around(new Blocks().floor(0, -20, 20), 0, 1, 0, 0, 0, 3, 1000);
+        Walkway.Survey map = Walkway.around(new Blocks().floor(0, -20, 20), 0, 1, 0, 0, 0, 3, 1000);
         assertNotNull(map);
         assertNull(map.reached(5, 1, 0));
         assertTrue(map.spots().stream().allMatch(s -> s.x() * s.x() + s.z() * s.z() <= 3.5 * 3.5));
@@ -62,7 +62,7 @@ class WalkwayTest {
     void goesRoundAWallNotThroughIt() {
         Blocks ground = new Blocks().floor(0, -6, 6);
         for (int z = -6; z <= 3; z++) ground.block(2, 1, z).block(2, 2, z);
-        Walkway map = Walkway.around(ground, 0, 1, 0, 0, 0, 6, 2000);
+        Walkway.Survey map = Walkway.around(ground, 0, 1, 0, 0, 0, 6, 2000);
         assertNotNull(map);
         Walkway.Step behind = map.reached(4, 1, 0);
         assertNotNull(behind);
@@ -78,7 +78,7 @@ class WalkwayTest {
             for (int x = 3; x <= 6; x++) ground.block(x, 1, z);
             for (int x = -6; x <= -3; x++) ground.block(x, 1, z).block(x, 2, z);
         }
-        Walkway map = Walkway.around(ground, 0, 1, 0, 0, 0, 6, 2000);
+        Walkway.Survey map = Walkway.around(ground, 0, 1, 0, 0, 0, 6, 2000);
         assertNotNull(map);
         assertNotNull(map.reached(4, 2, 0));
         assertNull(map.reached(-4, 3, 0));
@@ -97,7 +97,7 @@ class WalkwayTest {
     @Test
     void cutsNoCorner() {
         Blocks ground = new Blocks().floor(0, -3, 3).block(1, 1, 0).block(1, 2, 0);
-        Walkway map = Walkway.around(ground, 0, 1, 0, 0, 0, 3, 100);
+        Walkway.Survey map = Walkway.around(ground, 0, 1, 0, 0, 0, 3, 100);
         assertNotNull(map);
         Walkway.Step diagonal = map.reached(1, 1, 1);
         assertNotNull(diagonal);

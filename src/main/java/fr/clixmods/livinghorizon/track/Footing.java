@@ -2,15 +2,15 @@ package fr.clixmods.livinghorizon.track;
 
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CampfireBlock;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * Where a figure of a player can be, read from the blocks the client has: room for its
@@ -30,19 +30,41 @@ final class Footing {
 
     /** Room for it there: no block in its body. */
     static boolean fits(ClientLevel level, double x, double y, double z, double height) {
-        return level.noCollision(body(x, y, z, height));
+        return free(level, body(x, y, z, height));
     }
 
     /** Something to rest on: a block right under it, or water or lava to float on. */
     static boolean supported(ClientLevel level, double x, double y, double z) {
-        if (!level.noCollision(new AABB(x - 0.3, y - 0.1, z - 0.3, x + 0.3, y + 0.01, z + 0.3))) return true;
+        if (!free(level, new AABB(x - 0.3, y - 0.1, z - 0.3, x + 0.3, y + 0.01, z + 0.3))) return true;
         return !level.getFluidState(BlockPos.containing(x, y + 0.05, z)).isEmpty()
                 || !level.getFluidState(BlockPos.containing(x, y - 0.1, z)).isEmpty();
     }
 
     /** Nothing in the way between where it is and where it goes, straight up or down. */
     static boolean clear(ClientLevel level, double x, double y, double target, double z, double height) {
-        return level.noCollision(body(x, Math.min(y, target), z, height + Math.abs(target - y)));
+        return free(level, body(x, Math.min(y, target), z, height + Math.abs(target - y)));
+    }
+
+    /**
+     * No block in the box, doors and fence gates left out: a figure walks through them, shut
+     * or not, as it cannot open them. Blocks alone, read straight: this runs thousands of times
+     * when a figure looks for its way.
+     */
+    static boolean free(ClientLevel level, AABB box) {
+        for (BlockPos at : BlockPos.betweenClosed(BlockPos.containing(box.minX, box.minY, box.minZ),
+                BlockPos.containing(box.maxX, box.maxY, box.maxZ))) {
+            BlockState state = level.getBlockState(at);
+            if (state.isAir() || passable(state)) continue;
+            for (AABB part : state.getCollisionShape(level, at).toAabbs()) {
+                if (part.move(at.getX(), at.getY(), at.getZ()).intersects(box)) return false;
+            }
+        }
+        return true;
+    }
+
+    /** Doors and fence gates: walked through. */
+    static boolean passable(BlockState state) {
+        return state.getBlock() instanceof DoorBlock || state.getBlock() instanceof FenceGateBlock;
     }
 
     /**
@@ -50,10 +72,18 @@ final class Footing {
      * NaN if there is none.
      */
     static double ground(ClientLevel level, double x, double y, double z, double bottom) {
+        AABB column = new AABB(x - 0.3, bottom, z - 0.3, x + 0.3, y, z + 0.3);
         double top = Double.NaN;
-        for (VoxelShape shape : level.getBlockCollisions(null, new AABB(x - 0.3, bottom, z - 0.3, x + 0.3, y, z + 0.3))) {
-            double max = shape.max(Direction.Axis.Y);
-            if (max <= y + 1e-4 && !(max <= top)) top = max;
+        for (BlockPos at : BlockPos.betweenClosed(BlockPos.containing(column.minX, column.minY, column.minZ),
+                BlockPos.containing(column.maxX, column.maxY, column.maxZ))) {
+            BlockState state = level.getBlockState(at);
+            if (state.isAir() || passable(state)) continue;
+            for (AABB part : state.getCollisionShape(level, at).toAabbs()) {
+                AABB placed = part.move(at.getX(), at.getY(), at.getZ());
+                if (!placed.intersects(column)) continue;
+                double max = placed.maxY;
+                if (max <= y + 1e-4 && !(max <= top)) top = max;
+            }
         }
         return top;
     }

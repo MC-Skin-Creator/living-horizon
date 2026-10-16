@@ -25,13 +25,16 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
@@ -40,14 +43,16 @@ import java.util.Set;
  * not from the tab list. A picture on this client only: nothing is sent to the server, it
  * blocks nobody and nothing can hurt it.
  *
- * <p>With {@link FarConfig#offlineLife} on, it lives its life around the spot where the
- * player logged off, as long as the blocks there are loaded: it strolls, looks around, sits
- * down, stands in front of a chest, a crafting table or a villager's workstation; at night
- * it walks to a bed it can reach, or lies down. Monsters around, it draws a sword and raises
- * its shield, watches them and keeps out of their way, never fights. A creeper blowing up
- * throws it back, shield up, and it walks back. Hit, it raises its shield. In lava or fire it
- * shows fire resistance, under water water breathing. Where the blocks are not loaded it only
- * stands, sits or sleeps where it was.
+ * <p>With {@link FarConfig#offlineLife} on, it lives its life within
+ * {@link FarConfig#offlineRoam} blocks of the spot where the player logged off - a village -
+ * as long as the blocks there are loaded: it strolls, looks around, sits down, stands in
+ * front of a chest, a crafting table or a villager's workstation; at night it walks to a bed
+ * it can reach, or lies down. Doors and fence gates it walks through. Monsters in sight, it
+ * draws a sword and raises its shield, watches them and keeps out of their way, never
+ * fights; safe indoors, behind walls and shut doors, it does not mind them. A creeper
+ * blowing up in sight throws it back, shield up, and it walks back. Hit, it raises its
+ * shield. In lava or fire it shows fire resistance, under water water breathing. Where the
+ * blocks are not loaded it only stands, sits or sleeps where it was.
  *
  * <p>Off, it sits on its spot. Either way it keeps to the ground: break what it rests on and
  * it falls; bury it and it reappears on top. Sitting, its own spot wins again once it has
@@ -69,10 +74,12 @@ public final class RestingPuppet extends RemotePlayer {
     private static final double BED_HEIGHT = 0.6875;
     /** Blocks per tick: a stroll, and getting out of a monster's way. */
     private static final double STROLL = 0.11, HURRY = 0.2;
-    /** Blocks from its spot: where it strolls, and how far it looks for a bed or something to look at. */
-    private static final int ROAM = 6, REACH = 10;
-    /** Spots read around it when it looks for a way, at most. */
-    private static final int BUDGET = 700;
+    /** Blocks around it, and spots read at most, when it finds its way back after a blast. */
+    private static final int REACH = 10, BUDGET = 700;
+    /** Spots read per tick when it looks around or for its way; spots looked beside for beds and chests. */
+    private static final int GROW = 250, SCAN = 1500;
+    /** Ticks before it reads again what is around: blocks change. */
+    private static final int RESURVEY = 600;
     /** Ticks the shield stays up after a hit. */
     private static final int SHIELD_TICKS = 30;
     /** Blocks: monsters this close put it on guard; closer than {@link #TOO_CLOSE}, it steps away. */
@@ -95,6 +102,7 @@ public final class RestingPuppet extends RemotePlayer {
     private final RestingPlayers.Spot spot;
     private final PlayerInfo info;
     private final Random random;
+    private final Walkway walkway;
 
     private boolean placed;
     private boolean lively;
@@ -116,6 +124,12 @@ public final class RestingPuppet extends RemotePlayer {
     private int calm, scan, dodge;
     private @Nullable Entity threat;
     private final List<Creeper> fuses = new ArrayList<>();
+    private int roam = 50;
+    private Walkway.@Nullable Survey survey, known;
+    private int scanned, surveyAge;
+    private final Map<BlockPos, Sight> nextSights = new LinkedHashMap<>(), nextSleeps = new LinkedHashMap<>();
+    private List<Sight> sights = List.of(), sleeps = List.of();
+    private Walkway.@Nullable Route route;
     private float headYaw, headPitch, headYawGoal, headPitchGoal;
     private int glance;
 
@@ -124,6 +138,7 @@ public final class RestingPuppet extends RemotePlayer {
         this.spot = spot;
         this.info = new PlayerInfo(profile, false);
         this.random = new Random(spot.name().hashCode() * 31L + System.nanoTime());
+        this.walkway = new Walkway((x, y, z) -> Footing.stand(level, x, y, z));
         setSilent(true);
         getEntityData().set(Avatar.DATA_PLAYER_MODE_CUSTOMISATION, (byte) 0x7F);
         snap(spot.x(), spot.y(), spot.z());
@@ -167,6 +182,16 @@ public final class RestingPuppet extends RemotePlayer {
         return raised;
     }
 
+    /** What it does and what it knows of around it, for the debug tools. */
+    public String state() {
+        Walkway.Survey reading = survey, map = known;
+        return activity.name().toLowerCase(java.util.Locale.ROOT)
+                + (route != null ? " (finding its way)" : "")
+                + ", area " + (map == null ? "unread" : map.spots().size() + " spots")
+                + (reading != null ? " (reading " + reading.spots().size() + ")" : "")
+                + ", " + sleeps.size() + " beds, " + sights.size() + " things to look at";
+    }
+
     /** Thrown through the air by a blast. */
     public boolean thrown() {
         return activity == Activity.FLY;
@@ -202,8 +227,9 @@ public final class RestingPuppet extends RemotePlayer {
      *
      * @param beds  the beds puppets lie in or walk to: one sleeper per bed
      * @param night whether it is time to sleep
+     * @param work  spots all puppets may still read this tick, shared: looking around costs
      */
-    void tick(ClientLevel level, FarConfig config, Set<BlockPos> beds, boolean night) {
+    void tick(ClientLevel level, FarConfig config, Set<BlockPos> beds, boolean night, int[] work) {
         setOldPosAndRot();
         yBodyRotO = yBodyRot;
         yHeadRotO = yHeadRot;
@@ -234,6 +260,8 @@ public final class RestingPuppet extends RemotePlayer {
 
         if (shieldTicks > 0) shieldTicks--;
         if (tickCount % 5 == 0) swirls(level);
+        roam = config.offlineRoam;
+        survey(level, work);
         double before = getX(), beforeZ = getZ();
 
         if (activity == Activity.FLY) {
@@ -242,7 +270,7 @@ public final class RestingPuppet extends RemotePlayer {
             watch(level, beds);
             // Thrown just now by a blast: nothing else this tick.
             if (activity == Activity.GUARD) guard(level);
-            else if (activity != Activity.FLY) live(level, beds, night);
+            else if (activity != Activity.FLY) live(level, beds, night, work);
             if (activity != Activity.WALK && activity != Activity.BED && activity != Activity.FLY && path == null) {
                 settle(level, false);
             }
@@ -256,7 +284,8 @@ public final class RestingPuppet extends RemotePlayer {
 
     // --- A life ---------------------------------------------------------------------------
 
-    private void live(ClientLevel level, Set<BlockPos> beds, boolean night) {
+    private void live(ClientLevel level, Set<BlockPos> beds, boolean night, int[] work) {
+        if (route != null) routing(level, beds, work);
         switch (activity) {
             case WALK -> {
                 if (step(level, STROLL, false)) arrive(level, beds);
@@ -285,11 +314,15 @@ public final class RestingPuppet extends RemotePlayer {
 
     /** What it does next. */
     private void decide(ClientLevel level, Set<BlockPos> beds, boolean night) {
-        Walkway map = Walkway.around((x, y, z) -> Footing.stand(level, x, y, z), feet().getX(), feet().getY(),
-                feet().getZ(), BlockPos.containing(spot.x(), spot.y(), spot.z()).getX(),
-                BlockPos.containing(spot.x(), spot.y(), spot.z()).getZ(), REACH, BUDGET);
+        if (route != null) return;
+        Walkway.Survey map = known;
         if (night) {
-            if (map != null && towardsBed(level, map, beds)) return;
+            if (map == null) {
+                // Still reading what is around: a moment more before giving up on a bed.
+                start(Activity.IDLE, 20);
+                return;
+            }
+            if (towardsBed(level, beds)) return;
             start(Activity.SLEEP, 400);
             return;
         }
@@ -298,7 +331,7 @@ public final class RestingPuppet extends RemotePlayer {
             start(Activity.IDLE, 60 + random.nextInt(100));
         } else if (roll < 50) {
             start(Activity.SIT, 200 + random.nextInt(300));
-        } else if (!(roll < 72 && towardsSomething(level, map)) && !stroll(map)) {
+        } else if (!(roll < 72 && towardsSomething()) && !stroll(map)) {
             start(Activity.IDLE, 60 + random.nextInt(60));
         }
     }
@@ -307,83 +340,166 @@ public final class RestingPuppet extends RemotePlayer {
         activity = next;
         timer = ticks;
         path = null;
+        route = null;
         if (next != Activity.FACE) focus = null;
     }
 
-    /** A stroll to somewhere around its spot. */
-    private boolean stroll(Walkway map) {
-        BlockPos home = BlockPos.containing(spot.x(), spot.y(), spot.z());
+    /** A stroll to somewhere it can reach around its spot. */
+    private boolean stroll(Walkway.Survey map) {
         BlockPos at = feet();
-        for (Walkway.Step step : Walkway.shuffled(map.spots(), random)) {
-            if (step.distanceSqr(home.getX(), home.getZ()) > ROAM * ROAM) continue;
-            if (step.distanceSqr(at.getX(), at.getZ()) < 4) continue;
-            return walkTo(map, step, Activity.IDLE);
+        List<Walkway.Step> spots = map.spots();
+        for (int tries = 0; tries < 12 && !spots.isEmpty(); tries++) {
+            Walkway.Step step = spots.get(random.nextInt(spots.size()));
+            if (step.distanceSqr(at.getX(), at.getZ()) < 9) continue;
+            return routeTo(step, Activity.IDLE);
         }
         return false;
     }
 
     /** To stand in front of a chest, a crafting table or a workstation it can reach. */
-    private boolean towardsSomething(ClientLevel level, Walkway map) {
-        List<BlockPos> found = new ArrayList<>();
-        BlockPos home = BlockPos.containing(spot.x(), spot.y(), spot.z());
-        for (BlockPos at : BlockPos.betweenClosed(home.offset(-REACH + 2, -3, -REACH + 2), home.offset(REACH - 2, 3, REACH - 2))) {
-            if (INTERESTING.contains(level.getBlockState(at).getBlock())) found.add(at.immutable());
-        }
-        Collections.shuffle(found, random);
-        for (BlockPos target : found) {
-            Walkway.Step front = beside(map, target);
-            if (front == null) continue;
-            focus = Vec3.atCenterOf(target);
-            return walkTo(map, front, Activity.FACE);
-        }
-        return false;
+    private boolean towardsSomething() {
+        if (sights.isEmpty()) return false;
+        Sight sight = sights.get(random.nextInt(sights.size()));
+        focus = Vec3.atCenterOf(sight.block());
+        return routeTo(sight.front(), Activity.FACE);
     }
 
     /** To the nearest free bed it can reach, which it keeps for itself on the way. */
-    private boolean towardsBed(ClientLevel level, Walkway map, Set<BlockPos> beds) {
+    private boolean towardsBed(ClientLevel level, Set<BlockPos> beds) {
         BlockPos at = feet();
-        BlockPos best = null;
-        Walkway.Step bestFront = null;
+        Sight best = null;
         double bestDistance = Double.MAX_VALUE;
-        for (BlockPos pos : BlockPos.betweenClosed(at.offset(-REACH + 2, -3, -REACH + 2), at.offset(REACH - 2, 3, REACH - 2))) {
-            BlockState state = level.getBlockState(pos);
-            if (!freeBed(state) || beds.contains(pos)) continue;
-            Direction facing = state.getValue(BedBlock.FACING);
-            Walkway.Step front = beside(map, pos);
-            if (front == null) front = beside(map, pos.relative(facing.getOpposite()));
-            if (front == null) continue;
-            double distance = pos.distSqr(at);
+        for (Sight sight : sleeps) {
+            BlockPos head = sight.block();
+            if (beds.contains(head) || !freeBed(level.getBlockState(head))) continue;
+            double distance = head.distSqr(at);
             if (distance < bestDistance) {
-                best = pos.immutable();
-                bestFront = front;
+                best = sight;
                 bestDistance = distance;
             }
         }
         if (best == null) return false;
-        bed = best;
-        beds.add(best);
-        return walkTo(map, bestFront, Activity.BED);
+        bed = best.block();
+        beds.add(best.block());
+        return routeTo(best.front(), Activity.BED);
     }
 
-    /** A spot reached right next to a block, on its level or a step below. */
-    private static Walkway.@Nullable Step beside(Walkway map, BlockPos target) {
-        for (Direction side : Direction.Plane.HORIZONTAL) {
-            BlockPos next = target.relative(side);
-            for (int dy : new int[]{0, -1, 1}) {
-                Walkway.Step step = map.reached(next.getX(), next.getY() + dy, next.getZ());
-                if (step != null) return step;
+    /**
+     * Starts looking for the way to a spot, which takes a few ticks across a village; it
+     * stays as it is meanwhile, then walks.
+     */
+    private boolean routeTo(Walkway.Step target, Activity after) {
+        BlockPos at = feet();
+        BlockPos home = home();
+        Walkway.Route found = walkway.route(at.getX(), at.getY(), at.getZ(), target, home.getX(), home.getZ(),
+                roam + 4, budget(roam));
+        if (found == null) return false;
+        start(activity == Activity.SIT ? Activity.IDLE : activity, 400);
+        route = found;
+        then = after;
+        return true;
+    }
+
+    /** One tick of looking for the way; once found, off it goes. */
+    private void routing(ClientLevel level, Set<BlockPos> beds, int[] work) {
+        Walkway.Route searching = route;
+        if (searching == null) return;
+        int spots = Math.min(work[0], GROW);
+        work[0] -= spots;
+        if (spots <= 0 || !searching.grow(spots)) return;
+        route = null;
+        List<Walkway.Step> way = searching.path();
+        if (way == null) {
+            // No way there after all: the bed it kept is free again.
+            if (then == Activity.BED) leaveBed(beds);
+            start(Activity.IDLE, 40 + random.nextInt(60));
+        } else if (way.isEmpty()) {
+            arrive(level, beds);
+        } else {
+            path = way;
+            pathIndex = 0;
+            activity = Activity.WALK;
+            timer = 0;
+        }
+    }
+
+    // --- What is around -----------------------------------------------------------------------
+
+    /** A block worth going to, and the spot to stand on in front of it. */
+    private record Sight(BlockPos block, Walkway.Step front) {
+    }
+
+    /**
+     * Reads, a little every tick, where it can walk around its spot and what is there to go
+     * to: beds, chests, workstations. Read again now and then, as blocks change.
+     */
+    private void survey(ClientLevel level, int[] work) {
+        surveyAge++;
+        if (survey == null && route == null && (known == null || surveyAge > RESURVEY || lost())) {
+            walkway.forget();
+            BlockPos at = feet();
+            BlockPos home = home();
+            survey = walkway.survey(at.getX(), at.getY(), at.getZ(), home.getX(), home.getZ(), roam, budget(roam));
+            surveyAge = 0;
+            scanned = 0;
+            nextSights.clear();
+            nextSleeps.clear();
+            if (survey == null) return;
+        }
+        Walkway.Survey reading = survey;
+        if (reading == null) return;
+        if (!reading.done()) {
+            int spots = Math.min(work[0], GROW);
+            work[0] -= spots;
+            if (spots > 0) reading.grow(spots);
+            return;
+        }
+        List<Walkway.Step> spots = reading.spots();
+        int end = Math.min(spots.size(), scanned + SCAN);
+        for (int i = scanned; i < end; i++) {
+            Walkway.Step spot = spots.get(i);
+            for (Direction side : Direction.Plane.HORIZONTAL) {
+                BlockPos next = new BlockPos(spot.x() + side.getStepX(), spot.y(), spot.z() + side.getStepZ());
+                BlockState state = level.getBlockState(next);
+                if (INTERESTING.contains(state.getBlock())) {
+                    nextSights.putIfAbsent(next, new Sight(next, spot));
+                } else if (state.getBlock() instanceof BedBlock) {
+                    BlockPos head = state.getValue(BedBlock.PART) == BedPart.HEAD ? next
+                            : next.relative(state.getValue(BedBlock.FACING));
+                    nextSleeps.putIfAbsent(head, new Sight(head, spot));
+                }
             }
         }
-        return null;
+        scanned = end;
+        if (end < spots.size()) return;
+        known = reading;
+        survey = null;
+        sights = new ArrayList<>(nextSights.values());
+        sleeps = new ArrayList<>(nextSleeps.values());
+        // Asleep on the ground or idle for want of knowing better: think again with what it now knows.
+        if (activity == Activity.SLEEP || activity == Activity.IDLE) timer = Math.min(timer, 20);
     }
 
-    private boolean walkTo(Walkway map, Walkway.Step target, Activity after) {
-        path = map.pathTo(target);
-        pathIndex = 0;
-        then = after;
-        activity = Activity.WALK;
-        timer = 0;
-        return true;
+    /**
+     * Off the area it knows - fallen, thrown, or its floor broken - while standing still: what
+     * it read no longer says where it can go from here. Not more often than every two seconds.
+     */
+    private boolean lost() {
+        Walkway.Survey map = known;
+        if (map == null || surveyAge < 40) return false;
+        if (activity == Activity.WALK || activity == Activity.BED || activity == Activity.FLY) return false;
+        BlockPos at = feet();
+        return map.reached(at.getX(), at.getY(), at.getZ()) == null && map.reached(at.getX(), at.getY() + 1, at.getZ()) == null
+                && map.reached(at.getX(), at.getY() - 1, at.getZ()) == null;
+    }
+
+    /** Spots read at most around its spot: the area of the circle, and as much again for floors. */
+    private static int budget(int radius) {
+        return (int) Math.min(60_000, Math.PI * radius * radius * 1.6 + 200);
+    }
+
+    private BlockPos home() {
+        return BlockPos.containing(spot.x(), spot.y(), spot.z());
     }
 
     /** Where a walk was going, and what it was for. */
@@ -449,7 +565,9 @@ public final class RestingPuppet extends RemotePlayer {
             Creeper creeper = fuses.get(i);
             if (creeper.isRemoved()) {
                 // Gone while about to blow up: it blew up (the client sees it die of its own blast).
-                if (creeper.getSwelling(1f) > 0.6f) thrown(creeper.position(), beds);
+                if (creeper.getSwelling(1f) > 0.6f && seen(level, creeper.position().add(0, 1, 0))) {
+                    thrown(creeper.position(), beds);
+                }
                 fuses.remove(i);
             } else if (creeper.distanceToSqr(this) > BLAST * BLAST * 4) {
                 fuses.remove(i);
@@ -460,7 +578,7 @@ public final class RestingPuppet extends RemotePlayer {
         double best = DANGER * DANGER;
         AABB around = getBoundingBox().inflate(DANGER);
         for (Entity entity : level.getEntitiesOfClass(LivingEntity.class, around,
-                e -> e instanceof Enemy && e.isAlive() && !e.isSpectator())) {
+                e -> e instanceof Enemy && e.isAlive() && !e.isSpectator() && seen(level, e.getEyePosition()))) {
             double distance = entity.distanceToSqr(this);
             if (entity instanceof Creeper creeper && creeper.getSwelling(1f) > 0 && !fuses.contains(creeper)
                     && distance < BLAST * BLAST) {
@@ -481,6 +599,15 @@ public final class RestingPuppet extends RemotePlayer {
         } else if (activity == Activity.GUARD && (calm -= 5) <= 0) {
             start(Activity.IDLE, 60);
         }
+    }
+
+    /**
+     * In plain sight: nothing solid between its eyes and there - no wall, shut door or window.
+     * A monster it cannot see cannot reach it either: safe indoors, it stays calm.
+     */
+    private boolean seen(ClientLevel level, Vec3 target) {
+        return level.clip(new ClipContext(getEyePosition(), target, ClipContext.Block.COLLIDER,
+                ClipContext.Fluid.NONE, this)).getType() == HitResult.Type.MISS;
     }
 
     /** Sword drawn and shield up, it watches the nearest monster and keeps out of its way. */
@@ -509,7 +636,7 @@ public final class RestingPuppet extends RemotePlayer {
     /** A spot within {@code within} blocks, at least {@code keep} from the monster; the farthest. */
     private void away(ClientLevel level, Entity from, int within, double keep) {
         BlockPos at = feet();
-        Walkway map = Walkway.around((x, y, z) -> Footing.stand(level, x, y, z), at.getX(), at.getY(), at.getZ(),
+        Walkway.Survey map = Walkway.around((x, y, z) -> Footing.stand(level, x, y, z), at.getX(), at.getY(), at.getZ(),
                 at.getX(), at.getZ(), within, 120);
         if (map == null) return;
         Walkway.Step best = null;
@@ -577,8 +704,8 @@ public final class RestingPuppet extends RemotePlayer {
         calm = CALM_TICKS;
         if (back == null) return;
         BlockPos at = feet();
-        Walkway map = Walkway.around((bx, by, bz) -> Footing.stand(level, bx, by, bz), at.getX(), at.getY(), at.getZ(),
-                at.getX(), at.getZ(), REACH, BUDGET);
+        Walkway.Survey map = Walkway.around((bx, by, bz) -> Footing.stand(level, bx, by, bz), at.getX(), at.getY(),
+                at.getZ(), at.getX(), at.getZ(), REACH, BUDGET);
         BlockPos target = BlockPos.containing(back.x, back.y + 0.01, back.z);
         Walkway.Step home = map == null ? null : map.reached(target.getX(), target.getY(), target.getZ());
         if (home != null) {

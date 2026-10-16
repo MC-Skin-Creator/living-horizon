@@ -84,6 +84,12 @@ public final class FarConfig {
     public boolean offlineLife = true;
 
     /**
+     * Blocks: how far from where they logged off players who logged off walk around and look
+     * for a bed or something to look at, when {@link #offlineLife} is on. 50 is about a village.
+     */
+    public int offlineRoam = 50;
+
+    /**
      * Their name above a player who logged off, marked offline, as close as the game shows
      * names; and when they were last seen, under the crosshair, when aimed at from right next to them.
      */

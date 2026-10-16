@@ -148,6 +148,7 @@ The game itself lacks what these need, so they are left out rather than imitated
 | `depthOcclusion` | `true` | | The far terrain's depth (Voxy or Distant Horizons) on distant mobs and players, pixel by pixel (see *The far terrain's depth* below). Was `voxyOcclusion`. In *Debug...* |
 | `offlinePlayers` | `true` | | Players who logged off are shown and remembered; off, neither |
 | `offlineLife` | `true` | | Players who logged off live their life around their spot (see below); off, they sit on it |
+| `offlineRoam` | `50` | blocks | How far from their spot they walk around and look for a bed or a chest, from 8 to 128 (50 is about a village) |
 | `offlineNames` | `true` | | Their name above them, marked offline, and when they were last seen under the crosshair |
 | `showVehicles` | `true` | | Draw the mount they were last seen on |
 | `renderTrackedVehiclesFar` | `true` | | Never cull a mount that carries another player |
@@ -224,17 +225,22 @@ off before you joined are there: the pack keeps everyone's last position, and th
 skin is fetched from Mojang by name.
 
 With `offlineLife` on (the default) they live their life there, as long as the blocks
-around are loaded (`track/RestingPuppet`): they stand and look around, sit down, stroll
-within 6 blocks of their spot, stand in front of a chest, a crafting table or a villager's
-workstation and look at it. At night they walk to a free bed they can reach and sleep in it,
-or lie down where they are; in the morning they get up. They walk only where a player could
-(`track/Walkway`: one block up, two down, no corner cut, nothing walked through), worked out
-on the client from the blocks it has. Monsters within 10 blocks put them on guard: an iron
-sword drawn, the shield up, eyes on the nearest, a step away when it comes closer than 3.5
-blocks; they never fight. A creeper blowing up within 7 blocks throws them, shield up, and
-they walk back. Hit by you, they raise their shield. In lava or fire they show the swirls of
-fire resistance, under water those of water breathing. Where the blocks are not loaded, they
-only stand, sit or sleep where they are. With `offlineLife` off they sit on their spot.
+around are loaded (`track/RestingPuppet`), within `offlineRoam` blocks of their spot (50, about
+a village; up to 128): they stand and look around, sit down, stroll, stand in front of a
+chest, a crafting table or a villager's workstation and look at it. At night they walk to a
+free bed they can reach and sleep in it, or lie down where they are; in the morning they get
+up. They walk only where a player could (`track/Walkway`: one block up, two down, no corner
+cut, nothing walked through but doors and fence gates, which they cannot open), worked out on
+the client from the blocks it has: what is around is read a little every tick (600 spots per
+tick for all of them together), again every 30 seconds or when they find themselves off it,
+and each way is searched towards where they go. Monsters within 10 blocks and in plain sight
+put them on guard: an iron sword drawn, the shield up, eyes on the nearest, a step away when
+it comes closer than 3.5 blocks; they never fight. Safe indoors, behind walls, shut doors or
+windows, they do not mind them. A creeper blowing up within 7 blocks, in sight, throws them,
+shield up, and they walk back. Hit by you, they raise their shield. In lava or fire they show
+the swirls of fire resistance, under water those of water breathing. Where the blocks are not
+loaded, they only stand, sit or sleep where they are. With `offlineLife` off they sit on their
+spot.
 
 All of it is a picture on your client: nothing is sent to the server, they block nobody, and
 nothing can hurt them. Either way they keep to the ground: break the pile they sit on and
