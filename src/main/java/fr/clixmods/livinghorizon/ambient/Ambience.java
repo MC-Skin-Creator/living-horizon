@@ -971,12 +971,23 @@ public final class Ambience {
                 double py = perchAt(px, pz);
                 if (Double.isNaN(py)) continue;
                 if (loaded(px, pz)) {
-                    px = Math.floor(px) + 0.25 + r.nextDouble() * 0.5;
-                    pz = Math.floor(pz) + 0.25 + r.nextDouble() * 0.5;
+                    // Moved in from the edge, not anywhere on the block: a hop stays a hop.
+                    px = Mth.clamp(px, Math.floor(px) + 0.25, Math.floor(px) + 0.75);
+                    pz = Mth.clamp(pz, Math.floor(pz) + 0.25, Math.floor(pz) + 0.75);
                 }
                 if (!crowded(px, pz, skip)) return new double[]{px, py, pz};
             }
             return null;
+        }
+
+        /** Whether water, at the height {@code y}, goes on all the way between two points. */
+        private boolean swims(double x0, double z0, double x1, double z1, double y) {
+            int steps = (int) Math.ceil(Math.hypot(x1 - x0, z1 - z0) * 2);
+            for (int k = 1; k <= steps; k++) {
+                double at = perchAt(Mth.lerp(k / (double) steps, x0, x1), Mth.lerp(k / (double) steps, z0, z1));
+                if (Double.isNaN(at) || Math.abs(at - y) > 0.5) return false;
+            }
+            return true;
         }
 
         private boolean airborne() {
@@ -1077,13 +1088,13 @@ public final class Ambience {
                         angle = Math.atan2(flyer.x - self.getX(), flyer.z - self.getZ()) + r.nextGaussian() * 0.4;
                         distance = leaving ? 60 : 12 + r.nextDouble() * 10;
                         flying[i] = true;
-                    } else if (r.nextInt(onTrees ? 3 : onWater ? 25 : 6) == 0) {
+                    } else if (r.nextInt(onTrees ? 6 : onWater ? 40 : 10) == 0) {
                         angle = r.nextDouble() * Math.PI * 2;
                         distance = onWater ? 8 + r.nextDouble() * 12 : 3 + r.nextDouble() * 5;
                         flying[i] = true;
                     } else {
                         angle = r.nextDouble() * Math.PI * 2;
-                        distance = onWater ? 0.8 + r.nextDouble() * 1.2 : onTrees ? 0.6 : 0.5 + r.nextDouble() * 0.4;
+                        distance = onWater ? 1 + r.nextDouble() * 2.5 : onTrees ? 0.6 : 0.5 + r.nextDouble() * 0.4;
                         flying[i] = false;
                     }
                     double tx = flyer.x + Math.sin(angle) * distance, tz = flyer.z + Math.cos(angle) * distance;
@@ -1121,7 +1132,9 @@ public final class Ambience {
                     // How far it really goes: a hop can be turned into a flight back to the spot.
                     distance = Math.hypot(tx - flyer.x, tz - flyer.z);
                     // A hop never climbs or drops a block, which would take it through one: it flies.
-                    if (distance > 1.5 || Math.abs(ty - fromY[i]) > 0.5) flying[i] = true;
+                    // A duck swims as far as the water goes on, and flies only over what is not.
+                    boolean far = onWater ? !swims(flyer.x, flyer.z, tx, tz, fromY[i]) : distance > 1.5;
+                    if (far || Math.abs(ty - fromY[i]) > 0.5) flying[i] = true;
                     // About three blocks a second: slow enough to see them take off.
                     length[i] = flying[i] ? (int) (20 + distance * 5) : onWater ? (int) (distance * 25) + 1 : 6;
                     if (distance > 0.05) flyer.yaw = (float) Math.toDegrees(Math.atan2(-(tx - flyer.x), tz - flyer.z));
@@ -1149,7 +1162,7 @@ public final class Ambience {
                 if (t >= 1.0) {
                     flying[i] = false;
                     // Waiting: a peck now and then, then the next move.
-                    if (timer[i] == length[i]) rest[i] = 20 + r.nextInt(80);
+                    if (timer[i] == length[i]) rest[i] = 30 + r.nextInt(120);
                     if ((timer[i] / 7) % 9 == 0) y -= 0.05;
                 }
                 flyer.moveTo(x, y, z, flyer.yaw, 0f);

@@ -343,7 +343,7 @@ lives there.
 
 Purely a picture, on this client: flocks crossing the sky, geese in a V, birds of prey
 circling, gulls over the coast (landing on the beach now and then), pigeons sitting on
-tall buildings, robins hopping in fields, tits in the trees, ducks on lakes and rivers,
+tall buildings, robins hopping in fields, tits in the trees, ducks swimming on lakes and rivers,
 bats at night (some hanging under leaves and roofs), now and then parrots. Perched birds
 fly off when you come close and land again a little farther; ducks never let you near, and
 take off together for farther along the water, or for another water known around. Birds that

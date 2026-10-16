@@ -30,11 +30,17 @@ import java.util.Map;
 public final class PerchersScenario implements Scenario {
     /** Blocks a bird may cross in a tick while it is not flying: a hop is about 0.1. */
     private static final double HOP = 0.45;
+    /** Takeoffs a bird left alone may make in a minute: hopping or swimming about, it flies now and then. */
+    private static final int TAKEOFFS = 3;
 
     private TestSingleplayerContext world;
     private int ground;
     private final Map<Ambience.Flyer, double[]> last = new IdentityHashMap<>();
     private int misplaced, darts, checked;
+    /** Per species, how many times a bird took off. */
+    private final Map<Ambience.Species, Integer> takeoffs = new java.util.EnumMap<>(Ambience.Species.class);
+    /** Per species, how many birds were seen. */
+    private final Map<Ambience.Species, Integer> seen = new java.util.EnumMap<>(Ambience.Species.class);
 
     @Override
     public String name() {
@@ -71,7 +77,16 @@ public final class PerchersScenario implements Scenario {
             }
             Scene.log("perchers settled after " + waited + " ticks: tits=" + count(context, Ambience.Species.TIT)
                     + " ducks=" + count(context, Ambience.Species.DUCK) + " robins=" + count(context, Ambience.Species.ROBIN));
-            watch(context, 400, "left alone");
+            // A minute left alone: ducks swim about and robins and tits hop; each takes off now
+            // and then, not at every move. Groups come and go meanwhile: every bird seen counts.
+            takeoffs.clear();
+            seen.clear();
+            watch(context, 1200, "left alone");
+            for (Ambience.Species species : List.of(Ambience.Species.DUCK, Ambience.Species.ROBIN, Ambience.Species.TIT)) {
+                int took = takeoffs.getOrDefault(species, 0), birds = seen.getOrDefault(species, 0);
+                Scene.log("perchers " + species + " left alone: " + birds + " birds, " + took + " takeoffs");
+                if (took > birds * TAKEOFFS) throw new AssertionError(species + " taking off at every move: " + took);
+            }
 
             // From the edge of the tree top and of the pond, out of their reach, zoomed in.
             // Spectating, so as not to fall from where the camera is put.
@@ -177,6 +192,8 @@ public final class PerchersScenario implements Scenario {
                 for (Ambience.Flyer flyer : FarPlayerTracker.get().ambience().flyers()) {
                     if (flyer.kind != Ambience.Kind.SILHOUETTE) continue;
                     double[] was = last.put(flyer, new double[]{flyer.x, flyer.z, flyer.perched ? 1 : 0});
+                    if (was == null) seen.merge(flyer.species, 1, Integer::sum);
+                    if (was != null && was[2] == 1 && !flyer.perched) takeoffs.merge(flyer.species, 1, Integer::sum);
                     if (!flyer.perched || flyer.scale < 1f) continue;
                     if (was != null && was[2] == 1 && Math.hypot(flyer.x - was[0], flyer.z - was[1]) > HOP) {
                         darts++;
