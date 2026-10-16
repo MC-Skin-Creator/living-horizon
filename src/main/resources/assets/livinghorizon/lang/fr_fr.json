@@ -79,7 +79,7 @@
   "livinghorizon.status.header": "Joueurs lointains (%s) :",
   "livinghorizon.status.line": "%s - %s, ~%s blocs (±%s)",
   "livinghorizon.status.pack.on": "Positions partagées : actives (datapack ou hôte LAN), positions exactes.",
-  "livinghorizon.status.pack.off": "Positions partagées : absentes (ni datapack, ni mod chez l'hôte LAN), positions tirées de la barre de localisation.",
+  "livinghorizon.status.pack.off": "Positions partagées : absentes (ni datapack, ni mod sur le serveur ou chez l'hôte LAN), les joueurs lointains ne sont pas affichés.",
   "livinghorizon.status.mobs": "Mobs en mémoire : %s (%s affichés).",
   "livinghorizon.status.cost": "Coût : %s ms par tick, %s ms par image ; %s copies dessinées, %s ignorées (derrière toi ou trop petites).",
   "livinghorizon.lod.missing": "Ni Voxy ni Distant Horizons n'est installé : rien derrière quoi cacher.",

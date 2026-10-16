@@ -43,10 +43,15 @@ its last line of content, nothing after.
 
 ## What this is
 
-**Living Horizon** gives life to the distance. It is a **client-side** mod for Fabric,
+**Living Horizon** gives life to the distance. It is a mod for Fabric,
 Quilt, NeoForge and Forge, on several Minecraft versions: animals, villagers, birds and other players keep living
-on the horizon, past the render distance, on top of Voxy's far terrain. Nothing
-is sent to the server. An optional data pack in `datapack/` makes positions exact.
+on the horizon, past the render distance, on top of Voxy's far terrain. Everything is drawn on
+the client and nothing is sent to the server. Distant players are placed from positions the
+server shares through the scoreboard: the same jar writes them when it runs on a server
+(`PositionPublisher`, driven by `LanShare` on a LAN host and by `MinecraftServerMixin` on a
+dedicated server), or the data pack in `datapack/` does, with no mod on the server. Code
+that a dedicated server loads (`PositionPublisher`, `MinecraftServerMixin`, what they use)
+must never touch a client class.
 
 | | |
 |---|---|

@@ -79,7 +79,7 @@
   "livinghorizon.status.header": "Distant players (%s):",
   "livinghorizon.status.line": "%s - %s, ~%s blocks (±%s)",
   "livinghorizon.status.pack.on": "Shared positions: running (data pack or LAN host), positions are exact.",
-  "livinghorizon.status.pack.off": "Shared positions: not found (no data pack, and the LAN host has no mod), positions come from the locator bar.",
+  "livinghorizon.status.pack.off": "Shared positions: not found (no data pack, and no mod on the server or the LAN host), distant players are not shown.",
   "livinghorizon.status.mobs": "Mobs remembered: %s (%s drawn).",
   "livinghorizon.status.cost": "Cost: %s ms per tick, %s ms per frame; %s puppets drawn, %s skipped (behind you or too small).",
   "livinghorizon.lod.missing": "Neither Voxy nor Distant Horizons is installed: nothing to hide behind.",

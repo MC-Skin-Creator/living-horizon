@@ -7,11 +7,12 @@ through several rendering techniques, and birds bring the sky to life. It works 
 game alone, at any render distance, and supports far-terrain mods such as Voxy and
 Distant Horizons.
 
-A client-side mod for Fabric, Quilt, NeoForge and Forge, on Minecraft **1.20 to 1.21.11**
-and **26.1 to 26.3**. Nothing is sent to the server: on its own, the mod uses only what a
-vanilla client already receives. With the companion **data pack** on the server (not a
-mod: a folder in `world/datapacks`), every position is exact at any distance. In a world
-opened to LAN, the host's mod does the data pack's job by itself: nothing to install.
+A mod for Fabric, Quilt, NeoForge and Forge, on Minecraft **1.20 to 1.21.11**
+and **26.1 to 26.3**. Everything is drawn on the client, and nothing is sent to the server.
+To see other players at any distance, the server must share their positions: the same jar
+does it when it runs on the server (a dedicated server's `mods` folder, or the host's game
+in a world opened to LAN), or the companion **data pack** (a folder in `world/datapacks`)
+does it with no mod on the server.
 
 In English, French, German, Spanish, Italian, Brazilian Portuguese, Polish, Turkish, Russian,
 Ukrainian, Simplified and Traditional Chinese, Japanese and Korean: it follows the game's
@@ -84,13 +85,14 @@ number of mobs, *Bird Density* a percentage.
 
 ## Good to know
 
-- **Playing on LAN: the host needs the mod, nobody needs the data pack.** When a world is
-  opened to LAN, the host's game shares the positions on its own (see *Worlds opened to LAN*
-  below), so friends who join see exact positions with only the mod. A host without the mod
+- **Nobody needs the data pack any more.** The mod shares the positions itself wherever it
+  runs the server: the host's game when a world is opened to LAN, or a dedicated server with
+  the mod in its `mods` folder (see *Sharing the positions without the data pack* below).
+  The players who join only need the mod. A server with neither the mod nor the data pack
   shares nothing.
-- **Far players need the data pack, or a LAN host with the mod.** Without either, a player
-  past the server's range is not shown, and the console says so once, 10 seconds after
-  joining. Players in another dimension are not followed.
+- **Far players need that sharing.** Without it, a player past the server's range is not
+  shown, and the console says so once, 10 seconds after joining. Players in another
+  dimension are not followed.
 - **With the data pack, everyone's position is public** to whoever reads its scores: say
   so to your players. Anyone in a team of colour `black`, `dark_blue`, `dark_green` or
   `dark_aqua` would see the coordinates in their sidebar (see *The data pack* below).
@@ -280,17 +282,23 @@ receives them, and the mod reads them. `/livinghorizon` says whether the pack is
 `DatapackTest` compiles every function with the game's own command dispatcher, and
 parses `pack.mcmeta` and the predicate with the game's own codecs.
 
-### Worlds opened to LAN
+### Sharing the positions without the data pack
 
-A player who hosts a world from their own game (*Open to LAN*) runs the server in that game,
-so their mod can do what the data pack does: `LanShare` writes the same four objectives, in
+The mod does what the data pack does: `PositionPublisher` writes the same four objectives, in
 the same layout and the same sidebars, every four ticks for the players and every five
-seconds for the mobs, and a friend's mod reads them as it would the pack's. It runs only
-while the world is open to LAN, never on another server.
+seconds for the mobs, and a client's mod reads them as it would the pack's. It runs where the
+server is:
 
-- It uses the game's own `scoreboard` command, the same text on every version.
-- When the data pack runs in the world too (its clock moves), the mod leaves the job to it.
-- The objectives are removed when the world closes, so the world is left as it was found.
+- **A world opened to LAN** (*Open to LAN*): the server runs inside the host's game, so
+  `LanShare` drives it from the host's client. The objectives are removed when the world
+  closes, so the world is left as it was found.
+- **A dedicated server**: the same jar in the server's `mods` folder (with the Fabric API on
+  Fabric and Quilt). `MinecraftServerMixin` drives it from the server's tick. The objectives
+  stay in the world, like the pack's, so that players who logged off keep their last position;
+  to remove them: `/scoreboard objectives remove lh.x` (and `lh.y`, `lh.z`, `lh.m`).
+
+Both use the game's own `scoreboard` command, the same text on every version. When the data
+pack runs in the world too (its clock moves), the mod leaves the job to it.
 
 ### Players who logged off
 

@@ -20,13 +20,13 @@ config = "livinghorizon.mixins.json"
 modId = "neoforge"
 type = "required"
 versionRange = "${neoforge}"
-side = "CLIENT"
+side = "BOTH"
 
 [[dependencies.${id}]]
 modId = "minecraft"
 type = "required"
 versionRange = "${minecraft}"
-side = "CLIENT"
+side = "BOTH"
 
 [[dependencies.${id}]]
 modId = "voxy"

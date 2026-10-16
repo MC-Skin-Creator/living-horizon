@@ -152,7 +152,7 @@ format the headings and lists.
 **Gives life to the distance.** Players and mobs stay visible far past your render
 distance, through several rendering techniques. It supports far-terrain mods such as
 Voxy and Distant Horizons, and adds birds to bring the sky to life, so you can take in
-your Minecraft world at its best. Client-side, on any server.
+your Minecraft world at its best. Works on any server; add the mod to the server (or play on LAN) to see players at any distance.
 
 You can now play with a lower simulation distance and still see a living world.
 
