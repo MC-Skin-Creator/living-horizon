@@ -21,7 +21,7 @@ import java.util.function.Supplier;
 /**
  * The settings screens in a world: everything, the rows of options included, sits in the
  * column on the left, so that the game stays in view on the right; and no button's text,
- * in English or in French, is wider than its button.
+ * in any of the mod's languages, is wider than its button.
  */
 public final class OptionsScreenScenario implements Scenario {
     /** The room a button leaves its text: the game scrolls whatever is wider, and that reads badly. */
@@ -37,7 +37,7 @@ public final class OptionsScreenScenario implements Scenario {
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
             List<String> problems = new ArrayList<>();
             try {
-                for (String language : List.of("en_us", "fr_fr")) {
+                for (String language : context.computeOnClient(OptionsScreenScenario::languages)) {
                     setLanguage(context, language);
                     look(context, language + "-settings", () -> new FarConfigScreen(null), problems);
                     look(context, language + "-debug", () -> new DebugScreen(null), problems);
@@ -90,6 +90,18 @@ public final class OptionsScreenScenario implements Scenario {
             }
         }
         return false;
+    }
+
+    /** The languages the mod has a file for, English first. */
+    private static List<String> languages(Minecraft minecraft) {
+        List<String> codes = new ArrayList<>(minecraft.getResourceManager()
+                .listResources("lang", id -> id.getNamespace().equals("livinghorizon") && id.getPath().endsWith(".json"))
+                .keySet().stream()
+                .map(id -> id.getPath().substring("lang/".length(), id.getPath().length() - ".json".length()))
+                .sorted().toList());
+        codes.remove("en_us");
+        codes.add(0, "en_us");
+        return codes;
     }
 
     /** Switches the game's language and waits for it to be read. */

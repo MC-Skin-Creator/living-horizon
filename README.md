@@ -12,6 +12,10 @@ and **26.1 to 26.3**. Nothing is sent to the server: on its own, the mod uses on
 vanilla client already receives. With the companion **data pack** on the server (not a
 mod: a folder in `world/datapacks`), every position is exact at any distance.
 
+In English, French, German, Spanish, Italian, Brazilian Portuguese, Polish, Turkish, Russian,
+Ukrainian, Simplified and Traditional Chinese, Japanese and Korean: it follows the game's
+language.
+
 ## Install
 
 One jar per game version and loader, named
