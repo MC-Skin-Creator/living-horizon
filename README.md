@@ -103,6 +103,49 @@ The game itself lacks what these need, so they are left out rather than imitated
   are not in its lists. Before 1.21.2 every boat was one entity type: boats are remembered
   by the client but not published by the data pack there.
 
+## Compatibility
+
+### Supported
+
+Handled in the code.
+
+| Mod | Notes |
+|---|---|
+| [Voxy](https://modrinth.com/mod/voxy) | Distant mobs and players hide behind its terrain, pixel by pixel, shaders included. |
+| [Distant Horizons](https://modrinth.com/mod/distanthorizons) | From 2.3 on. Same as Voxy. |
+| Iris and shader packs | Photon (render scale and shadows included) and Complementary checked. |
+| Sodium | Through Voxy, which draws with it. |
+| [Mod Menu](https://modrinth.com/mod/modmenu) | Optional on Fabric: adds the settings button. |
+| GeckoLib | No crash. From 1.21.2 to 1.21.8 its mobs are not drawn far away yet ([#67](https://github.com/MC-Skin-Creator/living-horizon/issues/67)). |
+
+### Not tested yet
+
+Mobs from other mods are drawn far away through the game's own renderer, so most of them
+should just work; these are the popular ones worth checking. Each has an issue with the
+label `mod compatibility`.
+
+| Mod | What it adds | Issue |
+|---|---|---|
+| Entity Model Features, Entity Texture Features, Fresh Animations | Mob models, animations and random textures | [#96](https://github.com/MC-Skin-Creator/living-horizon/issues/96) |
+| Cobblemon | Pokémon, rideable | [#97](https://github.com/MC-Skin-Creator/living-horizon/issues/97) |
+| Naturalist | Wild animals (GeckoLib) | [#98](https://github.com/MC-Skin-Creator/living-horizon/issues/98) |
+| Mowzie's Mobs, Bosses of Mass Destruction | Hostile mobs and bosses (GeckoLib) | [#99](https://github.com/MC-Skin-Creator/living-horizon/issues/99) |
+| Critters and Companions | Small animals | [#100](https://github.com/MC-Skin-Creator/living-horizon/issues/100) |
+| Alex's Mobs | About a hundred animals (Citadel) | [#101](https://github.com/MC-Skin-Creator/living-horizon/issues/101) |
+| Ice and Fire | Dragons, rideable (Citadel) | [#102](https://github.com/MC-Skin-Creator/living-horizon/issues/102) |
+| Alex's Caves | Cave creatures (Citadel) | [#103](https://github.com/MC-Skin-Creator/living-horizon/issues/103) |
+| Friends & Foes | Mob vote mobs | [#104](https://github.com/MC-Skin-Creator/living-horizon/issues/104) |
+| Wilder Wild | Fireflies, ostriches, crabs, jellyfish | [#105](https://github.com/MC-Skin-Creator/living-horizon/issues/105) |
+| Better Animals Plus | Wild animals | [#106](https://github.com/MC-Skin-Creator/living-horizon/issues/106) |
+| Quark | Its mobs and vanilla mob variants | [#107](https://github.com/MC-Skin-Creator/living-horizon/issues/107) |
+| Environmental, Autumnity | Deer, ducks, turkeys, snails | [#108](https://github.com/MC-Skin-Creator/living-horizon/issues/108) |
+| MCA Reborn | Villagers with their own look | [#109](https://github.com/MC-Skin-Creator/living-horizon/issues/109) |
+| Guard Villagers | Village guards | [#110](https://github.com/MC-Skin-Creator/living-horizon/issues/110) |
+| Entity Culling | Skips hidden entities | [#111](https://github.com/MC-Skin-Creator/living-horizon/issues/111) |
+| Bobby | Client-side chunks past the server's view distance | [#112](https://github.com/MC-Skin-Creator/living-horizon/issues/112) |
+| Oculus, Embeddium | Shaders and Sodium on Forge | [#113](https://github.com/MC-Skin-Creator/living-horizon/issues/113) |
+| Figura | Custom player avatars | [#114](https://github.com/MC-Skin-Creator/living-horizon/issues/114) |
+
 ## What you can do
 
 - **See other players far away.** They keep walking where they are, past the range where
