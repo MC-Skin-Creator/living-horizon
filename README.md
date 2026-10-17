@@ -111,7 +111,8 @@ The game itself lacks what these need, so they are left out rather than imitated
 - **Watch the distance live.** Animals, villagers and golems graze and wander around the
   far-off villages, and are hidden by the terrain pixel by pixel, shaders included.
 - **Look up.** Flocks, geese in a V, gulls on the coast, bats at night - and, now and
-  then, a flying saucer taking a cow (`/livinghorizon ufo`).
+  then, a flying saucer taking a cow (`/livinghorizon ufo`). `/livinghorizon bird <kind>`
+  calls any kind of bird at once.
 - **Find players where they left.** Someone who logged off lives their life where they
   were - a stroll, a seat, a bed at night, a shield against monsters - until they come back.
 - **Tune it.** Everything is in the settings (see *Settings* below): which mobs, which
@@ -342,23 +343,36 @@ lives there.
 
 Purely a picture, on this client: flocks crossing the sky, geese in a V, birds of prey
 circling, gulls over the coast (landing on the beach now and then), pigeons sitting on
-tall buildings, robins hopping in fields, tits in the trees, ducks on lakes and rivers,
+tall buildings, robins hopping in fields, tits in the trees, ducks swimming on lakes and rivers,
 bats at night (some hanging under leaves and roofs), now and then parrots. Perched birds
-fly off when you come close; ducks never let you near. Birds never vanish at once: they
-scatter and shrink away. An easter egg: now and then a flying saucer takes a cow
-(`/livinghorizon ufo`).
+fly off when you come close and land again a little farther; ducks never let you near, and
+take off together for farther along the water, or for another water known around. Birds that
+leave never vanish at once: they scatter and shrink away. An easter egg: now and then a flying
+saucer takes a cow (`/livinghorizon ufo`).
+
+`/livinghorizon bird <kind>` (`flocks`, `geese`, `raptors`, `gulls`, `pigeons`, `robins`,
+`tits`, `ducks`, `bats`, `parrots`) calls a group of that kind at once, whatever the pace, the
+hour or the weather (`Ambience.summon`). Those that fly come within 100 blocks. Those that
+perch go to the place the player looks at, up to 128 blocks away, when it suits them (a tree
+for tits, water for ducks, a field for robins, a tall building for pigeons, the coast for
+gulls), else to the nearest one around, never close enough to take fright at once; the chat
+says when there is none, or when that kind is switched off.
 
 Where each kind goes is read off the terrain a few columns at a time - from the chunks
 loaded here, or farther from the far world (`compat/LodWorld`, which reads Voxy through `VoxySource` or
 Distant Horizons through `DhSource`, its public API): crops or farmland for
 robins, leaves for tits, a man-made block well above its neighbours for pigeons, a beach or
-ocean biome for gulls. Birds are pixel sprites from `textures/misc/birds.png` (flying: seen
-from above, one plane per wing; perched: seen from the side, facing the camera); bats and
-parrots are the game's own.
+ocean biome for gulls. Birds are small 3D models (`ambient/BirdModels`): boxes in pixels,
+like the game's mobs, coloured box by box over a feather grain (`textures/misc/birds_3d.png`);
+the wings beat and bend at the tip, perched birds stand on their legs, ducks float; past the
+impostor distance they are pictures of themselves (see *Impostors*). With
+`birdStyle` set to `2d` they are pixel sprites from `textures/misc/birds.png` instead (flying:
+seen from above, one plane per wing; perched: seen from the side, facing the camera). Bats
+and parrots are the game's own either way.
 
 Settings: on/off, how many (`birdDensity`, percent), how far (`birdMaxDistance`), how low
-flocks may fly (`birdMinHeight`), size, and each kind on its own ("Choose birds...",
-`hiddenBirds`).
+flocks may fly (`birdMinHeight`), size, 3D or 2D (`birdStyle`), and each kind on its own
+("Choose birds...", `hiddenBirds`).
 
 ### Impostors
 
@@ -425,8 +439,16 @@ nothing, and the game no longer builds a render state and a model for it every f
   baked, its eight views, and its front view at 32, 16 and 8 screen pixels, as it looks
   far away. *Bake again* throws every picture away, on disk too, and bakes the figures on
   hand anew, even after a failed bake.
+- **Birds.** A 3D bird (`ambient/BirdFigure`) is baked from its model as a figure of the
+  mod's own (`ImpostorFigure`), not an entity: one sheet per species, pose (perched, or
+  flying with its wings up, level or down) and height it is seen from (from well below,
+  below or above flying; below, level or above perched), all of a pose baked together the
+  first time one is needed, on pages of their species. Its picture faces the camera entirely,
+  not only round, since it was baked as seen from that height, and the wing beat goes on
+  from one sheet to the next. Bird sheets are baked again each game, never kept on disk, and
+  named after the species in the impostor screen.
 - **Not impostors:** figures with a mount or a rider, players resting on the ground, the
-  birds and the saucer's cow.
+  2D birds, parrots and bats, and the saucer's cow.
 
 ### The far terrain's depth
 
