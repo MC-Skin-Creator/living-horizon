@@ -111,11 +111,12 @@ Handled in the code.
 
 | Mod | Notes |
 |---|---|
-| [Voxy](https://modrinth.com/mod/voxy) | Distant mobs and players hide behind its terrain, pixel by pixel, shaders included. |
-| [Distant Horizons](https://modrinth.com/mod/distanthorizons) | From 2.3 on. Same as Voxy. |
+| [Voxy](https://modrinth.com/mod/voxy) | Mobs and players are visible on its terrain. |
+| [Distant Horizons](https://modrinth.com/mod/distanthorizons) | From 2.3 on. Mobs and players are visible on its terrain. |
 | Iris and shader packs | Photon (render scale and shadows included) and Complementary checked. |
 | Sodium | Through Voxy, which draws with it. |
 | [Mod Menu](https://modrinth.com/mod/modmenu) | Optional on Fabric: adds the settings button. |
+| Distant Friends | Its fake players (mannequins, from 1.21.9) are shown far away, standing still. |
 | GeckoLib | No crash. From 1.21.2 to 1.21.8 its mobs are not drawn far away yet ([#67](https://github.com/MC-Skin-Creator/living-horizon/issues/67)). |
 
 ### Not tested yet
@@ -178,15 +179,18 @@ label `mod compatibility`.
 | `maxDistantMobs` | `512` | mobs | How many of them are drawn at once, nearest first (`1000`: no limit; no limit here and in `mobMaxDistance` together can crash the game) |
 | `mobMaxDistance` | `512` | blocks | Past this, distant mobs are not drawn (`0`: no limit) |
 | `playerMaxDistance` | `0` | blocks | Past this, distant players are not drawn (`0`: no limit) |
-| `mobTypes` | the 31 kinds of the data pack | | Which mobs are shown, and remembered by this client (in game: "Choose mobs...") |
-| `stillMobTypes` | happy ghast | | Mobs shown standing still instead of walking their loop (in game: "Still") |
+| `mobTypes` | the 31 mobs and the boats of the data pack, and mannequins | | Which mobs are shown, and remembered by this client (in game: "Choose mobs...") |
+| `stillMobTypes` | happy ghast, mannequin | | Mobs shown standing still instead of walking their loop (in game: "Still") |
 | `rememberNamedMobs` | `true` | | A mob with a name tag is shown whatever its type |
+| `knownModdedMobs` | empty | | Mob types of other mods already offered once: a new one is shown from the start (monsters excepted), then left as you set it |
 | `scanRadius` | `32` | **chunks** | Chunks around you read by a scan, in single player, from 4 to 1024 (32 chunks = 512 blocks) |
 | `skyBirds` | `true` | | Birds and bats around you |
 | `birdDensity` | `100` | percent | How many birds, all kinds together (`0`: none, `500`: five times as many) |
 | `birdMaxDistance` | `800` | blocks | How far away birds can be |
 | `birdMinHeight` | `30` | blocks | Above you (or the sea, whichever is higher), below which flocks never fly |
 | `birdSize` | `1` | times | How much bigger than life birds are drawn |
+| `birdStyle` | `3d` | | `3d`: small models with beating wings; `2d`: flat pixel sprites |
+| `hiddenBirds` | empty | | Kinds of birds switched off: `flocks`, `geese`, `raptors`, `gulls`, `pigeons`, `robins`, `tits`, `bats`, `parrots` (in game: "Choose birds...") |
 | `easterEggs` | `true` | | A few surprises, now and then |
 | `depthOcclusion` | `true` | | The far terrain's depth (Voxy or Distant Horizons) on distant mobs and players, pixel by pixel (see *The far terrain's depth* below). Was `voxyOcclusion`. In *Debug...* |
 | `offlinePlayers` | `true` | | Players who logged off are shown and remembered; off, neither |
@@ -198,6 +202,8 @@ label `mod compatibility`.
 | `hideOccludedMobs` | `true` | | Do not draw distant mobs behind terrain at all (see *Mobs hidden by depth* below). In *Debug...*, with `depthOcclusion` |
 | `impostors` | `true` | | Draw far players and mobs as a flat picture of themselves (see *Impostors*) |
 | `impostorDistance` | `128` | blocks | Past this distance an impostor stands in for the model |
+| `animationMinPixels` | `10` | pixels | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
+| `animationMaxDistance` | `0` | blocks | Past this, no distant mob plays an animation (`0`: no limit) |
 
 ### Debugging
 
@@ -220,6 +226,8 @@ label `mod compatibility`.
   just now); `... test clear` removes them; `... test list` shows everyone resting on this
   server, where and since when. Test players are never written to the file: they are gone
   at the next start.
+- **Far terrain**: `/livinghorizon lod` (or `voxy`) says which far-terrain mod is read
+  (Voxy or Distant Horizons), whether reading it failed, and the state of its depth.
 - **Labels**: state, kind, distance and size on screen, at a constant size.
 - **Outlines** (*Outlines...*): an outline seen through terrain around each kind of figure,
   each on its own switch, in the colours of the boxes - white the mobs and players the game
