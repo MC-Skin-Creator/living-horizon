@@ -98,6 +98,8 @@ public final class FarPlayer {
     public boolean vanished() { return vanished; }
     public @Nullable AbstractClientPlayer live() { return live; }
     public @Nullable RemotePlayer puppet() { return puppet; }
+    /** The entity as the server last sent it: what they wore and held then. */
+    @Nullable AbstractClientPlayer lastSeen() { return lastSeen; }
     public double x() { return x; }
     public double y() { return y; }
     public double z() { return z; }

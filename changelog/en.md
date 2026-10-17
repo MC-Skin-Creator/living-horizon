@@ -8,6 +8,7 @@
 - **Sodium** — Living Horizon's settings now also appear in Sodium's *Video Settings*, as pages of their own below Sodium's (Sodium 0.8 and later).
 
 ### Improved
+- **Players who logged off** — they keep the armour, weapons and tools they had, and put their tools away when they draw a sword or raise a shield.
 - **Settings** — every setting has a clearer name and description, worded like Minecraft's own options, and distances get sliders the full width of the list.
 
 ## 0.7.0 — 2026-10-17

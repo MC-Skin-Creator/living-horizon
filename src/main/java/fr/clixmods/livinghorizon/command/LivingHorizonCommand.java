@@ -14,6 +14,7 @@ import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.LodWorld;
 import fr.clixmods.livinghorizon.debug.DebugHud;
 import fr.clixmods.livinghorizon.track.FarPlayer;
+import fr.clixmods.livinghorizon.track.ItemNbt;
 import fr.clixmods.livinghorizon.track.LastSeen;
 import fr.clixmods.livinghorizon.track.Profiles;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
@@ -155,7 +156,7 @@ public final class LivingHorizonCommand {
     /**
      * {@code /livinghorizon debug offline test ...}: test players who logged off, to try the
      * feature alone. {@code spawn [name] [minutes]} places one where you stand, wearing your
-     * skin, logged off that many minutes ago; {@code clear} removes them; {@code list} shows
+     * skin and what you wear and hold, logged off that many minutes ago; {@code clear} removes them; {@code list} shows
      * everyone resting on this server. Test players are never written to the file.
      */
     private static <S> LiteralArgumentBuilder<S> offlineTests(Function<S, Source> source) {
@@ -198,7 +199,8 @@ public final class LivingHorizonCommand {
                 return 0;
             }
         }
-        resting.fake(name, self.getGameProfile(), SharedPositions.dimensionCode(self.level().dimension()),
+        resting.fake(name, self.getGameProfile(), ItemNbt.equipment(self, self.level()),
+                SharedPositions.dimensionCode(self.level().dimension()),
                 self.getX(), self.getY(), self.getZ(), self.getYRot(), minutesAgo);
         source.feedback(Component.translatable("livinghorizon.offline.test.spawned", name));
         if (!FarConfig.get().offlinePlayers) {

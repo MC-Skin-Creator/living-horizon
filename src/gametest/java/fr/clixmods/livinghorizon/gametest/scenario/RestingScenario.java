@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -26,7 +27,8 @@ import java.util.function.Function;
  * stroll), in the morning they get up and stay around; hit, they raise a shield; a monster
  * they cannot see leaves them calm, one in sight puts them on guard, sword drawn, until it is
  * gone; a creeper blowing up throws them, and they walk back. Last, the switch that hides
- * them all, and the debug command's test player.
+ * them all, and the debug command's test player, who wears the helmet and holds the pickaxe
+ * the camera's player had: the pickaxe is put away while the sword and shield are out.
  */
 public final class RestingScenario implements Scenario {
     private static final String NAME = "LH_Sleeper";
@@ -214,8 +216,20 @@ public final class RestingScenario implements Scenario {
             // (the date under the crosshair), then removed.
             Scene.configure(context, config -> config.offlinePlayers = true);
             Scene.command(world, "tp @a 0.5 " + GROUND + " -10.5 0 0");
+            Scene.command(world, "item replace entity @a armor.head with iron_helmet");
+            Scene.command(world, "item replace entity @a weapon.mainhand with diamond_pickaxe");
             wait(context, world, 10);
             clientCommand(context, "livinghorizon debug offline test spawn Tester 90");
+            Scene.command(world, "item replace entity @a armor.head with air");
+            Scene.command(world, "item replace entity @a weapon.mainhand with air");
+            wait(context, world, 10);
+            boolean dressed = context.computeOnClient(minecraft -> {
+                RestingPuppet puppet = puppet(minecraft, "Tester");
+                return puppet.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET)
+                        && puppet.getMainHandItem().is(Items.DIAMOND_PICKAXE);
+            });
+            Scene.log("resting test player dressed: " + dressed);
+            if (!dressed) throw new AssertionError("resting test player: not wearing the helmet and pickaxe");
             Scene.command(world, "tp @a 0.5 " + GROUND + " -16.5 0 10");
             wait(context, world, 20);
             boolean far = context.computeOnClient(minecraft -> FarPlayerTracker.get().resting().lookedAt() != null);
@@ -232,6 +246,34 @@ public final class RestingScenario implements Scenario {
             if (tester != null) throw new AssertionError("resting test player: " + tester);
             Scene.log("resting test player looked at");
             Scene.screenshot(context, this, "test-player");
+            faceTester(context, world);
+            Scene.screenshot(context, this, "test-player-front");
+
+            // A monster next to them: the pickaxe put away for a sword and a shield, back once it is gone.
+            Vec3 tested = context.computeOnClient(minecraft -> puppet(minecraft, "Tester").position());
+            Scene.command(world, "summon husk " + (tested.x + 2) + " " + tested.y + " " + tested.z + " {NoAI:1b}");
+            wait(context, world, 30);
+            boolean swapped = context.computeOnClient(minecraft -> {
+                RestingPuppet puppet = puppet(minecraft, "Tester");
+                return puppet.guarding() && puppet.getMainHandItem().is(Items.IRON_SWORD)
+                        && puppet.getOffhandItem().is(Items.SHIELD)
+                        && puppet.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET);
+            });
+            Scene.log("resting test player on guard, pickaxe put away: " + swapped);
+            faceTester(context, world);
+            Scene.screenshot(context, this, "test-player-guard");
+            if (!swapped) throw new AssertionError("resting test player: no sword and shield in place of the pickaxe");
+            Scene.command(world, "kill @e[type=husk]");
+            wait(context, world, 140);
+            boolean pickaxeBack = context.computeOnClient(minecraft -> {
+                RestingPuppet puppet = puppet(minecraft, "Tester");
+                return !puppet.guarding() && puppet.getMainHandItem().is(Items.DIAMOND_PICKAXE)
+                        && puppet.getOffhandItem().isEmpty();
+            });
+            Scene.log("resting test player calm, pickaxe back: " + pickaxeBack);
+            faceTester(context, world);
+            Scene.screenshot(context, this, "test-player-calm");
+            if (!pickaxeBack) throw new AssertionError("resting test player: the pickaxe is not back in hand");
             clientCommand(context, "livinghorizon debug offline test clear");
             wait(context, world, 10);
             boolean gone = context.computeOnClient(minecraft -> FarPlayerTracker.get().resting().spots().stream()
@@ -239,6 +281,18 @@ public final class RestingScenario implements Scenario {
             if (!gone) throw new AssertionError("resting test player still there after clear");
             Scene.log("resting test player cleared");
         }
+    }
+
+    /** Puts the camera 3 blocks in front of the test player, looking at them. */
+    private static void faceTester(ClientGameTestContext context, TestSingleplayerContext world) {
+        double[] at = context.computeOnClient(minecraft -> {
+            RestingPuppet puppet = puppet(minecraft, "Tester");
+            double yaw = Math.toRadians(puppet.yBodyRot);
+            return new double[] {puppet.getX() - Math.sin(yaw) * 3, puppet.getY(), puppet.getZ() + Math.cos(yaw) * 3,
+                    puppet.yBodyRot + 180};
+        });
+        Scene.command(world, "tp @a " + at[0] + " " + at[1] + " " + at[2] + " " + at[3] + " 15");
+        context.waitTicks(5);
     }
 
     /** Types a command in the chat, as the player would: the mod's commands run on the client. */
@@ -255,12 +309,16 @@ public final class RestingScenario implements Scenario {
     }
 
     private static RestingPuppet puppet(Minecraft minecraft) {
+        return puppet(minecraft, NAME);
+    }
+
+    private static RestingPuppet puppet(Minecraft minecraft, String name) {
         ClientLevel level = minecraft.level;
         RestingPlayers resting = FarPlayerTracker.get().resting();
         for (RestingPlayers.Spot spot : resting.spots()) {
-            if (spot.name().equals(NAME) && level != null) return resting.puppet(level, spot);
+            if (spot.name().equals(name) && level != null) return resting.puppet(level, spot);
         }
-        throw new AssertionError("resting: no sleeper");
+        throw new AssertionError("resting: no " + name);
     }
 
     /** Something about the sleeper, read on the client. */
