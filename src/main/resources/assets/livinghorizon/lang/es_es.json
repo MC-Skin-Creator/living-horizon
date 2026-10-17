@@ -13,6 +13,7 @@
   "livinghorizon.options.preset.normal": "Normal",
   "livinghorizon.options.preset.low": "Bajo",
   "livinghorizon.options.preset": "Plantilla: %s",
+  "livinghorizon.options.preset.name": "Plantilla",
   "livinghorizon.options.impostorsSection": "Rendimiento",
   "livinghorizon.options.enabled": "Mostrar jugadores",
   "livinghorizon.options.enabled.tooltip": "Sigue mostrando a los demás jugadores más allá de la distancia a la que el servidor deja de enviarlos. La tecla «Mostrar/ocultar jugadores lejanos» también lo cambia.",

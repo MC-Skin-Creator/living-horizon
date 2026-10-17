@@ -13,6 +13,7 @@
   "livinghorizon.options.preset.normal": "보통",
   "livinghorizon.options.preset.low": "낮음",
   "livinghorizon.options.preset": "사전 설정: %s",
+  "livinghorizon.options.preset.name": "사전 설정",
   "livinghorizon.options.impostorsSection": "성능",
   "livinghorizon.options.enabled": "플레이어 표시",
   "livinghorizon.options.enabled.tooltip": "서버가 더 이상 보내지 않는 거리를 넘어서도 다른 플레이어를 계속 표시합니다. \"멀리 있는 플레이어 표시 전환\" 키로도 바꿀 수 있습니다.",

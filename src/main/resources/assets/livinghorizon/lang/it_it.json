@@ -13,6 +13,7 @@
   "livinghorizon.options.preset.normal": "Normale",
   "livinghorizon.options.preset.low": "Bassa",
   "livinghorizon.options.preset": "Qualità: %s",
+  "livinghorizon.options.preset.name": "Qualità",
   "livinghorizon.options.impostorsSection": "Prestazioni",
   "livinghorizon.options.enabled": "Mostra giocatori",
   "livinghorizon.options.enabled.tooltip": "Continua a mostrare gli altri giocatori oltre la distanza a cui il server smette di inviarli. Anche il tasto «Mostra/nascondi giocatori lontani» la attiva e disattiva.",

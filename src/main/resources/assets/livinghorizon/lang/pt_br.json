@@ -13,6 +13,7 @@
   "livinghorizon.options.preset.normal": "Normal",
   "livinghorizon.options.preset.low": "Baixa",
   "livinghorizon.options.preset": "Predefinição: %s",
+  "livinghorizon.options.preset.name": "Predefinição",
   "livinghorizon.options.impostorsSection": "Desempenho",
   "livinghorizon.options.enabled": "Mostrar jogadores",
   "livinghorizon.options.enabled.tooltip": "Continua exibindo outros jogadores além da distância em que o servidor para de enviá-los. A tecla \"Alternar jogadores distantes\" também ativa e desativa isso.",

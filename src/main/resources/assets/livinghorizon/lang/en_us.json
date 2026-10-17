@@ -13,6 +13,7 @@
   "livinghorizon.options.preset.normal": "Normal",
   "livinghorizon.options.preset.low": "Low",
   "livinghorizon.options.preset": "Preset: %s",
+  "livinghorizon.options.preset.name": "Preset",
   "livinghorizon.options.impostorsSection": "Performance",
   "livinghorizon.options.enabled": "Show Players",
   "livinghorizon.options.enabled.tooltip": "Keeps showing other players past the distance where the server stops sending them. The \"Toggle Distant Players\" key switches this too.",

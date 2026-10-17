@@ -171,6 +171,7 @@ label `mod compatibility`.
   sure it is (`±` blocks).
 - A key (unbound by default, under *Living Horizon* in Controls) toggles the copies.
 - The settings are in game: the *Living Horizon...* button on the Options screen, Mod Menu's *Configure*, or `/livinghorizon config`. *Restore Defaults*, at the bottom, puts every setting back (mob and bird choices included; remembered mobs are kept).
+- With [Sodium](https://modrinth.com/mod/sodium) 0.8 or later (Minecraft 1.21.1, 1.21.11 and 26.x; Fabric, Quilt and NeoForge), the same settings are also pages of Sodium's *Video Settings*, under *Living Horizon*, below Sodium's own. The sub-screens (mob and bird choices, impostors, debug) open from there. A preset chosen there takes effect on *Apply*.
 - `config/livinghorizon.json`:
 
 | Setting | Default | Unit | |

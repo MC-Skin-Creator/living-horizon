@@ -13,6 +13,7 @@
   "livinghorizon.options.preset.normal": "Обычный",
   "livinghorizon.options.preset.low": "Низкий",
   "livinghorizon.options.preset": "Профиль: %s",
+  "livinghorizon.options.preset.name": "Профиль",
   "livinghorizon.options.impostorsSection": "Производительность",
   "livinghorizon.options.enabled": "Показывать игроков",
   "livinghorizon.options.enabled.tooltip": "Другие игроки остаются видимыми за пределами расстояния, на котором сервер перестаёт их передавать. Клавиша «Показать/скрыть далёких игроков» тоже переключает эту настройку.",

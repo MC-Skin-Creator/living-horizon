@@ -25,6 +25,7 @@
     ${intermediate_mappings}
     "entrypoints": {
       "client": "fr.clixmods.livinghorizon.LivingHorizonClient",
+      ${sodium}
       "modmenu": "fr.clixmods.livinghorizon.ui.ModMenuEntry"
     },
     "depends": [

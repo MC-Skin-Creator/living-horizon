@@ -13,6 +13,7 @@
   "livinghorizon.options.preset.normal": "普通",
   "livinghorizon.options.preset.low": "低",
   "livinghorizon.options.preset": "预设：%s",
+  "livinghorizon.options.preset.name": "预设",
   "livinghorizon.options.impostorsSection": "性能",
   "livinghorizon.options.enabled": "显示玩家",
   "livinghorizon.options.enabled.tooltip": "服务器停止发送其他玩家后，仍继续显示他们。“切换远处玩家显示”键也可切换此项。",

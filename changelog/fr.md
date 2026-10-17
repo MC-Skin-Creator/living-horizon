@@ -5,6 +5,7 @@
 ### Nouveautés
 - **Joueurs simplifiés** — un nouveau paramètre garde les joueurs lointains en modèles complets, tandis que les créatures deviennent toujours des images plates au loin.
 - **Langues** — Living Horizon parle désormais allemand, espagnol, italien, portugais du Brésil, polonais, turc, russe, ukrainien, chinois simplifié et traditionnel, japonais et coréen.
+- **Sodium** — les réglages de Living Horizon apparaissent aussi dans les *Paramètres vidéo* de Sodium, sur des pages à eux sous celles de Sodium (Sodium 0.8 et plus récent).
 
 ### Améliorations
 - **Paramètres** — chaque paramètre a un nom et une description plus clairs, dans le style des options de Minecraft, et les distances ont des curseurs sur toute la largeur de la liste.
