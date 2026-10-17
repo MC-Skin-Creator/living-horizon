@@ -80,6 +80,20 @@ an older node is checked by starting its client.
 Mod and dependency versions live in `stonecutter.properties.toml`, never hardcoded
 in the build scripts. The README describes how each part works.
 
+## Settings live in two screens
+
+Every setting a player changes in game is shown twice: in the mod's own screen
+(`ui/FarConfigScreen` and its sub-screens) and in Sodium's video settings
+(`ui/SodiumOptions`, Sodium 0.8 and later). **A setting added, renamed, moved or removed
+changes both in the same pull request**, with the same name, tooltip, range and value
+text. A new sub-screen gets an "Open" button on Sodium's page as well. A row on Sodium's
+page is named by the key `livinghorizon.options.<field>` of the `FarConfig` field it sets:
+the `sodiumcontrols` scenario finds rows by that name and checks that each one writes its
+field. Run it (`run.sh sodium,sodiumcontrols --sodium`) after any change to the settings.
+
+Older Sodium (0.5 to 0.7: 1.20.x, 1.21.3 to 1.21.10) has no API for other mods' pages: there
+the settings stay on the mod's own screen, which the *Living Horizon...* button opens.
+
 ## Never change another mod's rendering
 
 The mod draws its own figures and nothing else. Voxy, Distant Horizons, Iris and shader packs
@@ -333,6 +347,11 @@ come back, add it here in the same pull request: this file is what the next sess
   bird is stood again on what is under it. Birds jumping in a loop: a move is a flight once it
   is long, so a target is only moved in from a column's edge (never re-drawn on the block), and a
   duck swims as far as the water goes on (`Perchers.swims`). The `perchers` scenario counts all three.
+- **Escape from a screen opened on Sodium's page goes back to the game**, not to Sodium's:
+  Sodium runs its "close" shortcut when Escape is released, so a screen that closes on the
+  press hands the release to Sodium's. Over Sodium's screen the mod's screens and
+  confirmations close on the release (`ui/SodiumReturn`); a new screen opened from
+  `SodiumOptions` needs the same.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
