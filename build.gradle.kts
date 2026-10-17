@@ -17,8 +17,8 @@ repositories {
     }
 }
 
-// What the targets share, worked out once: the Java level, the data pack's pack.mcmeta,
-// the access widener or transformer, and the list of mixins. See gradle/target.gradle.kts.
+// What the targets share, worked out once: the Java level, the access widener or
+// transformer, and the list of mixins. See gradle/target.gradle.kts.
 extra["lhGame"] = sc.current.version
 extra["lhUnobfuscated"] = sc.current.parsed >= "26.1"
 apply(from = rootProject.file("gradle/target.gradle.kts"))
@@ -90,9 +90,6 @@ loom {
         property("fabric.client.gametest.testModResourcesPath", rootProject.file("src/gametest/resources").absolutePath)
         // Which scenarios to run: -Plh.scenario=impostors,... (all of them by default).
         property("livinghorizon.scenario", (findProperty("lh.scenario") ?: "all").toString())
-        // The data pack, and this version's own pack.mcmeta and files beside it, for scenarios that install it.
-        property("livinghorizon.datapack", rootProject.file("datapack").absolutePath)
-        property("livinghorizon.datapackOverrides", (project.extra["lhMcmeta"] as File).parentFile.absolutePath)
         // Other mods to load with it (Sodium...): -Plh.mods=<folder of jars>.
         findProperty("lh.mods")?.let { property("fabric.addMods", it.toString()) }
         // A shader pack folder to turn on through Iris, which -Plh.mods must hold: -Plh.shaderpack=<folder>.
@@ -110,8 +107,6 @@ java {
 tasks {
     test {
         useJUnitPlatform()
-        // DatapackTest compiles the data pack, which lives outside the source set.
-        inputs.dir(rootProject.file("datapack"))
         testLogging { events("failed"); exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }
     }
 
@@ -150,29 +145,9 @@ tasks {
         from(rootProject.file("CREDITS.md"))
     }
 
-    // The companion data pack, zipped next to the jar. Its pack format belongs to one
-    // Minecraft version, like the jar.
-    val datapack = register<Zip>("datapackZip") {
-        group = "build"
-        description = "Zips the companion data pack into build/libs/{mod version}/"
-        @Suppress("UNCHECKED_CAST")
-        val overrides = project.extra["lhDatapackOverrides"] as List<String>
-        from(rootProject.file("datapack")) { exclude("pack.mcmeta"); exclude(overrides) }
-        from((project.extra["lhMcmeta"] as File).parentFile)
-        // Before 1.21 a pack's folders had plural names.
-        includeEmptyDirs = false
-        if (sc.current.parsed < "1.21") eachFile {
-            path = path.replace(Regex("^data/([^/]+)/(function|predicate)/"), "data/\$1/\$2s/")
-                .replace(Regex("^data/([^/]+)/tags/(function|entity_type)/"), "data/\$1/tags/\$2s/")
-        }
-        archiveFileName = "livinghorizon-datapack-${project.property("mod.version")}+mc${sc.current.version}.zip"
-        destinationDirectory = rootProject.layout.buildDirectory.dir("libs/${project.property("mod.version")}")
-    }
-
     register<Copy>("buildAndCollect") {
         group = "build"
         description = "Builds the mod jar and copies it to build/libs/{mod version}/"
-        dependsOn(datapack)
         inputs.property("version", project.property("mod.version"))
         from(loomx.modJar.flatMap { it.archiveFile })
         into(rootProject.layout.buildDirectory.file("libs/${project.property("mod.version")}"))

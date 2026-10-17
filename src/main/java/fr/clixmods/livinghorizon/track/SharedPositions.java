@@ -2,186 +2,121 @@ package fr.clixmods.livinghorizon.track;
 
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.scores.Objective;
-//? if >=1.20.3 {
-import net.minecraft.world.scores.PlayerScoreEntry;
-import net.minecraft.world.scores.ReadOnlyScoreInfo;
-import net.minecraft.world.scores.ScoreHolder;
-//?} else
-/*import net.minecraft.world.scores.Score;*/
-import net.minecraft.world.scores.Scoreboard;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
- * The positions the companion data pack ({@code datapack/} at the root of this
- * repository) publishes through the scoreboard.
- *
- * <p>An objective shown in a display slot is sent to every client at any distance; the
- * pack shows its four in the sidebars of unused team colours, so nobody sees them and
- * every client receives them. The layout is documented in the pack's
- * {@code load.mcfunction}, and {@link #VERSION} is the one this class reads.
+ * The positions a server with the mod shares ({@link PositionPublisher}), as this client last
+ * received them ({@link PositionsMessage}): every player, online or logged off, and the
+ * remembered mobs around this client. Nothing here is read from the world; a server without
+ * the mod sends nothing, and {@link #active()} stays false.
  */
 public final class SharedPositions {
-    static final int VERSION = 1;
-    /** Ticks without the pack's clock moving before its scores are no longer trusted. */
+    /** Ticks without news of the players before what was received is no longer trusted. */
     private static final int STALE_TICKS = 60;
 
     public record Report(double x, double y, double z, float yaw, int dimension, boolean riding) {
     }
 
-    private static final String CLOCK = "#clock";
-    private static final String LAYOUT = "#version";
+    /** A mob the server publishes, under its UUID. */
+    public record MobReport(UUID id, double x, double y, double z, int kind, int dimension, boolean baby, int variant) {
+    }
 
-    private int lastClock;
-    private int ticksSinceClock = STALE_TICKS;
+    private final Map<String, PositionsMessage.Player> players = new HashMap<>();
+    private final Map<String, PositionsMessage.Player> offline = new HashMap<>();
+    private final Map<UUID, MobReport> mobs = new HashMap<>();
+    private PositionsMessage.@Nullable Mobs lastMobs;
+    private int ticksSinceNews = STALE_TICKS;
     private boolean active;
 
-    /** Once per tick: whether the pack is running on this server right now. */
-    boolean update(Scoreboard scoreboard) {
-        Objective meta = scoreboard.getObjective("lh.m");
-        Integer clock = meta == null ? null : score(scoreboard, CLOCK, meta);
-        Integer layout = meta == null ? null : score(scoreboard, LAYOUT, meta);
-        if (clock == null || layout == null || layout != VERSION) {
-            ticksSinceClock = STALE_TICKS;
-            active = false;
-            return false;
+    /** A message from the server, on the game's thread. */
+    void receive(byte[] data) {
+        PositionsMessage.Decoded message = PositionsMessage.read(data);
+        if (message == null) return;
+        if (message.kind() == PositionsMessage.PLAYERS && message.players() != null) {
+            players.clear();
+            for (PositionsMessage.Player player : message.players()) players.put(player.name(), player);
+            ticksSinceNews = 0;
+            active = true;
         }
-        if (clock != lastClock) {
-            lastClock = clock;
-            ticksSinceClock = 0;
-        } else if (ticksSinceClock < STALE_TICKS) {
-            ticksSinceClock++;
+        if (message.kind() == PositionsMessage.OFFLINE && message.players() != null) {
+            offline.clear();
+            for (PositionsMessage.Player player : message.players()) offline.put(player.name(), player);
         }
-        active = ticksSinceClock < STALE_TICKS;
+        if (message.mobs() != null) {
+            mobs.clear();
+            for (PositionsMessage.Mob mob : message.mobs().mobs()) {
+                mobs.put(mob.id(), new MobReport(mob.id(), mob.x(), mob.y(), mob.z(), mob.kind(), mob.dimension(),
+                        mob.baby(), mob.variant()));
+            }
+            lastMobs = message.mobs();
+        }
+    }
+
+    /** Once per tick: whether the server shares positions right now. */
+    boolean update() {
+        if (ticksSinceNews < STALE_TICKS) ticksSinceNews++;
+        active = ticksSinceNews < STALE_TICKS;
         return active;
+    }
+
+    /** Another server or world: what the last one said means nothing here. */
+    void clear() {
+        players.clear();
+        offline.clear();
+        mobs.clear();
+        lastMobs = null;
+        ticksSinceNews = STALE_TICKS;
+        active = false;
     }
 
     public boolean active() {
         return active;
     }
 
-    /** What the pack last said about one player, by scoreboard name. Null when nothing. */
-    @Nullable Report read(Scoreboard scoreboard, String name) {
-        if (!active) return null;
-        Objective ox = scoreboard.getObjective("lh.x");
-        Objective oy = scoreboard.getObjective("lh.y");
-        Objective oz = scoreboard.getObjective("lh.z");
-        Objective om = scoreboard.getObjective("lh.m");
-        if (ox == null || oy == null || oz == null || om == null) return null;
-        String holder = name;
-        Integer x = score(scoreboard, holder, ox);
-        Integer y = score(scoreboard, holder, oy);
-        Integer z = score(scoreboard, holder, oz);
-        Integer m = score(scoreboard, holder, om);
-        if (x == null || y == null || z == null || m == null) return null;
-        int meta = m;
-        return new Report(
-                x / 10.0, y / 10.0, z / 10.0,
-                meta % 360,
-                (meta / 360) % 4,
-                meta >= 1440);
+    /** What the server last said about one player, by name. Null when nothing. */
+    public @Nullable Report read(String name) {
+        PositionsMessage.Player player = active ? players.getOrDefault(name, offline.get(name)) : null;
+        return player == null ? null
+                : new Report(player.x(), player.y(), player.z(), player.yaw(), player.dimension(), player.riding());
     }
 
-    /**
-     * The published mob a player rides, told by the number they share in {@code lh.r}: null
-     * when they ride nothing published, or the server shares no such link (an older pack).
-     */
-    @Nullable UUID vehicle(Scoreboard scoreboard, String name) {
-        if (!active) return null;
-        Objective riders = scoreboard.getObjective("lh.r");
-        Integer number = riders == null ? null : score(scoreboard, name, riders);
-        if (number == null || number <= 0) return null;
-        //? if >=1.20.3 {
-        for (PlayerScoreEntry entry : scoreboard.listPlayerScores(riders)) {
-            UUID id = entry.value() == number ? mobId(entry.owner()) : null;
-            if (id != null) return id;
-        }
-        //?} else {
-        /*for (Score entry : scoreboard.getPlayerScores(riders)) {
-            UUID id = entry.getScore() == number ? mobId(entry.getOwner()) : null;
-            if (id != null) return id;
-        }
-        *///?}
-        return null;
-    }
-
-    /** A mob the pack publishes, under its UUID. */
-    public record MobReport(UUID id, double x, double y, double z, int kind, int dimension, boolean baby, int variant) {
-    }
-
-    /** Every player the pack has a position for, online or not. */
-    List<String> holders(Scoreboard scoreboard) {
-        List<String> names = new ArrayList<>();
-        for (String owner : owners(scoreboard)) {
-            if (!owner.startsWith("#") && mobId(owner) == null) names.add(owner);
-        }
+    /** Every player the server has a position for, online or not. */
+    public List<String> holders() {
+        List<String> names = new ArrayList<>(players.keySet());
+        for (String name : offline.keySet()) if (!players.containsKey(name)) names.add(name);
         return names;
     }
 
-    /** Every mob the pack has a position for. Their score holder is their UUID. */
-    List<UUID> mobs(Scoreboard scoreboard) {
-        List<UUID> ids = new ArrayList<>();
-        for (String owner : owners(scoreboard)) {
-            UUID id = mobId(owner);
-            if (id != null) ids.add(id);
-        }
-        return ids;
+    /** The published mob a player rides: null when they ride nothing the server publishes. */
+    public @Nullable UUID vehicle(String name) {
+        PositionsMessage.Player player = active ? players.get(name) : null;
+        return player == null ? null : player.vehicle();
     }
 
-    @Nullable MobReport readMob(Scoreboard scoreboard, UUID id) {
-        if (!active) return null;
-        Objective ox = scoreboard.getObjective("lh.x");
-        Objective oy = scoreboard.getObjective("lh.y");
-        Objective oz = scoreboard.getObjective("lh.z");
-        Objective om = scoreboard.getObjective("lh.m");
-        if (ox == null || oy == null || oz == null || om == null) return null;
-        String holder = id.toString();
-        Integer x = score(scoreboard, holder, ox);
-        Integer y = score(scoreboard, holder, oy);
-        Integer z = score(scoreboard, holder, oz);
-        Integer m = score(scoreboard, holder, om);
-        if (x == null || y == null || z == null || m == null) return null;
-        int meta = m;
-        return new MobReport(id, x / 10.0, y / 10.0, z / 10.0,
-                meta & 255, (meta >> 8) & 3, ((meta >> 10) & 1) == 1, meta >>> 11);
+    /** Every mob the server last published around this client. */
+    public List<UUID> mobs() {
+        return new ArrayList<>(mobs.keySet());
     }
 
-    private static List<String> owners(Scoreboard scoreboard) {
-        Objective ox = scoreboard.getObjective("lh.x");
-        if (ox == null) return List.of();
-        List<String> owners = new ArrayList<>();
-        //? if >=1.20.3 {
-        for (PlayerScoreEntry entry : scoreboard.listPlayerScores(ox)) owners.add(entry.owner());
-        //?} else
-        /*for (Score entry : scoreboard.getPlayerScores(ox)) owners.add(entry.getOwner());*/
-        return owners;
+    public @Nullable MobReport readMob(UUID id) {
+        return active ? mobs.get(id) : null;
     }
 
-    /** A holder's score, or null when it has none. The scoreboard named its holders by a string before 1.20.3. */
-    static @Nullable Integer score(Scoreboard scoreboard, String holder, Objective objective) {
-        //? if >=1.20.3 {
-        ReadOnlyScoreInfo info = scoreboard.getPlayerScoreInfo(ScoreHolder.forNameOnly(holder), objective);
-        return info == null ? null : info.value();
-        //?} else {
-        /*return scoreboard.hasPlayerScore(holder, objective) ? scoreboard.getOrCreatePlayerScore(holder, objective).getScore() : null;
-        *///?}
+    /**
+     * Whether the last mobs sent were chosen where a mob stands: a remembered mob there that
+     * was not sent is gone; one farther off was only out of reach.
+     */
+    boolean covers(int dimension, double x, double z) {
+        return lastMobs != null && lastMobs.covers(dimension, x, z);
     }
 
-    /** A player name is at most 16 characters; a UUID written out is 36. */
-    private static @Nullable UUID mobId(String owner) {
-        if (owner.length() != 36) return null;
-        try {
-            return UUID.fromString(owner);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
-    /** The pack's code for a dimension: 0 overworld, 1 nether, 2 end, 3 anything else. */
+    /** The code of a dimension: 0 overworld, 1 nether, 2 end, 3 anything else. */
     public static int dimensionCode(ResourceKey<Level> dimension) {
         if (dimension == Level.OVERWORLD) return 0;
         if (dimension == Level.NETHER) return 1;

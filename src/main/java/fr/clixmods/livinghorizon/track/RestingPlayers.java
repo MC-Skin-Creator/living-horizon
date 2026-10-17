@@ -47,17 +47,17 @@ import java.util.concurrent.CompletableFuture;
  *
  * <p>Remembered per server, across sessions, in
  * {@code config/livinghorizon/resting/<server>.json}: a friend who logged off yesterday
- * is still napping where they stopped when you come back. When the server runs the
- * companion data pack, its scores keep the position of every player who ever played
- * there, so even someone who left before you joined gets a spot; their skin is then
- * fetched from Mojang by name, once.
+ * is still napping where they stopped when you come back. When the server runs the mod,
+ * it keeps the position of every player who ever played there and shares it, so even
+ * someone who left before you joined gets a spot; their skin is then fetched from Mojang
+ * by name, once.
  */
 public final class RestingPlayers {
     /**
-     * Where one player rests. Keyed by name: the data pack only knows names.
+     * Where one player rests. Keyed by name: the server shares names only.
      *
      * @param lastSeen when they logged off, in milliseconds since 1970; 0 when unknown (seen
-     *                 by the data pack alone, or saved by a version that did not keep it)
+     *                 by the server alone, or saved by a version that did not keep it)
      * @param mount    what they rode when they logged off, or null
      */
     public record Spot(String name, @Nullable UUID id, @Nullable String textures, @Nullable String signature,
@@ -194,8 +194,8 @@ public final class RestingPlayers {
         put(spot);
     }
 
-    /** The data pack's last word on an offline player. */
-    void restFromPack(String name, SharedPositions.Report report) {
+    /** The server's last word on an offline player. */
+    void restFromServer(String name, SharedPositions.Report report) {
         Spot known = spots.get(key(name));
         if (known != null && known.dimension() == report.dimension()
                 && Math.abs(known.x() - report.x()) < 0.05 && Math.abs(known.y() - report.y()) < 0.05

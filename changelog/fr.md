@@ -17,18 +17,21 @@
 - **Réglages dans le menu de Sodium** — les réglages de Living Horizon apparaissent aussi dans les *Paramètres vidéo* de Sodium, sur des pages à eux (Sodium 0.8 et plus).
 - **Les joueurs déconnectés gardent leur monture** — un joueur parti sur un cheval, un bateau ou un ghast joyeux continue de le monter autour de l'endroit où il s'est déconnecté.
 - **Réglages de mémoire vidéo** — l'écran *Entités simplifiées...* montre la mémoire vidéo prise par les images des créatures et des joueurs, et *Mémoire des images de créatures* et *Mémoire des images de joueurs* fixent une limite pour chacun.
+- **Le mod sur le serveur remplace le datapack** — mets le mod dans le dossier `mods` du serveur (ou ouvre ton monde au LAN) et tous ceux qui ont le mod voient les autres joueurs et les mobs à n'importe quelle distance. Le datapack disparaît : un serveur qui l'utilisait a maintenant besoin du mod.
 
 ### Améliorations
 - **Réglages plus clairs** — chaque réglage a un nom et une description plus clairs, dans le style des options de Minecraft, et les curseurs de distance prennent toute la largeur.
 - **Joueurs déconnectés** — les joueurs déconnectés font une petite ronde autour de l'endroit où ils sont partis, et deviennent des images plates au loin comme les joueurs connectés, debout, assis, couchés ou dans un lit.
 - **Cavaliers** — au loin, un joueur sur un cheval, dans un bateau, un wagonnet ou tout autre monture devient une seule image plate avec elle, bien plus légère que deux modèles complets.
 - **Grandes foules de joueurs** — au-delà d'une centaine de joueurs lointains, les suivants deviennent eux aussi des images plates au lieu de rester en modèles complets.
+- **Joueurs lointains** — ils sont placés d'après les positions partagées uniquement : l'estimation par la barre de localisation disparaît, et le réglage « Délai joueur perdu » avec. Sans le mod sur le serveur, la console le signale une fois.
 
 ### Corrections
 - **Créatures visibles à travers les collines après avoir redimensionné la fenêtre** — les créatures lointaines ne traversent plus les collines, celles de Voxy et de Distant Horizons comprises, quand la fenêtre du jeu change de taille.
 - **Joueurs et slimes qui disparaissent avec Distant Horizons** — les joueurs lointains, les joueurs déconnectés et les slimes ne disparaissent plus sous le terrain de Distant Horizons (Minecraft 26.1 et plus).
 - **Terrain de Distant Horizons qui mord sur les créatures** — le terrain de Distant Horizons ne mord plus sur les créatures et les joueurs placés devant lui (Minecraft 26.1 et plus).
 - **Créatures lointaines qui clignotent en marchant** — avec le balancement de la vue, les créatures lointaines ne clignotent plus et le terrain de Distant Horizons ne vacille plus devant elles à chaque pas (Minecraft 26.1 et plus).
+- **Joueurs sur un happy ghast** — un joueur lointain qui chevauche un happy ghast n'a plus de second ghast à côté de lui, et celui qui le chevauchait déjà quand tu arrives ne flotte plus dans le vide.
 
 ### Améliorations
 - **Joueurs lointains** — ils sont placés d'après les positions partagées uniquement : l'estimation par la barre de localisation disparaît, et le réglage « Signal perdu » avec. Sans datapack ni mod sur le serveur, la console le signale une fois.

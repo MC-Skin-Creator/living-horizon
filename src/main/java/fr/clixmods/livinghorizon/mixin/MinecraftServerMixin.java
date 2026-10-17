@@ -14,9 +14,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.function.BooleanSupplier;
 
 /**
- * Makes a dedicated server do the companion data pack's job, so that putting the mod in its
- * {@code mods} folder is enough. A world opened to LAN is the client's ({@code LanShare}):
- * this does nothing on the integrated server.
+ * Makes a dedicated server share the positions with the players who have the mod
+ * ({@link PositionPublisher}), so that putting the mod in its {@code mods} folder is enough, and
+ * saves what it keeps as the server stops. A world opened to LAN is the client's
+ * ({@code LanShare}): this does nothing on the integrated server.
  */
 @Mixin(MinecraftServer.class)
 abstract class MinecraftServerMixin {
@@ -37,5 +38,11 @@ abstract class MinecraftServerMixin {
             logger.warn("Could not share the positions of this server, giving up", e);
             livinghorizon$failed = true;
         }
+    }
+
+    // Saved every minute anyway: a server whose stop is not found loses one minute at most.
+    @Inject(method = "stopServer", at = @At("HEAD"), require = 0)
+    private void livinghorizon$savePositions(CallbackInfo ci) {
+        if (livinghorizon$publisher != null) livinghorizon$publisher.save();
     }
 }

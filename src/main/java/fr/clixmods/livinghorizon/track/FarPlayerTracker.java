@@ -14,7 +14,6 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.server.IntegratedServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.storage.LevelResource;
-import net.minecraft.world.scores.Scoreboard;
 import org.jspecify.annotations.Nullable;
 
 import java.nio.file.Path;
@@ -29,8 +28,8 @@ import java.util.UUID;
 
 /**
  * Every other player on the server, followed once per client tick from what a client
- * receives: the entities the server sends and the shared positions (the data pack's scores, or a
- * LAN host's mod).
+ * receives: the entities the server sends, and the positions a server with the mod shares
+ * ({@link SharedPositions}).
  *
  * <p>Nothing is sent to the server. Past the server's view distance, a player is placed
  * only where the shared positions say; without them, they are not shown.
@@ -47,15 +46,25 @@ public final class FarPlayerTracker {
     private @Nullable String server;
     private int packScan;
     private int sinceJoin;
-    private boolean warnedNoPack;
+    private boolean warnedNoSharing;
 
     public static FarPlayerTracker get() {
         return INSTANCE;
     }
 
-    /** Whether the companion data pack is running on this server. */
+    /** Whether the server shares the positions (it runs the mod). */
     public boolean sharing() {
         return shared.active();
+    }
+
+    /** What the server shares, as last received: for the game tests and the debug screens. */
+    public SharedPositions shared() {
+        return shared;
+    }
+
+    /** A message from the server ({@code PositionsMessage}), on the game's thread. */
+    public void receive(byte[] data) {
+        shared.receive(data);
     }
 
     public Collection<FarPlayer> players() {
@@ -83,6 +92,7 @@ public final class FarPlayerTracker {
         ClientPacketListener connection = minecraft.getConnection();
         if (current == null || self == null || connection == null) {
             players.clear();
+            shared.clear();
             level = null;
             if (server != null) {
                 LodWorld.suspend();
@@ -106,8 +116,9 @@ public final class FarPlayerTracker {
                 mobs.open(joined);
                 ambience.calendar().open(joined);
                 server = joined;
+                shared.clear();
                 sinceJoin = 0;
-                warnedNoPack = false;
+                warnedNoSharing = false;
                 // Opening the memory forgets the mobs sent so far: the level may have loaded
                 // those round the player before this first tick, and loads them only once.
                 for (Entity entity : current.entitiesForRendering()) mobs.onLoad(entity);
@@ -133,15 +144,14 @@ public final class FarPlayerTracker {
         // inside it, the player was removed rather than left behind.
         double vanishRadius = Math.max(16, minecraft.options.getEffectiveRenderDistance() * 16 - 40);
 
-        Scoreboard scoreboard = current.getScoreboard();
-        shared.update(scoreboard);
+        shared.update();
         // Ten seconds after joining a server, no sharing at all: say so once, in the console.
         // A world played alone shares nothing and needs nothing.
-        if (!warnedNoPack && ++sinceJoin >= 200) {
-            warnedNoPack = true;
+        if (!warnedNoSharing && ++sinceJoin >= 200) {
+            warnedNoSharing = true;
             if (!shared.active() && minecraft.getSingleplayerServer() == null) {
-                LivingHorizonClient.LOGGER.warn("Living Horizon: no data pack found on this server, so distant players are not shown. "
-                        + "Put the mod in the server's mods folder, install the data pack, or ask the host of a LAN world to use the mod.");
+                LivingHorizonClient.LOGGER.warn("Living Horizon: this server does not have the mod, so distant players are not shown. "
+                        + "Put the mod in the server's mods folder, or ask the host of a LAN world to use the mod.");
             }
         }
 
@@ -157,14 +167,14 @@ public final class FarPlayerTracker {
             if (player != null) player.profile = info.getProfile();
             if (live.contains(id)) continue;
 
-            SharedPositions.Report report = shared.read(scoreboard, name);
+            SharedPositions.Report report = shared.read(name);
             if (player == null) {
                 if (report == null) continue;
                 player = new FarPlayer(id);
                 player.profile = info.getProfile();
                 players.put(id, player);
             }
-            UUID vehicle = report != null && report.riding() ? shared.vehicle(scoreboard, name) : null;
+            UUID vehicle = report != null && report.riding() ? shared.vehicle(name) : null;
             player.observeRemote(current, self, info, report, vehicle, dimension, vanishRadius, config, mobs);
         }
 
@@ -183,13 +193,13 @@ public final class FarPlayerTracker {
             return true;
         });
 
-        // The data pack keeps the last position of everyone who ever played here.
+        // The server keeps the last position of everyone who ever played there.
         if (config.offlinePlayers && shared.active() && ++packScan >= 20) {
             packScan = 0;
-            for (String name : shared.holders(scoreboard)) {
+            for (String name : shared.holders()) {
                 if (online.contains(name.toLowerCase(Locale.ROOT))) continue;
-                SharedPositions.Report report = shared.read(scoreboard, name);
-                if (report != null) resting.restFromPack(name, report);
+                SharedPositions.Report report = shared.read(name);
+                if (report != null) resting.restFromServer(name, report);
             }
         }
         if (config.offlinePlayers) resting.tick(current, config);
@@ -203,7 +213,7 @@ public final class FarPlayerTracker {
         }
         mobs.carried(carried);
         mobs.tick(current, self, minecraft.options.getEffectiveRenderDistance() * 16, config,
-                shared.active() ? shared : null, scoreboard);
+                shared.active() ? shared : null);
     }
 
     /** Which server this is, as a name for the file of who rests where. */

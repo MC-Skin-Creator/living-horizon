@@ -17,18 +17,21 @@
 - **Settings in Sodium's menu** — Living Horizon's settings also appear in Sodium's *Video Settings*, on pages of their own (Sodium 0.8 and newer).
 - **Offline players keep their mount** — players who logged off on a horse, a boat or a happy ghast keep riding it around where they left.
 - **Video memory settings** — the *Simplified Entities...* screen shows how much video memory the pictures of mobs and players use, and *Mob Picture Memory* and *Player Picture Memory* set a limit for each.
+- **The mod on the server replaces the data pack** — put the mod in the server's `mods` folder (or open your world to LAN) and everyone with the mod sees the other players and the mobs at any distance. The data pack is gone: a server that used it now needs the mod.
 
 ### Improved
 - **Clearer settings** — every setting has a clearer name and description, in the style of Minecraft's own options, and distance sliders use the full width.
 - **Offline players** — players who logged off walk a small loop around where they left, and turn into flat pictures far away like online players, whether standing, sitting, lying down or in bed.
 - **Riders** — far away, a player riding a horse, a boat, a minecart or anything else becomes one flat picture with their mount, which is much lighter than two full models.
 - **Large crowds of players** — with more than about a hundred distant players, the extra ones now turn into flat pictures too instead of staying full models.
+- **Distant players** — they are placed from the shared positions alone: the locator bar guess is gone, and so is the "Lost Player Time" setting. Without the mod on the server, the console says so once instead.
 
 ### Fixed
 - **Mobs showing through hills after resizing the window** — distant mobs no longer show through hills, Voxy's and Distant Horizons' included, after the game window changes size.
 - **Players and slimes vanishing with Distant Horizons** — distant players, offline players and slimes no longer disappear under Distant Horizons' terrain (Minecraft 26.1 and newer).
 - **Distant Horizons' terrain cutting into mobs** — Distant Horizons' terrain no longer cuts into mobs and players standing in front of it (Minecraft 26.1 and newer).
 - **Distant mobs blinking while walking** — with view bobbing on, distant mobs no longer blink and Distant Horizons' terrain no longer flickers in front of them at every step (Minecraft 26.1 and newer).
+- **Players on a happy ghast** — a far player riding a happy ghast no longer has a second ghast beside them, and one already riding when you join no longer floats in the air.
 
 ### Improved
 - **Distant players** — they are placed from the shared positions alone: the locator bar guess is gone, and so is the "Signal lost" setting. Without a data pack or the mod on the server, the console says so once instead.

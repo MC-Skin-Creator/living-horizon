@@ -46,12 +46,14 @@ its last line of content, nothing after.
 **Living Horizon** gives life to the distance. It is a mod for Fabric,
 Quilt, NeoForge and Forge, on several Minecraft versions: animals, villagers, birds and other players keep living
 on the horizon, past the render distance, on top of Voxy's far terrain. Everything is drawn on
-the client and nothing is sent to the server. Distant players are placed from positions the
-server shares through the scoreboard: the same jar writes them when it runs on a server
-(`PositionPublisher`, driven by `LanShare` on a LAN host and by `MinecraftServerMixin` on a
-dedicated server), or the data pack in `datapack/` does, with no mod on the server. Code
-that a dedicated server loads (`PositionPublisher`, `MinecraftServerMixin`, what they use)
-must never touch a client class.
+the client and nothing is sent to the server. Distant players are placed from positions a
+server with the mod shares over the mod's own network channel (`platform/Network`): the same
+jar sends them when it runs on a server (`PositionPublisher`, driven by `LanShare` on a LAN
+host and by `MinecraftServerMixin` on a dedicated server), in `PositionsMessage`'s format, and
+the client keeps them in `SharedPositions`. Nothing goes through the scoreboard; a server
+without the mod shares nothing. Code that a dedicated server loads (`LivingHorizonCommon`,
+`Network`, `PositionPublisher`, `MinecraftServerMixin`, what they use) must never touch a
+client class.
 
 | | |
 |---|---|
@@ -61,7 +63,7 @@ must never touch a client class.
 | Mappings | Official Mojang mappings on every target |
 | Java | 17 up to 1.20.4, 21 from 1.20.5, 25 on 26.x |
 | Command | `/livinghorizon` |
-| Data pack | `datapack/`, namespace `livinghorizon`, scoreboard objectives `lh.*` |
+| Shared positions | `livinghorizon:positions` channel, `livinghorizon-positions.dat` in the world |
 
 Targets are the tables of `stonecutter.properties.toml` (a node named `<version>`,
 `<version>-quilt`, `<version>-neoforge` or `<version>-forge`) and the `targets` list in
@@ -171,7 +173,7 @@ when everything on `develop` has shipped, merges `main` into it otherwise, and o
 ## CI and releases
 
 `.github/workflows/build.yml` builds and tests every Stonecutter target on each pull
-request, and attaches the jar and the data pack zip as a 7-day workflow artifact. CI is
+request, and attaches the jar as a 7-day workflow artifact. CI is
 what checks a change; a pull request is not done until it is green.
 
 `.github/workflows/release.yml` runs on every push to `main` and `develop` (except doc-only
@@ -185,8 +187,8 @@ baseline, no commit back, no Modrinth, CurseForge, Nexus Mods or Discord. A push
   So is a first release at a number the commits would not give.
 - Each target builds on its own runner (`.github/scripts/release-targets.py` reads the
   tables of `stonecutter.properties.toml`), then the release is tagged, the version and the
-  dated changelog are committed back to `main`, and the GitHub release gets the jar and the
-  data pack zip. Below 1.0.0 it is a pre-release titled `vX.Y.Z (beta)`.
+  dated changelog are committed back to `main`, and the GitHub release gets the jars.
+  Below 1.0.0 it is a pre-release titled `vX.Y.Z (beta)`.
 - Modrinth and CurseForge are published by `mc-publish` when `MODRINTH_TOKEN` /
   `CURSEFORGE_TOKEN` (secrets) and `MODRINTH_ID` / `CURSEFORGE_ID` (repository variables)
   exist, and skipped otherwise. Nexus Mods is published by `.github/scripts/nexus-publish.js`
@@ -314,7 +316,7 @@ come back, add it here in the same pull request: this file is what the next sess
   (160 blocks for animals, scaled by *Entity Distance*) but keeps moving it out to the
   simulation distance, a square of chunks that reaches farther on its diagonals. In single
   player `ServerMobs` asks the server where those are and the copies follow; on a server only
-  the data pack closes that gap.
+  the mod on the server closes that gap.
 - **Distant mobs only turning on the spot**, never walking, after the world was opened, while
   those met since walk: their ground was read (`MobPaths.plan`) where the far world had nothing
   (Voxy or Distant Horizons not open yet, or Voxy turned off for the session by one failed
@@ -380,17 +382,17 @@ come back, add it here in the same pull request: this file is what the next sess
 - **A far player's mount drawn twice, or a rider sitting on air** (a happy ghast beside its
   rider, a player met already riding floating far away): a mount is drawn under its rider
   (`FarPlayer.mountPuppet`), and the remembered mobs leave out every id `FarPlayer.carriedMount`
-  names (`MobMemory.carried`), the data pack's or the server's copy of it included. A rider
-  whose mount was never seen up close takes the published mob carrying their number in `lh.r`
-  (`SharedPositions.vehicle`), or, from an older pack without it, the remembered mob right under
-  them (`MobMemory.mountUnder`). `CarriedMountTest`, `SharedPositionsTest`, and the `lanshare`
-  and `datapackrider` scenarios check it.
+  names (`MobMemory.carried`), the server's shared copy of it included. A rider whose mount was
+  never seen up close takes the mob the server says they ride (`SharedPositions.vehicle`,
+  `MobMemory.known`), once the server has shared that mob. `CarriedMountTest`,
+  `SharedPositionsTest` and the `lanshare` scenario check it.
 - **A dedicated server crashes on load with the mod** ("Attempted to load class
   net/minecraft/client/... for invalid dist DEDICATED_SERVER"): something the server loads
-  reaches a client class. Forge's `@Mod` has no side, so it sits on `LivingHorizonForge`,
+  reaches a client class. Forge's `@Mod` has no side, so it sits on `LivingHorizonCommon`,
   which builds `LivingHorizonClient` on a client only; never put it back on the client class.
+  The Fabric API's client networking stays in `ClientNetwork`, which a server never loads.
   Check a server by installing the loader's server from its installer, the jar in `mods/`,
-  and reading the console for "no data pack on this server".
+  and reading the console for "sharing the positions of this server".
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

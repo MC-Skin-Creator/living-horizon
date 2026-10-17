@@ -18,8 +18,8 @@ plugins {
 version = "${property("mod.version")}+mc${sc.current.version}-forge"
 base.archivesName = property("mod.id") as String
 
-// What the targets share, worked out once: the Java level, the data pack's pack.mcmeta,
-// the access transformer, and the list of mixins. See gradle/target.gradle.kts.
+// What the targets share, worked out once: the Java level, the access transformer, and the
+// list of mixins. See gradle/target.gradle.kts.
 extra["lhGame"] = sc.current.version
 extra["lhUnobfuscated"] = sc.current.parsed >= "26.1"
 apply(from = rootProject.file("gradle/target.gradle.kts"))
