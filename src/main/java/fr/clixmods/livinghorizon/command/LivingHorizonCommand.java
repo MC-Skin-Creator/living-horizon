@@ -7,6 +7,7 @@ import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Stats;
+import fr.clixmods.livinghorizon.ambient.Ambience;
 import fr.clixmods.livinghorizon.ambient.EggLog;
 import fr.clixmods.livinghorizon.ambient.Ufo;
 import fr.clixmods.livinghorizon.compat.FarDepth;
@@ -27,8 +28,11 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import org.jspecify.annotations.Nullable;
 
 import java.time.ZoneId;
@@ -86,6 +90,11 @@ public final class LivingHorizonCommand {
 
     /** The command tree, for a dispatcher whose sources {@code source} turns into a {@link Source}. */
     public static <S> LiteralArgumentBuilder<S> tree(Function<S, Source> source) {
+        // One word per kind of bird, so that the chat offers them all.
+        LiteralArgumentBuilder<S> birds = LiteralArgumentBuilder.literal("bird");
+        for (Ambience.Type type : Ambience.Type.values()) {
+            birds.then(LiteralArgumentBuilder.<S>literal(type.id).executes(c -> bird(source.apply(c.getSource()), type)));
+        }
         return LiteralArgumentBuilder.<S>literal(LivingHorizonClient.MOD_ID)
                         .executes(c -> status(source.apply(c.getSource())))
                         .then(LiteralArgumentBuilder.<S>literal("lod").executes(c -> lod(source.apply(c.getSource()))))
@@ -129,6 +138,7 @@ public final class LivingHorizonCommand {
                                 (level, player) -> FarPlayerTracker.get().ambience().bigfoot().summon(level, player, true))))
                         .then(LiteralArgumentBuilder.<S>literal("ee7").requires(c -> EGGS).executes(c -> egg(source.apply(c.getSource()), "ee7",
                                 (level, player) -> FarPlayerTracker.get().ambience().ghostBoat().summon(level, player, true))))
+                        .then(birds)
                         .then(LiteralArgumentBuilder.<S>literal("config").executes(c -> {
                             // After the chat screen, which closes once the command has run.
                             Minecraft client = source.apply(c.getSource()).client();
@@ -243,6 +253,25 @@ public final class LivingHorizonCommand {
         boolean on = call.test(client.level, client.player);
         source.feedback(Component.translatable(on ? "livinghorizon." + egg + ".on" : NOTHING));
         return on ? 1 : 0;
+    }
+
+    /** Blocks along the player's look within which the place looked at is taken for summoned birds. */
+    private static final double LOOK = 128;
+
+    /**
+     * {@code /livinghorizon bird <kind>}: a group of that kind now. Birds that perch go
+     * where the player looks when it suits them (a tree, water, a field), else nearby.
+     */
+    private static int bird(Source source, Ambience.Type type) {
+        Minecraft client = source.client();
+        if (client.level == null || client.player == null) return 0;
+        HitResult hit = client.player.pick(LOOK, 1.0f, true);
+        BlockPos looked = hit instanceof BlockHitResult block && hit.getType() == HitResult.Type.BLOCK ? block.getBlockPos() : null;
+        Component name = Component.translatable("livinghorizon.options.birdTypes." + type.id);
+        Ambience.Summon result = FarPlayerTracker.get().ambience().summon(type, client.level, client.player, FarConfig.get(),
+                looked);
+        source.feedback(Component.translatable("livinghorizon.bird." + result.name().toLowerCase(Locale.ROOT), name));
+        return result == Ambience.Summon.DONE ? 1 : 0;
     }
 
     /** {@code /livinghorizon scan [radius]}: the mobs of the chunks around, read from a single player world. */

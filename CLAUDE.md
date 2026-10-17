@@ -319,6 +319,13 @@ come back, add it here in the same pull request: this file is what the next sess
   GeckoLib 4's `createRenderState()` returns null and its `render` draws the entity it was
   last handed. `GhostRenderer.drawable` leaves such types out (issue #67 is about drawing
   them), and a renderer that throws while extracting is left out too, logged once.
+- **Perched birds darting to and fro, standing in the air or inside a block** (tits, robins,
+  ducks): a move's progress is `timer / length`, so the rest after landing is `rest`, never
+  added to `length` (which put an arrived bird back part of the way). Where a bird lands comes
+  from `Perchers.perchAt` (leaves, water, dry ground), away from column edges, and a resting
+  bird is stood again on what is under it. Birds jumping in a loop: a move is a flight once it
+  is long, so a target is only moved in from a column's edge (never re-drawn on the block), and a
+  duck swims as far as the water goes on (`Perchers.swims`). The `perchers` scenario counts all three.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

@@ -108,7 +108,8 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 integer("birdDensity", 0, 500, c.birdDensity, v -> c.birdDensity = v),
                 blocks("birdMaxDistance", 100, 3000, c.birdMaxDistance, v -> c.birdMaxDistance = v),
                 integer("birdMinHeight", 0, 200, c.birdMinHeight, v -> c.birdMinHeight = v),
-                integer("birdSize", 1, 6, c.birdSize, v -> c.birdSize = v));
+                integer("birdSize", 1, 6, c.birdSize, v -> c.birdSize = v),
+                choice("birdStyle", List.of("3d", "2d"), c.birdStyle, v -> c.birdStyle = v));
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "chooseBirds"), b -> minecraft.setScreen(new BirdTypesScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "chooseBirds.tooltip"))).build(),
