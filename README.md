@@ -135,7 +135,7 @@ The game itself lacks what these need, so they are left out rather than imitated
 | `maxDistantMobs` | `512` | mobs | How many of them are drawn at once, nearest first (`1000`: no limit; no limit here and in `mobMaxDistance` together can crash the game) |
 | `mobMaxDistance` | `512` | blocks | Past this, distant mobs are not drawn (`0`: no limit) |
 | `playerMaxDistance` | `0` | blocks | Past this, distant players are not drawn (`0`: no limit) |
-| `mobTypes` | the 31 kinds of the data pack | | Which mobs are shown, and remembered by this client (in game: "Choose mobs...") |
+| `mobTypes` | the 58 kinds of the data pack | | Which mobs are shown, and remembered by this client (in game: "Mobs, boats, minecarts...") |
 | `stillMobTypes` | happy ghast | | Mobs shown standing still instead of walking their loop (in game: "Still") |
 | `rememberNamedMobs` | `true` | | A mob with a name tag is shown whatever its type |
 | `scanRadius` | `32` | **chunks** | Chunks around you read by a scan, in single player, from 4 to 1024 (32 chunks = 512 blocks) |
@@ -285,6 +285,15 @@ lives there.
 - Mob types of other mods are shown from the start (monsters excepted). Mannequins are
   too, standing still: Distant Friends uses them as its fake players. The data pack only
   shares vanilla kinds; the others are remembered by each client.
+- **Boats and minecarts** are remembered like animals, where they were left, and shared by
+  the data pack. The server sends a minecart 128 blocks away at most, but keeps moving it
+  in every chunk within its simulation distance of a player: one still rolling when the
+  server stops sending it rolls on along its rails (`track/MinecartCoast`, the server's
+  own rail physics: slopes, curves, powered rails, friction) while it stays within the
+  server's simulation distance of you and on blocks this client has. Off its rails it
+  stops; a position from the data pack wins over its own run. Minecarts under more than
+  8 blocks of ground (outside the Nether) are not remembered, and the scan and the data
+  pack leave out the chest minecarts nobody ever opened: the mineshafts' dozens.
 
 ### Birds
 

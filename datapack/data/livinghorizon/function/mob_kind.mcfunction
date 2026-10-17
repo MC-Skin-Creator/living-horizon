@@ -51,4 +51,11 @@ execute if entity @s[type=minecraft:dark_oak_chest_boat] run scoreboard players 
 execute if entity @s[type=minecraft:pale_oak_chest_boat] run scoreboard players set @s lh.k 49
 execute if entity @s[type=minecraft:mangrove_chest_boat] run scoreboard players set @s lh.k 50
 execute if entity @s[type=minecraft:bamboo_chest_raft] run scoreboard players set @s lh.k 51
+execute if entity @s[type=minecraft:minecart] run scoreboard players set @s lh.k 52
+execute if entity @s[type=minecraft:chest_minecart] run scoreboard players set @s lh.k 53
+execute if entity @s[type=minecraft:furnace_minecart] run scoreboard players set @s lh.k 54
+execute if entity @s[type=minecraft:hopper_minecart] run scoreboard players set @s lh.k 55
+execute if entity @s[type=minecraft:tnt_minecart] run scoreboard players set @s lh.k 56
+execute if entity @s[type=minecraft:spawner_minecart] run scoreboard players set @s lh.k 57
+execute if entity @s[type=minecraft:command_block_minecart] run scoreboard players set @s lh.k 58
 tag @s add lh.kind

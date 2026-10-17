@@ -4,6 +4,7 @@
 
 ### New
 - **Impostors on Minecraft 1.20.1 to 1.21.8** — far players and mobs are drawn as light pictures of themselves on these versions too, and the Impostor Manager shows them.
+- **Minecarts far away** — minecarts stay on the horizon like boats, and one still rolling when you lose sight of it carries on along its rails.
 
 ### Fixed
 - **Forge 1.20.1 to 1.20.4** — the game no longer crashes on startup with the mod installed.

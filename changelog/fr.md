@@ -4,6 +4,7 @@
 
 ### Nouveautés
 - **Imposteurs sur Minecraft 1.20.1 à 1.21.8** — les joueurs et créatures lointains sont dessinés en images légères d'eux-mêmes sur ces versions aussi, et le Gestionnaire d'imposteurs les montre.
+- **Wagons au loin** — les wagons restent visibles à l'horizon comme les bateaux, et un wagon qui roulait encore quand tu le perds de vue continue sur ses rails.
 
 ### Corrections
 - **Forge 1.20.1 à 1.20.4** — le jeu ne plante plus au démarrage avec le mod installé.

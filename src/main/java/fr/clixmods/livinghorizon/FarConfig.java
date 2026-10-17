@@ -54,7 +54,7 @@ public final class FarConfig {
     @SerializedName(value = "depthOcclusion", alternate = "voxyOcclusion")
     public boolean depthOcclusion = true;
 
-    private static final int CURRENT = 8;
+    private static final int CURRENT = 9;
 
     /** Skinned figures, which Distant Friends uses as its fake players: shown, standing still. */
     private static final String MANNEQUIN = "minecraft:mannequin";
@@ -330,6 +330,12 @@ public final class FarConfig {
             }
             instance.glowOutline = null;
             instance.debugOutlines = null;
+        }
+        if (instance.version < 9) {
+            // Minecarts came after boats: shown unless taken out by hand.
+            for (String type : MobKinds.TYPES) {
+                if (MobKinds.isMinecart(type) && !instance.mobTypes.contains(type)) instance.mobTypes.add(type);
+            }
         }
         instance.version = CURRENT;
         save();
