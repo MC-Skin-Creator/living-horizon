@@ -54,7 +54,7 @@ public final class FarConfig {
     @SerializedName(value = "depthOcclusion", alternate = "voxyOcclusion")
     public boolean depthOcclusion = true;
 
-    private static final int CURRENT = 9;
+    private static final int CURRENT = 10;
 
     /** Skinned figures, which Distant Friends uses as its fake players: shown, standing still. */
     private static final String MANNEQUIN = "minecraft:mannequin";
@@ -169,8 +169,10 @@ public final class FarConfig {
      */
     public List<String> hiddenBirds = new ArrayList<>();
 
-    /** An easter egg, now and then, far away: a flying saucer taking a cow. Only a picture. */
-    public boolean ufo = true;
+    /** The easter eggs: secret, never described anywhere a player reads. Only pictures, on this screen. */
+    public boolean easterEggs = true;
+    /** Before version 10, {@link #easterEggs} for the one there was; read once, then dropped. */
+    private @Nullable Boolean ufo;
 
     /** Draws what a player was riding when last seen: horse, boat, happy ghast... */
     public boolean showVehicles = true;
@@ -372,6 +374,10 @@ public final class FarConfig {
             // poses gave way to a life of their own.
             if ("hidden".equals(instance.offlinePose)) instance.offlinePlayers = false;
             instance.offlinePose = null;
+        }
+        if (instance.version < 10) {
+            if (Boolean.FALSE.equals(instance.ufo)) instance.easterEggs = false;
+            instance.ufo = null;
         }
         instance.version = CURRENT;
         save();

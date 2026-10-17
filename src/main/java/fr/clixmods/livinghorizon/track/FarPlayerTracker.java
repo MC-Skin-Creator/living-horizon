@@ -88,6 +88,7 @@ public final class FarPlayerTracker {
                 LodWorld.suspend();
                 resting.close();
                 mobs.close();
+                ambience.calendar().close();
                 server = null;
             }
             return;
@@ -103,6 +104,7 @@ public final class FarPlayerTracker {
             if (!joined.equals(server)) {
                 resting.open(joined);
                 mobs.open(joined);
+                ambience.calendar().open(joined);
                 server = joined;
                 // Opening the memory forgets the mobs sent so far: the level may have loaded
                 // those round the player before this first tick, and loads them only once.

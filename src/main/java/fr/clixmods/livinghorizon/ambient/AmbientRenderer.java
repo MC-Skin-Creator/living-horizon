@@ -59,7 +59,16 @@ public final class AmbientRenderer {
         float partial = minecraft.getDeltaTracker().getGameTimeDeltaPartialTick(true);
         double reach = DepthFar.of(minecraft) * 0.95;
 
-        if (config.ufo) FarPlayerTracker.get().ambience().ufo().submit(pose, camera, collector, partial);
+        if (config.easterEggs) {
+            Ambience ambience = FarPlayerTracker.get().ambience();
+            ambience.ufo().submit(pose, camera, collector, partial);
+            ambience.pass().submit(pose, camera, collector, partial);
+            ambience.herobrine().submit(pose, camera, collector, partial);
+            ambience.waver().submit(pose, camera, collector, partial);
+            ambience.bigfoot().submit(pose, camera, collector, partial);
+            ambience.ghosts().submit(pose, camera, collector, partial);
+            ambience.ghostBoat().submit(pose, camera, collector, partial);
+        }
         boolean models = config.birdModels();
         for (Ambience.Flyer bird : FarPlayerTracker.get().ambience().flyers()) {
             if (!config.skyBirds || bird.kind != Ambience.Kind.SILHOUETTE) continue;

@@ -922,6 +922,30 @@ public final class MobMemory {
         }
     }
 
+    /**
+     * A second copy of a remembered mob, the same to look at (coat, variant) but with no
+     * name and an id of its own, never remembered nor added to the level: something the mod
+     * draws beside it. Null if its saved data was not read yet. Render thread only.
+     */
+    public @Nullable LivingEntity twin(Remembered mob, ClientLevel level) {
+        CompletableFuture<CompoundTag> parsed = mob.parsed;
+        EntityType<?> type = type(mob);
+        if (mob.gone || parsed == null || !parsed.isDone() || type == null) return null;
+        try {
+            CompoundTag tag = parsed.join();
+            if (tag == null || !(Puppets.create(type, level) instanceof LivingEntity twin)) return null;
+            EntityNbt.load(twin, level, tag);
+            twin.setUUID(UUID.randomUUID());
+            twin.setCustomName(null);
+            twin.hurtTime = 0;
+            twin.hurtDuration = 0;
+            twin.deathTime = 0;
+            return twin;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private double distance(double x, double y, double z) {
         double dx = x - selfX, dy = y - selfY, dz = z - selfZ;
         return Math.sqrt(dx * dx + dy * dy + dz * dz);

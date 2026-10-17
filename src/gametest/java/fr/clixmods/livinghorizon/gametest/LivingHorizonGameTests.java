@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon.gametest;
 import fr.clixmods.livinghorizon.gametest.scenario.BirdCommandScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.BirdsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.EasterEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FollowedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.GaitsScenario;
@@ -54,6 +55,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new UnloadScenario(),
             new FollowedMobsScenario(),
             new GaitsScenario(),
+            new EasterEggsScenario(),
             new BirdsScenario(),
             new PerchersScenario(),
             new BirdCommandScenario());

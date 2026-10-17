@@ -414,8 +414,7 @@ public final class GhostRenderer {
         if (config.enabled) rest(frame, minecraft, dispatcher, eye, partialTick, config);
         mobs(frame, minecraft, dispatcher, eye, partialTick, config);
         unseen(frame, minecraft, dispatcher, eye, partialTick, config);
-        LivingEntity cow = config.ufo ? FarPlayerTracker.get().ambience().ufo().cow() : null;
-        if (cow != null) add(frame, minecraft, eye, extract(dispatcher, cow, partialTick), null, true, Mark.FAKE, config, null);
+        if (config.easterEggs) eggs(frame, minecraft, dispatcher, eye, partialTick, config);
         if (config.skyBirds) {
             // Parrots and bats; the silhouettes are drawn by AmbientRenderer.
             for (Ambience.Flyer flyer : FarPlayerTracker.get().ambience().flyers()) {
@@ -427,6 +426,16 @@ public final class GhostRenderer {
         }
         Stats.extract(System.nanoTime() - started, drawn, skipped);
         if (debug) DebugMarks.end();
+    }
+
+    /** The figures of the easter eggs that are the game's own: the cow taken, the watcher. */
+    private static void eggs(List<EntityRenderState> frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
+                             Vec3 eye, float partialTick, FarConfig config) {
+        Ambience ambience = FarPlayerTracker.get().ambience();
+        LivingEntity cow = ambience.ufo().cow();
+        if (cow != null) add(frame, minecraft, eye, extract(dispatcher, cow, partialTick), null, true, Mark.FAKE, config, null);
+        LivingEntity watcher = ambience.herobrine().figure();
+        if (watcher != null) add(frame, minecraft, eye, extract(dispatcher, watcher, partialTick), null, true, Mark.FAKE, config, null);
     }
 
     /** Past the distance set in the options; 0 is no limit. */
