@@ -4,6 +4,7 @@
 
 ### Nouveautés
 - **Imposteurs sur Minecraft 1.20.1 à 1.21.8** — les joueurs et créatures lointains sont dessinés en images légères d'eux-mêmes sur ces versions aussi, et le Gestionnaire d'imposteurs les montre.
+- **Cacher les mobs sous terre** — une nouvelle option, désactivée par défaut, ignore les créatures lointaines des grottes et des mines pour un jeu plus fluide, jamais dans le Nether ni l'End.
 
 ### Corrections
 - **Forge 1.20.1 à 1.20.4** — le jeu ne plante plus au démarrage avec le mod installé.

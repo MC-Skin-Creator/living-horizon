@@ -4,6 +4,7 @@
 
 ### New
 - **Impostors on Minecraft 1.20.1 to 1.21.8** — far players and mobs are drawn as light pictures of themselves on these versions too, and the Impostor Manager shows them.
+- **Hide underground mobs** — a new option, off by default, skips distant mobs in caves and mines for a faster game, never in the Nether or the End.
 
 ### Fixed
 - **Forge 1.20.1 to 1.20.4** — the game no longer crashes on startup with the mod installed.

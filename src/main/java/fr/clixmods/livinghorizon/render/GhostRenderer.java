@@ -17,6 +17,7 @@ import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobMemory;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
 import fr.clixmods.livinghorizon.track.SharedPositions;
+import fr.clixmods.livinghorizon.track.Underground;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.client.Camera;
@@ -419,11 +420,12 @@ public final class GhostRenderer {
             add(frame, minecraft, eye, body, null, true, Mark.FAKE, config, mob.id());
         }
         if (debug && DebugMarks.drawing() && minecraft.level != null) {
-            // The ones remembered but past the most shown at once.
+            // The ones remembered but past the most shown at once, or underground.
             Set<MobMemory.Remembered> listed = Collections.newSetFromMap(new IdentityHashMap<>());
             listed.addAll(shown);
+            boolean underground = Underground.hiding(minecraft.level, config);
             for (MobMemory.Remembered mob : memory.remembered(minecraft.level.dimension().identifier().toString())) {
-                if (!listed.contains(mob)) markRemembered(mob, Mark.SPARE);
+                if (!listed.contains(mob)) markRemembered(mob, underground && mob.underground() ? Mark.UNDERGROUND : Mark.SPARE);
             }
         }
     }
@@ -479,6 +481,8 @@ public final class GhostRenderer {
                                Vec3 eye, float partialTick, FarConfig config) {
         if (!config.distantMobs) return;
         boolean game = debug && DebugMarks.gameMobs();
+        ClientLevel level = minecraft.level;
+        boolean underground = level != null && Underground.hiding(level, config);
         Map<EntityType<?>, Boolean> wanted = new IdentityHashMap<>();
         MobMemory memory = FarPlayerTracker.get().mobs();
         for (Entity entity : memory.live()) {
@@ -495,6 +499,10 @@ public final class GhostRenderer {
             // Close by, the game leaves a mob out only when the terrain hides it.
             if (entity.distanceToSqr(eye) < 24 * 24) continue;
             if (tooFar(entity, eye, config.mobMaxDistance)) continue;
+            if (underground && Underground.live(level, entity)) {
+                if (debug) DebugMarks.mark(entity, Mark.UNDERGROUND);
+                continue;
+            }
             if (skipped(entity, true)) continue;
             if (occluded(entity.getUUID(), entity, config)) continue;
             if (debug) DebugMarks.mark(entity, Mark.LIVE);

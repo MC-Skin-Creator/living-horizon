@@ -138,6 +138,7 @@ The game itself lacks what these need, so they are left out rather than imitated
 | `mobTypes` | the 31 kinds of the data pack | | Which mobs are shown, and remembered by this client (in game: "Choose mobs...") |
 | `stillMobTypes` | happy ghast | | Mobs shown standing still instead of walking their loop (in game: "Still") |
 | `rememberNamedMobs` | `true` | | A mob with a name tag is shown whatever its type |
+| `hideUndergroundMobs` | `false` | | Distant mobs in caves and mines are not drawn (never in the Nether or the End) |
 | `scanRadius` | `32` | **chunks** | Chunks around you read by a scan, in single player, from 4 to 1024 (32 chunks = 512 blocks) |
 | `skyBirds` | `true` | | Birds and bats around you |
 | `birdDensity` | `100` | percent | How many birds, all kinds together (`0`: none, `500`: five times as many) |
@@ -166,7 +167,8 @@ The game itself lacks what these need, so they are left out rather than imitated
 - **Boxes**, seen through terrain, coloured by what became of the mob: green copy drawn,
   cyan real mob drawn by the mod, blue player, white real mob drawn by the game (*Also the
   game's mobs*), yellow too small (under about half a pixel), orange behind blocks, red
-  outside the view, purple being built, grey past `maxDistantMobs`. A dot in the middle
+  outside the view, purple being built, grey past `maxDistantMobs`, brown underground
+  (`hideUndergroundMobs`). A dot in the middle
   keeps them visible when the box is smaller than its lines.
 - **Labels**: state, kind, distance and size on screen, at a constant size.
 - **Outlines** (*Outlines...*): an outline seen through terrain around each kind of figure,
@@ -268,6 +270,14 @@ lives there.
   distance does not shrink that zone. With the debug boxes on, it shows as "too close for
   a copy".
 - `maxDistantMobs` (512; 1000 is no limit) of them are drawn at once: the nearest.
+- With `hideUndergroundMobs` (off by default), mobs underground are left out before the
+  nearest are picked, so their places go to mobs on the surface (`track/Underground`).
+  Underground is no sky light where the mob stands and a solid block above it, read when
+  the mob is met, from the chunks loaded here; a mob never met (the data pack's) is read
+  once its chunk loads, or from the far world: its top block 6 blocks or more above the
+  mob, neither leaves nor water. A fish deep in the sea and a mob at the bottom of a ravine
+  are not underground. Only in a dimension with a sky and no ceiling: never the Nether,
+  where everything is under the bedrock roof, nor the End.
 - The hand-over never leaves a gap. A mob the server still sends but the game does not
   draw (past the *Entity Distance* slider, or in a part of the world it does not draw) is
   drawn by the mod; the moment the server stops sending it, its copy takes its place, on

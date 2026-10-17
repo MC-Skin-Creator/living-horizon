@@ -50,7 +50,9 @@ public final class DebugMarks {
         /** Not drawn yet: its copy is being built. */
         WAITING(0xFFAA55FF, true),
         /** Not drawn: remembered, but past the most mobs shown at once. */
-        SPARE(0xFF888888, true);
+        SPARE(0xFF888888, true),
+        /** Not drawn: underground, with {@code hideUndergroundMobs}. */
+        UNDERGROUND(0xFF8B5A2B, true);
 
         public final int color;
         /** A mob the mod leaves out of the frame, marked by a cross; the real one is not near. */

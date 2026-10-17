@@ -111,6 +111,13 @@ public final class FarConfig {
     public boolean rememberNamedMobs = true;
 
     /**
+     * Distant mobs underground - in caves, mines, cellars - are not drawn: nobody far away
+     * could see them, and their place in {@link #maxDistantMobs} goes to mobs on the surface.
+     * Never in the Nether or the End (see {@code Underground}).
+     */
+    public boolean hideUndergroundMobs = false;
+
+    /**
      * Chunks around the player read by a scan ("Scan the chunks around", or
      * {@code /livinghorizon scan}): in a single player world, the mobs of these chunks
      * are read from the world itself instead of met on the way.

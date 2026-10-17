@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
+import fr.clixmods.livinghorizon.compat.LodWorld;
 import fr.clixmods.livinghorizon.platform.Platform;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -93,6 +94,11 @@ public final class MobMemory {
         boolean fromPack;
         /** Wore a name tag when last seen. */
         boolean named;
+        /**
+         * Stood underground (a cave, a mine) where it is remembered; null until known. Set on
+         * the game's thread, or by a far world read ({@link #placeUnderground}).
+         */
+        volatile @Nullable Boolean underground;
 
         transient @Nullable Entity puppet;
         /** The animation it plays, chosen from the blocks around where it is remembered; null until read. */
@@ -114,6 +120,9 @@ public final class MobMemory {
         transient boolean still;
         /** When it was last drawn, in nanoseconds; 0 if never. */
         transient long drawnAt;
+        /** The tick the far world was last asked whether it is underground; 0 if never. */
+        transient int undergroundAskedAt;
+        transient volatile boolean undergroundAsking;
 
         /** Said by the renderer each frame it draws this copy. */
         public void drawn() { drawnAt = System.nanoTime(); }
@@ -126,6 +135,7 @@ public final class MobMemory {
         public double z() { return z; }
         public String type() { return type; }
         public boolean fromPack() { return fromPack; }
+        public boolean underground() { return Boolean.TRUE.equals(underground); }
     }
 
     private static final Gson GSON = new GsonBuilder().create();
@@ -139,6 +149,10 @@ public final class MobMemory {
     private static final long FREEZE_AFTER = 500_000_000L;
     /** Grounds read per tick, at most: a few thousand blocks each, when the chunks are loaded. */
     private static final int READS_PER_TICK = 6;
+    /** Mobs past the loaded chunks asked of the far world at once, whether underground. */
+    private static final int FAR_UNDERGROUND_READS = 64;
+    /** Ticks before the far world is asked again about a mob it said nothing of. */
+    private static final int FAR_UNDERGROUND_RETRY = 1200;
 
     private final Map<UUID, Remembered> mobs = new LinkedHashMap<>();
     /** The render distance, in blocks, as of the last tick. */
@@ -355,6 +369,7 @@ public final class MobMemory {
                 level.dimension().identifier().toString(), worldOf(level));
         Remembered fresh = mobs.get(entity.getUUID());
         if (fresh != null) {
+            fresh.underground = Underground.at(level, mob.getX(), mob.getY(), mob.getZ());
             if (mob instanceof LivingEntity living) fresh.head = living.yHeadRot;
             if (joinedPuppet != null) {
                 fresh.puppet = joinedPuppet;
@@ -372,6 +387,7 @@ public final class MobMemory {
      */
     private void showNow(Remembered mob, ClientLevel level, FarConfig config) {
         if (config.maxDistantMobs <= 0) return;
+        if (Boolean.TRUE.equals(mob.underground) && Underground.hiding(level, config)) return;
         if (mob.puppet == null) {
             // A crowd unloaded at once (a teleport) is left to the ticks and their budget.
             if (config.optBackgroundBuild && builtNow >= BUILD_BUDGET) return;
@@ -497,13 +513,15 @@ public final class MobMemory {
         }
         String dimension = level.dimension().identifier().toString();
 
+        boolean hideUnderground = Underground.hiding(level, config);
         if (clock % 20 == 0) {
             if (pack != null) sync(pack, scoreboard);
             learnReach();
             reconcile(level, dimension, renderDistanceBlocks);
-            choose(dimension, config);
+            if (hideUnderground) placeUnderground(level, dimension);
+            choose(dimension, config, hideUnderground);
         } else if (chooseSoon) {
-            choose(dimension, config);
+            choose(dimension, config, hideUnderground);
         }
         if (clock % 1200 == 0 && dirty) save();
 
@@ -656,6 +674,7 @@ public final class MobMemory {
             mob.fromPack = true;
             mob.world = world;
             mob.dimension = dimension;
+            mob.underground = null;
             mob.x = report.x();
             mob.y = report.y();
             mob.z = report.z();
@@ -738,8 +757,49 @@ public final class MobMemory {
         return sent(type, reach);
     }
 
+    /**
+     * Finds out which mobs of this level stand underground where that is not known yet: from
+     * the chunks loaded here, or else from the far world, a batch at a time.
+     */
+    private void placeUnderground(ClientLevel level, String dimension) {
+        List<Remembered> far = new ArrayList<>();
+        for (Remembered mob : mobs.values()) {
+            if (mob.underground != null || mob.undergroundAsking || !mob.dimension.equals(dimension) || !isHere(mob)) continue;
+            Boolean found = Underground.at(level, mob.x, mob.y, mob.z);
+            if (found != null) {
+                mob.underground = found;
+                dirty = true;
+            } else if (far.size() < FAR_UNDERGROUND_READS
+                    && (mob.undergroundAskedAt == 0 || clock - mob.undergroundAskedAt >= FAR_UNDERGROUND_RETRY)) {
+                far.add(mob);
+            }
+        }
+        if (far.isEmpty()) return;
+        int[] xs = new int[far.size()], zs = new int[far.size()];
+        double[] ys = new double[far.size()];
+        for (int i = 0; i < far.size(); i++) {
+            Remembered mob = far.get(i);
+            xs[i] = (int) Math.floor(mob.x);
+            zs[i] = (int) Math.floor(mob.z);
+            ys[i] = mob.y;
+            mob.undergroundAskedAt = clock;
+            mob.undergroundAsking = true;
+        }
+        LodWorld.surfaces(xs, zs).whenComplete((surfaces, error) -> {
+            for (int i = 0; i < far.size(); i++) {
+                Remembered mob = far.get(i);
+                // Moved by the data pack meanwhile: asked again where it is now.
+                if (surfaces != null && mob.underground == null && mob.y == ys[i]
+                        && (int) Math.floor(mob.x) == xs[i] && (int) Math.floor(mob.z) == zs[i]) {
+                    mob.underground = Underground.far(surfaces[i], ys[i]);
+                }
+                mob.undergroundAsking = false;
+            }
+        });
+    }
+
     /** The nearest few, in this dimension: the ones drawn until the next choice. */
-    private void choose(String dimension, FarConfig config) {
+    private void choose(String dimension, FarConfig config, boolean hideUnderground) {
         chooseSoon = false;
         Set<String> wanted = new HashSet<>(config.mobTypes);
         List<Remembered> here = new ArrayList<>();
@@ -747,6 +807,7 @@ public final class MobMemory {
             if (!mob.dimension.equals(dimension) || !isHere(mob)
                     || (live.containsKey(mob.id) && mob.handover == null)) continue;
             if (!wanted.contains(mob.type) && !(config.rememberNamedMobs && mob.named)) continue;
+            if (hideUnderground && Boolean.TRUE.equals(mob.underground)) continue;
             mob.distance = distance(mob.x, mob.y, mob.z);
             here.add(mob);
         }
