@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### New
+- **Simplified Players** — a new setting keeps distant players as full models while mobs still turn into flat pictures far away.
+
 ### Improved
 - **Settings** — every setting has a clearer name and description, worded like Minecraft's own options, and distances get sliders the full width of the list.
 

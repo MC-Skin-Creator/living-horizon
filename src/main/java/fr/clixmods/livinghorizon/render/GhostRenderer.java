@@ -390,7 +390,7 @@ public final class GhostRenderer {
                 if (EXTRACTED.contains(live) || live.isInvisible()) continue;
                 Entity mount = live.getRootVehicle();
                 if (debug) DebugMarks.mark(live, Mark.PLAYER);
-                if (mount == live && impostor(minecraft, eye, live, partialTick, config)) continue;
+                if (mount == live && config.impostorPlayers && impostor(minecraft, eye, live, partialTick, config)) continue;
                 EntityRenderState body = extract(dispatcher, live, partialTick);
                 EntityRenderState mountState = mount != live && !EXTRACTED.contains(mount)
                         ? extract(dispatcher, mount, partialTick) : null;
@@ -401,7 +401,7 @@ public final class GhostRenderer {
                 if (skipped(puppet, false)) continue;
                 if (debug) DebugMarks.mark(puppet, Mark.PLAYER);
                 Entity mount = config.showVehicles ? player.mountPuppet() : null;
-                if (mount == null && impostor(minecraft, eye, puppet, partialTick, config)) continue;
+                if (mount == null && config.impostorPlayers && impostor(minecraft, eye, puppet, partialTick, config)) continue;
                 EntityRenderState body = extract(dispatcher, puppet, partialTick);
                 EntityRenderState mountState = mount == null ? null : extract(dispatcher, mount, partialTick);
                 if (mountState != null && body instanceof HumanoidRenderState humanoid) {
@@ -737,7 +737,7 @@ public final class GhostRenderer {
         long now = System.currentTimeMillis();
         if (now - lastPrewarm < 1000) return;
         lastPrewarm = now;
-        for (FarPlayer player : FarPlayerTracker.get().players()) {
+        for (FarPlayer player : config.impostorPlayers ? FarPlayerTracker.get().players() : List.<FarPlayer>of()) {
             if (player.puppet() != null) ImpostorAtlas.request(ImpostorKey.of(player.puppet()), player.puppet());
         }
         if (!config.distantMobs) return;

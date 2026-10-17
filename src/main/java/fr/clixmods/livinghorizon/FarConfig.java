@@ -199,6 +199,9 @@ public final class FarConfig {
     /** Blocks: past this distance an impostor stands in for the model. */
     public int impostorDistance = 128;
 
+    /** Distant players become impostors too; off, they keep their whole model at any distance. */
+    public boolean impostorPlayers = true;
+
     /**
      * Mob types of other mods already offered once. A new one is shown far away from the
      * start (unless it is a monster), then left as the player sets it.

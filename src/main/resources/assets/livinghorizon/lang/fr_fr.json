@@ -201,6 +201,8 @@
   "livinghorizon.options.impostorPreview.tooltip": "Montre les images utilisées pour les entités simplifiées, et les refait si l'une semble fausse.",
   "livinghorizon.options.debug.rendering": "Affichage",
   "livinghorizon.options.debug.view": "Afficher à l'écran",
+  "livinghorizon.options.impostorPlayers": "Joueurs simplifiés",
+  "livinghorizon.options.impostorPlayers.tooltip": "Les joueurs lointains sont simplifiés eux aussi, comme les créatures. Non : ils gardent leur modèle complet à toute distance, avec leur skin et leur armure en détail. Nécessite Entités simplifiées sur Oui.",
   "livinghorizon.options.debug.optimisations": "Optimisations (à couper pour comparer)",
   "livinghorizon.options.debugHud": "Panneau de débogage",
   "livinghorizon.options.debugHud.tooltip": "En haut à gauche. Dans l'écran F3, active « living_horizon » dans les options de debug (F3 + F6) : coût par tick et par image, ce qu'est devenu chaque mob lointain à la dernière image, lectures et profondeur du terrain lointain, jusqu'où le serveur envoie les mobs, optimisations actives.",

@@ -61,10 +61,13 @@ public final class FarConfigScreen extends SideOptionsScreen {
         // Distances take a whole row: their names are long, as the game's own are.
         header(Component.translatable(KEY + "impostorsSection"));
         list.addSmall(
-                bool("impostors", c.impostors, v -> c.impostors = v).createButton(minecraft.options, 0, 0, 150),
-                Button.builder(Component.translatable(KEY + "impostorPreview"), b -> minecraft.setScreen(new ImpostorScreen(this)))
-                        .tooltip(Tooltip.create(Component.translatable(KEY + "impostorPreview.tooltip"))).build());
+                bool("impostors", c.impostors, v -> c.impostors = v),
+                bool("impostorPlayers", c.impostorPlayers, v -> c.impostorPlayers = v));
         list.addBig(blocks("impostorDistance", 32, 2000, c.impostorDistance, v -> c.impostorDistance = v));
+        list.addSmall(
+                Button.builder(Component.translatable(KEY + "impostorPreview"), b -> minecraft.setScreen(new ImpostorScreen(this)))
+                        .tooltip(Tooltip.create(Component.translatable(KEY + "impostorPreview.tooltip"))).build(),
+                null);
 
         header(Component.translatable(KEY + "players"));
         list.addSmall(

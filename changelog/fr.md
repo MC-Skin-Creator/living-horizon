@@ -2,6 +2,9 @@
 
 ## Prochaine version
 
+### Nouveautés
+- **Joueurs simplifiés** — un nouveau paramètre garde les joueurs lointains en modèles complets, tandis que les créatures deviennent toujours des images plates au loin.
+
 ### Améliorations
 - **Paramètres** — chaque paramètre a un nom et une description plus clairs, dans le style des options de Minecraft, et les distances ont des curseurs sur toute la largeur de la liste.
 

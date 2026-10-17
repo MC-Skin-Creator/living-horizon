@@ -203,6 +203,8 @@
   "livinghorizon.options.debug.view": "Show on Screen",
   "livinghorizon.options.debug.optimisations": "Optimizations (Switch Off to Compare)",
   "livinghorizon.options.debugHud": "Debug Panel",
+  "livinghorizon.options.impostorPlayers": "Simplified Players",
+  "livinghorizon.options.impostorPlayers.tooltip": "Distant players are simplified too, like mobs. OFF: they keep their full model at any distance, so their skin and armor stay in full detail. Needs Simplified Entities ON.",
   "livinghorizon.options.debugHud.tooltip": "Top left. In the F3 screen, turn on \"living_horizon\" in the debug options (F3 + F6): cost per tick and frame, what became of every distant mob in the last frame, far terrain reads and depth, how far this server sends mobs, which optimisations are on.",
   "livinghorizon.options.debugBoxes": "Boxes on Mobs",
   "livinghorizon.options.debugBoxes.tooltip": "A box and a dot around every distant mob and player, seen through terrain, in the colour of what became of it: green copy drawn, cyan real mob drawn by the mod, blue player, yellow too small, orange behind blocks, red outside the view, purple being built, grey past the maximum.",
