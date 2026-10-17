@@ -130,7 +130,7 @@ tasks {
             // Loom names its own refmap in the config: the placeholder is for the older Forge.
             put("refmap", "")
             // Sodium finds the mod's pages through this entry point, on the targets that have them.
-            put("sodium", if (findProperty("deps.sodium") != null) "\"sodium:config_api_user\": [\"fr.clixmods.livinghorizon.ui.SodiumOptions\"]," else "")
+            put("sodium", if (project.findProperty("deps.sodium") != null) "\"sodium:config_api_user\": [\"fr.clixmods.livinghorizon.ui.SodiumOptions\"]," else "")
         }
         inputs.property("sodium", props.getValue("sodium"))
         inputs.property("java", requiredJava.majorVersion)

@@ -79,10 +79,10 @@ dependencies {
     // Only its API, for the settings button; nothing of it ships, nothing requires it.
     "${if (unobfuscated) "compileOnly" else "modCompileOnly"}"(
         "com.terraformersmc:modmenu:${property("deps.modmenu")}") { isTransitive = false }
-    // Only Sodium's API, for the mod's pages in its video settings; nothing of it ships.
-    findProperty("deps.sodium")?.let {
-        "${if (unobfuscated) "compileOnly" else "modCompileOnly"}"("net.caffeinemc:sodium-fabric-api:$it") { isTransitive = false }
-    }
+    // Only Sodium's API, for the mod's pages in its video settings; nothing of it ships. Quilt
+    // Loom 1.15 cannot remap the Fabric jar (built by Loom 1.16): the NeoForge one holds the same
+    // classes under Mojang's names, which the mod is compiled against anyway.
+    findProperty("deps.sodium")?.let { "compileOnly"("net.caffeinemc:sodium-neoforge-api:$it") { isTransitive = false } }
 
     "testImplementation"(platform("org.junit:junit-bom:${property("deps.junit")}"))
     "testImplementation"("org.junit.jupiter:junit-jupiter")
@@ -133,7 +133,7 @@ tasks {
             // the names it ships with, whatever the field says.
             put("intermediate_mappings", "\"intermediate_mappings\": \"net.fabricmc:intermediary\",")
             // Sodium finds the mod's pages through this entry point, on the targets that have them.
-            put("sodium", if (findProperty("deps.sodium") != null) "\"sodium:config_api_user\": \"fr.clixmods.livinghorizon.ui.SodiumOptions\"," else "")
+            put("sodium", if (project.findProperty("deps.sodium") != null) "\"sodium:config_api_user\": \"fr.clixmods.livinghorizon.ui.SodiumOptions\"," else "")
         }
         inputs.property("sodium", props.getValue("sodium"))
 

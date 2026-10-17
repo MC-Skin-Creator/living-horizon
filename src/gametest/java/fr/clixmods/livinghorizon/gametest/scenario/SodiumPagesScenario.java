@@ -37,7 +37,7 @@ public final class SodiumPagesScenario implements Scenario {
             context.getInput().resizeWindow(1280, 720);
             context.runOnClient(minecraft -> {
                 minecraft.options.guiScale().set(2);
-                minecraft.options.hideGui = true;
+                hideGui(minecraft, true);
             });
             // Birds on, as by default: their settings greyed out otherwise.
             Scene.configure(context, config -> config.skyBirds = true);
@@ -74,12 +74,19 @@ public final class SodiumPagesScenario implements Scenario {
             context.getInput().setCursorPos(1279, 719);
             screenshot(context, "preset-high");
             context.setScreen(() -> null);
-            context.runOnClient(minecraft -> minecraft.options.hideGui = false);
+            context.runOnClient(minecraft -> hideGui(minecraft, false));
             context.getInput().resizeWindow(854, 480);
             if (!high || shown != saved) {
                 throw new AssertionError("Preset from Sodium's page: saved " + saved + ", shown " + shown);
             }
         }
+        //?}
+    }
+
+    /** The HUD hidden, as F1 does; from 26.2 it is the overlay's own, and stays shown here. */
+    private static void hideGui(net.minecraft.client.Minecraft minecraft, boolean hidden) {
+        //? if <26.2 {
+        minecraft.options.hideGui = hidden;
         //?}
     }
 

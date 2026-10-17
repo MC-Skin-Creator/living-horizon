@@ -111,8 +111,8 @@ tasks {
             register("minecraft", "mod.mc_compat")
             register("neoforge", "deps.neoforge_compat")
             // Sodium finds the mod's pages through this property, on the targets that have them.
-            put("sodium", if (findProperty("deps.sodium") != null)
-                "[modproperties.${property("mod.id")}]\n\"sodium:config_api_user\" = \"fr.clixmods.livinghorizon.ui.SodiumOptions\"\n" else "")
+            put("sodium", if (project.findProperty("deps.sodium") != null)
+                "[modproperties.${project.property("mod.id")}]\n\"sodium:config_api_user\" = \"fr.clixmods.livinghorizon.ui.SodiumOptions\"\n" else "")
             put("java", requiredJava.majorVersion)
             put("mixins", project.extra["lhMixins"] as String)
             // Only the Forge targets that run under obfuscated names need a refmap.

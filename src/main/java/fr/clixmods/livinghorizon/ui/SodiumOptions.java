@@ -279,7 +279,10 @@ public final class SodiumOptions implements ConfigEntryPoint {
     }
 
     private static OptionBuilder opens(ConfigBuilder b, String name, Function<Screen, Screen> screen) {
-        return button(b, name, parent -> Minecraft.getInstance().setScreen(screen.apply(parent)));
+        return button(b, name, parent -> {
+            Minecraft minecraft = Minecraft.getInstance();
+            minecraft.setScreen(screen.apply(parent));
+        });
     }
 
     /** Asks before an action that cannot be undone, then back to Sodium's screen. */
