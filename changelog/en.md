@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### New
+- **Players who logged off** — they live their life around where they left, as far as a village: they stroll, sit, look at chests and workstations, walk through doors to a bed at night, and raise a shield against monsters in sight and hits; they keep to the ground: break their floor and they fall, bury them and they climb back on top.
+- **Offline names** — players who logged off show their name marked *(offline)*, and aiming at one up close tells when they were last seen; settings hide their names, or the players themselves.
+- **3D birds** — every bird is now a small model, like the game's mobs, with beating wings and legs when perched; far away they become light pictures, like distant mobs with impostors on. *Bird style* in the settings brings back the flat 2D birds.
+- **Hmm…** — I thought I saw something in the sky. 😉
+
+### Improved
+- **Distant mobs** — slimes, magma cubes and rabbits now hop their way around instead of sliding, a slime squashing as it lands, and chickens flap their wings stepping down a block.
+- **Ducks** — when you come near, they take off together and land farther along the water instead of flying away for good.
+
+### Fixed
+- **Spyglass** — distant mobs seen through a spyglass are measured at their zoomed size: *Animation size* now matches what you see, and they keep walking when they look big.
+- **Opening a world** — distant mobs walk and graze from the start, instead of only turning on the spot.
+- **Perched birds** — tits, robins and ducks no longer dart back and forth, stand in the air or inside the leaves, or swim onto dry land, and ducks no longer appear right next to you only to fly off at once; ducks now swim about their pond instead of jumping in a loop, and robins and tits hop more and take off less.
+- **Mod list** — Forge, NeoForge and Quilt no longer show Living Horizon under the wrong license.
+
 ## 0.6.0 — 2026-10-15
 
 ### New

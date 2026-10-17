@@ -25,7 +25,6 @@ import java.util.OptionalDouble;
 //? if >=26.2 {
 /*import com.mojang.blaze3d.GpuFormat;
 import net.minecraft.client.renderer.Projection;
-import net.minecraft.client.renderer.SubmitNodeStorage;
 import org.joml.Vector4f;
 *///?} else {
 import com.mojang.blaze3d.textures.TextureFormat;
@@ -80,7 +79,7 @@ import net.minecraft.client.renderer.FogRenderer;
 //? if <1.21.4
 //import net.minecraft.server.packs.resources.ResourceManager;
 //? if >=1.21.9 {
-import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
+import net.minecraft.client.renderer.SubmitNodeStorage;
 import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
 import net.minecraft.client.renderer.state.CameraRenderState;
 //?} else
@@ -89,6 +88,8 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
+import fr.clixmods.livinghorizon.render.Sink;
+import fr.clixmods.livinghorizon.track.Puppets;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
@@ -143,6 +144,10 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * has: a cow with two looks takes a small page, villagers a few larger ones. The mobs keep
  * their sheets, from one world to the next, and on disk from one game to the next
  * ({@link ImpostorDisk}); the players' are thrown away once unused.
+ *
+ * <p>Besides entities, the mod's own figures are baked the same way ({@link ImpostorFigure}:
+ * the 3D birds), drawn by the mod instead of an entity renderer, seen from the height the
+ * figure asks for, and baked again each game rather than kept on disk.
  */
 public final class ImpostorAtlas {
     /**
@@ -231,10 +236,11 @@ public final class ImpostorAtlas {
 
     /**
      * Where a figure's pictures are: which page and row of it, how many rows the page has,
-     * how big a tile is in blocks, and how many times larger than {@link ImpostorViews#TILE}
-     * its tiles are.
+     * how big a tile is in blocks, how many times larger than {@link ImpostorViews#TILE}
+     * its tiles are, and how far down a tile the figure's origin is ({@link #FEET} for an
+     * entity's feet).
      */
-    public record Sheet(int index, int rows, double worldSize, int scale) {
+    public record Sheet(int index, int rows, double worldSize, int scale, float feet) {
         public int page() {
             return index / ROWS;
         }
@@ -305,14 +311,35 @@ public final class ImpostorAtlas {
      * it, drawn smaller, into tiles {@code scale} times larger (at most {@link #MAX_SCALE}).
      * Squeezed into smaller tiles when the pages have no room for those.
      */
-    private record Request(ImpostorKey key, Entity puppet, double grow, int scale) {
+    private record Request(ImpostorKey key, @Nullable Entity puppet, @Nullable ImpostorFigure figure, double grow,
+                           int scale) {
         static Request of(ImpostorKey key, Entity puppet, double grow) {
-            return new Request(key, puppet, grow, Math.clamp((int) Math.ceil(grow - 1e-6), 1, MAX_SCALE));
+            return new Request(key, puppet, null, grow, Math.clamp((int) Math.ceil(grow - 1e-6), 1, MAX_SCALE));
+        }
+
+        /** One of the mod's own figures: its tile is the size it asks for, never grown. */
+        static Request of(ImpostorKey key, ImpostorFigure figure) {
+            return new Request(key, null, figure, 1.0, 1);
+        }
+
+        /** The same figure, in tiles {@code scale} times as large. */
+        Request at(int scale) {
+            return new Request(key, puppet, figure, grow, scale);
         }
 
         /** Whether its tiles are smaller than its picture asks for. */
         boolean squeezed() {
-            return scale < of(key, puppet, grow).scale;
+            return figure == null && scale < of(key, puppet, grow).scale;
+        }
+
+        /** Blocks along a side of its tiles. */
+        double size() {
+            return figure != null ? figure.worldSize() : ImpostorAtlas.size(puppet) * grow;
+        }
+
+        /** How far down a tile its origin is. */
+        float feet() {
+            return figure != null ? figure.feet() : FEET;
         }
 
         /** Pixels along a side of the target a view is drawn in. */
@@ -534,6 +561,12 @@ public final class ImpostorAtlas {
         QUEUE.add(Request.of(key, puppet, GROWN.getOrDefault(key, 1.0)));
     }
 
+    /** Asks for one of the mod's own figures to be baked, within the next few frames. */
+    public static void request(ImpostorKey key, ImpostorFigure figure) {
+        if (failed || sheet(key) != null || refused(key) || !QUEUED.add(key)) return;
+        QUEUE.add(Request.of(key, figure));
+    }
+
     private static boolean refused(ImpostorKey key) {
         Long when = REFUSED.get(key);
         if (when == null) return false;
@@ -674,7 +707,7 @@ public final class ImpostorAtlas {
                 continue;
             }
             try {
-                place(loaded.key, index, loaded.stored.worldSize(), loaded.stored.levels());
+                place(loaded.key, index, loaded.stored.worldSize(), FEET, loaded.stored.levels());
                 loads++;
             } catch (RuntimeException | LinkageError error) {
                 free(index);
@@ -684,10 +717,12 @@ public final class ImpostorAtlas {
         }
         while (!QUEUE.isEmpty()) {
             Request request = QUEUE.poll();
-            if (request.puppet.level() != minecraft.level || baked(request.key)) {
+            if (request.puppet != null && request.puppet.level() != minecraft.level || baked(request.key)) {
                 QUEUED.remove(request.key);
                 continue;
             }
+            Runnable back = request.puppet != null ? Puppets.atRest(request.puppet) : () -> {
+            };
             try {
                 bake(minecraft, request);
             } catch (LeftOut leftOut) {
@@ -698,6 +733,7 @@ public final class ImpostorAtlas {
                 fail(error);
                 return;
             } finally {
+                back.run();
                 //? if >=1.21.6 && <26.3 {
                 RenderSystem.outputColorTextureOverride = null;
                 RenderSystem.outputDepthTextureOverride = null;
@@ -859,15 +895,44 @@ public final class ImpostorAtlas {
         return state;
     }
 
-    /** As the inventory does it: pixels for blocks, y down, so turned over to stand. */
-    private static PoseStack pose(double size, int render) {
+    /**
+     * As the inventory does it: pixels for blocks, y down, so turned over to stand. A figure
+     * of the mod's seen from above has its top tipped towards the camera, which looks along +z.
+     */
+    private static PoseStack pose(Request request, double size, int render) {
         PoseStack pose = new PoseStack();
         float scale = (float) (render / size);
-        pose.translate(render / 2f, render * FEET, 0f);
+        pose.translate(render / 2f, render * request.feet(), 0f);
         pose.scale(scale, scale, -scale);
         pose.mulPose(new Quaternionf().rotateZ((float) Math.PI));
+        if (request.figure != null && request.figure.elevation() != 0f) {
+            pose.mulPose(new Quaternionf().rotateX((float) Math.toRadians(-request.figure.elevation())));
+        }
         return pose;
     }
+
+    /**
+     * One view of a figure, handed to the game to draw: an entity through its own renderer,
+     * a figure of the mod's drawn by itself, turned the same way an entity is by {@link #stage}.
+     */
+    //? if >=1.21.9 {
+    private static void draw(Minecraft minecraft, Request request, int view, PoseStack pose, SubmitNodeStorage storage) {
+        if (request.figure != null) {
+            request.figure.draw(pose, new Sink(storage), 180f - view * (360f / ImpostorViews.VIEWS));
+        } else {
+            minecraft.getEntityRenderDispatcher().submit(staged(minecraft, request.puppet, view), new CameraRenderState(),
+                    0.0, 0.0, 0.0, pose, storage);
+        }
+    }
+    //?} else {
+    /*private static void draw(Minecraft minecraft, Request request, int view, PoseStack pose, MultiBufferSource buffers) {
+        if (request.figure != null) {
+            request.figure.draw(pose, new Sink(buffers), 180f - view * (360f / ImpostorViews.VIEWS));
+        } else {
+            GhostRenderer.drawState(staged(minecraft, request.puppet, view), 0.0, 0.0, 0.0, pose, buffers, FULL_BRIGHT);
+        }
+    }
+    *///?}
 
     //? if <1.21.6 {
     /*/^* The projection a view is drawn with: pixels, y down, as the GUI's. ^/
@@ -911,9 +976,8 @@ public final class ImpostorAtlas {
     private static void bake(Minecraft minecraft, Request asked) {
         int index = room(asked);
         if (index < 0) return;
-        Request request = new Request(asked.key, asked.puppet, asked.grow, PAGES.get(index / ROWS).scale);
-        Entity puppet = request.puppet;
-        double size = size(puppet) * request.grow;
+        Request request = asked.at(PAGES.get(index / ROWS).scale);
+        double size = request.size();
         int scale = request.scale(), render = request.render();
         BAKING.add(index);
         bakes++;
@@ -925,7 +989,6 @@ public final class ImpostorAtlas {
         try {
             Target target = target(scale);
             //? if >=1.21.9 {
-            EntityRenderDispatcher dispatcher = minecraft.getEntityRenderDispatcher();
             FeatureRenderDispatcher features = minecraft.gameRenderer.getFeatureRenderDispatcher();
             //?} else
             /*MultiBufferSource.BufferSource buffers = minecraft.renderBuffers().bufferSource();*/
@@ -951,11 +1014,10 @@ public final class ImpostorAtlas {
                 encoder.clearColorAndDepthTextures(target.color, 0, target.depth, 1.0);
                 RenderSystem.setProjectionMatrix(target.projection.getBuffer(render, render), ProjectionType.ORTHOGRAPHIC);
                 //?}
-                EntityRenderState state = staged(minecraft, puppet, view);
-                PoseStack pose = pose(size, render);
+                PoseStack pose = pose(request, size, render);
                 lighting().setupFor(Lighting.Entry.LEVEL);
                 //? if >=26.3 {
-                /*dispatcher.submit(state, new CameraRenderState(), 0.0, 0.0, 0.0, pose, target.storage);
+                /*draw(minecraft, request, view, pose, target.storage);
                 try (FeatureRenderDispatcher.PreparedFrame frame = features.prepareFrame(target.storage);
                      RenderPass pass = encoder.createRenderPass(() -> "living horizon impostor", target.colorView,
                              Optional.empty(), target.depthView, OptionalDouble.empty())) {
@@ -963,14 +1025,14 @@ public final class ImpostorAtlas {
                     FeatureRenderDispatcher.renderAllFeatures(pass, frame);
                 }
                 *///?} elif >=26.2 {
-                /*dispatcher.submit(state, new CameraRenderState(), 0.0, 0.0, 0.0, pose, target.storage);
+                /*draw(minecraft, request, view, pose, target.storage);
                 features.renderAllFeatures(target.storage);
                 *///?} elif >=1.21.9 {
-                dispatcher.submit(state, new CameraRenderState(), 0.0, 0.0, 0.0, pose, features.getSubmitNodeStorage());
+                draw(minecraft, request, view, pose, features.getSubmitNodeStorage());
                 features.renderAllFeatures();
                 minecraft.renderBuffers().bufferSource().endBatch();
                 //?} else {
-                /*GhostRenderer.drawState(state, 0.0, 0.0, 0.0, pose, buffers, FULL_BRIGHT);
+                /*draw(minecraft, request, view, pose, buffers);
                 buffers.endBatch();
                 *///?}
                 boolean last = view == ImpostorViews.VIEWS - 1;
@@ -1005,9 +1067,8 @@ public final class ImpostorAtlas {
     private static void bake(Minecraft minecraft, Request asked) {
         int index = room(asked);
         if (index < 0) return;
-        Request request = new Request(asked.key, asked.puppet, asked.grow, PAGES.get(index / ROWS).scale);
-        Entity puppet = request.puppet;
-        double size = size(puppet) * request.grow;
+        Request request = asked.at(PAGES.get(index / ROWS).scale);
+        double size = request.size();
         int scale = request.scale(), render = request.render();
         BAKING.add(index);
         bakes++;
@@ -1033,7 +1094,7 @@ public final class ImpostorAtlas {
             int generation = ImpostorAtlas.generation;
             for (int view = 0; view < ImpostorViews.VIEWS; view++) {
                 encoder.clearColorAndDepthTextures(target.getColorTexture(), 0, target.getDepthTexture(), 1.0);
-                GhostRenderer.drawState(staged(minecraft, puppet, view), 0.0, 0.0, 0.0, pose(size, render), buffers, FULL_BRIGHT);
+                draw(minecraft, request, view, pose(request, size, render), buffers);
                 buffers.endBatch();
                 boolean last = view == ImpostorViews.VIEWS - 1;
                 encoder.copyTextureToBuffer(target.getColorTexture(), buffer, bytes * view,
@@ -1076,9 +1137,8 @@ public final class ImpostorAtlas {
     private static void bake(Minecraft minecraft, Request asked) {
         int index = room(asked);
         if (index < 0) return;
-        Request request = new Request(asked.key, asked.puppet, asked.grow, PAGES.get(index / ROWS).scale);
-        Entity puppet = request.puppet;
-        double size = size(puppet) * request.grow;
+        Request request = asked.at(PAGES.get(index / ROWS).scale);
+        double size = request.size();
         int scale = request.scale(), render = request.render();
         BAKING.add(index);
         bakes++;
@@ -1120,7 +1180,7 @@ public final class ImpostorAtlas {
             target.bindWrite(true);
             for (int view = 0; view < ImpostorViews.VIEWS; view++) {
                 RenderSystem.viewport(view * render, 0, render, render);
-                GhostRenderer.drawState(staged(minecraft, puppet, view), 0.0, 0.0, 0.0, pose(size, render), buffers, FULL_BRIGHT);
+                draw(minecraft, request, view, pose(request, size, render), buffers);
                 buffers.endBatch();
             }
             download(target, pictures, render);
@@ -1250,7 +1310,7 @@ public final class ImpostorAtlas {
         boolean again = false;
         try {
             if (generation != ImpostorAtlas.generation || pictures == null) return;
-            double growth = growth(pictures, request.render());
+            double growth = request.figure != null ? 1 : growth(pictures, request.render());
             if (growth > 1.01 && request.grow < MAX_GROW) {
                 double grow = Math.min(MAX_GROW, request.grow * growth);
                 GROWN.put(key, grow);
@@ -1276,10 +1336,13 @@ public final class ImpostorAtlas {
                 }
                 levels[level] = strip;
             }
-            if (!place(key, index, size, levels)) return;
+            if (!place(key, index, size, request.feet(), levels)) return;
             BAKING.remove(index);
-            // A squeezed sheet is not kept: the next game may have room for the sharp one.
-            if (!PLAYER.equals(key.type()) && !request.squeezed()) ImpostorDisk.write(key, size, request.scale(), levels);
+            // A squeezed sheet is not kept: the next game may have room for the sharp one. The
+            // mod's own figures are not kept either: their sheets have no entity to be read for.
+            if (!PLAYER.equals(key.type()) && !request.squeezed() && request.figure == null) {
+                ImpostorDisk.write(key, size, request.scale(), levels);
+            }
         } catch (RuntimeException | LinkageError error) {
             if (generation == ImpostorAtlas.generation) fail(error);
         } finally {
@@ -1304,7 +1367,7 @@ public final class ImpostorAtlas {
      * Writes a sheet's levels, its views side by side, into its row: it can be used. The same
      * pixels as a sheet of its kind already baked: it shares that one, and its row is freed.
      */
-    private static boolean place(ImpostorKey key, int index, double size, int[][] levels) {
+    private static boolean place(ImpostorKey key, int index, double size, float feet, int[][] levels) {
         Page owner = PAGES.get(index / ROWS);
         if (owner == null) return false;
         Look look = new Look(key.type(), owner.scale, pixels(levels[0]));
@@ -1316,7 +1379,7 @@ public final class ImpostorAtlas {
             return true;
         }
         LOOKS.put(look, key);
-        Sheet sheet = new Sheet(index, owner.rows, size, owner.scale);
+        Sheet sheet = new Sheet(index, owner.rows, size, owner.scale, feet);
         for (int level = 0; level < MIPS; level++) {
             int tile = sheet.tile() >> level;
             write(owner.texture, level, 0, sheet.row() * tile, tile * ImpostorViews.VIEWS, tile, levels[level]);

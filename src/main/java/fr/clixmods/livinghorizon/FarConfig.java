@@ -54,7 +54,7 @@ public final class FarConfig {
     @SerializedName(value = "depthOcclusion", alternate = "voxyOcclusion")
     public boolean depthOcclusion = true;
 
-    private static final int CURRENT = 8;
+    private static final int CURRENT = 10;
 
     /** Skinned figures, which Distant Friends uses as its fake players: shown, standing still. */
     private static final String MANNEQUIN = "minecraft:mannequin";
@@ -69,10 +69,31 @@ public final class FarConfig {
     public double lostTimeoutSeconds = 30.0;
 
     /**
-     * How a player who logged off is shown where they were last: {@code "sleep"} lying
-     * down, {@code "sit"} sitting on the ground, {@code "hidden"} not at all.
+     * Players who logged off stay where they were last, until they come back. Off, they are
+     * not followed at all: not drawn, not remembered, and the file of who rests where is
+     * left as it is.
      */
-    public String offlinePose = "sit";
+    public boolean offlinePlayers = true;
+
+    /**
+     * Players who logged off live their life where they left, as long as the blocks there are
+     * loaded: they stroll, look around, sit down, stand in front of chests and workstations,
+     * walk to a bed they can reach at night, raise a shield when hit or when monsters come.
+     * Off, they sit where they logged off. Either way they keep to the ground.
+     */
+    public boolean offlineLife = true;
+
+    /**
+     * Blocks: how far from where they logged off players who logged off walk around and look
+     * for a bed or something to look at, when {@link #offlineLife} is on. 50 is about a village.
+     */
+    public int offlineRoam = 50;
+
+    /**
+     * Their name above a player who logged off, marked offline, as close as the game shows
+     * names; and when they were last seen, under the crosshair, when aimed at from right next to them.
+     */
+    public boolean offlineNames = true;
 
     /**
      * Mobs met on the way stay where they were once out of range, living there on their
@@ -136,13 +157,22 @@ public final class FarConfig {
     public int birdSize = 1;
 
     /**
+     * How birds are drawn: {@code "3d"} as small box models, like the game's mobs, with
+     * beating wings and legs; {@code "2d"} as flat pixel sprites. Bats and parrots are the
+     * game's own either way.
+     */
+    public String birdStyle = "3d";
+
+    /**
      * Kinds of birds switched off, by id: {@code flocks}, {@code geese}, {@code raptors},
      * {@code gulls}, {@code pigeons}, {@code robins}, {@code tits}, {@code bats}, {@code parrots}.
      */
     public List<String> hiddenBirds = new ArrayList<>();
 
-    /** An easter egg, now and then, far away: a flying saucer taking a cow. Only a picture. */
-    public boolean ufo = true;
+    /** The easter eggs: secret, never described anywhere a player reads. Only pictures, on this screen. */
+    public boolean easterEggs = true;
+    /** Before version 10, {@link #easterEggs} for the one there was; read once, then dropped. */
+    private @Nullable Boolean ufo;
 
     /** Draws what a player was riding when last seen: horse, boat, happy ghast... */
     public boolean showVehicles = true;
@@ -248,10 +278,17 @@ public final class FarConfig {
     private @Nullable Boolean glowOutline;
     /** Before version 8, the outlines and crosses on the mod's figures together; read once, then dropped. */
     private @Nullable Boolean debugOutlines;
+    /** Before version 9, how a player who logged off was drawn: {@code "sleep"}, {@code "sit"} or {@code "hidden"}. */
+    private @Nullable String offlinePose;
     /** A panel of what the mod does and costs, in the corner of the screen. */
     public boolean debugHud = false;
     /** 0: off; 1: the game's depth; 2: with the far terrain merged in; 3: after the entities. */
     public int debugDepthView = 0;
+
+    /** Birds drawn as 3D models rather than flat sprites. */
+    public boolean birdModels() {
+        return !"2d".equals(birdStyle);
+    }
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
@@ -297,6 +334,7 @@ public final class FarConfig {
             instance.birdSize = 1;
         }
         if (instance.hiddenBirds == null) instance.hiddenBirds = new ArrayList<>();
+        if (instance.birdStyle == null) instance.birdStyle = "3d";
         if (instance.knownModdedMobs == null) instance.knownModdedMobs = new ArrayList<>();
         if (instance.version < 3) {
             // Boats came after the list was first written: shown unless taken out by hand.
@@ -315,7 +353,7 @@ public final class FarConfig {
             // New defaults: whoever never changed the old ones gets them.
             if (instance.maxDistantMobs == 200) instance.maxDistantMobs = 512;
             if (instance.mobMaxDistance == 0) instance.mobMaxDistance = 512;
-            if (instance.offlinePose.equals("sleep")) instance.offlinePose = "sit";
+            if ("sleep".equals(instance.offlinePose)) instance.offlinePose = "sit";
             if (instance.impostorDistance == 200) instance.impostorDistance = 128;
             instance.impostors = true;
         }
@@ -330,6 +368,16 @@ public final class FarConfig {
             }
             instance.glowOutline = null;
             instance.debugOutlines = null;
+        }
+        if (instance.version < 9) {
+            // Hiding them is a switch of its own now, which also stops remembering them; the
+            // poses gave way to a life of their own.
+            if ("hidden".equals(instance.offlinePose)) instance.offlinePlayers = false;
+            instance.offlinePose = null;
+        }
+        if (instance.version < 10) {
+            if (Boolean.FALSE.equals(instance.ufo)) instance.easterEggs = false;
+            instance.ufo = null;
         }
         instance.version = CURRENT;
         save();

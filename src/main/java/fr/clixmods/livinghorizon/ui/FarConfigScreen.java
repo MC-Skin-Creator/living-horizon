@@ -57,7 +57,7 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "debug"), b -> minecraft.setScreen(new DebugScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "debug.tooltip"))).build(),
-                null);
+                bool("easterEggs", c.easterEggs, v -> c.easterEggs = v).createButton(minecraft.options, 0, 0, 150));
 
         header(Component.translatable(KEY + "impostorsSection"));
         list.addSmall(
@@ -72,7 +72,10 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(
                 bool("enabled", c.enabled, v -> c.enabled = v),
                 bool("showVehicles", c.showVehicles, v -> c.showVehicles = v),
-                choice("offlinePose", List.of("sleep", "sit", "hidden"), c.offlinePose, v -> c.offlinePose = v),
+                bool("offlinePlayers", c.offlinePlayers, v -> c.offlinePlayers = v),
+                bool("offlineLife", c.offlineLife, v -> c.offlineLife = v),
+                blocks("offlineRoam", 8, 128, c.offlineRoam, v -> c.offlineRoam = v),
+                bool("offlineNames", c.offlineNames, v -> c.offlineNames = v),
                 blocks("playerMaxDistance", 0, 4000, c.playerMaxDistance, v -> c.playerMaxDistance = v),
                 integer("lostTimeoutSeconds", 5, 300, (int) c.lostTimeoutSeconds, v -> c.lostTimeoutSeconds = v),
                 bool("renderTrackedVehiclesFar", c.renderTrackedVehiclesFar, v -> c.renderTrackedVehiclesFar = v));
@@ -106,7 +109,7 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 blocks("birdMaxDistance", 100, 3000, c.birdMaxDistance, v -> c.birdMaxDistance = v),
                 integer("birdMinHeight", 0, 200, c.birdMinHeight, v -> c.birdMinHeight = v),
                 integer("birdSize", 1, 6, c.birdSize, v -> c.birdSize = v),
-                bool("ufo", c.ufo, v -> c.ufo = v));
+                choice("birdStyle", List.of("3d", "2d"), c.birdStyle, v -> c.birdStyle = v));
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "chooseBirds"), b -> minecraft.setScreen(new BirdTypesScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "chooseBirds.tooltip"))).build(),

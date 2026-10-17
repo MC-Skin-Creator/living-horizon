@@ -1,6 +1,6 @@
 modLoader = "javafml"
 loaderVersion = "[1,)"
-license = "GPL-3.0-only"
+license = "LicenseRef-LivingHorizon"
 issueTrackerURL = "https://github.com/MC-Skin-Creator/living-horizon/issues"
 
 [[mods]]

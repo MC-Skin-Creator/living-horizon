@@ -147,6 +147,48 @@ final class DhSource implements LodSource {
         return true;
     }
 
+    /**
+     * Distant Horizons' render distance, from its settings through its API, as far as its far
+     * fog is still thin: its start and end are fractions of the render distance. 0 with its
+     * rendering off or no settings to read.
+     */
+    @Override
+    public double clearDistance() {
+        String api = "com.seibel.distanthorizons.api.", config = api + "interfaces.config.";
+        try {
+            Object configs = Class.forName(api + "DhApi$Delayed").getField("configs").get(null);
+            if (configs == null) return 0;
+            Object graphics = call(config + "IDhApiConfig", configs, "graphics");
+            String graphicsType = config + "client.IDhApiGraphicsConfig";
+            if (!(Boolean) value(call(graphicsType, graphics, "renderingEnabled"))) return 0;
+            double drawn = ((Number) value(call(graphicsType, graphics, "chunkRenderDistance"))).doubleValue() * 16;
+            try {
+                Object fog = call(graphicsType, graphics, "fog");
+                if (!(Boolean) value(call(config + "client.IDhApiFogConfig", fog, "enableDhFog"))) return drawn * 0.9;
+                Object far = call(config + "client.IDhApiFogConfig", fog, "farFog");
+                double start = ((Number) value(call(config + "client.IDhApiFarFogConfig", far, "farFogStartDistance"))).doubleValue();
+                double end = ((Number) value(call(config + "client.IDhApiFarFogConfig", far, "farFogEndDistance"))).doubleValue();
+                // A little way into the fog, while it is still thin.
+                return drawn * Math.max(0.1, Math.min(0.9, start + (end - start) * 0.2));
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                // A version whose fog settings this does not know: where its fog starts by default.
+                return drawn * 0.4;
+            }
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return 0;
+        }
+    }
+
+    /** A method of no arguments of one of Distant Horizons' API interfaces. */
+    private static Object call(String type, Object on, String method) throws ReflectiveOperationException {
+        return Class.forName(type).getMethod(method).invoke(on);
+    }
+
+    /** What one of its settings is set to. */
+    private static Object value(Object setting) throws ReflectiveOperationException {
+        return call("com.seibel.distanthorizons.api.interfaces.config.IDhApiConfigValue", setting, "getValue");
+    }
+
     @Override
     public void fail(Throwable e) {
         // Not for good: a level change or a section being rewritten can fail one read, and

@@ -5,15 +5,20 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
+import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.platform.Platform;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.multiplayer.PlayerInfo;
-import net.minecraft.client.player.RemotePlayer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.util.Util;
-import net.minecraft.world.entity.Avatar;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
@@ -46,18 +51,23 @@ import java.util.concurrent.CompletableFuture;
  * fetched from Mojang by name, once.
  */
 public final class RestingPlayers {
-    /** Where one player rests. Keyed by name: the data pack only knows names. */
+    /**
+     * Where one player rests. Keyed by name: the data pack only knows names.
+     *
+     * @param lastSeen when they logged off, in milliseconds since 1970; 0 when unknown (seen
+     *                 by the data pack alone, or saved by a version that did not keep it)
+     */
     public record Spot(String name, @Nullable UUID id, @Nullable String textures, @Nullable String signature,
-                       int dimension, double x, double y, double z, float yaw) {
+                       int dimension, double x, double y, double z, float yaw, long lastSeen) {
 
         Spot moved(int dimension, double x, double y, double z, float yaw) {
-            return new Spot(name, id, textures, signature, dimension, x, y, z, yaw);
+            return new Spot(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen);
         }
 
         Spot dressed(GameProfile profile) {
             Property skin = skinOf(profile);
             return new Spot(name, Profiles.id(profile), skin == null ? textures : Profiles.value(skin),
-                    skin == null ? signature : Profiles.signature(skin), dimension, x, y, z, yaw);
+                    skin == null ? signature : Profiles.signature(skin), dimension, x, y, z, yaw, lastSeen);
         }
 
         GameProfile profile() {
@@ -67,27 +77,21 @@ public final class RestingPlayers {
         }
     }
 
-    /** A player that never was: their skin comes from a remembered profile, not from the tab list. */
-    static final class Puppet extends RemotePlayer {
-        private final PlayerInfo info;
-
-        Puppet(ClientLevel level, GameProfile profile) {
-            super(level, profile);
-            this.info = new PlayerInfo(profile, false);
-        }
-
-        @Override
-        protected @Nullable PlayerInfo getPlayerInfo() {
-            return info;
-        }
-    }
-
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private final Map<String, Spot> spots = new LinkedHashMap<>();
-    private final Map<String, Puppet> puppets = new HashMap<>();
+    private final Map<String, RestingPuppet> puppets = new HashMap<>();
     private final Set<String> lookups = new HashSet<>();
+    /** Test players placed with {@code /livinghorizon debug offline test}: never written to the file. */
+    private final Set<String> fakes = new HashSet<>();
     private @Nullable Path file;
+    private @Nullable Spot lookedAt;
+    private boolean wasAttacking;
+
+    /** Blocks from the eye to the point aimed at on a sleeper: about the reach of a hand. */
+    private static final double MAX_AIM = 3;
+    /** Spots of the world the puppets may read per tick, all of them together. */
+    private static final int WORK = 600;
 
     public Collection<Spot> spots() {
         return Collections.unmodifiableCollection(spots.values());
@@ -110,20 +114,24 @@ public final class RestingPlayers {
     void close() {
         save();
         spots.clear();
+        fakes.clear();
         puppets.clear();
+        lookedAt = null;
         file = null;
     }
 
     /** Puppets belong to one level; a new dimension needs new ones. */
     void forgetPuppets() {
         puppets.clear();
+        lookedAt = null;
     }
 
     // --- Who rests where ---------------------------------------------------------------
 
     /** A player who just logged off, at the last place this client knew. */
     void rest(GameProfile profile, int dimension, double x, double y, double z, float yaw) {
-        Spot spot = new Spot(Profiles.name(profile), Profiles.id(profile), null, null, dimension, x, y, z, yaw).dressed(profile);
+        Spot spot = new Spot(Profiles.name(profile), Profiles.id(profile), null, null, dimension, x, y, z, yaw,
+                System.currentTimeMillis()).dressed(profile);
         put(spot);
     }
 
@@ -137,15 +145,17 @@ public final class RestingPlayers {
         }
         Spot spot = known != null
                 ? known.moved(report.dimension(), report.x(), report.y(), report.z(), report.yaw())
-                : new Spot(name, null, null, null, report.dimension(), report.x(), report.y(), report.z(), report.yaw());
+                : new Spot(name, null, null, null, report.dimension(), report.x(), report.y(), report.z(), report.yaw(), 0);
         put(spot);
         if (spot.textures() == null) lookUp(name);
     }
 
     /** Back online. */
     void wake(String name) {
+        fakes.remove(key(name));
         if (spots.remove(key(name)) != null) {
             puppets.remove(key(name));
+            if (lookedAt != null && key(lookedAt.name()).equals(key(name))) lookedAt = null;
             save();
         }
     }
@@ -173,34 +183,122 @@ public final class RestingPlayers {
         //?}
     }
 
+    // --- Test players --------------------------------------------------------------------
+
+    /**
+     * A test player who logged off {@code minutesAgo} minutes ago, here, wearing the skin of
+     * {@code skin}: shown like any other until {@link #clearFakes}, but never written to the
+     * file, so gone at the next start.
+     */
+    public void fake(String name, GameProfile skin, int dimension, double x, double y, double z, float yaw,
+                     long minutesAgo) {
+        Property textures = skinOf(skin);
+        fakes.add(key(name));
+        put(new Spot(name, null, textures == null ? null : Profiles.value(textures),
+                textures == null ? null : Profiles.signature(textures), dimension, x, y, z, yaw,
+                System.currentTimeMillis() - minutesAgo * 60_000));
+    }
+
+    /** Whether this resting player is a test one. */
+    public boolean isFake(Spot spot) {
+        return fakes.contains(key(spot.name()));
+    }
+
+    /** Removes every test player; how many there were. */
+    public int clearFakes() {
+        int count = 0;
+        for (String name : List.copyOf(fakes)) {
+            if (spots.remove(name) != null) count++;
+            puppets.remove(name);
+            if (lookedAt != null && key(lookedAt.name()).equals(name)) lookedAt = null;
+        }
+        fakes.clear();
+        return count;
+    }
+
     /** Wakes everyone up: nobody rests anywhere any more, here and in the file. */
     public void forgetAll() {
         spots.clear();
+        fakes.clear();
         puppets.clear();
+        lookedAt = null;
         save();
     }
 
     // --- Puppets -----------------------------------------------------------------------
 
-    public @Nullable RemotePlayer puppet(ClientLevel level, Spot spot) {
-        return puppets.computeIfAbsent(key(spot.name()), k -> {
-            Puppet puppet = Puppets.numbered(new Puppet(level, spot.profile()));
-            puppet.getEntityData().set(Avatar.DATA_PLAYER_MODE_CUSTOMISATION, (byte) 0x7F);
-            puppet.setPos(spot.x(), spot.y(), spot.z());
-            puppet.setOldPosAndRot();
-            puppet.setYRot(spot.yaw());
-            puppet.yBodyRot = puppet.yBodyRotO = spot.yaw();
-            puppet.yHeadRot = puppet.yHeadRotO = spot.yaw();
-            return puppet;
-        });
+    public RestingPuppet puppet(ClientLevel level, Spot spot) {
+        return puppets.computeIfAbsent(key(spot.name()),
+                k -> Puppets.numbered(new RestingPuppet(level, spot, spot.profile())));
     }
 
-    /** Keeps the idle animations (breathing, arms) going. */
-    void tick() {
-        for (Puppet puppet : puppets.values()) {
-            puppet.setOldPosAndRot();
-            puppet.tickCount++;
+    /** The sleeper under the crosshair, or null. */
+    public @Nullable Spot lookedAt() {
+        return lookedAt;
+    }
+
+    /**
+     * Finds the sleeper under the crosshair, right next to the player ({@link #MAX_AIM}),
+     * unless a block is in the way, where it lies, sits or stands now; and tells it when the
+     * player hits it.
+     */
+    void aim(Minecraft minecraft, FarConfig config) {
+        lookedAt = null;
+        // A click of the attack button, not a held one breaking a block.
+        boolean attacking = minecraft.screen == null && minecraft.options.keyAttack.isDown();
+        boolean struck = attacking && !wasAttacking;
+        wasAttacking = attacking;
+        Entity camera = minecraft.getCameraEntity();
+        ClientLevel level = minecraft.level;
+        if (!config.offlinePlayers || camera == null || level == null) return;
+        if (!config.offlineNames && !(struck && config.offlineLife)) return;
+        Vec3 eye = camera.getEyePosition();
+        Vec3 look = camera.getViewVector(1.0f);
+        int dimension = SharedPositions.dimensionCode(level.dimension());
+        double nearest = Double.MAX_VALUE;
+        Spot aimed = null;
+        for (Spot spot : spots.values()) {
+            RestingPuppet puppet = puppets.get(key(spot.name()));
+            if (spot.dimension() != dimension || puppet == null) continue;
+            double distance = eye.distanceTo(puppet.position());
+            // The box reaches 1 block round its feet, its top 2 blocks over them.
+            if (distance > MAX_AIM + 2.5) continue;
+            double height = switch (puppet.look()) {
+                case STAND -> 1.9;
+                case SIT -> 1.3;
+                case LIE, BED -> 0.5;
+            };
+            // A sleeper is 1.8 blocks long, whichever way it lies.
+            double half = height < 1 ? 1.0 : 0.4;
+            AABB box = new AABB(puppet.getX() - half, puppet.getY() + 0.05, puppet.getZ() - half,
+                    puppet.getX() + half, puppet.getY() + height, puppet.getZ() + half);
+            Optional<Vec3> hit = box.clip(eye, eye.add(look.scale(MAX_AIM)));
+            if (hit.isEmpty()) continue;
+            double reach = eye.distanceTo(hit.get());
+            if (reach >= nearest) continue;
+            // Terrain the client has, between the eye and the sleeper, hides it.
+            BlockHitResult wall = level.clip(new ClipContext(eye, hit.get(), ClipContext.Block.VISUAL,
+                    ClipContext.Fluid.NONE, camera));
+            if (wall.getType() != HitResult.Type.MISS) continue;
+            nearest = reach;
+            aimed = spot;
         }
+        if (aimed == null) return;
+        if (config.offlineNames) lookedAt = aimed;
+        // Hit: it raises its shield. Nothing reaches the server: the hit lands on whatever is behind.
+        if (struck && config.offlineLife) puppets.get(key(aimed.name())).strike(eye);
+    }
+
+    /** Every one of them lives a tick: idle animations, their life around their spot, the ground under them. */
+    void tick(ClientLevel level, FarConfig config) {
+        Set<BlockPos> beds = new HashSet<>();
+        for (RestingPuppet puppet : puppets.values()) {
+            if (puppet.bed() != null) beds.add(puppet.bed());
+        }
+        boolean night = !level.isBrightOutside();
+        // Spots read per tick by all of them together, looking around and for their way.
+        int[] work = {WORK};
+        for (RestingPuppet puppet : puppets.values()) puppet.tick(level, config, beds, night, work);
     }
 
     // --- File --------------------------------------------------------------------------
@@ -210,7 +308,7 @@ public final class RestingPlayers {
         try {
             Files.createDirectories(file.getParent());
             try (Writer writer = Files.newBufferedWriter(file)) {
-                write(spots.values(), writer);
+                write(spots.values().stream().filter(spot -> !fakes.contains(key(spot.name()))).toList(), writer);
             }
         } catch (IOException e) {
             LivingHorizonClient.LOGGER.warn("Could not write {}", file, e);
@@ -237,7 +335,7 @@ public final class RestingPlayers {
     }
 
     /** A server address as a file name. */
-    static String safe(String server) {
+    public static String safe(String server) {
         String cleaned = server.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9._-]", "_");
         return cleaned.isEmpty() ? "unknown" : cleaned;
     }

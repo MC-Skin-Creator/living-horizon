@@ -132,6 +132,10 @@ stonecutter parameters {
                 "\\bnet\\.minecraft\\.world\\.entity\\.vehicle\\.boat\\.AbstractBoat\\b", "net.minecraft.world.entity.vehicle.AbstractBoat")
         replace("\\bnet\\.minecraft\\.world\\.entity\\.animal\\.Parrot\\b", "net.minecraft.world.entity.animal.parrot.Parrot",
                 "\\bnet\\.minecraft\\.world\\.entity\\.animal\\.parrot\\.Parrot\\b", "net.minecraft.world.entity.animal.Parrot")
+        replace("\\bnet\\.minecraft\\.world\\.entity\\.animal\\.Chicken\\b", "net.minecraft.world.entity.animal.chicken.Chicken",
+                "\\bnet\\.minecraft\\.world\\.entity\\.animal\\.chicken\\.Chicken\\b", "net.minecraft.world.entity.animal.Chicken")
+        replace("\\bnet\\.minecraft\\.world\\.entity\\.animal\\.Rabbit\\b", "net.minecraft.world.entity.animal.rabbit.Rabbit",
+                "\\bnet\\.minecraft\\.world\\.entity\\.animal\\.rabbit\\.Rabbit\\b", "net.minecraft.world.entity.animal.Rabbit")
     }
 
     // 26.1 renamed what draws the GUI, and the methods that go with it, and moved the

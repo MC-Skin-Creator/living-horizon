@@ -2,6 +2,22 @@
 
 ## Prochaine version
 
+### Nouveautés
+- **Joueurs déconnectés** — ils vivent leur vie autour de l'endroit où ils sont partis, à l'échelle d'un village : ils se promènent, s'assoient, regardent les coffres et les blocs de métier, passent les portes pour aller au lit la nuit, et lèvent un bouclier face aux monstres en vue et aux coups ; ils restent au sol : cassez le bloc sous eux, ils tombent ; enterrez-les, ils remontent.
+- **Noms hors ligne** — les joueurs déconnectés affichent leur nom marqué *(hors ligne)*, et en viser un de près indique quand il a été vu pour la dernière fois ; des réglages masquent leurs noms, ou les joueurs eux-mêmes.
+- **Oiseaux en 3D** — chaque oiseau est maintenant un petit modèle, comme les mobs du jeu, qui bat des ailes et se pose sur ses pattes ; au loin, il devient une image légère, comme les créatures lointaines quand les imposteurs sont activés. *Style des oiseaux* dans les réglages remet les oiseaux plats en 2D.
+- **Hmm…** — j'ai cru voir quelque chose dans le ciel. 😉
+
+### Améliorations
+- **Créatures lointaines** — les slimes, les cubes de magma et les lapins se déplacent maintenant par bonds au lieu de glisser, le slime s'écrasant en retombant, et les poules battent des ailes en descendant d'un bloc.
+- **Canards** — quand vous approchez, ils s'envolent ensemble et se reposent plus loin sur l'eau au lieu de partir pour de bon.
+
+### Corrections
+- **Longue-vue** — les créatures lointaines vues à la longue-vue sont mesurées à leur taille zoomée : *Taille animation* correspond maintenant à ce qu'on voit, et elles continuent de marcher quand elles paraissent grosses.
+- **Ouverture d'un monde** — les créatures lointaines marchent et broutent dès le début, au lieu de seulement tourner sur elles-mêmes.
+- **Oiseaux posés** — les mésanges, rouges-gorges et canards ne font plus de va-et-vient, ne se posent plus dans le vide ou dans les feuilles, ne nagent plus sur la terre ferme, et les canards n'apparaissent plus juste à côté de vous pour s'envoler aussitôt ; les canards nagent maintenant tranquillement sur leur mare au lieu de sauter en boucle, et les rouges-gorges et mésanges sautillent plus et s'envolent moins.
+- **Liste des mods** — Forge, NeoForge et Quilt n'affichent plus Living Horizon sous la mauvaise licence.
+
 ## 0.6.0 — 2026-10-15
 
 ### Nouveautés

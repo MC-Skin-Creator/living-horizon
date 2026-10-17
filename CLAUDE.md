@@ -92,6 +92,28 @@ must look exactly the same with Living Horizon installed as without it:
 Writing the mobs into Voxy's depth over the whole screen, for Photon's shadows, broke Voxy's
 water under Photon. Check any change to `compat/` against this section.
 
+## Easter eggs are secret
+
+The mod hides a few easter eggs, in `ambient/` (the `eeN` commands in `LivingHorizonCommand`
+say which class is which). Players find them; nothing they read gives one away:
+
+- never describe one in the README, the changelog, a tooltip, a translation or a release
+  note, and never in a commit subject or a pull request title (the GitHub release lists
+  those): say "easter egg" and its number at most;
+- one settings switch covers them all, `easterEggs` ("Easter eggs", a tooltip that says
+  nothing of what they are);
+- each is called by number, `/livinghorizon ee1`, `ee2` and so on, never by a name that
+  says what it is, and only in a game started with `-Dlh.ee=true`: without it the
+  commands are not there at all, not even among the suggestions, so nothing in the game
+  tells a player which easter eggs there are. The same switch (`ambient/EggLog`) writes in
+  the log where each one comes; without it the log says nothing of them. Its lang keys are
+  `livinghorizon.eeN.*`, and `livinghorizon.ee.nothing` when it cannot come;
+- by chance, only as `ambient/EggCalendar` allows: each from a day of its own (days lived in
+  that world, counted at dawn), two to four days apart, one at a time; the watcher (ee4)
+  keeps nights of his own and stays out of the others' way. The commands skip all of it;
+- an easter egg gets no changelog entry, even when it changes. One wink that names none
+  ("I thought I saw something in the sky") is the most a release may carry.
+
 ## Branch model: Git Flow
 
 Trimmed Git Flow.
@@ -253,6 +275,13 @@ come back, add it here in the same pull request: this file is what the next sess
   simulation distance, a square of chunks that reaches farther on its diagonals. In single
   player `ServerMobs` asks the server where those are and the copies follow; on a server only
   the data pack closes that gap.
+- **Distant mobs only turning on the spot**, never walking, after the world was opened, while
+  those met since walk: their ground was read (`MobPaths.plan`) where the far world had nothing
+  (Voxy or Distant Horizons not open yet, or Voxy turned off for the session by one failed
+  read as its world opened: `VoxySource.fail` now pauses 20 s, as `DhSource` does), and the
+  mob got no animation. A ground read whole is saved with the mob (`Remembered.ground`,
+  `MobPaths.Ground.save`) and walked on at once in the next session; a choice read with
+  columns missing is not `complete()` and is read again, later and later.
 - **Impostors before 1.21.6** (empty or missing pictures, or a figure flashing over the screen
   at the start of a frame): the game has no output override there, so `ImpostorAtlas` bakes
   at the start of the frame (`GameRendererMixin`) into a target of its own, which
@@ -291,6 +320,13 @@ come back, add it here in the same pull request: this file is what the next sess
   GeckoLib 4's `createRenderState()` returns null and its `render` draws the entity it was
   last handed. `GhostRenderer.drawable` leaves such types out (issue #67 is about drawing
   them), and a renderer that throws while extracting is left out too, logged once.
+- **Perched birds darting to and fro, standing in the air or inside a block** (tits, robins,
+  ducks): a move's progress is `timer / length`, so the rest after landing is `rest`, never
+  added to `length` (which put an arrived bird back part of the way). Where a bird lands comes
+  from `Perchers.perchAt` (leaves, water, dry ground), away from column edges, and a resting
+  bird is stood again on what is under it. Birds jumping in a loop: a move is a flight once it
+  is long, so a target is only moved in from a column's edge (never re-drawn on the block), and a
+  duck swims as far as the water goes on (`Perchers.swims`). The `perchers` scenario counts all three.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

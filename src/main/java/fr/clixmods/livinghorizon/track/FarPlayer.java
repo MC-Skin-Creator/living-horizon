@@ -7,7 +7,6 @@ import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.RemotePlayer;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.world.entity.Avatar;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -356,8 +355,7 @@ public final class FarPlayer {
 
     /** A player never seen up close: their skin from the tab list, every skin layer on. */
     private void freshPuppet(ClientLevel level, PlayerInfo info) {
-        puppet = Puppets.numbered(new RemotePlayer(level, info.getProfile()));
-        puppet.getEntityData().set(Avatar.DATA_PLAYER_MODE_CUSTOMISATION, (byte) 0x7F);
+        puppet = Puppets.player(level, info.getProfile());
         mountPuppet = null;
     }
 

@@ -110,10 +110,10 @@ The game itself lacks what these need, so they are left out rather than imitated
   ride.
 - **Watch the distance live.** Animals, villagers and golems graze and wander around the
   far-off villages, and are hidden by the terrain pixel by pixel, shaders included.
-- **Look up.** Flocks, geese in a V, gulls on the coast, bats at night - and, now and
-  then, a flying saucer taking a cow (`/livinghorizon ufo`).
-- **Find players where they left.** Someone who logged off stays asleep where they were,
-  until they come back.
+- **Look up.** Flocks, geese in a V, gulls on the coast, bats at night.
+  `/livinghorizon bird <kind>` calls any kind of bird at once.
+- **Find players where they left.** Someone who logged off lives their life where they
+  were - a stroll, a seat, a bed at night, a shield against monsters - until they come back.
 - **Tune it.** Everything is in the settings (see *Settings* below): which mobs, which
   birds, how many, how far.
 
@@ -144,9 +144,12 @@ The game itself lacks what these need, so they are left out rather than imitated
 | `birdMaxDistance` | `800` | blocks | How far away birds can be |
 | `birdMinHeight` | `30` | blocks | Above you (or the sea, whichever is higher), below which flocks never fly |
 | `birdSize` | `1` | times | How much bigger than life birds are drawn |
-| `ufo` | `true` | | The easter egg |
+| `easterEggs` | `true` | | A few surprises, now and then |
 | `depthOcclusion` | `true` | | The far terrain's depth (Voxy or Distant Horizons) on distant mobs and players, pixel by pixel (see *The far terrain's depth* below). Was `voxyOcclusion`. In *Debug...* |
-| `offlinePose` | `"sit"` | | A player who logged off: `"sleep"`, `"sit"` or `"hidden"` |
+| `offlinePlayers` | `true` | | Players who logged off are shown and remembered; off, neither |
+| `offlineLife` | `true` | | Players who logged off live their life around their spot (see below); off, they sit on it |
+| `offlineRoam` | `50` | blocks | How far from their spot they walk around and look for a bed or a chest, from 8 to 128 (50 is about a village) |
+| `offlineNames` | `true` | | Their name above them, marked offline, and when they were last seen under the crosshair |
 | `showVehicles` | `true` | | Draw the mount they were last seen on |
 | `renderTrackedVehiclesFar` | `true` | | Never cull a mount that carries another player |
 | `hideOccludedMobs` | `true` | | Do not draw distant mobs behind terrain at all (see *Mobs hidden by depth* below). In *Debug...*, with `depthOcclusion` |
@@ -168,6 +171,12 @@ The game itself lacks what these need, so they are left out rather than imitated
   game's mobs*), yellow too small (under about half a pixel), orange behind blocks, red
   outside the view, purple being built, grey past `maxDistantMobs`. A dot in the middle
   keeps them visible when the box is smaller than its lines.
+- **Test players who logged off**, to try that feature alone in single player:
+  `/livinghorizon debug offline test spawn [name] [minutes]` places one where you stand,
+  wearing your skin, logged off that many minutes ago (default `Sleeper1`, `Sleeper2`...,
+  just now); `... test clear` removes them; `... test list` shows everyone resting on this
+  server, where and since when. Test players are never written to the file: they are gone
+  at the next start.
 - **Labels**: state, kind, distance and size on screen, at a constant size.
 - **Outlines** (*Outlines...*): an outline seen through terrain around each kind of figure,
   each on its own switch, in the colours of the boxes - white the mobs and players the game
@@ -208,11 +217,42 @@ parses `pack.mcmeta` and the predicate with the game's own codecs.
 
 ### Players who logged off
 
-A player who logs off stays where they were last, asleep on the ground (or sitting, see
-`offlinePose`), until they come back. This is remembered per server across sessions, in
+A player who logs off stays around where they were last, until they come back.
+`offlinePlayers` off turns this off completely: nobody is shown, remembered or written to the
+file. This is remembered per server across sessions, in
 `config/livinghorizon/resting/<server>.json`. With the data pack, even players who logged
 off before you joined are there: the pack keeps everyone's last position, and their
 skin is fetched from Mojang by name.
+
+With `offlineLife` on (the default) they live their life there, as long as the blocks
+around are loaded (`track/RestingPuppet`), within `offlineRoam` blocks of their spot (50, about
+a village; up to 128): they stand and look around, sit down, stroll, stand in front of a
+chest, a crafting table or a villager's workstation and look at it. At night they walk to a
+free bed they can reach and sleep in it, or lie down where they are; in the morning they get
+up. They walk only where a player could (`track/Walkway`: one block up, two down, no corner
+cut, nothing walked through but doors and fence gates, which they cannot open), worked out on
+the client from the blocks it has: what is around is read a little every tick (600 spots per
+tick for all of them together), again every 30 seconds or when they find themselves off it,
+and each way is searched towards where they go. Monsters within 10 blocks and in plain sight
+put them on guard: an iron sword drawn, the shield up, eyes on the nearest, a step away when
+it comes closer than 3.5 blocks; they never fight. Safe indoors, behind walls, shut doors or
+windows, they do not mind them. A creeper blowing up within 7 blocks, in sight, throws them,
+shield up, and they walk back. Hit by you, they raise their shield. In lava or fire they show
+the swirls of fire resistance, under water those of water breathing. Where the blocks are not
+loaded, they only stand, sit or sleep where they are. With `offlineLife` off they sit on their
+spot.
+
+All of it is a picture on your client: nothing is sent to the server, they block nobody, and
+nothing can hurt them. Either way they keep to the ground: break the pile they sit on and
+they fall to the floor below; bury them and they reappear on top. Sitting, their own spot
+wins again once it has room and something under it, since that is where they will come back.
+With nothing below down to the bottom of the world, they stay where they are.
+
+Their name shows above them, followed by *(offline)*, as close as the game shows names (64
+blocks). Aiming at one from right next to it (3 blocks) shows, under the crosshair, when
+they were last seen, in the game's language; a player known only from the data pack shows
+as offline without a date. That time is kept in the file with their spot (`lastSeen`, milliseconds since 1970).
+`offlineNames` turns both off.
 
 ### Mobs far away
 
@@ -251,7 +291,12 @@ lives there.
   cliff, never over a fence. One of the widest that fit is played; with none, it turns on
   the spot. Nothing is computed while it plays but a point of the animation (`track/MobMotion`).
 - Head glances come at their own pace; animals graze in the pauses the animation has.
-- A copy never jumps. When the pack reports a drawn mob somewhere else, it walks to the
+- Each kind covers the way as its real one does (`track/MobGait`): most walk; slimes, magma
+  cubes and rabbits hop, still on the ground between two hops and along an arc in the air,
+  a slime stretching as it leaves the ground and squashing as it lands, a rabbit's legs
+  kicking. A chicken flaps while it steps up or down a block. Impostors are baked with all
+  of it at rest.
+- A copy never jumps from one place to another. When the pack reports a drawn mob somewhere else, it walks to the
   new spot in a straight line (the ground there is read again meanwhile), then plays the
   animation chosen there.
 - Coming up to the distance where the server starts sending a mob (`MobMotion.home`), its
@@ -262,7 +307,8 @@ lives there.
 - A mob shorter on screen than `animationMinPixels` (10 by default, 0 always animates) plays
   no walking or idle animation: it keeps sliding along its animation and turning, every
   tick, but its legs stay still (`optStillTiny`). It resumes at that size plus a quarter and
-  a pixel, so it never flickers. `animationMaxDistance` (blocks, 0 no limit) also stills
+  a pixel, so it never flickers. Sizes are counted with the field of view the frame is really
+  projected with (`DepthFar.pixelsPerRadian`), so a spyglass's zoom counts. `animationMaxDistance` (blocks, 0 no limit) also stills
   every mob past it, however big (`MobMemory.isStill`).
 - With `optFreezeHidden` (debug screen, off by default), a copy that has not been drawn for
   half a second - out of view, hidden, too small - is not ticked at all: no animation, no
@@ -296,23 +342,35 @@ lives there.
 
 Purely a picture, on this client: flocks crossing the sky, geese in a V, birds of prey
 circling, gulls over the coast (landing on the beach now and then), pigeons sitting on
-tall buildings, robins hopping in fields, tits in the trees, ducks on lakes and rivers,
+tall buildings, robins hopping in fields, tits in the trees, ducks swimming on lakes and rivers,
 bats at night (some hanging under leaves and roofs), now and then parrots. Perched birds
-fly off when you come close; ducks never let you near. Birds never vanish at once: they
-scatter and shrink away. An easter egg: now and then a flying saucer takes a cow
-(`/livinghorizon ufo`).
+fly off when you come close and land again a little farther; ducks never let you near, and
+take off together for farther along the water, or for another water known around. Birds that
+leave never vanish at once: they scatter and shrink away.
+
+`/livinghorizon bird <kind>` (`flocks`, `geese`, `raptors`, `gulls`, `pigeons`, `robins`,
+`tits`, `ducks`, `bats`, `parrots`) calls a group of that kind at once, whatever the pace, the
+hour or the weather (`Ambience.summon`). Those that fly come within 100 blocks. Those that
+perch go to the place the player looks at, up to 128 blocks away, when it suits them (a tree
+for tits, water for ducks, a field for robins, a tall building for pigeons, the coast for
+gulls), else to the nearest one around, never close enough to take fright at once; the chat
+says when there is none, or when that kind is switched off.
 
 Where each kind goes is read off the terrain a few columns at a time - from the chunks
 loaded here, or farther from the far world (`compat/LodWorld`, which reads Voxy through `VoxySource` or
 Distant Horizons through `DhSource`, its public API): crops or farmland for
 robins, leaves for tits, a man-made block well above its neighbours for pigeons, a beach or
-ocean biome for gulls. Birds are pixel sprites from `textures/misc/birds.png` (flying: seen
-from above, one plane per wing; perched: seen from the side, facing the camera); bats and
-parrots are the game's own.
+ocean biome for gulls. Birds are small 3D models (`ambient/BirdModels`): boxes in pixels,
+like the game's mobs, coloured box by box over a feather grain (`textures/misc/birds_3d.png`);
+the wings beat and bend at the tip, perched birds stand on their legs, ducks float; past the
+impostor distance they are pictures of themselves (see *Impostors*). With
+`birdStyle` set to `2d` they are pixel sprites from `textures/misc/birds.png` instead (flying:
+seen from above, one plane per wing; perched: seen from the side, facing the camera). Bats
+and parrots are the game's own either way.
 
 Settings: on/off, how many (`birdDensity`, percent), how far (`birdMaxDistance`), how low
-flocks may fly (`birdMinHeight`), size, and each kind on its own ("Choose birds...",
-`hiddenBirds`).
+flocks may fly (`birdMinHeight`), size, 3D or 2D (`birdStyle`), and each kind on its own
+("Choose birds...", `hiddenBirds`).
 
 ### Impostors
 
@@ -379,8 +437,16 @@ nothing, and the game no longer builds a render state and a model for it every f
   baked, its eight views, and its front view at 32, 16 and 8 screen pixels, as it looks
   far away. *Bake again* throws every picture away, on disk too, and bakes the figures on
   hand anew, even after a failed bake.
+- **Birds.** A 3D bird (`ambient/BirdFigure`) is baked from its model as a figure of the
+  mod's own (`ImpostorFigure`), not an entity: one sheet per species, pose (perched, or
+  flying with its wings up, level or down) and height it is seen from (from well below,
+  below or above flying; below, level or above perched), all of a pose baked together the
+  first time one is needed, on pages of their species. Its picture faces the camera entirely,
+  not only round, since it was baked as seen from that height, and the wing beat goes on
+  from one sheet to the next. Bird sheets are baked again each game, never kept on disk, and
+  named after the species in the impostor screen.
 - **Not impostors:** figures with a mount or a rider, players resting on the ground, the
-  birds and the saucer's cow.
+  2D birds, parrots and bats.
 
 ### The far terrain's depth
 
