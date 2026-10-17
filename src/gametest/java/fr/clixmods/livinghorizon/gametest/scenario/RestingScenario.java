@@ -262,13 +262,13 @@ public final class RestingScenario implements Scenario {
             if (!swapped) throw new AssertionError("resting test player: no sword and shield in place of the pickaxe");
             Scene.command(world, "kill @e[type=husk]");
             wait(context, world, 140);
-            boolean back = context.computeOnClient(minecraft -> {
+            boolean pickaxeBack = context.computeOnClient(minecraft -> {
                 RestingPuppet puppet = puppet(minecraft, "Tester");
                 return !puppet.guarding() && puppet.getMainHandItem().is(Items.DIAMOND_PICKAXE)
                         && puppet.getOffhandItem().isEmpty();
             });
-            Scene.log("resting test player calm, pickaxe back: " + back);
-            if (!back) throw new AssertionError("resting test player: the pickaxe is not back in hand");
+            Scene.log("resting test player calm, pickaxe back: " + pickaxeBack);
+            if (!pickaxeBack) throw new AssertionError("resting test player: the pickaxe is not back in hand");
             clientCommand(context, "livinghorizon debug offline test clear");
             wait(context, world, 10);
             boolean gone = context.computeOnClient(minecraft -> FarPlayerTracker.get().resting().spots().stream()
