@@ -106,7 +106,8 @@ thread), `setScreen`, `clickScreenButton(translation key)`, `takeScreenshot`. Th
   `Scene.shaderPack` copies the pack into Iris's folder and turns it on before the first
   scenario. Photon does not load on llvmpipe (too much shared memory): use Complementary,
   its zip from Modrinth unpacked into the scratchpad. The run folder is emptied at start, so a pack copied there by hand is lost.
-- Sodium can be added (`--sodium`, downloaded from Modrinth into `build/game-test-mods`).
+- Sodium can be added (`--sodium`, downloaded from Modrinth into `build/game-test-mods`). The
+  `sodium` scenario shows the mod's pages in Sodium's video settings; without Sodium it does nothing.
 
 ## Never
 

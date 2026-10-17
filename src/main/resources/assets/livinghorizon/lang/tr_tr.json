@@ -13,6 +13,7 @@
   "livinghorizon.options.preset.normal": "Normal",
   "livinghorizon.options.preset.low": "Düşük",
   "livinghorizon.options.preset": "Hazır Ayar: %s",
+  "livinghorizon.options.preset.name": "Hazır Ayar",
   "livinghorizon.options.impostorsSection": "Performans",
   "livinghorizon.options.enabled": "Oyuncuları Göster",
   "livinghorizon.options.enabled.tooltip": "Diğer oyuncuları, sunucunun onları göndermeyi bıraktığı mesafenin ötesinde de göstermeye devam eder. \"Uzaktaki Oyuncuları Aç/Kapa\" tuşu da bunu açıp kapatır.",

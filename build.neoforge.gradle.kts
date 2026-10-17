@@ -55,10 +55,19 @@ neoForge {
     addModdingDependenciesTo(sourceSets.test.get())
 }
 
+repositories {
+    maven("https://maven.caffeinemc.net/releases") {
+        name = "CaffeineMC"
+        content { includeGroup("net.caffeinemc") }
+    }
+}
+
 dependencies {
     // The code is annotated with jspecify's @Nullable, which the game ships from 1.21.11 on.
     // Before that it is only needed to compile: an annotation nobody reads at run time.
     if (sc.current.parsed < "1.21.11") compileOnly("org.jspecify:jspecify:1.0.0")
+    // Only Sodium's API, for the mod's pages in its video settings; nothing of it ships.
+    findProperty("deps.sodium")?.let { compileOnly("net.caffeinemc:sodium-neoforge-api:$it") { isTransitive = false } }
     testImplementation(platform("org.junit:junit-bom:${property("deps.junit")}"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.junit.jupiter:junit-jupiter-params")
@@ -101,6 +110,9 @@ tasks {
             register("version", "mod.version")
             register("minecraft", "mod.mc_compat")
             register("neoforge", "deps.neoforge_compat")
+            // Sodium finds the mod's pages through this property, on the targets that have them.
+            put("sodium", if (findProperty("deps.sodium") != null)
+                "[modproperties.${property("mod.id")}]\n\"sodium:config_api_user\" = \"fr.clixmods.livinghorizon.ui.SodiumOptions\"\n" else "")
             put("java", requiredJava.majorVersion)
             put("mixins", project.extra["lhMixins"] as String)
             // Only the Forge targets that run under obfuscated names need a refmap.
@@ -108,6 +120,7 @@ tasks {
         }
 
         inputs.property("java", requiredJava.majorVersion)
+        inputs.property("sodium", props.getValue("sodium"))
         inputs.property("mixins", project.extra["lhMixins"] as String)
         filesMatching(listOf("META-INF/neoforge.mods.toml", "livinghorizon.mixins.json")) { expand(props) }
         // The other loaders' metadata has nothing to say to NeoForge, and it reads its

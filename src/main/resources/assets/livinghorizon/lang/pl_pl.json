@@ -13,6 +13,7 @@
   "livinghorizon.options.preset.normal": "Normalny",
   "livinghorizon.options.preset.low": "Niski",
   "livinghorizon.options.preset": "Domyślne: %s",
+  "livinghorizon.options.preset.name": "Domyślne",
   "livinghorizon.options.impostorsSection": "Wydajność",
   "livinghorizon.options.enabled": "Pokazuj graczy",
   "livinghorizon.options.enabled.tooltip": "Nadal pokazuje innych graczy poza odległością, na której serwer przestaje ich wysyłać. Klawisz „Przełącz odległych graczy” również to przełącza.",

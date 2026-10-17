@@ -13,6 +13,7 @@
   "livinghorizon.options.preset.normal": "Normal",
   "livinghorizon.options.preset.low": "Niedrig",
   "livinghorizon.options.preset": "Voreinstellung: %s",
+  "livinghorizon.options.preset.name": "Voreinstellung",
   "livinghorizon.options.impostorsSection": "Leistung",
   "livinghorizon.options.enabled": "Spieler anzeigen",
   "livinghorizon.options.enabled.tooltip": "Zeigt andere Spieler weiterhin an, auch jenseits der Entfernung, ab der der Server sie nicht mehr sendet. Die Taste „Ferne Spieler umschalten“ schaltet dies ebenfalls um.",

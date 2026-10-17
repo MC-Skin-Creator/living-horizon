@@ -51,6 +51,10 @@ repositories {
         name = "TerraformersMC"
         content { includeGroup("com.terraformersmc") }
     }
+    maven("https://maven.caffeinemc.net/releases") {
+        name = "CaffeineMC"
+        content { includeGroup("net.caffeinemc") }
+    }
 }
 
 dependencies {
@@ -75,6 +79,10 @@ dependencies {
     // Only its API, for the settings button; nothing of it ships, nothing requires it.
     "${if (unobfuscated) "compileOnly" else "modCompileOnly"}"(
         "com.terraformersmc:modmenu:${property("deps.modmenu")}") { isTransitive = false }
+    // Only Sodium's API, for the mod's pages in its video settings; nothing of it ships.
+    findProperty("deps.sodium")?.let {
+        "${if (unobfuscated) "compileOnly" else "modCompileOnly"}"("net.caffeinemc:sodium-fabric-api:$it") { isTransitive = false }
+    }
 
     "testImplementation"(platform("org.junit:junit-bom:${property("deps.junit")}"))
     "testImplementation"("org.junit.jupiter:junit-jupiter")
@@ -124,7 +132,10 @@ tasks {
             // mod, so it says intermediary as well: Quilt runs every game after 25 under
             // the names it ships with, whatever the field says.
             put("intermediate_mappings", "\"intermediate_mappings\": \"net.fabricmc:intermediary\",")
+            // Sodium finds the mod's pages through this entry point, on the targets that have them.
+            put("sodium", if (findProperty("deps.sodium") != null) "\"sodium:config_api_user\": \"fr.clixmods.livinghorizon.ui.SodiumOptions\"," else "")
         }
+        inputs.property("sodium", props.getValue("sodium"))
 
         inputs.property("java", requiredJava.majorVersion)
         inputs.property("mixins", project.extra["lhMixins"] as String)

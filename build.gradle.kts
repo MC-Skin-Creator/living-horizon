@@ -11,6 +11,10 @@ repositories {
         name = "TerraformersMC"
         content { includeGroup("com.terraformersmc") }
     }
+    maven("https://maven.caffeinemc.net/releases") {
+        name = "CaffeineMC"
+        content { includeGroup("net.caffeinemc") }
+    }
 }
 
 // What the targets share, worked out once: the Java level, the data pack's pack.mcmeta,
@@ -35,6 +39,8 @@ dependencies {
     modImplementation("net.fabricmc.fabric-api:fabric-api:${sc.properties["deps.fabric_api"] as String}")
     // Only its API, for the settings button; nothing of it ships, nothing requires it.
     modCompileOnly("com.terraformersmc:modmenu:${property("deps.modmenu")}") { isTransitive = false }
+    // Only Sodium's API, for the mod's pages in its video settings; nothing of it ships.
+    findProperty("deps.sodium")?.let { modCompileOnly("net.caffeinemc:sodium-fabric-api:$it") { isTransitive = false } }
 
     testImplementation(platform("org.junit:junit-bom:${property("deps.junit")}"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -123,7 +129,10 @@ tasks {
             put("mixins", project.extra["lhMixins"] as String)
             // Loom names its own refmap in the config: the placeholder is for the older Forge.
             put("refmap", "")
+            // Sodium finds the mod's pages through this entry point, on the targets that have them.
+            put("sodium", if (findProperty("deps.sodium") != null) "\"sodium:config_api_user\": [\"fr.clixmods.livinghorizon.ui.SodiumOptions\"]," else "")
         }
+        inputs.property("sodium", props.getValue("sodium"))
         inputs.property("java", requiredJava.majorVersion)
         inputs.property("mixins", project.extra["lhMixins"] as String)
         filesMatching(listOf("fabric.mod.json", "livinghorizon.mixins.json")) { expand(props) }

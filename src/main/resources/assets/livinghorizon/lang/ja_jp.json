@@ -13,6 +13,7 @@
   "livinghorizon.options.preset.normal": "標準",
   "livinghorizon.options.preset.low": "低",
   "livinghorizon.options.preset": "プリセット：%s",
+  "livinghorizon.options.preset.name": "プリセット",
   "livinghorizon.options.impostorsSection": "パフォーマンス",
   "livinghorizon.options.enabled": "プレイヤーを表示",
   "livinghorizon.options.enabled.tooltip": "サーバーが送信を止める距離を超えても、他のプレイヤーを表示し続けます。「遠くのプレイヤーの表示切り替え」キーでも切り替えられます。",
