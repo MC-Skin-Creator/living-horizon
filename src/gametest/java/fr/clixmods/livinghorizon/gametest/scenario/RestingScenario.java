@@ -246,6 +246,8 @@ public final class RestingScenario implements Scenario {
             if (tester != null) throw new AssertionError("resting test player: " + tester);
             Scene.log("resting test player looked at");
             Scene.screenshot(context, this, "test-player");
+            faceTester(context, world);
+            Scene.screenshot(context, this, "test-player-front");
 
             // A monster next to them: the pickaxe put away for a sword and a shield, back once it is gone.
             Vec3 tested = context.computeOnClient(minecraft -> puppet(minecraft, "Tester").position());
@@ -258,6 +260,7 @@ public final class RestingScenario implements Scenario {
                         && puppet.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET);
             });
             Scene.log("resting test player on guard, pickaxe put away: " + swapped);
+            faceTester(context, world);
             Scene.screenshot(context, this, "test-player-guard");
             if (!swapped) throw new AssertionError("resting test player: no sword and shield in place of the pickaxe");
             Scene.command(world, "kill @e[type=husk]");
@@ -268,6 +271,8 @@ public final class RestingScenario implements Scenario {
                         && puppet.getOffhandItem().isEmpty();
             });
             Scene.log("resting test player calm, pickaxe back: " + pickaxeBack);
+            faceTester(context, world);
+            Scene.screenshot(context, this, "test-player-calm");
             if (!pickaxeBack) throw new AssertionError("resting test player: the pickaxe is not back in hand");
             clientCommand(context, "livinghorizon debug offline test clear");
             wait(context, world, 10);
@@ -276,6 +281,18 @@ public final class RestingScenario implements Scenario {
             if (!gone) throw new AssertionError("resting test player still there after clear");
             Scene.log("resting test player cleared");
         }
+    }
+
+    /** Puts the camera 3 blocks in front of the test player, looking at them. */
+    private static void faceTester(ClientGameTestContext context, TestSingleplayerContext world) {
+        double[] at = context.computeOnClient(minecraft -> {
+            RestingPuppet puppet = puppet(minecraft, "Tester");
+            double yaw = Math.toRadians(puppet.yBodyRot);
+            return new double[] {puppet.getX() - Math.sin(yaw) * 3, puppet.getY(), puppet.getZ() + Math.cos(yaw) * 3,
+                    puppet.yBodyRot + 180};
+        });
+        Scene.command(world, "tp @a " + at[0] + " " + at[1] + " " + at[2] + " " + at[3] + " 15");
+        context.waitTicks(5);
     }
 
     /** Types a command in the chat, as the player would: the mod's commands run on the client. */
