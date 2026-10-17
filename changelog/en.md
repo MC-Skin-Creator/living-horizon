@@ -6,6 +6,7 @@
 - **Simplified Players** — a new setting keeps distant players as full models while mobs still turn into flat pictures far away.
 - **Languages** — Living Horizon now speaks German, Spanish, Italian, Brazilian Portuguese, Polish, Turkish, Russian, Ukrainian, Simplified and Traditional Chinese, Japanese and Korean.
 - **Sodium** — Living Horizon's settings now also appear in Sodium's *Video Settings*, as pages of their own below Sodium's (Sodium 0.8 and later).
+- **Players who logged off on a mount** — they keep their horse, boat or happy ghast and ride it around where they left: the horse walks, the boat stays on the water and the happy ghast drifts through the air.
 
 ### Improved
 - **Settings** — every setting has a clearer name and description, worded like Minecraft's own options, and distances get sliders the full width of the list.

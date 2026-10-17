@@ -15,17 +15,21 @@ class RestingPlayersTest {
     void roundTrips() {
         List<RestingPlayers.Spot> spots = List.of(
                 new RestingPlayers.Spot("Steve", UUID.fromString("8667ba71-b85a-4004-af54-457a9734eed7"),
-                        "ewogICJ0aW1lc3RhbXAiIDogMQp9", "c2lnbmF0dXJl", 1, -1234.5, 64.0, 8001.9, 270f, 1760100000000L),
-                new RestingPlayers.Spot("Alex", null, null, null, 0, 10, 70, -20, 0f, 0));
+                        "ewogICJ0aW1lc3RhbXAiIDogMQp9", "c2lnbmF0dXJl", 1, -1234.5, 64.0, 8001.9, 270f, 1760100000000L, null),
+                new RestingPlayers.Spot("Alex", null, null, null, 0, 10, 70, -20, 0f, 0,
+                        new RestingPlayers.Mount("minecraft:horse", "{Variant:3,Tame:1b}", "17:b:4", 0, 0.85, -0.1,
+                                90f, -15f)),
+                new RestingPlayers.Spot("Ghast", null, null, null, 0, 0, 120, 0, 0f, 0,
+                        new RestingPlayers.Mount("minecraft:happy_ghast", "{}", null, 0, 4, 0, 0f, 0f)));
         StringWriter out = new StringWriter();
         RestingPlayers.write(spots, out);
         assertEquals(spots, RestingPlayers.read(new StringReader(out.toString())));
     }
 
     @Test
-    void readsFilesWithoutTheLastSeenTime() {
+    void readsFilesWithoutTheLastSeenTimeOrMount() {
         String older = "[{\"name\": \"Alex\", \"dimension\": 0, \"x\": 10, \"y\": 70, \"z\": -20, \"yaw\": 0}]";
-        assertEquals(List.of(new RestingPlayers.Spot("Alex", null, null, null, 0, 10, 70, -20, 0f, 0)),
+        assertEquals(List.of(new RestingPlayers.Spot("Alex", null, null, null, 0, 10, 70, -20, 0f, 0, null)),
                 RestingPlayers.read(new StringReader(older)));
     }
 

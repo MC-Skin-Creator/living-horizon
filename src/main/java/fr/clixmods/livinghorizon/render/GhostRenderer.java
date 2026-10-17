@@ -583,7 +583,14 @@ public final class GhostRenderer {
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
             if (body == null) continue;
             RestingPuppet.Look look = puppet.look();
-            if (look != RestingPuppet.Look.STAND && body instanceof LivingEntityRenderState living) {
+            // On what they rode when they logged off: the mount drawn under them, they seated on it.
+            Entity mount = look == RestingPuppet.Look.RIDE ? puppet.mount() : null;
+            EntityRenderState mountState = mount == null ? null : extract(dispatcher, mount, partialTick);
+            if (mountState != null && body instanceof HumanoidRenderState humanoid) {
+                humanoid.isPassenger = true;
+            }
+            if (look != RestingPuppet.Look.STAND && look != RestingPuppet.Look.RIDE
+                    && body instanceof LivingEntityRenderState living) {
                 living.yRot = 0;
                 living.xRot = 0;
                 living.walkAnimationSpeed = 0;
@@ -612,7 +619,7 @@ public final class GhostRenderer {
                 body.nameTagAttachment = new Vec3(0, 0.3, 0);
             }
             //?}
-            add(frame, minecraft, eye, body, null, true, Mark.PLAYER, config, spot.name());
+            add(frame, minecraft, eye, body, mountState, true, Mark.PLAYER, config, spot.name());
             body.nameTag = name;
         }
     }
