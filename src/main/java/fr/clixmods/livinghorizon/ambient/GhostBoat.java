@@ -167,7 +167,7 @@ public final class GhostBoat {
         }
         yaw += turn;
         y = surface + 0.04 * Math.sin(age * 0.05);
-        if (age > LIFE || Math.hypot(self.getX() - x, self.getZ() - z) < NEAR
+        if (age > LIFE || Math.hypot(self.getX() - x, self.getZ() - z) < NEAR || !Columns.drawn(current, self, x, z)
                 || (!called && current.isBrightOutside())) {
             clear();
         }

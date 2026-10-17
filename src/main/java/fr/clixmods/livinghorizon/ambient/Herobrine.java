@@ -144,6 +144,8 @@ public final class Herobrine {
             return;
         }
         if (him != null && him.level() != level) figure = him = null;
+        // Gone with the ground under him, once it is no longer drawn.
+        if (him != null && !Columns.drawn(level, self, him.getX(), him.getZ())) figure = him = null;
         boolean night = !level.isBrightOutside();
         if (!night) {
             wait = -1;

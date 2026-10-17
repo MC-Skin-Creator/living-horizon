@@ -99,6 +99,7 @@ public final class EasterEggsScenario implements Scenario {
             });
         }
         if (at == null) throw new AssertionError("ee4 did not come by night");
+        drawn(context, at, "ee4 by night");
         Vec3 him = at;
         context.runOnClient(minecraft -> {
             Scene.log("eggs ee4 by night at " + him + ", " + (int) him.distanceTo(minecraft.player.position()) + " blocks");
@@ -294,6 +295,10 @@ public final class EasterEggsScenario implements Scenario {
         context.runOnClient(minecraft -> {
             Vec3 now = ambience().bigfoot().position();
             if (now == null) throw new AssertionError("ee6 gone too soon");
+            double across = Math.hypot(now.x - minecraft.player.getX(), now.z - minecraft.player.getZ());
+            if (across > minecraft.options.getEffectiveRenderDistance() * 16 - 16) {
+                throw new AssertionError("ee6 at " + (int) across + " blocks, past what is drawn");
+            }
             Scene.log("eggs ee6 at " + now + ", " + (int) now.distanceTo(minecraft.player.position()) + " blocks");
             lookAt(minecraft.player, now.x, now.y + 1.4, now.z);
             minecraft.options.fov().set(30);
@@ -346,10 +351,26 @@ public final class EasterEggsScenario implements Scenario {
     private static Vec3 await(ClientGameTestContext context, java.util.function.Supplier<Vec3> where, String egg) {
         for (int i = 0; i < 100; i++) {
             Vec3 at = context.computeOnClient(minecraft -> where.get());
-            if (at != null) return at;
+            if (at != null) {
+                drawn(context, at, egg);
+                return at;
+            }
             context.waitTick();
         }
         throw new AssertionError(egg + " found no place");
+    }
+
+    /**
+     * Standing where the game draws the ground: inside the circle of chunks it draws, never in
+     * the corners of the square it keeps loaded. No Voxy nor Distant Horizons here to draw farther.
+     */
+    private static void drawn(ClientGameTestContext context, Vec3 at, String egg) {
+        context.runOnClient(minecraft -> {
+            double across = Math.hypot(at.x - minecraft.player.getX(), at.z - minecraft.player.getZ());
+            double edge = minecraft.options.getEffectiveRenderDistance() * 16;
+            if (across > edge - 16) throw new AssertionError(egg + " at " + (int) across + " blocks, past the "
+                    + (int) edge + " drawn");
+        });
     }
 
     private static void lookAt(LocalPlayer player, double x, double y, double z) {

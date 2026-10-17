@@ -31,7 +31,20 @@ final class Sight {
      */
     static double reach() {
         Minecraft minecraft = Minecraft.getInstance();
-        return Math.max(minecraft.options.getEffectiveRenderDistance() * 16 * 0.9, LodWorld.clearDistance());
+        return Math.max(minecraft.options.getEffectiveRenderDistance() * 16 - 16, farClear());
+    }
+
+    private static double farClear;
+    private static long farClearAt = Long.MIN_VALUE;
+
+    /** {@link LodWorld#clearDistance}, read again once a second: the settings it reads seldom change. */
+    static double farClear() {
+        long now = System.nanoTime();
+        if (farClearAt == Long.MIN_VALUE || now - farClearAt > 1_000_000_000L) {
+            farClear = LodWorld.clearDistance();
+            farClearAt = now;
+        }
+        return farClear;
     }
 
     /**

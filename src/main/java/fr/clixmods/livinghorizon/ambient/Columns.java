@@ -15,13 +15,8 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * The top of many columns at once, for the easter eggs that look for a place: read here
- * where the chunk is loaded, from the far world (Voxy, Distant Horizons) off the game's
- * thread where it is not, and only where something is drawn.
- *
- * <p>Inside the game's render distance the far world draws nothing: a chunk there not loaded
- * yet is a hole, whatever the far world knows of it. Past it, the far world draws only so far,
- * and its fog hides the end ({@link LodWorld#clearDistance}). A column in neither is left
- * unknown.
+ * where the game draws its chunks, from the far world (Voxy, Distant Horizons) off the game's
+ * thread past them, and only where something is drawn ({@link #drawn}).
  */
 final class Columns {
     /**
@@ -43,20 +38,36 @@ final class Columns {
     private Columns() {
     }
 
+    /**
+     * Whether the ground of this column is drawn, seen from the player: by the game inside the
+     * circle of chunks it draws, a little in from its edge, where the chunk is loaded (it keeps
+     * a square of them loaded, drawing only the circle, so a loaded chunk in a corner shows
+     * nothing); by the far world past that circle, as far as it draws and its fog leaves clear.
+     * Inside the circle the far world draws nothing: a chunk not loaded there is a hole,
+     * whatever the far world knows of it. Called on the game's thread.
+     */
+    static boolean drawn(ClientLevel level, LocalPlayer self, double x, double z) {
+        double across = Math.hypot(x - self.getX(), z - self.getZ());
+        double edge = Minecraft.getInstance().options.getEffectiveRenderDistance() * 16;
+        if (across <= edge - 16) return level.hasChunk(Mth.floor(x) >> 4, Mth.floor(z) >> 4);
+        return across >= edge + 16 && across <= Sight.farClear();
+    }
+
     /** Entry {@code i} is the column at {@code (xs[i], zs[i])}; called on the game's thread. */
     static CompletableFuture<Column[]> read(ClientLevel level, double[] xs, double[] zs) {
         Column[] found = new Column[xs.length];
         List<Integer> far = new ArrayList<>();
-        Minecraft minecraft = Minecraft.getInstance();
-        LocalPlayer self = minecraft.player;
-        // Where the far world draws: past the game's own chunks, as far as it is clear of fog.
-        double from = minecraft.options.getEffectiveRenderDistance() * 16 + 16, to = LodWorld.clearDistance();
+        LocalPlayer self = Minecraft.getInstance().player;
+        double edge = Minecraft.getInstance().options.getEffectiveRenderDistance() * 16;
         for (int i = 0; i < xs.length; i++) {
             int bx = Mth.floor(xs[i]), bz = Mth.floor(zs[i]);
-            if (!level.hasChunk(bx >> 4, bz >> 4)) {
-                double across = self == null ? 0 : Math.hypot(xs[i] - self.getX(), zs[i] - self.getZ());
-                if (across >= from && across <= to) far.add(i);
-                else found[i] = new Column(xs[i], zs[i], Double.NaN, false, "", false);
+            if (self == null || !drawn(level, self, xs[i], zs[i])) {
+                found[i] = new Column(xs[i], zs[i], Double.NaN, false, "", false);
+                continue;
+            }
+            if (Math.hypot(xs[i] - self.getX(), zs[i] - self.getZ()) > edge) {
+                // Past the game's circle: what the far world draws there.
+                far.add(i);
                 continue;
             }
             int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, bx, bz);

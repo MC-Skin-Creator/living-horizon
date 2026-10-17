@@ -259,7 +259,10 @@ public final class Bigfoot {
             hidden++;
         }
         boolean gone = hidden >= HIDDEN && (seen >= SEEN || age > steps);
-        if (gone || age > steps + LONGER || Math.hypot(self.getX() - x, self.getZ() - z) < NEAR) clear();
+        if (gone || age > steps + LONGER || Math.hypot(self.getX() - x, self.getZ() - z) < NEAR
+                || !Columns.drawn(current, self, x, z)) {
+            clear();
+        }
     }
 
     private void clear() {

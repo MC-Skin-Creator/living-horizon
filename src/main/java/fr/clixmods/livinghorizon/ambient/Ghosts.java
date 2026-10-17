@@ -193,7 +193,7 @@ public final class Ghosts {
         yo = y;
         zo = z;
         yawO = yaw;
-        if (Math.hypot(self.getX() - x, self.getZ() - z) < NEAR) {
+        if (Math.hypot(self.getX() - x, self.getZ() - z) < NEAR || !Columns.drawn(current, self, x, z)) {
             clear();
             return;
         }

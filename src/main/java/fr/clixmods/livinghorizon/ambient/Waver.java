@@ -177,7 +177,10 @@ public final class Waver {
         yaw = facing(self);
         // Looked at once it stands there a moment: gone at once.
         boolean looked = age > STAND && Herobrine.lookedAt(level, self, new Vec3(x, y + 1.2, z));
-        if (looked || age > (called ? CALLED_PATIENCE : PATIENCE) || Math.hypot(self.getX() - x, self.getZ() - z) < NEAR) clear();
+        if (looked || age > (called ? CALLED_PATIENCE : PATIENCE) || Math.hypot(self.getX() - x, self.getZ() - z) < NEAR
+                || !Columns.drawn(level, self, x, z)) {
+            clear();
+        }
     }
 
     private float facing(LocalPlayer self) {
