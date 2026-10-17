@@ -2,6 +2,8 @@
 
 ## Prochaine version
 
+## 0.7.0 — 2026-10-17
+
 ### Nouveautés
 - **Joueurs déconnectés** — ils vivent leur vie autour de l'endroit où ils sont partis, à l'échelle d'un village : ils se promènent, s'assoient, regardent les coffres et les blocs de métier, passent les portes pour aller au lit la nuit, et lèvent un bouclier face aux monstres en vue et aux coups ; ils restent au sol : cassez le bloc sous eux, ils tombent ; enterrez-les, ils remontent.
 - **Noms hors ligne** — les joueurs déconnectés affichent leur nom marqué *(hors ligne)*, et en viser un de près indique quand il a été vu pour la dernière fois ; des réglages masquent leurs noms, ou les joueurs eux-mêmes.

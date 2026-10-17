@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.7.0 — 2026-10-17
+
 ### New
 - **Players who logged off** — they live their life around where they left, as far as a village: they stroll, sit, look at chests and workstations, walk through doors to a bed at night, and raise a shield against monsters in sight and hits; they keep to the ground: break their floor and they fall, bury them and they climb back on top.
 - **Offline names** — players who logged off show their name marked *(offline)*, and aiming at one up close tells when they were last seen; settings hide their names, or the players themselves.
