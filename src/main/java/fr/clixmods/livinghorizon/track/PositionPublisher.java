@@ -20,8 +20,8 @@ import java.util.Set;
 
 /**
  * The companion data pack's job, done by the mod itself: it writes the scoreboard
- * objectives the pack does ({@code lh.x}, {@code lh.y}, {@code lh.z}, {@code lh.m}, in the
- * layout of {@code load.mcfunction}) for one server, and clients read them with
+ * objectives the pack does ({@code lh.x}, {@code lh.y}, {@code lh.z}, {@code lh.m} and
+ * {@code lh.r}, which links a rider to their mount, in the layout of {@code load.mcfunction}) for one server, and clients read them with
  * {@link SharedPositions}, exactly as they would from the pack.
  *
  * <p>Run by {@link LanShare} for a world opened to LAN, and by {@code MinecraftServerMixin}
@@ -41,6 +41,8 @@ public final class PositionPublisher {
     /** Runs to watch a pack that was found before taking over. */
     private static final int PROBE = 3;
     private static final String[] OBJECTIVES = {"lh.x", "lh.y", "lh.z", "lh.m"};
+    /** A number of each player's own, which the mob they ride carries too. */
+    private static final String RIDER = "lh.r";
     private static final Map<String, Integer> KINDS = new HashMap<>();
     private static final Logger LOGGER = LoggerFactory.getLogger("Living Horizon");
 
@@ -60,6 +62,10 @@ public final class PositionPublisher {
     private int runs;
     /** What was last written for each holder, so that a still player sends nothing. */
     private final Map<String, int[]> written = new HashMap<>();
+    /** Each player's number in {@link #RIDER}, by name, once known. */
+    private final Map<String, Integer> riders = new HashMap<>();
+    /** The rider's number last written for each published mob, 0 for none. */
+    private final Map<String, Integer> carrying = new HashMap<>();
 
     public PositionPublisher(MinecraftServer server, boolean dedicated) {
         this.server = server;
@@ -109,11 +115,13 @@ public final class PositionPublisher {
         for (String name : OBJECTIVES) {
             if (scoreboard.getObjective(name) == null) command("scoreboard objectives add " + name + " dummy");
         }
-        // The sidebars of four team colours nobody plays in: shown, so sent to every client.
+        if (scoreboard.getObjective(RIDER) == null) command("scoreboard objectives add " + RIDER + " dummy");
+        // The sidebars of five team colours nobody plays in: shown, so sent to every client.
         command("scoreboard objectives setdisplay sidebar.team.black lh.x");
         command("scoreboard objectives setdisplay sidebar.team.dark_blue lh.y");
         command("scoreboard objectives setdisplay sidebar.team.dark_green lh.z");
         command("scoreboard objectives setdisplay sidebar.team.dark_aqua lh.m");
+        command("scoreboard objectives setdisplay sidebar.team.dark_red " + RIDER);
         set("#version", "lh.m", SharedPositions.VERSION);
         LOGGER.info(dedicated
                 ? "Living Horizon: no data pack on this server, so the mod shares the positions by itself. Players with the mod see each other at any distance."
@@ -127,7 +135,41 @@ public final class PositionPublisher {
             int meta = yaw + 360 * SharedPositions.dimensionCode(player.level().dimension())
                     + (player.isPassenger() ? 1440 : 0);
             publish(player.getScoreboardName(), player.getX(), player.getY(), player.getZ(), meta);
+            // The mob under them carries their number at once, not at the next round of mobs.
+            Entity vehicle = player.getVehicle();
+            if (vehicle != null && KINDS.containsKey(EntityType.getKey(vehicle.getType()).toString())) {
+                carry(vehicle.getUUID().toString(), rider(player));
+            }
         }
+    }
+
+    /** The player's number, given once, as the data pack gives it: the last one given plus one. */
+    private int rider(ServerPlayer player) {
+        String name = player.getScoreboardName();
+        Integer known = riders.get(name);
+        if (known != null) return known;
+        Scoreboard scoreboard = server.getScoreboard();
+        Objective objective = scoreboard.getObjective(RIDER);
+        Integer score = objective == null ? null : SharedPositions.score(scoreboard, name, objective);
+        int number;
+        if (score != null && score > 0) {
+            number = score;
+        } else {
+            Integer last = objective == null ? null : SharedPositions.score(scoreboard, "#next", objective);
+            number = (last == null ? 0 : last) + 1;
+            set("#next", RIDER, number);
+            set(name, RIDER, number);
+        }
+        riders.put(name, number);
+        return number;
+    }
+
+    /** Writes which player rides a published mob: 0 for none, which resets it. */
+    private void carry(String holder, int rider) {
+        Integer before = carrying.put(holder, rider);
+        if (before != null && before == rider) return;
+        command(rider > 0 ? "scoreboard players set " + holder + " " + RIDER + " " + rider
+                : "scoreboard players reset " + holder + " " + RIDER);
     }
 
     private void mobs() {
@@ -147,10 +189,16 @@ public final class PositionPublisher {
                 String holder = entity.getUUID().toString();
                 seen.add(holder);
                 publish(holder, entity.getX(), entity.getY(), entity.getZ(), meta);
+                int rider = 0;
+                for (Entity passenger : entity.getPassengers()) {
+                    if (passenger instanceof ServerPlayer player) rider = rider(player);
+                }
+                carry(holder, rider);
             }
         }
         // An unloaded mob keeps its scores in the world; only the memory of them goes.
         written.keySet().removeIf(holder -> holder.length() == 36 && !seen.contains(holder));
+        carrying.keySet().removeIf(holder -> !seen.contains(holder));
     }
 
     /** Position in tenths of a block, then the meta score last: a client reads nothing before it. */
@@ -175,6 +223,7 @@ public final class PositionPublisher {
     public void remove() {
         if (!ours || dedicated) return;
         for (String name : OBJECTIVES) command("scoreboard objectives remove " + name);
+        command("scoreboard objectives remove " + RIDER);
     }
 
     private void command(String command) {

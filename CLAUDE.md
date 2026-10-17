@@ -381,8 +381,10 @@ come back, add it here in the same pull request: this file is what the next sess
   rider, a player met already riding floating far away): a mount is drawn under its rider
   (`FarPlayer.mountPuppet`), and the remembered mobs leave out every id `FarPlayer.carriedMount`
   names (`MobMemory.carried`), the data pack's or the server's copy of it included. A rider
-  whose mount was never seen up close adopts the remembered mob right under them
-  (`MobMemory.mountUnder`); `CarriedMountTest` checks both.
+  whose mount was never seen up close takes the published mob carrying their number in `lh.r`
+  (`SharedPositions.vehicle`), or, from an older pack without it, the remembered mob right under
+  them (`MobMemory.mountUnder`). `CarriedMountTest`, `SharedPositionsTest`, and the `lanshare`
+  and `datapackrider` scenarios check it.
 - **A dedicated server crashes on load with the mod** ("Attempted to load class
   net/minecraft/client/... for invalid dist DEDICATED_SERVER"): something the server loads
   reaches a client class. Forge's `@Mod` has no side, so it sits on `LivingHorizonForge`,

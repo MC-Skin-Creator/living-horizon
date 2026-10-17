@@ -164,7 +164,8 @@ public final class FarPlayerTracker {
                 player.profile = info.getProfile();
                 players.put(id, player);
             }
-            player.observeRemote(current, self, info, report, dimension, vanishRadius, config, mobs);
+            UUID vehicle = report != null && report.riding() ? shared.vehicle(scoreboard, name) : null;
+            player.observeRemote(current, self, info, report, vehicle, dimension, vanishRadius, config, mobs);
         }
 
         // Gone from the tab list: logged off. They rest where they were last known.

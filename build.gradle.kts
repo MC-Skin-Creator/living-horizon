@@ -90,6 +90,9 @@ loom {
         property("fabric.client.gametest.testModResourcesPath", rootProject.file("src/gametest/resources").absolutePath)
         // Which scenarios to run: -Plh.scenario=impostors,... (all of them by default).
         property("livinghorizon.scenario", (findProperty("lh.scenario") ?: "all").toString())
+        // The data pack, and this version's own pack.mcmeta and files beside it, for scenarios that install it.
+        property("livinghorizon.datapack", rootProject.file("datapack").absolutePath)
+        property("livinghorizon.datapackOverrides", (project.extra["lhMcmeta"] as File).parentFile.absolutePath)
         // Other mods to load with it (Sodium...): -Plh.mods=<folder of jars>.
         findProperty("lh.mods")?.let { property("fabric.addMods", it.toString()) }
         // A shader pack folder to turn on through Iris, which -Plh.mods must hold: -Plh.shaderpack=<folder>.

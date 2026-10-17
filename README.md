@@ -94,8 +94,8 @@ number of mobs, *Bird Density* a percentage.
   shown, and the console says so once, 10 seconds after joining. Players in another
   dimension are not followed.
 - **With the data pack, everyone's position is public** to whoever reads its scores: say
-  so to your players. Anyone in a team of colour `black`, `dark_blue`, `dark_green` or
-  `dark_aqua` would see the coordinates in their sidebar (see *The data pack* below).
+  so to your players. Anyone in a team of colour `black`, `dark_blue`, `dark_green`,
+  `dark_aqua` or `dark_red` would see the coordinates in their sidebar (see *The data pack* below).
 - **The scan only works in single player**: a server never sends the mobs of chunks far
   from you. On a server, the data pack shares them.
 
@@ -267,14 +267,16 @@ Everything below is for the curious, and for whoever works on the mod.
 `datapack/` folder, with the pack format and folder names of that game version. Drop it in the world's `datapacks/` folder and run `/reload`.
 
 Five times a second it writes each player's position, yaw, dimension and whether they
-ride something into four scoreboard objectives (`lh.x`, `lh.y`, `lh.z`, `lh.m`). An
-objective shown in any display slot is sent by the server to **every** client, at any
-distance, so the pack shows its four in the sidebars of four team colours (`black`,
-`dark_blue`, `dark_green`, `dark_aqua`): nobody sees them on screen, every client
-receives them, and the mod reads them. `/livinghorizon` says whether the pack is found.
+ride something into four scoreboard objectives (`lh.x`, `lh.y`, `lh.z`, `lh.m`). A fifth,
+`lh.r`, gives each player a number of their own, which the mob they ride carries too: a far
+player is drawn on their own mount, never beside a second copy of it. An objective shown in
+any display slot is sent by the server to **every** client, at any distance, so the pack
+shows its five in the sidebars of five team colours (`black`, `dark_blue`, `dark_green`,
+`dark_aqua`, `dark_red`): nobody sees them on screen, every client receives them, and the
+mod reads them. `/livinghorizon` says whether the pack is found.
 
 - Anyone in a team of one of those colours would see the coordinates in their sidebar.
-  If your server uses them, change the four `setdisplay` lines in `load.mcfunction`.
+  If your server uses them, change the five `setdisplay` lines in `load.mcfunction`.
 - Any client can read these scores: everyone's position is public to whoever looks.
 - `/function livinghorizon:uninstall`, then `/datapack disable "file/<pack name>"`,
   removes everything it created.
@@ -284,7 +286,7 @@ parses `pack.mcmeta` and the predicate with the game's own codecs.
 
 ### Sharing the positions without the data pack
 
-The mod does what the data pack does: `PositionPublisher` writes the same four objectives, in
+The mod does what the data pack does: `PositionPublisher` writes the same five objectives, in
 the same layout and the same sidebars, every four ticks for the players and every five
 seconds for the mobs, and a client's mod reads them as it would the pack's. It runs where the
 server is:
@@ -295,7 +297,7 @@ server is:
 - **A dedicated server**: the same jar in the server's `mods` folder (with the Fabric API on
   Fabric and Quilt). `MinecraftServerMixin` drives it from the server's tick. The objectives
   stay in the world, like the pack's, so that players who logged off keep their last position;
-  to remove them: `/scoreboard objectives remove lh.x` (and `lh.y`, `lh.z`, `lh.m`).
+  to remove them: `/scoreboard objectives remove lh.x` (and `lh.y`, `lh.z`, `lh.m`, `lh.r`).
 
 Both use the game's own `scoreboard` command, the same text on every version. When the data
 pack runs in the world too (its clock moves), the mod leaves the job to it.

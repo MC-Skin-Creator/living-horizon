@@ -104,6 +104,34 @@ class SharedPositionsTest {
     }
 
     @Test
+    void findsTheMobAPlayerRides() {
+        Scoreboard scoreboard = pack();
+        Objective riders = objective(scoreboard, "lh.r");
+        UUID ghast = UUID.fromString("0f8fad5b-d9cb-469f-a165-70867728950e");
+        UUID left = UUID.fromString("7c9e6679-7425-40de-944b-e07fc1f90ae7");
+        // Steve has number 2; the ghast under him carries it, the horse Alex rode carries 1.
+        set(scoreboard, "#next", riders, 2);
+        set(scoreboard, "Alex", riders, 1);
+        set(scoreboard, "Steve", riders, 2);
+        set(scoreboard, left.toString(), riders, 1);
+        set(scoreboard, ghast.toString(), riders, 2);
+
+        SharedPositions shared = new SharedPositions();
+        shared.update(scoreboard);
+        assertEquals(ghast, shared.vehicle(scoreboard, "Steve"));
+        assertNull(shared.vehicle(scoreboard, "Nobody"));
+        assertFalse(shared.holders(scoreboard).contains("#next"));
+    }
+
+    @Test
+    void anOlderPackLinksNoMount() {
+        Scoreboard scoreboard = pack();
+        SharedPositions shared = new SharedPositions();
+        shared.update(scoreboard);
+        assertNull(shared.vehicle(scoreboard, "Steve"));
+    }
+
+    @Test
     void mobsKnownOnlyFromThePackParse() throws Exception {
         for (String type : MobKinds.TYPES) {
             TagParser.parseCompoundFully(MobKinds.nbt(type, 3, true));
