@@ -124,11 +124,19 @@ when everything on `develop` has shipped, merges `main` into it otherwise, and o
 ## CI and releases
 
 `.github/workflows/build.yml` builds and tests every Stonecutter target on each pull
-request, and attaches the jar and the data pack zip as a 7-day workflow artifact. CI is
+request, and attaches the jar and the data pack zip as a 14-day workflow artifact. CI is
 what checks a change; a pull request is not done until it is green.
 
+The release does not build again what a pull request built. A pull request into `develop`
+or `main` stamps the version its merge will release (`.github/scripts/release-version.sh`,
+shared by both workflows) and, once every target is built, leaves a `prebuilt-<tree>-<version>`
+marker. The release takes that run's jars when the pushed commit has the same tree and
+version and one of its parents is the run's head; otherwise (base moved since the build,
+artifact expired, squash merge) it builds, target by target where a jar is missing.
+
 `.github/workflows/release.yml` runs on every push to `main` and `develop` (except doc-only
-ones). A push to `develop` publishes a GitHub pre-release `vX.Y.Z-dev.N` only: no tag
+ones). A push to `develop` publishes a GitHub pre-release `vX.Y.Z-dev.N` (`N` the commit
+count of `develop`, the same on the pull request's merge and the merge commit) only: no tag
 baseline, no commit back, no Modrinth, CurseForge, Nexus Mods or Discord. A push to `main` does this:
 
 - `.github/scripts/next-version.sh` derives the version from the conventional-commit
@@ -136,8 +144,8 @@ baseline, no commit back, no Modrinth, CurseForge, Nexus Mods or Discord. A push
   a minor below 1.0.0, and `docs`/`chore`/`ci`/`refactor`/`test`/`build` alone make no
   release. `1.0.0` is never computed: cut it by hand with the workflow's `version` input.
   So is a first release at a number the commits would not give.
-- Each target builds on its own runner (`.github/scripts/release-targets.py` reads the
-  tables of `stonecutter.properties.toml`), then the release is tagged, the version and the
+- Each target builds on its own runner, or takes the pull request's jar
+  (`.github/scripts/release-targets.py` reads the tables of `stonecutter.properties.toml`), then the release is tagged, the version and the
   dated changelog are committed back to `main`, and the GitHub release gets the jar and the
   data pack zip. Below 1.0.0 it is a pre-release titled `vX.Y.Z (beta)`.
 - Modrinth and CurseForge are published by `mc-publish` when `MODRINTH_TOKEN` /

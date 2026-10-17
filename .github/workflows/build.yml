@@ -8,6 +8,11 @@ on:
 # Compiles and tests every Minecraft target and attaches the jar and the data pack as a
 # short-lived workflow artifact, so a PR can be test-installed before it merges.
 # These are not releases: no tag, no GitHub release, no version bump.
+#
+# A pull request into develop or main stamps the version its merge will release, and
+# once every target is built leaves a marker naming the merged files and that version.
+# The release workflow finds it and publishes these jars rather than building again,
+# provided the pushed commit holds exactly the files built here.
 permissions:
   contents: read
 
@@ -31,7 +36,40 @@ jobs:
       - name: Check the changelog
         run: node .github/scripts/changelog-check.js "origin/${{ github.base_ref }}"
 
+  # The version the merge releases, worked out once on the merge GitHub prepared, with
+  # the same script as the release. Empty off develop and main, and when the merge
+  # releases nothing: the jars then keep the version in the file.
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tree: ${{ steps.version.outputs.tree }}
+
+    steps:
+      - name: Checkout
+        # Full history and tags, as the release reads them.
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Work out the version
+        id: version
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          version=''
+          case "$BASE" in
+            develop|main) version=$(.github/scripts/release-version.sh "$BASE") ;;
+          esac
+          echo "Version: ${version:-unchanged}"
+          {
+            echo "version=${version}"
+            echo "tree=$(git rev-parse 'HEAD^{tree}')"
+          } >> "$GITHUB_OUTPUT"
+
   build:
+    needs: version
     # One job per Stonecutter target, so a version that stops compiling fails on its
     # own line. A target added to stonecutter.properties.toml is added here too.
     strategy:
@@ -100,6 +138,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Stamp the version
+        # The number the release will give these jars, so it can publish them as they are.
+        if: needs.version.outputs.version != ''
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          sed -i "s/^mod\.version = .*/mod.version = \"${VERSION}\"/" stonecutter.properties.toml
+          grep '^mod.version' stonecutter.properties.toml
+
       - name: Set up JDKs
         uses: actions/setup-java@v4
         with:
@@ -144,5 +192,28 @@ jobs:
         with:
           name: livinghorizon-${{ matrix.minecraft }}
           path: build/libs/*/*
-          # A preview build, not a release: no need to keep it around.
-          retention-days: 7
+          if-no-files-found: error
+          # A preview build, kept long enough for the release to take it once the pull
+          # request merges; past that, the release builds again.
+          retention-days: 14
+
+  # Only once every target built: the marker tells the release that this run holds the
+  # jars of every target for these files (the merge's tree) at this version.
+  prebuilt:
+    needs: [version, build]
+    if: needs.version.outputs.version != ''
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Write the marker
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          TREE: ${{ needs.version.outputs.tree }}
+        run: printf 'version=%s\ntree=%s\n' "$VERSION" "$TREE" > prebuilt.txt
+
+      - name: Leave the marker
+        uses: actions/upload-artifact@v4
+        with:
+          name: prebuilt-${{ needs.version.outputs.tree }}-${{ needs.version.outputs.version }}
+          path: prebuilt.txt
+          retention-days: 14
