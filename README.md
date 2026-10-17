@@ -11,15 +11,15 @@ A mod for Fabric, Quilt, NeoForge and Forge, on Minecraft **1.20 to 1.21.11**
 and **26.1 to 26.3**. Everything is drawn on the client, and nothing is sent to the server.
 To see other players at any distance, the server must share their positions: the same jar
 does it when it runs on the server (a dedicated server's `mods` folder, or the host's game
-in a world opened to LAN), or the companion **data pack** (a folder in `world/datapacks`)
-does it with no mod on the server.
+in a world opened to LAN), over the network, to the players who have the mod.
 
 ## Install
 
 One jar per game version and loader, named
 `livinghorizon-<version>+mc<game version>-<loader>.jar` (no loader suffix for Fabric): drop it
-into `.minecraft/mods/`. For exact positions, also drop the data pack zip of the same game
-version into the world's `datapacks/` folder (see *The data pack* below).
+into `.minecraft/mods/`. To see the other players at any distance, put the same jar in the
+server's `mods/` folder too (a world opened to LAN needs nothing more: the host's game is the
+server).
 
 - **Fabric**: [Fabric Loader](https://fabricmc.net/use/) 0.15.11 or newer and the
   [Fabric API](https://modrinth.com/mod/fabric-api).
@@ -50,7 +50,7 @@ you use one: it finds it by itself. Distant Horizons works from 2.3 on.
 | 26.2 | 25 | ✓ | ✓ | ✓ |
 | 26.3 | 25 | ✓ | ✓ | ✓ |
 
-Jars and the data pack come from the
+Jars come from the
 [releases](https://github.com/MC-Skin-Creator/living-horizon/releases) page. Releases
 are cut from the commits merged into `main`; a version below `1.0.0` is marked *beta*.
 
@@ -64,10 +64,10 @@ are cut from the commits merged into `main`; a version below `1.0.0` is marked *
    Horizon...* on the Options screen, Mod Menu's *Configure*, or `/livinghorizon config`)
    and press *Scan the chunks around*, or type `/livinghorizon scan` (or
    `/livinghorizon scan 64` for a radius of your choice). The mobs found appear on the
-   horizon at once. On a server, the scan has nothing to read: the data pack is what
+   horizon at once. On a server, the scan has nothing to read: a server with the mod
    shares the mobs.
 3. **Check what is followed.** `/livinghorizon` lists the players followed and where each
-   position comes from, and says whether the data pack is found.
+   position comes from, and says whether the server shares positions.
 
 **Units.** The scan radius is in **chunks** (16 blocks each): the default 32 reads the
 chunks within 512 blocks of you. Every other distance in the settings is in **blocks**:
@@ -81,19 +81,17 @@ number of mobs, the bird amount a percentage.
 
 ## Good to know
 
-- **Nobody needs the data pack any more.** The mod shares the positions itself wherever it
-  runs the server: the host's game when a world is opened to LAN, or a dedicated server with
-  the mod in its `mods` folder (see *Sharing the positions without the data pack* below).
-  The players who join only need the mod. A server with neither the mod nor the data pack
-  shares nothing.
+- **The server shares the positions.** The mod does it wherever it runs the server: the
+  host's game when a world is opened to LAN, or a dedicated server with the mod in its `mods`
+  folder (see *Sharing the positions* below). The players who join need the mod too; those
+  without it join as usual and see nothing more. A server without the mod shares nothing.
 - **Far players need that sharing.** Without it, a player past the server's range is not
   shown, and the console says so once, 10 seconds after joining. Players in another
   dimension are not followed.
-- **With the data pack, everyone's position is public** to whoever reads its scores: say
-  so to your players. Anyone in a team of colour `black`, `dark_blue`, `dark_green`,
-  `dark_aqua` or `dark_red` would see the coordinates in their sidebar (see *The data pack* below).
+- **Everyone's position is shared** with every player who has the mod: say so to your
+  players.
 - **The scan only works in single player**: a server never sends the mobs of chunks far
-  from you. On a server, the data pack shares them.
+  from you. On a server, a server with the mod shares them.
 
 ### What older versions leave out
 
@@ -104,7 +102,7 @@ The game itself lacks what these need, so they are left out rather than imitated
   works on every version.
 - Mob kinds a version does not have yet (happy ghast, pale oak boats, armadillo, mannequin)
   are not in its lists. Before 1.21.2 every boat was one entity type: boats are remembered
-  by the client but not published by the data pack there.
+  by the client but not shared by the server there.
 
 ## What you can do
 
@@ -137,7 +135,7 @@ The game itself lacks what these need, so they are left out rather than imitated
 | `maxDistantMobs` | `512` | mobs | How many of them are drawn at once, nearest first (`1000`: no limit; no limit here and in `mobMaxDistance` together can crash the game) |
 | `mobMaxDistance` | `512` | blocks | Past this, distant mobs are not drawn (`0`: no limit) |
 | `playerMaxDistance` | `0` | blocks | Past this, distant players are not drawn (`0`: no limit) |
-| `mobTypes` | the 31 kinds of the data pack | | Which mobs are shown, and remembered by this client (in game: "Choose mobs...") |
+| `mobTypes` | the 31 kinds a server shares | | Which mobs are shown, and remembered by this client (in game: "Choose mobs...") |
 | `stillMobTypes` | happy ghast | | Mobs shown standing still instead of walking their loop (in game: "Still") |
 | `rememberNamedMobs` | `true` | | A mob with a name tag is shown whatever its type |
 | `scanRadius` | `32` | **chunks** | Chunks around you read by a scan, in single player, from 4 to 1024 (32 chunks = 512 blocks) |
@@ -196,54 +194,37 @@ The game itself lacks what these need, so they are left out rather than imitated
 
 Everything below is for the curious, and for whoever works on the mod.
 
-### The data pack: exact positions
+### Sharing the positions
 
-`build/libs/<version>/livinghorizon-datapack-<version>+mc<game version>.zip`, built from the
-`datapack/` folder, with the pack format and folder names of that game version. Drop it in the world's `datapacks/` folder and run `/reload`.
+A server with the mod tells the players who have the mod where everyone is
+(`PositionPublisher`), over the mod's own network channel (`platform/Network`, the loader's
+networking: Fabric's payloads, NeoForge's, Forge's channels). Nothing goes through the
+scoreboard or any other part of the world, and a player without the mod is sent nothing.
 
-Five times a second it writes each player's position, yaw, dimension and whether they
-ride something into four scoreboard objectives (`lh.x`, `lh.y`, `lh.z`, `lh.m`). A fifth,
-`lh.r`, gives each player a number of their own, which the mob they ride carries too: a far
-player is drawn on their own mount, never beside a second copy of it. An objective shown in
-any display slot is sent by the server to **every** client, at any distance, so the pack
-shows its five in the sidebars of five team colours (`black`, `dark_blue`, `dark_green`,
-`dark_aqua`, `dark_red`): nobody sees them on screen, every client receives them, and the
-mod reads them. `/livinghorizon` says whether the pack is found.
+- **Five times a second**, every player online: position, yaw, dimension, and the mob they
+  ride, so that a far player is drawn on their own mount, never beside a second copy of it.
+- **Every five seconds**, the players who logged off, where they were last, and the
+  remembered mobs within 2048 blocks of each player (see *Mobs far away* below).
+- The server keeps both in a file of its world, `livinghorizon-positions.dat`, so that a
+  player who joins later sees them too. A mob is forgotten when its chunk is loaded and it is
+  not there any more.
 
-- Anyone in a team of one of those colours would see the coordinates in their sidebar.
-  If your server uses them, change the five `setdisplay` lines in `load.mcfunction`.
-- Any client can read these scores: everyone's position is public to whoever looks.
-- `/function livinghorizon:uninstall`, then `/datapack disable "file/<pack name>"`,
-  removes everything it created.
-
-`DatapackTest` compiles every function with the game's own command dispatcher, and
-parses `pack.mcmeta` and the predicate with the game's own codecs.
-
-### Sharing the positions without the data pack
-
-The mod does what the data pack does: `PositionPublisher` writes the same five objectives, in
-the same layout and the same sidebars, every four ticks for the players and every five
-seconds for the mobs, and a client's mod reads them as it would the pack's. It runs where the
-server is:
+The messages are written with plain Java streams (`PositionsMessage`), the same on every
+loader and version. It runs where the server is:
 
 - **A world opened to LAN** (*Open to LAN*): the server runs inside the host's game, so
-  `LanShare` drives it from the host's client. The objectives are removed when the world
-  closes, so the world is left as it was found.
+  `LanShare` drives it from the host's client, and saves the file when the world closes.
 - **A dedicated server**: the same jar in the server's `mods` folder (with the Fabric API on
-  Fabric and Quilt). `MinecraftServerMixin` drives it from the server's tick. The objectives
-  stay in the world, like the pack's, so that players who logged off keep their last position;
-  to remove them: `/scoreboard objectives remove lh.x` (and `lh.y`, `lh.z`, `lh.m`, `lh.r`).
-
-Both use the game's own `scoreboard` command, the same text on every version. When the data
-pack runs in the world too (its clock moves), the mod leaves the job to it.
+  Fabric and Quilt). `MinecraftServerMixin` drives it from the server's tick, and saves the
+  file every minute and as the server stops.
 
 ### Players who logged off
 
 A player who logs off stays around where they were last, until they come back.
 `offlinePlayers` off turns this off completely: nobody is shown, remembered or written to the
 file. This is remembered per server across sessions, in
-`config/livinghorizon/resting/<server>.json`. With the data pack, even players who logged
-off before you joined are there: the pack keeps everyone's last position, and their
+`config/livinghorizon/resting/<server>.json`. On a server with the mod, even players who
+logged off before you joined are there: the server keeps everyone's last position, and their
 skin is fetched from Mojang by name.
 
 With `offlineLife` on (the default) they live their life there, as long as the blocks
@@ -272,7 +253,7 @@ With nothing below down to the bottom of the world, they stay where they are.
 
 Their name shows above them, followed by *(offline)*, as close as the game shows names (64
 blocks). Aiming at one from right next to it (3 blocks) shows, under the crosshair, when
-they were last seen, in the game's language; a player known only from the data pack shows
+they were last seen, in the game's language; a player known only from the server shows
 as offline without a date. That time is kept in the file with their spot (`lastSeen`, milliseconds since 1970).
 `offlineNames` turns both off.
 
@@ -285,17 +266,15 @@ to graze or look around, and back. No AI runs anywhere: the animations are writt
 mob starts its loop at its own moment, drawn from its UUID. It is a picture of what
 lives there.
 
-- **With the data pack**, every five seconds it publishes every remembered mob loaded
+- **On a server with the mod**, every five seconds it shares the remembered mobs loaded
   around any player: position, kind, variant (horse coat, sheep colour, llama, rabbit,
-  axolotl, parrot) and age, under the mob's UUID, in the same four objectives. Whoever
-  was last near a mob leaves its position for everyone, and the server resets the scores
-  of a mob that dies, so it disappears for everyone. Which mobs: the entity type tag
-  `tags/entity_type/remembered.json`, numbered in `mob_kind.mcfunction` in the order of
-  `MobKinds.TYPES` (`DatapackTest` checks the three agree).
-- **Without it**, each client remembers the mobs it met itself
+  axolotl, parrot) and age, by the mob's UUID. Whoever was last near a mob leaves its position
+  for everyone, and a mob gone from its loaded chunk disappears for everyone. Which mobs:
+  `MobKinds.TYPES`, numbered in that order.
+- **Otherwise**, each client remembers the mobs it met itself
   (the types in `mobTypes`, chosen in game), in `config/livinghorizon/mobs/<server>.json`.
 - A mob met up close keeps its exact look (the game's own save of it); one known only
-  from the pack is built from kind, variant and age.
+  from the server is built from kind, variant and age.
 - Coming back within range of a remembered mob that is not there forgets it.
 - **In single player** the server runs in the game itself: four times a second it is asked
   where the remembered mobs are (`track/ServerMobs`). The ones it still moves - past the
@@ -355,9 +334,9 @@ lives there.
   from the save, the way the game reads a chunk's entities, without loading or generating
   it. A remembered mob in the scanned chunks that is not found any more is forgotten. On
   another server there is nothing to read: the server only sends the mobs near you, and
-  the data pack is what shares the others.
+  a server with the mod is what shares the others.
 - Mob types of other mods are shown from the start (monsters excepted). Mannequins are
-  too, standing still: Distant Friends uses them as its fake players. The data pack only
+  too, standing still: Distant Friends uses them as its fake players. The server only
   shares vanilla kinds; the others are remembered by each client.
 
 ### Birds
@@ -525,7 +504,7 @@ the far terrain's world instead (`Occlusion`); the two answers are never mixed.
 | Distance from you | What the client knows | What is drawn |
 |---|---|---|
 | Inside the server's view distance | The entity itself | The real player (the mod only stops their mount from being culled) |
-| Past it | The shared position (data pack or LAN host's mod) | A copy, at that position |
+| Past it | The position a server with the mod shares | A copy, at that position |
 | Past it, nothing shared | Nothing | Nobody |
 
 The copy is drawn by the game's own renderer, so skins, capes, elytras, armour and
@@ -536,7 +515,7 @@ out to the farthest player when needed (`extendFarPlane`).
 
 #### What breaks it
 
-- No shared positions (no data pack, no mod on the LAN host): no copy at all.
+- No shared positions (no mod on the server or the LAN host): no copy at all.
 - Another dimension: the copy is hidden until they are back in yours.
 - A player who was **never** close to you is drawn standing, with their skin, and no mount:
   what they ride is only known once the server has sent it.
@@ -546,7 +525,7 @@ out to the farthest player when needed (`extendFarPlane`).
 ```sh
 ./gradlew :1.21.11:build          # one node: compiles and runs the tests
 ./gradlew :1.20.1-forge:build     # nodes are <game version>[-quilt|-neoforge|-forge]
-./gradlew buildAndCollect         # every jar and data pack zip in build/libs/<version>/
+./gradlew buildAndCollect         # every jar in build/libs/<version>/
 ```
 
 Official Mojang mappings on every target, Stonecutter with one node per game version and
@@ -555,7 +534,7 @@ loader: the targets are the tables of `stonecutter.properties.toml`.
 ## License
 
 Living Horizon is source-available under the [Living Horizon License](LICENSE),
-copyright 2026 clixmods. The mod, the data pack and the textures are all covered.
+copyright 2026 clixmods. The mod and its textures are covered.
 
 - You can read the code, build it, and run the mod alone or in a modpack.
 - The official jar can be redistributed, unchanged, in modpacks and on mirrors, as long

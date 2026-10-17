@@ -2,7 +2,6 @@ package fr.clixmods.livinghorizon.gametest;
 
 import fr.clixmods.livinghorizon.gametest.scenario.BirdCommandScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.BirdsScenario;
-import fr.clixmods.livinghorizon.gametest.scenario.DatapackRiderScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DedicatedServerScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EasterEggsScenario;
@@ -63,8 +62,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new PerchersScenario(),
             new BirdCommandScenario(),
             new LanShareScenario(),
-            new DedicatedServerScenario(),
-            new DatapackRiderScenario());
+            new DedicatedServerScenario());
 
     @Override
     public void runTest(ClientGameTestContext context) {

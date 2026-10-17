@@ -28,7 +28,6 @@ loomx.loom_version = "1.17-SNAPSHOT"
 ["1.20.1"]
 mod.mc_compat = ">=1.20 <=1.20.1"
 mod.mc_releases = ["1.20", "1.20.1"]
-mod.datapack_format = "15"
 
 deps.fabric_api = "0.92.12+1.20.1"
 # Compile only: the "Configure" button in Mod Menu. The mod runs without it.
@@ -39,7 +38,6 @@ mod.mc_compat = "1.20.2"
 mod.mc_releases = ["1.20.2"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "18"
 
 deps.fabric_api = "0.91.6+1.20.2"
 # Compile only: the "Configure" button in Mod Menu. The mod runs without it.
@@ -50,7 +48,6 @@ mod.mc_compat = ">=1.20.3 <=1.20.4"
 mod.mc_releases = ["1.20.3", "1.20.4"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "26"
 
 deps.fabric_api = "0.97.3+1.20.4"
 # Compile only: the "Configure" button in Mod Menu. The mod runs without it.
@@ -61,7 +58,6 @@ mod.mc_compat = ">=1.20.5 <=1.20.6"
 mod.mc_releases = ["1.20.5", "1.20.6"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "41"
 
 deps.fabric_api = "0.100.8+1.20.6"
 # Compile only: the "Configure" button in Mod Menu. The mod runs without it.
@@ -72,7 +68,6 @@ mod.mc_compat = ">=1.21 <=1.21.1"
 mod.mc_releases = ["1.21", "1.21.1"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "48"
 
 deps.fabric_api = "0.116.17+1.21.1"
 # Compile only: the "Configure" button in Mod Menu. The mod runs without it.
@@ -83,7 +78,6 @@ mod.mc_compat = ">=1.21.2 <=1.21.3"
 mod.mc_releases = ["1.21.2", "1.21.3"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "57"
 
 deps.fabric_api = "0.114.1+1.21.3"
 # Compile only: the "Configure" button in Mod Menu. The mod runs without it.
@@ -92,7 +86,6 @@ deps.modmenu = "12.0.1"
 ["1.21.4"]
 mod.mc_compat = "1.21.4"
 mod.mc_releases = ["1.21.4"]
-mod.datapack_format = "61"
 
 deps.fabric_api = "0.119.4+1.21.4"
 # Compile only: the "Configure" button in Mod Menu. The mod runs without it.
@@ -101,7 +94,6 @@ deps.modmenu = "13.0.4"
 ["1.21.5"]
 mod.mc_compat = "1.21.5"
 mod.mc_releases = ["1.21.5"]
-mod.datapack_format = "71"
 
 deps.fabric_api = "0.128.2+1.21.5"
 # Compile only: the "Configure" button in Mod Menu. The mod runs without it.
@@ -110,7 +102,6 @@ deps.modmenu = "14.0.2"
 ["1.21.8"]
 mod.mc_compat = ">=1.21.6 <=1.21.8"
 mod.mc_releases = ["1.21.6", "1.21.7", "1.21.8"]
-mod.datapack_format = "81"
 
 deps.fabric_api = "0.136.1+1.21.8"
 # Compile only: the "Configure" button in Mod Menu. The mod runs without it.
@@ -119,7 +110,6 @@ deps.modmenu = "15.0.2"
 ["1.21.10"]
 mod.mc_compat = ">=1.21.9 <=1.21.10"
 mod.mc_releases = ["1.21.9", "1.21.10"]
-mod.datapack_format = "88"
 
 deps.fabric_api = "0.138.4+1.21.10"
 # Compile only: the "Configure" button in Mod Menu. The mod runs without it.
@@ -130,7 +120,6 @@ deps.modmenu = "16.0.1"
 mod.mc_compat = "1.21.11"
 # Releases to mark compatible when publishing
 mod.mc_releases = ["1.21.11"]
-mod.datapack_format = "94"
 
 deps.fabric_api = "0.141.6+1.21.11"
 # Compile only: the "Configure" button in Mod Menu. The mod runs without it.
@@ -139,7 +128,6 @@ deps.modmenu = "17.0.0"
 ["26.1.x"]
 mod.mc_compat = "~26.1"
 mod.mc_releases = ["26.1", "26.1.1", "26.1.2"]
-mod.datapack_format = "101"
 
 deps.fabric_api = "0.155.3+26.1.2"
 # Compile only: the "Configure" button in Mod Menu. The mod runs without it.
@@ -148,7 +136,6 @@ deps.modmenu = "18.0.2"
 ["26.2.x"]
 mod.mc_compat = "~26.2"
 mod.mc_releases = ["26.2"]
-mod.datapack_format = "107"
 
 deps.fabric_api = "0.161.0+26.2"
 # Compile only: the "Configure" button in Mod Menu. The mod runs without it.
@@ -157,7 +144,6 @@ deps.modmenu = "20.0.3"
 ["26.3.x"]
 mod.mc_compat = "~26.3"
 mod.mc_releases = ["26.3"]
-mod.datapack_format = "121"
 
 deps.fabric_api = "0.162.0+26.3"
 # Compile only: the "Configure" button in Mod Menu. The mod runs without it.
@@ -173,7 +159,6 @@ mod.mc_compat = "[1.20.6]"
 mod.mc_releases = ["1.20.6"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "41"
 
 deps.neoforge = "20.6.141"
 deps.neoforge_compat = "[20.6.141,)"
@@ -183,7 +168,6 @@ mod.mc_compat = "[1.21.1]"
 mod.mc_releases = ["1.21.1"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "48"
 
 deps.neoforge = "21.1.203"
 deps.neoforge_compat = "[21.1.203,)"
@@ -193,7 +177,6 @@ mod.mc_compat = "[1.21.3]"
 mod.mc_releases = ["1.21.3"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "57"
 
 deps.neoforge = "21.3.97"
 deps.neoforge_compat = "[21.3.97,)"
@@ -203,7 +186,6 @@ mod.mc_compat = "[1.21.4]"
 mod.mc_releases = ["1.21.4"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "61"
 
 deps.neoforge = "21.4.158"
 deps.neoforge_compat = "[21.4.158,)"
@@ -213,7 +195,6 @@ mod.mc_compat = "[1.21.5]"
 mod.mc_releases = ["1.21.5"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "71"
 
 deps.neoforge = "21.5.98"
 deps.neoforge_compat = "[21.5.98,)"
@@ -223,7 +204,6 @@ mod.mc_compat = "[1.21.8]"
 mod.mc_releases = ["1.21.8"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "81"
 
 deps.neoforge = "21.8.54"
 deps.neoforge_compat = "[21.8.54,)"
@@ -233,7 +213,6 @@ mod.mc_compat = "[1.21.10]"
 mod.mc_releases = ["1.21.10"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "88"
 
 deps.neoforge = "21.10.64"
 deps.neoforge_compat = "[21.10.64,)"
@@ -243,7 +222,6 @@ mod.mc_compat = "[1.21.11]"
 mod.mc_releases = ["1.21.11"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "94"
 
 deps.neoforge = "21.11.45"
 deps.neoforge_compat = "[21.11.45,)"
@@ -253,7 +231,6 @@ mod.mc_compat = "[26.1,26.2)"
 mod.mc_releases = ["26.1", "26.1.1", "26.1.2"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "101"
 
 deps.neoforge = "26.1.2.112"
 deps.neoforge_compat = "[26.1.2.112,)"
@@ -263,7 +240,6 @@ mod.mc_compat = "[26.2,26.3)"
 mod.mc_releases = ["26.2"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "107"
 
 deps.neoforge = "26.2.0.88"
 deps.neoforge_compat = "[26.2.0.88,)"
@@ -274,7 +250,6 @@ mod.mc_compat = "[26.3,26.4)"
 mod.mc_releases = ["26.3"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "121"
 
 deps.neoforge = "26.3.0.36-beta"
 deps.neoforge_compat = "[26.3.0.36-beta,)"
@@ -298,7 +273,6 @@ mod.mc_compat = '["=1.20", "=1.20.1"]'
 mod.mc_releases = ["1.20", "1.20.1"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "15"
 
 deps.fabric_api = "0.92.12+1.20.1"
 deps.modmenu = "7.2.2"
@@ -312,7 +286,6 @@ mod.mc_compat = '"=1.20.2"'
 mod.mc_releases = ["1.20.2"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "18"
 
 deps.fabric_api = "0.91.6+1.20.2"
 deps.modmenu = "8.0.1"
@@ -326,7 +299,6 @@ mod.mc_compat = '["=1.20.3", "=1.20.4"]'
 mod.mc_releases = ["1.20.3", "1.20.4"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "26"
 
 deps.fabric_api = "0.97.3+1.20.4"
 deps.modmenu = "9.2.0"
@@ -340,7 +312,6 @@ mod.mc_compat = '["=1.20.5", "=1.20.6"]'
 mod.mc_releases = ["1.20.5", "1.20.6"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "41"
 
 deps.fabric_api = "0.100.8+1.20.6"
 deps.modmenu = "10.0.0"
@@ -354,7 +325,6 @@ mod.mc_compat = '["=1.21", "=1.21.1"]'
 mod.mc_releases = ["1.21", "1.21.1"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "48"
 
 deps.fabric_api = "0.116.17+1.21.1"
 deps.modmenu = "11.0.5"
@@ -368,7 +338,6 @@ mod.mc_compat = '["=1.21.2", "=1.21.3"]'
 mod.mc_releases = ["1.21.2", "1.21.3"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "57"
 
 deps.fabric_api = "0.114.1+1.21.3"
 deps.modmenu = "12.0.1"
@@ -380,7 +349,6 @@ loomx.loom_unobf_plugin = "org.quiltmc.loom"
 ["1.21.4-quilt"]
 mod.mc_compat = '"=1.21.4"'
 mod.mc_releases = ["1.21.4"]
-mod.datapack_format = "61"
 
 deps.fabric_api = "0.119.4+1.21.4"
 deps.modmenu = "13.0.4"
@@ -392,7 +360,6 @@ loomx.loom_unobf_plugin = "org.quiltmc.loom"
 ["1.21.5-quilt"]
 mod.mc_compat = '"=1.21.5"'
 mod.mc_releases = ["1.21.5"]
-mod.datapack_format = "71"
 
 deps.fabric_api = "0.128.2+1.21.5"
 deps.modmenu = "14.0.2"
@@ -404,7 +371,6 @@ loomx.loom_unobf_plugin = "org.quiltmc.loom"
 ["1.21.8-quilt"]
 mod.mc_compat = '["=1.21.6", "=1.21.7", "=1.21.8"]'
 mod.mc_releases = ["1.21.6", "1.21.7", "1.21.8"]
-mod.datapack_format = "81"
 
 deps.fabric_api = "0.136.1+1.21.8"
 deps.modmenu = "15.0.2"
@@ -416,7 +382,6 @@ loomx.loom_unobf_plugin = "org.quiltmc.loom"
 ["1.21.10-quilt"]
 mod.mc_compat = '["=1.21.9", "=1.21.10"]'
 mod.mc_releases = ["1.21.9", "1.21.10"]
-mod.datapack_format = "88"
 
 deps.fabric_api = "0.138.4+1.21.10"
 deps.modmenu = "16.0.1"
@@ -428,7 +393,6 @@ loomx.loom_unobf_plugin = "org.quiltmc.loom"
 ["1.21.11-quilt"]
 mod.mc_compat = '"=1.21.11"'
 mod.mc_releases = ["1.21.11"]
-mod.datapack_format = "94"
 
 deps.fabric_api = "0.141.6+1.21.11"
 deps.modmenu = "17.0.0"
@@ -440,7 +404,6 @@ loomx.loom_unobf_plugin = "org.quiltmc.loom"
 ["26.1.x-quilt"]
 mod.mc_compat = '"~26.1"'
 mod.mc_releases = ["26.1", "26.1.1", "26.1.2"]
-mod.datapack_format = "101"
 
 deps.fabric_api = "0.155.3+26.1.2"
 deps.modmenu = "18.0.2"
@@ -452,7 +415,6 @@ loomx.loom_unobf_plugin = "org.quiltmc.loom"
 ["26.2.x-quilt"]
 mod.mc_compat = '"~26.2"'
 mod.mc_releases = ["26.2"]
-mod.datapack_format = "107"
 
 deps.fabric_api = "0.161.0+26.2"
 deps.modmenu = "20.0.3"
@@ -464,7 +426,6 @@ loomx.loom_unobf_plugin = "org.quiltmc.loom"
 ["26.3.x-quilt"]
 mod.mc_compat = '"~26.3"'
 mod.mc_releases = ["26.3"]
-mod.datapack_format = "121"
 
 deps.fabric_api = "0.162.0+26.3"
 deps.modmenu = "21.0.0"
@@ -483,7 +444,6 @@ loomx.loom_unobf_plugin = "org.quiltmc.loom"
 ["1.20.1-forge"]
 mod.mc_compat = "[1.20.1]"
 mod.mc_releases = ["1.20.1"]
-mod.datapack_format = "15"
 
 deps.forge = "47.4.10"
 deps.forge_compat = "[47.4.10,)"
@@ -495,7 +455,6 @@ mod.mc_compat = "[1.20.2]"
 mod.mc_releases = ["1.20.2"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "18"
 
 deps.forge = "48.1.0"
 deps.forge_compat = "[48.1.0,)"
@@ -507,7 +466,6 @@ mod.mc_compat = "[1.20.4]"
 mod.mc_releases = ["1.20.4"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "26"
 
 deps.forge = "49.2.0"
 deps.forge_compat = "[49.2.0,)"
@@ -517,7 +475,6 @@ mod.mc_compat = "[1.20.6]"
 mod.mc_releases = ["1.20.6"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "41"
 
 deps.forge = "50.2.0"
 deps.forge_compat = "[50.2.0,)"
@@ -527,7 +484,6 @@ mod.mc_compat = "[1.21.1]"
 mod.mc_releases = ["1.21.1"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "48"
 
 deps.forge = "52.1.0"
 deps.forge_compat = "[52.1.0,)"
@@ -537,7 +493,6 @@ mod.mc_compat = "[1.21.3]"
 mod.mc_releases = ["1.21.3"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "57"
 
 deps.forge = "53.1.0"
 deps.forge_compat = "[53.1.0,)"
@@ -547,7 +502,6 @@ mod.mc_compat = "[1.21.4]"
 mod.mc_releases = ["1.21.4"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "61"
 
 deps.forge = "54.1.14"
 deps.forge_compat = "[54.1.14,)"
@@ -557,7 +511,6 @@ mod.mc_compat = "[1.21.5]"
 mod.mc_releases = ["1.21.5"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "71"
 
 deps.forge = "55.1.0"
 deps.forge_compat = "[55.1.0,)"
@@ -567,7 +520,6 @@ mod.mc_compat = "[1.21.8]"
 mod.mc_releases = ["1.21.8"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "81"
 
 deps.forge = "58.1.0"
 deps.forge_compat = "[58.1.0,)"
@@ -577,7 +529,6 @@ mod.mc_compat = "[1.21.10]"
 mod.mc_releases = ["1.21.10"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "88"
 
 deps.forge = "60.1.15"
 deps.forge_compat = "[60.1.15,)"
@@ -587,7 +538,6 @@ mod.mc_compat = "[1.21.11]"
 mod.mc_releases = ["1.21.11"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "94"
 
 deps.forge = "61.2.1"
 deps.forge_compat = "[61.2.1,)"
@@ -599,7 +549,6 @@ mod.mc_compat = "[26.1.2]"
 mod.mc_releases = ["26.1.2"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "101"
 
 deps.forge = "64.1.3"
 deps.forge_compat = "[64.1.3,)"
@@ -609,7 +558,6 @@ mod.mc_compat = "[26.2,26.3)"
 mod.mc_releases = ["26.2"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "107"
 
 deps.forge = "65.1.3"
 deps.forge_compat = "[65.1.3,)"
@@ -620,7 +568,6 @@ mod.mc_compat = "[26.3,26.4)"
 mod.mc_releases = ["26.3"]
 # Starts in the game, but not yet seen drawing in a world.
 mod.release_type = "alpha"
-mod.datapack_format = "121"
 
 deps.forge = "66.0.9"
 deps.forge_compat = "[66.0.9,)"

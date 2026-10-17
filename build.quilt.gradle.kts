@@ -37,8 +37,8 @@ val loom = the<LoomGradleExtensionAPI>()
 version = "${property("mod.version")}+mc${sc.current.version}-quilt"
 the<BasePluginExtension>().archivesName = property("mod.id") as String
 
-// What the targets share, worked out once: the Java level, the data pack's pack.mcmeta,
-// the access widener or transformer, and the list of mixins. See gradle/target.gradle.kts.
+// What the targets share, worked out once: the Java level, the access widener or
+// transformer, and the list of mixins. See gradle/target.gradle.kts.
 extra["lhGame"] = sc.current.version
 extra["lhUnobfuscated"] = unobfuscated
 apply(from = rootProject.file("gradle/target.gradle.kts"))

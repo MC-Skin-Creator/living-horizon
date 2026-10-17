@@ -3,30 +3,28 @@ package fr.clixmods.livinghorizon.gametest.scenario;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
+import fr.clixmods.livinghorizon.track.SharedPositions;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 //? if >=26.2
 /*import net.minecraft.server.MinecraftServer;*/
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
 //? if <26.3
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.storage.LevelResource;
-import net.minecraft.world.scores.Objective;
-import net.minecraft.world.scores.ReadOnlyScoreInfo;
-import net.minecraft.world.scores.Scoreboard;
-import net.minecraft.world.scores.ScoreHolder;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.UUID;
 import java.util.zip.GZIPInputStream;
 
 /**
- * A world opened to LAN, with no data pack: the host's mod must publish the positions
- * through the scoreboard, the client read them back as the pack's, follow the host as it
- * moves, and leave no objective in the world once it is closed.
+ * A world opened to LAN: the host's mod shares the positions over the network, and its own
+ * client reads them back as a friend's would: the host, a cow, the host moving, the pig the
+ * host rides and gets off. Nothing is written into the scoreboard, and the positions are kept
+ * in the world's own file once it closes.
  */
 public final class LanShareScenario implements Scenario {
     @Override
@@ -36,14 +34,9 @@ public final class LanShareScenario implements Scenario {
 
     @Override
     public void run(ClientGameTestContext context) {
-        Path scores;
+        Path root;
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
-            // The saved scoreboard moved under data/minecraft/ in 26.1.
-            scores = context.computeOnClient(minecraft -> minecraft.getSingleplayerServer()
-                    .getWorldPath(LevelResource.ROOT).resolve("data")
-                    //? if >=26.1
-                    /*.resolve("minecraft")*/
-                    .resolve("scoreboard.dat"));
+            root = context.computeOnClient(minecraft -> minecraft.getSingleplayerServer().getWorldPath(LevelResource.ROOT));
             Scene.summon(world, "cow", 10, 10, 0);
             context.waitTicks(40);
             context.runOnClient(minecraft -> {
@@ -64,74 +57,75 @@ public final class LanShareScenario implements Scenario {
 
             context.runOnClient(minecraft -> {
                 if (!FarPlayerTracker.get().sharing()) throw new AssertionError("the LAN share is not found by the client");
-                Scoreboard scoreboard = minecraft.level.getScoreboard();
-                Objective x = scoreboard.getObjective("lh.x");
-                if (x == null) throw new AssertionError("no lh.x objective on the client");
-                String self = minecraft.player.getScoreboardName();
-                ReadOnlyScoreInfo score = scoreboard.getPlayerScoreInfo(ScoreHolder.forNameOnly(self), x);
-                if (score == null) throw new AssertionError("the host has no position");
-                int expected = (int) Math.floor(minecraft.player.getX() * 10);
-                if (Math.abs(score.value() - expected) > 10) {
-                    throw new AssertionError("host x " + score.value() + ", expected about " + expected);
+                SharedPositions shared = FarPlayerTracker.get().shared();
+                SharedPositions.Report host = shared.read(minecraft.player.getScoreboardName());
+                if (host == null) throw new AssertionError("the host has no position");
+                if (Math.abs(host.x() - minecraft.player.getX()) > 1) {
+                    throw new AssertionError("host x " + host.x() + ", expected about " + minecraft.player.getX());
                 }
-                long mobs = scoreboard.listPlayerScores(x).stream().filter(entry -> entry.owner().length() == 36).count();
-                if (mobs < 1) throw new AssertionError("the cow is not published");
-                Scene.log("lanshare host x=" + score.value() + " mobs published=" + mobs);
+                if (shared.mobs().isEmpty()) throw new AssertionError("the cow is not published");
+                if (minecraft.level.getScoreboard().getObjective("lh.x") != null) {
+                    throw new AssertionError("something wrote into the scoreboard");
+                }
+                Scene.log("lanshare host x=" + host.x() + " mobs published=" + shared.mobs().size());
             });
 
-            // The host moves: the score follows within a publication or two.
+            // The host moves: the position follows within a publication or two.
             Scene.command(world, "tp @a 40 ~ 0");
             context.waitTicks(20);
             context.runOnClient(minecraft -> {
-                Scoreboard scoreboard = minecraft.level.getScoreboard();
-                ReadOnlyScoreInfo score = scoreboard.getPlayerScoreInfo(
-                        ScoreHolder.forNameOnly(minecraft.player.getScoreboardName()), scoreboard.getObjective("lh.x"));
-                if (score == null || Math.abs(score.value() - 400) > 10) {
-                    throw new AssertionError("host x after moving " + (score == null ? "none" : score.value()) + ", expected about 400");
+                SharedPositions.Report host = FarPlayerTracker.get().shared().read(minecraft.player.getScoreboardName());
+                if (host == null || Math.abs(host.x() - 40.5) > 1) {
+                    throw new AssertionError("host x after moving " + (host == null ? "none" : host.x()) + ", expected about 40.5");
                 }
-                Scene.log("lanshare host moved, x=" + score.value());
+                Scene.log("lanshare host moved, x=" + host.x());
             });
 
-            // The host gets on a pig: the pig carries the host's number, so a far rider is drawn on it.
+            // The host gets on a pig: the server says which mob it is, so a far rider is drawn on it.
             Scene.command(world, "execute at @p run summon pig ~ ~ ~ {NoAI:1b,Tags:[\"lh.mount\"]}");
             Scene.command(world, "ride @p mount @e[type=pig,tag=lh.mount,limit=1]");
             context.waitTicks(20);
             context.runOnClient(minecraft -> {
-                Scoreboard scoreboard = minecraft.level.getScoreboard();
-                Objective riders = scoreboard.getObjective("lh.r");
                 Entity pig = minecraft.player.getVehicle();
-                if (riders == null || pig == null) throw new AssertionError("no lh.r objective, or the host rides nothing");
-                ReadOnlyScoreInfo host = scoreboard.getPlayerScoreInfo(ScoreHolder.forNameOnly(minecraft.player.getScoreboardName()), riders);
-                ReadOnlyScoreInfo mount = scoreboard.getPlayerScoreInfo(ScoreHolder.forNameOnly(pig.getUUID().toString()), riders);
-                if (host == null || host.value() < 1 || mount == null || mount.value() != host.value()) {
-                    throw new AssertionError("the pig does not carry the host's number: host "
-                            + (host == null ? "none" : host.value()) + ", pig " + (mount == null ? "none" : mount.value()));
+                SharedPositions shared = FarPlayerTracker.get().shared();
+                String name = minecraft.player.getScoreboardName();
+                UUID vehicle = shared.vehicle(name);
+                SharedPositions.Report host = shared.read(name);
+                if (pig == null || host == null || !host.riding() || !pig.getUUID().equals(vehicle)) {
+                    throw new AssertionError("the host's mount is not shared: pig " + (pig == null ? "none" : pig.getUUID())
+                            + ", shared " + vehicle);
                 }
-                Scene.log("lanshare host " + host.value() + " rides the pig carrying " + mount.value());
+                Scene.log("lanshare host rides the pig " + vehicle);
             });
-            // Off again: the pig no longer carries it once the mobs are published again (every five seconds).
             Scene.command(world, "ride @p dismount");
-            context.waitTicks(120);
+            context.waitTicks(20);
             context.runOnClient(minecraft -> {
-                Scoreboard scoreboard = minecraft.level.getScoreboard();
-                Entity pig = minecraft.level.getEntities((Entity) null, minecraft.player.getBoundingBox().inflate(8),
-                        entity -> entity.getType() == EntityType.PIG).stream().findFirst().orElse(null);
-                ReadOnlyScoreInfo mount = pig == null ? null
-                        : scoreboard.getPlayerScoreInfo(ScoreHolder.forNameOnly(pig.getUUID().toString()), scoreboard.getObjective("lh.r"));
-                if (pig == null || mount != null) throw new AssertionError("the pig still carries a rider's number after the dismount");
-                Scene.log("lanshare pig let go");
+                String name = minecraft.player.getScoreboardName();
+                SharedPositions.Report host = FarPlayerTracker.get().shared().read(name);
+                if (host == null || host.riding() || FarPlayerTracker.get().shared().vehicle(name) != null) {
+                    throw new AssertionError("the host still rides something after the dismount");
+                }
+                Scene.log("lanshare host got off");
             });
         }
-        // Leaving the world removes what the share wrote: the saved scoreboard no longer has it.
+        // The world closed: the positions are in its file, and nothing in its scoreboard.
         try {
-            if (!Files.exists(scores)) throw new AssertionError("no saved scoreboard at " + scores);
-            byte[] saved = new GZIPInputStream(Files.newInputStream(scores)).readAllBytes();
-            if (new String(saved, StandardCharsets.ISO_8859_1).contains("lh.x")) {
-                throw new AssertionError("the objectives are still in the saved world");
+            Path file = root.resolve("livinghorizon-positions.dat");
+            if (!Files.isRegularFile(file) || Files.size(file) == 0) throw new AssertionError("no positions saved at " + file);
+            // The saved scoreboard moved under data/minecraft/ in 26.1.
+            Path scores = root.resolve("data")
+                    //? if >=26.1
+                    /*.resolve("minecraft")*/
+                    .resolve("scoreboard.dat");
+            if (Files.exists(scores)) {
+                byte[] saved = new GZIPInputStream(Files.newInputStream(scores)).readAllBytes();
+                if (new String(saved, StandardCharsets.ISO_8859_1).contains("lh.x")) {
+                    throw new AssertionError("objectives were written into the saved world");
+                }
             }
-            Scene.log("lanshare cleaned up, saved scoreboard " + saved.length + " bytes");
+            Scene.log("lanshare saved " + Files.size(file) + " bytes of positions, scoreboard untouched");
         } catch (IOException e) {
-            throw new AssertionError("could not read the saved scoreboard " + scores, e);
+            throw new AssertionError("could not read the saved world at " + root, e);
         }
     }
 }

@@ -3,10 +3,10 @@
 ## Prochaine version
 
 ### Nouveautés
-- **Plus de datapack à installer** — le mod partage tout seul la position de tout le monde, dans un monde ouvert au LAN et sur un serveur qui a le mod dans son dossier `mods`. Les joueurs qui rejoignent n'ont besoin que du mod.
+- **Le mod sur le serveur remplace le datapack** — mets le mod dans le dossier `mods` du serveur (ou ouvre ton monde au LAN) et tous ceux qui ont le mod voient les autres joueurs et les mobs à n'importe quelle distance. Le datapack disparaît : un serveur qui l'utilisait a maintenant besoin du mod.
 
 ### Améliorations
-- **Joueurs lointains** — ils sont placés d'après les positions partagées uniquement : l'estimation par la barre de localisation disparaît, et le réglage « Signal perdu » avec. Sans datapack ni mod sur le serveur, la console le signale une fois.
+- **Joueurs lointains** — ils sont placés d'après les positions partagées uniquement : l'estimation par la barre de localisation disparaît, et le réglage « Signal perdu » avec. Sans le mod sur le serveur, la console le signale une fois.
 
 ### Corrections
 - **Joueurs sur un happy ghast** — un joueur lointain qui chevauche un happy ghast n'a plus de second ghast à côté de lui, et celui qui le chevauchait déjà quand tu arrives ne flotte plus dans le vide.

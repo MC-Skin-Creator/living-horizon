@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * A far player's mount is drawn under them, never again on its own: the remembered copy of
- * it leaves the frame, and a rider whose mount was never seen finds it right under them.
+ * it leaves the frame, and a rider whose mount was never seen finds the one the server names.
  */
 class CarriedMountTest {
     private static MobMemory.Remembered mob(String dimension, double x, double y, double z) {
@@ -42,17 +42,14 @@ class CarriedMountTest {
     }
 
     @Test
-    void theMountUnderARiderIsFound() throws ReflectiveOperationException {
-        MobMemory.Remembered under = mob("minecraft:overworld", 100.5, 120, 40.5);
-        MobMemory.Remembered beside = mob("minecraft:overworld", 103, 120, 40.5);
-        MobMemory.Remembered farBelow = mob("minecraft:overworld", 100.5, 100, 40.5);
-        MobMemory.Remembered nether = mob("minecraft:the_nether", 100.5, 120, 40.5);
-        MobMemory memory = memory(beside, farBelow, nether, under);
-        // A rider on a happy ghast sits about four blocks above it.
-        assertEquals(under, memory.mountUnder(0, 100.6, 124, 40.4));
-        assertEquals(nether, memory.mountUnder(1, 100.6, 124, 40.4));
-        assertNull(memory.mountUnder(0, 200, 124, 40));
-        assertNull(memory.mountUnder(0, 100.6, 130, 40.4), "too far above anything");
+    void theMountTheServerNamesIsFound() throws ReflectiveOperationException {
+        MobMemory.Remembered ghast = mob("minecraft:overworld", 100.5, 120, 40.5);
+        MobMemory.Remembered elsewhere = mob("minecraft:overworld", 103, 120, 40.5);
+        elsewhere.world = 42L;
+        MobMemory memory = memory(ghast, elsewhere);
+        assertEquals(ghast, memory.known(ghast.id));
+        assertNull(memory.known(elsewhere.id), "a mob of another world");
+        assertNull(memory.known(UUID.randomUUID()));
     }
 
     @Test

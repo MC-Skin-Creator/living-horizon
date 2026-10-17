@@ -22,7 +22,7 @@ import java.util.UUID;
  *
  * <p>While the server sends the entity, it is the truth and the game draws it. Once it
  * stops, what remains is a memory - how they looked, what they rode - and the position
- * the companion data pack (or a LAN host's mod) publishes, when there is one. The memory
+ * a server with the mod shares ({@link SharedPositions}), when there is one. The memory
  * becomes two puppets (the player and their mount), copies that were never added to the world, which this class moves and animates every
  * tick towards where the real one is.
  */
@@ -30,7 +30,7 @@ public final class FarPlayer {
     public enum Source {
         /** The server sends the entity: its position is exact. */
         LIVE,
-        /** The data pack, or a LAN host's mod, publishes the position: exact, at any distance. */
+        /** A server with the mod shares the position: exact, at any distance. */
         SHARED,
         /** Nothing is known any more. */
         LOST
@@ -55,9 +55,9 @@ public final class FarPlayer {
     /** Ticks before looking again for a mount under a rider whose mount was never seen. */
     private int adoptIn;
     private double knownY = Double.NaN;
-    /** Where they look, when the data pack says it. */
+    /** Where they look, when the server says it. */
     private float knownYaw = Float.NaN;
-    /** Whether they ride something, when the data pack says it. */
+    /** Whether they ride something, when the server says it. */
     private boolean riding = true;
 
     /**
@@ -82,7 +82,7 @@ public final class FarPlayer {
 
     /** Their profile as the tab list last gave it: name and skin, kept for when they log off. */
     @Nullable GameProfile profile;
-    /** The data pack code of the dimension x, y, z belong to; -1 when they belong to none. */
+    /** The code ({@link SharedPositions#dimensionCode}) of the dimension x, y, z belong to; -1 when none. */
     private int knownDimension = -1;
 
     FarPlayer(UUID id) {
@@ -178,7 +178,7 @@ public final class FarPlayer {
                 mountId = null;
                 adoptIn = 0;
             }
-            if (mountPuppet == null && --adoptIn <= 0) adopt(level, shared, vehicle, dimension, mobs);
+            if (mountPuppet == null && vehicle != null && --adoptIn <= 0) adopt(level, shared, vehicle, mobs);
         }
 
         if (heard != null) {
@@ -241,15 +241,12 @@ public final class FarPlayer {
 
     /**
      * A rider whose mount was never seen up close (they rode before this client met them): the
-     * published mob the server says they ride becomes their mount, rather than a player sitting
-     * on air beside a copy of it. A server that does not say (an older data pack) leaves the
-     * remembered mob right under them as the best guess.
+     * mob the server says they ride becomes their mount, rather than a player sitting on air
+     * beside a copy of it. Waits for the server to have shared that mob.
      */
-    private void adopt(ClientLevel level, SharedPositions.Report report, @Nullable UUID vehicle, int dimension,
-                       MobMemory mobs) {
+    private void adopt(ClientLevel level, SharedPositions.Report report, UUID vehicle, MobMemory mobs) {
         adoptIn = 20;
-        MobMemory.Remembered under = vehicle != null ? mobs.known(vehicle)
-                : mobs.mountUnder(dimension, report.x(), report.y(), report.z());
+        MobMemory.Remembered under = mobs.known(vehicle);
         Entity mount = under == null ? null : mobs.copy(under, level);
         if (mount == null) return;
         mountPuppet = mount;

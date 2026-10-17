@@ -3,16 +3,19 @@ package fr.clixmods.livinghorizon.gametest.scenario;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
+import fr.clixmods.livinghorizon.track.SharedPositions;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerContext;
-import net.minecraft.world.scores.Objective;
-import net.minecraft.world.scores.ReadOnlyScoreInfo;
-import net.minecraft.world.scores.ScoreHolder;
-import net.minecraft.world.scores.Scoreboard;
+import net.minecraft.world.level.storage.LevelResource;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
- * A dedicated server with the mod and no data pack: the server must publish the positions
- * from its own tick, before anyone joins, and a client that joins read them as the pack's.
+ * A dedicated server with the mod: it shares the positions over the network from its own
+ * tick, a client that joins reads its own back and follows it as it moves, and the server
+ * keeps them in its world's file once it stops.
  */
 public final class DedicatedServerScenario implements Scenario {
     @Override
@@ -22,46 +25,36 @@ public final class DedicatedServerScenario implements Scenario {
 
     @Override
     public void run(ClientGameTestContext context) {
+        Path root;
         try (TestDedicatedServerContext server = context.worldBuilder().setUseConsistentSettings(true).createServer()) {
-            context.waitTicks(40);
-            // Nobody has joined yet: the layout and the clock are there all the same.
-            int[] clock = new int[2];
-            for (int i = 0; i < 2; i++) {
-                clock[i] = server.computeOnServer(minecraft -> {
-                    Scoreboard scoreboard = minecraft.getScoreboard();
-                    Objective meta = scoreboard.getObjective("lh.m");
-                    if (meta == null || scoreboard.getObjective("lh.x") == null) {
-                        throw new AssertionError("the dedicated server publishes nothing");
-                    }
-                    ReadOnlyScoreInfo now = scoreboard.getPlayerScoreInfo(ScoreHolder.forNameOnly("#clock"), meta);
-                    if (now == null) throw new AssertionError("the dedicated server has no clock");
-                    return now.value();
-                });
-                context.waitTicks(20);
-            }
-            if (clock[1] <= clock[0]) throw new AssertionError("the dedicated server's clock does not move: " + clock[0] + " then " + clock[1]);
-            Scene.log("dedicated clock " + clock[0] + " -> " + clock[1]);
-
+            root = server.computeOnServer(minecraft -> minecraft.getWorldPath(LevelResource.ROOT));
             // Its type was renamed in the Fabric API for 26.3; both close the connection.
             try (var connection = server.connect()) {
-                // The scoreboard is all this needs: no waiting for the chunks, slow to make without a graphics card.
+                // The positions are all this needs: no waiting for the chunks, slow to make without a graphics card.
                 context.waitTicks(60);
                 server.runCommand("tp @a 30 ~ 0");
                 context.waitTicks(40);
                 context.runOnClient(minecraft -> {
                     if (!FarPlayerTracker.get().sharing()) throw new AssertionError("the client does not find the server's sharing");
-                    Scoreboard scoreboard = minecraft.level.getScoreboard();
-                    Objective x = scoreboard.getObjective("lh.x");
-                    ReadOnlyScoreInfo score = x == null ? null
-                            : scoreboard.getPlayerScoreInfo(ScoreHolder.forNameOnly(minecraft.player.getScoreboardName()), x);
-                    if (score == null) throw new AssertionError("the player has no position on the client");
-                    int expected = (int) Math.floor(minecraft.player.getX() * 10);
-                    if (Math.abs(score.value() - expected) > 10) {
-                        throw new AssertionError("player x " + score.value() + ", expected about " + expected);
+                    SharedPositions.Report self = FarPlayerTracker.get().shared().read(minecraft.player.getScoreboardName());
+                    if (self == null) throw new AssertionError("the player has no position on the client");
+                    if (Math.abs(self.x() - minecraft.player.getX()) > 1) {
+                        throw new AssertionError("player x " + self.x() + ", expected about " + minecraft.player.getX());
                     }
-                    Scene.log("dedicated player x=" + score.value() + " (at " + minecraft.player.getX() + ")");
+                    if (minecraft.level.getScoreboard().getObjective("lh.x") != null) {
+                        throw new AssertionError("something wrote into the scoreboard");
+                    }
+                    Scene.log("dedicated player x=" + self.x() + " (at " + minecraft.player.getX() + ")");
                 });
             }
+        }
+        // Stopped: what it kept is in the world's file, for the players who join next time.
+        try {
+            Path file = root.resolve("livinghorizon-positions.dat");
+            if (!Files.isRegularFile(file) || Files.size(file) == 0) throw new AssertionError("no positions saved at " + file);
+            Scene.log("dedicated saved " + Files.size(file) + " bytes of positions");
+        } catch (IOException e) {
+            throw new AssertionError("could not read " + root, e);
         }
     }
 }

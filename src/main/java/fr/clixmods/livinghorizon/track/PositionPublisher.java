@@ -1,6 +1,6 @@
 package fr.clixmods.livinghorizon.track;
 
-import net.minecraft.commands.CommandSourceStack;
+import fr.clixmods.livinghorizon.platform.Network;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -8,41 +8,52 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.scores.Objective;
-import net.minecraft.world.scores.Scoreboard;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.storage.LevelResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
- * The companion data pack's job, done by the mod itself: it writes the scoreboard
- * objectives the pack does ({@code lh.x}, {@code lh.y}, {@code lh.z}, {@code lh.m} and
- * {@code lh.r}, which links a rider to their mount, in the layout of {@code load.mcfunction}) for one server, and clients read them with
- * {@link SharedPositions}, exactly as they would from the pack.
+ * What a server with the mod tells the clients with the mod, so that they draw every player
+ * at any distance, and the remembered mobs past what the server sends them
+ * ({@link PositionsMessage}, received by {@link SharedPositions}).
  *
  * <p>Run by {@link LanShare} for a world opened to LAN, and by {@code MinecraftServerMixin}
- * on a dedicated server. It touches nothing of the client, so a server can load it. When the
- * pack is running in the world as well, it keeps the job and this class stands down.
+ * on a dedicated server. It touches nothing of the client, so a server can load it. A client
+ * without the mod is sent nothing.
  *
- * <p>The scores are written with the game's own {@code scoreboard} command: the same text
- * on every Minecraft version, unlike the scoreboard's API.
+ * <p>It keeps the last position of every player who logged off, and of the mobs in chunks no
+ * longer loaded, in a file of the world ({@link #FILE}), so that a player who joins later sees
+ * them too. A mob is forgotten when its chunk is loaded and it is not there any more.
  *
  * <p>Everything here runs on the server's thread.
  */
 public final class PositionPublisher {
-    /** Ticks between two runs; the pack's update is the same. */
+    /** Ticks between two publications of the players. */
     public static final int PERIOD = 4;
-    /** Runs between two publications of the mobs: five seconds, as the pack. */
+    /** Publications between two of the mobs: five seconds. */
     private static final int MOB_EVERY = 25;
-    /** Runs to watch a pack that was found before taking over. */
-    private static final int PROBE = 3;
-    private static final String[] OBJECTIVES = {"lh.x", "lh.y", "lh.z", "lh.m"};
-    /** A number of each player's own, which the mob they ride carries too. */
-    private static final String RIDER = "lh.r";
+    /** How far around a player the mobs sent to them reach, in blocks. */
+    private static final double MOB_RANGE = 2048;
+    /** Bounds the file and the messages; the mobs seen longest ago go first. */
+    private static final int MAX_MOBS = 4000;
+    /** Publications between two saves of the file, when something changed: a minute. */
+    private static final int SAVE_EVERY = 300;
+    /** The file in the world's folder. */
+    static final String FILE = "livinghorizon-positions.dat";
     private static final Map<String, Integer> KINDS = new HashMap<>();
     private static final Logger LOGGER = LoggerFactory.getLogger("Living Horizon");
 
@@ -50,22 +61,16 @@ public final class PositionPublisher {
         for (int i = 0; i < MobKinds.TYPES.size(); i++) KINDS.put(MobKinds.TYPES.get(i), i + 1);
     }
 
-    private final boolean dedicated;
     private final MinecraftServer server;
-    /** Who writes: found out on the first runs. */
-    private boolean decided;
-    private boolean ours;
-    private boolean packSeen;
-    private int probeClock;
-    private int probes;
-    private int clock;
+    private final boolean dedicated;
+    /** Every player who ever played here, online or not, by name. */
+    private final Map<String, PositionsMessage.Player> players = new LinkedHashMap<>();
+    /** Every remembered mob, the one seen longest ago first. */
+    private final LinkedHashMap<UUID, PositionsMessage.Mob> mobs = new LinkedHashMap<>();
+    private boolean loaded;
+    private boolean dirty;
+    private boolean told;
     private int runs;
-    /** What was last written for each holder, so that a still player sends nothing. */
-    private final Map<String, int[]> written = new HashMap<>();
-    /** Each player's number in {@link #RIDER}, by name, once known. */
-    private final Map<String, Integer> riders = new HashMap<>();
-    /** The rider's number last written for each published mob, 0 for none. */
-    private final Map<String, Integer> carrying = new HashMap<>();
 
     public PositionPublisher(MinecraftServer server, boolean dedicated) {
         this.server = server;
@@ -75,105 +80,62 @@ public final class PositionPublisher {
     /** One publication; call it every {@link #PERIOD} ticks. */
     public void run() {
         if (!server.isRunning()) return;
-        if (!decided && !decide()) return;
-        if (!ours) return;
+        if (!loaded) load();
+        if (!told) {
+            told = true;
+            LOGGER.info(dedicated
+                    ? "Living Horizon: sharing the positions of this server with the players who have the mod"
+                    : "Living Horizon: sharing the positions of this LAN world with the players who join with the mod");
+        }
         players();
-        if (runs++ % MOB_EVERY == 0) mobs();
-        // Last, so that a client which sees the clock move has the positions of this run.
-        set("#clock", "lh.m", ++clock);
-    }
-
-    /**
-     * Whether to write. A pack already running in this world keeps the job: told by its
-     * clock, which moves. Objectives left by a game that crashed do not move, and are taken over.
-     */
-    private boolean decide() {
-        Scoreboard scoreboard = server.getScoreboard();
-        Objective meta = scoreboard.getObjective("lh.m");
-        Integer layout = meta == null ? null : SharedPositions.score(scoreboard, "#version", meta);
-        if (meta == null || layout == null) return start();
-        Integer now = SharedPositions.score(scoreboard, "#clock", meta);
-        if (now == null) return start();
-        if (!packSeen) {
-            packSeen = true;
-            probeClock = now;
-            return false;
+        if (runs % MOB_EVERY == 0) {
+            offline();
+            mobs();
         }
-        if (now != probeClock) {
-            decided = true;
-            ours = false;
-            LOGGER.info("Living Horizon: the data pack runs in this world, the mod leaves the job to it");
-            return false;
-        }
-        return ++probes >= PROBE && start();
-    }
-
-    private boolean start() {
-        decided = true;
-        ours = true;
-        Scoreboard scoreboard = server.getScoreboard();
-        for (String name : OBJECTIVES) {
-            if (scoreboard.getObjective(name) == null) command("scoreboard objectives add " + name + " dummy");
-        }
-        if (scoreboard.getObjective(RIDER) == null) command("scoreboard objectives add " + RIDER + " dummy");
-        // The sidebars of five team colours nobody plays in: shown, so sent to every client.
-        command("scoreboard objectives setdisplay sidebar.team.black lh.x");
-        command("scoreboard objectives setdisplay sidebar.team.dark_blue lh.y");
-        command("scoreboard objectives setdisplay sidebar.team.dark_green lh.z");
-        command("scoreboard objectives setdisplay sidebar.team.dark_aqua lh.m");
-        command("scoreboard objectives setdisplay sidebar.team.dark_red " + RIDER);
-        set("#version", "lh.m", SharedPositions.VERSION);
-        LOGGER.info(dedicated
-                ? "Living Horizon: no data pack on this server, so the mod shares the positions by itself. Players with the mod see each other at any distance."
-                : "Living Horizon: no data pack in this LAN world, so the mod installed its own: positions are now shared with the players who join");
-        return true;
+        if (++runs % SAVE_EVERY == 0 && dirty) save();
     }
 
     private void players() {
+        Set<String> online = new HashSet<>();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            int yaw = Math.floorMod((int) Math.floor(player.getYRot()), 360);
-            int meta = yaw + 360 * SharedPositions.dimensionCode(player.level().dimension())
-                    + (player.isPassenger() ? 1440 : 0);
-            publish(player.getScoreboardName(), player.getX(), player.getY(), player.getZ(), meta);
-            // The mob under them carries their number at once, not at the next round of mobs.
+            String name = player.getScoreboardName();
+            online.add(name);
             Entity vehicle = player.getVehicle();
-            if (vehicle != null && KINDS.containsKey(EntityType.getKey(vehicle.getType()).toString())) {
-                carry(vehicle.getUUID().toString(), rider(player));
+            UUID published = vehicle != null && KINDS.containsKey(EntityType.getKey(vehicle.getType()).toString())
+                    ? vehicle.getUUID() : null;
+            players.put(name, new PositionsMessage.Player(name, player.getX(), player.getY(), player.getZ(),
+                    player.getYRot(), SharedPositions.dimensionCode(player.level().dimension()), true,
+                    vehicle != null, published));
+            dirty = true;
+        }
+        // Those who logged off stay where they were last.
+        for (Map.Entry<String, PositionsMessage.Player> entry : players.entrySet()) {
+            PositionsMessage.Player player = entry.getValue();
+            if (player.online() && !online.contains(entry.getKey())) {
+                entry.setValue(new PositionsMessage.Player(player.name(), player.x(), player.y(), player.z(),
+                        player.yaw(), player.dimension(), false, false, null));
             }
         }
-    }
-
-    /** The player's number, given once, as the data pack gives it: the last one given plus one. */
-    private int rider(ServerPlayer player) {
-        String name = player.getScoreboardName();
-        Integer known = riders.get(name);
-        if (known != null) return known;
-        Scoreboard scoreboard = server.getScoreboard();
-        Objective objective = scoreboard.getObjective(RIDER);
-        Integer score = objective == null ? null : SharedPositions.score(scoreboard, name, objective);
-        int number;
-        if (score != null && score > 0) {
-            number = score;
-        } else {
-            Integer last = objective == null ? null : SharedPositions.score(scoreboard, "#next", objective);
-            number = (last == null ? 0 : last) + 1;
-            set("#next", RIDER, number);
-            set(name, RIDER, number);
+        List<PositionsMessage.Player> now = new ArrayList<>();
+        for (PositionsMessage.Player player : players.values()) if (player.online()) now.add(player);
+        byte[] message = PositionsMessage.players(now);
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (Network.canSend(player)) Network.send(player, message);
         }
-        riders.put(name, number);
-        return number;
     }
 
-    /** Writes which player rides a published mob: 0 for none, which resets it. */
-    private void carry(String holder, int rider) {
-        Integer before = carrying.put(holder, rider);
-        if (before != null && before == rider) return;
-        command(rider > 0 ? "scoreboard players set " + holder + " " + RIDER + " " + rider
-                : "scoreboard players reset " + holder + " " + RIDER);
+    /** Those who logged off, with the mobs: they move no more, every five seconds is enough. */
+    private void offline() {
+        List<PositionsMessage.Player> gone = new ArrayList<>();
+        for (PositionsMessage.Player player : players.values()) if (!player.online()) gone.add(player);
+        byte[] message = PositionsMessage.offline(gone);
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (Network.canSend(player)) Network.send(player, message);
+        }
     }
 
     private void mobs() {
-        Set<String> seen = new HashSet<>();
+        Set<UUID> seen = new HashSet<>();
         for (ServerLevel level : server.getAllLevels()) {
             int dimension = SharedPositions.dimensionCode(level.dimension());
             for (Entity entity : level.getAllEntities()) {
@@ -183,52 +145,79 @@ public final class PositionPublisher {
                 if (kind == null) continue;
                 int variant = 0;
                 String field = MobKinds.variantField(type);
-                if (field != null) variant = number(EntityNbt.save(entity, level), field);
+                if (field != null) variant = number(EntityNbt.save(entity, level), field) & 2047;
                 boolean baby = entity instanceof LivingEntity living && living.isBaby();
-                int meta = kind + 256 * dimension + (baby ? 1024 : 0) + 2048 * (variant & 2047);
-                String holder = entity.getUUID().toString();
-                seen.add(holder);
-                publish(holder, entity.getX(), entity.getY(), entity.getZ(), meta);
-                int rider = 0;
-                for (Entity passenger : entity.getPassengers()) {
-                    if (passenger instanceof ServerPlayer player) rider = rider(player);
-                }
-                carry(holder, rider);
+                UUID id = entity.getUUID();
+                seen.add(id);
+                // Moved to the end: the mob seen longest ago comes first, and goes first.
+                mobs.remove(id);
+                mobs.put(id, new PositionsMessage.Mob(id, entity.getX(), entity.getY(), entity.getZ(), kind, dimension,
+                        baby, variant));
+                dirty = true;
             }
+            // Its chunk is loaded and it is not there: dead, despawned, or gone through a portal.
+            mobs.values().removeIf(mob -> mob.dimension() == dimension && !seen.contains(mob.id())
+                    && level.areEntitiesLoaded(chunk(mob.x(), mob.z())));
         }
-        // An unloaded mob keeps its scores in the world; only the memory of them goes.
-        written.keySet().removeIf(holder -> holder.length() == 36 && !seen.contains(holder));
-        carrying.keySet().removeIf(holder -> !seen.contains(holder));
-    }
+        while (mobs.size() > MAX_MOBS) mobs.remove(mobs.keySet().iterator().next());
 
-    /** Position in tenths of a block, then the meta score last: a client reads nothing before it. */
-    private void publish(String holder, double x, double y, double z, int meta) {
-        int[] now = {(int) Math.floor(x * 10), (int) Math.floor(y * 10), (int) Math.floor(z * 10), meta};
-        int[] before = written.put(holder, now);
-        for (int i = 0; i < OBJECTIVES.length; i++) {
-            if (before == null || before[i] != now[i]) {
-                command("scoreboard players set " + holder + " " + OBJECTIVES[i] + " " + now[i]);
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (!Network.canSend(player)) continue;
+            int dimension = SharedPositions.dimensionCode(player.level().dimension());
+            PositionsMessage.Mobs around = new PositionsMessage.Mobs(new ArrayList<>(), dimension,
+                    player.getX(), player.getZ(), MOB_RANGE);
+            for (PositionsMessage.Mob mob : mobs.values()) {
+                if (around.covers(mob.dimension(), mob.x(), mob.z())) around.mobs().add(mob);
             }
+            Network.send(player, PositionsMessage.mobs(around));
         }
     }
 
-    private void set(String holder, String objective, int value) {
-        command("scoreboard players set " + holder + " " + objective + " " + value);
+    // --- The file ------------------------------------------------------------------------
+
+    private Path file() {
+        return server.getWorldPath(LevelResource.ROOT).resolve(FILE);
     }
 
-    /**
-     * Takes back what was written, for a world that closes. A dedicated server keeps it: the
-     * positions of the players who logged off are what the pack keeps too.
-     */
-    public void remove() {
-        if (!ours || dedicated) return;
-        for (String name : OBJECTIVES) command("scoreboard objectives remove " + name);
-        command("scoreboard objectives remove " + RIDER);
+    private void load() {
+        loaded = true;
+        Path file = file();
+        if (!Files.isRegularFile(file)) return;
+        try {
+            PositionsMessage.Saved saved = PositionsMessage.readSaved(Files.readAllBytes(file));
+            if (saved == null) return;
+            for (PositionsMessage.Player player : saved.players()) {
+                players.put(player.name(), new PositionsMessage.Player(player.name(), player.x(), player.y(), player.z(),
+                        player.yaw(), player.dimension(), false, false, null));
+            }
+            for (PositionsMessage.Mob mob : saved.mobs()) mobs.put(mob.id(), mob);
+        } catch (IOException e) {
+            LOGGER.warn("Could not read the shared positions of this world", e);
+        }
     }
 
-    private void command(String command) {
-        CommandSourceStack source = server.createCommandSourceStack().withSuppressedOutput();
-        server.getCommands().performPrefixedCommand(source, command);
+    /** Writes the file, when something changed; also when the world closes. */
+    public void save() {
+        if (!loaded || !dirty) return;
+        dirty = false;
+        Path file = file();
+        try {
+            Path written = file.resolveSibling(FILE + ".tmp");
+            Files.write(written, PositionsMessage.saved(new ArrayList<>(players.values()), new ArrayList<>(mobs.values())));
+            Files.move(written, file, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            LOGGER.warn("Could not save the shared positions of this world", e);
+        }
+    }
+
+    // ChunkPos became a record in 26.1, its packed form a method of its own.
+    private static long chunk(double x, double z) {
+        ChunkPos pos = new ChunkPos((int) Math.floor(x) >> 4, (int) Math.floor(z) >> 4);
+        //? if >=26.1 {
+        /*return pos.pack();
+        *///?} else {
+        return pos.toLong();
+        //?}
     }
 
     private static int number(CompoundTag tag, String key) {

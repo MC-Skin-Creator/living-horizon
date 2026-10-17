@@ -2,12 +2,6 @@ package fr.clixmods.livinghorizon.track;
 
 import fr.clixmods.livinghorizon.GameBoot;
 import net.minecraft.nbt.TagParser;
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.scores.Objective;
-//? if >=1.20.3
-import net.minecraft.world.scores.ScoreHolder;
-import net.minecraft.world.scores.Scoreboard;
-import net.minecraft.world.scores.criteria.ObjectiveCriteria;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -20,79 +14,57 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Reads scores laid out the way the data pack's {@code publish.mcfunction} writes them. */
+/** Reads the messages a server with the mod sends ({@link PositionsMessage}), as the client keeps them. */
 class SharedPositionsTest {
+    private static final UUID HORSE = UUID.fromString("0f8fad5b-d9cb-469f-a165-70867728950e");
+    private static final UUID GHAST = UUID.fromString("7c9e6679-7425-40de-944b-e07fc1f90ae7");
+
     @BeforeAll
     static void boot() {
         GameBoot.start();
     }
 
-    private static Objective objective(Scoreboard scoreboard, String name) {
-        // Before 1.20.3 an objective had no display settings of its own, and a holder was its name.
-        //? if >=1.20.3 {
-        return scoreboard.addObjective(name, ObjectiveCriteria.DUMMY, Component.literal(name),
-                ObjectiveCriteria.RenderType.INTEGER, false, null);
-        //?} else
-        /*return scoreboard.addObjective(name, ObjectiveCriteria.DUMMY, Component.literal(name), ObjectiveCriteria.RenderType.INTEGER);*/
-    }
-
-    private static void set(Scoreboard scoreboard, String holder, Objective objective, int value) {
-        //? if >=1.20.3 {
-        scoreboard.getOrCreatePlayerScore(ScoreHolder.forNameOnly(holder), objective).set(value);
-        //?} else
-        /*scoreboard.getOrCreatePlayerScore(holder, objective).setScore(value);*/
-    }
-
-    private static Scoreboard pack() {
-        Scoreboard scoreboard = new Scoreboard();
-        Objective x = objective(scoreboard, "lh.x");
-        Objective y = objective(scoreboard, "lh.y");
-        Objective z = objective(scoreboard, "lh.z");
-        Objective m = objective(scoreboard, "lh.m");
-        set(scoreboard, "#version", m, SharedPositions.VERSION);
-        set(scoreboard, "#clock", m, 1);
-        // Steve, in the nether at (-1234.5, 64.2, 8001.9), looking at 270 degrees, on a strider.
-        set(scoreboard, "Steve", x, -12345);
-        set(scoreboard, "Steve", y, 642);
-        set(scoreboard, "Steve", z, 80019);
-        set(scoreboard, "Steve", m, 270 + 360 + 1440);
-        return scoreboard;
+    private static SharedPositions received() {
+        SharedPositions shared = new SharedPositions();
+        // Steve, in the nether, looking at 270 degrees, on the ghast; Alex logged off in the end.
+        shared.receive(PositionsMessage.players(List.of(
+                new PositionsMessage.Player("Steve", -1234.5, 64.25, 8001.9, 270f, 1, true, true, GHAST))));
+        shared.receive(PositionsMessage.offline(List.of(
+                new PositionsMessage.Player("Alex", 10, 70, -20, 90f, 2, false, false, null))));
+        // A baby horse (kind 1), variant 513, in the end, sent around a player at (0, 0).
+        shared.receive(PositionsMessage.mobs(new PositionsMessage.Mobs(List.of(
+                new PositionsMessage.Mob(HORSE, 1.5, 70, -2.5, 1, 2, true, 513)), 2, 0, 0, 2048)));
+        return shared;
     }
 
     @Test
-    void decodesAPlayer() {
-        Scoreboard scoreboard = pack();
-        SharedPositions shared = new SharedPositions();
-        assertTrue(shared.update(scoreboard));
-
-        SharedPositions.Report steve = shared.read(scoreboard, "Steve");
+    void decodesThePlayers() {
+        SharedPositions shared = received();
+        assertTrue(shared.update());
+        SharedPositions.Report steve = shared.read("Steve");
         assertNotNull(steve);
         assertEquals(-1234.5, steve.x(), 1e-9);
-        assertEquals(64.2, steve.y(), 1e-9);
+        assertEquals(64.25, steve.y(), 1e-9);
         assertEquals(8001.9, steve.z(), 1e-9);
         assertEquals(270f, steve.yaw());
         assertEquals(1, steve.dimension());
         assertTrue(steve.riding());
-        assertNull(shared.read(scoreboard, "Alex"));
+        assertEquals(GHAST, shared.vehicle("Steve"));
+
+        SharedPositions.Report alex = shared.read("Alex");
+        assertNotNull(alex);
+        assertEquals(2, alex.dimension());
+        assertNull(shared.vehicle("Alex"));
+        assertNull(shared.read("Nobody"));
+        assertEquals(List.of("Steve", "Alex"), shared.holders());
     }
 
     @Test
-    void decodesAMobAndKeepsItApartFromPlayers() {
-        Scoreboard scoreboard = pack();
-        UUID id = UUID.fromString("0f8fad5b-d9cb-469f-a165-70867728950e");
-        String holder = id.toString();
-        // A baby horse (kind 1), variant 513, in the end.
-        set(scoreboard, holder, scoreboard.getObjective("lh.x"), 15);
-        set(scoreboard, holder, scoreboard.getObjective("lh.y"), 700);
-        set(scoreboard, holder, scoreboard.getObjective("lh.z"), -25);
-        set(scoreboard, holder, scoreboard.getObjective("lh.m"), 1 + 2 * 256 + 1024 + 513 * 2048);
-
-        SharedPositions shared = new SharedPositions();
-        shared.update(scoreboard);
-        assertEquals(List.of("Steve"), shared.holders(scoreboard));
-        assertEquals(List.of(id), shared.mobs(scoreboard));
-
-        SharedPositions.MobReport horse = shared.readMob(scoreboard, id);
+    void decodesAMob() {
+        SharedPositions shared = received();
+        shared.update();
+        assertEquals(List.of(HORSE), shared.mobs());
+        SharedPositions.MobReport horse = shared.readMob(HORSE);
         assertNotNull(horse);
         assertEquals(1.5, horse.x(), 1e-9);
         assertEquals(70.0, horse.y(), 1e-9);
@@ -101,68 +73,48 @@ class SharedPositionsTest {
         assertEquals(2, horse.dimension());
         assertTrue(horse.baby());
         assertEquals(513, horse.variant());
+        // Gone from where they were sent around, only out of reach farther off.
+        assertTrue(shared.covers(2, 100, 100));
+        assertFalse(shared.covers(2, 3000, 0));
+        assertFalse(shared.covers(0, 100, 100));
     }
 
     @Test
-    void findsTheMobAPlayerRides() {
-        Scoreboard scoreboard = pack();
-        Objective riders = objective(scoreboard, "lh.r");
-        UUID ghast = UUID.fromString("0f8fad5b-d9cb-469f-a165-70867728950e");
-        UUID left = UUID.fromString("7c9e6679-7425-40de-944b-e07fc1f90ae7");
-        // Steve has number 2; the ghast under him carries it, the horse Alex rode carries 1.
-        set(scoreboard, "#next", riders, 2);
-        set(scoreboard, "Alex", riders, 1);
-        set(scoreboard, "Steve", riders, 2);
-        set(scoreboard, left.toString(), riders, 1);
-        set(scoreboard, ghast.toString(), riders, 2);
+    void stopsTrustingASilentServer() {
+        SharedPositions shared = received();
+        for (int tick = 0; tick < 59; tick++) assertTrue(shared.update());
+        assertFalse(shared.update());
+        assertNull(shared.read("Steve"));
+        // News again.
+        shared.receive(PositionsMessage.players(List.of()));
+        assertTrue(shared.update());
+    }
 
+    @Test
+    void ignoresAnotherVersionOrGarbage() {
         SharedPositions shared = new SharedPositions();
-        shared.update(scoreboard);
-        assertEquals(ghast, shared.vehicle(scoreboard, "Steve"));
-        assertNull(shared.vehicle(scoreboard, "Nobody"));
-        assertFalse(shared.holders(scoreboard).contains("#next"));
+        byte[] message = PositionsMessage.players(List.of(new PositionsMessage.Player("Steve", 0, 0, 0, 0, 0, true, false, null)));
+        message[3] = 99;
+        shared.receive(message);
+        shared.receive(new byte[] {1, 2, 3});
+        assertFalse(shared.update());
+        assertNull(PositionsMessage.read(new byte[0]));
     }
 
     @Test
-    void anOlderPackLinksNoMount() {
-        Scoreboard scoreboard = pack();
-        SharedPositions shared = new SharedPositions();
-        shared.update(scoreboard);
-        assertNull(shared.vehicle(scoreboard, "Steve"));
+    void theServerFileReadsBack() {
+        List<PositionsMessage.Player> players = List.of(new PositionsMessage.Player("Alex", 10, 70, -20, 90f, 2, false, false, null));
+        List<PositionsMessage.Mob> mobs = List.of(new PositionsMessage.Mob(HORSE, 1.5, 70, -2.5, 1, 2, true, 513));
+        PositionsMessage.Saved saved = PositionsMessage.readSaved(PositionsMessage.saved(players, mobs));
+        assertNotNull(saved);
+        assertEquals(players, saved.players());
+        assertEquals(mobs, saved.mobs());
     }
 
     @Test
-    void mobsKnownOnlyFromThePackParse() throws Exception {
+    void mobsKnownOnlyFromTheServerParse() throws Exception {
         for (String type : MobKinds.TYPES) {
             TagParser.parseCompoundFully(MobKinds.nbt(type, 3, true));
-            TagParser.parseCompoundFully(MobKinds.nbt(type, 0, false));
         }
-        // Tags answer with a default from 1.21.5; before, with zero when the key is missing.
-        //? if >=1.21.5 {
-        assertEquals((byte) 14, TagParser.parseCompoundFully(MobKinds.nbt("minecraft:sheep", 14, false)).getByteOr("Color", (byte) 0));
-        assertEquals(-24000, TagParser.parseCompoundFully(MobKinds.nbt("minecraft:cow", 0, true)).getIntOr("Age", 0));
-        //?} else {
-        /*assertEquals((byte) 14, TagParser.parseCompoundFully(MobKinds.nbt("minecraft:sheep", 14, false)).getByte("Color"));
-        assertEquals(-24000, TagParser.parseCompoundFully(MobKinds.nbt("minecraft:cow", 0, true)).getInt("Age"));
-        *///?}
-    }
-
-    @Test
-    void stopsTrustingAStoppedPack() {
-        Scoreboard scoreboard = pack();
-        SharedPositions shared = new SharedPositions();
-        for (int tick = 0; tick < 60; tick++) assertTrue(shared.update(scoreboard), "tick " + tick);
-        assertFalse(shared.update(scoreboard));
-        assertNull(shared.read(scoreboard, "Steve"));
-
-        set(scoreboard, "#clock", scoreboard.getObjective("lh.m"), 2);
-        assertTrue(shared.update(scoreboard));
-    }
-
-    @Test
-    void ignoresAnotherLayout() {
-        Scoreboard scoreboard = pack();
-        set(scoreboard, "#version", scoreboard.getObjective("lh.m"), SharedPositions.VERSION + 1);
-        assertFalse(new SharedPositions().update(scoreboard));
     }
 }

@@ -3,10 +3,10 @@
 ## Unreleased
 
 ### New
-- **No more data pack to install** — the mod shares everyone's position by itself, in a world opened to LAN and on a server with the mod in its `mods` folder. Players who join only need the mod.
+- **The mod on the server replaces the data pack** — put the mod in the server's `mods` folder (or open your world to LAN) and everyone with the mod sees the other players and the mobs at any distance. The data pack is gone: a server that used it now needs the mod.
 
 ### Improved
-- **Distant players** — they are placed from the shared positions alone: the locator bar guess is gone, and so is the "Signal lost" setting. Without a data pack or the mod on the server, the console says so once instead.
+- **Distant players** — they are placed from the shared positions alone: the locator bar guess is gone, and so is the "Signal lost" setting. Without the mod on the server, the console says so once instead.
 
 ### Fixed
 - **Players on a happy ghast** — a far player riding a happy ghast no longer has a second ghast beside them, and one already riding when you join no longer floats in the air.

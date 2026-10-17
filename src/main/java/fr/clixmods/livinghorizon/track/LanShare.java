@@ -8,14 +8,13 @@ import org.jspecify.annotations.Nullable;
 import java.util.concurrent.TimeUnit;
 
 /**
- * The companion data pack's job for a world opened to LAN: the host runs the server inside
- * their own game, so their mod publishes the positions ({@link PositionPublisher}) and the
- * friends who join only need the mod. A player who opens their single player world never
- * installs a data pack, which is why this exists.
+ * Shares the positions of a world opened to LAN: the host runs the server inside their own
+ * game, so their mod publishes the positions ({@link PositionPublisher}), and the friends who
+ * join with the mod see everyone at any distance.
  *
  * <p>Nothing runs in an unshared single player world, nor on another server (a dedicated
- * server runs the publisher itself, see {@code MinecraftServerMixin}). The objectives are
- * removed when the world closes, so the world is left as it was found.
+ * server runs the publisher itself, see {@code MinecraftServerMixin}). What the publisher keeps
+ * is saved in the world when it closes.
  */
 public final class LanShare {
     private static @Nullable Shared shared;
@@ -48,16 +47,16 @@ public final class LanShare {
         });
     }
 
-    /** Removes what was written, when the world closes or stops being shared. */
+    /** Saves what the publisher keeps, when the world closes or stops being shared. */
     public static void close() {
         Shared closing = shared;
         shared = null;
         if (closing == null || !closing.server.isRunning()) return;
         try {
-            // On the server's thread, where the scoreboard belongs; the game is leaving the world.
-            closing.server.submit(closing.publisher::remove).get(2, TimeUnit.SECONDS);
+            // On the server's thread, where the publisher lives; the game is leaving the world.
+            closing.server.submit(closing.publisher::save).get(2, TimeUnit.SECONDS);
         } catch (Exception e) {
-            LivingHorizonClient.LOGGER.debug("Could not remove the shared positions", e);
+            LivingHorizonClient.LOGGER.debug("Could not save the shared positions", e);
         }
     }
 
