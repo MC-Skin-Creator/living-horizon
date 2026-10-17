@@ -16,6 +16,7 @@
 - **Spyglass** — distant mobs seen through a spyglass are measured at their zoomed size: *Animation size* now matches what you see, and they keep walking when they look big.
 - **Opening a world** — distant mobs walk and graze from the start, instead of only turning on the spot.
 - **Perched birds** — tits, robins and ducks no longer dart back and forth, stand in the air or inside the leaves, or swim onto dry land, and ducks no longer appear right next to you only to fly off at once; ducks now swim about their pond instead of jumping in a loop, and robins and tits hop more and take off less.
+- **Mod list** — Forge, NeoForge and Quilt no longer show Living Horizon under the wrong license.
 
 ## 0.6.0 — 2026-10-15
 

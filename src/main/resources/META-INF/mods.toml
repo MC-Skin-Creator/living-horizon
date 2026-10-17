@@ -1,6 +1,6 @@
 modLoader = "javafml"
 loaderVersion = "[1,)"
-license = "GPL-3.0-only"
+license = "LicenseRef-LivingHorizon"
 issueTrackerURL = "https://github.com/MC-Skin-Creator/living-horizon/issues"
 # Nothing of the mod runs on a server, and a server does not need it to let a player in.
 clientSideOnly = true

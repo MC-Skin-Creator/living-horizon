@@ -17,9 +17,9 @@
       },
       "icon": "assets/livinghorizon/icon.png",
       "license": {
-        "name": "GNU General Public License v3.0 only",
-        "id": "GPL-3.0-only",
-        "url": "https://www.gnu.org/licenses/gpl-3.0.txt"
+        "name": "Living Horizon License",
+        "id": "LicenseRef-LivingHorizon",
+        "url": "https://github.com/MC-Skin-Creator/living-horizon/blob/main/LICENSE"
       }
     },
     ${intermediate_mappings}
