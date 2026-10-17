@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### New
+- **Player impostors** — a new setting keeps distant players as full models while mobs still turn into flat pictures far away.
+
 ## 0.7.0 — 2026-10-17
 
 ### New
