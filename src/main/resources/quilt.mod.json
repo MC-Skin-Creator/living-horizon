@@ -47,7 +47,7 @@
     ]
   },
   "minecraft": {
-    "environment": "client"
+    "environment": "*"
   },
   "access_widener": "livinghorizon.accesswidener",
   "mixin": [

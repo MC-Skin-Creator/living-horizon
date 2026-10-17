@@ -65,8 +65,6 @@ public final class FarConfig {
         return types;
     }
 
-    /** Seconds a player stays drawn where they were last placed once the locator bar loses them. */
-    public double lostTimeoutSeconds = 30.0;
 
     /**
      * Players who logged off stay where they were last, until they come back. Off, they are

@@ -4,6 +4,9 @@
   "package": "fr.clixmods.livinghorizon.mixin",
   "compatibilityLevel": "JAVA_${java}",
   ${refmap}
+  "mixins": [
+    "MinecraftServerMixin"
+  ],
   "client": [
     ${mixins}
   ],

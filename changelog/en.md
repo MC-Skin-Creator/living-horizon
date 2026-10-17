@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### New
+- **No more data pack to install** — the mod shares everyone's position by itself, in a world opened to LAN and on a server with the mod in its `mods` folder. Players who join only need the mod.
+
+### Improved
+- **Distant players** — they are placed from the shared positions alone: the locator bar guess is gone, and so is the "Signal lost" setting. Without a data pack or the mod on the server, the console says so once instead.
+
 ## 0.7.0 — 2026-10-17
 
 ### New

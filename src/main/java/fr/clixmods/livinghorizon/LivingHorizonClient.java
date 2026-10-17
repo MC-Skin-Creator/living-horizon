@@ -6,6 +6,7 @@ import fr.clixmods.livinghorizon.compat.LodWorld;
 import fr.clixmods.livinghorizon.platform.Events;
 import fr.clixmods.livinghorizon.render.Occlusion;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
+import fr.clixmods.livinghorizon.track.LanShare;
 import fr.clixmods.livinghorizon.ui.FarConfigScreen;
 import fr.clixmods.livinghorizon.ui.MobList;
 import fr.clixmods.livinghorizon.ui.OptionsButton;
@@ -31,20 +32,18 @@ import net.neoforged.neoforge.common.NeoForge;
 /*import net.minecraft.client.gui.screens.Screen;
 import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import java.util.function.Function;
 *///?}
 
 /**
- * Client entry point. There is no server side: everything the mod knows, a vanilla
- * client already receives.
+ * Client entry point. A dedicated server never loads it: there, {@code MinecraftServerMixin}
+ * shares the positions on its own.
  *
  * <p>Fabric and Quilt find it through {@code fabric.mod.json} and {@code quilt.mod.json}
  * and call {@code onInitializeClient}; NeoForge finds it by its annotation and calls the
- * constructor, on the client only; Forge does the same, and keeps it off a server through
- * {@code clientSideOnly} in {@code mods.toml}, its annotation having no side. Every loader
- * ends in the same {@code start}.
+ * constructor, on the client only; Forge's annotation has no side, so {@code LivingHorizonForge}
+ * carries it and builds this one on a client only. Every loader ends in the same {@code start}.
  */
 //? if fabric || quilt {
 public final class LivingHorizonClient implements ClientModInitializer {
@@ -52,8 +51,7 @@ public final class LivingHorizonClient implements ClientModInitializer {
 /*@Mod(value = LivingHorizonClient.MOD_ID, dist = Dist.CLIENT)
 public final class LivingHorizonClient {
 *///?} else {
-/*@Mod(LivingHorizonClient.MOD_ID)
-public final class LivingHorizonClient {
+/*public final class LivingHorizonClient {
 *///?}
     public static final String MOD_ID = "livinghorizon";
     public static final Logger LOGGER = LoggerFactory.getLogger("Living Horizon");
@@ -120,6 +118,9 @@ public final class LivingHorizonClient {
         // Voxy's world cannot close while the readers still hold its sections.
         Events.disconnect(LodWorld::suspend);
         Events.stopping(LodWorld::suspend);
+        // A world opened to LAN is left as it was found.
+        Events.disconnect(LanShare::close);
+        Events.stopping(LanShare::close);
         Events.entityLoad((entity, level) -> FarPlayerTracker.get().mobs().onLoad(entity));
         Events.entityUnload((entity, level) -> FarPlayerTracker.get().mobs().onUnload(entity, level));
         //? if fabric || quilt {
@@ -170,6 +171,7 @@ public final class LivingHorizonClient {
         }
         long started = System.nanoTime();
         FarPlayerTracker.get().tick(minecraft);
+        LanShare.tick(minecraft);
         if (minecraft.level != null) Occlusion.tick(minecraft.gameRenderer.getMainCamera().position());
         Stats.tick(System.nanoTime() - started);
     }

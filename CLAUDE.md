@@ -37,10 +37,15 @@ its last line of content, nothing after.
 
 ## What this is
 
-**Living Horizon** gives life to the distance. It is a **client-side** mod for Fabric,
+**Living Horizon** gives life to the distance. It is a mod for Fabric,
 Quilt, NeoForge and Forge, on several Minecraft versions: animals, villagers, birds and other players keep living
-on the horizon, past the render distance, on top of Voxy's far terrain. Nothing
-is sent to the server. An optional data pack in `datapack/` makes positions exact.
+on the horizon, past the render distance, on top of Voxy's far terrain. Everything is drawn on
+the client and nothing is sent to the server. Distant players are placed from positions the
+server shares through the scoreboard: the same jar writes them when it runs on a server
+(`PositionPublisher`, driven by `LanShare` on a LAN host and by `MinecraftServerMixin` on a
+dedicated server), or the data pack in `datapack/` does, with no mod on the server. Code
+that a dedicated server loads (`PositionPublisher`, `MinecraftServerMixin`, what they use)
+must never touch a client class.
 
 | | |
 |---|---|
@@ -327,6 +332,12 @@ come back, add it here in the same pull request: this file is what the next sess
   bird is stood again on what is under it. Birds jumping in a loop: a move is a flight once it
   is long, so a target is only moved in from a column's edge (never re-drawn on the block), and a
   duck swims as far as the water goes on (`Perchers.swims`). The `perchers` scenario counts all three.
+- **A dedicated server crashes on load with the mod** ("Attempted to load class
+  net/minecraft/client/... for invalid dist DEDICATED_SERVER"): something the server loads
+  reaches a client class. Forge's `@Mod` has no side, so it sits on `LivingHorizonForge`,
+  which builds `LivingHorizonClient` on a client only; never put it back on the client class.
+  Check a server by installing the loader's server from its installer, the jar in `mods/`,
+  and reading the console for "no data pack on this server".
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

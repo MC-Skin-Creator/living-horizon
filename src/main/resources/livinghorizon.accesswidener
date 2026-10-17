@@ -5,15 +5,6 @@ accessWidener v2 ${namespace}
 # obfuscated, and a block whose first line is "# @since X" and/or "# @until X" is kept
 # only on the versions it names (both ends included). Blocks are separated by a blank line.
 
-# The locator bar's three kinds of waypoint, and what each one carries. The bar came in 1.21.6.
-# @since 1.21.6
-accessible class net/minecraft/world/waypoints/TrackedWaypoint$Vec3iWaypoint
-accessible class net/minecraft/world/waypoints/TrackedWaypoint$ChunkWaypoint
-accessible class net/minecraft/world/waypoints/TrackedWaypoint$AzimuthWaypoint
-accessible field net/minecraft/world/waypoints/TrackedWaypoint$Vec3iWaypoint vector Lnet/minecraft/core/Vec3i;
-accessible field net/minecraft/world/waypoints/TrackedWaypoint$ChunkWaypoint chunkPos Lnet/minecraft/world/level/ChunkPos;
-accessible field net/minecraft/world/waypoints/TrackedWaypoint$AzimuthWaypoint angle F
-
 # Skin layers of a player that was never seen up close. The field moved to Avatar in 1.21.9.
 # @since 1.21.9
 accessible field net/minecraft/world/entity/Avatar DATA_PLAYER_MODE_CUSTOMISATION Lnet/minecraft/network/syncher/EntityDataAccessor;

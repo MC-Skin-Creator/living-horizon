@@ -139,7 +139,7 @@ public final class SharedPositions {
     }
 
     /** A holder's score, or null when it has none. The scoreboard named its holders by a string before 1.20.3. */
-    private static @Nullable Integer score(Scoreboard scoreboard, String holder, Objective objective) {
+    static @Nullable Integer score(Scoreboard scoreboard, String holder, Objective objective) {
         //? if >=1.20.3 {
         ReadOnlyScoreInfo info = scoreboard.getPlayerScoreInfo(ScoreHolder.forNameOnly(holder), objective);
         return info == null ? null : info.value();

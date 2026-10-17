@@ -2,6 +2,12 @@
 
 ## Prochaine version
 
+### Nouveautés
+- **Plus de datapack à installer** — le mod partage tout seul la position de tout le monde, dans un monde ouvert au LAN et sur un serveur qui a le mod dans son dossier `mods`. Les joueurs qui rejoignent n'ont besoin que du mod.
+
+### Améliorations
+- **Joueurs lointains** — ils sont placés d'après les positions partagées uniquement : l'estimation par la barre de localisation disparaît, et le réglage « Signal perdu » avec. Sans datapack ni mod sur le serveur, la console le signale une fois.
+
 ## 0.7.0 — 2026-10-17
 
 ### Nouveautés

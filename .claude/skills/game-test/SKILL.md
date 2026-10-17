@@ -28,6 +28,15 @@ It takes 1 to 3 minutes per scenario. The script:
 - runs `xvfb-run ./gradlew runClientGameTest -Plh.scenario=<names>`;
 - prints the scenario's `LHTEST` log lines, any assertion or crash, and the screenshots.
 
+Give it `LH_NODE=1.21.11` even for the active version: without it Gradle configures every
+node and downloads the libraries of all of them. When Maven Central keeps answering 429
+all the same, point Gradle at its Google mirror for the session with an init script in
+`~/.gradle/init.d/` that replaces `repo.maven.apache.org` by
+`https://maven-central.storage-download.googleapis.com/maven2/` in every repository list
+(settings' `pluginManagement` and `dependencyResolutionManagement`, and each project's).
+26.3 opens its window through EGL: `apt-get install libegl1 libegl-mesa0` when the log
+says "Could not load EGL library".
+
 The full log is `build/game-test.log`. Screenshots are in
 `build/run/clientGameTest/screenshots/`, numbered in order and named
 `<scenario>-<name>.png`. That folder is emptied before every run; it is never the `run/`
