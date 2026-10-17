@@ -55,12 +55,12 @@ are cut from the commits merged into `main`; a version below `1.0.0` is marked *
 ## Getting started
 
 1. **Keep the default settings.** They are the best balance between what you see and what
-   it costs. If you changed things and the game slows down, *Restore defaults* at the
+   it costs. If you changed things and the game slows down, *Restore Defaults* at the
    bottom of the settings puts everything back (your remembered mobs are kept).
 2. **Fill the horizon with mobs.** Out of the box, a mob is remembered once you have met
    it. In a single player world you can skip the walk: open the settings (*Living
    Horizon...* on the Options screen, Mod Menu's *Configure*, or `/livinghorizon config`)
-   and press *Scan the chunks around*, or type `/livinghorizon scan` (or
+   and press *Scan Nearby Mobs*, or type `/livinghorizon scan` (or
    `/livinghorizon scan 64` for a radius of your choice). The mobs found appear on the
    horizon at once. On a server, the scan has nothing to read: the data pack is what
    shares the mobs.
@@ -69,12 +69,12 @@ are cut from the commits merged into `main`; a version below `1.0.0` is marked *
 
 **Units.** The scan radius is in **chunks** (16 blocks each): the default 32 reads the
 chunks within 512 blocks of you. Every other distance in the settings is in **blocks**:
-*Mob distance* 512 hides the mobs more than 512 blocks away. *Mobs drawn at most* is a
-number of mobs, the bird amount a percentage.
+*Mob Render Distance* 512 hides the mobs more than 512 blocks away. *Max Mobs* is a
+number of mobs, *Bird Density* a percentage.
 
-> **Careful with the limits.** *Mobs drawn at most* set to *Unlimited* and *Mob distance*
+> **Careful with the limits.** *Max Mobs* set to *Unlimited* and *Mob Render Distance*
 > set to *Unlimited* together, with every kind of mob ticked, can freeze or crash the game
-> on a large world. Raise one limit at a time, and go back to *Restore defaults* if
+> on a large world. Raise one limit at a time, and go back to *Restore Defaults* if
 > things get slow.
 
 ## Good to know
@@ -166,20 +166,20 @@ label `mod compatibility`.
 - `/livinghorizon` lists the players followed, where their position comes from, and how
   sure it is (`±` blocks).
 - A key (unbound by default, under *Living Horizon* in Controls) toggles the copies.
-- The settings are in game: the *Living Horizon...* button on the Options screen, Mod Menu's *Configure*, or `/livinghorizon config`. *Restore defaults*, at the bottom, puts every setting back (mob and bird choices included; remembered mobs are kept).
+- The settings are in game: the *Living Horizon...* button on the Options screen, Mod Menu's *Configure*, or `/livinghorizon config`. *Restore Defaults*, at the bottom, puts every setting back (mob and bird choices included; remembered mobs are kept).
 - `config/livinghorizon.json`:
 
 | Setting | Default | Unit | |
 |---|---|---|---|
 | `enabled` | `true` | | |
-| `minApparentPixels` | `0` | pixels | Above 0, a far player is never drawn smaller than this (and stops shrinking) |
+| `minApparentPixels` | `0` | pixels | Above 0, a far player is never drawn smaller than this (and stops shrinking). In *Debug Options...* |
 | `extendFarPlane` | `true` | | Push the far clipping plane out to the farthest player, so terrain can hide them |
 | `lostTimeoutSeconds` | `30` | seconds | How long a copy stays once the locator bar loses them |
 | `distantMobs` | `true` | | Keep remembered mobs visible far away |
 | `maxDistantMobs` | `512` | mobs | How many of them are drawn at once, nearest first (`1000`: no limit; no limit here and in `mobMaxDistance` together can crash the game) |
 | `mobMaxDistance` | `512` | blocks | Past this, distant mobs are not drawn (`0`: no limit) |
 | `playerMaxDistance` | `0` | blocks | Past this, distant players are not drawn (`0`: no limit) |
-| `mobTypes` | the 31 mobs and the boats of the data pack, and mannequins | | Which mobs are shown, and remembered by this client (in game: "Choose mobs...") |
+| `mobTypes` | the 31 mobs and the boats of the data pack, and mannequins | | Which mobs are shown, and remembered by this client (in game: "Mobs & Entities...") |
 | `stillMobTypes` | happy ghast, mannequin | | Mobs shown standing still instead of walking their loop (in game: "Still") |
 | `rememberNamedMobs` | `true` | | A mob with a name tag is shown whatever its type |
 | `knownModdedMobs` | empty | | Mob types of other mods already offered once: a new one is shown from the start (monsters excepted), then left as you set it |
@@ -190,16 +190,16 @@ label `mod compatibility`.
 | `birdMinHeight` | `30` | blocks | Above you (or the sea, whichever is higher), below which flocks never fly |
 | `birdSize` | `1` | times | How much bigger than life birds are drawn |
 | `birdStyle` | `3d` | | `3d`: small models with beating wings; `2d`: flat pixel sprites |
-| `hiddenBirds` | empty | | Kinds of birds switched off: `flocks`, `geese`, `raptors`, `gulls`, `pigeons`, `robins`, `tits`, `bats`, `parrots` (in game: "Choose birds...") |
+| `hiddenBirds` | empty | | Kinds of birds switched off: `flocks`, `geese`, `raptors`, `gulls`, `pigeons`, `robins`, `tits`, `bats`, `parrots` (in game: "Bird Types...") |
 | `easterEggs` | `true` | | A few surprises, now and then |
-| `depthOcclusion` | `true` | | The far terrain's depth (Voxy or Distant Horizons) on distant mobs and players, pixel by pixel (see *The far terrain's depth* below). Was `voxyOcclusion`. In *Debug...* |
+| `depthOcclusion` | `true` | | The far terrain's depth (Voxy or Distant Horizons) on distant mobs and players, pixel by pixel (see *The far terrain's depth* below). Was `voxyOcclusion`. In *Debug Options...* |
 | `offlinePlayers` | `true` | | Players who logged off are shown and remembered; off, neither |
 | `offlineLife` | `true` | | Players who logged off live their life around their spot (see below); off, they sit on it |
 | `offlineRoam` | `50` | blocks | How far from their spot they walk around and look for a bed or a chest, from 8 to 128 (50 is about a village) |
 | `offlineNames` | `true` | | Their name above them, marked offline, and when they were last seen under the crosshair |
 | `showVehicles` | `true` | | Draw the mount they were last seen on |
-| `renderTrackedVehiclesFar` | `true` | | Never cull a mount that carries another player |
-| `hideOccludedMobs` | `true` | | Do not draw distant mobs behind terrain at all (see *Mobs hidden by depth* below). In *Debug...*, with `depthOcclusion` |
+| `renderTrackedVehiclesFar` | `true` | | Never cull a mount that carries another player. In *Debug Options...* |
+| `hideOccludedMobs` | `true` | | Do not draw distant mobs behind terrain at all (see *Mobs hidden by depth* below). In *Debug Options...*, with `depthOcclusion` |
 | `impostors` | `true` | | Draw far players and mobs as a flat picture of themselves (see *Impostors*) |
 | `impostorDistance` | `128` | blocks | Past this distance an impostor stands in for the model |
 | `animationMinPixels` | `10` | pixels | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
@@ -207,7 +207,7 @@ label `mod compatibility`.
 
 ### Debugging
 
-*Debug...* at the bottom of the settings, or `/livinghorizon debug` (panel and boxes):
+*Debug Options...* in the settings, or `/livinghorizon debug` (panel and boxes):
 
 - **Panel** (top left; in the F3 screen, the `living_horizon` option of the game's debug options, F3 + F6,
   which `/livinghorizon debug` turns on too): cost per tick and frame, what became of
@@ -377,7 +377,7 @@ lives there.
   the next tick. How far the server sends each kind of mob is learnt from what it sends
   (vanilla: up to the view distance; Paper: 48 blocks for animals): a copy is only judged
   missing well inside that, never just because its chunk is loaded.
-- **Scan the chunks around** (a button in the settings, or `/livinghorizon scan [radius]`):
+- **Scan Nearby Mobs** (a button in the settings, or `/livinghorizon scan [radius]`):
   in a single player world, the mobs of every chunk within `scanRadius` chunks are read
   from the world itself (`track/MobScan`) and remembered at once, no need to walk there.
   Chunks the integrated server has loaded give their mobs as they are; the others are read
@@ -421,7 +421,7 @@ and parrots are the game's own either way.
 
 Settings: on/off, how many (`birdDensity`, percent), how far (`birdMaxDistance`), how low
 flocks may fly (`birdMinHeight`), size, 3D or 2D (`birdStyle`), and each kind on its own
-("Choose birds...", `hiddenBirds`).
+("Bird Types...", `hiddenBirds`).
 
 ### Impostors
 
@@ -484,9 +484,9 @@ nothing, and the game no longer builds a render state and a model for it every f
   read back rather than baked. The fingerprint is the game version, the resource packs
   chosen and their files, the jars in `mods/` and the sheet format: when one changes, the
   folder is thrown away. At most 4096 sheets, the ones met longest ago going first.
-- **Preview.** *Impostor Manager...* in the settings, or `/livinghorizon impostors`: every figure
+- **Preview.** *Simplified Entities...* in the settings, or `/livinghorizon impostors`: every figure
   baked, its eight views, and its front view at 32, 16 and 8 screen pixels, as it looks
-  far away. *Bake again* throws every picture away, on disk too, and bakes the figures on
+  far away. *Rebuild* throws every picture away, on disk too, and bakes the figures on
   hand anew, even after a failed bake.
 - **Birds.** A 3D bird (`ambient/BirdFigure`) is baked from its model as a figure of the
   mod's own (`ImpostorFigure`), not an entity: one sheet per species, pose (perched, or

@@ -2,18 +2,31 @@ package fr.clixmods.livinghorizon.gametest.scenario;
 
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
+import fr.clixmods.livinghorizon.ui.DebugScreen;
 import fr.clixmods.livinghorizon.ui.FarConfigScreen;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.AbstractButton;
+import net.minecraft.client.gui.components.AbstractSelectionList;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.events.ContainerEventHandler;
 import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.screens.Screen;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Supplier;
 
 /**
- * The settings screen in a world: everything, the rows of options included, sits in the
- * column on the left, so that the game stays in view on the right.
+ * The settings screens in a world: everything, the rows of options included, sits in the
+ * column on the left, so that the game stays in view on the right; and no button's text,
+ * in English or in French, is wider than its button.
  */
 public final class OptionsScreenScenario implements Scenario {
+    /** The room a button leaves its text: the game scrolls whatever is wider, and that reads badly. */
+    private static final int TEXT_MARGIN = 4;
+
     @Override
     public String name() {
         return "options";
@@ -22,17 +35,83 @@ public final class OptionsScreenScenario implements Scenario {
     @Override
     public void run(ClientGameTestContext context) {
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
-            context.setScreen(() -> new FarConfigScreen(null));
-            context.waitTicks(5);
-            Scene.screenshot(context, this, "screen");
-            int overflow = context.computeOnClient(minecraft -> {
-                int panel = Math.min(360, minecraft.screen.width);
-                return overflow(minecraft.screen, panel);
-            });
-            Scene.log("options widgets past the column: " + overflow + " px");
+            List<String> problems = new ArrayList<>();
+            try {
+                for (String language : List.of("en_us", "fr_fr")) {
+                    setLanguage(context, language);
+                    look(context, language + "-settings", () -> new FarConfigScreen(null), problems);
+                    look(context, language + "-debug", () -> new DebugScreen(null), problems);
+                }
+            } finally {
+                setLanguage(context, "en_us");
+            }
             context.setScreen(() -> null);
-            if (overflow > 0) throw new AssertionError("Options widgets " + overflow + " px past the left column");
+            problems.forEach(problem -> Scene.log("options: " + problem));
+            if (!problems.isEmpty()) throw new AssertionError(problems.size() + " problems on the settings screens");
         }
+    }
+
+    /** Opens the screen, checks it and takes a picture of it from the top of its list to the bottom. */
+    private void look(ClientGameTestContext context, String name, Supplier<Screen> screen, List<String> problems) {
+        context.setScreen(screen::get);
+        context.waitTicks(5);
+        problems.addAll(context.computeOnClient(minecraft -> check(minecraft, name)));
+        Scene.screenshot(context, this, name + "-0");
+        for (int page = 1; page < 8; page++) {
+            if (!context.computeOnClient(minecraft -> scrollDown(minecraft.screen))) break;
+            context.waitTicks(2);
+            Scene.screenshot(context, this, name + "-" + page);
+        }
+    }
+
+    private static List<String> check(Minecraft minecraft, String name) {
+        List<String> problems = new ArrayList<>();
+        int panel = Math.min(360, minecraft.screen.width);
+        int overflow = overflow(minecraft.screen, panel);
+        if (overflow > 0) problems.add(name + ": widgets " + overflow + " px past the left column");
+        for (AbstractWidget widget : widgets(minecraft.screen, new ArrayList<>())) {
+            if (!(widget instanceof AbstractButton)) continue;
+            String text = widget.getMessage().getString();
+            int width = minecraft.font.width(widget.getMessage());
+            if (width > widget.getWidth() - TEXT_MARGIN) {
+                problems.add(name + ": \"" + text + "\" is " + width + " px wide, its button " + widget.getWidth());
+            }
+        }
+        return problems;
+    }
+
+    /** Scrolls the screen's list most of a screen down; whether it moved. */
+    private static boolean scrollDown(Screen screen) {
+        for (GuiEventListener child : screen.children()) {
+            if (child instanceof AbstractSelectionList<?> list) {
+                double before = list.scrollAmount();
+                list.setScrollAmount(before + 200);
+                return list.scrollAmount() != before;
+            }
+        }
+        return false;
+    }
+
+    /** Switches the game's language and waits for it to be read. */
+    private static void setLanguage(ClientGameTestContext context, String code) {
+        boolean changed = context.computeOnClient(minecraft -> {
+            if (minecraft.getLanguageManager().getSelected().equals(code)) return false;
+            minecraft.getLanguageManager().setSelected(code);
+            minecraft.options.languageCode = code;
+            minecraft.reloadResourcePacks();
+            return true;
+        });
+        if (!changed) return;
+        context.waitFor(minecraft -> minecraft.getOverlay() == null);
+        context.waitTicks(5);
+    }
+
+    private static List<AbstractWidget> widgets(ContainerEventHandler parent, List<AbstractWidget> found) {
+        for (GuiEventListener child : parent.children()) {
+            if (child instanceof AbstractWidget widget) found.add(widget);
+            if (child instanceof ContainerEventHandler container) widgets(container, found);
+        }
+        return found;
     }
 
     /** How far the widgets inside {@code parent}, rows of lists included, reach past {@code panel}. */

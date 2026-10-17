@@ -37,9 +37,10 @@ class LangTest {
     @Test
     void everySettingHasItsTexts() throws IOException {
         Set<String> keys = keys("en_us.json");
-        // bool("name", ...), integer("name", ...), choice("name", ...) in the settings screen.
-        Pattern option = Pattern.compile("(?:bool|integer|choice)\\(\"(\\w+)\"");
-        String screen = Files.readString(SOURCES.resolve("fr/clixmods/livinghorizon/ui/FarConfigScreen.java"));
+        // bool("name", ...), integer("name", ...), unit("name", ...) and the like in the settings screens.
+        Pattern option = Pattern.compile("(?:bool|integer|choice|unit|blocks|chunks)\\(\"(\\w+)\"");
+        String screen = Files.readString(SOURCES.resolve("fr/clixmods/livinghorizon/ui/FarConfigScreen.java"))
+                + Files.readString(SOURCES.resolve("fr/clixmods/livinghorizon/ui/DebugScreen.java"));
         Matcher match = option.matcher(screen);
         int found = 0;
         while (match.find()) {

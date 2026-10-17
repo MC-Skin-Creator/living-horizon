@@ -46,6 +46,11 @@ public class OptionsList extends ContainerObjectSelectionList<OptionsList.Entry>
         addEntry(new Entry(second == null ? List.of(first) : List.of(first, second)));
     }
 
+    /^* One option across the whole row. ^/
+    public void addBig(OptionInstance<?> option) {
+        addSmall(option.createButton(minecraft.options, 0, 0, ROW_WIDTH), null);
+    }
+
     private AbstractWidget button(OptionInstance<?> option) {
         return option.createButton(minecraft.options, 0, 0, 150);
     }

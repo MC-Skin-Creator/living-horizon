@@ -2,6 +2,9 @@
 
 ## Prochaine version
 
+### Améliorations
+- **Paramètres** — chaque paramètre a un nom et une description plus clairs, dans le style des options de Minecraft, et les distances ont des curseurs sur toute la largeur de la liste.
+
 ## 0.7.0 — 2026-10-17
 
 ### Nouveautés
