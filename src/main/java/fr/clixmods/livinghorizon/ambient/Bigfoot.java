@@ -283,7 +283,7 @@ public final class Bigfoot {
      * loaded, as the far world said of the nearest point of its way.
      */
     private boolean visible(ClientLevel level, LocalPlayer self) {
-        if (!level.hasChunk(Mth.floor(x) >> 4, Mth.floor(z) >> 4)) {
+        if (!Columns.loaded(level, x, z)) {
             return inSight[(int) Math.round(Mth.clamp(walked / length, 0, 1) * ALONG)];
         }
         Vec3 eye = self.getEyePosition();
@@ -299,8 +299,8 @@ public final class Bigfoot {
 
     /** The ground of a loaded column, under its trees: below the trunks and bamboo the heightmap stands on. NaN where not loaded. */
     private static double ground(ClientLevel level, double x, double z) {
+        if (!Columns.loaded(level, x, z)) return Double.NaN;
         int bx = Mth.floor(x), bz = Mth.floor(z);
-        if (!level.hasChunk(bx >> 4, bz >> 4)) return Double.NaN;
         BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos(
                 bx, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, bx, bz) - 1, bz);
         for (int i = 0; i < 32; i++) {
@@ -329,5 +329,6 @@ public final class Bigfoot {
         // Yaw turns the other way round from the pose's rotations, the body's as the head's.
         BoxFigure.draw(pose, collector, SHAPE, swing, 0f, -Mth.lerp(partial, headYawO, headYaw), light);
         pose.popPose();
+        if (called) CalledBeam.submit(pose, camera, collector, px + camera.x, py + camera.y, pz + camera.z);
     }
 }

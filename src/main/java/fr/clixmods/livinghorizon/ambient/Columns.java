@@ -49,8 +49,19 @@ final class Columns {
     static boolean drawn(ClientLevel level, LocalPlayer self, double x, double z) {
         double across = Math.hypot(x - self.getX(), z - self.getZ());
         double edge = Minecraft.getInstance().options.getEffectiveRenderDistance() * 16;
-        if (across <= edge - 16) return level.hasChunk(Mth.floor(x) >> 4, Mth.floor(z) >> 4);
+        if (across <= edge - 16) return loaded(level, x, z);
         return across >= edge + 16 && across <= Sight.farClear();
+    }
+
+    /**
+     * Whether this column is loaded here, and holds something: a chunk at the edge of the view
+     * can be empty to the bottom of the world while it comes or goes, its ground read as the
+     * bottom of the world.
+     */
+    static boolean loaded(ClientLevel level, double x, double z) {
+        int bx = Mth.floor(x), bz = Mth.floor(z);
+        return level.hasChunk(bx >> 4, bz >> 4)
+                && level.getHeight(Heightmap.Types.WORLD_SURFACE, bx, bz) > level.getMinY();
     }
 
     /** Entry {@code i} is the column at {@code (xs[i], zs[i])}; called on the game's thread. */
@@ -76,17 +87,19 @@ final class Columns {
             found[i] = new Column(xs[i], zs[i], top, !level.getFluidState(under).isEmpty(), biome, false);
         }
         if (far.isEmpty()) return CompletableFuture.completedFuture(found);
+        int bottom = level.getMinY();
         int[] fx = new int[far.size()], fz = new int[far.size()];
         for (int k = 0; k < far.size(); k++) {
             fx[k] = Mth.floor(xs[far.get(k)]);
             fz[k] = Mth.floor(zs[far.get(k)]);
         }
         return LodWorld.surfaces(fx, fz).handle((surfaces, error) -> {
-            // A far world that fails leaves those columns unknown, never the search hanging.
+            // A far world that fails leaves those columns unknown, never the search hanging; so
+            // does one with nothing above the bottom of the world.
             for (int k = 0; k < far.size(); k++) {
                 int i = far.get(k);
                 LodWorld.Surface surface = surfaces == null ? null : surfaces[k];
-                found[i] = surface == null ? new Column(xs[i], zs[i], Double.NaN, false, "", false)
+                found[i] = surface == null || surface.y() <= bottom ? new Column(xs[i], zs[i], Double.NaN, false, "", false)
                         : new Column(xs[i], zs[i], surface.y() + 1, surface.water(), surface.biome(),
                         surface.block() != null && surface.block().is(BlockTags.LEAVES));
             }

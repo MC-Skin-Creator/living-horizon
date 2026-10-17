@@ -196,8 +196,8 @@ public final class GhostBoat {
 
     /** Water on top of this column; true where the chunk is not loaded, as nothing says otherwise. */
     private static boolean water(ClientLevel level, double x, double z) {
+        if (!Columns.loaded(level, x, z)) return true;
         int bx = Mth.floor(x), bz = Mth.floor(z);
-        if (!level.hasChunk(bx >> 4, bz >> 4)) return true;
         int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, bx, bz);
         return !level.getFluidState(new BlockPos(bx, top - 1, bz)).isEmpty();
     }
@@ -223,6 +223,7 @@ public final class GhostBoat {
         float look = 35f * (float) Math.sin((age + partial) * 0.01);
         BoxFigure.draw(pose, collector, Ghosts.SHAPE, 0f, 0f, -look, Ufo.BRIGHT, Ufo.GLOW, Ghosts.ALPHA, true);
         pose.popPose();
+        if (called) CalledBeam.submit(pose, camera, collector, px + camera.x, py + camera.y, pz + camera.z);
     }
 
     /** A rowing boat, pale and see-through: its floor, its four sides, a bench across. */

@@ -296,6 +296,7 @@ public final class Herobrine {
         pose.mulPose(Axis.YP.rotationDegrees(-Mth.rotLerp(partial, him.yHeadRotO, him.yHeadRot)));
         collector.draw(pose, EYES, Herobrine::eyes);
         pose.popPose();
+        if (called) CalledBeam.submit(pose, camera, collector, px + camera.x, py + camera.y, pz + camera.z);
     }
 
     /**

@@ -202,14 +202,15 @@ public final class Ufo {
         double angle = random.nextDouble() * Math.PI * 2, gap = 2.2 + random.nextDouble();
         double sx = anchorX + Math.sin(angle) * gap, sz = anchorZ + Math.cos(angle) * gap;
         int gx = Mth.floor(sx), gz = Mth.floor(sz);
-        if (level.hasChunk(gx >> 4, gz >> 4)) {
+        if (Columns.loaded(level, sx, sz)) {
             int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, gx, gz);
             boolean wet = !level.getFluidState(new BlockPos(gx, top - 1, gz)).isEmpty();
             foundGround.set(new double[]{sx, wet ? Double.NaN : top, sz});
         } else {
+            int bottom = level.getMinY();
             LodWorld.surface(gx, gz).handle((surface, error) -> {
-                foundGround.set(new double[]{sx,
-                        surface != null && surface.isPresent() && !surface.get().water() ? surface.get().y() + 1 : Double.NaN, sz});
+                boolean ground = surface != null && surface.isPresent() && !surface.get().water() && surface.get().y() > bottom;
+                foundGround.set(new double[]{sx, ground ? surface.get().y() + 1 : Double.NaN, sz});
                 return null;
             });
         }
@@ -342,6 +343,7 @@ public final class Ufo {
 
         saucer(pose, collector, heading, tiltNow, spinNow, blink);
         pose.popPose();
+        if (called) CalledBeam.submit(pose, camera, collector, px + camera.x, py + camera.y, pz + camera.z);
     }
 
     /** The saucer at the pose's origin: heading where it goes, tilted forwards, spinning. */

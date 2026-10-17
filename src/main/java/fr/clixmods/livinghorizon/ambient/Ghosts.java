@@ -224,7 +224,7 @@ public final class Ghosts {
      */
     private double ground(ClientLevel level, double x, double z, double along) {
         int bx = Mth.floor(x), bz = Mth.floor(z);
-        if (level.hasChunk(bx >> 4, bz >> 4)) {
+        if (Columns.loaded(level, x, z)) {
             int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, bx, bz);
             return level.getFluidState(new BlockPos(bx, top - 1, bz)).isEmpty() ? top : Double.NaN;
         }
@@ -256,13 +256,7 @@ public final class Ghosts {
         pose.mulPose(Axis.YP.rotationDegrees(-Mth.rotLerp(partial, yawO, yaw)));
         BoxFigure.draw(pose, collector, SHAPE, swing, 0f, 0f, Ufo.BRIGHT, Ufo.GLOW, ALPHA, false);
         pose.popPose();
-    }
-
-    /** The height to stand at on this column, or NaN where its chunk is not here. */
-    static double ground(ClientLevel level, double x, double z) {
-        int bx = Mth.floor(x), bz = Mth.floor(z);
-        if (!level.hasChunk(bx >> 4, bz >> 4)) return Double.NaN;
-        return level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, bx, bz);
+        if (called) CalledBeam.submit(pose, camera, collector, px + camera.x, py + camera.y, pz + camera.z);
     }
 
     /** Nothing the player cannot see through between their eye and this point. */

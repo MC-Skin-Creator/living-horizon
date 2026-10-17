@@ -32,7 +32,7 @@ public final class SaucerPass {
 
     private final EggCalendar calendar;
     private final RandomSource random = RandomSource.create();
-    private boolean active;
+    private boolean active, called;
     private Phase phase = Phase.CRUISE;
     private int age, timer, idle;
     private double x, y, z, xo, yo, zo, hoverY;
@@ -74,6 +74,7 @@ public final class SaucerPass {
         tilt = tiltO = 14f;
         phase = Phase.CRUISE;
         age = timer = 0;
+        this.called = called;
         active = true;
         return true;
     }
@@ -158,5 +159,6 @@ public final class SaucerPass {
         pose.scale(pull, pull, pull);
         Ufo.saucer(pose, collector, heading, Mth.lerp(partial, tiltO, tilt), Mth.lerp(partial, spinO, spin), (age / 5) % 3);
         pose.popPose();
+        if (called) CalledBeam.submit(pose, camera, collector, px + camera.x, py + camera.y, pz + camera.z);
     }
 }

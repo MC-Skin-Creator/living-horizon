@@ -299,6 +299,7 @@ public final class EasterEggsScenario implements Scenario {
             if (across > minecraft.options.getEffectiveRenderDistance() * 16 - 16) {
                 throw new AssertionError("ee6 at " + (int) across + " blocks, past what is drawn");
             }
+            if (now.y <= minecraft.level.getMinY()) throw new AssertionError("ee6 at the bottom of the world, " + now);
             Scene.log("eggs ee6 at " + now + ", " + (int) now.distanceTo(minecraft.player.position()) + " blocks");
             lookAt(minecraft.player, now.x, now.y + 1.4, now.z);
             minecraft.options.fov().set(30);
@@ -362,7 +363,8 @@ public final class EasterEggsScenario implements Scenario {
 
     /**
      * Standing where the game draws the ground: inside the circle of chunks it draws, never in
-     * the corners of the square it keeps loaded. No Voxy nor Distant Horizons here to draw farther.
+     * the corners of the square it keeps loaded, and on the ground there, never at the bottom
+     * of the world. No Voxy nor Distant Horizons here to draw farther.
      */
     private static void drawn(ClientGameTestContext context, Vec3 at, String egg) {
         context.runOnClient(minecraft -> {
@@ -370,6 +372,10 @@ public final class EasterEggsScenario implements Scenario {
             double edge = minecraft.options.getEffectiveRenderDistance() * 16;
             if (across > edge - 16) throw new AssertionError(egg + " at " + (int) across + " blocks, past the "
                     + (int) edge + " drawn");
+            int ground = minecraft.level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, Mth.floor(at.x), Mth.floor(at.z));
+            if (at.y <= minecraft.level.getMinY() || Math.abs(at.y - ground) > 3) {
+                throw new AssertionError(egg + " at height " + at.y + ", the ground there at " + ground);
+            }
         });
     }
 

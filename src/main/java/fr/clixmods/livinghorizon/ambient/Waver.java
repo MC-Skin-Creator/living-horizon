@@ -200,5 +200,6 @@ public final class Waver {
         pose.mulPose(Axis.YP.rotationDegrees(-Mth.rotLerp(partial, yawO, yaw)));
         BoxFigure.draw(pose, collector, SHAPE, 0f, raise, 0f, Ufo.LIT);
         pose.popPose();
+        if (called) CalledBeam.submit(pose, camera, collector, px + camera.x, py + camera.y, pz + camera.z);
     }
 }
