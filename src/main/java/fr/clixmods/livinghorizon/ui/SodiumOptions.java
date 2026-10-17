@@ -68,9 +68,6 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 .setDefaultValue(Preset.NORMAL)
                                 .setStorageHandler(storage)
                                 .setBinding(p -> chosenPreset = p, () -> Preset.of(FarConfig.get())))
-                        .addOption(integer(b, "minApparentPixels", 0, 32, (int) d.minApparentPixels,
-                                v -> FarConfig.get().minApparentPixels = v, () -> (int) FarConfig.get().minApparentPixels,
-                                plain("minApparentPixels", 0, false)))
                         .addOption(bool(b, "easterEggs", d.easterEggs, v -> FarConfig.get().easterEggs = v,
                                 () -> FarConfig.get().easterEggs)))
                 .addOptionGroup(b.createOptionGroup()
@@ -86,6 +83,9 @@ public final class SodiumOptions implements ConfigEntryPoint {
                 .addOptionGroup(b.createOptionGroup()
                         .addOption(bool(b, "impostors", d.impostors, v -> FarConfig.get().impostors = v,
                                 () -> FarConfig.get().impostors))
+                        .addOption(bool(b, "impostorPlayers", d.impostorPlayers, v -> FarConfig.get().impostorPlayers = v,
+                                () -> FarConfig.get().impostorPlayers)
+                                .setEnabledProvider(on("impostors"), id("impostors")))
                         .addOption(blocks(b, "impostorDistance", 32, 2000, d.impostorDistance,
                                 v -> FarConfig.get().impostorDistance = v, () -> FarConfig.get().impostorDistance)
                                 .setEnabledProvider(on("impostors"), id("impostors"))))
@@ -100,13 +100,11 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 () -> FarConfig.get().enabled))
                         .addOption(bool(b, "showVehicles", d.showVehicles, v -> FarConfig.get().showVehicles = v,
                                 () -> FarConfig.get().showVehicles))
-                        .addOption(bool(b, "renderTrackedVehiclesFar", d.renderTrackedVehiclesFar,
-                                v -> FarConfig.get().renderTrackedVehiclesFar = v, () -> FarConfig.get().renderTrackedVehiclesFar))
                         .addOption(blocks(b, "playerMaxDistance", 0, 4000, d.playerMaxDistance,
                                 v -> FarConfig.get().playerMaxDistance = v, () -> FarConfig.get().playerMaxDistance))
                         .addOption(integer(b, "lostTimeoutSeconds", 5, 300, (int) d.lostTimeoutSeconds,
                                 v -> FarConfig.get().lostTimeoutSeconds = v, () -> (int) FarConfig.get().lostTimeoutSeconds,
-                                plain("lostTimeoutSeconds", 5, false))))
+                                unit("lostTimeoutSeconds", "seconds", 5))))
                 .addOptionGroup(b.createOptionGroup()
                         .addOption(bool(b, "offlinePlayers", d.offlinePlayers, v -> FarConfig.get().offlinePlayers = v,
                                 () -> FarConfig.get().offlinePlayers))
@@ -139,7 +137,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                 .addOptionGroup(b.createOptionGroup()
                         .addOption(integer(b, "animationMinPixels", 0, 40, d.animationMinPixels,
                                 v -> FarConfig.get().animationMinPixels = v, () -> FarConfig.get().animationMinPixels,
-                                plain("animationMinPixels", 0, false)))
+                                unit("animationMinPixels", "pixels", 0)))
                         .addOption(blocks(b, "animationMaxDistance", 0, 4000, d.animationMaxDistance,
                                 v -> FarConfig.get().animationMaxDistance = v, () -> FarConfig.get().animationMaxDistance)))
                 .addOptionGroup(b.createOptionGroup()
@@ -182,19 +180,18 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 () -> FarConfig.get().skyBirds))
                         .addOption(integer(b, "birdDensity", 0, 500, d.birdDensity,
                                 v -> FarConfig.get().birdDensity = v, () -> FarConfig.get().birdDensity,
-                                plain("birdDensity", 0, false))
+                                unit("birdDensity", "percent", 0))
                                 .setEnabledProvider(birds, id("skyBirds")))
                         .addOption(blocks(b, "birdMaxDistance", 100, 3000, d.birdMaxDistance,
                                 v -> FarConfig.get().birdMaxDistance = v, () -> FarConfig.get().birdMaxDistance)
                                 .setEnabledProvider(birds, id("skyBirds")))
-                        .addOption(integer(b, "birdMinHeight", 0, 200, d.birdMinHeight,
-                                v -> FarConfig.get().birdMinHeight = v, () -> FarConfig.get().birdMinHeight,
-                                plain("birdMinHeight", 0, false))
+                        .addOption(blocks(b, "birdMinHeight", 0, 200, d.birdMinHeight,
+                                v -> FarConfig.get().birdMinHeight = v, () -> FarConfig.get().birdMinHeight)
                                 .setEnabledProvider(birds, id("skyBirds"))))
                 .addOptionGroup(b.createOptionGroup()
                         .addOption(integer(b, "birdSize", 1, 6, d.birdSize,
                                 v -> FarConfig.get().birdSize = v, () -> FarConfig.get().birdSize,
-                                plain("birdSize", 1, false))
+                                unit("birdSize", "multiplier", 1))
                                 .setEnabledProvider(birds, id("skyBirds")))
                         .addOption(b.createEnumOption(id("birdStyle"), BirdStyle.class)
                                 .setName(Component.translatable(KEY + "birdStyle"))
@@ -256,11 +253,15 @@ public final class SodiumOptions implements ConfigEntryPoint {
                 .setBinding(set::accept, () -> Math.clamp(get.getAsInt(), min, max));
     }
 
-    /** A distance in blocks, "512 blocks", the zero of a range from 0 read as its {@code .zero} text. */
+    /** A distance in blocks, "512 Blocks", the zero of a range from 0 read as its {@code .zero} text. */
     private OptionBuilder blocks(ConfigBuilder b, String name, int min, int max, int fallback, IntConsumer set,
                                  IntSupplier get) {
-        return integer(b, name, min, max, fallback, set, get,
-                v -> v == 0 && min == 0 ? Component.translatable(KEY + name + ".zero") : Component.translatable(KEY + "blocks", v));
+        return integer(b, name, min, max, fallback, set, get, unit(name, "blocks", min));
+    }
+
+    /** A number in a unit, as {@link FarConfigScreen} writes it ("30s", "6px", "100%"); the zero of a range from 0 as its text. */
+    private static ControlValueFormatter unit(String name, String unit, int min) {
+        return v -> v == 0 && min == 0 ? Component.translatable(KEY + name + ".zero") : Component.translatable(KEY + unit, v);
     }
 
     /** A bare number; the zero of a range from 0 and, with {@code maxIsUnlimited}, the top read as text. */
