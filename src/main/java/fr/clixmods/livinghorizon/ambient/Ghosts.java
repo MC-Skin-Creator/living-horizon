@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Easter egg 3, very rare: some night, a pale glowing figure walks a few steps somewhere in
- * sight, anywhere around the player and as far as the horizon, then stops, turns to look at
+ * sight, anywhere around the player up to a few hundred blocks off, then stops, turns to look at
  * them, and is gone - at once if the player comes near. Only on this screen.
  *
  * <p>Its way is read in the loaded chunks or the far world ({@link Columns}), on dry ground
@@ -43,7 +43,7 @@ public final class Ghosts {
     static final int ALPHA = 65;
     /** Blocks per tick it walks; how close the player may come before it vanishes. */
     private static final double PACE = 0.045, NEAR = 10;
-    /** How far off it may walk, in blocks across: one of the farther ways in sight is taken. */
+    /** How far off it may walk, in blocks across. */
     private static final double MIN = 22, MAX = 320;
     /** Ways tried; stretches each way is read in. */
     private static final int WAYS = 40, ALONG = 4;
@@ -140,7 +140,7 @@ public final class Ghosts {
                 searching = false;
                 List<Integer> clear = new ArrayList<>();
                 for (int i = 0; i < seen.length; i++) if (seen[i]) clear.add(dry.get(i));
-                Integer w = Sight.far(clear, i -> distances[i], random);
+                Integer w = Sight.any(clear, random);
                 if (w == null) {
                     if (called) EggLog.nowhere(3);
                     return;

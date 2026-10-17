@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Easter egg 5: now and then, by day, a dark figure stands on the highest summit in sight,
- * anywhere around the player and as far as the horizon, against the sky, turns to them and
+ * anywhere around the player up to a few hundred blocks off, against the sky, turns to them and
  * waves - and is gone the moment they look at it. Only on this screen.
  *
  * <p>The summit is the highest of rings of columns around the player, read in the loaded
@@ -40,7 +40,7 @@ public final class Waver {
      */
     private static final int STAND = 30, PATIENCE = 600, CALLED_PATIENCE = 1800, SEARCH = 400;
     /** How far off it may stand, in blocks across. */
-    private static final double MIN = 60, MAX = 800;
+    private static final double MIN = 60, MAX = 400;
     /** Blocks a summit found by chance rises above the player's feet, and above the sea. */
     private static final double ABOVE_PLAYER = 12, ABOVE_SEA = 20;
     /** Blocks across: it goes if the player comes this close. */
@@ -119,23 +119,16 @@ public final class Waver {
             Sight.of(level, self, eye, hx, hy, hz).thenAcceptAsync(seen -> {
                 if (generation.get() != mine) return;
                 searching = false;
-                // Among the highest in sight, the farthest: a summit against the sky, far off.
+                // Any of the highest in sight: a summit against the sky.
                 List<Columns.Column> seenTops = new ArrayList<>();
                 for (int i = 0; i < seen.length; i++) if (seen[i]) seenTops.add(standing.get(i));
                 seenTops.sort((a, b) -> Double.compare(b.y(), a.y()));
-                Columns.Column top = null;
-                for (Columns.Column column : seenTops.subList(0, (seenTops.size() + 3) / 4)) {
-                    if (top == null || far(column, eye) > far(top, eye)) top = column;
-                }
+                Columns.Column top = Sight.any(seenTops.subList(0, (seenTops.size() + 3) / 4), random);
                 if (top != null) begin(top, self);
                 else if (called) EggLog.nowhere(5);
             }, game);
         }, game);
         return true;
-    }
-
-    private static double far(Columns.Column column, Vec3 eye) {
-        return Math.hypot(column.x() - eye.x, column.z() - eye.z);
     }
 
     private void begin(Columns.Column top, LocalPlayer self) {

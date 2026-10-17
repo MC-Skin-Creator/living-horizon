@@ -24,8 +24,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Easter egg 7: some night, out on open water anywhere around the player, as far as the
- * horizon, a rowing boat drifts, pale and see-through, a ghost sitting in it; both are gone
+ * Easter egg 7: some night, out on open water anywhere around the player, a few
+ * hundred blocks off at most, a rowing boat drifts, pale and see-through, a ghost sitting in it; both are gone
  * when the player comes near. Only on this screen.
  *
  * <p>The water is found in rings of columns all around, loaded or in the far world
@@ -41,8 +41,8 @@ public final class GhostBoat {
     private static final int LIFE = 4800;
     /** Height of the bench above the water, where the ghost sits. */
     private static final double SEAT = 0.3;
-    /** How far off it may drift, in blocks across: one of the farther spots in sight is taken. */
-    private static final double MIN = 50, MAX = 600;
+    /** How far off it may drift, in blocks across. */
+    private static final double MIN = 50, MAX = 400;
     /** Ticks a search may take. */
     private static final int SEARCH = 400;
 
@@ -126,7 +126,7 @@ public final class GhostBoat {
                 searching = false;
                 List<Columns.Column> clear = new ArrayList<>();
                 for (int i = 0; i < seen.length; i++) if (seen[i]) clear.add(open.get(i));
-                Columns.Column spot = Sight.far(clear, c -> Math.hypot(c.x() - eye.x, c.z() - eye.z), random);
+                Columns.Column spot = Sight.any(clear, random);
                 if (spot == null) {
                     if (called) EggLog.nowhere(7);
                     return;

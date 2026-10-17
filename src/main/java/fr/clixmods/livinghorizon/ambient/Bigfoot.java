@@ -162,7 +162,7 @@ public final class Bigfoot {
                 if (generation.get() != mine) return;
                 searching = false;
                 // Seen somewhere along: far before near, out of sight at the start before not,
-                // then one of the farther of those.
+                // then any of those.
                 List<Integer> ways = new ArrayList<>();
                 int bestRank = -1;
                 for (int i = 0; i < forest.size(); i++) {
@@ -176,7 +176,7 @@ public final class Bigfoot {
                         bestRank = rank;
                     }
                 }
-                Integer chosen = Sight.far(ways, i -> distances[forest.get(i)], random);
+                Integer chosen = Sight.any(ways, random);
                 if (chosen == null) {
                     if (called) EggLog.nowhere(6);
                     return;

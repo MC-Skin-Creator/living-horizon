@@ -68,7 +68,7 @@ public final class Ufo {
     /** Blocks from the ground to the saucer's middle while it hovers. */
     private static final double HOVER = 16;
     /** How far the remembered cow may be, in blocks across: when called, and by chance. */
-    private static final double CALLED_MIN = 24, CALLED_MAX = 400, CHANCE_MIN = 80, CHANCE_MAX = 480;
+    private static final double CALLED_MIN = 24, CALLED_MAX = 400, CHANCE_MIN = 80, CHANCE_MAX = 400;
     /** Ahead of the player: within about 45 degrees of where they look. */
     private static final double AHEAD = 0.7;
     /** Spots beside the cow tried before standing the twin at the cow's own height. */
@@ -146,11 +146,7 @@ public final class Ufo {
             return call;
         }
         List<MobMemory.Remembered> from = call == Call.AHEAD ? ahead : around;
-        // One of the farther ones: the show is for the horizon.
-        MobMemory.Remembered chosen = Sight.far(from, mob -> {
-            Entity puppet = mob.puppet();
-            return puppet == null ? 0 : puppet.distanceTo(self);
-        }, random);
+        MobMemory.Remembered chosen = Sight.any(from, random);
         if (chosen == null) return Call.NOTHING;
         Entity remembered = chosen.puppet();
         LivingEntity made = memory.twin(chosen, level);

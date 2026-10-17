@@ -10,10 +10,8 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.ToDoubleFunction;
 
 /**
  * What the player could see, turning their head: points in sight of their eye, through the
@@ -47,16 +45,9 @@ final class Sight {
         return farClear;
     }
 
-    /**
-     * One of the farther half of {@code spots}, by {@code distance} from the player: the near
-     * ones are the ones most often in sight, and the easter eggs are for the horizon. Null if
-     * there is none.
-     */
-    static <T> @Nullable T far(List<T> spots, ToDoubleFunction<T> distance, RandomSource random) {
-        if (spots.isEmpty()) return null;
-        List<T> sorted = new ArrayList<>(spots);
-        sorted.sort(Comparator.comparingDouble(distance).reversed());
-        return sorted.get(random.nextInt((sorted.size() + 1) / 2));
+    /** One of {@code spots}, any of them: the distances were drawn evenly when they were tried. Null if there is none. */
+    static <T> @Nullable T any(List<T> spots, RandomSource random) {
+        return spots.isEmpty() ? null : spots.get(random.nextInt(spots.size()));
     }
 
     /**

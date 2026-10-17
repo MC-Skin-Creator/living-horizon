@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Easter egg 4: from the second or third day the player lives in a world, every night, a
- * figure in Steve's skin with white eyes stands somewhere far off around them - up to 500
+ * figure in Steve's skin with white eyes stands somewhere far off around them - up to 400
  * blocks - and watches them. Once they look him in the eyes he is gone three to five seconds
  * later, and does not come back for two to four days; until then he comes back every night. He goes
  * as well at dawn, or if they come near. Only on this screen.
@@ -52,7 +52,7 @@ public final class Herobrine {
     /** Blocks: he goes if the player comes this close, or this far. */
     private static final double NEAR = 24, LOST = 600;
     /** How far off he may stand, in blocks across; when called, from {@link #CALLED} on. */
-    private static final double MIN = 60, MAX = 500, CALLED = 80;
+    private static final double MIN = 60, MAX = 400, CALLED = 80;
     /** Ticks a search may take before it is given up: a far world that does not answer. */
     private static final int SEARCH = 400;
     /** Ticks he waits, when called, to be seen before he goes anyway. */
@@ -115,10 +115,9 @@ public final class Herobrine {
         double yaw = Math.toRadians(self.getYRot());
         double[] xs = new double[count], zs = new double[count];
         for (int i = 0; i < count; i++) {
-            // Anywhere around, nearer more often than farther; in front of the player when called.
+            // Anywhere around, at any distance alike; in front of the player when called.
             double bearing = called ? yaw + (random.nextDouble() * 2 - 1) * 0.5 : random.nextDouble() * Math.PI * 2;
-            double t = random.nextDouble();
-            double distance = called ? near + t * (far - near) : near + t * t * (far - near);
+            double distance = near + random.nextDouble() * (far - near);
             xs[i] = Mth.floor(self.getX() - Math.sin(bearing) * distance) + 0.5;
             zs[i] = Mth.floor(self.getZ() + Math.cos(bearing) * distance) + 0.5;
         }
@@ -234,7 +233,7 @@ public final class Herobrine {
         }
         searching = false;
         search = null;
-        Vec3 head = Sight.far(current.clear(), h -> Math.hypot(h.x - self.getX(), h.z - self.getZ()), random);
+        Vec3 head = Sight.any(current.clear(), random);
         if (head == null) {
             if (called) EggLog.nowhere(4);
             return;
