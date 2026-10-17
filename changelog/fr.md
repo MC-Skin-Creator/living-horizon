@@ -8,6 +8,7 @@
 - **Sodium** — les réglages de Living Horizon apparaissent aussi dans les *Paramètres vidéo* de Sodium, sur des pages à eux sous celles de Sodium (Sodium 0.8 et plus récent).
 - **Joueurs déconnectés sur une monture** — ils gardent leur cheval, leur bateau ou leur ghast joyeux et se promènent avec autour de l'endroit où ils sont partis : le cheval marche, le bateau reste sur l'eau et le ghast joyeux flotte dans les airs.
 - **Mémoire vidéo** — *Entités simplifiées...* affiche, dans un onglet pour les créatures et un pour les joueurs, la mémoire vidéo que prennent leurs images, et deux nouveaux réglages choisissent le maximum de chacun.
+- **Wagons au loin** — les wagons restent visibles à l'horizon comme les bateaux, et un wagon qui roulait encore quand tu le perds de vue continue sur ses rails.
 
 ### Améliorations
 - **Paramètres** — chaque paramètre a un nom et une description plus clairs, dans le style des options de Minecraft, et les distances ont des curseurs sur toute la largeur de la liste.

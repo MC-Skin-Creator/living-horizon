@@ -13,7 +13,7 @@
 #
 # Remembered mobs (animals, villagers, golems: tags/entity_type/remembered.json) are
 # published in the same four objectives under their UUID; see mob.mcfunction.
-# Boats too: a parked boat vanishes from far away just like an animal.
+# Boats and minecarts too: a parked boat or cart vanishes from far away just like an animal.
 #
 # Anyone in a team of one of these colours would see the coordinates in their sidebar.
 # If your server uses them, change the four setdisplay lines below.

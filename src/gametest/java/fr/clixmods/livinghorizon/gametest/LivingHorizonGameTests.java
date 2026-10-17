@@ -14,6 +14,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.ImpostorScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorSharingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.MinecartsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PerchersScenario;
@@ -72,7 +73,8 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new EasterEggsScenario(),
             new BirdsScenario(),
             new PerchersScenario(),
-            new BirdCommandScenario());
+            new BirdCommandScenario(),
+            new MinecartsScenario());
 
     @Override
     public void runTest(ClientGameTestContext context) {

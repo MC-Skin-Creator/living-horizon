@@ -176,8 +176,11 @@ public final class MobScan {
     private static void add(Entity entity, ServerLevel level, Filter filter, List<Found> found, Set<UUID> seen) {
         if (!filter.wants(entity) || !seen.add(entity.getUUID())) return;
         try {
+            CompoundTag saved = EntityNbt.save(entity, level);
+            // A chest minecart nobody ever opened was left by a mineshaft, under the ground.
+            if (MobMemory.buriedCart(entity, saved)) return;
             found.add(new Found(entity.getUUID(), EntityType.getKey(entity.getType()).toString(),
-                    entity.getX(), entity.getY(), entity.getZ(), entity.getYRot(), EntityNbt.save(entity, level),
+                    entity.getX(), entity.getY(), entity.getZ(), entity.getYRot(), saved,
                     entity.hasCustomName()));
         } catch (RuntimeException e) {
             seen.remove(entity.getUUID());

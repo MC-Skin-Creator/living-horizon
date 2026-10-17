@@ -38,7 +38,7 @@ public final class MobTypesScreen extends SideOptionsScreen {
     private String filter = "";
     /** The switches on screen, by mob id: updated in place by All, None and Defaults. */
     private final Map<String, CycleButton<Mode>> buttons = new LinkedHashMap<>();
-    /** The icon drawn beside each switch: the mob's spawn egg, the boat's item. */
+    /** The icon drawn beside each switch: the mob's spawn egg, the boat's or minecart's item. */
     private final Map<String, ItemStack> icons = new LinkedHashMap<>();
 
     public MobTypesScreen(Screen parent) {
@@ -98,7 +98,7 @@ public final class MobTypesScreen extends SideOptionsScreen {
 
     private static Map<String, Item> items;
 
-    /** The spawn egg of a mob, or the item of a boat: what the game itself shows for it. */
+    /** The spawn egg of a mob, or the item of a boat or a minecart: what the game itself shows for it. */
     private static ItemStack icon(String id) {
         if (items == null) {
             items = new java.util.HashMap<>();

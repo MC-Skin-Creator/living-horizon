@@ -26,11 +26,20 @@ public final class MobKinds {
             "minecraft:oak_chest_boat", "minecraft:spruce_chest_boat", "minecraft:birch_chest_boat",
             "minecraft:jungle_chest_boat", "minecraft:acacia_chest_boat", "minecraft:cherry_chest_boat",
             "minecraft:dark_oak_chest_boat", "minecraft:pale_oak_chest_boat", "minecraft:mangrove_chest_boat",
-            "minecraft:bamboo_chest_raft");
+            "minecraft:bamboo_chest_raft",
+            // Minecarts too, left in a station or at the end of a line.
+            "minecraft:minecart", "minecraft:chest_minecart", "minecraft:furnace_minecart",
+            "minecraft:hopper_minecart", "minecraft:tnt_minecart", "minecraft:spawner_minecart",
+            "minecraft:command_block_minecart");
 
     /** Every boat and raft, chest or not; before 1.21.2, the one boat of every wood. */
     public static boolean isBoat(String type) {
         return type.endsWith("_boat") || type.endsWith("_raft") || type.equals("minecraft:boat");
+    }
+
+    /** Every minecart, whatever it carries. */
+    public static boolean isMinecart(String type) {
+        return type.equals("minecraft:minecart") || type.endsWith("_minecart");
     }
 
     private MobKinds() {

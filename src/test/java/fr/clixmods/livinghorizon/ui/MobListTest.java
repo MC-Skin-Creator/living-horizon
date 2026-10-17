@@ -38,7 +38,9 @@ class MobListTest {
         assertTrue(mobs.contains(EntityType.OAK_BOAT));
         //?} else
         /*assertTrue(mobs.contains(EntityType.BOAT));*/
-        assertFalse(mobs.contains(EntityType.MINECART));
+        assertTrue(mobs.contains(EntityType.MINECART));
+        assertTrue(mobs.contains(EntityType.CHEST_MINECART));
+        assertFalse(mobs.contains(EntityType.ITEM_FRAME));
         // The kinds this game version has; the build names those it does not have yet.
         List<String> missing = List.of(System.getProperty("livinghorizon.missingTypes", "").split(","));
         for (String type : MobKinds.TYPES) {
