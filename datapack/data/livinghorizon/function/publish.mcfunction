@@ -15,3 +15,9 @@ execute if dimension minecraft:the_end run scoreboard players add @s lh.t 720
 execute unless dimension minecraft:overworld unless dimension minecraft:the_nether unless dimension minecraft:the_end run scoreboard players add @s lh.t 1080
 execute if predicate livinghorizon:riding run scoreboard players add @s lh.t 1440
 scoreboard players operation @s lh.m = @s lh.t
+
+# A number of the player's own, given once, which the mob they ride carries too.
+execute unless score @s lh.r matches 1.. run scoreboard players add #next lh.r 1
+execute unless score @s lh.r matches 1.. run scoreboard players operation @s lh.r = #next lh.r
+scoreboard players operation #rider lh.t = @s lh.r
+execute on vehicle run scoreboard players operation @s lh.r = #rider lh.t

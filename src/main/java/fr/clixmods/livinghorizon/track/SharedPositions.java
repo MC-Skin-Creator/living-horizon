@@ -86,6 +86,29 @@ public final class SharedPositions {
                 meta >= 1440);
     }
 
+    /**
+     * The published mob a player rides, told by the number they share in {@code lh.r}: null
+     * when they ride nothing published, or the server shares no such link (an older pack).
+     */
+    @Nullable UUID vehicle(Scoreboard scoreboard, String name) {
+        if (!active) return null;
+        Objective riders = scoreboard.getObjective("lh.r");
+        Integer number = riders == null ? null : score(scoreboard, name, riders);
+        if (number == null || number <= 0) return null;
+        //? if >=1.20.3 {
+        for (PlayerScoreEntry entry : scoreboard.listPlayerScores(riders)) {
+            UUID id = entry.value() == number ? mobId(entry.owner()) : null;
+            if (id != null) return id;
+        }
+        //?} else {
+        /*for (Score entry : scoreboard.getPlayerScores(riders)) {
+            UUID id = entry.getScore() == number ? mobId(entry.getOwner()) : null;
+            if (id != null) return id;
+        }
+        *///?}
+        return null;
+    }
+
     /** A mob the pack publishes, under its UUID. */
     public record MobReport(UUID id, double x, double y, double z, int kind, int dimension, boolean baby, int variant) {
     }

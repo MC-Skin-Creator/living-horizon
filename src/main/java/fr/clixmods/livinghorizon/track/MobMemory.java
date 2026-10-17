@@ -272,6 +272,12 @@ public final class MobMemory {
         return best;
     }
 
+    /** The remembered mob with this id, in this world: null when none is. */
+    @Nullable Remembered known(UUID id) {
+        Remembered mob = mobs.get(id);
+        return mob != null && isHere(mob) ? mob : null;
+    }
+
     /** A new copy of a remembered mob, for a far player to ride: null when it cannot be made. */
     @Nullable Entity copy(Remembered mob, ClientLevel level) {
         EntityType<?> type = type(mob);

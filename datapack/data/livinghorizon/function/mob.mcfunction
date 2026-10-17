@@ -6,6 +6,7 @@
 #   lh.m                 kind (1-255, see mob_kind) + 256 * dimension + 1024 if a baby
 #                         + 2048 * variant (horse, llama, axolotl, parrot: Variant;
 #                         sheep: Color; rabbit: RabbitType)
+#   lh.r                 the number of the player riding it (see publish), none otherwise
 execute unless entity @s[tag=lh.kind] run function livinghorizon:mob_kind
 data modify storage livinghorizon:tmp e set from entity @s
 execute store result score @s lh.x run data get storage livinghorizon:tmp e.Pos[0] 10
@@ -29,3 +30,7 @@ execute if dimension minecraft:the_end run scoreboard players add @s lh.t 512
 execute unless dimension minecraft:overworld unless dimension minecraft:the_nether unless dimension minecraft:the_end run scoreboard players add @s lh.t 768
 scoreboard players operation @s lh.t += @s lh.k
 scoreboard players operation @s lh.m = @s lh.t
+
+# Its rider's number while a player rides it, none once they got off.
+scoreboard players reset @s lh.r
+execute store result score @s lh.r on passengers if entity @s[type=minecraft:player] run scoreboard players get @s lh.r

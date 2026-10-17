@@ -166,12 +166,20 @@ public final class FarPlayer {
     // --- Once it stops ------------------------------------------------------------
 
     void observeRemote(ClientLevel level, Player self, PlayerInfo info, SharedPositions.@Nullable Report shared,
-                       int dimension, double vanishRadius, FarConfig config, MobMemory mobs) {
+                       @Nullable UUID vehicle, int dimension, double vanishRadius, FarConfig config, MobMemory mobs) {
         if (source == Source.LIVE) leaveLive(level, self, vanishRadius);
         if (puppet == null) freshPuppet(level, info);
 
         Source heard = shared == null ? null : share(shared, dimension);
-        if (heard != null && riding && mountPuppet == null && --adoptIn <= 0) adopt(level, shared, dimension, mobs);
+        if (heard != null && riding) {
+            // Got onto another mount out of sight: the one drawn is no longer theirs.
+            if (vehicle != null && !vehicle.equals(mountId)) {
+                mountPuppet = null;
+                mountId = null;
+                adoptIn = 0;
+            }
+            if (mountPuppet == null && --adoptIn <= 0) adopt(level, shared, vehicle, dimension, mobs);
+        }
 
         if (heard != null) {
             source = heard;
@@ -233,12 +241,15 @@ public final class FarPlayer {
 
     /**
      * A rider whose mount was never seen up close (they rode before this client met them): the
-     * remembered mob right under them becomes their mount, rather than a player sitting on air
-     * beside a copy of it.
+     * published mob the server says they ride becomes their mount, rather than a player sitting
+     * on air beside a copy of it. A server that does not say (an older data pack) leaves the
+     * remembered mob right under them as the best guess.
      */
-    private void adopt(ClientLevel level, SharedPositions.Report report, int dimension, MobMemory mobs) {
+    private void adopt(ClientLevel level, SharedPositions.Report report, @Nullable UUID vehicle, int dimension,
+                       MobMemory mobs) {
         adoptIn = 20;
-        MobMemory.Remembered under = mobs.mountUnder(dimension, report.x(), report.y(), report.z());
+        MobMemory.Remembered under = vehicle != null ? mobs.known(vehicle)
+                : mobs.mountUnder(dimension, report.x(), report.y(), report.z());
         Entity mount = under == null ? null : mobs.copy(under, level);
         if (mount == null) return;
         mountPuppet = mount;
