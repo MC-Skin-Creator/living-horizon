@@ -9,6 +9,12 @@ commit messages, pull request descriptions. Do not write French into the
 repository. User-facing strings are the exception and are translated through
 `assets/livinghorizon/lang/` — never hardcode a display string in the code.
 
+The mod ships in English, French, German, Spanish, Italian, Brazilian Portuguese, Polish,
+Turkish, Russian, Ukrainian, Simplified and Traditional Chinese, Japanese and Korean. A new or
+changed string goes into **every** file of `lang/`, in the words vanilla Minecraft uses in that
+language (its own lang file is the glossary); `LangTest` fails on a missing key or a different
+set of `%s`, and the `options` game test on a settings button whose text is wider than it.
+
 Commit subjects follow **conventional commits**: `type(scope): summary`, short,
 imperative and in English.
 

@@ -12,6 +12,7 @@ import java.util.List;
 
 import static fr.clixmods.livinghorizon.ui.FarConfigScreen.bool;
 import static fr.clixmods.livinghorizon.ui.FarConfigScreen.choice;
+import static fr.clixmods.livinghorizon.ui.FarConfigScreen.unit;
 
 /**
  * Tools to see what the mod does: boxes and labels on every distant mob, outlines by kind, a panel of
@@ -22,7 +23,7 @@ public final class DebugScreen extends SideOptionsScreen {
     private static final String KEY = "livinghorizon.options.";
 
     public DebugScreen(@Nullable Screen parent) {
-        super(parent, Minecraft.getInstance().options, Component.translatable(KEY + "debug"));
+        super(parent, Minecraft.getInstance().options, Component.translatable(KEY + "debug.title"));
     }
 
     @Override
@@ -35,15 +36,18 @@ public final class DebugScreen extends SideOptionsScreen {
                 bool("debugHud", c.debugHud, v -> c.debugHud = v),
                 bool("debugBoxes", c.debugBoxes, v -> c.debugBoxes = v),
                 bool("debugLabels", c.debugLabels, v -> c.debugLabels = v),
-                bool("debugGameMobs", c.debugGameMobs, v -> c.debugGameMobs = v),
-                choice("debugDepthView", List.of("0", "1", "2", "3"), String.valueOf(c.debugDepthView),
-                        v -> c.debugDepthView = Integer.parseInt(v)));
+                bool("debugGameMobs", c.debugGameMobs, v -> c.debugGameMobs = v));
+        list.addBig(choice("debugDepthView", List.of("0", "1", "2", "3"), String.valueOf(c.debugDepthView),
+                v -> c.debugDepthView = Integer.parseInt(v)));
         list.addSmall(Button.builder(Component.translatable(KEY + "outlines.open"),
                         b -> minecraft.setScreen(new OutlinesScreen(this)))
                 .tooltip(Tooltip.create(Component.translatable(KEY + "outlines.open.tooltip"))).build(), null);
 
         header(Component.translatable(KEY + "debug.rendering"));
-        list.addSmall(bool("extendFarPlane", c.extendFarPlane, v -> c.extendFarPlane = v));
+        list.addSmall(
+                bool("extendFarPlane", c.extendFarPlane, v -> c.extendFarPlane = v),
+                unit("minApparentPixels", "pixels", 0, 32, (int) c.minApparentPixels, v -> c.minApparentPixels = v),
+                bool("renderTrackedVehiclesFar", c.renderTrackedVehiclesFar, v -> c.renderTrackedVehiclesFar = v));
 
         header(Component.translatable(KEY + "debug.optimisations"));
         list.addSmall(

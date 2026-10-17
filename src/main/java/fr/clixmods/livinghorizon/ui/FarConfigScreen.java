@@ -52,47 +52,48 @@ public final class FarConfigScreen extends SideOptionsScreen {
                             minecraft.setScreen(new FarConfigScreen(parent));
                         })
                         .tooltip(Tooltip.create(Component.translatable(KEY + "preset.tooltip"))).build(),
-                integer("minApparentPixels", 0, 32, (int) c.minApparentPixels, v -> c.minApparentPixels = v)
-                        .createButton(minecraft.options, 0, 0, 150));
+                bool("easterEggs", c.easterEggs, v -> c.easterEggs = v).createButton(minecraft.options, 0, 0, 150));
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "debug"), b -> minecraft.setScreen(new DebugScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "debug.tooltip"))).build(),
-                bool("easterEggs", c.easterEggs, v -> c.easterEggs = v).createButton(minecraft.options, 0, 0, 150));
+                null);
 
+        // Distances take a whole row: their names are long, as the game's own are.
         header(Component.translatable(KEY + "impostorsSection"));
         list.addSmall(
                 bool("impostors", c.impostors, v -> c.impostors = v),
-                blocks("impostorDistance", 32, 2000, c.impostorDistance, v -> c.impostorDistance = v));
+                bool("impostorPlayers", c.impostorPlayers, v -> c.impostorPlayers = v));
+        list.addBig(blocks("impostorDistance", 32, 2000, c.impostorDistance, v -> c.impostorDistance = v));
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "impostorPreview"), b -> minecraft.setScreen(new ImpostorScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "impostorPreview.tooltip"))).build(),
-                bool("impostorPlayers", c.impostorPlayers, v -> c.impostorPlayers = v).createButton(minecraft.options, 0, 0, 150));
+                null);
 
         header(Component.translatable(KEY + "players"));
         list.addSmall(
                 bool("enabled", c.enabled, v -> c.enabled = v),
-                bool("showVehicles", c.showVehicles, v -> c.showVehicles = v),
+                bool("showVehicles", c.showVehicles, v -> c.showVehicles = v));
+        list.addBig(blocks("playerMaxDistance", 0, 4000, c.playerMaxDistance, v -> c.playerMaxDistance = v));
+        list.addSmall(
+                unit("lostTimeoutSeconds", "seconds", 5, 300, (int) c.lostTimeoutSeconds, v -> c.lostTimeoutSeconds = v),
                 bool("offlinePlayers", c.offlinePlayers, v -> c.offlinePlayers = v),
                 bool("offlineLife", c.offlineLife, v -> c.offlineLife = v),
-                blocks("offlineRoam", 8, 128, c.offlineRoam, v -> c.offlineRoam = v),
-                bool("offlineNames", c.offlineNames, v -> c.offlineNames = v),
-                blocks("playerMaxDistance", 0, 4000, c.playerMaxDistance, v -> c.playerMaxDistance = v),
-                integer("lostTimeoutSeconds", 5, 300, (int) c.lostTimeoutSeconds, v -> c.lostTimeoutSeconds = v),
-                bool("renderTrackedVehiclesFar", c.renderTrackedVehiclesFar, v -> c.renderTrackedVehiclesFar = v));
+                blocks("offlineRoam", 8, 128, c.offlineRoam, v -> c.offlineRoam = v));
         list.addSmall(
+                bool("offlineNames", c.offlineNames, v -> c.offlineNames = v).createButton(minecraft.options, 0, 0, 150),
                 Button.builder(Component.translatable(KEY + "forgetSleepers"), b -> confirm("forgetSleepers",
                                 () -> FarPlayerTracker.get().resting().forgetAll()))
-                        .tooltip(Tooltip.create(Component.translatable(KEY + "forgetSleepers.tooltip"))).build(),
-                null);
+                        .tooltip(Tooltip.create(Component.translatable(KEY + "forgetSleepers.tooltip"))).build());
 
         header(Component.translatable(KEY + "mobs"));
         list.addSmall(
                 bool("distantMobs", c.distantMobs, v -> c.distantMobs = v),
-                integer("maxDistantMobs", 0, FarConfig.UNLIMITED_MOBS, c.maxDistantMobs, v -> c.maxDistantMobs = v, true),
-                blocks("mobMaxDistance", 0, 4000, c.mobMaxDistance, v -> c.mobMaxDistance = v),
+                integer("maxDistantMobs", 0, FarConfig.UNLIMITED_MOBS, c.maxDistantMobs, v -> c.maxDistantMobs = v, true));
+        list.addBig(blocks("mobMaxDistance", 0, 4000, c.mobMaxDistance, v -> c.mobMaxDistance = v));
+        list.addSmall(
                 bool("rememberNamedMobs", c.rememberNamedMobs, v -> c.rememberNamedMobs = v),
-                integer("animationMinPixels", 0, 40, c.animationMinPixels, v -> c.animationMinPixels = v),
-                blocks("animationMaxDistance", 0, 4000, c.animationMaxDistance, v -> c.animationMaxDistance = v));
+                unit("animationMinPixels", "pixels", 0, 40, c.animationMinPixels, v -> c.animationMinPixels = v));
+        list.addBig(blocks("animationMaxDistance", 0, 4000, c.animationMaxDistance, v -> c.animationMaxDistance = v));
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "chooseMobs"), b -> minecraft.setScreen(new MobTypesScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "chooseMobs.tooltip"))).build(),
@@ -105,15 +106,15 @@ public final class FarConfigScreen extends SideOptionsScreen {
         header(Component.translatable(KEY + "birds"));
         list.addSmall(
                 bool("skyBirds", c.skyBirds, v -> c.skyBirds = v),
-                integer("birdDensity", 0, 500, c.birdDensity, v -> c.birdDensity = v),
-                blocks("birdMaxDistance", 100, 3000, c.birdMaxDistance, v -> c.birdMaxDistance = v),
-                integer("birdMinHeight", 0, 200, c.birdMinHeight, v -> c.birdMinHeight = v),
-                integer("birdSize", 1, 6, c.birdSize, v -> c.birdSize = v),
-                choice("birdStyle", List.of("3d", "2d"), c.birdStyle, v -> c.birdStyle = v));
+                unit("birdDensity", "percent", 0, 500, c.birdDensity, v -> c.birdDensity = v));
+        list.addBig(blocks("birdMaxDistance", 100, 3000, c.birdMaxDistance, v -> c.birdMaxDistance = v));
         list.addSmall(
+                blocks("birdMinHeight", 0, 200, c.birdMinHeight, v -> c.birdMinHeight = v),
+                unit("birdSize", "multiplier", 1, 6, c.birdSize, v -> c.birdSize = v));
+        list.addSmall(
+                choice("birdStyle", List.of("3d", "2d"), c.birdStyle, v -> c.birdStyle = v).createButton(minecraft.options, 0, 0, 150),
                 Button.builder(Component.translatable(KEY + "chooseBirds"), b -> minecraft.setScreen(new BirdTypesScreen(this)))
-                        .tooltip(Tooltip.create(Component.translatable(KEY + "chooseBirds.tooltip"))).build(),
-                null);
+                        .tooltip(Tooltip.create(Component.translatable(KEY + "chooseBirds.tooltip"))).build());
     }
 
     /** Restore defaults sits beside Done: it is about every setting of the screen, not the birds. */
@@ -174,10 +175,6 @@ public final class FarConfigScreen extends SideOptionsScreen {
         return OptionInstance.createBoolean(KEY + name, tooltip(name), value, set::accept);
     }
 
-    static OptionInstance<Integer> integer(String name, int min, int max, int value, Consumer<Integer> set) {
-        return integer(name, min, max, value, set, false);
-    }
-
     /** With {@code maxIsUnlimited}, the top of the slider reads as the {@code .max} text. */
     static OptionInstance<Integer> integer(String name, int min, int max, int value, Consumer<Integer> set,
                                            boolean maxIsUnlimited) {
@@ -190,12 +187,17 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 new OptionInstance.IntRange(min, max), Math.clamp(value, min, max), set::accept);
     }
 
-    /** A distance in blocks, said so: "512 blocks"; zero reads as the {@code .zero} text. */
+    /** A distance in blocks, said so: "512 Blocks"; zero reads as the {@code .zero} text. */
     static OptionInstance<Integer> blocks(String name, int min, int max, int value, Consumer<Integer> set) {
+        return unit(name, "blocks", min, max, value, set);
+    }
+
+    /** A number in a unit, the way the game writes it ("30s", "6px", "2x", "100%"); zero reads as the {@code .zero} text. */
+    static OptionInstance<Integer> unit(String name, String unit, int min, int max, int value, Consumer<Integer> set) {
         return new OptionInstance<>(KEY + name, tooltip(name),
                 (caption, v) -> v == 0 && min == 0
                         ? Options.genericValueLabel(caption, Component.translatable(KEY + name + ".zero"))
-                        : Options.genericValueLabel(caption, Component.translatable(KEY + "blocks", v)),
+                        : Options.genericValueLabel(caption, Component.translatable(KEY + unit, v)),
                 new OptionInstance.IntRange(min, max), Math.clamp(value, min, max), set::accept);
     }
 

@@ -3,7 +3,11 @@
 ## Unreleased
 
 ### New
-- **Player impostors** — a new setting keeps distant players as full models while mobs still turn into flat pictures far away.
+- **Simplified Players** — a new setting keeps distant players as full models while mobs still turn into flat pictures far away.
+- **Languages** — Living Horizon now speaks German, Spanish, Italian, Brazilian Portuguese, Polish, Turkish, Russian, Ukrainian, Simplified and Traditional Chinese, Japanese and Korean.
+
+### Improved
+- **Settings** — every setting has a clearer name and description, worded like Minecraft's own options, and distances get sliders the full width of the list.
 
 ## 0.7.0 — 2026-10-17
 

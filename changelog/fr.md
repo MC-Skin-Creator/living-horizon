@@ -3,7 +3,11 @@
 ## Prochaine version
 
 ### Nouveautés
-- **Imposteurs des joueurs** — un nouveau réglage garde les joueurs lointains en modèles complets tandis que les mobs deviennent toujours des images plates au loin.
+- **Joueurs simplifiés** — un nouveau paramètre garde les joueurs lointains en modèles complets, tandis que les créatures deviennent toujours des images plates au loin.
+- **Langues** — Living Horizon parle désormais allemand, espagnol, italien, portugais du Brésil, polonais, turc, russe, ukrainien, chinois simplifié et traditionnel, japonais et coréen.
+
+### Améliorations
+- **Paramètres** — chaque paramètre a un nom et une description plus clairs, dans le style des options de Minecraft, et les distances ont des curseurs sur toute la largeur de la liste.
 
 ## 0.7.0 — 2026-10-17
 
