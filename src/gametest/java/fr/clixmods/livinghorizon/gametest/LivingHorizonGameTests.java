@@ -19,6 +19,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PerchersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RememberedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.SodiumControlsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.SodiumPagesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.UnloadScenario;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -52,6 +53,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new RestingScenario(),
             new OptionsScreenScenario(),
             new SodiumPagesScenario(),
+            new SodiumControlsScenario(),
             new DepthViewScenario(),
             new EntityDepthScenario(),
             new UnloadScenario(),
