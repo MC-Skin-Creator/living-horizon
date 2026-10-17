@@ -8,6 +8,9 @@
 ### Améliorations
 - **Joueurs lointains** — ils sont placés d'après les positions partagées uniquement : l'estimation par la barre de localisation disparaît, et le réglage « Signal perdu » avec. Sans datapack ni mod sur le serveur, la console le signale une fois.
 
+### Corrections
+- **Joueurs sur un happy ghast** — un joueur lointain qui chevauche un happy ghast n'a plus de second ghast à côté de lui, et celui qui le chevauchait déjà quand tu arrives ne flotte plus dans le vide.
+
 ## 0.7.0 — 2026-10-17
 
 ### Nouveautés

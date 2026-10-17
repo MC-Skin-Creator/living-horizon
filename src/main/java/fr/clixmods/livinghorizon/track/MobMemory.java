@@ -177,6 +177,8 @@ public final class MobMemory {
     private final Map<MobCategory, Double> reach = new EnumMap<>(MobCategory.class);
     /** A mob just left or came back: choose what is drawn on the next tick, not in a second. */
     private boolean chooseSoon;
+    /** The mounts far players ride: their copy is drawn under the player, never on its own. */
+    private Set<UUID> carried = Set.of();
     /**
      * Pack mobs this client went to look at and did not find, with where the pack had
      * them: not taken back from the pack until it says they moved.
@@ -233,6 +235,58 @@ public final class MobMemory {
             if (mob.dimension.equals(dimension) && isHere(mob) && !live.containsKey(mob.id)) here.add(mob);
         }
         return here;
+    }
+
+    /**
+     * The mobs far players ride, told each tick: a mount is drawn under its rider, so the copy
+     * remembered on its own (met, or published by the data pack) is left out at once.
+     */
+    void carried(Set<UUID> ids) {
+        if (ids.equals(carried)) return;
+        carried = Set.copyOf(ids);
+        if (shown.stream().anyMatch(mob -> carried.contains(mob.id))) {
+            shown = shown.stream().filter(mob -> !carried.contains(mob.id)).toList();
+        }
+        chooseSoon = true;
+    }
+
+    /**
+     * The remembered mob right under a far player who rides something unknown (never seen up
+     * close): the one nearest below their feet, a few blocks round. Null when none is.
+     */
+    @Nullable Remembered mountUnder(int dimension, double x, double y, double z) {
+        if (dimension < 0 || dimension >= DIMENSIONS.size()) return null;
+        String name = DIMENSIONS.get(dimension);
+        Remembered best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (Remembered mob : mobs.values()) {
+            if (!mob.dimension.equals(name) || !isHere(mob) || live.containsKey(mob.id)) continue;
+            // The rider sits on top: the mount is below, by up to a happy ghast's height.
+            if (mob.y > y + 0.5 || mob.y < y - 6) continue;
+            double distance = Math.hypot(mob.x - x, mob.z - z);
+            if (distance < 4 && distance < bestDistance) {
+                best = mob;
+                bestDistance = distance;
+            }
+        }
+        return best;
+    }
+
+    /** A new copy of a remembered mob, for a far player to ride: null when it cannot be made. */
+    @Nullable Entity copy(Remembered mob, ClientLevel level) {
+        EntityType<?> type = type(mob);
+        CompoundTag tag = parse(mob.nbt);
+        Entity entity = type == null || tag == null ? null : Puppets.create(type, level);
+        if (entity == null) return null;
+        try {
+            EntityNbt.load(entity, level, tag);
+        } catch (RuntimeException e) {
+            return null;
+        }
+        entity.setPos(mob.x, mob.y, mob.z);
+        entity.setYRot(mob.yaw);
+        entity.setOldPosAndRot();
+        return entity;
     }
 
     // --- Lifecycle ---------------------------------------------------------------------
@@ -398,7 +452,7 @@ public final class MobMemory {
      * between with neither the real mob nor its copy. The next choice puts the list in order.
      */
     private void showNow(Remembered mob, ClientLevel level, FarConfig config) {
-        if (config.maxDistantMobs <= 0) return;
+        if (config.maxDistantMobs <= 0 || carried.contains(mob.id)) return;
         if (mob.puppet == null) {
             // A crowd unloaded at once (a teleport) is left to the ticks and their budget.
             if (config.optBackgroundBuild && builtNow >= BUILD_BUDGET) return;
@@ -844,7 +898,7 @@ public final class MobMemory {
         List<Remembered> here = new ArrayList<>();
         for (Remembered mob : mobs.values()) {
             if (!mob.dimension.equals(dimension) || !isHere(mob)
-                    || (live.containsKey(mob.id) && mob.handover == null)) continue;
+                    || (live.containsKey(mob.id) && mob.handover == null) || carried.contains(mob.id)) continue;
             if (!wanted.contains(mob.type) && !(config.rememberNamedMobs && mob.named)) continue;
             mob.distance = distance(mob.x, mob.y, mob.z);
             here.add(mob);

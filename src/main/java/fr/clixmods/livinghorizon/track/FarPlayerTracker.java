@@ -164,7 +164,7 @@ public final class FarPlayerTracker {
                 player.profile = info.getProfile();
                 players.put(id, player);
             }
-            player.observeRemote(current, self, info, report, dimension, vanishRadius, config);
+            player.observeRemote(current, self, info, report, dimension, vanishRadius, config, mobs);
         }
 
         // Gone from the tab list: logged off. They rest where they were last known.
@@ -188,6 +188,13 @@ public final class FarPlayerTracker {
         if (config.offlinePlayers) resting.tick(current, config);
         resting.aim(minecraft, config);
         ambience.tick(current, self, config);
+        // A mount drawn under its far rider is not drawn again on its own.
+        Set<UUID> carried = new HashSet<>();
+        for (FarPlayer player : players.values()) {
+            UUID mount = player.carriedMount();
+            if (mount != null) carried.add(mount);
+        }
+        mobs.carried(carried);
         mobs.tick(current, self, minecraft.options.getEffectiveRenderDistance() * 16, config,
                 shared.active() ? shared : null, scoreboard);
     }

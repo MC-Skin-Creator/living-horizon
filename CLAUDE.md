@@ -332,6 +332,12 @@ come back, add it here in the same pull request: this file is what the next sess
   bird is stood again on what is under it. Birds jumping in a loop: a move is a flight once it
   is long, so a target is only moved in from a column's edge (never re-drawn on the block), and a
   duck swims as far as the water goes on (`Perchers.swims`). The `perchers` scenario counts all three.
+- **A far player's mount drawn twice, or a rider sitting on air** (a happy ghast beside its
+  rider, a player met already riding floating far away): a mount is drawn under its rider
+  (`FarPlayer.mountPuppet`), and the remembered mobs leave out every id `FarPlayer.carriedMount`
+  names (`MobMemory.carried`), the data pack's or the server's copy of it included. A rider
+  whose mount was never seen up close adopts the remembered mob right under them
+  (`MobMemory.mountUnder`); `CarriedMountTest` checks both.
 - **A dedicated server crashes on load with the mod** ("Attempted to load class
   net/minecraft/client/... for invalid dist DEDICATED_SERVER"): something the server loads
   reaches a client class. Forge's `@Mod` has no side, so it sits on `LivingHorizonForge`,

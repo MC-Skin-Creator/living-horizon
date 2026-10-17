@@ -50,6 +50,10 @@ public final class FarPlayer {
     /** The player's position relative to their mount, in the mount's own frame. */
     private Vec3 riderOffset = Vec3.ZERO;
     private float riderYaw;
+    /** The mount's own id, so that the remembered mobs leave it to this player; null when not known. */
+    private @Nullable UUID mountId;
+    /** Ticks before looking again for a mount under a rider whose mount was never seen. */
+    private int adoptIn;
     private double knownY = Double.NaN;
     /** Where they look, when the data pack says it. */
     private float knownYaw = Float.NaN;
@@ -102,6 +106,15 @@ public final class FarPlayer {
         return riding ? mountPuppet : null;
     }
 
+    /**
+     * The id of the mount this player rides, while it is known: its copy is drawn under this
+     * player's, and none of its own. Already while the player is sent, so that a mount left
+     * behind with them is never drawn on its own for a tick.
+     */
+    @Nullable UUID carriedMount() {
+        return source != Source.LOST && riding ? mountId : null;
+    }
+
     /** How sure the position is, in blocks. */
     public double uncertainty() {
         return source == Source.LIVE || source == Source.SHARED ? 0.1 : Double.NaN;
@@ -128,10 +141,12 @@ public final class FarPlayer {
         Entity root = player.getRootVehicle();
         if (root != player) {
             lastVehicle = root;
+            mountId = root.getUUID();
             riderOffset = player.position().subtract(root.position()).yRot((float) Math.toRadians(root.getYRot()));
             riderYaw = player.getYRot() - root.getYRot();
         } else {
             lastVehicle = null;
+            mountId = null;
         }
         riding = root != player;
 
@@ -151,11 +166,12 @@ public final class FarPlayer {
     // --- Once it stops ------------------------------------------------------------
 
     void observeRemote(ClientLevel level, Player self, PlayerInfo info, SharedPositions.@Nullable Report shared,
-                       int dimension, double vanishRadius, FarConfig config) {
+                       int dimension, double vanishRadius, FarConfig config, MobMemory mobs) {
         if (source == Source.LIVE) leaveLive(level, self, vanishRadius);
         if (puppet == null) freshPuppet(level, info);
 
         Source heard = shared == null ? null : share(shared, dimension);
+        if (heard != null && riding && mountPuppet == null && --adoptIn <= 0) adopt(level, shared, dimension, mobs);
 
         if (heard != null) {
             source = heard;
@@ -213,6 +229,23 @@ public final class FarPlayer {
         knownYaw = report.yaw();
         riding = report.riding();
         return Source.SHARED;
+    }
+
+    /**
+     * A rider whose mount was never seen up close (they rode before this client met them): the
+     * remembered mob right under them becomes their mount, rather than a player sitting on air
+     * beside a copy of it.
+     */
+    private void adopt(ClientLevel level, SharedPositions.Report report, int dimension, MobMemory mobs) {
+        adoptIn = 20;
+        MobMemory.Remembered under = mobs.mountUnder(dimension, report.x(), report.y(), report.z());
+        Entity mount = under == null ? null : mobs.copy(under, level);
+        if (mount == null) return;
+        mountPuppet = mount;
+        mountId = under.id();
+        // On its back, as high above it as the two were last published.
+        riderOffset = new Vec3(0, Math.min(Math.max(0, report.y() - under.y()), mount.getBbHeight() + 0.5), 0);
+        riderYaw = 0;
     }
 
     /** Moves what is drawn towards the estimate, smoothly unless the jump is a teleport. */
@@ -281,6 +314,7 @@ public final class FarPlayer {
     private void freshPuppet(ClientLevel level, PlayerInfo info) {
         puppet = Puppets.player(level, info.getProfile());
         mountPuppet = null;
+        mountId = null;
     }
 
     private static RemotePlayer copyPlayer(ClientLevel level, AbstractClientPlayer source) {
