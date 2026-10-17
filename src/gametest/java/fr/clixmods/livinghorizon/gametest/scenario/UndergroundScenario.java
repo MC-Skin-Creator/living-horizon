@@ -23,10 +23,7 @@ public final class UndergroundScenario implements Scenario {
 
     @Override
     public void run(ClientGameTestContext context) {
-        context.runOnClient(minecraft -> {
-            minecraft.options.entityDistanceScaling().set(0.5);
-            minecraft.options.renderDistance().set(16);
-        });
+        context.runOnClient(minecraft -> minecraft.options.entityDistanceScaling().set(0.5));
         Scene.configure(context, config -> {
             config.hideOccludedMobs = false;
             config.impostors = false;
@@ -34,6 +31,8 @@ public final class UndergroundScenario implements Scenario {
             config.outlineLeftOut = true;
         });
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
+            // Set once the world is made: the spawn area at 16 chunks takes too long to prepare here.
+            context.runOnClient(minecraft -> minecraft.options.renderDistance().set(16));
             // The room: stone walls, floor and roof, hollow inside, to the left of the view.
             Scene.command(world, "execute at @p run fill ~-14 ~-1 ~38 ~-2 ~3 ~46 stone");
             Scene.command(world, "execute at @p run fill ~-13 ~ ~39 ~-3 ~2 ~45 air");
