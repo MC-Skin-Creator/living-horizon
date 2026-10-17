@@ -79,6 +79,49 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
         *///?}
     }
 
+    /** Escape pressed over Sodium's screen: closed when it is released, see {@link SodiumReturn}. */
+    private boolean closeOnRelease;
+
+    //? if >=1.21.9 {
+    @Override
+    public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+        if (event.key() == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE && shouldCloseOnEsc() && SodiumReturn.below(lastScreen)) {
+            closeOnRelease = true;
+            return true;
+        }
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public boolean keyReleased(net.minecraft.client.input.KeyEvent event) {
+        if (closeOnRelease && event.key() == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE) {
+            closeOnRelease = false;
+            onClose();
+            return true;
+        }
+        return super.keyReleased(event);
+    }
+    //?} else {
+    /*@Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE && shouldCloseOnEsc() && SodiumReturn.below(lastScreen)) {
+            closeOnRelease = true;
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
+        if (closeOnRelease && keyCode == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE) {
+            closeOnRelease = false;
+            onClose();
+            return true;
+        }
+        return super.keyReleased(keyCode, scanCode, modifiers);
+    }
+    *///?}
+
     /** The width of the column on the left, which the rows of options are centred on. */
     public int columnWidth() {
         return Math.min(PANEL_WIDTH, width);

@@ -288,10 +288,60 @@ public final class SodiumOptions implements ConfigEntryPoint {
     /** Asks before an action that cannot be undone, then back to Sodium's screen. */
     private static void confirm(Screen parent, String name, Runnable action) {
         Minecraft minecraft = Minecraft.getInstance();
-        minecraft.setScreen(new ConfirmScreen(yes -> {
+        minecraft.setScreen(new Confirm(yes -> {
             if (yes) action.run();
             minecraft.setScreen(parent);
         }, Component.translatable(KEY + name), Component.translatable(KEY + name + ".confirm")));
+    }
+
+    /** The game's confirmation, which over Sodium's screen answers "no" to Escape on its release. */
+    private static final class Confirm extends ConfirmScreen {
+        Confirm(it.unimi.dsi.fastutil.booleans.BooleanConsumer callback, Component title, Component message) {
+            super(callback, title, message);
+        }
+
+    /** Escape pressed over Sodium's screen: closed when it is released, see {@link SodiumReturn}. */
+    private boolean closeOnRelease;
+
+    //? if >=1.21.9 {
+    @Override
+    public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+        if (event.key() == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE && true) {
+            closeOnRelease = true;
+            return true;
+        }
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public boolean keyReleased(net.minecraft.client.input.KeyEvent event) {
+        if (closeOnRelease && event.key() == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE) {
+            closeOnRelease = false;
+            callback.accept(false);
+            return true;
+        }
+        return super.keyReleased(event);
+    }
+    //?} else {
+    /*@Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE && true) {
+            closeOnRelease = true;
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
+        if (closeOnRelease && keyCode == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE) {
+            closeOnRelease = false;
+            callback.accept(false);
+            return true;
+        }
+        return super.keyReleased(keyCode, scanCode, modifiers);
+    }
+    *///?}
     }
 
     private static Function<ConfigState, Boolean> on(String name) {
