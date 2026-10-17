@@ -57,10 +57,15 @@ import java.util.Set;
  * <p>Off, it sits on its spot. Either way it keeps to the ground: break what it rests on and
  * it falls; bury it and it reappears on top. Sitting, its own spot wins again once it has
  * room and something under it, since that is where the player will come back.
+ *
+ * <p>A player who logged off riding something stays on it ({@link RestingMount}): with
+ * {@link FarConfig#offlineLife} on, the horse walks, the boat rows and the happy ghast drifts
+ * about the spot, the rider looking around; off, both wait on the spot. No bed, no chest
+ * then, and no sword: hit, the rider raises a shield.
  */
 public final class RestingPuppet extends RemotePlayer {
     /** How it is drawn. */
-    public enum Look { STAND, SIT, LIE, BED }
+    public enum Look { STAND, SIT, LIE, BED, RIDE }
 
     private enum Activity { IDLE, SIT, WALK, FACE, SLEEP, BED, GUARD, FLY }
 
@@ -103,9 +108,11 @@ public final class RestingPuppet extends RemotePlayer {
     private final PlayerInfo info;
     private final Random random;
     private final Walkway walkway;
+    private final @Nullable RestingMount mount;
 
     private boolean placed;
     private boolean lively;
+    private boolean riding;
     private double fall;
     private int standing;
 
@@ -146,6 +153,7 @@ public final class RestingPuppet extends RemotePlayer {
         yBodyRot = yBodyRotO = spot.yaw();
         yHeadRot = yHeadRotO = spot.yaw();
         timer = 40 + random.nextInt(80);
+        this.mount = RestingMount.of(level, spot, random);
     }
 
     @Override
@@ -162,6 +170,7 @@ public final class RestingPuppet extends RemotePlayer {
 
     /** How it is drawn this tick. */
     public Look look() {
+        if (riding) return Look.RIDE;
         if (!lively) return standing > 0 ? Look.STAND : Look.SIT;
         if (raised && activity != Activity.BED) return Look.STAND;
         return switch (activity) {
@@ -177,6 +186,11 @@ public final class RestingPuppet extends RemotePlayer {
         return activity == Activity.BED && bed != null;
     }
 
+    /** What it rides, to draw under it; null when on foot. */
+    public @Nullable Entity mount() {
+        return riding && mount != null ? mount.entity : null;
+    }
+
     /** Shield up. */
     public boolean blocking() {
         return raised;
@@ -184,6 +198,7 @@ public final class RestingPuppet extends RemotePlayer {
 
     /** What it does and what it knows of around it, for the debug tools. */
     public String state() {
+        if (riding && mount != null) return mount.state();
         Walkway.Survey reading = survey, map = known;
         return activity.name().toLowerCase(java.util.Locale.ROOT)
                 + (route != null ? " (finding its way)" : "")
@@ -210,6 +225,12 @@ public final class RestingPuppet extends RemotePlayer {
     /** Hit by the player: it raises its shield towards them, standing. */
     void strike(Vec3 from) {
         if (!lively || activity == Activity.FLY) return;
+        if (riding) {
+            // In the saddle: the shield up, the head turned to them.
+            shieldTicks = SHIELD_TICKS;
+            faceAt(from, 0);
+            return;
+        }
         if (activity == Activity.BED || activity == Activity.SIT || activity == Activity.SLEEP) {
             // Out of bed: the bed is free again, the next look for one finds it.
             leaveBedIfIn();
@@ -241,6 +262,20 @@ public final class RestingPuppet extends RemotePlayer {
             calmDown(beds);
             if (!lively) snap(spot.x(), spot.y(), spot.z());
             placed = false;
+            if (mount != null) mount.reset();
+        }
+        boolean rides = mount != null && config.showVehicles;
+        if (rides != riding) {
+            // On or off its mount, by the switch that shows mounts: back on its spot either way.
+            riding = rides;
+            calmDown(beds);
+            placed = false;
+            if (mount != null) mount.reset();
+            snap(spot.x(), spot.y(), spot.z());
+        }
+        if (riding && mount != null) {
+            ride(level, mount, config, work);
+            return;
         }
         if (!lively) {
             Puppets.walk(this, 0f, 1f, 1f);
@@ -279,6 +314,30 @@ public final class RestingPuppet extends RemotePlayer {
         arm(wary, wary || shieldTicks > 0);
         double moved = Math.hypot(getX() - before, getZ() - beforeZ);
         Puppets.walk(this, (float) Math.min(moved * 4.0, 1.0), 0.4f, 1f);
+        setYRot(yBodyRot);
+    }
+
+    // --- In the saddle ----------------------------------------------------------------------
+
+    /** Carried by its mount, looking around; the shield up a moment after a hit. */
+    private void ride(ClientLevel level, RestingMount ridden, FarConfig config, int[] work) {
+        ridden.tick(level, lively, config.offlineRoam, work);
+        Vec3 seat = ridden.rider();
+        setPos(seat.x, seat.y, seat.z);
+        yBodyRot = ridden.riderYaw();
+        if (lively) {
+            if (shieldTicks > 0) shieldTicks--;
+            arm(false, shieldTicks > 0);
+            if (shieldTicks <= 0) glance(false);
+            else yHeadRot = yBodyRot + headYaw;
+        } else {
+            arm(false, false);
+            headYaw = approach(headYaw, 0, 6);
+            headPitch = approach(headPitch, 0, 4);
+            yHeadRot = yBodyRot + headYaw;
+            setXRot(headPitch);
+        }
+        Puppets.walk(this, 0f, 1f, 1f);
         setYRot(yBodyRot);
     }
 

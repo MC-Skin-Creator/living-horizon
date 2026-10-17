@@ -155,7 +155,7 @@ public final class LivingHorizonCommand {
     /**
      * {@code /livinghorizon debug offline test ...}: test players who logged off, to try the
      * feature alone. {@code spawn [name] [minutes]} places one where you stand, wearing your
-     * skin, logged off that many minutes ago; {@code clear} removes them; {@code list} shows
+     * skin, logged off that many minutes ago, on a copy of what you ride if you ride something; {@code clear} removes them; {@code list} shows
      * everyone resting on this server. Test players are never written to the file.
      */
     private static <S> LiteralArgumentBuilder<S> offlineTests(Function<S, Source> source) {
@@ -198,8 +198,9 @@ public final class LivingHorizonCommand {
                 return 0;
             }
         }
+        // On what you ride, if anything: a copy of it, which they keep.
         resting.fake(name, self.getGameProfile(), SharedPositions.dimensionCode(self.level().dimension()),
-                self.getX(), self.getY(), self.getZ(), self.getYRot(), minutesAgo);
+                self.getX(), self.getY(), self.getZ(), self.getYRot(), minutesAgo, RestingPlayers.Mount.ridden(self));
         source.feedback(Component.translatable("livinghorizon.offline.test.spawned", name));
         if (!FarConfig.get().offlinePlayers) {
             source.feedback(Component.translatable("livinghorizon.offline.test.switchedOff", name));

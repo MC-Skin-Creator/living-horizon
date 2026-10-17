@@ -162,6 +162,7 @@ label `mod compatibility`.
   `/livinghorizon bird <kind>` calls any kind of bird at once.
 - **Find players where they left.** Someone who logged off lives their life where they
   were - a stroll, a seat, a bed at night, a shield against monsters - until they come back.
+  One who left on a horse, a boat or a happy ghast keeps it and rides it about.
 - **Tune it.** Everything is in the settings (see *Settings* below): which mobs, which
   birds, how many, how far.
 
@@ -228,7 +229,7 @@ label `mod compatibility`.
 - **Test players who logged off**, to try that feature alone in single player:
   `/livinghorizon debug offline test spawn [name] [minutes]` places one where you stand,
   wearing your skin, logged off that many minutes ago (default `Sleeper1`, `Sleeper2`...,
-  just now); `... test clear` removes them; `... test list` shows everyone resting on this
+  just now), on a copy of what you ride if you ride something; `... test clear` removes them; `... test list` shows everyone resting on this
   server, where and since when. Test players are never written to the file: they are gone
   at the next start.
 - **Far terrain**: `/livinghorizon lod` (or `voxy`) says which far-terrain mod is read
@@ -303,6 +304,19 @@ nothing can hurt them. Either way they keep to the ground: break the pile they s
 they fall to the floor below; bury them and they reappear on top. Sitting, their own spot
 wins again once it has room and something under it, since that is where they will come back.
 With nothing below down to the bottom of the world, they stay where they are.
+
+A player who logs off riding something keeps it (`track/RestingMount`), when `showVehicles` is
+on: the server takes the mount away with them, so a copy of it, as this client last saw it
+(coat, saddle, armour), is kept with their spot and drawn under them, never as a remembered mob
+of its own. With `offlineLife` on, it carries them about their spot, within `offlineRoam`
+blocks, then rests a while and goes again: a horse (any mount that walks) only where it has
+room for itself and its rider, worked out like a walk on foot; a boat on the water it floats
+on, staying put on land; a happy ghast in straight lines through open air, at most 24 blocks
+from its spot and 4 up or down. Anything else, a minecart or another mod's mount, stays where
+it was. In the saddle they look around, and raise their shield when hit; no bed, no chest, no
+sword. With `offlineLife` off, or where the blocks are not loaded, both wait on the spot.
+Players who share their mount with another player rest on foot: the server leaves it to the
+other one.
 
 Their name shows above them, followed by *(offline)*, as close as the game shows names (64
 blocks). Aiming at one from right next to it (3 blocks) shows, under the crosshair, when

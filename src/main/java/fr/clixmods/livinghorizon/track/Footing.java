@@ -24,25 +24,31 @@ final class Footing {
     private Footing() {
     }
 
-    private static AABB body(double x, double y, double z, double height) {
-        return new AABB(x - 0.3, y + 0.05, z - 0.3, x + 0.3, y + height, z + 0.3);
+    /** Half a player's width. */
+    static final double HALF = 0.3;
+
+    private static AABB body(double x, double y, double z, double half, double height) {
+        return new AABB(x - half, y + 0.05, z - half, x + half, y + height, z + half);
     }
 
     /** Room for it there: no block in its body. */
     static boolean fits(ClientLevel level, double x, double y, double z, double height) {
-        return free(level, body(x, y, z, height));
+        return fits(level, x, y, z, HALF, height);
+    }
+
+    /** Room there for a body {@code half} a width across each way: a mount and its rider. */
+    static boolean fits(ClientLevel level, double x, double y, double z, double half, double height) {
+        return free(level, body(x, y, z, half, height));
     }
 
     /** Something to rest on: a block right under it, or water or lava to float on. */
     static boolean supported(ClientLevel level, double x, double y, double z) {
-        if (!free(level, new AABB(x - 0.3, y - 0.1, z - 0.3, x + 0.3, y + 0.01, z + 0.3))) return true;
-        return !level.getFluidState(BlockPos.containing(x, y + 0.05, z)).isEmpty()
-                || !level.getFluidState(BlockPos.containing(x, y - 0.1, z)).isEmpty();
+        return supported(level, x, y, z, HALF);
     }
 
     /** Nothing in the way between where it is and where it goes, straight up or down. */
     static boolean clear(ClientLevel level, double x, double y, double target, double z, double height) {
-        return free(level, body(x, Math.min(y, target), z, height + Math.abs(target - y)));
+        return free(level, body(x, Math.min(y, target), z, HALF, height + Math.abs(target - y)));
     }
 
     /**
@@ -72,7 +78,12 @@ final class Footing {
      * NaN if there is none.
      */
     static double ground(ClientLevel level, double x, double y, double z, double bottom) {
-        AABB column = new AABB(x - 0.3, bottom, z - 0.3, x + 0.3, y, z + 0.3);
+        return ground(level, x, y, z, bottom, HALF);
+    }
+
+    /** {@link #ground(ClientLevel, double, double, double, double)} under a body this wide. */
+    static double ground(ClientLevel level, double x, double y, double z, double bottom, double half) {
+        AABB column = new AABB(x - half, bottom, z - half, x + half, y, z + half);
         double top = Double.NaN;
         for (BlockPos at : BlockPos.betweenClosed(BlockPos.containing(column.minX, column.minY, column.minZ),
                 BlockPos.containing(column.maxX, column.maxY, column.maxZ))) {
@@ -90,7 +101,12 @@ final class Footing {
 
     /** The first thing under it to land on, a block or the surface of water; where it is if there is none. */
     static double floorBelow(ClientLevel level, double x, double y, double z) {
-        double floor = ground(level, x, y, z, level.getMinY());
+        return floorBelow(level, x, y, z, HALF);
+    }
+
+    /** {@link #floorBelow(ClientLevel, double, double, double)} under a body this wide. */
+    static double floorBelow(ClientLevel level, double x, double y, double z, double half) {
+        double floor = ground(level, x, y, z, level.getMinY(), half);
         double lowest = Double.isNaN(floor) ? level.getMinY() : floor;
         for (int by = BlockPos.containing(x, y, z).getY(); by >= Math.floor(lowest); by--) {
             BlockPos at = BlockPos.containing(x, by, z);
@@ -104,13 +120,25 @@ final class Footing {
 
     /** The first place above where it fits, standing on what is there; where it is if there is none. */
     static double freeAbove(ClientLevel level, double x, double y, double z, double height) {
+        return freeAbove(level, x, y, z, HALF, height);
+    }
+
+    /** {@link #freeAbove(ClientLevel, double, double, double, double)} for a body this wide. */
+    static double freeAbove(ClientLevel level, double x, double y, double z, double half, double height) {
         int top = level.getMinY() + level.getHeight();
         for (int by = (int) Math.floor(y) + 1; by < top; by++) {
-            if (!fits(level, x, by, z, height)) continue;
-            double landed = ground(level, x, by, z, by - 1);
-            return !Double.isNaN(landed) && fits(level, x, landed, z, height) ? landed : by;
+            if (!fits(level, x, by, z, half, height)) continue;
+            double landed = ground(level, x, by, z, by - 1, half);
+            return !Double.isNaN(landed) && fits(level, x, landed, z, half, height) ? landed : by;
         }
         return y;
+    }
+
+    /** Something under a body this wide: a block right under it, or water or lava to float on. */
+    static boolean supported(ClientLevel level, double x, double y, double z, double half) {
+        if (!free(level, new AABB(x - half, y - 0.1, z - half, x + half, y + 0.01, z + half))) return true;
+        return !level.getFluidState(BlockPos.containing(x, y + 0.05, z)).isEmpty()
+                || !level.getFluidState(BlockPos.containing(x, y - 0.1, z)).isEmpty();
     }
 
     /**
@@ -119,15 +147,33 @@ final class Footing {
      * lava or fire.
      */
     static double stand(ClientLevel level, int x, int y, int z) {
+        return stand(level, x, y, z, HALF, STANDING);
+    }
+
+    /** {@link #stand(ClientLevel, int, int, int)} for a body this wide and tall: a mount and its rider. */
+    static double stand(ClientLevel level, int x, int y, int z, double half, double height) {
         BlockPos feet = new BlockPos(x, y, z);
         if (!level.hasChunkAt(feet) || !level.getFluidState(feet).isEmpty() || burns(level.getBlockState(feet))) {
             return Double.NaN;
         }
         double cx = x + 0.5, cz = z + 0.5;
-        double top = ground(level, cx, y + 0.6, cz, y - 0.5);
+        double top = ground(level, cx, y + 0.6, cz, y - 0.5, half);
         if (Double.isNaN(top) || top < y - 1e-3) return Double.NaN;
         if (burns(level.getBlockState(feet.below())) && top <= y + 1e-3) return Double.NaN;
-        return fits(level, cx, top, cz, STANDING) ? top : Double.NaN;
+        return fits(level, cx, top, cz, half, height) ? top : Double.NaN;
+    }
+
+    /**
+     * The height a boat floats at in block ({@code x}, {@code y}, {@code z}): the surface of
+     * the water there, with room above it for the boat and its rider; NaN where there is none.
+     */
+    static double afloat(ClientLevel level, int x, int y, int z, double half, double height) {
+        BlockPos at = new BlockPos(x, y, z);
+        if (!level.hasChunkAt(at)) return Double.NaN;
+        FluidState fluid = level.getFluidState(at);
+        if (!fluid.is(FluidTags.WATER) || !level.getFluidState(at.above()).isEmpty()) return Double.NaN;
+        double surface = y + fluid.getHeight(level, at);
+        return fits(level, x + 0.5, surface, z + 0.5, half, height) ? surface : Double.NaN;
     }
 
     /** Fire, a lit campfire, magma: nobody stands there on purpose. */

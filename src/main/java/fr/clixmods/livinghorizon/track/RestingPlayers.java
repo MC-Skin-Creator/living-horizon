@@ -14,6 +14,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.util.Util;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -56,24 +57,66 @@ public final class RestingPlayers {
      *
      * @param lastSeen when they logged off, in milliseconds since 1970; 0 when unknown (seen
      *                 by the data pack alone, or saved by a version that did not keep it)
+     * @param mount    what they rode when they logged off, or null
      */
     public record Spot(String name, @Nullable UUID id, @Nullable String textures, @Nullable String signature,
-                       int dimension, double x, double y, double z, float yaw, long lastSeen) {
+                       int dimension, double x, double y, double z, float yaw, long lastSeen,
+                       @Nullable Mount mount) {
 
-        Spot moved(int dimension, double x, double y, double z, float yaw) {
-            return new Spot(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen);
+        Spot moved(int dimension, double x, double y, double z, float yaw, @Nullable Mount mount) {
+            return new Spot(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen, mount);
         }
 
         Spot dressed(GameProfile profile) {
             Property skin = skinOf(profile);
             return new Spot(name, Profiles.id(profile), skin == null ? textures : Profiles.value(skin),
-                    skin == null ? signature : Profiles.signature(skin), dimension, x, y, z, yaw, lastSeen);
+                    skin == null ? signature : Profiles.signature(skin), dimension, x, y, z, yaw, lastSeen, mount);
         }
 
         GameProfile profile() {
             UUID uuid = id != null ? id : UUIDUtil.createOfflinePlayerUUID(name);
             if (textures == null) return new GameProfile(uuid, name);
             return Profiles.withSkin(uuid, name, new Property("textures", textures, signature));
+        }
+    }
+
+    /**
+     * What a player rode when they logged off: a horse, a boat, a happy ghast. The server
+     * takes it away with them; it is drawn under them all the same, and carries them.
+     *
+     * @param type     the entity type, {@code minecraft:horse}
+     * @param nbt      the mount as the game saves it (coat, saddle, armour, name)
+     * @param data     what the server sent of it that the save leaves out on the client (a
+     *                 saddle before 1.21.5), as {@link RestingMount#dataOf} writes it; may be null
+     * @param seatX    where the rider sits on it, with {@code seatY} and {@code seatZ}: the rider's
+     *                 feet from the mount's, in the mount's own frame, as {@link FarPlayer} keeps them
+     * @param yaw      the way it faced
+     * @param riderYaw the way the rider faced, from the mount's
+     */
+    public record Mount(String type, String nbt, @Nullable String data, double seatX, double seatY, double seatZ,
+                        float yaw, float riderYaw) {
+
+        /**
+         * The mount {@code vehicle} as it is now, its rider's feet {@code seat} from its own
+         * (in its frame); null when the game cannot save it on the client.
+         */
+        static @Nullable Mount of(Entity vehicle, Vec3 seat, float yaw, float riderYaw) {
+            try {
+                return new Mount(EntityType.getKey(vehicle.getType()).toString(),
+                        EntityNbt.save(vehicle, vehicle.level()).toString(), RestingMount.dataOf(vehicle),
+                        seat.x, seat.y, seat.z, yaw, riderYaw);
+            } catch (RuntimeException e) {
+                // A modded mount the game cannot save from the client: they rest on foot.
+                return null;
+            }
+        }
+
+        /** What {@code rider} rides now; null when nothing. For the debug command's test players. */
+        public static @Nullable Mount ridden(Entity rider) {
+            Entity vehicle = rider.getRootVehicle();
+            if (vehicle == rider) return null;
+            Vec3 seat = rider.position().subtract(vehicle.position()).yRot((float) Math.toRadians(vehicle.getYRot()));
+            return of(vehicle, seat, vehicle.getYRot(), rider.getYRot() - vehicle.getYRot());
         }
     }
 
@@ -128,10 +171,10 @@ public final class RestingPlayers {
 
     // --- Who rests where ---------------------------------------------------------------
 
-    /** A player who just logged off, at the last place this client knew. */
-    void rest(GameProfile profile, int dimension, double x, double y, double z, float yaw) {
+    /** A player who just logged off, at the last place this client knew, on what they rode. */
+    void rest(GameProfile profile, int dimension, double x, double y, double z, float yaw, @Nullable Mount mount) {
         Spot spot = new Spot(Profiles.name(profile), Profiles.id(profile), null, null, dimension, x, y, z, yaw,
-                System.currentTimeMillis()).dressed(profile);
+                System.currentTimeMillis(), mount).dressed(profile);
         put(spot);
     }
 
@@ -143,9 +186,12 @@ public final class RestingPlayers {
                 && Math.abs(known.z() - report.z()) < 0.05) {
             return;
         }
+        // The mount this client saw them ride, as long as the pack says they still ride.
         Spot spot = known != null
-                ? known.moved(report.dimension(), report.x(), report.y(), report.z(), report.yaw())
-                : new Spot(name, null, null, null, report.dimension(), report.x(), report.y(), report.z(), report.yaw(), 0);
+                ? known.moved(report.dimension(), report.x(), report.y(), report.z(), report.yaw(),
+                        report.riding() ? known.mount() : null)
+                : new Spot(name, null, null, null, report.dimension(), report.x(), report.y(), report.z(), report.yaw(), 0,
+                        null);
         put(spot);
         if (spot.textures() == null) lookUp(name);
     }
@@ -187,16 +233,16 @@ public final class RestingPlayers {
 
     /**
      * A test player who logged off {@code minutesAgo} minutes ago, here, wearing the skin of
-     * {@code skin}: shown like any other until {@link #clearFakes}, but never written to the
-     * file, so gone at the next start.
+     * {@code skin} and riding {@code mount} if not null: shown like any other until
+     * {@link #clearFakes}, but never written to the file, so gone at the next start.
      */
     public void fake(String name, GameProfile skin, int dimension, double x, double y, double z, float yaw,
-                     long minutesAgo) {
+                     long minutesAgo, @Nullable Mount mount) {
         Property textures = skinOf(skin);
         fakes.add(key(name));
         put(new Spot(name, null, textures == null ? null : Profiles.value(textures),
                 textures == null ? null : Profiles.signature(textures), dimension, x, y, z, yaw,
-                System.currentTimeMillis() - minutesAgo * 60_000));
+                System.currentTimeMillis() - minutesAgo * 60_000, mount));
     }
 
     /** Whether this resting player is a test one. */
@@ -264,7 +310,7 @@ public final class RestingPlayers {
             // The box reaches 1 block round its feet, its top 2 blocks over them.
             if (distance > MAX_AIM + 2.5) continue;
             double height = switch (puppet.look()) {
-                case STAND -> 1.9;
+                case STAND, RIDE -> 1.9;
                 case SIT -> 1.3;
                 case LIE, BED -> 0.5;
             };

@@ -351,6 +351,11 @@ public final class MobMemory {
         chooseSoon = true;
     }
 
+    /** A mount a player took with them as they logged off: it rests under them, not here. */
+    void forgetRidden(UUID id) {
+        forget(id);
+    }
+
     /** No longer sent: remembered if it walked out of range, forgotten if it died. */
     public void onUnload(Entity entity, ClientLevel level) {
         live.remove(entity.getUUID());
