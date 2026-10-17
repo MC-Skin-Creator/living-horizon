@@ -33,6 +33,9 @@
 ### Improved
 - **Distant players** — they are placed from the shared positions alone: the locator bar guess is gone, and so is the "Signal lost" setting. Without a data pack or the mod on the server, the console says so once instead.
 
+### Fixed
+- **Players on a happy ghast** — a far player riding a happy ghast no longer has a second ghast beside them, and one already riding when you join no longer floats in the air.
+
 ## 0.7.0 — 2026-10-17
 
 ### New
