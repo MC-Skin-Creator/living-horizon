@@ -48,11 +48,14 @@ import java.util.Set;
  * as long as the blocks there are loaded: it strolls, looks around, sits down, stands in
  * front of a chest, a crafting table or a villager's workstation; at night it walks to a bed
  * it can reach, or lies down. Doors and fence gates it walks through. Monsters in sight, it
- * draws a sword and raises its shield, watches them and keeps out of their way, never
- * fights; safe indoors, behind walls and shut doors, it does not mind them. A creeper
- * blowing up in sight throws it back, shield up, and it walks back. Hit, it raises its
- * shield. In lava or fire it shows fire resistance, under water water breathing. Where the
- * blocks are not loaded it only stands, sits or sleeps where it was.
+ * draws a sword and raises its shield (its own when it held them, the tools in its hands put
+ * away meanwhile), watches them and keeps out of their way, never fights; safe indoors,
+ * behind walls and shut doors, it does not mind them. A creeper blowing up in sight throws
+ * it back, shield up, and it walks back. Hit, it raises its shield. In lava or fire it shows
+ * fire resistance, under water water breathing. Where the blocks are not loaded it only
+ * stands, sits or sleeps where it was.
+ *
+ * <p>It wears and holds what the player did when last seen up close: armour, weapons, tools.
  *
  * <p>Off, it sits on its spot. Either way it keeps to the ground: break what it rests on and
  * it falls; bury it and it reappears on top. Sitting, its own spot wins again once it has
@@ -132,6 +135,8 @@ public final class RestingPuppet extends RemotePlayer {
     private Walkway.@Nullable Route route;
     private float headYaw, headPitch, headYawGoal, headPitchGoal;
     private int glance;
+    /** What the player held when last seen, given back once the sword and shield are put away. */
+    private ItemStack mainHand = ItemStack.EMPTY, offHand = ItemStack.EMPTY;
 
     RestingPuppet(ClientLevel level, RestingPlayers.Spot spot, GameProfile profile) {
         super(level, profile);
@@ -146,6 +151,18 @@ public final class RestingPuppet extends RemotePlayer {
         yBodyRot = yBodyRotO = spot.yaw();
         yHeadRot = yHeadRotO = spot.yaw();
         timer = 40 + random.nextInt(80);
+        dress(level, spot);
+    }
+
+    /** What the player wore and held when last seen up close. */
+    private void dress(ClientLevel level, RestingPlayers.Spot spot) {
+        if (spot.equipment() == null) return;
+        spot.equipment().forEach((name, saved) -> {
+            EquipmentSlot slot = ItemNbt.slot(name);
+            if (slot != null && saved != null) setItemSlot(slot, ItemNbt.load(saved, level));
+        });
+        mainHand = getItemBySlot(EquipmentSlot.MAINHAND).copy();
+        offHand = getItemBySlot(EquipmentSlot.OFFHAND).copy();
     }
 
     @Override
@@ -727,19 +744,38 @@ public final class RestingPuppet extends RemotePlayer {
         arm(false, false);
     }
 
-    /** What it holds: a sword drawn, a shield up. Changed only when it changes. */
+    /**
+     * What it holds: a sword drawn, a shield up - the player's own when they held one, an iron
+     * sword and a plain shield otherwise. The tools in its hands are put away while either is
+     * out, and given back once both are. Changed only when it changes.
+     */
     private void arm(boolean sword, boolean shield) {
-        if (sword != armed) {
-            armed = sword;
-            setItemSlot(EquipmentSlot.MAINHAND, sword ? new ItemStack(Items.IRON_SWORD) : ItemStack.EMPTY);
+        if (sword == armed && shield == raised) return;
+        boolean wasOut = armed || raised;
+        armed = sword;
+        raised = shield;
+        boolean out = sword || shield;
+        if (out) {
+            setItemSlot(EquipmentSlot.MAINHAND, sword ? drawnSword() : ItemStack.EMPTY);
+            setItemSlot(EquipmentSlot.OFFHAND, shield ? raisedShield() : ItemStack.EMPTY);
+        } else if (wasOut) {
+            setItemSlot(EquipmentSlot.MAINHAND, mainHand.copy());
+            setItemSlot(EquipmentSlot.OFFHAND, offHand.copy());
         }
-        if (shield != raised) {
-            raised = shield;
-            if (shield) setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
-            // Using the item in the off hand: the game draws the shield raised.
-            getEntityData().set(DATA_LIVING_ENTITY_FLAGS, (byte) (shield ? 3 : 0));
-            if (!shield) setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
-        }
+        // Using the item in the off hand: the game draws the shield raised.
+        getEntityData().set(DATA_LIVING_ENTITY_FLAGS, (byte) (shield ? 3 : 0));
+    }
+
+    private ItemStack drawnSword() {
+        if (ItemNbt.sword(mainHand)) return mainHand.copy();
+        if (ItemNbt.sword(offHand)) return offHand.copy();
+        return new ItemStack(Items.IRON_SWORD);
+    }
+
+    private ItemStack raisedShield() {
+        if (offHand.is(Items.SHIELD)) return offHand.copy();
+        if (mainHand.is(Items.SHIELD)) return mainHand.copy();
+        return new ItemStack(Items.SHIELD);
     }
 
     // --- Beds -----------------------------------------------------------------------------

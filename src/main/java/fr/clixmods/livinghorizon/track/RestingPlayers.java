@@ -54,20 +54,23 @@ public final class RestingPlayers {
     /**
      * Where one player rests. Keyed by name: the data pack only knows names.
      *
-     * @param lastSeen when they logged off, in milliseconds since 1970; 0 when unknown (seen
-     *                 by the data pack alone, or saved by a version that did not keep it)
+     * @param lastSeen  when they logged off, in milliseconds since 1970; 0 when unknown (seen
+     *                  by the data pack alone, or saved by a version that did not keep it)
+     * @param equipment what they wore and held when last seen up close, by slot name, each item
+     *                  as the game saves it ({@link ItemNbt}); null or empty when never seen
      */
     public record Spot(String name, @Nullable UUID id, @Nullable String textures, @Nullable String signature,
-                       int dimension, double x, double y, double z, float yaw, long lastSeen) {
+                       int dimension, double x, double y, double z, float yaw, long lastSeen,
+                       @Nullable Map<String, String> equipment) {
 
         Spot moved(int dimension, double x, double y, double z, float yaw) {
-            return new Spot(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen);
+            return new Spot(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen, equipment);
         }
 
         Spot dressed(GameProfile profile) {
             Property skin = skinOf(profile);
             return new Spot(name, Profiles.id(profile), skin == null ? textures : Profiles.value(skin),
-                    skin == null ? signature : Profiles.signature(skin), dimension, x, y, z, yaw, lastSeen);
+                    skin == null ? signature : Profiles.signature(skin), dimension, x, y, z, yaw, lastSeen, equipment);
         }
 
         GameProfile profile() {
@@ -128,10 +131,10 @@ public final class RestingPlayers {
 
     // --- Who rests where ---------------------------------------------------------------
 
-    /** A player who just logged off, at the last place this client knew. */
-    void rest(GameProfile profile, int dimension, double x, double y, double z, float yaw) {
+    /** A player who just logged off, at the last place this client knew, wearing what they wore then. */
+    void rest(GameProfile profile, int dimension, double x, double y, double z, float yaw, Map<String, String> equipment) {
         Spot spot = new Spot(Profiles.name(profile), Profiles.id(profile), null, null, dimension, x, y, z, yaw,
-                System.currentTimeMillis()).dressed(profile);
+                System.currentTimeMillis(), equipment.isEmpty() ? null : Map.copyOf(equipment)).dressed(profile);
         put(spot);
     }
 
@@ -145,7 +148,7 @@ public final class RestingPlayers {
         }
         Spot spot = known != null
                 ? known.moved(report.dimension(), report.x(), report.y(), report.z(), report.yaw())
-                : new Spot(name, null, null, null, report.dimension(), report.x(), report.y(), report.z(), report.yaw(), 0);
+                : new Spot(name, null, null, null, report.dimension(), report.x(), report.y(), report.z(), report.yaw(), 0, null);
         put(spot);
         if (spot.textures() == null) lookUp(name);
     }
@@ -187,16 +190,16 @@ public final class RestingPlayers {
 
     /**
      * A test player who logged off {@code minutesAgo} minutes ago, here, wearing the skin of
-     * {@code skin}: shown like any other until {@link #clearFakes}, but never written to the
-     * file, so gone at the next start.
+     * {@code skin} and {@code equipment}: shown like any other until {@link #clearFakes}, but
+     * never written to the file, so gone at the next start.
      */
-    public void fake(String name, GameProfile skin, int dimension, double x, double y, double z, float yaw,
-                     long minutesAgo) {
+    public void fake(String name, GameProfile skin, Map<String, String> equipment, int dimension,
+                     double x, double y, double z, float yaw, long minutesAgo) {
         Property textures = skinOf(skin);
         fakes.add(key(name));
         put(new Spot(name, null, textures == null ? null : Profiles.value(textures),
                 textures == null ? null : Profiles.signature(textures), dimension, x, y, z, yaw,
-                System.currentTimeMillis() - minutesAgo * 60_000));
+                System.currentTimeMillis() - minutesAgo * 60_000, equipment.isEmpty() ? null : Map.copyOf(equipment)));
     }
 
     /** Whether this resting player is a test one. */

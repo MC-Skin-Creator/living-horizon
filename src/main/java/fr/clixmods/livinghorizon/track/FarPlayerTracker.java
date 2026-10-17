@@ -169,7 +169,8 @@ public final class FarPlayerTracker {
         players.values().removeIf(player -> {
             if (connection.getPlayerInfo(player.id()) != null) return false;
             if (config.offlinePlayers && player.profile != null && player.knownDimension() >= 0) {
-                resting.rest(player.profile, player.knownDimension(), player.x(), player.y(), player.z(), player.yaw());
+                resting.rest(player.profile, player.knownDimension(), player.x(), player.y(), player.z(), player.yaw(),
+                        ItemNbt.equipment(player.lastSeen(), current));
             }
             return true;
         });

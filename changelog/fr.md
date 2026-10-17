@@ -8,6 +8,7 @@
 - **Sodium** — les réglages de Living Horizon apparaissent aussi dans les *Paramètres vidéo* de Sodium, sur des pages à eux sous celles de Sodium (Sodium 0.8 et plus récent).
 
 ### Améliorations
+- **Joueurs déconnectés** — ils gardent l'armure, les armes et les outils qu'ils avaient, et rangent leurs outils quand ils sortent l'épée ou lèvent le bouclier.
 - **Paramètres** — chaque paramètre a un nom et une description plus clairs, dans le style des options de Minecraft, et les distances ont des curseurs sur toute la largeur de la liste.
 
 ## 0.7.0 — 2026-10-17

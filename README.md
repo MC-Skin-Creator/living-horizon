@@ -227,7 +227,7 @@ label `mod compatibility`.
   keeps them visible when the box is smaller than its lines.
 - **Test players who logged off**, to try that feature alone in single player:
   `/livinghorizon debug offline test spawn [name] [minutes]` places one where you stand,
-  wearing your skin, logged off that many minutes ago (default `Sleeper1`, `Sleeper2`...,
+  wearing your skin and what you wear and hold, logged off that many minutes ago (default `Sleeper1`, `Sleeper2`...,
   just now); `... test clear` removes them; `... test list` shows everyone resting on this
   server, where and since when. Test players are never written to the file: they are gone
   at the next start.
@@ -280,6 +280,10 @@ file. This is remembered per server across sessions, in
 off before you joined are there: the pack keeps everyone's last position, and their
 skin is fetched from Mojang by name.
 
+They wear and hold what they did the last time your client saw them up close: armour, a
+weapon, a tool, kept in the file with their spot (`equipment`: each item by slot, as the game
+saves it). A player known only from the data pack, never seen, has none.
+
 With `offlineLife` on (the default) they live their life there, as long as the blocks
 around are loaded (`track/RestingPuppet`), within `offlineRoam` blocks of their spot (50, about
 a village; up to 128): they stand and look around, sit down, stroll, stand in front of a
@@ -290,7 +294,8 @@ cut, nothing walked through but doors and fence gates, which they cannot open), 
 the client from the blocks it has: what is around is read a little every tick (600 spots per
 tick for all of them together), again every 30 seconds or when they find themselves off it,
 and each way is searched towards where they go. Monsters within 10 blocks and in plain sight
-put them on guard: an iron sword drawn, the shield up, eyes on the nearest, a step away when
+put them on guard: a sword drawn, the shield up (their own when they held one, an iron sword
+and a plain shield otherwise, the tools in their hands put away meanwhile), eyes on the nearest, a step away when
 it comes closer than 3.5 blocks; they never fight. Safe indoors, behind walls, shut doors or
 windows, they do not mind them. A creeper blowing up within 7 blocks, in sight, throws them,
 shield up, and they walk back. Hit by you, they raise their shield. In lava or fire they show
