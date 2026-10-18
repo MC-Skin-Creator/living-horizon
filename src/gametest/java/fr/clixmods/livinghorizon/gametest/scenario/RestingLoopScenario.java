@@ -91,7 +91,7 @@ public final class RestingLoopScenario implements Scenario {
             if (mounted && read(context, name, p -> p.mount() == null)) throw new AssertionError("restingloop " + name + ": off its horse");
             Vec3 now = read(context, name, where);
             double across = Math.hypot(now.x - last.x, now.z - last.z);
-            if (across > 5.5) throw new AssertionError("restingloop " + name + ": moved " + across + " blocks in 10 ticks");
+            if (across > 1.6) throw new AssertionError("restingloop " + name + ": moved " + across + " blocks in 10 ticks");
             travelled += across;
             if (i >= 30) farthest = Math.max(farthest, Math.hypot(now.x - x, now.z - z));
             last = now;
