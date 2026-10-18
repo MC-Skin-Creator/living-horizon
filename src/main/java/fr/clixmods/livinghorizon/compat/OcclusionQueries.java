@@ -306,17 +306,16 @@ public final class OcclusionQueries {
             highLocation = GL20C.glGetUniformLocation(program, "high");
             matrixLocation = GL20C.glGetUniformLocation(program, "viewProjection");
         }
-        if (framebuffer != 0 && framebufferDepth == depthTexture) return;
-        if (framebuffer != 0) GL30C.glDeleteFramebuffers(framebuffer);
-        int format = GL45C.glGetTextureLevelParameteri(depthTexture, 0, GL11C.GL_TEXTURE_INTERNAL_FORMAT);
-        boolean stencil = format == GL30C.GL_DEPTH24_STENCIL8 || format == GL30C.GL_DEPTH32F_STENCIL8
-                || format == GL30C.GL_DEPTH_STENCIL;
-        framebuffer = GL45C.glCreateFramebuffers();
-        GL45C.glNamedFramebufferTexture(framebuffer,
-                stencil ? GL30C.GL_DEPTH_STENCIL_ATTACHMENT : GL30C.GL_DEPTH_ATTACHMENT, depthTexture, 0);
-        GL45C.glNamedFramebufferDrawBuffer(framebuffer, GL11C.GL_NONE);
-        GL45C.glNamedFramebufferReadBuffer(framebuffer, GL11C.GL_NONE);
-        if (GL45C.glCheckNamedFramebufferStatus(framebuffer, GL30C.GL_FRAMEBUFFER) != GL30C.GL_FRAMEBUFFER_COMPLETE) {
+        // Attached again every frame: the copy is made again, often under the same name, when
+        // the window is resized (see FarDepth.attachDepth).
+        boolean made = framebuffer == 0;
+        framebuffer = FarDepth.attachDepth(framebuffer, depthTexture);
+        if (made) {
+            GL45C.glNamedFramebufferDrawBuffer(framebuffer, GL11C.GL_NONE);
+            GL45C.glNamedFramebufferReadBuffer(framebuffer, GL11C.GL_NONE);
+        }
+        if (framebufferDepth != depthTexture
+                && GL45C.glCheckNamedFramebufferStatus(framebuffer, GL30C.GL_FRAMEBUFFER) != GL30C.GL_FRAMEBUFFER_COMPLETE) {
             throw new IllegalStateException("the occlusion framebuffer is incomplete");
         }
         framebufferDepth = depthTexture;

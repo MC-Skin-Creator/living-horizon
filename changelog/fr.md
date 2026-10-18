@@ -15,6 +15,9 @@
 - **Cavaliers** — au loin, un joueur sur un cheval, dans un bateau, un wagonnet ou tout ce qu'il monte devient une seule image légère avec, au lieu de deux modèles complets.
 - **Foules de joueurs** — au-delà d'une centaine de joueurs au loin, les suivants ne restent plus en modèles complets.
 
+### Corrections
+- **Redimensionner la fenêtre du jeu** — les créatures lointaines continuent de se cacher derrière les collines, celles de Voxy et de Distant Horizons comprises, quand la fenêtre change de taille, au lieu de les traverser jusqu'au redémarrage du jeu.
+
 ## 0.7.0 — 2026-10-17
 
 ### Nouveautés

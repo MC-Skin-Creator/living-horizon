@@ -15,6 +15,9 @@
 - **Riders** — far away, a player on a horse, a boat, a minecart or anything else they ride becomes one light picture with it, instead of two full models.
 - **Crowds of players** — past a hundred or so players far away, the others no longer stay full models.
 
+### Fixed
+- **Resizing the game window** — distant mobs keep hiding behind hills, Voxy's and Distant Horizons' included, after the window changes size, instead of showing through them until the game restarts.
+
 ## 0.7.0 — 2026-10-17
 
 ### New
