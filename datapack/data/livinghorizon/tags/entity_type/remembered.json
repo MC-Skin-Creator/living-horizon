@@ -50,6 +50,13 @@
     "minecraft:dark_oak_chest_boat",
     "minecraft:pale_oak_chest_boat",
     "minecraft:mangrove_chest_boat",
-    "minecraft:bamboo_chest_raft"
+    "minecraft:bamboo_chest_raft",
+    "minecraft:minecart",
+    "minecraft:chest_minecart",
+    "minecraft:furnace_minecart",
+    "minecraft:hopper_minecart",
+    "minecraft:tnt_minecart",
+    "minecraft:spawner_minecart",
+    "minecraft:command_block_minecart"
   ]
 }

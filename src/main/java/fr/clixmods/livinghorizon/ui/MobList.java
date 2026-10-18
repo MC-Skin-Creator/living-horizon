@@ -8,7 +8,7 @@ import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Every kind of mob in the game, and every boat, for the list of what is shown far away. */
+/** Every kind of mob in the game, every boat and every minecart, for the list of what is shown far away. */
 public final class MobList {
     private MobList() {
     }
@@ -25,7 +25,8 @@ public final class MobList {
             if (DefaultAttributes.hasSupplier(type) && type != EntityType.PLAYER
                     && type != EntityType.ARMOR_STAND) {
                 mobs.add(type);
-            } else if (MobKinds.isBoat(EntityType.getKey(type).toString())) {
+            } else if (MobKinds.isBoat(EntityType.getKey(type).toString())
+                    || MobKinds.isMinecart(EntityType.getKey(type).toString())) {
                 mobs.add(type);
             }
         }

@@ -8,6 +8,7 @@
 - **Sodium** — Living Horizon's settings now also appear in Sodium's *Video Settings*, as pages of their own below Sodium's (Sodium 0.8 and later).
 - **Players who logged off on a mount** — they keep their horse, boat or happy ghast and ride it around where they left: the horse walks, the boat stays on the water and the happy ghast drifts through the air.
 - **Video memory** — *Simplified Entities...* shows, in a tab for mobs and one for players, how much video memory their pictures take, and two new settings choose the most each may take.
+- **Minecarts far away** — minecarts stay on the horizon like boats, and one still rolling when you lose sight of it carries on along its rails, as the server moves it.
 
 ### Improved
 - **Settings** — every setting has a clearer name and description, worded like Minecraft's own options, and distances get sliders the full width of the list.
@@ -20,6 +21,7 @@
 - **Distant Horizons** — far away, players, players who logged off and slimes show like other mobs, instead of vanishing under its terrain (Minecraft 26.1 and later).
 - **Distant Horizons** — far away, its terrain no longer cuts into mobs and players standing in front of it, as if it were closer than it is (Minecraft 26.1 and later).
 - **View bobbing** — walking no longer makes distant mobs blink, nor Distant Horizons' terrain come and go in front of them, at every step (Minecraft 26.1 and later).
+- **Mobs in a boat or a minecart** — they no longer vanish from far away with their ride, and their distant copy stays seated in it wherever it goes, instead of walking off.
 
 ## 0.7.0 — 2026-10-17
 

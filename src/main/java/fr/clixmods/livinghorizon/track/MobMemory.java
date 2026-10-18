@@ -6,6 +6,7 @@ import com.google.gson.reflect.TypeToken;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.platform.Platform;
+import net.minecraft.core.BlockPos;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -32,6 +33,8 @@ import net.minecraft.world.entity.animal.FlyingAnimal;
 import net.minecraft.world.entity.decoration.Mannequin;
 //? if >=1.21.2
 import net.minecraft.world.entity.vehicle.boat.AbstractBoat;
+import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.scores.Scoreboard;
 import org.jspecify.annotations.Nullable;
 
@@ -97,6 +100,15 @@ public final class MobMemory {
         boolean fromPack;
         /** Wore a name tag when last seen. */
         boolean named;
+        /**
+         * What it sat in when last seen (a minecart, a boat, another mob), the bottom of the stack:
+         * its copy sits in that one's copy, or stays put when there is none.
+         */
+        @Nullable UUID vehicle;
+        /** A minecart still rolling along its rails, where the server keeps moving it; null once it stands. */
+        transient @Nullable MinecartCoast coast;
+        /** Where the data pack last put it: a minecart rolls on from there, and is not put back. */
+        transient double packX = Double.NaN, packY, packZ;
         /**
          * The ground around it, read whole where it was last remembered ({@link MobPaths.Ground#save()}):
          * it walks on it from the start next time, before the far world is read, or where it knows nothing.
@@ -167,6 +179,12 @@ public final class MobMemory {
     private int renderBlocks;
     /** Mobs the server sends right now: never drawn twice. */
     private final Map<UUID, Entity> live = new HashMap<>();
+    /**
+     * Mobs riding something as of the last tick. The game makes a vehicle's passengers get
+     * off before it says the vehicle left: by the time a villager in a minecart is said to
+     * leave, it is not in it any more.
+     */
+    private final Map<UUID, UUID> riders = new HashMap<>();
     /** Real mobs kept out of the frame while their copy walks up to them. */
     private final Map<Entity, Remembered> joining = new IdentityHashMap<>();
     /**
@@ -206,7 +224,7 @@ public final class MobMemory {
         return mobs.size();
     }
 
-    /** The mobs and boats the server sends right now. */
+    /** The mobs, boats and minecarts the server sends right now. */
     public Collection<Entity> live() {
         return live.values();
     }
@@ -270,6 +288,7 @@ public final class MobMemory {
         firstVisit = false;
         mobs.clear();
         live.clear();
+        riders.clear();
         joining.clear();
         reach.clear();
         dismissed.clear();
@@ -373,6 +392,10 @@ public final class MobMemory {
             forget(mob.getUUID());
             return;
         }
+        if (underground(mob, level)) {
+            forget(mob.getUUID());
+            return;
+        }
         // Gone right next to us: killed, despawned, picked up - not out of range.
         if (selfKnown && distance(mob.getX(), mob.getY(), mob.getZ()) < 32) {
             forget(mob.getUUID());
@@ -383,11 +406,13 @@ public final class MobMemory {
         // The body as the game drew it: a mob standing still turns it, not its yaw.
         float body = mob instanceof LivingEntity living ? living.yBodyRot : mob.getYRot();
         remember(new MobScan.Found(mob.getUUID(), EntityType.getKey(mob.getType()).toString(),
-                mob.getX(), mob.getY(), mob.getZ(), body, tag, mob.hasCustomName()),
+                mob.getX(), mob.getY(), mob.getZ(), body, tag, mob.hasCustomName(),
+                mob.isPassenger() ? mob.getRootVehicle().getUUID() : riders.get(mob.getUUID())),
                 level.dimension().identifier().toString(), worldOf(level));
         Remembered fresh = mobs.get(entity.getUUID());
         if (fresh != null) {
             if (mob instanceof LivingEntity living) fresh.head = living.yHeadRot;
+            fresh.coast = MinecartCoast.of(mob, mob.isVehicle() || riders.containsValue(mob.getUUID()));
             if (joinedPuppet != null) {
                 fresh.puppet = joinedPuppet;
                 fresh.motion = joined.motion;
@@ -464,6 +489,7 @@ public final class MobMemory {
         memory.parsed = CompletableFuture.completedFuture(mob.nbt());
         memory.seenAt = System.currentTimeMillis();
         memory.named = mob.named();
+        memory.vehicle = mob.vehicle();
         forget(memory.id);
         mobs.put(memory.id, memory);
         chooseSoon = true;
@@ -475,10 +501,12 @@ public final class MobMemory {
     }
 
     /**
-     * Mobs, boats - a parked boat vanishes from far away just like an animal - and
-     * mannequins, the skinned figures that Distant Friends stands far away as fake players.
+     * Mobs, boats and minecarts - a parked boat or cart vanishes from far away just like an
+     * animal - and mannequins, the skinned figures that Distant Friends stands far away as
+     * fake players.
      */
     static boolean rememberable(Entity entity) {
+        if (entity instanceof AbstractMinecart) return true;
         // Mannequins came in 1.21.9; every boat was one class before 1.21.2.
         //? if >=1.21.9 {
         return entity instanceof Mob || entity instanceof AbstractBoat || entity instanceof Mannequin;
@@ -486,6 +514,25 @@ public final class MobMemory {
         /*return entity instanceof Mob || entity instanceof AbstractBoat;
         *///?} else
         /*return entity instanceof Mob || entity instanceof net.minecraft.world.entity.vehicle.Boat;*/
+    }
+
+    /** How much ground over a minecart hides it from far away: a mineshaft's, not a station's roof. */
+    private static final int BURIED = 8;
+
+    /**
+     * A minecart under the ground, as the mineshafts leave them by the dozen: never seen from
+     * far away, it would only take the place of a mob that is. Not told in a world with a
+     * ceiling, the Nether, where everything is under one.
+     */
+    private static boolean underground(Entity entity, ClientLevel level) {
+        if (!(entity instanceof AbstractMinecart) || level.dimensionType().hasCeiling()) return false;
+        int x = (int) Math.floor(entity.getX()), z = (int) Math.floor(entity.getZ());
+        return level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z) > entity.getY() + BURIED;
+    }
+
+    /** A chest minecart still holding the loot of its mineshaft: one nobody ever opened, under the ground. */
+    static boolean buriedCart(Entity entity, CompoundTag saved) {
+        return entity instanceof AbstractMinecart && saved.contains("LootTable");
     }
 
     private static boolean worthRemembering(Entity mob, FarConfig config) {
@@ -523,6 +570,10 @@ public final class MobMemory {
         renderBlocks = renderDistanceBlocks;
         builtNow = 0;
         clock++;
+        riders.clear();
+        for (Entity entity : live.values()) {
+            if (entity.isPassenger()) riders.put(entity.getUUID(), entity.getRootVehicle().getUUID());
+        }
         if (!config.distantMobs) {
             shown = List.of();
             return;
@@ -559,6 +610,7 @@ public final class MobMemory {
         boolean background = config.optBackgroundBuild;
         long budget = System.nanoTime() + BUILD_BUDGET;
         int reads = 0;
+        List<Remembered> seated = new ArrayList<>();
         for (Remembered mob : shown) {
             if (mob.gone || mob.handover != null) continue;
             if (mob.puppet == null && !mob.failed) {
@@ -583,7 +635,13 @@ public final class MobMemory {
                     if (mob.simulated) mob.motion.jump(living, mob);
                     continue;
                 }
-                boolean roam = !still.contains(mob.type);
+                // In its ride: placed once the ride has moved, below.
+                if (seat(mob) != null) {
+                    seated.add(mob);
+                    continue;
+                }
+                if (living.isPassenger()) living.stopRiding();
+                boolean roam = !still.contains(mob.type) && mob.vehicle == null;
                 // Moved by the data pack: the blocks are read again around where it is now.
                 MobPaths.Choice choice = mob.choice;
                 if (choice != null && !choice.ground().around(mob.x, mob.z)) mob.choice = choice = null;
@@ -625,9 +683,58 @@ public final class MobMemory {
                 float home = MobMotion.home(Math.hypot(mob.x - selfX, mob.z - selfZ), handover);
                 motion(mob).tick(living, mob, choice, clock, roam, tiny, home);
             } else {
+                if (mob.coast != null) roll(level, mob);
                 hold(mob.puppet, mob);
             }
         }
+        for (Remembered mob : seated) sit(mob);
+    }
+
+    /** The copy of what a mob was last seen riding, when there is one to sit in. */
+    private @Nullable Entity seat(Remembered mob) {
+        if (mob.vehicle == null) return null;
+        Remembered ride = mobs.get(mob.vehicle);
+        return ride == null ? null : ride.puppet();
+    }
+
+    /**
+     * A mob in its ride's copy: on board, as the game seats a passenger (sitting where it
+     * sits), and wherever the ride goes - a minecart rolling on, a boat the server moves.
+     */
+    private void sit(Remembered mob) {
+        Entity seat = seat(mob);
+        if (seat == null || !(mob.puppet instanceof LivingEntity rider)) return;
+        if (rider.getVehicle() != seat) {
+            rider.stopRiding();
+            // Copies come and go: whoever sat there last is not this copy any more.
+            seat.ejectPassengers();
+            rider.startRiding(seat);
+        }
+        rider.setOldPosAndRot();
+        if (rider.getVehicle() == seat) {
+            seat.positionRider(rider);
+        } else {
+            rider.setPos(seat.getX(), seat.getY(), seat.getZ());
+        }
+        rider.tickCount++;
+        mob.x = rider.getX();
+        mob.y = rider.getY();
+        mob.z = rider.getZ();
+    }
+
+    /**
+     * A minecart that left rolling rolls on, as long as the server would move it: in a
+     * chunk within its simulation distance of this player (other players are not counted).
+     */
+    private void roll(ClientLevel level, Remembered cart) {
+        int cx = (int) Math.floor(cart.x) >> 4, cz = (int) Math.floor(cart.z) >> 4;
+        int range = level.getServerSimulationDistance();
+        if (Math.max(Math.abs(cx - ((int) Math.floor(selfX) >> 4)), Math.abs(cz - ((int) Math.floor(selfZ) >> 4))) > range) return;
+        MinecartCoast coast = cart.coast;
+        if (coast == null) return;
+        MinecartCoast.Ground ground = (x, y, z) -> level.hasChunk(x >> 4, z >> 4) ? level.getBlockState(new BlockPos(x, y, z)) : null;
+        if (!coast.tick(ground, cart)) cart.coast = null;
+        dirty = true;
     }
 
     private static long seed(Remembered mob) {
@@ -639,7 +746,7 @@ public final class MobMemory {
         return mob.motion;
     }
 
-    /** Where it was, facing where it faced, not moving: a boat, which has no animation. */
+    /** Where it is, facing where it faces: a boat or a minecart, which has no animation. */
     private static void hold(Entity puppet, Remembered mob) {
         puppet.setOldPosAndRot();
         puppet.setPos(mob.x, mob.y, mob.z);
@@ -702,17 +809,26 @@ public final class MobMemory {
                 mob.nbt = MobKinds.nbt(type, report.variant(), report.baby());
                 mob.seenAt = System.currentTimeMillis();
                 mobs.put(id, mob);
-            } else if (mob.x == report.x() && mob.y == report.y() && mob.z == report.z()
+            } else if (((mob.x == report.x() && mob.y == report.y() && mob.z == report.z())
+                    || (mob.packX == report.x() && mob.packY == report.y() && mob.packZ == report.z()))
                     && dimension.equals(mob.dimension) && isHere(mob) && mob.fromPack) {
+                continue;
+            } else if (mob.coast != null && Double.isNaN(mob.packX)) {
+                // Just left rolling: what the pack says now is older than what this client saw.
+                mob.packX = report.x();
+                mob.packY = report.y();
+                mob.packZ = report.z();
                 continue;
             }
             // A mob already drawn is not snapped to its new spot: it walks there (MobMotion).
             mob.fromPack = true;
             mob.world = world;
             mob.dimension = dimension;
-            mob.x = report.x();
-            mob.y = report.y();
-            mob.z = report.z();
+            mob.x = mob.packX = report.x();
+            mob.y = mob.packY = report.y();
+            mob.z = mob.packZ = report.z();
+            // The server's word: a minecart rolling here is where it says.
+            mob.coast = null;
             dirty = true;
         }
         List<UUID> dead = new ArrayList<>();
@@ -755,6 +871,9 @@ public final class MobMemory {
                 }
                 mob.serverBody = where.body();
                 mob.serverHead = where.head();
+                // A minecart rolls on between two answers from where the server has it, and
+                // stops where the server no longer moves it.
+                if (!where.simulated()) mob.coast = null;
             }
             for (UUID id : answer.gone()) {
                 if (!live.containsKey(id)) forget(id);

@@ -185,7 +185,7 @@ label `mod compatibility`.
 | `maxDistantMobs` | `512` | mobs | How many of them are drawn at once, nearest first (`1000`: no limit; no limit here and in `mobMaxDistance` together can crash the game) |
 | `mobMaxDistance` | `512` | blocks | Past this, distant mobs are not drawn (`0`: no limit) |
 | `playerMaxDistance` | `0` | blocks | Past this, distant players are not drawn (`0`: no limit) |
-| `mobTypes` | the 31 mobs and the boats of the data pack, and mannequins | | Which mobs are shown, and remembered by this client (in game: "Mobs & Entities...") |
+| `mobTypes` | the 31 mobs, the boats and the minecarts of the data pack, and mannequins | | Which mobs are shown, and remembered by this client (in game: "Mobs & Entities...") |
 | `stillMobTypes` | happy ghast, mannequin | | Mobs shown standing still instead of walking their loop (in game: "Still") |
 | `rememberNamedMobs` | `true` | | A mob with a name tag is shown whatever its type |
 | `knownModdedMobs` | empty | | Mob types of other mods already offered once: a new one is shown from the start (monsters excepted), then left as you set it |
@@ -425,6 +425,20 @@ lives there.
 - Mob types of other mods are shown from the start (monsters excepted). Mannequins are
   too, standing still: Distant Friends uses them as its fake players. The data pack only
   shares vanilla kinds; the others are remembered by each client.
+- **Boats and minecarts** are remembered like animals, where they were left, and shared by
+  the data pack. The server sends a minecart 128 blocks away at most, but keeps moving it
+  in every chunk within its simulation distance of a player: one still rolling when the
+  server stops sending it rolls on along its rails (`track/MinecartCoast`, the server's
+  own rail physics: slopes, curves, powered rails, friction) while it stays within the
+  server's simulation distance of you and on blocks this client has. Off its rails it
+  stops; a position from the data pack wins over its own run, and in single player the
+  server's own (`ServerMobs`) corrects it every few ticks. Minecarts under more than
+  8 blocks of ground (outside the Nether) are not remembered, and the scan and the data
+  pack leave out the chest minecarts nobody ever opened: the mineshafts' dozens.
+- **A mob riding something** (a villager in a minecart, a cow in a boat) is drawn with its
+  ride while the server sends them. Its copy then rides its ride's copy, seated as the game
+  seats a passenger, wherever that one goes (`MobMemory.sit`); without one it stays where it
+  sat. Only a stack with a player in it is left to that player's copy.
 
 ### Birds
 
