@@ -19,6 +19,8 @@ import net.minecraft.world.entity.npc.villager.AbstractVillager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.util.Mth;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.reflect.RecordComponent;
@@ -101,35 +103,61 @@ public record ImpostorKey(String type, long appearance) {
     /** The shared flags that change nothing on the picture: on fire, sprinting, glowing. */
     private static final int UNSEEN_FLAGS = 1 | 1 << 3 | 1 << 6;
 
+    /** Postures a figure's picture is baked in: standing, as most are, seated, or lying down. */
+    public static final int STANDING = 0, SEATED = 1, LYING = 2;
+
     /**
-     * Keys of figures seated on the ground, players who logged off and sit on their spot: a
-     * picture of their own, baked seated ({@link #seated(ImpostorKey)}).
+     * The posture of the keys of figures not standing: players who logged off, sitting on the
+     * ground, lying down or in a bed, and riders baked with their mount ({@link #riding}).
      */
-    private static final Set<ImpostorKey> SEATED = new HashSet<>();
-    /** Mixed into a seated figure's key, so that it never meets the same figure standing. */
-    private static final long SEATED_SALT = 0x5EA7EDL;
+    private static final Map<ImpostorKey, Integer> POSTURES = new HashMap<>();
+    /** Mixed into the key of a figure not standing, so that it never meets the same figure standing. */
+    private static final long POSTURE_SALT = 0x5EA7EDL;
 
     /**
      * The key of a figure: its look, worked out at most every few seconds, since figures
-     * hardly ever change; and its pose, sitting or not, which changes often, every time.
+     * hardly ever change; and its posture, which changes often, every time.
      */
     public static ImpostorKey of(Entity entity) {
         ImpostorKey key = look(entity);
-        if (!seated(entity)) return key;
-        ImpostorKey sitting = new ImpostorKey(key.type, key.appearance * 31 + SEATED_SALT);
-        if (SEATED.size() > 4096) SEATED.clear();
-        SEATED.add(sitting);
-        return sitting;
+        int posture = posture(entity);
+        if (posture == STANDING) return key;
+        return posed(new ImpostorKey(key.type, key.appearance * 31 + POSTURE_SALT * posture), posture);
     }
 
-    /** A player who logged off, sitting on the ground. */
-    public static boolean seated(Entity entity) {
-        return entity instanceof RestingPuppet puppet && puppet.look() == RestingPuppet.Look.SIT;
+    /**
+     * The key of a rider and its mount baked together: both their looks, where the rider sits
+     * on it and the way it turns, to a sixteenth of a block and fifteen degrees. Filed as a
+     * player's, never kept on disk.
+     */
+    public static ImpostorKey riding(Entity rider, Entity mount, Vec3 seat, float yaw) {
+        long hash = look(mount).appearance * 31 + look(rider).appearance;
+        hash = hash * 31 + Math.round(seat.x * 16);
+        hash = hash * 31 + Math.round(seat.y * 16);
+        hash = hash * 31 + Math.round(seat.z * 16);
+        hash = hash * 31 + Math.round(Mth.wrapDegrees(yaw) / 15f);
+        return new ImpostorKey(EntityType.getKey(EntityType.PLAYER).toString(), hash * 31 + type(mount).hashCode());
     }
 
-    /** Whether this key is a seated figure's: its picture is baked seated. */
-    public static boolean seated(ImpostorKey key) {
-        return SEATED.contains(key);
+    private static ImpostorKey posed(ImpostorKey key, int posture) {
+        if (POSTURES.size() > 4096) POSTURES.clear();
+        POSTURES.put(key, posture);
+        return key;
+    }
+
+    /** A player who logged off: sitting on the ground, lying down or in a bed; standing otherwise. */
+    public static int posture(Entity entity) {
+        if (!(entity instanceof RestingPuppet puppet)) return STANDING;
+        return switch (puppet.look()) {
+            case SIT -> SEATED;
+            case LIE, BED -> LYING;
+            default -> STANDING;
+        };
+    }
+
+    /** The posture this key's picture is baked in. */
+    public static int posture(ImpostorKey key) {
+        return POSTURES.getOrDefault(key, STANDING);
     }
 
     private static ImpostorKey look(Entity entity) {
@@ -147,7 +175,7 @@ public record ImpostorKey(String type, long appearance) {
 
     public static void forgetAll() {
         KNOWN.clear();
-        SEATED.clear();
+        POSTURES.clear();
     }
 
     /** What has been learnt to leave out, a copy: by kind of mob, then by synched value. */

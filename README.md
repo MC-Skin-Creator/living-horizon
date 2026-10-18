@@ -528,11 +528,17 @@ nothing, and the game no longer builds a render state and a model for it every f
   not only round, since it was baked as seen from that height, and the wing beat goes on
   from one sheet to the next. Bird sheets are baked again each game, never kept on disk, and
   named after the species in the impostor screen.
-- **Players who logged off** are impostors standing, and seated on the ground too: a seated
-  figure's key is a key of its own (`ImpostorKey.seated`), its picture baked in the riding
-  pose and drawn lowered to the ground, as the model is.
-- **Not impostors:** figures with a mount or a rider, players who logged off lying down or in
-  a bed, the 2D birds, parrots and bats.
+- **Players who logged off** are impostors in every posture: standing, seated on the ground,
+  lying down or in a bed. A posture other than standing is part of the key
+  (`ImpostorKey.posture`), and the picture is baked in it: the riding pose for a seated
+  figure, drawn lowered to the ground as the model is; lying along its body for a sleeper,
+  baked raised (`ImpostorAtlas.LYING_LIFT`) so that none of it falls below the tile, laid
+  along its bed when it is in one.
+- **Riders** (players online or not, on a horse, a camel, a happy ghast...) are baked with their
+  mount in one picture (`ImpostorKey.riding`, `ImpostorAtlas.Rider`): the rider seated where it
+  sits on it, turned as it is turned. Filed as a player's, never kept on disk.
+- **Not impostors:** boats, minecarts and other mounts that are not mobs, with whoever is on
+  them, the 2D birds, parrots and bats.
 
 ### The far terrain's depth
 

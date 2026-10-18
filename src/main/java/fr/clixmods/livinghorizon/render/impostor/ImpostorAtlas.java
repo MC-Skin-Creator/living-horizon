@@ -94,6 +94,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.HumanoidRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.world.entity.Pose;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.AbstractTexture;
@@ -302,6 +304,13 @@ public final class ImpostorAtlas {
         }
     }
 
+    /**
+     * A figure on a mount, baked on it in one picture: its feet {@code seat} blocks from the
+     * mount's in the mount's own frame, turned {@code yaw} degrees from it.
+     */
+    public record Rider(Entity entity, Vec3 seat, float yaw) {
+    }
+
     /** A sheet read from disk, to upload; no sheet when it could not be read, to bake instead. */
     private record Loaded(ImpostorKey key, Entity puppet, ImpostorDisk.@Nullable Stored stored, int generation) {
     }
@@ -313,29 +322,41 @@ public final class ImpostorAtlas {
      * Squeezed into smaller tiles when the pages have no room for those.
      */
     private record Request(ImpostorKey key, @Nullable Entity puppet, @Nullable ImpostorFigure figure, double grow,
-                           int scale) {
+                           int scale, @Nullable Rider rider) {
         static Request of(ImpostorKey key, Entity puppet, double grow) {
-            return new Request(key, puppet, null, grow, Math.clamp((int) Math.ceil(grow - 1e-6), 1, MAX_SCALE));
+            return of(key, puppet, grow, null);
+        }
+
+        static Request of(ImpostorKey key, Entity puppet, double grow, @Nullable Rider rider) {
+            return new Request(key, puppet, null, grow, Math.clamp((int) Math.ceil(grow - 1e-6), 1, MAX_SCALE), rider);
         }
 
         /** One of the mod's own figures: its tile is the size it asks for, never grown. */
         static Request of(ImpostorKey key, ImpostorFigure figure) {
-            return new Request(key, null, figure, 1.0, 1);
+            return new Request(key, null, figure, 1.0, 1, null);
         }
 
         /** The same figure, in tiles {@code scale} times as large. */
         Request at(int scale) {
-            return new Request(key, puppet, figure, grow, scale);
+            return new Request(key, puppet, figure, grow, scale, rider);
+        }
+
+        /** The same figure, baked again with its picture covering {@code grow} times its box. */
+        Request grown(double grow) {
+            return of(key, puppet, grow, rider);
         }
 
         /** Whether its tiles are smaller than its picture asks for. */
         boolean squeezed() {
-            return figure == null && scale < of(key, puppet, grow).scale;
+            return figure == null && scale < of(key, puppet, grow, rider).scale;
         }
 
-        /** Blocks along a side of its tiles. */
+        /** Blocks along a side of its tiles: a mount's, with its rider on top. */
         double size() {
-            return figure != null ? figure.worldSize() : ImpostorAtlas.size(puppet) * grow;
+            if (figure != null) return figure.worldSize();
+            if (rider == null) return ImpostorAtlas.size(puppet) * grow;
+            return ImpostorViews.worldSize(Math.max(puppet.getBbHeight(), rider.seat.y + rider.entity.getBbHeight()),
+                    Math.max(puppet.getBbWidth(), rider.entity.getBbWidth())) * grow;
         }
 
         /** How far down a tile its origin is. */
@@ -560,6 +581,15 @@ public final class ImpostorAtlas {
             return;
         }
         QUEUE.add(Request.of(key, puppet, GROWN.getOrDefault(key, 1.0)));
+    }
+
+    /**
+     * Asks for a mount and its rider to be baked together, within the next few frames. Never
+     * kept on disk: a rider is a player, whose skin may change.
+     */
+    public static void request(ImpostorKey key, Entity mount, Rider rider) {
+        if (failed || sheet(key) != null || UNDRAWABLE.contains(key) || refused(key) || !QUEUED.add(key)) return;
+        QUEUE.add(Request.of(key, mount, GROWN.getOrDefault(key, 1.0), rider));
     }
 
     /** Asks for one of the mod's own figures to be baked, within the next few frames. */
@@ -890,13 +920,51 @@ public final class ImpostorAtlas {
         EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), puppet, 1.0f);
         if (state == null) throw new LeftOut();
         stage(state, view);
-        // The riding pose, legs out in front: a player who logged off, sitting on the ground.
-        if (ImpostorKey.seated(request.key) && state instanceof HumanoidRenderState humanoid) humanoid.isPassenger = true;
+        posture(state, ImpostorKey.posture(request.key));
         // Water mobs were in water when last seen; a puppet is in no world.
         if (state instanceof LivingEntityRenderState living && GhostRenderer.livesInWater(puppet)) {
             living.isInWater = true;
         }
         return state;
+    }
+
+    /**
+     * Blocks a figure lying down is raised by in its picture: the game lays a sleeper across
+     * its feet, half of it below them, out of the tile. {@code GhostRenderer} lowers the
+     * picture by as much.
+     */
+    public static final double LYING_LIFT = 0.3;
+
+    private static double lift(Request request) {
+        return request.rider == null && ImpostorKey.posture(request.key) == ImpostorKey.LYING ? LYING_LIFT : 0;
+    }
+
+    /** A rider's state for one view: on the mount, turned with it, in the riding pose. */
+    private static EntityRenderState stagedRider(Minecraft minecraft, Rider rider, int view) {
+        EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), rider.entity, 1.0f);
+        if (state == null) throw new LeftOut();
+        stage(state, view);
+        if (state instanceof LivingEntityRenderState living) living.bodyRot += rider.yaw;
+        posture(state, ImpostorKey.SEATED);
+        return state;
+    }
+
+    /** Where a rider's feet are drawn in a view: its seat, turned with the mount. */
+    private static Vec3 seat(Rider rider, int view) {
+        float mount = 180f - view * (360f / ImpostorViews.VIEWS);
+        return rider.seat.yRot((float) -Math.toRadians(mount));
+    }
+
+    /**
+     * A figure seated (the riding pose, legs out in front) or lying down along its body, as
+     * {@code GhostRenderer} draws players who logged off.
+     */
+    private static void posture(EntityRenderState state, int posture) {
+        if (posture == ImpostorKey.SEATED && state instanceof HumanoidRenderState humanoid) humanoid.isPassenger = true;
+        if (posture == ImpostorKey.LYING && state instanceof LivingEntityRenderState living) {
+            living.pose = Pose.SLEEPING;
+            living.bedOrientation = null;
+        }
     }
 
     /**
@@ -925,7 +993,12 @@ public final class ImpostorAtlas {
             request.figure.draw(pose, new Sink(storage), 180f - view * (360f / ImpostorViews.VIEWS));
         } else {
             minecraft.getEntityRenderDispatcher().submit(staged(minecraft, request, view), new CameraRenderState(),
-                    0.0, 0.0, 0.0, pose, storage);
+                    0.0, lift(request), 0.0, pose, storage);
+            if (request.rider != null) {
+                Vec3 seat = seat(request.rider, view);
+                minecraft.getEntityRenderDispatcher().submit(stagedRider(minecraft, request.rider, view),
+                        new CameraRenderState(), seat.x, seat.y, seat.z, pose, storage);
+            }
         }
     }
     //?} else {
@@ -933,7 +1006,12 @@ public final class ImpostorAtlas {
         if (request.figure != null) {
             request.figure.draw(pose, new Sink(buffers), 180f - view * (360f / ImpostorViews.VIEWS));
         } else {
-            GhostRenderer.drawState(staged(minecraft, request, view), 0.0, 0.0, 0.0, pose, buffers, FULL_BRIGHT);
+            GhostRenderer.drawState(staged(minecraft, request, view), 0.0, lift(request), 0.0, pose, buffers, FULL_BRIGHT);
+            if (request.rider != null) {
+                Vec3 seat = seat(request.rider, view);
+                GhostRenderer.drawState(stagedRider(minecraft, request.rider, view), seat.x, seat.y, seat.z, pose, buffers,
+                        FULL_BRIGHT);
+            }
         }
     }
     *///?}
@@ -1318,7 +1396,7 @@ public final class ImpostorAtlas {
             if (growth > 1.01 && request.grow < MAX_GROW) {
                 double grow = Math.min(MAX_GROW, request.grow * growth);
                 GROWN.put(key, grow);
-                QUEUE.add(Request.of(key, request.puppet, grow));
+                QUEUE.add(request.grown(grow));
                 again = true;
                 return;
             }
