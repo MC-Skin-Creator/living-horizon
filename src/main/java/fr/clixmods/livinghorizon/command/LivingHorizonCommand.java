@@ -1,5 +1,6 @@
 package fr.clixmods.livinghorizon.command;
 
+import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -29,6 +30,7 @@ import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -251,8 +253,10 @@ public final class LivingHorizonCommand {
         }
         // On what you ride, if anything: a copy of it, which each of them keeps.
         RestingPlayers.Mount mount = RestingPlayers.Mount.ridden(self);
+        boolean flies = mount != null && RestingPlayers.Mount.flies(self.getRootVehicle());
         int dimension = SharedPositions.dimensionCode(self.level().dimension());
         Random random = new Random();
+        List<String> skins = RestingPlayers.skinsFor(names.size(), random);
         for (String each : names) {
             if (count == 1 && radius == 0) {
                 resting.fake(each, self.getGameProfile(), dimension, self.getX(), self.getY(), self.getZ(), self.getYRot(),
@@ -267,8 +271,14 @@ public final class LivingHorizonCommand {
                     ? self.level().getHeight(Heightmap.Types.MOTION_BLOCKING, column.getX(), column.getZ())
                     : self.getY();
             if (mount != null) y += mount.seatY();
-            resting.fake(each, self.getGameProfile(), dimension, x, y, z, random.nextFloat() * 360f - 180f, minutesAgo,
+            // On a mount that flies, at your height, as you fly: above the ground still where it rises higher.
+            if (flies) y = Math.max(y, self.getY());
+            // The default skin of its name until the real player's skin is fetched.
+            resting.fake(each, new GameProfile(UUIDUtil.createOfflinePlayerUUID(each), each), dimension, x, y, z,
+                    random.nextFloat() * 360f - 180f, minutesAgo,
                     mount == null ? null : mount.facing(random.nextFloat() * 360f - 180f));
+            // Each in the skin of a real player, a different one each: a crowd, not clones of you.
+            resting.dressFake(each, skins.get(names.indexOf(each)));
         }
         source.feedback(count == 1 && radius == 0
                 ? Component.translatable("livinghorizon.offline.test.spawned", names.get(0))

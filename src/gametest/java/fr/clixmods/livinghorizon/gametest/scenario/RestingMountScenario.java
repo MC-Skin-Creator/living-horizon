@@ -74,8 +74,22 @@ public final class RestingMountScenario implements Scenario {
             boolean ghasts = context.computeOnClient(minecraft -> BuiltInRegistries.ENTITY_TYPE.keySet().stream()
                     .anyMatch(key -> key.getPath().equals("happy_ghast")));
             if (ghasts) {
+                // A crowd of them placed while flying: in the air, at the camera's height, not on the ground.
                 mounted(context, world, "Flyer", "happy_ghast", -20.5, GROUND + 8, 10.5,
-                        "{NoAI:1b,equipment:{body:{id:\"minecraft:white_harness\",count:1}}}");
+                        "{NoAI:1b,equipment:{body:{id:\"minecraft:white_harness\",count:1}}}",
+                        "livinghorizon debug offline test crowd 4 12");
+                String grounded = context.computeOnClient(minecraft -> {
+                    RestingPlayers resting = FarPlayerTracker.get().resting();
+                    for (RestingPlayers.Spot spot : resting.spots()) {
+                        if (spot.name().startsWith("Sleeper") && spot.y() < GROUND + 8) {
+                            return spot.name() + " at y=" + spot.y() + (spot.mount() == null ? ", on nothing" : "");
+                        }
+                    }
+                    return resting.spots().stream().filter(spot -> spot.name().startsWith("Sleeper")).count() == 4
+                            ? null : "not 4 of them";
+                });
+                Scene.log("restingmount crowd on happy ghasts: " + (grounded == null ? "in the air" : grounded));
+                if (grounded != null) throw new AssertionError("restingmount crowd on happy ghasts: " + grounded);
                 Scene.command(world, "tp @a -20.5 " + GROUND + " -10 0 -10");
                 roams(context, "Flyer", -20.5, 10.5, 800, Double.NaN);
                 lookAt(context, world, "Flyer", GROUND + 14);
@@ -91,6 +105,12 @@ public final class RestingMountScenario implements Scenario {
      */
     private static void mounted(ClientGameTestContext context, TestSingleplayerContext world, String name, String type,
                                 double x, double y, double z, String nbt) {
+        mounted(context, world, name, type, x, y, z, nbt, null);
+    }
+
+    /** The same, typing {@code also} too while it rides. */
+    private static void mounted(ClientGameTestContext context, TestSingleplayerContext world, String name, String type,
+                                double x, double y, double z, String nbt, String also) {
         Scene.command(world, "tp @a " + x + " " + y + " " + (z - 4) + " 0 0");
         Scene.command(world, "summon " + type + " " + x + " " + y + " " + z + " " + nbt);
         context.waitTicks(10);
@@ -99,6 +119,7 @@ public final class RestingMountScenario implements Scenario {
         boolean riding = context.computeOnClient(minecraft -> minecraft.player.getVehicle() != null);
         if (!riding) throw new AssertionError("restingmount: the camera could not ride the " + type);
         clientCommand(context, "livinghorizon debug offline test spawn " + name);
+        if (also != null) clientCommand(context, also);
         context.waitTicks(5);
         Scene.command(world, "ride @p dismount");
         Scene.command(world, "tp @e[type=" + type + "] ~ -200 ~");

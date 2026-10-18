@@ -232,7 +232,9 @@ label `mod compatibility`.
   just now), on a copy of what you ride if you ride something. `... spawn <name> <minutes>
   <count> [radius]` places that many (`name1`, `name2`...), up to 100, each on the ground
   somewhere within the radius around you (16 blocks if none is given, up to 256), facing a way
-  of its own; `... test crowd <count> [radius] [minutes]` does the same with names of their own
+  of its own, on your mount at your height if it flies, and each in the skin of a different
+  real player, fetched from Mojang (from 1.21.9; before, the default skin of its name);
+  `... test crowd <count> [radius] [minutes]` does the same with names of their own
   (`Sleeper1`...). `... test clear` removes them; `... test list` shows everyone resting on this
   server, where and since when. Test players are never written to the file: they are gone
   at the next start.

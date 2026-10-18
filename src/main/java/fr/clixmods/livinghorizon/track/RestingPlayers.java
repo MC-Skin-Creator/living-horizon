@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -65,6 +66,11 @@ public final class RestingPlayers {
 
         Spot moved(int dimension, double x, double y, double z, float yaw, @Nullable Mount mount) {
             return new Spot(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen, mount);
+        }
+
+        /** The same player, wearing this skin. */
+        Spot skinned(Property skin) {
+            return new Spot(name, id, Profiles.value(skin), Profiles.signature(skin), dimension, x, y, z, yaw, lastSeen, mount);
         }
 
         Spot dressed(GameProfile profile) {
@@ -109,6 +115,11 @@ public final class RestingPlayers {
                 // A modded mount the game cannot save from the client: they rest on foot.
                 return null;
             }
+        }
+
+        /** Whether a mount flies, as a happy ghast does: it stays in the air, at its height. */
+        public static boolean flies(Entity vehicle) {
+            return RestingMount.kindOf(vehicle) == RestingMount.Kind.AIR;
         }
 
         /** The same mount, turned to {@code facing}, its rider turned with it. */
@@ -253,6 +264,61 @@ public final class RestingPlayers {
     /** Whether this resting player is a test one. */
     public boolean isFake(Spot spot) {
         return fakes.contains(key(spot.name()));
+    }
+
+    /**
+     * Real players with a skin of their own, most of them well known: a crowd of test players
+     * wears theirs, so that no two look alike. A name no longer in use keeps the default skin.
+     * None of the names the game draws differently (upside down, in rainbow colours).
+     */
+    private static final List<String> SKINS = List.of(
+            "Notch", "Technoblade", "Dream", "Grian", "MumboJumbo", "xisumavoid", "GeminiTay", "ImpulseSV",
+            "TangoTek", "EthosLab", "BdoubleO100", "docm77", "Keralis1", "iJevin", "Smallishbeans", "Rendog",
+            "Welsknight", "Cubfan135", "ZombieCleo", "falsesymmetry", "CaptainSparklez", "DanTDM", "Ph1LzA",
+            "TommyInnit", "Tubbo", "Ranboo", "Sapnap", "GeorgeNotFound", "Quackity", "Skeppy", "BadBoyHalo",
+            "Fundy", "Purpled", "AntVenom", "SSundee", "PrestonPlayz", "Aphmau", "LDShadowLady", "Smajor1995",
+            "Pearlescentmoon", "Hypnotizd", "Stressmonster101", "joehillssays", "Thinknoodles", "Fruitberries",
+            "Illumina", "Tapl", "Stimpy", "Feinberg", "Sykkuno");
+
+    /** Profiles of the real players whose skins test players wore, fetched once each. */
+    private final Map<String, GameProfile> skins = new HashMap<>();
+
+    /** {@code count} real players to borrow skins from, in a new order every time. */
+    public static List<String> skinsFor(int count, Random random) {
+        List<String> order = new ArrayList<>(SKINS);
+        Collections.shuffle(order, random);
+        List<String> chosen = new ArrayList<>();
+        for (int i = 0; i < count; i++) chosen.add(order.get(i % order.size()));
+        return chosen;
+    }
+
+    /**
+     * Dresses test player {@code name} in the skin of the real player {@code skin}, fetched
+     * from Mojang off the game thread. The game asks Mojang for a profile by name from 1.21.9;
+     * before, test players keep the default skin their name gives them.
+     */
+    public void dressFake(String name, String skin) {
+        GameProfile known = skins.get(key(skin));
+        if (known != null) {
+            wear(name, known);
+            return;
+        }
+        //? if >=1.21.9 {
+        Minecraft minecraft = Minecraft.getInstance();
+        CompletableFuture
+                .supplyAsync(() -> minecraft.services().profileResolver().fetchByName(skin), Util.ioPool())
+                .exceptionally(e -> Optional.empty())
+                .thenAcceptAsync(found -> found.ifPresent(profile -> {
+                    skins.put(key(skin), profile);
+                    wear(name, profile);
+                }), minecraft);
+        //?}
+    }
+
+    private void wear(String name, GameProfile profile) {
+        Spot spot = spots.get(key(name));
+        Property skin = skinOf(profile);
+        if (spot != null && skin != null && fakes.contains(key(name))) put(spot.skinned(skin));
     }
 
     /** Removes every test player; how many there were. */

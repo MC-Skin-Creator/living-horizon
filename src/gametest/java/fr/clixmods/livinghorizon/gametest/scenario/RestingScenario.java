@@ -197,9 +197,13 @@ public final class RestingScenario implements Scenario {
             Scene.log("resting creeper: thrown " + thrown);
             if (!thrown) throw new AssertionError("resting: not thrown by the creeper");
             Scene.screenshot(context, this, "thrown");
-            wait(context, world, 200);
-            Vec3 back = sleeper(context, p -> p.position());
-            double off = Math.hypot(back.x - stood.x, back.z - stood.z);
+            // Back where it stood at some point: once there, it may well go for a stroll again.
+            double off = Double.MAX_VALUE;
+            for (int k = 0; k < 20 && off > 0.5; k++) {
+                wait(context, world, 10);
+                Vec3 back = sleeper(context, p -> p.position());
+                off = Math.min(off, Math.hypot(back.x - stood.x, back.z - stood.z));
+            }
             Scene.log("resting creeper: " + off + " blocks from where they stood");
             if (off > 1.5) throw new AssertionError("resting: did not walk back after the blast, " + off + " blocks off");
 
@@ -254,6 +258,12 @@ public final class RestingScenario implements Scenario {
                 return count == 12 ? null : count + " test players";
             });
             if (crowd != null) throw new AssertionError("resting crowd: " + crowd);
+            // Each in a real player's skin, fetched from Mojang: logged, not checked, as the
+            // game may have no way out to Mojang where it runs.
+            wait(context, world, 100);
+            long dressed = context.computeOnClient(minecraft -> FarPlayerTracker.get().resting().spots().stream()
+                    .filter(rested -> rested.textures() != null).count());
+            Scene.log("resting crowd: " + dressed + " of 12 in a real player's skin");
             Scene.screenshot(context, this, "crowd");
             clientCommand(context, "livinghorizon debug offline test clear");
             wait(context, world, 10);
