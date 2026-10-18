@@ -26,7 +26,7 @@ import java.util.function.Function;
  * stroll), in the morning they get up and stay around; hit, they raise a shield; a monster
  * they cannot see leaves them calm, one in sight puts them on guard, sword drawn, until it is
  * gone; a creeper blowing up throws them, and they walk back. Last, the switch that hides
- * them all, and the debug command's test player.
+ * them all, and the debug command's test player, then a crowd of them.
  */
 public final class RestingScenario implements Scenario {
     private static final String NAME = "LH_Sleeper";
@@ -238,6 +238,26 @@ public final class RestingScenario implements Scenario {
                     .noneMatch(s -> s.name().equals("Tester")));
             if (!gone) throw new AssertionError("resting test player still there after clear");
             Scene.log("resting test player cleared");
+
+            // A crowd of them: twelve, all within 20 blocks, on the ground, gone with clear.
+            clientCommand(context, "livinghorizon debug offline test crowd 12 20");
+            wait(context, world, 10);
+            String crowd = context.computeOnClient(minecraft -> {
+                RestingPlayers resting = FarPlayerTracker.get().resting();
+                Vec3 me = minecraft.player.position();
+                long count = resting.spots().stream().filter(resting::isFake).count();
+                for (RestingPlayers.Spot s : resting.spots()) {
+                    if (!resting.isFake(s)) continue;
+                    double from = Math.hypot(s.x() - me.x, s.z() - me.z);
+                    if (from > 20.01 || Math.abs(s.y() - GROUND) > 1e-3) return s.name() + " " + from + " blocks away, y=" + s.y();
+                }
+                return count == 12 ? null : count + " test players";
+            });
+            if (crowd != null) throw new AssertionError("resting crowd: " + crowd);
+            Scene.screenshot(context, this, "crowd");
+            clientCommand(context, "livinghorizon debug offline test clear");
+            wait(context, world, 10);
+            Scene.log("resting crowd placed and cleared");
         }
     }
 

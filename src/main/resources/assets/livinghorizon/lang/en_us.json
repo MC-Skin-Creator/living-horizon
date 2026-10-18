@@ -31,6 +31,7 @@
   "livinghorizon.offline.lastSeen": "%s — last seen %s",
   "livinghorizon.offline.unknown": "%s — offline",
   "livinghorizon.offline.test.spawned": "Test player %s placed where you stand, logged off. Step back to see them; /livinghorizon debug offline test clear removes them.",
+  "livinghorizon.offline.test.spawnedMany": "%s test players placed within %s blocks of you, logged off. /livinghorizon debug offline test clear removes them.",
   "livinghorizon.offline.test.switchedOff": "Logged-off players are switched off in the settings: turn them on to see %s.",
   "livinghorizon.offline.test.online": "%s is online: pick another name.",
   "livinghorizon.offline.test.long": "%s is too long: a player name has 16 characters at most.",

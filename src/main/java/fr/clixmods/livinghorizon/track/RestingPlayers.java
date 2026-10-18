@@ -111,6 +111,11 @@ public final class RestingPlayers {
             }
         }
 
+        /** The same mount, turned to {@code facing}, its rider turned with it. */
+        public Mount facing(float facing) {
+            return new Mount(type, nbt, data, seatX, seatY, seatZ, facing, riderYaw);
+        }
+
         /** What {@code rider} rides now; null when nothing. For the debug command's test players. */
         public static @Nullable Mount ridden(Entity rider) {
             Entity vehicle = rider.getRootVehicle();

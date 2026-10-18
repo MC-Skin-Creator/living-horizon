@@ -31,13 +31,17 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import org.jspecify.annotations.Nullable;
 
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Locale;
+import java.util.Random;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 
@@ -152,23 +156,59 @@ public final class LivingHorizonCommand {
                         }));
     }
 
+    /** Test players placed at most at once, and the farthest they are spread. */
+    private static final int MAX_TEST_PLAYERS = 100, MAX_TEST_RADIUS = 256;
+    /** Blocks around you a crowd of test players is spread over when no radius is given. */
+    private static final int CROWD_RADIUS = 16;
+
     /**
      * {@code /livinghorizon debug offline test ...}: test players who logged off, to try the
-     * feature alone. {@code spawn [name] [minutes]} places one where you stand, wearing your
-     * skin, logged off that many minutes ago, on a copy of what you ride if you ride something; {@code clear} removes them; {@code list} shows
-     * everyone resting on this server. Test players are never written to the file.
+     * feature alone. {@code spawn [name] [minutes] [count] [radius]} places one where you
+     * stand, wearing your skin, logged off that many minutes ago, on a copy of what you ride
+     * if you ride something; with a count, that many ({@code name1}, {@code name2}...), each on
+     * the ground somewhere within the radius around you. {@code crowd <count> [radius]
+     * [minutes]} does the same with names of their own. {@code clear} removes them;
+     * {@code list} shows everyone resting on this server. Test players are never written to
+     * the file.
      */
     private static <S> LiteralArgumentBuilder<S> offlineTests(Function<S, Source> source) {
         return LiteralArgumentBuilder.<S>literal("offline").then(LiteralArgumentBuilder.<S>literal("test")
                 .then(LiteralArgumentBuilder.<S>literal("spawn")
-                        .executes(c -> spawnOffline(source.apply(c.getSource()), null, 0))
+                        .executes(c -> spawnOffline(source.apply(c.getSource()), null, 0, 1, 0))
                         .then(RequiredArgumentBuilder.<S, String>argument("name", StringArgumentType.word())
                                 .executes(c -> spawnOffline(source.apply(c.getSource()),
-                                        StringArgumentType.getString(c, "name"), 0))
+                                        StringArgumentType.getString(c, "name"), 0, 1, 0))
                                 .then(RequiredArgumentBuilder.<S, Integer>argument("minutes", IntegerArgumentType.integer(0))
                                         .executes(c -> spawnOffline(source.apply(c.getSource()),
                                                 StringArgumentType.getString(c, "name"),
-                                                IntegerArgumentType.getInteger(c, "minutes"))))))
+                                                IntegerArgumentType.getInteger(c, "minutes"), 1, 0))
+                                        .then(RequiredArgumentBuilder.<S, Integer>argument("count",
+                                                        IntegerArgumentType.integer(1, MAX_TEST_PLAYERS))
+                                                .executes(c -> spawnOffline(source.apply(c.getSource()),
+                                                        StringArgumentType.getString(c, "name"),
+                                                        IntegerArgumentType.getInteger(c, "minutes"),
+                                                        IntegerArgumentType.getInteger(c, "count"), CROWD_RADIUS))
+                                                .then(RequiredArgumentBuilder.<S, Integer>argument("radius",
+                                                                IntegerArgumentType.integer(0, MAX_TEST_RADIUS))
+                                                        .executes(c -> spawnOffline(source.apply(c.getSource()),
+                                                                StringArgumentType.getString(c, "name"),
+                                                                IntegerArgumentType.getInteger(c, "minutes"),
+                                                                IntegerArgumentType.getInteger(c, "count"),
+                                                                IntegerArgumentType.getInteger(c, "radius"))))))))
+                .then(LiteralArgumentBuilder.<S>literal("crowd")
+                        .then(RequiredArgumentBuilder.<S, Integer>argument("count", IntegerArgumentType.integer(1, MAX_TEST_PLAYERS))
+                                .executes(c -> spawnOffline(source.apply(c.getSource()), null, 0,
+                                        IntegerArgumentType.getInteger(c, "count"), CROWD_RADIUS))
+                                .then(RequiredArgumentBuilder.<S, Integer>argument("radius",
+                                                IntegerArgumentType.integer(0, MAX_TEST_RADIUS))
+                                        .executes(c -> spawnOffline(source.apply(c.getSource()), null, 0,
+                                                IntegerArgumentType.getInteger(c, "count"),
+                                                IntegerArgumentType.getInteger(c, "radius")))
+                                        .then(RequiredArgumentBuilder.<S, Integer>argument("minutes", IntegerArgumentType.integer(0))
+                                                .executes(c -> spawnOffline(source.apply(c.getSource()), null,
+                                                        IntegerArgumentType.getInteger(c, "minutes"),
+                                                        IntegerArgumentType.getInteger(c, "count"),
+                                                        IntegerArgumentType.getInteger(c, "radius")))))))
                 .then(LiteralArgumentBuilder.<S>literal("clear").executes(c -> {
                     int removed = FarPlayerTracker.get().resting().clearFakes();
                     source.apply(c.getSource()).feedback(Component.translatable("livinghorizon.offline.test.cleared", removed));
@@ -177,35 +217,66 @@ public final class LivingHorizonCommand {
                 .then(LiteralArgumentBuilder.<S>literal("list").executes(c -> listOffline(source.apply(c.getSource())))));
     }
 
-    private static int spawnOffline(Source source, @Nullable String name, int minutesAgo) {
+    /**
+     * Places {@code count} test players: one alone where you stand, several on the ground
+     * within {@code radius} blocks around you, each facing its own way.
+     */
+    private static int spawnOffline(Source source, @Nullable String name, int minutesAgo, int count, int radius) {
         Player self = source.player();
         ClientPacketListener connection = source.client().getConnection();
         if (self == null || connection == null) return 0;
         RestingPlayers resting = FarPlayerTracker.get().resting();
-        if (name == null) {
-            int n = 1;
-            while (taken(resting, "Sleeper" + n)) n++;
-            name = "Sleeper" + n;
-        }
-        if (name.length() > 16) {
-            source.feedback(Component.translatable("livinghorizon.offline.test.long", name));
-            return 0;
-        }
-        for (PlayerInfo info : connection.getOnlinePlayers()) {
-            if (Profiles.name(info.getProfile()).equalsIgnoreCase(name)) {
-                // Online: they would be woken up on the next tick.
-                source.feedback(Component.translatable("livinghorizon.offline.test.online", name));
-                return 0;
+        List<String> names = new ArrayList<>();
+        int n = 1;
+        for (int i = 1; i <= count; i++) {
+            if (name == null) {
+                while (taken(resting, "Sleeper" + n)) n++;
+                names.add("Sleeper" + n++);
+            } else {
+                names.add(count == 1 ? name : name + i);
             }
         }
-        // On what you ride, if anything: a copy of it, which they keep.
-        resting.fake(name, self.getGameProfile(), SharedPositions.dimensionCode(self.level().dimension()),
-                self.getX(), self.getY(), self.getZ(), self.getYRot(), minutesAgo, RestingPlayers.Mount.ridden(self));
-        source.feedback(Component.translatable("livinghorizon.offline.test.spawned", name));
-        if (!FarConfig.get().offlinePlayers) {
-            source.feedback(Component.translatable("livinghorizon.offline.test.switchedOff", name));
+        for (String each : names) {
+            if (each.length() > 16) {
+                source.feedback(Component.translatable("livinghorizon.offline.test.long", each));
+                return 0;
+            }
+            for (PlayerInfo info : connection.getOnlinePlayers()) {
+                if (Profiles.name(info.getProfile()).equalsIgnoreCase(each)) {
+                    // Online: they would be woken up on the next tick.
+                    source.feedback(Component.translatable("livinghorizon.offline.test.online", each));
+                    return 0;
+                }
+            }
         }
-        return 1;
+        // On what you ride, if anything: a copy of it, which each of them keeps.
+        RestingPlayers.Mount mount = RestingPlayers.Mount.ridden(self);
+        int dimension = SharedPositions.dimensionCode(self.level().dimension());
+        Random random = new Random();
+        for (String each : names) {
+            if (count == 1 && radius == 0) {
+                resting.fake(each, self.getGameProfile(), dimension, self.getX(), self.getY(), self.getZ(), self.getYRot(),
+                        minutesAgo, mount);
+                continue;
+            }
+            // Evenly over the disc, on the ground where the blocks are known, at your height elsewhere.
+            double angle = random.nextDouble() * Math.PI * 2, distance = radius * Math.sqrt(random.nextDouble());
+            double x = self.getX() + Math.cos(angle) * distance, z = self.getZ() + Math.sin(angle) * distance;
+            BlockPos column = BlockPos.containing(x, self.getY(), z);
+            double y = self.level().hasChunkAt(column)
+                    ? self.level().getHeight(Heightmap.Types.MOTION_BLOCKING, column.getX(), column.getZ())
+                    : self.getY();
+            if (mount != null) y += mount.seatY();
+            resting.fake(each, self.getGameProfile(), dimension, x, y, z, random.nextFloat() * 360f - 180f, minutesAgo,
+                    mount == null ? null : mount.facing(random.nextFloat() * 360f - 180f));
+        }
+        source.feedback(count == 1 && radius == 0
+                ? Component.translatable("livinghorizon.offline.test.spawned", names.get(0))
+                : Component.translatable("livinghorizon.offline.test.spawnedMany", count, radius));
+        if (!FarConfig.get().offlinePlayers) {
+            source.feedback(Component.translatable("livinghorizon.offline.test.switchedOff", names.get(0)));
+        }
+        return count;
     }
 
     private static boolean taken(RestingPlayers resting, String name) {

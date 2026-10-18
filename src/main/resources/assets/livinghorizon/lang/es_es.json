@@ -31,6 +31,7 @@
   "livinghorizon.offline.lastSeen": "%s — visto por última vez el %s",
   "livinghorizon.offline.unknown": "%s — sin conexión",
   "livinghorizon.offline.test.spawned": "Jugador de prueba %s colocado donde estás, desconectado. Aléjate para verlo; /livinghorizon debug offline test clear lo quita.",
+  "livinghorizon.offline.test.spawnedMany": "%s jugadores de prueba colocados a %s bloques de ti como máximo, desconectados. /livinghorizon debug offline test clear los quita.",
   "livinghorizon.offline.test.switchedOff": "Los jugadores desconectados están desactivados en los ajustes: actívalos para ver a %s.",
   "livinghorizon.offline.test.online": "%s está conectado: elige otro nombre.",
   "livinghorizon.offline.test.long": "%s es demasiado largo: un nombre de jugador tiene 16 caracteres como máximo.",

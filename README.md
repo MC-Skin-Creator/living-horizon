@@ -229,7 +229,11 @@ label `mod compatibility`.
 - **Test players who logged off**, to try that feature alone in single player:
   `/livinghorizon debug offline test spawn [name] [minutes]` places one where you stand,
   wearing your skin, logged off that many minutes ago (default `Sleeper1`, `Sleeper2`...,
-  just now), on a copy of what you ride if you ride something; `... test clear` removes them; `... test list` shows everyone resting on this
+  just now), on a copy of what you ride if you ride something. `... spawn <name> <minutes>
+  <count> [radius]` places that many (`name1`, `name2`...), up to 100, each on the ground
+  somewhere within the radius around you (16 blocks if none is given, up to 256), facing a way
+  of its own; `... test crowd <count> [radius] [minutes]` does the same with names of their own
+  (`Sleeper1`...). `... test clear` removes them; `... test list` shows everyone resting on this
   server, where and since when. Test players are never written to the file: they are gone
   at the next start.
 - **Far terrain**: `/livinghorizon lod` (or `voxy`) says which far-terrain mod is read

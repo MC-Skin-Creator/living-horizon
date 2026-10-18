@@ -31,6 +31,7 @@
   "livinghorizon.offline.lastSeen": "%s — son görülme: %s",
   "livinghorizon.offline.unknown": "%s — çevrim dışı",
   "livinghorizon.offline.test.spawned": "Test oyuncusu %s bulunduğunuz yere çevrim dışı olarak yerleştirildi. Görmek için geri çekilin; /livinghorizon debug offline test clear onu kaldırır.",
+  "livinghorizon.offline.test.spawnedMany": "%s test oyuncusu çevrenizdeki %s blokluk alana çevrim dışı olarak yerleştirildi. /livinghorizon debug offline test clear onları kaldırır.",
   "livinghorizon.offline.test.switchedOff": "Çevrim dışı oyuncular ayarlarda kapalı: %s oyuncusunu görmek için açın.",
   "livinghorizon.offline.test.online": "%s çevrim içi: başka bir ad seçin.",
   "livinghorizon.offline.test.long": "%s çok uzun: bir oyuncu adı en fazla 16 karakterdir.",

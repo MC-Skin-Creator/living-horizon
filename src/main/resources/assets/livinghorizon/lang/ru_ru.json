@@ -31,6 +31,7 @@
   "livinghorizon.offline.lastSeen": "%s — последний раз в сети: %s",
   "livinghorizon.offline.unknown": "%s — офлайн",
   "livinghorizon.offline.test.spawned": "Тестовый игрок %s поставлен на ваше место, офлайн. Отойдите, чтобы увидеть его; /livinghorizon debug offline test clear убирает его.",
+  "livinghorizon.offline.test.spawnedMany": "Тестовые игроки (%s) поставлены в радиусе %s блоков от вас, офлайн. /livinghorizon debug offline test clear убирает их.",
   "livinghorizon.offline.test.switchedOff": "Игроки офлайн выключены в настройках: включите их, чтобы увидеть %s.",
   "livinghorizon.offline.test.online": "%s в сети: выберите другое имя.",
   "livinghorizon.offline.test.long": "%s — слишком длинное: в имени игрока не больше 16 символов.",

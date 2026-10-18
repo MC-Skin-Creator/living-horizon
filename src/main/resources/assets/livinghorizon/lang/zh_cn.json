@@ -31,6 +31,7 @@
   "livinghorizon.offline.lastSeen": "%s — 最后上线：%s",
   "livinghorizon.offline.unknown": "%s — 离线",
   "livinghorizon.offline.test.spawned": "已在你所站的位置放置测试玩家%s，状态为离线。后退几步即可看到；/livinghorizon debug offline test clear可将其移除。",
+  "livinghorizon.offline.test.spawnedMany": "已放置%s个测试玩家，位于你周围%s格内，状态为离线。/livinghorizon debug offline test clear可将其移除。",
   "livinghorizon.offline.test.switchedOff": "离线玩家已在设置中关闭：开启后才能看到%s。",
   "livinghorizon.offline.test.online": "%s在线：请换一个名称。",
   "livinghorizon.offline.test.long": "%s太长：玩家名称最多16个字符。",
