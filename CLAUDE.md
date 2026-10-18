@@ -242,6 +242,11 @@ come back, add it here in the same pull request: this file is what the next sess
   without a shader pack): its fade runs after the translucent step, where players and a slime's
   outer layer are drawn. `FarDepth.beforeFade` unmasks that step's copies too (`lateFade`); a
   pixel left out of the mask is faded into its terrain. On 26.3 the GPU path's mask needs none.
+- **Distant Horizons' terrain in front of mobs standing before it** (a far mob cut by the hill
+  behind it, from 26.1): the game makes its projection inside `Camera.update`, from `depthFar`.
+  `CameraMixin` pushes that plane out right after it is set, before the projection; pushed at
+  the end, `DepthFar.of` gave a plane the projection did not use, and Distant Horizons' depth
+  converted with it came out nearer. Whatever converts a depth must use the projection's planes.
 - **Voxy version.** `FarDepth` and `VoxySource` reach Voxy by reflection; a renamed class turns
   both off ("Voxy found, but not the version this mod knows"). 0.2.18 renamed
   `IGetVoxyRenderSystem` to `IVoxyRenderSystemHolder` (`VoxySource.renderSystemGetter` tries

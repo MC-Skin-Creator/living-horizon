@@ -18,6 +18,7 @@
 ### Corrections
 - **Redimensionner la fenêtre du jeu** — les créatures lointaines continuent de se cacher derrière les collines, celles de Voxy et de Distant Horizons comprises, quand la fenêtre change de taille, au lieu de les traverser jusqu'au redémarrage du jeu.
 - **Distant Horizons** — au loin, les joueurs, les joueurs déconnectés et les slimes s'affichent comme les autres créatures, au lieu de disparaître sous son terrain (Minecraft 26.1 et plus récent).
+- **Distant Horizons** — au loin, son terrain ne mord plus sur les créatures et les joueurs placés devant lui, comme s'il était plus proche qu'il ne l'est (Minecraft 26.1 et plus récent).
 
 ## 0.7.0 — 2026-10-17
 
