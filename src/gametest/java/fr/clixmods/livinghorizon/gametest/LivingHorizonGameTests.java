@@ -18,7 +18,14 @@ import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PerchersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RememberedMobsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.ResizeScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.RestingCrowdScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.RestingImpostorsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.RestingLoopScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.RestingMountScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.SodiumControlsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.SodiumPagesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.UnloadScenario;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -49,9 +56,16 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new RememberedMobsScenario(),
             new OutlinesScenario(),
             new RestingScenario(),
+            new RestingMountScenario(),
+            new RestingImpostorsScenario(),
+            new RestingLoopScenario(),
+            new RestingCrowdScenario(),
             new OptionsScreenScenario(),
+            new SodiumPagesScenario(),
+            new SodiumControlsScenario(),
             new DepthViewScenario(),
             new EntityDepthScenario(),
+            new ResizeScenario(),
             new UnloadScenario(),
             new FollowedMobsScenario(),
             new GaitsScenario(),

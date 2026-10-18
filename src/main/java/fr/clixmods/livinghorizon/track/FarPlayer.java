@@ -60,6 +60,8 @@ public final class FarPlayer {
     /** The player's position relative to their mount, in the mount's own frame. */
     private Vec3 riderOffset = Vec3.ZERO;
     private float riderYaw;
+    /** The way the mount faced when last placed. */
+    private float mountYaw;
     private double knownY = Double.NaN;
     /** Where they look, when the data pack says it. */
     private float knownYaw = Float.NaN;
@@ -110,6 +112,25 @@ public final class FarPlayer {
         return riding ? mountPuppet : null;
     }
 
+    /** The mount itself, while the server sends it, or the last one seen; null when they ride nothing. */
+    @Nullable Entity mount() {
+        return riding ? lastVehicle : null;
+    }
+
+    /**
+     * What they ride, to keep when they log off: the mount as the game saves it, the seat and
+     * the way both face. Null when they ride nothing, or share the mount with another player,
+     * whom the server leaves on it.
+     */
+    RestingPlayers.@Nullable Mount mountToRest() {
+        Entity vehicle = mount();
+        if (vehicle == null) return null;
+        for (Entity passenger : vehicle.getIndirectPassengers()) {
+            if (passenger instanceof Player other && !other.getUUID().equals(id)) return null;
+        }
+        return RestingPlayers.Mount.of(vehicle, riderOffset, mountYaw, riderYaw);
+    }
+
     /** How sure the position is, in blocks. */
     public double uncertainty() {
         return switch (source) {
@@ -143,6 +164,7 @@ public final class FarPlayer {
             lastVehicle = root;
             riderOffset = player.position().subtract(root.position()).yRot((float) Math.toRadians(root.getYRot()));
             riderYaw = player.getYRot() - root.getYRot();
+            mountYaw = root.getYRot();
         } else {
             lastVehicle = null;
         }
@@ -329,6 +351,7 @@ public final class FarPlayer {
 
         Entity mount = config.showVehicles ? mountPuppet() : null;
         if (mount != null) {
+            mountYaw = yaw;
             place(mount, x, y, z, yaw, yaw, walk);
             Vec3 seat = riderOffset.yRot((float) -Math.toRadians(yaw));
             mount.setPos(x - seat.x, y - seat.y, z - seat.z);

@@ -22,6 +22,10 @@ stonecutter parameters {
 
     node.project.findProperty("deps.fabric_api")?.let { dependencies["fapi"] = it as String }
 
+    // Sodium's config API, from Sodium 0.8, on the targets whose table names a version of it:
+    // `//? if sodium {` keeps the class that adds the mod's pages to Sodium's screen.
+    constants["sodium"] = node.project.findProperty("deps.sodium") != null
+
     // Mojang renamed ResourceLocation to Identifier in 1.21.11 and changed nothing else
     // about it. A pure rename used in many files is a replacement, not a conditional in
     // each of them: the sources say Identifier, and older targets read ResourceLocation.

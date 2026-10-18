@@ -92,12 +92,16 @@ import fr.clixmods.livinghorizon.render.Sink;
 import fr.clixmods.livinghorizon.track.Puppets;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.entity.state.HumanoidRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.world.entity.Pose;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.jspecify.annotations.Nullable;
@@ -185,19 +189,43 @@ public final class ImpostorAtlas {
     /** Bytes of video memory a row of scale 1 takes: a strip of 512 by 64 pixels and its mip levels. */
     private static final long ROW_BYTES = rowBytes();
     /**
-     * Video memory the pages of the mobs may take in all: 1 GB. Taken only as looks are met (a
-     * world of 50 looks takes a few tens of MB), it bounds a server of endless variations.
+     * Rows the pages of the mobs may hold, set by the game tests in place of what the settings
+     * allow; 0 for the settings.
      */
-    private static final long MOB_MEMORY = 1L << 30;
+    private static int mobRowsForTests;
 
     /**
-     * Rows the pages of the mobs may hold in all, and of the players, counted at scale 1 (a
-     * sheet of scale 2 counts as 4). The mobs keep theirs: a world has only so many looks,
-     * met again from one world to the next. The players come and go: theirs are thrown away
-     * once unused for {@link #PLAYER_KEEP}, or when the pages are full (about 22 MB).
+     * Rows the pages of the mobs, or of the players, may hold in all, counted at scale 1 (a sheet
+     * of scale 2 counts as 4): the video memory the settings allow each
+     * ({@link FarConfig#impostorMobMemory}, 1 GB, and {@link FarConfig#impostorPlayerMemory},
+     * 512 MB), taken only as pages are needed. Each has its own: the players never take the mobs'
+     * room, nor the mobs the players'. The mobs keep theirs: a world has only so many looks, met
+     * again from one world to the next, and a server of endless variations stays bounded. The
+     * players come and go: theirs are thrown away once unused for {@link #PLAYER_KEEP}, or when
+     * their pages are full. Every player has a look of its own, and a rider one more with what it
+     * rides: a crowded server, or hundreds of players who logged off, need them all.
      */
-    private static int mobRows = (int) (MOB_MEMORY / ROW_BYTES);
-    private static final int PLAYER_ROWS = 128;
+    private static int rows(boolean players) {
+        if (!players && mobRowsForTests > 0) return mobRowsForTests;
+        FarConfig config = FarConfig.get();
+        long megabytes = players ? config.impostorPlayerMemory : config.impostorMobMemory;
+        return (int) Math.max(1, (megabytes << 20) / ROW_BYTES);
+    }
+
+    /** Bytes of video memory the pages of the players, or of the mobs, take now. */
+    public static long memory(boolean players) {
+        return (long) taken(players) * ROW_BYTES;
+    }
+
+    /** Bytes of video memory the pages of the players, or of the mobs, may take at most. */
+    public static long memoryLimit(boolean players) {
+        return (long) rows(players) * ROW_BYTES;
+    }
+
+    /** Whether a sheet is filed with the players' (players, riders with what they ride), not the mobs'. */
+    public static boolean player(ImpostorKey key) {
+        return PLAYER.equals(key.type());
+    }
     /** Milliseconds a player's sheet is kept once nobody draws or asks for it. */
     private static final long PLAYER_KEEP = 60_000L;
     private static final String PLAYER = "minecraft:player";
@@ -301,6 +329,13 @@ public final class ImpostorAtlas {
         }
     }
 
+    /**
+     * A figure on a mount, baked on it in one picture: its feet {@code seat} blocks from the
+     * mount's in the mount's own frame, turned {@code yaw} degrees from it.
+     */
+    public record Rider(Entity entity, Vec3 seat, float yaw) {
+    }
+
     /** A sheet read from disk, to upload; no sheet when it could not be read, to bake instead. */
     private record Loaded(ImpostorKey key, Entity puppet, ImpostorDisk.@Nullable Stored stored, int generation) {
     }
@@ -312,29 +347,41 @@ public final class ImpostorAtlas {
      * Squeezed into smaller tiles when the pages have no room for those.
      */
     private record Request(ImpostorKey key, @Nullable Entity puppet, @Nullable ImpostorFigure figure, double grow,
-                           int scale) {
+                           int scale, @Nullable Rider rider) {
         static Request of(ImpostorKey key, Entity puppet, double grow) {
-            return new Request(key, puppet, null, grow, Math.clamp((int) Math.ceil(grow - 1e-6), 1, MAX_SCALE));
+            return of(key, puppet, grow, null);
+        }
+
+        static Request of(ImpostorKey key, Entity puppet, double grow, @Nullable Rider rider) {
+            return new Request(key, puppet, null, grow, Math.clamp((int) Math.ceil(grow - 1e-6), 1, MAX_SCALE), rider);
         }
 
         /** One of the mod's own figures: its tile is the size it asks for, never grown. */
         static Request of(ImpostorKey key, ImpostorFigure figure) {
-            return new Request(key, null, figure, 1.0, 1);
+            return new Request(key, null, figure, 1.0, 1, null);
         }
 
         /** The same figure, in tiles {@code scale} times as large. */
         Request at(int scale) {
-            return new Request(key, puppet, figure, grow, scale);
+            return new Request(key, puppet, figure, grow, scale, rider);
+        }
+
+        /** The same figure, baked again with its picture covering {@code grow} times its box. */
+        Request grown(double grow) {
+            return of(key, puppet, grow, rider);
         }
 
         /** Whether its tiles are smaller than its picture asks for. */
         boolean squeezed() {
-            return figure == null && scale < of(key, puppet, grow).scale;
+            return figure == null && scale < of(key, puppet, grow, rider).scale;
         }
 
-        /** Blocks along a side of its tiles. */
+        /** Blocks along a side of its tiles: a mount's, with its rider on top. */
         double size() {
-            return figure != null ? figure.worldSize() : ImpostorAtlas.size(puppet) * grow;
+            if (figure != null) return figure.worldSize();
+            if (rider == null) return ImpostorAtlas.size(puppet) * grow;
+            return ImpostorViews.worldSize(Math.max(puppet.getBbHeight(), rider.seat.y + rider.entity.getBbHeight()),
+                    Math.max(puppet.getBbWidth(), rider.entity.getBbWidth())) * grow;
         }
 
         /** How far down a tile its origin is. */
@@ -561,6 +608,15 @@ public final class ImpostorAtlas {
         QUEUE.add(Request.of(key, puppet, GROWN.getOrDefault(key, 1.0)));
     }
 
+    /**
+     * Asks for a mount and its rider to be baked together, within the next few frames. Never
+     * kept on disk: a rider is a player, whose skin may change.
+     */
+    public static void request(ImpostorKey key, Entity mount, Rider rider) {
+        if (failed || sheet(key) != null || UNDRAWABLE.contains(key) || refused(key) || !QUEUED.add(key)) return;
+        QUEUE.add(Request.of(key, mount, GROWN.getOrDefault(key, 1.0), rider));
+    }
+
     /** Asks for one of the mod's own figures to be baked, within the next few frames. */
     public static void request(ImpostorKey key, ImpostorFigure figure) {
         if (failed || sheet(key) != null || refused(key) || !QUEUED.add(key)) return;
@@ -723,6 +779,8 @@ public final class ImpostorAtlas {
             }
             Runnable back = request.puppet != null ? Puppets.atRest(request.puppet) : () -> {
             };
+            Runnable turnedBack = request.puppet != null ? facingBack(request.puppet) : () -> {
+            };
             try {
                 bake(minecraft, request);
             } catch (LeftOut leftOut) {
@@ -734,6 +792,7 @@ public final class ImpostorAtlas {
                 return;
             } finally {
                 back.run();
+                turnedBack.run();
                 //? if >=1.21.6 && <26.3 {
                 RenderSystem.outputColorTextureOverride = null;
                 RenderSystem.outputDepthTextureOverride = null;
@@ -774,7 +833,7 @@ public final class ImpostorAtlas {
         }
         int rows = Math.min(ROWS / scale, FIRST_ROWS << Math.min(pagesOfType, 3));
         boolean player = PLAYER.equals(type);
-        if (taken(player) + rows * scale * scale <= (player ? PLAYER_ROWS : mobRows)) {
+        if (taken(player) + rows * scale * scale <= rows(player)) {
             int number = open(type, scale, rows);
             return number * ROWS + PAGES.get(number).free.pop();
         }
@@ -818,11 +877,11 @@ public final class ImpostorAtlas {
     }
 
     /**
-     * Rows the pages of the mobs may hold, in place of the 1 GB they may take, 0 for that again:
+     * Rows the pages of the mobs may hold, in place of what the settings allow, 0 for that again:
      * for the game tests, which fill them with a few hundred figures.
      */
     public static void limitMobRows(int rows) {
-        mobRows = rows > 0 ? rows : (int) (MOB_MEMORY / ROW_BYTES);
+        mobRowsForTests = Math.max(0, rows);
     }
 
     /** Rows of the pages of the players, or of the mobs, counted at scale 1. */
@@ -883,16 +942,79 @@ public final class ImpostorAtlas {
         return ImpostorViews.worldSize(Math.max(0.3, puppet.getBbHeight()), Math.max(0.3, puppet.getBbWidth()));
     }
 
-    /** A figure's state for one view, still and lit evenly. */
-    private static EntityRenderState staged(Minecraft minecraft, Entity puppet, int view) {
+    /** A figure's state for one view, still and lit evenly; seated if its key says so. */
+    private static EntityRenderState staged(Minecraft minecraft, Request request, int view) {
+        Entity puppet = request.puppet;
+        if (!(puppet instanceof LivingEntity)) {
+            // A boat, a minecart: no body to turn in its state, the entity itself is turned
+            // for each view, the way stage turns a mob's body. Put back after the bake.
+            float facing = 180f - view * (360f / ImpostorViews.VIEWS);
+            puppet.setYRot(facing);
+            puppet.yRotO = facing;
+            puppet.setXRot(0f);
+            puppet.xRotO = 0f;
+        }
         EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), puppet, 1.0f);
         if (state == null) throw new LeftOut();
         stage(state, view);
+        posture(state, ImpostorKey.posture(request.key));
         // Water mobs were in water when last seen; a puppet is in no world.
         if (state instanceof LivingEntityRenderState living && GhostRenderer.livesInWater(puppet)) {
             living.isInWater = true;
         }
         return state;
+    }
+
+    /**
+     * Blocks a figure lying down is raised by in its picture: the game lays a sleeper across
+     * its feet, half of it below them, out of the tile. {@code GhostRenderer} lowers the
+     * picture by as much.
+     */
+    public static final double LYING_LIFT = 0.3;
+
+    private static double lift(Request request) {
+        return request.rider == null && ImpostorKey.posture(request.key) == ImpostorKey.LYING ? LYING_LIFT : 0;
+    }
+
+    /** What puts back the way an entity that is not a mob faces, turned view by view while baked. */
+    private static Runnable facingBack(Entity puppet) {
+        if (puppet instanceof LivingEntity) return () -> {
+        };
+        float yaw = puppet.getYRot(), yawO = puppet.yRotO, pitch = puppet.getXRot(), pitchO = puppet.xRotO;
+        return () -> {
+            puppet.setYRot(yaw);
+            puppet.yRotO = yawO;
+            puppet.setXRot(pitch);
+            puppet.xRotO = pitchO;
+        };
+    }
+
+    /** A rider's state for one view: on the mount, turned with it, in the riding pose. */
+    private static EntityRenderState stagedRider(Minecraft minecraft, Rider rider, int view) {
+        EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), rider.entity, 1.0f);
+        if (state == null) throw new LeftOut();
+        stage(state, view);
+        if (state instanceof LivingEntityRenderState living) living.bodyRot += rider.yaw;
+        posture(state, ImpostorKey.SEATED);
+        return state;
+    }
+
+    /** Where a rider's feet are drawn in a view: its seat, turned with the mount. */
+    private static Vec3 seat(Rider rider, int view) {
+        float mount = 180f - view * (360f / ImpostorViews.VIEWS);
+        return rider.seat.yRot((float) -Math.toRadians(mount));
+    }
+
+    /**
+     * A figure seated (the riding pose, legs out in front) or lying down along its body, as
+     * {@code GhostRenderer} draws players who logged off.
+     */
+    private static void posture(EntityRenderState state, int posture) {
+        if (posture == ImpostorKey.SEATED && state instanceof HumanoidRenderState humanoid) humanoid.isPassenger = true;
+        if (posture == ImpostorKey.LYING && state instanceof LivingEntityRenderState living) {
+            living.pose = Pose.SLEEPING;
+            living.bedOrientation = null;
+        }
     }
 
     /**
@@ -920,8 +1042,13 @@ public final class ImpostorAtlas {
         if (request.figure != null) {
             request.figure.draw(pose, new Sink(storage), 180f - view * (360f / ImpostorViews.VIEWS));
         } else {
-            minecraft.getEntityRenderDispatcher().submit(staged(minecraft, request.puppet, view), new CameraRenderState(),
-                    0.0, 0.0, 0.0, pose, storage);
+            minecraft.getEntityRenderDispatcher().submit(staged(minecraft, request, view), new CameraRenderState(),
+                    0.0, lift(request), 0.0, pose, storage);
+            if (request.rider != null) {
+                Vec3 seat = seat(request.rider, view);
+                minecraft.getEntityRenderDispatcher().submit(stagedRider(minecraft, request.rider, view),
+                        new CameraRenderState(), seat.x, seat.y, seat.z, pose, storage);
+            }
         }
     }
     //?} else {
@@ -929,7 +1056,12 @@ public final class ImpostorAtlas {
         if (request.figure != null) {
             request.figure.draw(pose, new Sink(buffers), 180f - view * (360f / ImpostorViews.VIEWS));
         } else {
-            GhostRenderer.drawState(staged(minecraft, request.puppet, view), 0.0, 0.0, 0.0, pose, buffers, FULL_BRIGHT);
+            GhostRenderer.drawState(staged(minecraft, request, view), 0.0, lift(request), 0.0, pose, buffers, FULL_BRIGHT);
+            if (request.rider != null) {
+                Vec3 seat = seat(request.rider, view);
+                GhostRenderer.drawState(stagedRider(minecraft, request.rider, view), seat.x, seat.y, seat.z, pose, buffers,
+                        FULL_BRIGHT);
+            }
         }
     }
     *///?}
@@ -1314,7 +1446,7 @@ public final class ImpostorAtlas {
             if (growth > 1.01 && request.grow < MAX_GROW) {
                 double grow = Math.min(MAX_GROW, request.grow * growth);
                 GROWN.put(key, grow);
-                QUEUE.add(Request.of(key, request.puppet, grow));
+                QUEUE.add(request.grown(grow));
                 again = true;
                 return;
             }

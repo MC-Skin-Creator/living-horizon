@@ -30,7 +30,9 @@ import java.util.Locale;
 /**
  * What the impostors look like: every figure baked so far, one row each, its eight views
  * at full size and the front one at the sizes it has far away, in real screen pixels.
- * A button throws every picture away and bakes them again. Opened from the settings, or
+ * Two tabs, the mobs' and the players' (riders with what they ride included), each with the
+ * video memory its pictures take and the most the settings let them take. A button throws
+ * every picture away and bakes them again. Opened from the settings, or
  * {@code /livinghorizon impostors}.
  */
 public final class ImpostorScreen extends Screen {
@@ -38,9 +40,13 @@ public final class ImpostorScreen extends Screen {
 
     /** Screen pixels of the front view drawn small: a figure 250, 500 and 1000 blocks away. */
     private static final int[] FAR = {32, 16, 8};
-    private static final int TOP = 40, NAME = 110, GAP = 2;
+    private static final int TOP = 58, NAME = 110, GAP = 2;
     /** A sky behind the pictures, as they are seen in the world. */
-    private static final int SKY = 0xFF9DB8E8, NAME_COLOR = 0xFFFFFFFF, DIM = 0xFFA0A0A0;
+    private static final int SKY = 0xFF9DB8E8, NAME_COLOR = 0xFFFFFFFF, DIM = 0xFFA0A0A0, OVER = 0xFFFF6060;
+
+    /** The tab shown: the players' pictures, or the mobs'. Kept while the game runs. */
+    private static boolean players;
+    private @Nullable Button mobsTab, playersTab;
 
     private final @Nullable Screen parent;
     private List<ImpostorAtlas.Baked> rows = List.of();
@@ -63,6 +69,11 @@ public final class ImpostorScreen extends Screen {
 
     @Override
     protected void init() {
+        mobsTab = addRenderableWidget(Button.builder(Component.translatable(KEY + "tab.mobs"), b -> show(false))
+                .bounds(width / 2 - 102, 20, 100, 20).build());
+        playersTab = addRenderableWidget(Button.builder(Component.translatable(KEY + "tab.players"), b -> show(true))
+                .bounds(width / 2 + 2, 20, 100, 20).build());
+        show(players);
         int y = height - 26;
         addRenderableWidget(Button.builder(Component.translatable(KEY + "regenerate"), b -> {
                     ImpostorAtlas.regenerate();
@@ -74,10 +85,61 @@ public final class ImpostorScreen extends Screen {
                 .bounds(width / 2 + 4, y, 150, 20).build());
     }
 
+    /** Shows one tab, its button pressed down. */
+    private void show(boolean players) {
+        if (ImpostorScreen.players != players) scroll = 0;
+        ImpostorScreen.players = players;
+        if (mobsTab != null) mobsTab.active = players;
+        if (playersTab != null) playersTab.active = !players;
+    }
+
     @Override
     public void onClose() {
         minecraft.setScreen(parent);
     }
+
+    /** Escape pressed over Sodium's screen: closed when it is released, see {@link SodiumReturn}. */
+    private boolean closeOnRelease;
+
+    //? if >=1.21.9 {
+    @Override
+    public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+        if (event.key() == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE && SodiumReturn.below(parent)) {
+            closeOnRelease = true;
+            return true;
+        }
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public boolean keyReleased(net.minecraft.client.input.KeyEvent event) {
+        if (closeOnRelease && event.key() == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE) {
+            closeOnRelease = false;
+            onClose();
+            return true;
+        }
+        return super.keyReleased(event);
+    }
+    //?} else {
+    /*@Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE && SodiumReturn.below(parent)) {
+            closeOnRelease = true;
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
+        if (closeOnRelease && keyCode == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE) {
+            closeOnRelease = false;
+            onClose();
+            return true;
+        }
+        return super.keyReleased(keyCode, scanCode, modifiers);
+    }
+    *///?}
 
     /** Pixels of a view in a row: as large as fits, never larger than the picture itself. */
     private int tile() {
@@ -106,10 +168,12 @@ public final class ImpostorScreen extends Screen {
         /*renderBackground(graphics);*/
         super.render(graphics, mouseX, mouseY, partialTick);
         graphics.drawCenteredString(font, title, width / 2, 8, NAME_COLOR);
-        graphics.drawCenteredString(font, status(), width / 2, 22, DIM);
 
         // A copy to sort: before 1.21.9 the atlas hands out List.of(), which refuses sort.
         rows = new ArrayList<>(ImpostorAtlas.baked());
+        rows.removeIf(row -> ImpostorAtlas.player(row.key()) != players);
+        boolean over = ImpostorAtlas.memory(players) > ImpostorAtlas.memoryLimit(players);
+        graphics.drawCenteredString(font, status(rows.size()), width / 2, 44, over ? OVER : DIM);
         rows.sort(ORDER);
         scroll = Mth.clamp(scroll, 0, maxScroll());
 
@@ -276,11 +340,24 @@ public final class ImpostorScreen extends Screen {
                 .orElse(Component.literal(type));
     }
 
-    private Component status() {
+    /**
+     * The video memory the tab's pictures take, out of the most they may take (red past it,
+     * when the setting was lowered below what is in use: pictures give way as new ones come),
+     * how many there are, and how many of all wait to be made.
+     */
+    private Component status(int pictures) {
         FarConfig config = FarConfig.get();
         if (!config.impostors) return Component.translatable(KEY + "off");
         if (ImpostorAtlas.failed()) return Component.translatable("livinghorizon.debug.f3.impostorsFailed");
-        return Component.translatable(KEY + "status", ImpostorAtlas.sheets(), ImpostorAtlas.waiting());
+        return Component.translatable(KEY + "memory", megabytes(ImpostorAtlas.memory(players)),
+                megabytes(ImpostorAtlas.memoryLimit(players)), pictures, ImpostorAtlas.waiting());
+    }
+
+    /** Bytes as megabytes, a decimal below ten: "4.7 MB", "512 MB". */
+    private static Component megabytes(long bytes) {
+        double value = bytes / (1024.0 * 1024.0);
+        String text = value < 10 ? String.format(Locale.ROOT, "%.1f", value) : String.valueOf(Math.round(value));
+        return Component.translatable("livinghorizon.options.megabytes", text);
     }
 
     @Override

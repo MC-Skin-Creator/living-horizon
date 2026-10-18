@@ -9,6 +9,12 @@ commit messages, pull request descriptions. Do not write French into the
 repository. User-facing strings are the exception and are translated through
 `assets/livinghorizon/lang/` — never hardcode a display string in the code.
 
+The mod ships in English, French, German, Spanish, Italian, Brazilian Portuguese, Polish,
+Turkish, Russian, Ukrainian, Simplified and Traditional Chinese, Japanese and Korean. A new or
+changed string goes into **every** file of `lang/`, in the words vanilla Minecraft uses in that
+language (its own lang file is the glossary); `LangTest` fails on a missing key or a different
+set of `%s`, and the `options` game test on a settings button whose text is wider than it.
+
 Commit subjects follow **conventional commits**: `type(scope): summary`, short,
 imperative and in English.
 
@@ -73,6 +79,20 @@ an older node is checked by starting its client.
 
 Mod and dependency versions live in `stonecutter.properties.toml`, never hardcoded
 in the build scripts. The README describes how each part works.
+
+## Settings live in two screens
+
+Every setting a player changes in game is shown twice: in the mod's own screen
+(`ui/FarConfigScreen` and its sub-screens) and in Sodium's video settings
+(`ui/SodiumOptions`, Sodium 0.8 and later). **A setting added, renamed, moved or removed
+changes both in the same pull request**, with the same name, tooltip, range and value
+text. A new sub-screen gets an "Open" button on Sodium's page as well. A row on Sodium's
+page is named by the key `livinghorizon.options.<field>` of the `FarConfig` field it sets:
+the `sodiumcontrols` scenario finds rows by that name and checks that each one writes its
+field. Run it (`run.sh sodium,sodiumcontrols --sodium`) after any change to the settings.
+
+Older Sodium (0.5 to 0.7: 1.20.x, 1.21.3 to 1.21.10) has no API for other mods' pages: there
+the settings stay on the mod's own screen, which the *Living Horizon...* button opens.
 
 ## Never change another mod's rendering
 
@@ -218,6 +238,21 @@ come back, add it here in the same pull request: this file is what the next sess
   core hidden; missing from the depth view): from 26.1 they are drawn in the translucent step,
   after the solid bracket. The late bracket covers it, for the dispatcher (26.1) or prepared frame
   (26.2) whose solid step was bracketed only: Iris draws the hand with one of its own in between.
+- **Players or slimes painted over by Distant Horizons' terrain** (other mobs fine, Voxy fine;
+  without a shader pack): its fade runs after the translucent step, where players and a slime's
+  outer layer are drawn. `FarDepth.beforeFade` unmasks that step's copies too (`lateFade`); a
+  pixel left out of the mask is faded into its terrain. On 26.3 the GPU path's mask needs none.
+- **Distant Horizons' terrain in front of mobs standing before it** (a far mob cut by the hill
+  behind it, from 26.1): the game makes its projection inside `Camera.update`, from `depthFar`.
+  `CameraMixin` pushes that plane out right after it is set, before the projection; pushed at
+  the end, `DepthFar.of` gave a plane the projection did not use, and Distant Horizons' depth
+  converted with it came out nearer. Whatever converts a depth must use the projection's planes.
+- **Distant mobs blinking at every step, far terrain lighter and darker in the depth view as
+  the player walks** (from 26.1, view bobbing on): the world is drawn with the camera's
+  projection times the bobbing, which from 26.1 only the GPU gets (`GameRendererProjectionMixin`
+  reads it for `FarDepth.noteView`). Distant Horizons takes that bobbed projection and replaces
+  its two depth terms only, so its depth is converted through its whole matrix
+  (`DhDepth.inverse`), never through the two terms alone.
 - **Voxy version.** `FarDepth` and `VoxySource` reach Voxy by reflection; a renamed class turns
   both off ("Voxy found, but not the version this mod knows"). 0.2.18 renamed
   `IGetVoxyRenderSystem` to `IVoxyRenderSystemHolder` (`VoxySource.renderSystemGetter` tries
@@ -327,6 +362,16 @@ come back, add it here in the same pull request: this file is what the next sess
   bird is stood again on what is under it. Birds jumping in a loop: a move is a flight once it
   is long, so a target is only moved in from a column's edge (never re-drawn on the block), and a
   duck swims as far as the water goes on (`Perchers.swims`). The `perchers` scenario counts all three.
+- **Escape from a screen opened on Sodium's page goes back to the game**, not to Sodium's:
+  Sodium runs its "close" shortcut when Escape is released, so a screen that closes on the
+  press hands the release to Sodium's. Over Sodium's screen the mod's screens and
+  confirmations close on the release (`ui/SodiumReturn`); a new screen opened from
+  `SodiumOptions` needs the same.
+- **Broken after the window is resized** (depth view stuck or gone, mobs through the far terrain,
+  occlusion wrong until a restart): the game, Voxy and `FarDepth.prepare` make their textures again,
+  often under the same names, and a framebuffer not bound at that moment keeps the deleted one. Our
+  framebuffers attach their texture again every frame (`FarDepth.attachDepth`), never by name only;
+  the `resize` scenario checks it.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
@@ -350,11 +395,18 @@ The release dates the section, opens a new empty one, and posts the entries on M
 (Changelog tab), CurseForge (file page) and Discord. Players read them, so write for
 someone who has never seen the code:
 
-- one short sentence per bullet, a bold subject first: `**Photon** — distant mobs hide
-  behind the right hills again.`
+- write like Minecraft's own release notes: one short sentence per bullet, a bold subject
+  first that names what the player sees (the feature, or the bug as it looked), never a
+  version or a mod alone; where it applies goes in brackets at the end:
+  `**Distant mobs showing through hills** — distant mobs no longer show through Voxy's
+  hills (Minecraft 26.1).`
+- a fix says what was wrong and that it is gone ("no longer…"), never only the new
+  behaviour: "mobs hide behind hills" reads as a feature, not a fix.
 - say what the player notices, not how it was done: no shader, depth, buffer, pass,
-  query, mask, class or setting internals; nothing about the debug screens.
-- a fix says what was wrong and that it is gone, naming the mod or game version involved.
+  query, mask, class or setting internals; nothing about the debug screens. Name settings
+  and screens as the game shows them (impostors are *Simplified Entities*), and explain
+  them in plain words (flat pictures of far mobs).
+- one bullet per problem: two causes of the same symptom share one bullet.
 - nothing for CI, refactors, tooling, documentation or debug-only tools.
 
 ## Issues

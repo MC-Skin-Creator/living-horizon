@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -19,27 +20,67 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Every string the mod shows exists in both languages: a missing one shows as its raw key. */
+/** Every string the mod shows exists in every language, with the same blanks: a missing one shows as its raw key. */
 class LangTest {
     private static final Path LANG = Path.of("..", "..", "src", "main", "resources", "assets", "livinghorizon", "lang");
     private static final Path SOURCES = Path.of("..", "..", "src", "main", "java");
 
     private static Set<String> keys(String file) throws IOException {
-        JsonObject json = JsonParser.parseString(Files.readString(LANG.resolve(file), StandardCharsets.UTF_8)).getAsJsonObject();
-        return new TreeSet<>(json.keySet());
+        return new TreeSet<>(json(file).keySet());
+    }
+
+    private static JsonObject json(String file) throws IOException {
+        return JsonParser.parseString(Files.readString(LANG.resolve(file), StandardCharsets.UTF_8)).getAsJsonObject();
+    }
+
+    /** Every language file: English and each translation. */
+    private static List<String> languages() throws IOException {
+        try (Stream<Path> files = Files.list(LANG)) {
+            return files.map(p -> p.getFileName().toString()).filter(n -> n.endsWith(".json")).sorted().toList();
+        }
+    }
+
+    /** The format specifiers of a string, in order: what the game fills in at run time. */
+    private static List<String> placeholders(String text) {
+        List<String> found = new ArrayList<>();
+        Matcher m = PLACEHOLDER.matcher(text);
+        while (m.find()) found.add(m.group());
+        return found;
+    }
+
+    private static final Pattern PLACEHOLDER = Pattern.compile("%(?:%|s)");
+
+    @Test
+    void everyLanguageHasTheSameKeysAsEnglish() throws IOException {
+        Set<String> english = keys("en_us.json");
+        assertTrue(languages().size() > 2, "only " + languages());
+        for (String file : languages()) {
+            assertEquals(english, keys(file), file);
+        }
     }
 
     @Test
-    void bothLanguagesHaveTheSameKeys() throws IOException {
-        assertEquals(keys("en_us.json"), keys("fr_fr.json"));
+    void everyTranslationFillsTheSameBlanks() throws IOException {
+        JsonObject english = json("en_us.json");
+        for (String file : languages()) {
+            JsonObject other = json(file);
+            for (String key : english.keySet()) {
+                List<String> expected = placeholders(english.get(key).getAsString());
+                List<String> actual = placeholders(other.get(key).getAsString());
+                expected.sort(null);
+                actual.sort(null);
+                assertEquals(expected, actual, file + ": " + key);
+            }
+        }
     }
 
     @Test
     void everySettingHasItsTexts() throws IOException {
         Set<String> keys = keys("en_us.json");
-        // bool("name", ...), integer("name", ...), choice("name", ...) in the settings screen.
-        Pattern option = Pattern.compile("(?:bool|integer|choice)\\(\"(\\w+)\"");
-        String screen = Files.readString(SOURCES.resolve("fr/clixmods/livinghorizon/ui/FarConfigScreen.java"));
+        // bool("name", ...), integer("name", ...), unit("name", ...) and the like in the settings screens.
+        Pattern option = Pattern.compile("(?:bool|integer|choice|unit|blocks|chunks)\\(\"(\\w+)\"");
+        String screen = Files.readString(SOURCES.resolve("fr/clixmods/livinghorizon/ui/FarConfigScreen.java"))
+                + Files.readString(SOURCES.resolve("fr/clixmods/livinghorizon/ui/DebugScreen.java"));
         Matcher match = option.matcher(screen);
         int found = 0;
         while (match.find()) {

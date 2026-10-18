@@ -169,7 +169,13 @@ public final class FarPlayerTracker {
         players.values().removeIf(player -> {
             if (connection.getPlayerInfo(player.id()) != null) return false;
             if (config.offlinePlayers && player.profile != null && player.knownDimension() >= 0) {
-                resting.rest(player.profile, player.knownDimension(), player.x(), player.y(), player.z(), player.yaw());
+                RestingPlayers.Mount mount = player.mountToRest();
+                resting.rest(player.profile, player.knownDimension(), player.x(), player.y(), player.z(), player.yaw(),
+                        mount);
+                // The server took their mount away with them: the copy under them stands for it,
+                // not a remembered mob where it was last sent.
+                Entity ridden = player.mount();
+                if (mount != null && ridden != null) mobs.forgetRidden(ridden.getUUID());
             }
             return true;
         });

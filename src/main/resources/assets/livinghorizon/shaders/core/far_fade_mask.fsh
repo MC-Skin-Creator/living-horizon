@@ -20,6 +20,10 @@ layout(std140) uniform LhFadeMask {
     vec4 Dh;
     // The game's projection terms a and b.
     vec4 Game;
+    // The inverse of Distant Horizons' whole projection: view bobbing moves its depth too.
+    mat4 DhInverse;
+    // 1 when DhInverse is known.
+    vec4 Exact;
 };
 
 layout(location = 0) in vec2 texCoord;
@@ -41,7 +45,9 @@ void main() {
         float dh = texture(DhDepth, texCoord).r;
         if (dh == Dh.w) discard;
         float here = distanceOf(d, Game.x, Game.y, Layout.x < 0.5);
-        float terrain = distanceOf(dh, Dh.x, Dh.y, Dh.z > 0.5);
+        float terrain = Exact.x > 0.5
+                ? 1.0 / (DhInverse * vec4(texCoord * 2.0 - 1.0, Dh.z > 0.5 ? dh * 2.0 - 1.0 : dh, 1.0)).w
+                : distanceOf(dh, Dh.x, Dh.y, Dh.z > 0.5);
         // The game's own terrain: at Distant Horizons' depth, give or take its blocks.
         if (!(here < terrain - max(0.5, terrain * 0.01))) discard;
     }

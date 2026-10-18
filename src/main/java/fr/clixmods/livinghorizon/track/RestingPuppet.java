@@ -57,10 +57,20 @@ import java.util.Set;
  * <p>Off, it sits on its spot. Either way it keeps to the ground: break what it rests on and
  * it falls; bury it and it reappears on top. Sitting, its own spot wins again once it has
  * room and something under it, since that is where the player will come back.
+ *
+ * <p>All of this only near the camera, within {@link #NEAR_IN} blocks: farther, no life of
+ * its own any more, nothing read nor decided, it plays one of the animations distant mobs
+ * play, in a loop around its spot ({@link RestingLoop}): a walk with pauses, seated in some
+ * of them, and lying down at night.
+ *
+ * <p>A player who logged off riding something stays on it ({@link RestingMount}): with
+ * {@link FarConfig#offlineLife} on, the horse walks, the boat rows and the happy ghast drifts
+ * about the spot, the rider looking around; off, both wait on the spot. No bed, no chest
+ * then, and no sword: hit, the rider raises a shield.
  */
 public final class RestingPuppet extends RemotePlayer {
     /** How it is drawn. */
-    public enum Look { STAND, SIT, LIE, BED }
+    public enum Look { STAND, SIT, LIE, BED, RIDE }
 
     private enum Activity { IDLE, SIT, WALK, FACE, SLEEP, BED, GUARD, FLY }
 
@@ -88,6 +98,11 @@ public final class RestingPuppet extends RemotePlayer {
     private static final int CALM_TICKS = 80;
     /** Blocks: a creeper blowing up this close throws it. */
     private static final double BLAST = 7;
+    /**
+     * Blocks across from the camera within which it lives its life, and past which it plays
+     * its loop again: apart, so that it does not switch to and fro on the edge.
+     */
+    static final double NEAR_IN = 48, NEAR_OUT = 64;
     /** Colours of the fire resistance and water breathing potions' swirls. */
     private static final int FIRE_RESISTANCE = 0xFF9900, WATER_BREATHING = 0x98DAC0;
 
@@ -103,9 +118,15 @@ public final class RestingPuppet extends RemotePlayer {
     private final PlayerInfo info;
     private final Random random;
     private final Walkway walkway;
+    private final @Nullable RestingMount mount;
 
     private boolean placed;
     private boolean lively;
+    private boolean riding;
+    private boolean near = true;
+    /** Playing its loop, away from the camera. */
+    private boolean far;
+    private @Nullable RestingLoop loop;
     private double fall;
     private int standing;
 
@@ -146,6 +167,7 @@ public final class RestingPuppet extends RemotePlayer {
         yBodyRot = yBodyRotO = spot.yaw();
         yHeadRot = yHeadRotO = spot.yaw();
         timer = 40 + random.nextInt(80);
+        this.mount = RestingMount.of(level, spot, random);
     }
 
     @Override
@@ -162,6 +184,7 @@ public final class RestingPuppet extends RemotePlayer {
 
     /** How it is drawn this tick. */
     public Look look() {
+        if (riding) return Look.RIDE;
         if (!lively) return standing > 0 ? Look.STAND : Look.SIT;
         if (raised && activity != Activity.BED) return Look.STAND;
         return switch (activity) {
@@ -177,6 +200,11 @@ public final class RestingPuppet extends RemotePlayer {
         return activity == Activity.BED && bed != null;
     }
 
+    /** What it rides, to draw under it; null when on foot. */
+    public @Nullable Entity mount() {
+        return riding && mount != null ? mount.entity : null;
+    }
+
     /** Shield up. */
     public boolean blocking() {
         return raised;
@@ -184,6 +212,8 @@ public final class RestingPuppet extends RemotePlayer {
 
     /** What it does and what it knows of around it, for the debug tools. */
     public String state() {
+        if (riding && mount != null) return mount.state();
+        if (far && loop != null) return "away: " + loop.state();
         Walkway.Survey reading = survey, map = known;
         return activity.name().toLowerCase(java.util.Locale.ROOT)
                 + (route != null ? " (finding its way)" : "")
@@ -210,6 +240,12 @@ public final class RestingPuppet extends RemotePlayer {
     /** Hit by the player: it raises its shield towards them, standing. */
     void strike(Vec3 from) {
         if (!lively || activity == Activity.FLY) return;
+        if (riding) {
+            // In the saddle: the shield up, the head turned to them.
+            shieldTicks = SHIELD_TICKS;
+            faceAt(from, 0);
+            return;
+        }
         if (activity == Activity.BED || activity == Activity.SIT || activity == Activity.SLEEP) {
             // Out of bed: the bed is free again, the next look for one finds it.
             leaveBedIfIn();
@@ -229,6 +265,21 @@ public final class RestingPuppet extends RemotePlayer {
      * @param night whether it is time to sleep
      * @param work  spots all puppets may still read this tick, shared: looking around costs
      */
+    /**
+     * Whether it lives its life here, so close to the camera at {@code eye}; past
+     * {@link #NEAR_OUT}, it plays its loop until the camera comes within {@link #NEAR_IN}.
+     */
+    boolean near(Vec3 eye) {
+        double across = Math.hypot(getX() - eye.x, getZ() - eye.z);
+        near = near ? across < NEAR_OUT : across < NEAR_IN;
+        return near;
+    }
+
+    /** Playing its loop, away from the camera, rather than living its life. */
+    public boolean away() {
+        return riding && mount != null ? mount.away() : far;
+    }
+
     void tick(ClientLevel level, FarConfig config, Set<BlockPos> beds, boolean night, int[] work) {
         setOldPosAndRot();
         yBodyRotO = yBodyRot;
@@ -241,11 +292,36 @@ public final class RestingPuppet extends RemotePlayer {
             calmDown(beds);
             if (!lively) snap(spot.x(), spot.y(), spot.z());
             placed = false;
+            if (mount != null) mount.reset();
+        }
+        boolean rides = mount != null && config.showVehicles;
+        if (rides != riding) {
+            // On or off its mount, by the switch that shows mounts: back on its spot either way.
+            riding = rides;
+            calmDown(beds);
+            placed = false;
+            if (mount != null) mount.reset();
+            snap(spot.x(), spot.y(), spot.z());
+        }
+        if (riding && mount != null) {
+            ride(level, mount, config, work);
+            return;
         }
         if (!lively) {
             Puppets.walk(this, 0f, 1f, 1f);
             sit(level);
             return;
+        }
+
+        if (!near) {
+            away(level, beds, night);
+            return;
+        }
+        if (far) {
+            // Back near the camera: its life again, from where its loop left it.
+            far = false;
+            placed = false;
+            start(Activity.IDLE, 20 + random.nextInt(40));
         }
 
         if (!level.hasChunkAt(blockPosition())) {
@@ -280,6 +356,71 @@ public final class RestingPuppet extends RemotePlayer {
         double moved = Math.hypot(getX() - before, getZ() - beforeZ);
         Puppets.walk(this, (float) Math.min(moved * 4.0, 1.0), 0.4f, 1f);
         setYRot(yBodyRot);
+    }
+
+    // --- In the saddle ----------------------------------------------------------------------
+
+    /** Carried by its mount, looking around; the shield up a moment after a hit. */
+    private void ride(ClientLevel level, RestingMount ridden, FarConfig config, int[] work) {
+        ridden.tick(level, lively, near, config.offlineRoam, work);
+        Vec3 seat = ridden.rider();
+        setPos(seat.x, seat.y, seat.z);
+        yBodyRot = ridden.riderYaw();
+        if (lively) {
+            if (shieldTicks > 0) shieldTicks--;
+            arm(false, shieldTicks > 0);
+            if (shieldTicks <= 0) glance(false);
+            else yHeadRot = yBodyRot + headYaw;
+        } else {
+            arm(false, false);
+            headYaw = approach(headYaw, 0, 6);
+            headPitch = approach(headPitch, 0, 4);
+            yHeadRot = yBodyRot + headYaw;
+            setXRot(headPitch);
+        }
+        Puppets.walk(this, 0f, 1f, 1f);
+        setYRot(yBodyRot);
+    }
+
+    // --- Away from the camera -----------------------------------------------------------------
+
+    /**
+     * Its loop: a walk around its spot with pauses, seated in some of them; lying down where
+     * it is at night, or in the bed it already lies in.
+     */
+    private void away(ClientLevel level, Set<BlockPos> beds, boolean night) {
+        RestingLoop playing = loop(level);
+        if (!far) {
+            far = true;
+            if (!(night && activity == Activity.BED)) calmDown(beds);
+            playing.from(getX(), getY(), getZ(), yBodyRot);
+        }
+        if (night) {
+            if (activity != Activity.BED && activity != Activity.SLEEP) start(Activity.SLEEP, 400);
+            Puppets.walk(this, 0f, 1f, 1f);
+            return;
+        }
+        if (activity == Activity.BED) {
+            leaveBed(beds);
+            playing.from(getX(), getY(), getZ(), yBodyRot);
+        }
+        double moved = playing.tick((int) level.getGameTime(), false);
+        setPos(playing.x, playing.y, playing.z);
+        yBodyRot = playing.body;
+        activity = playing.pausing ? Activity.SIT : Activity.IDLE;
+        glance(false);
+        Puppets.walk(this, (float) Math.min(moved * 4.0, 1.0), 0.4f, 1f);
+        setYRot(yBodyRot);
+    }
+
+    /** Its loop around its spot, the ground under it read once. */
+    private RestingLoop loop(ClientLevel level) {
+        if (loop == null) {
+            long seed = spot.name().toLowerCase(java.util.Locale.ROOT).hashCode() * 0x9E3779B97F4A7C15L;
+            loop = new RestingLoop(seed, spot.x(), spot.y(), spot.z(), spot.yaw(), MobAnimations.WALK,
+                    () -> MobPaths.plan(level, spot.x(), spot.y(), spot.z(), 0.6, seed));
+        }
+        return loop;
     }
 
     // --- A life ---------------------------------------------------------------------------

@@ -199,6 +199,24 @@ public final class FarConfig {
     /** Blocks: past this distance an impostor stands in for the model. */
     public int impostorDistance = 128;
 
+    /** Distant players become impostors too; off, they keep their whole model at any distance. */
+    public boolean impostorPlayers = true;
+
+    /**
+     * Megabytes of video memory the mobs' impostor pictures may take, apart from the players':
+     * taken only as looks are met, the picture used longest ago making room when full.
+     */
+    public int impostorMobMemory = 1024;
+
+    /**
+     * Megabytes of video memory the players' impostor pictures may take (riders with what they
+     * ride included), apart from the mobs'. Thrown away a minute after their last use.
+     */
+    public int impostorPlayerMemory = 512;
+
+    /** Ranges of the two above, in megabytes. */
+    public static final int MIN_MOB_MEMORY = 64, MAX_MOB_MEMORY = 4096, MIN_PLAYER_MEMORY = 32, MAX_PLAYER_MEMORY = 2048;
+
     /**
      * Mob types of other mods already offered once. A new one is shown far away from the
      * start (unless it is a monster), then left as the player sets it.
@@ -379,6 +397,9 @@ public final class FarConfig {
             if (Boolean.FALSE.equals(instance.ufo)) instance.easterEggs = false;
             instance.ufo = null;
         }
+        // Written by hand out of range: the nearest end.
+        instance.impostorMobMemory = Math.clamp(instance.impostorMobMemory, MIN_MOB_MEMORY, MAX_MOB_MEMORY);
+        instance.impostorPlayerMemory = Math.clamp(instance.impostorPlayerMemory, MIN_PLAYER_MEMORY, MAX_PLAYER_MEMORY);
         instance.version = CURRENT;
         save();
     }
