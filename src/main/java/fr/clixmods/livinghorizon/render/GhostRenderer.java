@@ -922,6 +922,12 @@ public final class GhostRenderer {
         };
     }
 
+    /** Whether a figure was drawn as a picture in the last frames: for the game tests and the debug tools. */
+    public static boolean pictured(Entity entity) {
+        Shown shown = SHOWN.get(entity);
+        return shown != null && frame - shown.frame <= 3;
+    }
+
     /** Forgets the figures not drawn as impostors for a while: puppets come and go. */
     private static void forgetShown() {
         frame++;

@@ -512,13 +512,16 @@ nothing, and the game no longer builds a render state and a model for it every f
   pixel, share one sheet. The mobs keep their sheets, up to 1 GB of video memory in all,
   taken only as looks are met (a world of 50 looks takes a few MB); past that, an unused
   sheet of the same kind gives way, or the figure stays a model for 30 seconds. The
-  players' are thrown away after a minute unused, up to 128. A sheet drawn or asked for in
-  the last 10 seconds is never replaced.
+  players' (riders with what they ride included) have 512 MB of their own, some three
+  thousand sheets, and are thrown away after a minute unused: they never take the mobs' room,
+  nor the mobs theirs. A sheet takes 170 KB of video memory (512 by 64 pixels and three
+  smaller levels). A sheet drawn or asked for in the last 10 seconds is never replaced.
 - **On disk.** `ImpostorDisk` keeps the mobs' sheets in
   `config/livinghorizon/impostors/<fingerprint>/`, so that a mob met in an earlier game is
   read back rather than baked. The fingerprint is the game version, the resource packs
   chosen and their files, the jars in `mods/` and the sheet format: when one changes, the
-  folder is thrown away. At most 4096 sheets, the ones met longest ago going first.
+  folder is thrown away. At most 4096 sheets, the ones met longest ago going first, some 35 KB
+  each once compressed: 140 MB at most.
 - **Preview.** *Simplified Entities...* in the settings, or `/livinghorizon impostors`: every figure
   baked, its eight views, and its front view at 32, 16 and 8 screen pixels, as it looks
   far away. *Rebuild* throws every picture away, on disk too, and bakes the figures on

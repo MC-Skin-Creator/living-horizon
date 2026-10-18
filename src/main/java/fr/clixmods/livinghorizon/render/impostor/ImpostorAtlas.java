@@ -195,13 +195,21 @@ public final class ImpostorAtlas {
     private static final long MOB_MEMORY = 1L << 30;
 
     /**
+     * Video memory the pages of the players may take, apart from the mobs': 512 MB, some three
+     * thousand sheets. Every player has a look of its own, and a rider one more with what it
+     * rides: a crowded server, or hundreds of players who logged off, need them all.
+     */
+    private static final long PLAYER_MEMORY = 1L << 29;
+
+    /**
      * Rows the pages of the mobs may hold in all, and of the players, counted at scale 1 (a
-     * sheet of scale 2 counts as 4). The mobs keep theirs: a world has only so many looks,
-     * met again from one world to the next. The players come and go: theirs are thrown away
-     * once unused for {@link #PLAYER_KEEP}, or when the pages are full (about 22 MB).
+     * sheet of scale 2 counts as 4). Each has its own: the players never take the mobs' room,
+     * nor the mobs the players'. The mobs keep theirs: a world has only so many looks, met
+     * again from one world to the next. The players come and go: theirs are thrown away once
+     * unused for {@link #PLAYER_KEEP}, or when their pages are full.
      */
     private static int mobRows = (int) (MOB_MEMORY / ROW_BYTES);
-    private static final int PLAYER_ROWS = 128;
+    private static final int PLAYER_ROWS = (int) (PLAYER_MEMORY / ROW_BYTES);
     /** Milliseconds a player's sheet is kept once nobody draws or asks for it. */
     private static final long PLAYER_KEEP = 60_000L;
     private static final String PLAYER = "minecraft:player";
