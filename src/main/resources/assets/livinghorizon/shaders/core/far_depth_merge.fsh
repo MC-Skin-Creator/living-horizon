@@ -12,6 +12,10 @@ layout(std140) uniform LhFarDepth {
     vec4 Dh;
     // The game's terms a and b, 1 when its depth is reversed, 1 when it is 0..1.
     vec4 Game;
+    // The inverse of Distant Horizons' whole projection: view bobbing moves its depth too.
+    mat4 DhInverse;
+    // 1 when DhInverse is known.
+    vec4 Exact;
 };
 
 layout(location = 0) in vec2 texCoord;
@@ -20,7 +24,13 @@ void main() {
     float d = texture(DhDepth, texCoord).r;
     if (d == Dh.w) discard;
     float ndc = Dh.z > 0.5 ? d * 2.0 - 1.0 : d;
-    float z = -Dh.y / (ndc + Dh.x);
+    float z;
+    if (Exact.x > 0.5) {
+        vec4 p = DhInverse * vec4(texCoord * 2.0 - 1.0, ndc, 1.0);
+        z = -1.0 / p.w;
+    } else {
+        z = -Dh.y / (ndc + Dh.x);
+    }
     if (!(z < 0.0)) discard;
     float depth = (Game.x * z + Game.y) / -z;
     if (Game.w < 0.5) depth = depth * 0.5 + 0.5;

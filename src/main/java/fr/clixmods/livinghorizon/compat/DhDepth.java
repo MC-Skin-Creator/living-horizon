@@ -2,6 +2,8 @@ package fr.clixmods.livinghorizon.compat;
 
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.platform.Platform;
+import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.reflect.Field;
@@ -21,6 +23,16 @@ final class DhDepth {
 
     private static Field renderProxy, projection, m22, m23, m32, success, payload;
     private static Method depthTexture, name;
+    /** All sixteen numbers of a matrix of Distant Horizons', row by row; null where it is missing. */
+    private static @Nullable Method valuesAsArray;
+    /**
+     * The inverse of the whole projection Distant Horizons drew its terrain with this frame, and
+     * whether it is known. It is the game's - view bobbing, nausea and all - with only its depth
+     * terms replaced by Distant Horizons' own planes: the bobbing then moves its depth in a way the
+     * two terms alone do not say, and a step made its terrain come and go in front of the mobs.
+     */
+    private static final Matrix4f INVERSE = new Matrix4f();
+    private static boolean exact;
     /**
      * From Distant Horizons 3.3.2: the layout of its depth. Before, null: OpenGL's usual one,
      * -1 to 1 with nothing at 1.
@@ -125,9 +137,20 @@ final class DhDepth {
         return null;
     }
 
+    /**
+     * The inverse of Distant Horizons' whole projection this frame, from its depth back to the view:
+     * a point at {@code (x, y, depth)} in its clip space, through it, gives {@code p} with
+     * {@code -1 / p.w} the view-space {@code z} the game's own (bobbed) projection divides by.
+     * Null where only its two depth terms are known: before 3.2, or under a shader pack.
+     */
+    static @Nullable Matrix4fc inverse() {
+        return exact ? INVERSE : null;
+    }
+
     /** {@code {a, b, signed, nothing}} of the projection Distant Horizons' depth is made with. */
     private static float @Nullable [] terms(Object proxy) throws ReflectiveOperationException {
         float a, b;
+        exact = false;
         if (renderParams != null) {
             Object params = renderParams.get(null);
             Object matrix = params == null ? null : projection.get(params);
@@ -136,7 +159,9 @@ final class DhDepth {
             float c = m23.getFloat(matrix), d = m32.getFloat(matrix);
             // The matrix is stored one way or the other: the entry that is -1 is the one that
             // divides by depth, the other one is the offset.
-            b = Math.abs(c + 1.0f) < 1.0e-3f ? d : c;
+            boolean rowByRow = !(Math.abs(c + 1.0f) < 1.0e-3f);
+            b = rowByRow ? c : d;
+            exact = invert(matrix, rowByRow);
         } else {
             float[] planes = planes(proxy);
             if (planes == null) return none("Distant Horizons has no clip planes yet");
@@ -148,6 +173,7 @@ final class DhDepth {
                 || "NEG_ONE_TO_POS_ONE".equals(String.valueOf(name.invoke(depthRange.invoke(proxy))));
         float[] iris = irisPlanes();
         if (iris != null) {
+            exact = false;
             // A shader pack draws Distant Horizons' terrain with Iris's own projection, whose
             // near plane is not the one Distant Horizons clamps for itself: OpenGL's -1..1.
             float near = iris[0], far = iris[1];
@@ -169,6 +195,25 @@ final class DhDepth {
         if (Math.abs(b) < 1.0e-6f) return none("Distant Horizons has no projection yet");
         float nothing = depthDirection == null || farDepth == null ? 1.0f : farDepth.getFloat(depthDirection.invoke(proxy));
         return new float[]{a, b, signed ? 1.0f : 0.0f, nothing};
+    }
+
+    /** Distant Horizons' whole projection into {@link #INVERSE}, inverted; whether it could be. */
+    private static boolean invert(Object matrix, boolean rowByRow) {
+        if (valuesAsArray == null) return false;
+        try {
+            if (!(valuesAsArray.invoke(matrix) instanceof float[] values) || values.length != 16) return false;
+            // JOML reads its arrays column by column.
+            INVERSE.set(values);
+            if (rowByRow) INVERSE.transpose();
+            float determinant = INVERSE.determinant();
+            if (!Float.isFinite(determinant) || Math.abs(determinant) < 1.0e-12f) return false;
+            INVERSE.invert();
+            return INVERSE.isFinite();
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            valuesAsArray = null;
+            LivingHorizonClient.LOGGER.warn("Distant Horizons' projection could not be read whole: its depth may move with view bobbing", e);
+            return false;
+        }
     }
 
     /**
@@ -282,6 +327,11 @@ final class DhDepth {
         m22 = matrix.getField("m22");
         m23 = matrix.getField("m23");
         m32 = matrix.getField("m32");
+        try {
+            valuesAsArray = matrix.getMethod("getValuesAsArray");
+        } catch (NoSuchMethodException e) {
+            valuesAsArray = null; // its two depth terms only
+        }
         // Not API: the last parameters Distant Horizons rendered with, from 3.2.
         try {
             renderParams = Class.forName("com.seibel.distanthorizons.core.api.internal.ClientApi").getDeclaredField("RENDER_PARAMS");

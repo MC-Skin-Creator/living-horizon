@@ -120,8 +120,9 @@ public final class FarDepthGpu {
     private static final int READBACKS = 4;
 
     private static final int VIEW_SIZE = new Std140SizeCalculator().putVec4().putVec4().putVec4().get();
-    private static final int MERGE_SIZE = new Std140SizeCalculator().putVec4().putVec4().get();
-    private static final int FADE_SIZE = new Std140SizeCalculator().putMat4f().putVec4().putVec4().putVec4().putVec4().get();
+    private static final int MERGE_SIZE = new Std140SizeCalculator().putVec4().putVec4().putMat4f().putVec4().get();
+    private static final int FADE_SIZE = new Std140SizeCalculator().putMat4f().putVec4().putVec4().putVec4().putVec4()
+            .putMat4f().putVec4().get();
     /^* Frames a uniform buffer is kept before it is written again: the GPU may still be reading it. ^/
     private static final int RING = 8;
 
@@ -134,6 +135,9 @@ public final class FarDepthGpu {
     private static @Nullable GpuTextureView preparedDepth;
     /^* Distant Horizons' projection terms of this frame, and the game's, for the fade mask. ^/
     private static final float[] PREPARED_DH = new float[4], PREPARED_GAME = new float[2];
+    /^* The inverse of Distant Horizons' whole projection this frame, when known: see {@link DhDepth#inverse()}. ^/
+    private static final Matrix4f PREPARED_INVERSE = new Matrix4f();
+    private static boolean preparedExact;
     private static String preparedReason = "no frame yet";
     /^* The game's depth as it was before the fade, to give back after it. ^/
     private static @Nullable GpuTexture saved;
@@ -171,6 +175,10 @@ public final class FarDepthGpu {
                 return;
             }
             float[] game = DepthFar.terms(0.05f, DepthFar.of(Minecraft.getInstance()));
+            org.joml.Matrix4fc inverse = DhDepth.inverse();
+            preparedExact = inverse != null;
+            if (inverse != null) PREPARED_INVERSE.set(inverse);
+            else PREPARED_INVERSE.identity();
             if (mergeUniforms == null) {
                 mergeUniforms = new MappableRingBuffer(() -> "Living Horizon far depth", GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_MAP_WRITE, MERGE_SIZE);
             }
@@ -178,7 +186,9 @@ public final class FarDepthGpu {
             try (GpuBufferSlice.MappedView view = uniforms.map(false, true)) {
                 Std140Builder.intoBuffer(view.data())
                         .putVec4((float) dh[1], (float) dh[2], (float) dh[3], (float) dh[4])
-                        .putVec4(game[0], game[1], DepthFar.REVERSED ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f);
+                        .putVec4(game[0], game[1], DepthFar.REVERSED ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f)
+                        .putMat4f(PREPARED_INVERSE)
+                        .putVec4(preparedExact ? 1f : 0f, 0f, 0f, 0f);
             }
             preparedUniforms = uniforms;
             preparedDepth = (GpuTextureView) dh[0];
@@ -242,7 +252,9 @@ public final class FarDepthGpu {
                                 (float) ((chunkX + chunks + 1) * 16 - camera.x), (float) ((chunkZ + chunks + 1) * 16 - camera.z))
                         .putVec4(DepthFar.zeroToOne() ? 1f : 0f, DepthFar.REVERSED ? 0f : 1f, preparedDepth != null ? 1f : 0f, 0f)
                         .putVec4(PREPARED_DH[0], PREPARED_DH[1], PREPARED_DH[2], PREPARED_DH[3])
-                        .putVec4(PREPARED_GAME[0], PREPARED_GAME[1], 0f, 0f);
+                        .putVec4(PREPARED_GAME[0], PREPARED_GAME[1], 0f, 0f)
+                        .putMat4f(PREPARED_INVERSE)
+                        .putVec4(preparedExact && preparedDepth != null ? 1f : 0f, 0f, 0f, 0f);
             }
 
             CommandEncoder encoder = RenderSystem.getDevice().createCommandEncoder();

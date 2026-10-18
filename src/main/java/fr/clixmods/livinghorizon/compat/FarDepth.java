@@ -124,6 +124,7 @@ public final class FarDepth {
     public static void arm() {
         armed = true;
         fadeMask = false;
+        lateFade = false;
         gpuMerge = false;
         gpuFade = false;
     }
@@ -314,11 +315,28 @@ public final class FarDepth {
         mergedLastFrame = merged;
     }
 
+    /** The projection the world is drawn with this frame, view bobbing in it, from 26.1. */
+    private static final Matrix4f WORLD_PROJECTION = new Matrix4f();
+    private static boolean worldProjection;
+
+    /**
+     * From 26.1 the level renderer is handed the camera's projection, and only the GPU the one
+     * the world is drawn with: view bobbing, the hurt tilt and nausea multiplied in. Noted just
+     * before, for {@link #noteView}.
+     */
+    public static void noteWorldProjection(Matrix4f projection) {
+        WORLD_PROJECTION.set(projection);
+        worldProjection = true;
+    }
+
     /** The matrices of this frame, for {@link OcclusionQueries}. */
     public static void noteView(Matrix4f modelView, Matrix4f projection) {
-        VIEW_PROJECTION.set(projection).mul(modelView);
+        // Its field of view and depth layout come from the camera's own: the bobbing would sway them.
         DepthFar.noteProjection(projection);
-        OcclusionQueries.noteView(modelView, projection);
+        // Whatever is tested against the world's depth is projected the way the world was drawn.
+        Matrix4f drawn = worldProjection ? WORLD_PROJECTION : projection;
+        VIEW_PROJECTION.set(drawn).mul(modelView);
+        OcclusionQueries.noteView(modelView, drawn);
     }
 
     /**
@@ -344,14 +362,15 @@ public final class FarDepth {
     public static void after(@Nullable Object owner) {
         if (!armed || irisShadowPass()) return;
         armed = false;
-        lateMerge = lateCopy = lateMerged = false;
+        lateMerge = lateCopy = lateMerged = lateFade = false;
         try {
             if (merged) restore(false);
             else if (captured) copy(depthTexture, drawn);
             if (intoVoxy) intoVoxy();
             lateOwner = owner;
             lateMerge = owner != null && merged;
-            lateCopy = owner != null && !merged && captured && FarConfig.get().debugDepthView == 3;
+            // Distant Horizons' fade must know the translucent figures too (a player, a slime).
+            lateCopy = owner != null && !merged && captured && (FarConfig.get().debugDepthView == 3 || fadeMask);
         } catch (Throwable e) {
             fail(e);
         }
@@ -373,6 +392,12 @@ public final class FarDepth {
     private static boolean lateMerge, lateCopy, lateMerged;
     /** The depth view's "after the entities" is the copy after the translucent step this frame. */
     private static boolean lateShown;
+    /**
+     * Whether {@code lateWritten} and {@code lateDrawn} hold this frame's translucent step, before
+     * and after it, for Distant Horizons' fade: it runs after that step and would paint its
+     * terrain over the translucent figures (players, slimes) the solid step's copies miss.
+     */
+    private static boolean lateFade;
     private static int lateSaved, lateWritten, lateDrawn;
 
     private static boolean late(Object owner) {
@@ -384,7 +409,10 @@ public final class FarDepth {
         if (!late(owner)) return;
         try {
             if (lateMerge) lateMerged = available() ? merge(true) : mergeDh(true);
-            else prepareLate();
+            else {
+                prepareLate();
+                copy(depthTexture, lateWritten);
+            }
         } catch (Throwable e) {
             fail(e);
             lateMerge = lateCopy = lateMerged = false;
@@ -403,6 +431,7 @@ public final class FarDepth {
             if (lateMerged) restore(true);
             else if (lateCopy) copy(depthTexture, lateDrawn);
             lateShown = lateMerged || lateCopy;
+            lateFade = fadeMask && lateShown;
         } catch (Throwable e) {
             fail(e);
         }
@@ -753,6 +782,11 @@ public final class FarDepth {
             GL20C.glUniform2f(GL20C.glGetUniformLocation(dhProgram, "game"), terms[0], terms[1]);
             GL20C.glUniform2f(GL20C.glGetUniformLocation(dhProgram, "depthLayout"),
                     DepthFar.reversed() ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f);
+            org.joml.Matrix4fc inverse = DhDepth.inverse();
+            GL20C.glUniform1f(GL20C.glGetUniformLocation(dhProgram, "exact"), inverse != null ? 1f : 0f);
+            if (inverse != null) {
+                GL20C.glUniformMatrix4fv(GL20C.glGetUniformLocation(dhProgram, "dhInverse"), false, inverse.get(DH_INVERSE));
+            }
             GL30C.glBindVertexArray(vertexArray);
             GL33C.glBindSampler(0, dhSampler);
             GL45C.glBindTextureUnit(0, (int) dh[0]);
@@ -766,6 +800,7 @@ public final class FarDepth {
     }
 
     private static int dhProgram, dhSampler;
+    private static final float[] DH_INVERSE = new float[16];
 
     /**
      * Distant Horizons' depth to the game's: back to a distance in front of the camera
@@ -787,11 +822,19 @@ public final class FarDepth {
                 uniform vec4 dh;   // projection a, projection b, 1 when the depth is -1..1, depth of nothing
                 uniform vec2 game; // the game's projection a and b, see DepthFar.terms
                 uniform vec2 depthLayout; // 1 when the game's depth is reversed, 1 when it is 0..1
+                uniform float exact;      // 1 when Distant Horizons' whole projection is known
+                uniform mat4 dhInverse;   // its inverse: view bobbing moves its depth too
                 void main() {
                     float d = texelFetch(dhDepth, ivec2(gl_FragCoord.xy / screen * dhSize), 0).r;
                     if (d == dh.w) discard;
                     float ndc = dh.z > 0.5 ? d * 2.0 - 1.0 : d;
-                    float z = -dh.y / (ndc + dh.x);
+                    float z;
+                    if (exact > 0.5) {
+                        vec4 p = dhInverse * vec4(gl_FragCoord.xy / screen * 2.0 - 1.0, ndc, 1.0);
+                        z = -1.0 / p.w;
+                    } else {
+                        z = -dh.y / (ndc + dh.x);
+                    }
                     if (!(z < 0.0)) discard;
                     float depth = (game.x * z + game.y) / -z;
                     if (depthLayout.y < 0.5) depth = depth * 0.5 + 0.5;
@@ -1102,6 +1145,12 @@ public final class FarDepth {
                     GL45C.glBindTextureUnit(unit, unit == 0 ? faded : unit == 1 ? written : drawn);
                 }
                 GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3);
+                // The translucent step's figures, drawn after the solid ones: tested against the same copy.
+                if (lateFade) {
+                    GL45C.glBindTextureUnit(1, lateWritten);
+                    GL45C.glBindTextureUnit(2, lateDrawn);
+                    GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3);
+                }
             } finally {
                 gl.restore();
             }
@@ -1184,7 +1233,7 @@ public final class FarDepth {
             if (texture != 0) GL11C.glDeleteTextures(texture);
         }
         lateSaved = lateWritten = lateDrawn = 0;
-        lateShown = false;
+        lateShown = lateFade = false;
         width = w;
         height = h;
         format = f;
