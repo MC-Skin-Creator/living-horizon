@@ -349,7 +349,12 @@ public final class RestingPlayers {
         boolean night = !level.isBrightOutside();
         // Spots read per tick by all of them together, looking around and for their way.
         int[] work = {WORK};
-        for (RestingPuppet puppet : puppets.values()) puppet.tick(level, config, beds, night, work);
+        Entity camera = Minecraft.getInstance().getCameraEntity();
+        for (RestingPuppet puppet : puppets.values()) {
+            // Near the camera they live their life; away from it, they play a loop.
+            if (camera != null) puppet.near(camera.getEyePosition());
+            puppet.tick(level, config, beds, night, work);
+        }
     }
 
     // --- File --------------------------------------------------------------------------

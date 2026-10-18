@@ -10,7 +10,7 @@
 
 ### Améliorations
 - **Paramètres** — chaque paramètre a un nom et une description plus clairs, dans le style des options de Minecraft, et les distances ont des curseurs sur toute la largeur de la liste.
-- **Joueurs déconnectés** — au loin, ils deviennent des images légères comme les joueurs connectés, debout ou assis, au lieu de modèles complets.
+- **Joueurs déconnectés** — loin de vous, ils font une petite ronde autour de l'endroit où ils sont partis, comme les animaux lointains, cavaliers compris, et au loin ils deviennent des images légères comme les joueurs connectés, debout ou assis.
 
 ## 0.7.0 — 2026-10-17
 

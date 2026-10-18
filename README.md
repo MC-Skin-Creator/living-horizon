@@ -309,6 +309,13 @@ they fall to the floor below; bury them and they reappear on top. Sitting, their
 wins again once it has room and something under it, since that is where they will come back.
 With nothing below down to the bottom of the world, they stay where they are.
 
+All of that only within 48 blocks of the camera. Farther (past 64 blocks, back under 48),
+they have no life of their own (`track/RestingLoop`): nothing is read nor decided, they play
+one of the animations distant mobs play (`track/MobAnimations`), in a loop around their spot,
+on the ground read around it once (`track/MobPaths`), seated in some of its pauses and lying
+down where they are at night. Coming from wherever their life left them, they walk back to
+it; once the camera is near again, their life goes on from where the loop left them.
+
 A player who logs off riding something keeps it (`track/RestingMount`), when `showVehicles` is
 on: the server takes the mount away with them, so a copy of it, as this client last saw it
 (coat, saddle, armour), is kept with their spot and drawn under them, never as a remembered mob
@@ -318,7 +325,9 @@ room for itself and its rider, worked out like a walk on foot; a boat on the wat
 on, staying put on land; a happy ghast in straight lines through open air, at most 24 blocks
 from its spot and 4 up or down. Anything else, a minecart or another mod's mount, stays where
 it was. In the saddle they look around, and raise their shield when hit; no bed, no chest, no
-sword. With `offlineLife` off, or where the blocks are not loaded, both wait on the spot.
+sword. Away from the camera the mount plays a loop as a player on foot does: a horse on the
+ground read around the spot, a boat on the water, a happy ghast in the air at its height. With
+`offlineLife` off both wait on the spot.
 Players who share their mount with another player rest on foot: the server leaves it to the
 other one.
 

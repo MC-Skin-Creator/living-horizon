@@ -13,11 +13,13 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
+import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * What a player who logged off rode: a copy of their horse, boat or happy ghast, never added
@@ -26,6 +28,11 @@ import java.util.Random;
  * open air; anything else (a minecart, a mount of another mod) stays where it was. Each
  * goes somewhere, waits a while, and goes again, within the same distance of the spot as a
  * player on foot. Where the blocks are not loaded it stays put.
+ *
+ * <p>That only near the camera, as for a player on foot ({@link RestingPuppet#NEAR_IN}).
+ * Farther it plays one of the animations distant mobs play, in a loop around its spot
+ * ({@link RestingLoop}): a horse walks the ground read around the spot, a boat the water,
+ * a happy ghast the air at its height. Nothing is read nor decided while it plays.
  */
 final class RestingMount {
     /** How it gets about. */
@@ -61,6 +68,11 @@ final class RestingMount {
     private final double half, height;
     private final Walkway walkway;
     private final Random random;
+    private final long seed;
+    private final ClientLevel level;
+    /** Playing its loop, away from the camera. */
+    private boolean far;
+    private @Nullable RestingLoop loop;
     /** How deep a boat sits in the water, below its surface: as it sat when they logged off. */
     private double draft = Double.NaN;
 
@@ -74,8 +86,10 @@ final class RestingMount {
     private int pathIndex;
     private @Nullable Vec3 flight;
 
-    private RestingMount(ClientLevel level, Entity entity, RestingPlayers.Mount mount, Vec3 rider, Random random) {
+    private RestingMount(ClientLevel level, Entity entity, RestingPlayers.Mount mount, Vec3 rider, Random random, long seed) {
         this.entity = entity;
+        this.level = level;
+        this.seed = seed;
         this.kind = kindOf(entity);
         this.seat = new Vec3(mount.seatX(), mount.seatY(), mount.seatZ());
         this.riderYaw = mount.riderYaw();
@@ -108,7 +122,8 @@ final class RestingMount {
                 living.hurtDuration = 0;
                 living.deathTime = 0;
             }
-            return new RestingMount(level, entity, mount, new Vec3(spot.x(), spot.y(), spot.z()), random);
+            long seed = spot.name().toLowerCase(java.util.Locale.ROOT).hashCode() * 0xBF58476D1CE4E5B9L;
+            return new RestingMount(level, entity, mount, new Vec3(spot.x(), spot.y(), spot.z()), random, seed);
         } catch (Exception e) {
             // Saved by a game or a mod that reads it differently: they rest on foot.
             return null;
@@ -190,6 +205,7 @@ final class RestingMount {
     /** Back on its spot, at rest. */
     void reset() {
         stop();
+        far = false;
         yaw = homeYaw;
         placed = false;
         fall = 0;
@@ -215,6 +231,11 @@ final class RestingMount {
         return yaw + riderYaw;
     }
 
+    /** Playing its loop, away from the camera, rather than going where it chooses. */
+    boolean away() {
+        return far;
+    }
+
     /** On its way somewhere. */
     boolean moving() {
         return path != null || flight != null;
@@ -228,10 +249,11 @@ final class RestingMount {
      * One tick: where it goes, or the ground under it.
      *
      * @param lively whether it goes anywhere; otherwise it stays on its spot
+     * @param near   close enough to the camera to go where it chooses; farther, it plays its loop
      * @param roam   blocks from its spot it may go
      * @param work   spots all puppets may still read this tick, shared
      */
-    void tick(ClientLevel level, boolean lively, int roam, int[] work) {
+    void tick(ClientLevel level, boolean lively, boolean near, int roam, int[] work) {
         entity.setOldPosAndRot();
         if (entity instanceof LivingEntity living) {
             living.yBodyRotO = living.yBodyRot;
@@ -239,6 +261,18 @@ final class RestingMount {
         }
         entity.tickCount++;
         moved = 0;
+        if (lively && !near) {
+            playLoop();
+            animate();
+            return;
+        }
+        if (far) {
+            // Back near the camera: it goes where it chooses again, from where its loop left it.
+            far = false;
+            placed = false;
+            stop();
+            timer = 40 + random.nextInt(100);
+        }
         if (!level.hasChunkAt(entity.blockPosition())) {
             // Nothing known of the blocks here: it waits where it is.
             placed = false;
@@ -264,6 +298,67 @@ final class RestingMount {
         }
         if (!moving()) settle(level, false);
         animate();
+    }
+
+    // --- Away from the camera -----------------------------------------------------------------
+
+    /** One tick of its loop around its spot. */
+    private void playLoop() {
+        RestingLoop playing = loop();
+        if (!far) {
+            far = true;
+            stop();
+            playing.from(entity.getX(), entity.getY(), entity.getZ(), yaw);
+        }
+        moved = playing.tick((int) level.getGameTime(), kind == Kind.AIR || kind == Kind.WATER);
+        entity.setPos(playing.x, playing.y, playing.z);
+        yaw = playing.body;
+    }
+
+    /** Its loop: the animation that fits the ground, the water or the air around its spot. */
+    private RestingLoop loop() {
+        if (loop == null) {
+            double pace = kind == Kind.WATER ? ROW : kind == Kind.AIR ? DRIFT : WALK;
+            loop = new RestingLoop(seed, home.x, home.y, home.z, homeYaw, pace, this::plan);
+        }
+        return loop;
+    }
+
+    private CompletableFuture<MobPaths.Choice> plan() {
+        return switch (kind) {
+            case GROUND -> MobPaths.plan(level, home.x, home.y, home.z, entity.getBbWidth(), seed);
+            case AIR -> CompletableFuture.completedFuture(MobPaths.free(home.x, home.y, home.z, seed));
+            case WATER -> CompletableFuture.completedFuture(water());
+            case STILL -> CompletableFuture.completedFuture(MobPaths.stand(home.x, home.y, home.z));
+        };
+    }
+
+    /**
+     * The water around its spot, read like the ground around a mob ({@link MobPaths}): every
+     * column it can float in, from the blocks this client has; the others are read again later.
+     */
+    private MobPaths.Choice water() {
+        int bx = Mth.floor(home.x), by = Mth.floor(home.y), bz = Mth.floor(home.z);
+        double[][] ground = new double[MobPaths.SIZE][MobPaths.SIZE];
+        boolean complete = true;
+        for (int i = 0; i < MobPaths.SIZE; i++) {
+            for (int j = 0; j < MobPaths.SIZE; j++) {
+                int cx = bx + i - MobPaths.RADIUS, cz = bz + j - MobPaths.RADIUS;
+                ground[i][j] = Double.NaN;
+                if (!level.hasChunk(cx >> 4, cz >> 4)) {
+                    complete = false;
+                    continue;
+                }
+                for (int dy : new int[]{0, -1, 1}) {
+                    double surface = Footing.afloat(level, cx, by + dy, cz, half, height);
+                    if (!Double.isNaN(surface)) {
+                        ground[i][j] = home.y;
+                        break;
+                    }
+                }
+            }
+        }
+        return MobPaths.choose(new MobPaths.Ground(ground, home.x, home.y, home.z, complete), entity.getBbWidth(), seed);
     }
 
     // --- On the ground or the water ---------------------------------------------------------
@@ -474,6 +569,7 @@ final class RestingMount {
 
     /** What it does, for the debug tools. */
     String state() {
+        if (far && loop != null) return kind.name().toLowerCase(java.util.Locale.ROOT) + " mount away: " + loop.state();
         String doing = path != null || flight != null ? "on its way" : survey != null ? "looking where to go" : "resting";
         return kind.name().toLowerCase(java.util.Locale.ROOT) + " mount " + doing;
     }
