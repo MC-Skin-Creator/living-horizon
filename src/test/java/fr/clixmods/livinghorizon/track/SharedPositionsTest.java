@@ -91,6 +91,26 @@ class SharedPositionsTest {
     }
 
     @Test
+    void keepsTheMountOfAPlayerWhoLoggedOff() {
+        SharedPositions shared = new SharedPositions();
+        PositionsMessage.Mount horse = new PositionsMessage.Mount("minecraft:horse", "{Variant:513}", 0, 0.85, -0.2, 45f, -10f);
+        shared.receive(PositionsMessage.players(List.of()));
+        shared.receive(PositionsMessage.offline(List.of(
+                new PositionsMessage.Player("Alex", 10, 70, -20, 90f, 0, false, true, null, horse))));
+        shared.update();
+        assertTrue(shared.read("Alex").riding());
+        assertEquals(horse, shared.mount("Alex"));
+        // Back online: what they ride is no longer kept for them.
+        shared.receive(PositionsMessage.players(List.of(
+                new PositionsMessage.Player("Alex", 10, 70, -20, 90f, 0, true, false, null))));
+        assertNull(shared.mount("Alex"));
+        PositionsMessage.Saved saved = PositionsMessage.readSaved(PositionsMessage.saved(
+                List.of(new PositionsMessage.Player("Alex", 10, 70, -20, 90f, 0, false, true, null, horse)), List.of()));
+        assertNotNull(saved);
+        assertEquals(horse, saved.players().get(0).mount());
+    }
+
+    @Test
     void ignoresAnotherVersionOrGarbage() {
         SharedPositions shared = new SharedPositions();
         byte[] message = PositionsMessage.players(List.of(new PositionsMessage.Player("Steve", 0, 0, 0, 0, 0, true, false, null)));

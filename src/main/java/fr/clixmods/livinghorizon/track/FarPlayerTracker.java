@@ -199,7 +199,7 @@ public final class FarPlayerTracker {
             for (String name : shared.holders()) {
                 if (online.contains(name.toLowerCase(Locale.ROOT))) continue;
                 SharedPositions.Report report = shared.read(name);
-                if (report != null) resting.restFromServer(name, report);
+                if (report != null) resting.restFromServer(name, report, shared.mount(name));
             }
         }
         if (config.offlinePlayers) resting.tick(current, config);

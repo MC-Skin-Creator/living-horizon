@@ -30,10 +30,26 @@ public final class PositionsMessage {
 
     /**
      * One player: online now, or where they were when they logged off. {@code dimension} is
-     * {@link SharedPositions#dimensionCode}; {@code vehicle} the published mob they ride, if any.
+     * {@link SharedPositions#dimensionCode}; {@code vehicle} the published mob they ride, if any;
+     * {@code mount} what a player who logged off riding took away with them, if any.
      */
     public record Player(String name, double x, double y, double z, float yaw, int dimension, boolean online,
-                         boolean riding, @Nullable UUID vehicle) {
+                         boolean riding, @Nullable UUID vehicle, @Nullable Mount mount) {
+        public Player(String name, double x, double y, double z, float yaw, int dimension, boolean online,
+                      boolean riding, @Nullable UUID vehicle) {
+            this(name, x, y, z, yaw, dimension, online, riding, vehicle, null);
+        }
+    }
+
+    /**
+     * What a player rode when they logged off, the server's own copy: its type
+     * ({@code minecraft:horse}), the mount as the game saves it, where the rider sits on it (the
+     * rider's feet from the mount's, in the mount's frame), the way it faced, and the way the
+     * rider faced from it.
+     */
+    public record Mount(String type, String nbt, double seatX, double seatY, double seatZ, float yaw, float riderYaw) {
+        /** Past this, a saved mount is left out: a message's text is at most 64 KiB. */
+        public static final int MAX_NBT = 32_000;
     }
 
     /** One remembered mob: its kind ({@link MobKinds}), and what its look needs. */
@@ -146,8 +162,19 @@ public final class PositionsMessage {
             out.writeDouble(player.z());
             out.writeFloat(player.yaw());
             out.writeByte(player.dimension());
-            out.writeByte((player.online() ? 1 : 0) | (player.riding() ? 2 : 0) | (player.vehicle() != null ? 4 : 0));
+            Mount mount = player.mount();
+            out.writeByte((player.online() ? 1 : 0) | (player.riding() ? 2 : 0) | (player.vehicle() != null ? 4 : 0)
+                    | (mount != null ? 8 : 0));
             if (player.vehicle() != null) writeId(out, player.vehicle());
+            if (mount != null) {
+                out.writeUTF(mount.type());
+                out.writeUTF(mount.nbt());
+                out.writeDouble(mount.seatX());
+                out.writeDouble(mount.seatY());
+                out.writeDouble(mount.seatZ());
+                out.writeFloat(mount.yaw());
+                out.writeFloat(mount.riderYaw());
+            }
         }
     }
 
@@ -161,7 +188,11 @@ public final class PositionsMessage {
             int dimension = in.readByte();
             int flags = in.readByte();
             UUID vehicle = (flags & 4) != 0 ? readId(in) : null;
-            players.add(new Player(name, x, y, z, yaw, dimension, (flags & 1) != 0, (flags & 2) != 0, vehicle));
+            Mount mount = (flags & 8) != 0
+                    ? new Mount(in.readUTF(), in.readUTF(), in.readDouble(), in.readDouble(), in.readDouble(),
+                            in.readFloat(), in.readFloat())
+                    : null;
+            players.add(new Player(name, x, y, z, yaw, dimension, (flags & 1) != 0, (flags & 2) != 0, vehicle, mount));
         }
         return players;
     }

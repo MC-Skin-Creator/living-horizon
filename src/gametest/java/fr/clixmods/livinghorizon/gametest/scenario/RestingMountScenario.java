@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon.gametest.scenario;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
+import fr.clixmods.livinghorizon.track.PositionsMessage;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
 import fr.clixmods.livinghorizon.track.RestingPuppet;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -12,6 +13,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.List;
 import java.util.function.Function;
 
 /**
@@ -19,7 +21,8 @@ import java.util.function.Function;
  * Each time the camera rides it, the debug command leaves a test player on a copy of it, and
  * the real one goes. Seated on the spot first ({@code offlineLife} off), then about it: the
  * mount goes somewhere and the rider stays on it, never jumping ahead; the boat keeps to the
- * water. With mounts hidden the rider is on foot, and back on it once they show again.
+ * water. With mounts hidden the rider is on foot, and back on it once they show again. Last,
+ * a player this client never saw, who logged off on a horse a server with the mod shares.
  */
 public final class RestingMountScenario implements Scenario {
     /** The flat world's grass is the block below this one. */
@@ -96,6 +99,22 @@ public final class RestingMountScenario implements Scenario {
                 Scene.screenshot(context, this, "happy-ghast");
             }
             clientCommand(context, "livinghorizon debug offline test clear");
+
+            // Known from the server alone: it shares the horse they took away with them.
+            PositionsMessage.Player faraway = new PositionsMessage.Player("Faraway", 12.5, GROUND, -12.5, 0f, 0, false, true,
+                    null, new PositionsMessage.Mount("minecraft:horse", "{Tame:1b,Variant:513}", 0, 0.85, -0.2, 0f, 0f));
+            for (int i = 0; i < 6; i++) {
+                context.runOnClient(minecraft -> {
+                    FarPlayerTracker.get().receive(PositionsMessage.players(List.of()));
+                    FarPlayerTracker.get().receive(PositionsMessage.offline(List.of(faraway)));
+                });
+                context.waitTicks(10);
+            }
+            String shared = rider(context, "Faraway", p -> p.mount() != null
+                    && "minecraft:horse".equals(BuiltInRegistries.ENTITY_TYPE.getKey(p.mount().getType()).toString())
+                    ? null : "mount " + p.mount());
+            if (shared != null) throw new AssertionError("restingmount: the server's horse is not under them, " + shared);
+            Scene.log("restingmount Faraway on the server's horse");
         }
     }
 

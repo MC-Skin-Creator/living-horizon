@@ -117,6 +117,12 @@ public final class RestingPlayers {
             }
         }
 
+        /** The server's copy of a mount; null for none. */
+        static @Nullable Mount of(PositionsMessage.@Nullable Mount shared) {
+            return shared == null ? null : new Mount(shared.type(), shared.nbt(), null, shared.seatX(), shared.seatY(),
+                    shared.seatZ(), shared.yaw(), shared.riderYaw());
+        }
+
         /** Whether a mount flies, as a happy ghast does: it stays in the air, at its height. */
         public static boolean flies(Entity vehicle) {
             return RestingMount.kindOf(vehicle) == RestingMount.Kind.AIR;
@@ -194,20 +200,26 @@ public final class RestingPlayers {
         put(spot);
     }
 
-    /** The server's last word on an offline player. */
-    void restFromServer(String name, SharedPositions.Report report) {
+    /**
+     * The server's last word on an offline player, and the mount they took away with them: the
+     * copy this client saw them ride when it is the same kind, the server's own otherwise.
+     */
+    void restFromServer(String name, SharedPositions.Report report, PositionsMessage.@Nullable Mount shared) {
         Spot known = spots.get(key(name));
+        Mount mount = null;
+        if (report.riding()) {
+            Mount seen = known != null ? known.mount() : null;
+            mount = seen != null && (shared == null || seen.type().equals(shared.type())) ? seen : Mount.of(shared);
+        }
         if (known != null && known.dimension() == report.dimension()
                 && Math.abs(known.x() - report.x()) < 0.05 && Math.abs(known.y() - report.y()) < 0.05
-                && Math.abs(known.z() - report.z()) < 0.05) {
+                && Math.abs(known.z() - report.z()) < 0.05 && (known.mount() == null) == (mount == null)) {
             return;
         }
-        // The mount this client saw them ride, as long as the pack says they still ride.
         Spot spot = known != null
-                ? known.moved(report.dimension(), report.x(), report.y(), report.z(), report.yaw(),
-                        report.riding() ? known.mount() : null)
+                ? known.moved(report.dimension(), report.x(), report.y(), report.z(), report.yaw(), mount)
                 : new Spot(name, null, null, null, report.dimension(), report.x(), report.y(), report.z(), report.yaw(), 0,
-                        null);
+                        mount);
         put(spot);
         if (spot.textures() == null) lookUp(name);
     }

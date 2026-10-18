@@ -8,12 +8,16 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.storage.LevelResource;
+import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -35,7 +39,8 @@ import java.util.UUID;
  * on a dedicated server. It touches nothing of the client, so a server can load it. A client
  * without the mod is sent nothing.
  *
- * <p>It keeps the last position of every player who logged off, and of the mobs in chunks no
+ * <p>It keeps the last position of every player who logged off, with the mount they took away
+ * with them, and of the mobs in chunks no
  * longer loaded, in a file of the world ({@link #FILE}), so that a player who joins later sees
  * them too. A mob is forgotten when its chunk is loaded and it is not there any more.
  *
@@ -67,6 +72,10 @@ public final class PositionPublisher {
     private final Map<String, PositionsMessage.Player> players = new LinkedHashMap<>();
     /** Every remembered mob, the one seen longest ago first. */
     private final LinkedHashMap<UUID, PositionsMessage.Mob> mobs = new LinkedHashMap<>();
+    /** What each player online rides alone, by name: the server takes it away with them when they log off. */
+    private final Map<String, PositionsMessage.Mount> riding = new HashMap<>();
+    /** Which mount {@link #riding} saved, by name: it is saved again when it changes, and every few seconds. */
+    private final Map<String, UUID> ridden = new HashMap<>();
     private boolean loaded;
     private boolean dirty;
     private boolean told;
@@ -101,6 +110,13 @@ public final class PositionPublisher {
             String name = player.getScoreboardName();
             online.add(name);
             Entity vehicle = player.getVehicle();
+            PositionsMessage.Mount mount = vehicle != null ? mountOf(player, name) : null;
+            if (mount != null) {
+                riding.put(name, mount);
+            } else {
+                riding.remove(name);
+                ridden.remove(name);
+            }
             UUID published = vehicle != null && KINDS.containsKey(EntityType.getKey(vehicle.getType()).toString())
                     ? vehicle.getUUID() : null;
             players.put(name, new PositionsMessage.Player(name, player.getX(), player.getY(), player.getZ(),
@@ -112,8 +128,10 @@ public final class PositionPublisher {
         for (Map.Entry<String, PositionsMessage.Player> entry : players.entrySet()) {
             PositionsMessage.Player player = entry.getValue();
             if (player.online() && !online.contains(entry.getKey())) {
+                PositionsMessage.Mount mount = riding.remove(entry.getKey());
+                ridden.remove(entry.getKey());
                 entry.setValue(new PositionsMessage.Player(player.name(), player.x(), player.y(), player.z(),
-                        player.yaw(), player.dimension(), false, false, null));
+                        player.yaw(), player.dimension(), false, mount != null, null, mount));
             }
         }
         List<PositionsMessage.Player> now = new ArrayList<>();
@@ -122,6 +140,33 @@ public final class PositionPublisher {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (Network.canSend(player)) Network.send(player, message);
         }
+    }
+
+    /**
+     * What {@code player} rides, as it would rest under them once they log off; null when they
+     * share it with another player (the server leaves it to them), or it cannot be saved.
+     */
+    private PositionsMessage.@Nullable Mount mountOf(ServerPlayer player, String name) {
+        Entity root = player.getRootVehicle();
+        for (Entity passenger : root.getIndirectPassengers()) {
+            if (passenger instanceof Player other && other != player) return null;
+        }
+        PositionsMessage.Mount last = riding.get(name);
+        String nbt;
+        if (last != null && root.getUUID().equals(ridden.get(name)) && runs % MOB_EVERY != 0) {
+            nbt = last.nbt();
+        } else {
+            try {
+                nbt = EntityNbt.save(root, root.level()).toString();
+            } catch (RuntimeException e) {
+                return null;
+            }
+            if (nbt.getBytes(StandardCharsets.UTF_8).length > PositionsMessage.Mount.MAX_NBT) return null;
+            ridden.put(name, root.getUUID());
+        }
+        Vec3 seat = player.position().subtract(root.position()).yRot((float) Math.toRadians(root.getYRot()));
+        return new PositionsMessage.Mount(EntityType.getKey(root.getType()).toString(), nbt, seat.x, seat.y, seat.z,
+                root.getYRot(), player.getYRot() - root.getYRot());
     }
 
     /** Those who logged off, with the mobs: they move no more, every five seconds is enough. */
@@ -188,7 +233,7 @@ public final class PositionPublisher {
             if (saved == null) return;
             for (PositionsMessage.Player player : saved.players()) {
                 players.put(player.name(), new PositionsMessage.Player(player.name(), player.x(), player.y(), player.z(),
-                        player.yaw(), player.dimension(), false, false, null));
+                        player.yaw(), player.dimension(), false, player.mount() != null, null, player.mount()));
             }
             for (PositionsMessage.Mob mob : saved.mobs()) mobs.put(mob.id(), mob);
         } catch (IOException e) {
@@ -203,7 +248,14 @@ public final class PositionPublisher {
         Path file = file();
         try {
             Path written = file.resolveSibling(FILE + ".tmp");
-            Files.write(written, PositionsMessage.saved(new ArrayList<>(players.values()), new ArrayList<>(mobs.values())));
+            // Those still online when the server stops log off on what they ride.
+            List<PositionsMessage.Player> kept = new ArrayList<>();
+            for (PositionsMessage.Player player : players.values()) {
+                PositionsMessage.Mount mount = player.online() ? riding.get(player.name()) : player.mount();
+                kept.add(new PositionsMessage.Player(player.name(), player.x(), player.y(), player.z(), player.yaw(),
+                        player.dimension(), player.online(), mount != null, null, mount));
+            }
+            Files.write(written, PositionsMessage.saved(kept, new ArrayList<>(mobs.values())));
             Files.move(written, file, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             LOGGER.warn("Could not save the shared positions of this world", e);

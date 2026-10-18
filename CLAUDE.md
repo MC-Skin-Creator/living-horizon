@@ -384,8 +384,10 @@ come back, add it here in the same pull request: this file is what the next sess
   (`FarPlayer.mountPuppet`), and the remembered mobs leave out every id `FarPlayer.carriedMount`
   names (`MobMemory.carried`), the server's shared copy of it included. A rider whose mount was
   never seen up close takes the mob the server says they ride (`SharedPositions.vehicle`,
-  `MobMemory.known`), once the server has shared that mob. `CarriedMountTest`,
-  `SharedPositionsTest` and the `lanshare` scenario check it.
+  `MobMemory.known`), once the server has shared that mob. A player who logs off riding keeps
+  the server's copy of the mount (`PositionsMessage.Mount`, kept by `PositionPublisher` with
+  their last position) unless this client saw it itself. `CarriedMountTest`,
+  `SharedPositionsTest` and the `lanshare`, `dedicated` and `restingmount` scenarios check it.
 - **A dedicated server crashes on load with the mod** ("Attempted to load class
   net/minecraft/client/... for invalid dist DEDICATED_SERVER"): something the server loads
   reaches a client class. Forge's `@Mod` has no side, so it sits on `LivingHorizonCommon`,

@@ -9,13 +9,14 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerCon
 import net.minecraft.world.level.storage.LevelResource;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
  * A dedicated server with the mod: it shares the positions over the network from its own
  * tick, a client that joins reads its own back and follows it as it moves, and the server
- * keeps them in its world's file once it stops.
+ * keeps them in its world's file once it stops, with the horse the player logged off on.
  */
 public final class DedicatedServerScenario implements Scenario {
     @Override
@@ -46,12 +47,19 @@ public final class DedicatedServerScenario implements Scenario {
                     }
                     Scene.log("dedicated player x=" + self.x() + " (at " + minecraft.player.getX() + ")");
                 });
+                // Logging off on a horse: the server keeps it with their last position.
+                server.runCommand("execute at @p run summon horse ~ ~ ~ {Tame:1b,NoAI:1b,Tags:[\"lh.mount\"]}");
+                server.runCommand("ride @p mount @e[type=horse,tag=lh.mount,limit=1]");
+                context.waitTicks(140);
             }
         }
         // Stopped: what it kept is in the world's file, for the players who join next time.
         try {
             Path file = root.resolve("livinghorizon-positions.dat");
             if (!Files.isRegularFile(file) || Files.size(file) == 0) throw new AssertionError("no positions saved at " + file);
+            if (!new String(Files.readAllBytes(file), StandardCharsets.ISO_8859_1).contains("minecraft:horse")) {
+                throw new AssertionError("the horse the player logged off on is not kept");
+            }
             Scene.log("dedicated saved " + Files.size(file) + " bytes of positions");
         } catch (IOException e) {
             throw new AssertionError("could not read " + root, e);

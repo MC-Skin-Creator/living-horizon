@@ -334,7 +334,8 @@ the camera is near again, their life goes on from where the loop left them.
 A player who logs off riding something keeps it (`track/RestingMount`), when `showVehicles` is
 on: the server takes the mount away with them, so a copy of it, as this client last saw it
 (coat, saddle, armour), is kept with their spot and drawn under them, never as a remembered mob
-of its own. With `offlineLife` on, it carries them about their spot, within `offlineRoam`
+of its own. A server with the mod keeps its own copy with their last position and shares it, so
+a player who never saw them log off sees them riding too. With `offlineLife` on, it carries them about their spot, within `offlineRoam`
 blocks, then rests a while and goes again: a horse (any mount that walks) only where it has
 room for itself and its rider, worked out like a walk on foot; a boat on the water it floats
 on, staying put on land; a happy ghast in straight lines through open air, at most 24 blocks

@@ -99,6 +99,12 @@ public final class SharedPositions {
         return player == null ? null : player.vehicle();
     }
 
+    /** What a player who logged off riding took away with them, as the server saved it; null when nothing. */
+    public PositionsMessage.@Nullable Mount mount(String name) {
+        PositionsMessage.Player player = active && !players.containsKey(name) ? offline.get(name) : null;
+        return player == null ? null : player.mount();
+    }
+
     /** Every mob the server last published around this client. */
     public List<UUID> mobs() {
         return new ArrayList<>(mobs.keySet());
