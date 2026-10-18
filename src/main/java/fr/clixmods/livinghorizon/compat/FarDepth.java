@@ -124,6 +124,7 @@ public final class FarDepth {
     public static void arm() {
         armed = true;
         fadeMask = false;
+        lateFade = false;
         gpuMerge = false;
         gpuFade = false;
     }
@@ -344,14 +345,15 @@ public final class FarDepth {
     public static void after(@Nullable Object owner) {
         if (!armed || irisShadowPass()) return;
         armed = false;
-        lateMerge = lateCopy = lateMerged = false;
+        lateMerge = lateCopy = lateMerged = lateFade = false;
         try {
             if (merged) restore(false);
             else if (captured) copy(depthTexture, drawn);
             if (intoVoxy) intoVoxy();
             lateOwner = owner;
             lateMerge = owner != null && merged;
-            lateCopy = owner != null && !merged && captured && FarConfig.get().debugDepthView == 3;
+            // Distant Horizons' fade must know the translucent figures too (a player, a slime).
+            lateCopy = owner != null && !merged && captured && (FarConfig.get().debugDepthView == 3 || fadeMask);
         } catch (Throwable e) {
             fail(e);
         }
@@ -373,6 +375,12 @@ public final class FarDepth {
     private static boolean lateMerge, lateCopy, lateMerged;
     /** The depth view's "after the entities" is the copy after the translucent step this frame. */
     private static boolean lateShown;
+    /**
+     * Whether {@code lateWritten} and {@code lateDrawn} hold this frame's translucent step, before
+     * and after it, for Distant Horizons' fade: it runs after that step and would paint its
+     * terrain over the translucent figures (players, slimes) the solid step's copies miss.
+     */
+    private static boolean lateFade;
     private static int lateSaved, lateWritten, lateDrawn;
 
     private static boolean late(Object owner) {
@@ -384,7 +392,10 @@ public final class FarDepth {
         if (!late(owner)) return;
         try {
             if (lateMerge) lateMerged = available() ? merge(true) : mergeDh(true);
-            else prepareLate();
+            else {
+                prepareLate();
+                copy(depthTexture, lateWritten);
+            }
         } catch (Throwable e) {
             fail(e);
             lateMerge = lateCopy = lateMerged = false;
@@ -403,6 +414,7 @@ public final class FarDepth {
             if (lateMerged) restore(true);
             else if (lateCopy) copy(depthTexture, lateDrawn);
             lateShown = lateMerged || lateCopy;
+            lateFade = fadeMask && lateShown;
         } catch (Throwable e) {
             fail(e);
         }
@@ -1102,6 +1114,12 @@ public final class FarDepth {
                     GL45C.glBindTextureUnit(unit, unit == 0 ? faded : unit == 1 ? written : drawn);
                 }
                 GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3);
+                // The translucent step's figures, drawn after the solid ones: tested against the same copy.
+                if (lateFade) {
+                    GL45C.glBindTextureUnit(1, lateWritten);
+                    GL45C.glBindTextureUnit(2, lateDrawn);
+                    GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3);
+                }
             } finally {
                 gl.restore();
             }
@@ -1184,7 +1202,7 @@ public final class FarDepth {
             if (texture != 0) GL11C.glDeleteTextures(texture);
         }
         lateSaved = lateWritten = lateDrawn = 0;
-        lateShown = false;
+        lateShown = lateFade = false;
         width = w;
         height = h;
         format = f;

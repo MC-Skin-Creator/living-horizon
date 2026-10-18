@@ -17,6 +17,7 @@
 
 ### Fixed
 - **Resizing the game window** — distant mobs keep hiding behind hills, Voxy's and Distant Horizons' included, after the window changes size, instead of showing through them until the game restarts.
+- **Distant Horizons** — far away, players, players who logged off and slimes show like other mobs, instead of vanishing under its terrain (Minecraft 26.1 and later).
 
 ## 0.7.0 — 2026-10-17
 

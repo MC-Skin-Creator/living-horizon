@@ -238,6 +238,10 @@ come back, add it here in the same pull request: this file is what the next sess
   core hidden; missing from the depth view): from 26.1 they are drawn in the translucent step,
   after the solid bracket. The late bracket covers it, for the dispatcher (26.1) or prepared frame
   (26.2) whose solid step was bracketed only: Iris draws the hand with one of its own in between.
+- **Players or slimes painted over by Distant Horizons' terrain** (other mobs fine, Voxy fine;
+  without a shader pack): its fade runs after the translucent step, where players and a slime's
+  outer layer are drawn. `FarDepth.beforeFade` unmasks that step's copies too (`lateFade`); a
+  pixel left out of the mask is faded into its terrain. On 26.3 the GPU path's mask needs none.
 - **Voxy version.** `FarDepth` and `VoxySource` reach Voxy by reflection; a renamed class turns
   both off ("Voxy found, but not the version this mod knows"). 0.2.18 renamed
   `IGetVoxyRenderSystem` to `IVoxyRenderSystemHolder` (`VoxySource.renderSystemGetter` tries
