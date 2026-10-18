@@ -31,6 +31,7 @@
   "livinghorizon.offline.lastSeen": "%s — 最終確認：%s",
   "livinghorizon.offline.unknown": "%s — オフライン",
   "livinghorizon.offline.test.spawned": "テストプレイヤー%sを、ログアウトした状態で現在地に配置しました。離れると見えます。/livinghorizon debug offline test clear で削除できます。",
+  "livinghorizon.offline.test.spawnedMany": "%s人のテストプレイヤーを、ログアウトした状態で周囲%sブロック以内に配置しました。/livinghorizon debug offline test clear で削除できます。",
   "livinghorizon.offline.test.switchedOff": "ログアウトしたプレイヤーは設定でオフになっています：%sを見るにはオンにしてください。",
   "livinghorizon.offline.test.online": "%sはオンラインです：別の名前を選んでください。",
   "livinghorizon.offline.test.long": "%sは長すぎます：プレイヤー名は16文字までです。",
@@ -206,6 +207,10 @@
   "livinghorizon.options.debugHud": "デバッグパネル",
   "livinghorizon.options.impostorPlayers": "簡略化プレイヤー",
   "livinghorizon.options.impostorPlayers.tooltip": "遠くのプレイヤーもMobと同じように簡略化されます。オフ：どの距離でも完全なモデルのままで、スキンや防具が細部まで保たれます。「簡略化エンティティ」がオンである必要があります。",
+  "livinghorizon.options.impostorMobMemory": "Mob画像のメモリ",
+  "livinghorizon.options.impostorMobMemory.tooltip": "簡略化したMobの画像が使えるビデオメモリ（プレイヤーとは別枠）。新しい見た目に出会うたびに少しずつ使われ、いっぱいになると最も長く使われていない画像が場所を空けます。",
+  "livinghorizon.options.impostorPlayerMemory": "プレイヤー画像のメモリ",
+  "livinghorizon.options.impostorPlayerMemory.tooltip": "簡略化したプレイヤーの画像が使えるビデオメモリ（乗っているものを含み、Mobとは別枠）。1分間使われなかった画像は破棄されます。",
   "livinghorizon.options.debugHud.tooltip": "左上に表示。F3画面で、デバッグ設定（F3 + F6）の「living_horizon」をオンにします：ティックとフレームごとの負荷、直前のフレームで遠くの各Mobがどうなったか、遠方の地形の読み取りと深度、このサーバーがMobを送信する距離、有効な最適化。",
   "livinghorizon.options.debugBoxes": "Mobの枠",
   "livinghorizon.options.debugBoxes.tooltip": "遠くのMobとプレイヤーそれぞれに、地形越しに見える枠と点を、どうなったかを示す色で表示します：緑は描画されたコピー、シアンはModが描画した本物のMob、青はプレイヤー、黄は小さすぎる、オレンジはブロックの裏、赤は視界の外、紫は構築中、灰色は上限超過。",
@@ -283,7 +288,9 @@
   "livinghorizon.debug.f3.impostors": "Living Horizonのインポスター：%sシートをベイク済み、%s待機中",
   "livinghorizon.debug.f3.impostorsFailed": "Living Horizonのインポスター：ベイクに失敗したため、完全なモデルを使用します（ログを参照）",
   "livinghorizon.impostors.title": "簡略化エンティティ",
-  "livinghorizon.impostors.status": "準備完了：%s、待機中：%s",
+  "livinghorizon.impostors.memory": "ビデオメモリ：%s / %s - 画像：%s、待機中：%s",
+  "livinghorizon.impostors.tab.mobs": "Mob",
+  "livinghorizon.impostors.tab.players": "プレイヤー",
   "livinghorizon.impostors.off": "「簡略化エンティティ」がオフです：画像を作成して使うには、設定でオンにしてください。",
   "livinghorizon.impostors.empty": "まだ画像がありません：周囲の遠くのプレイヤーとMobの画像が数秒以内に作成されます。",
   "livinghorizon.impostors.regenerate": "作り直す",
@@ -318,5 +325,6 @@
   "livinghorizon.options.seconds": "%s秒",
   "livinghorizon.options.pixels": "%sピクセル",
   "livinghorizon.options.multiplier": "%s倍",
-  "livinghorizon.options.percent": "%s%%"
+  "livinghorizon.options.percent": "%s%%",
+  "livinghorizon.options.megabytes": "%s MB"
 }

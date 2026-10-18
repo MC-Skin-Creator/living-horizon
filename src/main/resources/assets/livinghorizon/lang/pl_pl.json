@@ -31,6 +31,7 @@
   "livinghorizon.offline.lastSeen": "%s — ostatnio online: %s",
   "livinghorizon.offline.unknown": "%s — offline",
   "livinghorizon.offline.test.spawned": "Gracz testowy %s umieszczony w twoim miejscu, wylogowany. Odsuń się, aby go zobaczyć; /livinghorizon debug offline test clear go usuwa.",
+  "livinghorizon.offline.test.spawnedMany": "Gracze testowi (%s) umieszczeni w promieniu %s bloków od ciebie, wylogowani. /livinghorizon debug offline test clear ich usuwa.",
   "livinghorizon.offline.test.switchedOff": "Wylogowani gracze są wyłączeni w ustawieniach: włącz ich, aby zobaczyć gracza %s.",
   "livinghorizon.offline.test.online": "Gracz %s jest online: wybierz inną nazwę.",
   "livinghorizon.offline.test.long": "Nazwa %s jest za długa: nazwa gracza ma najwyżej 16 znaków.",
@@ -206,6 +207,10 @@
   "livinghorizon.options.debugHud": "Panel debugowania",
   "livinghorizon.options.impostorPlayers": "Uproszczeni gracze",
   "livinghorizon.options.impostorPlayers.tooltip": "Odlegli gracze też są upraszczani, jak stworzenia. Wyłączone: zachowują pełny model w każdej odległości, więc ich skórka i zbroja pozostają w pełni szczegółowe. Wymaga włączonych „Uproszczonych bytów”.",
+  "livinghorizon.options.impostorMobMemory": "Pamięć obrazów stworzeń",
+  "livinghorizon.options.impostorMobMemory.tooltip": "Pamięć wideo, jaką mogą zająć obrazy uproszczonych stworzeń, oddzielnie od pamięci graczy. Zajmowana stopniowo, w miarę pojawiania się nowych wyglądów; gdy się zapełni, najdłużej nieużywany obraz zwalnia miejsce.",
+  "livinghorizon.options.impostorPlayerMemory": "Pamięć obrazów graczy",
+  "livinghorizon.options.impostorPlayerMemory.tooltip": "Pamięć wideo, jaką mogą zająć obrazy uproszczonych graczy, razem z jeźdźcami i ich wierzchowcami, oddzielnie od pamięci stworzeń. Obraz nieużywany przez minutę jest usuwany.",
   "livinghorizon.options.debugHud.tooltip": "W lewym górnym rogu. Na ekranie F3 włącz „living_horizon” w opcjach debugowania (F3 + F6): koszt na tik i klatkę, co się stało z każdym odległym stworzeniem w ostatniej klatce, odczyty i głębia dalekiego terenu, jak daleko ten serwer wysyła stworzenia, które optymalizacje są włączone.",
   "livinghorizon.options.debugBoxes": "Ramki stworzeń",
   "livinghorizon.options.debugBoxes.tooltip": "Ramka i punkt wokół każdego odległego stworzenia i gracza, widoczne przez teren, w kolorze tego, co się z nim stało: zielony narysowana kopia, błękitny prawdziwe stworzenie rysowane przez mod, niebieski gracz, żółty za małe, pomarańczowy za blokami, czerwony poza widokiem, fioletowy w budowie, szary ponad maksimum.",
@@ -283,7 +288,9 @@
   "livinghorizon.debug.f3.impostors": "Impostory Living Horizon: wypalone arkusze %s, oczekujące %s",
   "livinghorizon.debug.f3.impostorsFailed": "Impostory Living Horizon: wypalanie nie powiodło się, używane są pełne modele (zobacz dziennik)",
   "livinghorizon.impostors.title": "Uproszczone byty",
-  "livinghorizon.impostors.status": "Gotowe: %s, oczekujące: %s",
+  "livinghorizon.impostors.memory": "Pamięć wideo: %s z %s - obrazy: %s, oczekujące: %s",
+  "livinghorizon.impostors.tab.mobs": "Stworzenia",
+  "livinghorizon.impostors.tab.players": "Gracze",
   "livinghorizon.impostors.off": "Uproszczone byty są wyłączone: włącz je w ustawieniach, aby tworzyć i używać obrazów.",
   "livinghorizon.impostors.empty": "Brak obrazów: obrazy odległych graczy i stworzeń w pobliżu powstaną w ciągu kilku sekund.",
   "livinghorizon.impostors.regenerate": "Odtwórz",
@@ -318,5 +325,6 @@
   "livinghorizon.options.seconds": "%ss",
   "livinghorizon.options.pixels": "%s piks.",
   "livinghorizon.options.multiplier": "%sx",
-  "livinghorizon.options.percent": "%s%%"
+  "livinghorizon.options.percent": "%s%%",
+  "livinghorizon.options.megabytes": "%s MB"
 }

@@ -6,9 +6,14 @@
 - **Simplified Players** — a new setting keeps distant players as full models while mobs still turn into flat pictures far away.
 - **Languages** — Living Horizon now speaks German, Spanish, Italian, Brazilian Portuguese, Polish, Turkish, Russian, Ukrainian, Simplified and Traditional Chinese, Japanese and Korean.
 - **Sodium** — Living Horizon's settings now also appear in Sodium's *Video Settings*, as pages of their own below Sodium's (Sodium 0.8 and later).
+- **Players who logged off on a mount** — they keep their horse, boat or happy ghast and ride it around where they left: the horse walks, the boat stays on the water and the happy ghast drifts through the air.
+- **Video memory** — *Simplified Entities...* shows, in a tab for mobs and one for players, how much video memory their pictures take, and two new settings choose the most each may take.
 
 ### Improved
 - **Settings** — every setting has a clearer name and description, worded like Minecraft's own options, and distances get sliders the full width of the list.
+- **Players who logged off** — away from you they walk a small round around where they left, as distant animals do, riders included, and far away they turn into light pictures like players online, standing, seated, lying down or in a bed.
+- **Riders** — far away, a player on a horse, a boat, a minecart or anything else they ride becomes one light picture with it, instead of two full models.
+- **Crowds of players** — past a hundred or so players far away, the others no longer stay full models.
 
 ### Fixed
 - **Resizing the game window** — distant mobs keep hiding behind hills, Voxy's and Distant Horizons' included, after the window changes size, instead of showing through them until the game restarts.

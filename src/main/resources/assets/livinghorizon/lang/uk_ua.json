@@ -31,6 +31,7 @@
   "livinghorizon.offline.lastSeen": "%s — востаннє в мережі: %s",
   "livinghorizon.offline.unknown": "%s — не в мережі",
   "livinghorizon.offline.test.spawned": "Тестового гравця %s поставлено на ваше місце, поза мережею. Відійдіть, щоб побачити його; /livinghorizon debug offline test clear прибирає його.",
+  "livinghorizon.offline.test.spawnedMany": "Тестових гравців (%s) поставлено в радіусі %s блоків від вас, поза мережею. /livinghorizon debug offline test clear прибирає їх.",
   "livinghorizon.offline.test.switchedOff": "Гравців поза мережею вимкнено в налаштуваннях: увімкніть їх, щоб побачити %s.",
   "livinghorizon.offline.test.online": "%s у мережі: виберіть інше ім’я.",
   "livinghorizon.offline.test.long": "%s — задовге: ім’я гравця має щонайбільше 16 символів.",
@@ -206,6 +207,10 @@
   "livinghorizon.options.debugHud": "Дані налагодження",
   "livinghorizon.options.impostorPlayers": "Спрощені гравці",
   "livinghorizon.options.impostorPlayers.tooltip": "Далекі гравці теж спрощуються, як моби. Вимкнено: вони зберігають повну модель на будь-якій відстані, тож скін і обладунки видно в усіх деталях. Потрібні увімкнені «Спрощені сутності».",
+  "livinghorizon.options.impostorMobMemory": "Пам'ять зображень мобів",
+  "livinghorizon.options.impostorMobMemory.tooltip": "Відеопам'ять, яку можуть зайняти зображення спрощених мобів, окремо від пам'яті гравців. Займається поступово, коли з'являються нові вигляди; коли її заповнено, зображення, що найдовше не використовувалося, звільняє місце.",
+  "livinghorizon.options.impostorPlayerMemory": "Пам'ять зображень гравців",
+  "livinghorizon.options.impostorPlayerMemory.tooltip": "Відеопам'ять, яку можуть зайняти зображення спрощених гравців разом із тим, на чому вони їдуть, окремо від пам'яті мобів. Зображення, не використане протягом хвилини, видаляється.",
   "livinghorizon.options.debugHud.tooltip": "Угорі ліворуч. На екрані F3 увімкніть «living_horizon» у налаштуваннях налагодження (F3 + F6): витрати на такт і кадр, що сталося з кожним далеким мобом в останньому кадрі, читання й глибина далекого рельєфу, як далеко цей сервер надсилає мобів, які оптимізації увімкнено.",
   "livinghorizon.options.debugBoxes": "Рамки на мобах",
   "livinghorizon.options.debugBoxes.tooltip": "Рамка й точка навколо кожного далекого моба та гравця, видимі крізь рельєф, кольору того, що з ним сталося: зелений — намальовано копію, бірюзовий — справжній моб, намальований модом, синій — гравець, жовтий — замалий, помаранчевий — за блоками, червоний — поза оглядом, фіолетовий — будується, сірий — понад максимум.",
@@ -283,7 +288,9 @@
   "livinghorizon.debug.f3.impostors": "Імпостори Living Horizon: аркушів запечено %s, очікує %s",
   "livinghorizon.debug.f3.impostorsFailed": "Імпостори Living Horizon: запікання не вдалося, використовуються повні моделі (див. журнал)",
   "livinghorizon.impostors.title": "Спрощені сутності",
-  "livinghorizon.impostors.status": "Готово: %s, очікує: %s",
+  "livinghorizon.impostors.memory": "Відеопам'ять: %s з %s - зображення: %s, очікує: %s",
+  "livinghorizon.impostors.tab.mobs": "Моби",
+  "livinghorizon.impostors.tab.players": "Гравці",
   "livinghorizon.impostors.off": "«Спрощені сутності» вимкнено: увімкніть їх у налаштуваннях, щоб створювати й використовувати зображення.",
   "livinghorizon.impostors.empty": "Зображень поки немає: зображення далеких гравців і мобів довкола створюються за кілька секунд.",
   "livinghorizon.impostors.regenerate": "Створити заново",
@@ -318,5 +325,6 @@
   "livinghorizon.options.seconds": "%sс",
   "livinghorizon.options.pixels": "%s пкс",
   "livinghorizon.options.multiplier": "%s×",
-  "livinghorizon.options.percent": "%s%%"
+  "livinghorizon.options.percent": "%s%%",
+  "livinghorizon.options.megabytes": "%s МБ"
 }

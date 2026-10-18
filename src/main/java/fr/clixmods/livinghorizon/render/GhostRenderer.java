@@ -38,6 +38,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import java.util.ArrayList;
 *///?}
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.Mth;
@@ -390,7 +391,10 @@ public final class GhostRenderer {
                 if (EXTRACTED.contains(live) || live.isInvisible()) continue;
                 Entity mount = live.getRootVehicle();
                 if (debug) DebugMarks.mark(live, Mark.PLAYER);
-                if (mount == live && config.impostorPlayers && impostor(minecraft, eye, live, partialTick, config)) continue;
+                if (config.impostorPlayers && (mount == live ? impostor(minecraft, eye, live, partialTick, config)
+                        : !EXTRACTED.contains(mount) && impostorRiding(minecraft, eye, live, mount, partialTick, config))) {
+                    continue;
+                }
                 EntityRenderState body = extract(dispatcher, live, partialTick);
                 EntityRenderState mountState = mount != live && !EXTRACTED.contains(mount)
                         ? extract(dispatcher, mount, partialTick) : null;
@@ -401,7 +405,10 @@ public final class GhostRenderer {
                 if (skipped(puppet, false)) continue;
                 if (debug) DebugMarks.mark(puppet, Mark.PLAYER);
                 Entity mount = config.showVehicles ? player.mountPuppet() : null;
-                if (mount == null && config.impostorPlayers && impostor(minecraft, eye, puppet, partialTick, config)) continue;
+                if (config.impostorPlayers && (mount == null ? impostor(minecraft, eye, puppet, partialTick, config)
+                        : impostorRiding(minecraft, eye, puppet, mount, partialTick, config))) {
+                    continue;
+                }
                 EntityRenderState body = extract(dispatcher, puppet, partialTick);
                 EntityRenderState mountState = mount == null ? null : extract(dispatcher, mount, partialTick);
                 if (mountState != null && body instanceof HumanoidRenderState humanoid) {
@@ -583,7 +590,16 @@ public final class GhostRenderer {
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
             if (body == null) continue;
             RestingPuppet.Look look = puppet.look();
-            if (look != RestingPuppet.Look.STAND && body instanceof LivingEntityRenderState living) {
+            // On what they rode when they logged off: the mount drawn under them, they seated on it.
+            Entity mount = look == RestingPuppet.Look.RIDE ? puppet.mount() : null;
+            // Far away a picture, as for players online, in whatever posture they are.
+            if (config.impostorPlayers && restingImpostor(minecraft, eye, puppet, mount, look, partialTick, config)) continue;
+            EntityRenderState mountState = mount == null ? null : extract(dispatcher, mount, partialTick);
+            if (mountState != null && body instanceof HumanoidRenderState humanoid) {
+                humanoid.isPassenger = true;
+            }
+            if (look != RestingPuppet.Look.STAND && look != RestingPuppet.Look.RIDE
+                    && body instanceof LivingEntityRenderState living) {
                 living.yRot = 0;
                 living.xRot = 0;
                 living.walkAnimationSpeed = 0;
@@ -595,13 +611,13 @@ public final class GhostRenderer {
                     // rotation when there is no bed, a little lower than on a mattress.
                     living.pose = Pose.SLEEPING;
                     living.bedOrientation = null;
-                    body.y += 0.13;
+                    body.y += LIE_LIFT;
                 }
             }
             if (look == RestingPuppet.Look.SIT && body instanceof HumanoidRenderState humanoid) {
                 // The riding pose, without a mount: legs out in front, on the ground.
                 humanoid.isPassenger = true;
-                body.y -= 0.6;
+                body.y -= SEAT_DROP;
             }
             // Their name, marked offline, where the game would show it: close by, as for anyone.
             Component name = config.offlineNames ? body.nameTag : null;
@@ -612,7 +628,7 @@ public final class GhostRenderer {
                 body.nameTagAttachment = new Vec3(0, 0.3, 0);
             }
             //?}
-            add(frame, minecraft, eye, body, null, true, Mark.PLAYER, config, spot.name());
+            add(frame, minecraft, eye, body, mountState, true, Mark.PLAYER, config, spot.name());
             body.nameTag = name;
         }
     }
@@ -768,29 +784,79 @@ public final class GhostRenderer {
      * new one is baked: none of it blinks between a model and a picture.
      */
     private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config) {
+        return impostor(minecraft, eye, entity, partialTick, config, 0, 0, 0, Float.NaN);
+    }
+
+    /**
+     * @param dx     blocks the picture is moved from the figure's feet, with {@code dy} and {@code dz}:
+     *               a seated figure lowered to the ground, one in a bed laid along it
+     * @param facing the way the figure's body is taken to face, NaN for its own: along its bed
+     */
+    private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config,
+                                    double dx, double dy, double dz, float facing) {
         if (!ImpostorAtlas.usable() || !(entity instanceof LivingEntity living)
                 || entity.isPassenger() || entity.isVehicle()
                 || !drawable(minecraft.getEntityRenderDispatcher(), entity)) {
             return false;
         }
-        double x = Mth.lerp(partialTick, entity.xOld, entity.getX());
-        double y = Mth.lerp(partialTick, entity.yOld, entity.getY());
-        double z = Mth.lerp(partialTick, entity.zOld, entity.getZ());
-        double ax = x - eye.x, ay = y - eye.y, az = z - eye.z;
-        double distance = Math.sqrt(ax * ax + ay * ay + az * az);
-        Shown shown = SHOWN.get(entity);
-        double from = shown == null ? config.impostorDistance : config.impostorDistance * IMPOSTOR_RETURN;
-        if (distance <= from || distance < 1e-3) {
-            if (shown != null) SHOWN.remove(entity);
+        ImpostorKey key = ImpostorKey.of(entity);
+        float yaw = Float.isNaN(facing) ? Mth.rotLerp(partialTick, living.yBodyRotO, living.yBodyRot) : facing;
+        return picture(minecraft, eye, entity, entity, key, () -> ImpostorAtlas.request(key, entity), partialTick, config,
+                dx, dy, dz, yaw, Math.max(entity.getBbHeight(), entity.getBbWidth()));
+    }
+
+    /**
+     * A rider and its mount or vehicle as one picture, baked together: a horse, a camel, a
+     * happy ghast, a boat, a minecart, the rider seated where it sits, turned as it is
+     * turned on it. False when either cannot be pictured (a renderer that gives nothing, a
+     * vehicle carrying someone else too), and both are drawn as models.
+     */
+    private static boolean impostorRiding(Minecraft minecraft, Vec3 eye, Entity rider, Entity mount, float partialTick,
+                                          FarConfig config) {
+        EntityRenderDispatcher dispatcher = minecraft.getEntityRenderDispatcher();
+        if (!ImpostorAtlas.usable() || !(rider instanceof LivingEntity person) || mount.getPassengers().size() > 1
+                || !drawable(dispatcher, mount) || !drawable(dispatcher, rider)) {
             return false;
         }
-        ImpostorKey key = ImpostorKey.of(entity);
+        // A mob's body turns on its own, a vehicle is the way it faces.
+        float facing = mount instanceof LivingEntity horse ? horse.yBodyRot : mount.getYRot();
+        float facingO = mount instanceof LivingEntity horse ? horse.yBodyRotO : mount.yRotO;
+        Vec3 seat = rider.position().subtract(mount.position()).yRot((float) Math.toRadians(facing));
+        float turned = Mth.wrapDegrees(person.yBodyRot - facing);
+        ImpostorKey key = ImpostorKey.riding(rider, mount, seat, turned);
+        float yaw = Mth.rotLerp(partialTick, facingO, facing);
+        double extent = Math.max(Math.max(mount.getBbHeight(), seat.y + rider.getBbHeight()), mount.getBbWidth());
+        return picture(minecraft, eye, rider, mount, key,
+                () -> ImpostorAtlas.request(key, mount, new ImpostorAtlas.Rider(rider, seat, turned)), partialTick, config,
+                0, 0, 0, yaw, extent);
+    }
+
+    /**
+     * The picture of {@code key} where {@code at} stands, moved by ({@code dx}, {@code dy},
+     * {@code dz}), its view chosen for a body facing {@code yaw}; asked for with
+     * {@code request} while it is not baked. {@code shown} is the figure the picture stands
+     * for, which keeps its last picture until the new one is baked.
+     */
+    private static boolean picture(Minecraft minecraft, Vec3 eye, Entity shown, Entity at, ImpostorKey key, Runnable request,
+                                   float partialTick, FarConfig config, double dx, double dy, double dz, float yaw,
+                                   double size) {
+        double x = Mth.lerp(partialTick, at.xOld, at.getX()) + dx;
+        double y = Mth.lerp(partialTick, at.yOld, at.getY()) + dy;
+        double z = Mth.lerp(partialTick, at.zOld, at.getZ()) + dz;
+        double ax = x - eye.x, ay = y - eye.y, az = z - eye.z;
+        double distance = Math.sqrt(ax * ax + ay * ay + az * az);
+        Shown last = SHOWN.get(shown);
+        double from = last == null ? config.impostorDistance : config.impostorDistance * IMPOSTOR_RETURN;
+        if (distance <= from || distance < 1e-3) {
+            if (last != null) SHOWN.remove(shown);
+            return false;
+        }
         ImpostorAtlas.Sheet sheet = ImpostorAtlas.sheet(key);
         if (sheet == null) {
-            ImpostorAtlas.request(key, entity);
-            sheet = shown == null ? null : ImpostorAtlas.sheet(shown.key);
+            request.run();
+            sheet = last == null ? null : ImpostorAtlas.sheet(last.key);
             if (sheet == null) return false;
-            key = shown.key;
+            key = last.key;
         }
         if (distance > drawnRange) FarDepth.needed();
         farthest = Math.max(farthest, distance);
@@ -798,12 +864,10 @@ public final class GhostRenderer {
         double pull = distance > reach ? reach / distance : 1.0;
         double boost = 1.0;
         if (config.minApparentPixels > 0) {
-            double extent = Math.max(entity.getBbHeight(), entity.getBbWidth());
-            boost = Math.clamp(config.minApparentPixels / (extent / distance * pixelsPerRadian), 1.0, 400.0);
+            boost = Math.clamp(config.minApparentPixels / (size / distance * pixelsPerRadian), 1.0, 400.0);
         }
-        float yaw = Mth.rotLerp(partialTick, living.yBodyRotO, living.yBodyRot);
-        int view = ImpostorViews.view(yaw, -ax, -az, shown == null ? -1 : shown.view);
-        SHOWN.put(entity, new Shown(key, view, frame));
+        int view = ImpostorViews.view(yaw, -ax, -az, last == null ? -1 : last.view);
+        SHOWN.put(shown, new Shown(key, view, frame));
         int light = light(minecraft.level, x, y, z);
         int outline = minecraft.player == null ? 0 : DebugMarks.impostorOutline(config);
         if (outline != 0 && ImpostorRenderer.OUTLINES) glowing = true;
@@ -814,6 +878,54 @@ public final class GhostRenderer {
             FarDepth.figure(ax, ay + extent * 0.5, az, extent * 0.75);
         }
         return true;
+    }
+
+    /** Blocks a figure in the riding pose is lowered by to sit on the ground: the seat's height. */
+    private static final double SEAT_DROP = 0.6;
+    /** Blocks a figure lying on the ground is raised by: the game lays a sleeper a little low. */
+    private static final double LIE_LIFT = 0.13;
+
+    /**
+     * A player who logged off as a picture, in its posture: standing, seated on the ground,
+     * lying on it or in a bed (laid along the bed, as the game lays a sleeper), or on its mount.
+     */
+    private static boolean restingImpostor(Minecraft minecraft, Vec3 eye, RestingPuppet puppet, @Nullable Entity mount,
+                                           RestingPuppet.Look look, float partialTick, FarConfig config) {
+        return switch (look) {
+            case STAND -> impostor(minecraft, eye, puppet, partialTick, config);
+            case SIT -> impostor(minecraft, eye, puppet, partialTick, config, 0, -SEAT_DROP, 0, Float.NaN);
+            // Lying pictures are baked raised (ImpostorAtlas.LYING_LIFT): lowered back here.
+            case LIE -> impostor(minecraft, eye, puppet, partialTick, config, 0, LIE_LIFT - ImpostorAtlas.LYING_LIFT, 0,
+                    Float.NaN);
+            case BED -> {
+                Direction bed = puppet.getBedOrientation();
+                if (bed == null) {
+                    yield impostor(minecraft, eye, puppet, partialTick, config, 0, LIE_LIFT - ImpostorAtlas.LYING_LIFT, 0,
+                            Float.NaN);
+                }
+                // As the game lays one: its head on the pillow, its body along the bed.
+                double back = puppet.getEyeHeight() - 0.1;
+                yield impostor(minecraft, eye, puppet, partialTick, config, -bed.getStepX() * back,
+                        -ImpostorAtlas.LYING_LIFT, -bed.getStepZ() * back, sleeping(bed));
+            }
+            case RIDE -> mount != null && impostorRiding(minecraft, eye, puppet, mount, partialTick, config);
+        };
+    }
+
+    /** The body rotation the game lays a sleeper at in a bed facing {@code bed}. */
+    private static float sleeping(Direction bed) {
+        return switch (bed) {
+            case SOUTH -> 90f;
+            case WEST -> 0f;
+            case NORTH -> 270f;
+            default -> 180f;
+        };
+    }
+
+    /** Whether a figure was drawn as a picture in the last frames: for the game tests and the debug tools. */
+    public static boolean pictured(Entity entity) {
+        Shown shown = SHOWN.get(entity);
+        return shown != null && frame - shown.frame <= 3;
     }
 
     /** Forgets the figures not drawn as impostors for a while: puppets come and go. */

@@ -26,7 +26,7 @@ import java.util.function.Function;
  * stroll), in the morning they get up and stay around; hit, they raise a shield; a monster
  * they cannot see leaves them calm, one in sight puts them on guard, sword drawn, until it is
  * gone; a creeper blowing up throws them, and they walk back. Last, the switch that hides
- * them all, and the debug command's test player.
+ * them all, and the debug command's test player, then a crowd of them.
  */
 public final class RestingScenario implements Scenario {
     private static final String NAME = "LH_Sleeper";
@@ -197,9 +197,13 @@ public final class RestingScenario implements Scenario {
             Scene.log("resting creeper: thrown " + thrown);
             if (!thrown) throw new AssertionError("resting: not thrown by the creeper");
             Scene.screenshot(context, this, "thrown");
-            wait(context, world, 200);
-            Vec3 back = sleeper(context, p -> p.position());
-            double off = Math.hypot(back.x - stood.x, back.z - stood.z);
+            // Back where it stood at some point: once there, it may well go for a stroll again.
+            double off = Double.MAX_VALUE;
+            for (int k = 0; k < 20 && off > 0.5; k++) {
+                wait(context, world, 10);
+                Vec3 back = sleeper(context, p -> p.position());
+                off = Math.min(off, Math.hypot(back.x - stood.x, back.z - stood.z));
+            }
             Scene.log("resting creeper: " + off + " blocks from where they stood");
             if (off > 1.5) throw new AssertionError("resting: did not walk back after the blast, " + off + " blocks off");
 
@@ -238,6 +242,32 @@ public final class RestingScenario implements Scenario {
                     .noneMatch(s -> s.name().equals("Tester")));
             if (!gone) throw new AssertionError("resting test player still there after clear");
             Scene.log("resting test player cleared");
+
+            // A crowd of them: twelve, all within 20 blocks, on the ground, gone with clear.
+            clientCommand(context, "livinghorizon debug offline test crowd 12 20");
+            wait(context, world, 10);
+            String crowd = context.computeOnClient(minecraft -> {
+                RestingPlayers resting = FarPlayerTracker.get().resting();
+                Vec3 me = minecraft.player.position();
+                long count = resting.spots().stream().filter(resting::isFake).count();
+                for (RestingPlayers.Spot s : resting.spots()) {
+                    if (!resting.isFake(s)) continue;
+                    double from = Math.hypot(s.x() - me.x, s.z() - me.z);
+                    if (from > 20.01 || Math.abs(s.y() - GROUND) > 1e-3) return s.name() + " " + from + " blocks away, y=" + s.y();
+                }
+                return count == 12 ? null : count + " test players";
+            });
+            if (crowd != null) throw new AssertionError("resting crowd: " + crowd);
+            // Each in a real player's skin, fetched from Mojang: logged, not checked, as the
+            // game may have no way out to Mojang where it runs.
+            wait(context, world, 100);
+            long dressed = context.computeOnClient(minecraft -> FarPlayerTracker.get().resting().spots().stream()
+                    .filter(rested -> rested.textures() != null).count());
+            Scene.log("resting crowd: " + dressed + " of 12 in a real player's skin");
+            Scene.screenshot(context, this, "crowd");
+            clientCommand(context, "livinghorizon debug offline test clear");
+            wait(context, world, 10);
+            Scene.log("resting crowd placed and cleared");
         }
     }
 

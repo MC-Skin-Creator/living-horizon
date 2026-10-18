@@ -162,6 +162,7 @@ label `mod compatibility`.
   `/livinghorizon bird <kind>` calls any kind of bird at once.
 - **Find players where they left.** Someone who logged off lives their life where they
   were - a stroll, a seat, a bed at night, a shield against monsters - until they come back.
+  One who left on a horse, a boat or a happy ghast keeps it and rides it about.
 - **Tune it.** Everything is in the settings (see *Settings* below): which mobs, which
   birds, how many, how far.
 
@@ -207,6 +208,8 @@ label `mod compatibility`.
 | `hideOccludedMobs` | `true` | | Do not draw distant mobs behind terrain at all (see *Mobs hidden by depth* below). In *Debug Options...*, with `depthOcclusion` |
 | `impostors` | `true` | | Draw far players and mobs as a flat picture of themselves (see *Impostors*) |
 | `impostorDistance` | `128` | blocks | Past this distance an impostor stands in for the model |
+| `impostorMobMemory` | `1024` | MB | Video memory the mobs' pictures may take, from 64 to 4096, apart from the players' |
+| `impostorPlayerMemory` | `512` | MB | Video memory the players' pictures may take (riders with what they ride), from 32 to 2048, apart from the mobs' |
 | `animationMinPixels` | `10` | pixels | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
 | `animationMaxDistance` | `0` | blocks | Past this, no distant mob plays an animation (`0`: no limit) |
 
@@ -228,7 +231,13 @@ label `mod compatibility`.
 - **Test players who logged off**, to try that feature alone in single player:
   `/livinghorizon debug offline test spawn [name] [minutes]` places one where you stand,
   wearing your skin, logged off that many minutes ago (default `Sleeper1`, `Sleeper2`...,
-  just now); `... test clear` removes them; `... test list` shows everyone resting on this
+  just now), on a copy of what you ride if you ride something. `... spawn <name> <minutes>
+  <count> [radius]` places that many (`name1`, `name2`...), up to 100, each on the ground
+  somewhere within the radius around you (16 blocks if none is given, up to 256), facing a way
+  of its own, on your mount at your height if it flies, and each in the skin of a different
+  real player, fetched from Mojang (from 1.21.9; before, the default skin of its name);
+  `... test crowd <count> [radius] [minutes]` does the same with names of their own
+  (`Sleeper1`...). `... test clear` removes them; `... test list` shows everyone resting on this
   server, where and since when. Test players are never written to the file: they are gone
   at the next start.
 - **Far terrain**: `/livinghorizon lod` (or `voxy`) says which far-terrain mod is read
@@ -303,6 +312,29 @@ nothing can hurt them. Either way they keep to the ground: break the pile they s
 they fall to the floor below; bury them and they reappear on top. Sitting, their own spot
 wins again once it has room and something under it, since that is where they will come back.
 With nothing below down to the bottom of the world, they stay where they are.
+
+All of that only within 48 blocks of the camera. Farther (past 64 blocks, back under 48),
+they have no life of their own (`track/RestingLoop`): nothing is read nor decided, they play
+one of the animations distant mobs play (`track/MobAnimations`), in a loop around their spot,
+on the ground read around it once (`track/MobPaths`), seated in some of its pauses and lying
+down where they are at night. Coming from wherever their life left them, they walk back to
+it at a stroll, stopping now and then to look around, and start their loop once there; once
+the camera is near again, their life goes on from where the loop left them.
+
+A player who logs off riding something keeps it (`track/RestingMount`), when `showVehicles` is
+on: the server takes the mount away with them, so a copy of it, as this client last saw it
+(coat, saddle, armour), is kept with their spot and drawn under them, never as a remembered mob
+of its own. With `offlineLife` on, it carries them about their spot, within `offlineRoam`
+blocks, then rests a while and goes again: a horse (any mount that walks) only where it has
+room for itself and its rider, worked out like a walk on foot; a boat on the water it floats
+on, staying put on land; a happy ghast in straight lines through open air, at most 24 blocks
+from its spot and 4 up or down. Anything else, a minecart or another mod's mount, stays where
+it was. In the saddle they look around, and raise their shield when hit; no bed, no chest, no
+sword. Away from the camera the mount plays a loop as a player on foot does: a horse on the
+ground read around the spot, a boat on the water, a happy ghast in the air at its height. With
+`offlineLife` off both wait on the spot.
+Players who share their mount with another player rest on foot: the server leaves it to the
+other one.
 
 Their name shows above them, followed by *(offline)*, as close as the game shows names (64
 blocks). Aiming at one from right next to it (3 blocks) shows, under the crosshair, when
@@ -479,16 +511,20 @@ nothing, and the game no longer builds a render state and a model for it every f
   4 rows, then 8, 16, then 32, every tile 64 pixels. A figure larger than its box (a
   horse's muzzle) is drawn smaller in its tile rather than cut off: at a hundred blocks a
   figure is a dozen pixels tall. Two looks whose pictures come out the same, pixel for
-  pixel, share one sheet. The mobs keep their sheets, up to 1 GB of video memory in all,
+  pixel, share one sheet. The mobs keep their sheets, up to `impostorMobMemory` (1 GB) of
+  video memory in all,
   taken only as looks are met (a world of 50 looks takes a few MB); past that, an unused
   sheet of the same kind gives way, or the figure stays a model for 30 seconds. The
-  players' are thrown away after a minute unused, up to 128. A sheet drawn or asked for in
-  the last 10 seconds is never replaced.
+  players' (riders with what they ride included) have `impostorPlayerMemory` (512 MB) of their
+  own, some three thousand sheets, and are thrown away after a minute unused: they never take the mobs' room,
+  nor the mobs theirs. A sheet takes 170 KB of video memory (512 by 64 pixels and three
+  smaller levels). A sheet drawn or asked for in the last 10 seconds is never replaced.
 - **On disk.** `ImpostorDisk` keeps the mobs' sheets in
   `config/livinghorizon/impostors/<fingerprint>/`, so that a mob met in an earlier game is
   read back rather than baked. The fingerprint is the game version, the resource packs
   chosen and their files, the jars in `mods/` and the sheet format: when one changes, the
-  folder is thrown away. At most 4096 sheets, the ones met longest ago going first.
+  folder is thrown away. At most 4096 sheets, the ones met longest ago going first, some 35 KB
+  each once compressed: 140 MB at most.
 - **Preview.** *Simplified Entities...* in the settings, or `/livinghorizon impostors`: every figure
   baked, its eight views, and its front view at 32, 16 and 8 screen pixels, as it looks
   far away. *Rebuild* throws every picture away, on disk too, and bakes the figures on
@@ -501,8 +537,19 @@ nothing, and the game no longer builds a render state and a model for it every f
   not only round, since it was baked as seen from that height, and the wing beat goes on
   from one sheet to the next. Bird sheets are baked again each game, never kept on disk, and
   named after the species in the impostor screen.
-- **Not impostors:** figures with a mount or a rider, players resting on the ground, the
-  2D birds, parrots and bats.
+- **Players who logged off** are impostors in every posture: standing, seated on the ground,
+  lying down or in a bed. A posture other than standing is part of the key
+  (`ImpostorKey.posture`), and the picture is baked in it: the riding pose for a seated
+  figure, drawn lowered to the ground as the model is; lying along its body for a sleeper,
+  baked raised (`ImpostorAtlas.LYING_LIFT`) so that none of it falls below the tile, laid
+  along its bed when it is in one.
+- **Riders** (players online or not, on a horse, a camel, a happy ghast, in a boat, a raft, a
+  minecart...) are baked with what carries them in one picture (`ImpostorKey.riding`,
+  `ImpostorAtlas.Rider`): the rider seated where it sits on it, turned as it is turned. A
+  vehicle has no body to turn in its state: the entity itself is turned for each view and put
+  back after the bake. Filed as a player's, never kept on disk.
+- **Not impostors:** a vehicle carrying more than one passenger (drawn as models, all of
+  them), the 2D birds, parrots and bats.
 
 ### The far terrain's depth
 
