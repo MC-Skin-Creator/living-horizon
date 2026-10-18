@@ -11,6 +11,8 @@ import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Where a figure of a player can be, read from the blocks the client has: room for its
@@ -189,6 +191,72 @@ final class Footing {
             if (level.getFluidState(at).is(FluidTags.LAVA) || burns(level.getBlockState(at))) return true;
         }
         return false;
+    }
+
+    /**
+     * Its feet in water: wading, swimming, or floating on the surface with nothing under it.
+     * Where a player who logged off is never left: see {@link #shore}.
+     */
+    static boolean wet(ClientLevel level, double x, double y, double z) {
+        if (level.getFluidState(BlockPos.containing(x, y + 0.05, z)).is(FluidTags.WATER)) return true;
+        return level.getFluidState(BlockPos.containing(x, y - 0.1, z)).is(FluidTags.WATER)
+                && free(level, new AABB(x - 0.3, y - 0.1, z - 0.3, x + 0.3, y + 0.01, z + 0.3));
+    }
+
+    /** The top of the water it is in: the surface a boat floats on. */
+    static double surface(ClientLevel level, double x, double y, double z) {
+        int top = level.getMinY() + level.getHeight();
+        BlockPos.MutableBlockPos at = BlockPos.containing(x, y + 0.05, z).mutable();
+        // Floating on it: the water is just under its feet.
+        if (!level.getFluidState(at).is(FluidTags.WATER)) at.move(0, -1, 0);
+        double surface = y;
+        for (; at.getY() < top; at.move(0, 1, 0)) {
+            FluidState fluid = level.getFluidState(at);
+            if (!fluid.is(FluidTags.WATER)) break;
+            surface = at.getY() + fluid.getHeight(level, at);
+        }
+        return surface;
+    }
+
+    /** Whether every block within {@code radius} blocks across is known to the client. */
+    static boolean loadedAround(ClientLevel level, double x, double z, int radius) {
+        int bx = (int) Math.floor(x), bz = (int) Math.floor(z);
+        for (int dx = -radius; dx <= radius; dx += radius) {
+            for (int dz = -radius; dz <= radius; dz += radius) {
+                if (!level.hasChunkAt(new BlockPos(bx + dx, 0, bz + dz))) return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * The nearest place out of the water to stand on, within {@code radius} blocks across of
+     * where it is: a bank or a beach, from the surface up to three blocks above it, never a
+     * pocket of air under the water. Null when there is none.
+     */
+    static @Nullable Vec3 shore(ClientLevel level, double x, double y, double z, int radius) {
+        int bx = (int) Math.floor(x), bz = (int) Math.floor(z);
+        int water = (int) Math.floor(surface(level, x, y, z) - 1e-3);
+        Vec3 best = null;
+        double bestCost = Double.MAX_VALUE;
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                int across = dx * dx + dz * dz;
+                if (across > radius * radius || across >= bestCost) continue;
+                for (int by = water; by <= water + 3; by++) {
+                    double height = stand(level, bx + dx, by, bz + dz);
+                    if (Double.isNaN(height)) continue;
+                    // Across first; a climb weighs a little, to break ties between banks.
+                    double cost = across + (by - water) * 0.1;
+                    if (cost < bestCost) {
+                        bestCost = cost;
+                        best = new Vec3(bx + dx + 0.5, height, bz + dz + 0.5);
+                    }
+                    break;
+                }
+            }
+        }
+        return best;
     }
 
     /** Its head under water. */

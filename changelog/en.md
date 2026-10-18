@@ -16,6 +16,7 @@
 - **Offline players** — players who logged off walk a small loop around where they left, and turn into flat pictures far away like online players, whether standing, sitting, lying down or in bed.
 - **Riders** — far away, a player riding a horse, a boat, a minecart or anything else becomes one flat picture with their mount, which is much lighter than two full models.
 - **Large crowds of players** — with more than about a hundred distant players, the extra ones now turn into flat pictures too instead of staying full models.
+- **Offline players out of the water** — players who logged off while swimming are no longer left standing in the water: they wait on the nearest shore, or row a boat when the shore is more than 10 blocks away.
 
 ### Fixed
 - **Mobs showing through hills after resizing the window** — distant mobs no longer show through hills, Voxy's and Distant Horizons' included, after the game window changes size.

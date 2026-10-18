@@ -313,6 +313,13 @@ they fall to the floor below; bury them and they reappear on top. Sitting, their
 wins again once it has room and something under it, since that is where they will come back.
 With nothing below down to the bottom of the world, they stay where they are.
 
+They are never left standing in water, on or off: someone who logged off swimming or wading
+rests on the nearest place to stand within 10 blocks of their spot (a bank or a beach, from
+the water's surface up to three blocks above it), decided once the blocks around are loaded.
+Living, their life and their loop go on from that shore; sitting, they sit there. With no
+shore that near they get an oak boat on the surface, which carries them as a mount does (see
+below), whether `showVehicles` is on or not; once its water is gone, they are back on foot.
+
 All of that only within 48 blocks of the camera. Farther (past 64 blocks, back under 48),
 they have no life of their own (`track/RestingLoop`): nothing is read nor decided, they play
 one of the animations distant mobs play (`track/MobAnimations`), in a loop around their spot,
