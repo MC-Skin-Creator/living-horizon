@@ -395,11 +395,18 @@ The release dates the section, opens a new empty one, and posts the entries on M
 (Changelog tab), CurseForge (file page) and Discord. Players read them, so write for
 someone who has never seen the code:
 
-- one short sentence per bullet, a bold subject first: `**Photon** — distant mobs hide
-  behind the right hills again.`
+- write like Minecraft's own release notes: one short sentence per bullet, a bold subject
+  first that names what the player sees (the feature, or the bug as it looked), never a
+  version or a mod alone; where it applies goes in brackets at the end:
+  `**Distant mobs showing through hills** — distant mobs no longer show through Voxy's
+  hills (Minecraft 26.1).`
+- a fix says what was wrong and that it is gone ("no longer…"), never only the new
+  behaviour: "mobs hide behind hills" reads as a feature, not a fix.
 - say what the player notices, not how it was done: no shader, depth, buffer, pass,
-  query, mask, class or setting internals; nothing about the debug screens.
-- a fix says what was wrong and that it is gone, naming the mod or game version involved.
+  query, mask, class or setting internals; nothing about the debug screens. Name settings
+  and screens as the game shows them (impostors are *Simplified Entities*), and explain
+  them in plain words (flat pictures of far mobs).
+- one bullet per problem: two causes of the same symptom share one bullet.
 - nothing for CI, refactors, tooling, documentation or debug-only tools.
 
 ## Issues
