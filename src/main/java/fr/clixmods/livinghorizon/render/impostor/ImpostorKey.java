@@ -1,5 +1,6 @@
 package fr.clixmods.livinghorizon.render.impostor;
 
+import fr.clixmods.livinghorizon.track.RestingPuppet;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.core.BlockPos;
@@ -100,8 +101,38 @@ public record ImpostorKey(String type, long appearance) {
     /** The shared flags that change nothing on the picture: on fire, sprinting, glowing. */
     private static final int UNSEEN_FLAGS = 1 | 1 << 3 | 1 << 6;
 
-    /** The key of a figure, worked out at most every few seconds: figures hardly ever change. */
+    /**
+     * Keys of figures seated on the ground, players who logged off and sit on their spot: a
+     * picture of their own, baked seated ({@link #seated(ImpostorKey)}).
+     */
+    private static final Set<ImpostorKey> SEATED = new HashSet<>();
+    /** Mixed into a seated figure's key, so that it never meets the same figure standing. */
+    private static final long SEATED_SALT = 0x5EA7EDL;
+
+    /**
+     * The key of a figure: its look, worked out at most every few seconds, since figures
+     * hardly ever change; and its pose, sitting or not, which changes often, every time.
+     */
     public static ImpostorKey of(Entity entity) {
+        ImpostorKey key = look(entity);
+        if (!seated(entity)) return key;
+        ImpostorKey sitting = new ImpostorKey(key.type, key.appearance * 31 + SEATED_SALT);
+        if (SEATED.size() > 4096) SEATED.clear();
+        SEATED.add(sitting);
+        return sitting;
+    }
+
+    /** A player who logged off, sitting on the ground. */
+    public static boolean seated(Entity entity) {
+        return entity instanceof RestingPuppet puppet && puppet.look() == RestingPuppet.Look.SIT;
+    }
+
+    /** Whether this key is a seated figure's: its picture is baked seated. */
+    public static boolean seated(ImpostorKey key) {
+        return SEATED.contains(key);
+    }
+
+    private static ImpostorKey look(Entity entity) {
         long now = System.currentTimeMillis();
         Known known = KNOWN.get(entity);
         if (known != null && now - known.when < KEEP) return known.key;
@@ -116,6 +147,7 @@ public record ImpostorKey(String type, long appearance) {
 
     public static void forgetAll() {
         KNOWN.clear();
+        SEATED.clear();
     }
 
     /** What has been learnt to leave out, a copy: by kind of mob, then by synched value. */

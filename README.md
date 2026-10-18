@@ -519,8 +519,11 @@ nothing, and the game no longer builds a render state and a model for it every f
   not only round, since it was baked as seen from that height, and the wing beat goes on
   from one sheet to the next. Bird sheets are baked again each game, never kept on disk, and
   named after the species in the impostor screen.
-- **Not impostors:** figures with a mount or a rider, players resting on the ground, the
-  2D birds, parrots and bats.
+- **Players who logged off** are impostors standing, and seated on the ground too: a seated
+  figure's key is a key of its own (`ImpostorKey.seated`), its picture baked in the riding
+  pose and drawn lowered to the ground, as the model is.
+- **Not impostors:** figures with a mount or a rider, players who logged off lying down or in
+  a bed, the 2D birds, parrots and bats.
 
 ### The far terrain's depth
 

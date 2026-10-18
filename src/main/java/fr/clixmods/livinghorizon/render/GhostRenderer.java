@@ -583,6 +583,13 @@ public final class GhostRenderer {
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
             if (body == null) continue;
             RestingPuppet.Look look = puppet.look();
+            // Far away a picture, as for players online: standing, or seated on the ground. Lying
+            // down, in a bed or on a mount they keep their model.
+            boolean pictured = look == RestingPuppet.Look.STAND || look == RestingPuppet.Look.SIT;
+            if (pictured && config.impostorPlayers && impostor(minecraft, eye, puppet, partialTick, config,
+                    look == RestingPuppet.Look.SIT ? SEAT_DROP : 0)) {
+                continue;
+            }
             // On what they rode when they logged off: the mount drawn under them, they seated on it.
             Entity mount = look == RestingPuppet.Look.RIDE ? puppet.mount() : null;
             EntityRenderState mountState = mount == null ? null : extract(dispatcher, mount, partialTick);
@@ -608,7 +615,7 @@ public final class GhostRenderer {
             if (look == RestingPuppet.Look.SIT && body instanceof HumanoidRenderState humanoid) {
                 // The riding pose, without a mount: legs out in front, on the ground.
                 humanoid.isPassenger = true;
-                body.y -= 0.6;
+                body.y -= SEAT_DROP;
             }
             // Their name, marked offline, where the game would show it: close by, as for anyone.
             Component name = config.offlineNames ? body.nameTag : null;
@@ -774,14 +781,23 @@ public final class GhostRenderer {
      * look changes (a sheep sheared, a player's armour) it keeps its old picture until the
      * new one is baked: none of it blinks between a model and a picture.
      */
+    /** Blocks a figure in the riding pose is lowered by to sit on the ground: the seat's height. */
+    private static final double SEAT_DROP = 0.6;
+
     private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config) {
+        return impostor(minecraft, eye, entity, partialTick, config, 0);
+    }
+
+    /** @param drop blocks the picture is lowered by from the figure's feet: a seated figure's {@link #SEAT_DROP} */
+    private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config,
+                                    double drop) {
         if (!ImpostorAtlas.usable() || !(entity instanceof LivingEntity living)
                 || entity.isPassenger() || entity.isVehicle()
                 || !drawable(minecraft.getEntityRenderDispatcher(), entity)) {
             return false;
         }
         double x = Mth.lerp(partialTick, entity.xOld, entity.getX());
-        double y = Mth.lerp(partialTick, entity.yOld, entity.getY());
+        double y = Mth.lerp(partialTick, entity.yOld, entity.getY()) - drop;
         double z = Mth.lerp(partialTick, entity.zOld, entity.getZ());
         double ax = x - eye.x, ay = y - eye.y, az = z - eye.z;
         double distance = Math.sqrt(ax * ax + ay * ay + az * az);

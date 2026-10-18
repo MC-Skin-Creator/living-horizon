@@ -10,6 +10,7 @@
 
 ### Improved
 - **Settings** — every setting has a clearer name and description, worded like Minecraft's own options, and distances get sliders the full width of the list.
+- **Players who logged off** — far away they turn into light pictures like players online, standing or seated, instead of full models.
 
 ## 0.7.0 — 2026-10-17
 

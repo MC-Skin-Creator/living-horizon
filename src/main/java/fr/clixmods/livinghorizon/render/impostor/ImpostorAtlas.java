@@ -92,6 +92,7 @@ import fr.clixmods.livinghorizon.render.Sink;
 import fr.clixmods.livinghorizon.track.Puppets;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.entity.state.HumanoidRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
@@ -883,11 +884,14 @@ public final class ImpostorAtlas {
         return ImpostorViews.worldSize(Math.max(0.3, puppet.getBbHeight()), Math.max(0.3, puppet.getBbWidth()));
     }
 
-    /** A figure's state for one view, still and lit evenly. */
-    private static EntityRenderState staged(Minecraft minecraft, Entity puppet, int view) {
+    /** A figure's state for one view, still and lit evenly; seated if its key says so. */
+    private static EntityRenderState staged(Minecraft minecraft, Request request, int view) {
+        Entity puppet = request.puppet;
         EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), puppet, 1.0f);
         if (state == null) throw new LeftOut();
         stage(state, view);
+        // The riding pose, legs out in front: a player who logged off, sitting on the ground.
+        if (ImpostorKey.seated(request.key) && state instanceof HumanoidRenderState humanoid) humanoid.isPassenger = true;
         // Water mobs were in water when last seen; a puppet is in no world.
         if (state instanceof LivingEntityRenderState living && GhostRenderer.livesInWater(puppet)) {
             living.isInWater = true;
@@ -920,7 +924,7 @@ public final class ImpostorAtlas {
         if (request.figure != null) {
             request.figure.draw(pose, new Sink(storage), 180f - view * (360f / ImpostorViews.VIEWS));
         } else {
-            minecraft.getEntityRenderDispatcher().submit(staged(minecraft, request.puppet, view), new CameraRenderState(),
+            minecraft.getEntityRenderDispatcher().submit(staged(minecraft, request, view), new CameraRenderState(),
                     0.0, 0.0, 0.0, pose, storage);
         }
     }
@@ -929,7 +933,7 @@ public final class ImpostorAtlas {
         if (request.figure != null) {
             request.figure.draw(pose, new Sink(buffers), 180f - view * (360f / ImpostorViews.VIEWS));
         } else {
-            GhostRenderer.drawState(staged(minecraft, request.puppet, view), 0.0, 0.0, 0.0, pose, buffers, FULL_BRIGHT);
+            GhostRenderer.drawState(staged(minecraft, request, view), 0.0, 0.0, 0.0, pose, buffers, FULL_BRIGHT);
         }
     }
     *///?}

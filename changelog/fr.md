@@ -10,6 +10,7 @@
 
 ### Améliorations
 - **Paramètres** — chaque paramètre a un nom et une description plus clairs, dans le style des options de Minecraft, et les distances ont des curseurs sur toute la largeur de la liste.
+- **Joueurs déconnectés** — au loin, ils deviennent des images légères comme les joueurs connectés, debout ou assis, au lieu de modèles complets.
 
 ## 0.7.0 — 2026-10-17
 
