@@ -1,13 +1,27 @@
 package fr.clixmods.livinghorizon.gametest;
 
+import fr.clixmods.livinghorizon.gametest.scenario.BirdCommandScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.BirdsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.EasterEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.FollowedMobsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.GaitsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.ImpostorCrowdScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.ImpostorEdgesScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.ImpostorLongMobsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.ImpostorScreenScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.ImpostorSharingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.PerchersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RememberedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ResizeScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.RestingScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.SodiumControlsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.SodiumPagesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.UnloadScenario;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -29,14 +43,28 @@ import java.util.stream.Collectors;
 public final class LivingHorizonGameTests implements FabricClientGameTest {
     private static final List<Scenario> SCENARIOS = List.of(
             new ImpostorsScenario(),
+            new ImpostorSharingScenario(),
+            new ImpostorCrowdScenario(),
+            new ImpostorEdgesScenario(),
+            new ImpostorLongMobsScenario(),
+            new ImpostorScreenScenario(),
             new LightingScenario(),
             new RememberedMobsScenario(),
             new OutlinesScenario(),
+            new RestingScenario(),
             new OptionsScreenScenario(),
+            new SodiumPagesScenario(),
+            new SodiumControlsScenario(),
             new DepthViewScenario(),
             new EntityDepthScenario(),
             new ResizeScenario(),
-            new UnloadScenario());
+            new UnloadScenario(),
+            new FollowedMobsScenario(),
+            new GaitsScenario(),
+            new EasterEggsScenario(),
+            new BirdsScenario(),
+            new PerchersScenario(),
+            new BirdCommandScenario());
 
     @Override
     public void runTest(ClientGameTestContext context) {

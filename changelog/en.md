@@ -3,17 +3,66 @@
 ## Unreleased
 
 ### New
+- **Simplified Players** — a new setting keeps distant players as full models while mobs still turn into flat pictures far away.
+- **Languages** — Living Horizon now speaks German, Spanish, Italian, Brazilian Portuguese, Polish, Turkish, Russian, Ukrainian, Simplified and Traditional Chinese, Japanese and Korean.
+- **Sodium** — Living Horizon's settings now also appear in Sodium's *Video Settings*, as pages of their own below Sodium's (Sodium 0.8 and later).
+
+### Improved
+- **Settings** — every setting has a clearer name and description, worded like Minecraft's own options, and distances get sliders the full width of the list.
+
+### Fixed
+- **Resizing the game window** — distant mobs keep hiding behind hills, Voxy's and Distant Horizons' included, after the window changes size, instead of showing through them until the game restarts.
+
+## 0.7.0 — 2026-10-17
+
+### New
+- **Players who logged off** — they live their life around where they left, as far as a village: they stroll, sit, look at chests and workstations, walk through doors to a bed at night, and raise a shield against monsters in sight and hits; they keep to the ground: break their floor and they fall, bury them and they climb back on top.
+- **Offline names** — players who logged off show their name marked *(offline)*, and aiming at one up close tells when they were last seen; settings hide their names, or the players themselves.
+- **3D birds** — every bird is now a small model, like the game's mobs, with beating wings and legs when perched; far away they become light pictures, like distant mobs with impostors on. *Bird style* in the settings brings back the flat 2D birds.
+- **Hmm…** — I thought I saw something in the sky. 😉
+
+### Improved
+- **Distant mobs** — slimes, magma cubes and rabbits now hop their way around instead of sliding, a slime squashing as it lands, and chickens flap their wings stepping down a block.
+- **Ducks** — when you come near, they take off together and land farther along the water instead of flying away for good.
+
+### Fixed
+- **Spyglass** — distant mobs seen through a spyglass are measured at their zoomed size: *Animation size* now matches what you see, and they keep walking when they look big.
+- **Opening a world** — distant mobs walk and graze from the start, instead of only turning on the spot.
+- **Perched birds** — tits, robins and ducks no longer dart back and forth, stand in the air or inside the leaves, or swim onto dry land, and ducks no longer appear right next to you only to fly off at once; ducks now swim about their pond instead of jumping in a loop, and robins and tits hop more and take off less.
+- **Mod list** — Forge, NeoForge and Quilt no longer show Living Horizon under the wrong license.
+
+## 0.6.0 — 2026-10-15
+
+### New
+- **Impostors** — mob pictures are saved on disk and reused the next time you play, so they are only drawn again after a change of resource packs, mods or game version.
+
+### Improved
+- **Mod icon** — a new pixel-art icon: Steve in front, and mobs, villagers, players and birds alive all the way to the mountains behind him.
+- **Single player** — distant mobs teleport or sprint to another spot far less often as you come back: they now follow the real mobs while the game still moves them, and disappear when those die.
+
+### Fixed
+- **Impostors screen** — two figures with the same name, such as villagers in different outfits, no longer swap places and flicker.
+- **Impostors** — the thin dark lines and black specks that sometimes showed along the top or bottom edge of far mobs are gone, and long mobs such as horses and sniffers are no longer cut off at the muzzle or tail.
+- **GeckoLib mobs on Minecraft 1.21.2 to 1.21.8** — a world no longer crashes a few seconds after loading when a mob from a GeckoLib mod was met far away; such mobs are not shown far away yet.
+- **Impostors** — the game no longer slows down with impostors on: the same mobs are no longer drawn into new pictures over and over, and mobs that look alike share one picture, kept from one world to the next.
+
+## 0.5.0 — 2026-10-13
+
+### New
 - **Impostors on Minecraft 1.20.1 to 1.21.8** — far players and mobs are drawn as light pictures of themselves on these versions too, and the Impostor Manager shows them.
 
 ### Fixed
 - **Forge 1.20.1 to 1.20.4** — the game no longer crashes on startup with the mod installed.
 - **Impostors screen on Minecraft 1.21.8 and older** — opening it no longer crashes the game.
 - **Joining a world** — mobs already around you when you join are drawn far away too, instead of only those met afterwards.
+
+## 0.4.2 — 2026-10-12
+
+### Fixed
 - **Mobs leaving your range** — a mob no longer vanishes for a few frames before its distant copy appears.
 - **Mobs leaving your range** — the distant copy now faces the way the mob did, instead of sometimes turning to another direction.
 - **Minecraft 1.21.9 to 26.1** — parts of distant mobs, such as a villager's clothes or a held item, no longer show through Voxy's terrain under shaders, nor through Distant Horizons' terrain.
 - **Minecraft 26.1 and later** — the see-through parts of distant mobs, such as a slime's outer layer, no longer show through Voxy's terrain under shaders, nor through Distant Horizons' terrain.
-- **Resizing the game window** — distant mobs keep hiding behind hills, Voxy's and Distant Horizons' included, after the window changes size, instead of showing through them until the game restarts.
 
 ## 0.4.1 — 2026-10-11
 

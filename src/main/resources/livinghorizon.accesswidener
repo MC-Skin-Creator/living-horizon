@@ -84,3 +84,12 @@ accessible field net/minecraft/world/level/entity/PersistentEntitySectionManager
 # The far plane, which the camera holds from 26.1: read where the game renderer used to answer.
 # @since 26.1
 accessible field net/minecraft/client/Camera depthFar F
+
+# How far through its hop a distant rabbit is, which kicks its legs; the class moved in 1.21.11.
+# @since 1.21.11
+accessible field net/minecraft/world/entity/animal/rabbit/Rabbit jumpTicks I
+accessible field net/minecraft/world/entity/animal/rabbit/Rabbit jumpDuration I
+
+# @until 1.21.10
+accessible field net/minecraft/world/entity/animal/Rabbit jumpTicks I
+accessible field net/minecraft/world/entity/animal/Rabbit jumpDuration I

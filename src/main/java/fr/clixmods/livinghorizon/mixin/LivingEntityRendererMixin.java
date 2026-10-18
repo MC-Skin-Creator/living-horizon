@@ -4,6 +4,7 @@ package fr.clixmods.livinghorizon.mixin;
 /*import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.mojang.blaze3d.vertex.PoseStack;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
+import fr.clixmods.livinghorizon.render.state.EntityRenderState;
 import fr.clixmods.livinghorizon.render.state.HumanoidRenderState;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
@@ -18,6 +19,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * something, where later states carry the pose themselves. A distant player sitting where
  * it logged off, or drawn on a mount it does not really ride, is taken for a passenger.
  * And no name, which later states drop themselves, over a figure baked into an impostor.
+ * Nor the name of a figure the mod draws without one, which the game would show by its
+ * own rules.
  ^/
 @Mixin(LivingEntityRenderer.class)
 abstract class LivingEntityRendererMixin {
@@ -28,10 +31,13 @@ abstract class LivingEntityRendererMixin {
         return passenger || HumanoidRenderState.seated(entity);
     }
 
-    /^* No name over a figure baked into an impostor: the picture would carry it everywhere. ^/
+    /^*
+     * No name over a figure baked into an impostor, where the picture would carry it
+     * everywhere, nor over a figure the mod draws without one.
+     ^/
     @Inject(method = "shouldShowName(Lnet/minecraft/world/entity/LivingEntity;)Z", at = @At("HEAD"), cancellable = true)
-    private void livinghorizon$noNameOnImpostors(CallbackInfoReturnable<Boolean> cir) {
-        if (ImpostorAtlas.drawing() != null) cir.setReturnValue(false);
+    private void livinghorizon$nameless(LivingEntity entity, CallbackInfoReturnable<Boolean> cir) {
+        if (ImpostorAtlas.drawing() != null || EntityRenderState.nameless(entity)) cir.setReturnValue(false);
     }
 }
 *///?}

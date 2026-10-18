@@ -18,6 +18,12 @@ import org.jspecify.annotations.Nullable;
  * hands over to it - it walks there in a straight line instead. And as the player comes
  * near enough for the real mob to be sent, the copy is called back to the spot where the
  * real one was last seen, so that the hand-over has little left to walk.
+ *
+ * <p>A mob the single player server still moves ({@link ServerMobs}) plays no animation: it
+ * walks where the server has it, at the server's pace, and faces the way the real one faces.
+ *
+ * <p>Walks, or hops: a slime, a magma cube or a rabbit covers the same way in hops, as its
+ * kind does ({@link MobGait}), and waits on the ground between two.
  */
 final class MobMotion {
     /** Degrees a body turns in a tick, at most. */
@@ -32,6 +38,16 @@ final class MobMotion {
     private MobPaths.@Nullable Choice playing;
     private int started;
     private int following;
+    /** Where the server last had a mob it moves, and how fast to walk to reach it by the next answer. */
+    private double aimX = Double.NaN, aimZ = Double.NaN, pace;
+    private @Nullable MobGait gait;
+    /** Ticks since it left the ground in a hop, -1 on the ground. */
+    private int air = -1;
+    /** Ticks still to wait before the next hop, and hops made so far. */
+    private int rest, hops;
+    /** Blocks a tick in this hop, and above the ground at this tick. */
+    private double hopPace, lift;
+    private boolean tookOff, landed, climbing;
 
     MobMotion(long seed) {
         this.seed = seed;
@@ -52,6 +68,21 @@ final class MobMotion {
 
     double z() {
         return z;
+    }
+
+    /**
+     * Straight to where the server has a mob it moves, unseen: a copy not drawn for a while
+     * (frozen, with {@link fr.clixmods.livinghorizon.FarConfig#optFreezeHidden}) is where it
+     * should be when it shows again, instead of running there.
+     */
+    void jump(LivingEntity puppet, MobMemory.Remembered mob) {
+        place(mob);
+        air = -1;
+        lift = 0;
+        apply(puppet, 0, true);
+        puppet.setOldPosAndRot();
+        puppet.yBodyRotO = body;
+        puppet.yHeadRotO = head;
     }
 
     private void place(MobMemory.Remembered mob) {
@@ -102,10 +133,12 @@ final class MobMotion {
     void tick(LivingEntity puppet, MobMemory.Remembered mob, MobPaths.@Nullable Choice choice, int clock, boolean roam,
               boolean tiny, float home) {
         if (!placed) place(mob);
+        if (gait == null) gait = MobGait.of(puppet);
         following = 0;
         if (choice != playing) {
+            // Read again and the same as it plays already: it goes on rather than starting over.
+            if (choice == null || playing == null || !choice.same(playing)) started = clock;
             playing = choice;
-            started = clock;
         }
         int offset = (int) Math.floorMod(seed >> 17, 400L);
 
@@ -113,7 +146,8 @@ final class MobMotion {
         double tx = mob.x, tz = mob.z;
         float facing = mob.yaw;
         boolean walking = false, grazing = false;
-        MobAnimations.Animation animation = roam && choice != null ? choice.animation() : null;
+        boolean followed = mob.simulated;
+        MobAnimations.Animation animation = roam && choice != null && !followed ? choice.animation() : null;
         int t = clock - started - (int) Math.floorMod(seed, 200L);
         if (animation != null && t >= 0) {
             MobAnimations.Pose pose = animation.sample(t);
@@ -122,7 +156,7 @@ final class MobMotion {
             facing = MobAnimations.yaw(pose.heading(), choice.angle(), choice.mirror());
             walking = pose.walking();
             grazing = pose.grazing() && puppet instanceof Animal;
-        } else if (roam && choice != null) {
+        } else if (roam && choice != null && !followed) {
             // Nowhere to walk: a slow turn on the spot now and then, a different one each time.
             int round = Math.floorDiv(clock + offset, TURN_ROUND);
             facing = mob.yaw + (Math.floorMod(mix(seed, round), 5L) - 2) * 35f;
@@ -137,26 +171,46 @@ final class MobMotion {
 
         // On it, or on the way to it in a straight line when it is not one tick away.
         double dx = tx - x, dz = tz - z, d = Math.hypot(dx, dz);
-        double reach = Math.max(0.2, Math.min(0.5, d / 40));
-        double step = Math.min(d, reach);
+        double reach;
+        if (followed) {
+            // At the pace that brings it where the server has it by the next answer.
+            if (tx != aimX || tz != aimZ) {
+                aimX = tx;
+                aimZ = tz;
+                pace = d / ServerMobs.EVERY;
+            }
+            reach = Mth.clamp(pace, 0.02, 0.5);
+        } else {
+            reach = Math.max(0.2, Math.min(0.5, d / 40));
+        }
+        double step = gait.hops() ? hop(d, reach) : Math.min(d, reach);
         double fromX = x, fromZ = z;
-        boolean catching = d > reach;
+        // A hopping mob is always a hop or two behind where it should be: only farther is it catching up.
+        boolean catching = d > (gait.hops() ? reach + 2 * gait.length : reach);
         if (d > 1e-6) {
             x += dx / d * step;
             z += dz / d * step;
         }
-        double ground = choice == null ? Double.NaN : choice.ground().height(x, z);
+        double ground = choice == null || followed ? Double.NaN : choice.ground().height(x, z);
         if (Double.isNaN(ground) || catching) ground = d > 1e-6 ? y + (mob.y - y) * Math.min(1, step / d) : mob.y;
+        climbing = Math.abs(ground - y) > 0.05;
         // Up a step in a few ticks, like a hop; down the same.
         y += (ground - y) * 0.4;
         if (Math.abs(ground - y) < 0.01) y = ground;
+        land(d - step);
+        walking |= air >= 0;
 
-        // Walking back to its spot, or on its way somewhere: facing the way it goes.
-        boolean going = catching || (home > 0 && Math.hypot(x - fromX, z - fromZ) > 0.02);
+        // Walking back to its spot, or on its way somewhere: facing the way it goes. Followed
+        // on the server: facing the way the real one faces, which turns where it walks.
+        boolean going = !followed && (catching || air >= 0 || (home > 0 && Math.hypot(x - fromX, z - fromZ) > 0.02));
         float turnTo = going ? (float) (Mth.atan2(z - fromZ, x - fromX) * Mth.RAD_TO_DEG) - 90f : facing;
-        body = Mth.approachDegrees(body, turnTo, walking || going ? TURN : 4f);
-        float look = grazing ? 0 : glance(seed, clock + offset) * (walking || catching ? 0.3f : 1f) * (1 - home);
-        head = Mth.approachDegrees(head, body + look, 8f);
+        body = Mth.approachDegrees(body, turnTo, walking || going || followed ? TURN : 4f);
+        if (followed) {
+            head = Mth.approachDegrees(head, Float.isNaN(mob.head) ? body : mob.head, TURN);
+        } else {
+            float look = grazing ? 0 : glance(seed, clock + offset) * (walking || catching ? 0.3f : 1f) * (1 - home);
+            head = Mth.approachDegrees(head, body + look, 8f);
+        }
         pitch = Mth.lerp(0.15f, pitch, grazing ? 40f : 0f);
         apply(puppet, Math.hypot(x - fromX, z - fromZ), tiny);
     }
@@ -168,11 +222,14 @@ final class MobMotion {
      */
     boolean follow(LivingEntity puppet, MobMemory.Remembered mob, Entity real) {
         if (!placed) place(mob);
+        if (gait == null) gait = MobGait.of(puppet);
         double tx = real.getX(), ty = real.getY(), tz = real.getZ();
         double dx = tx - x, dz = tz - z, d = Math.hypot(dx, dz);
         double pace = Math.hypot(real.getX() - real.xo, real.getZ() - real.zo);
-        double step = Math.min(d, Math.min(0.8, pace + 0.06 + 0.05 * d));
+        double reach = Math.min(0.8, pace + 0.06 + 0.05 * d);
+        double step = gait.hops() ? hop(d, reach) : Math.min(d, reach);
         double fromX = x, fromZ = z;
+        climbing = Math.abs(ty - y) > 0.05;
         if (d > 1e-4) {
             x += dx / d * step;
             z += dz / d * step;
@@ -180,6 +237,7 @@ final class MobMotion {
         } else {
             y += (ty - y) * 0.5;
         }
+        land(d - step);
         float yaw = real instanceof LivingEntity living ? living.yBodyRot : real.getYRot();
         // Facing the way it walks, and the way the real one faces on the last stretch.
         float turnTo = d > 1.5 ? (float) (Mth.atan2(dz, dx) * Mth.RAD_TO_DEG) - 90f : yaw;
@@ -188,7 +246,7 @@ final class MobMotion {
         head = Mth.approachDegrees(head, d > 1.5 ? body : headTo, 10f);
         pitch = Mth.lerp(0.3f, pitch, real.getXRot());
         apply(puppet, Math.hypot(x - fromX, z - fromZ), false);
-        boolean there = Math.hypot(tx - x, tz - z) < 0.1 && Math.abs(ty - y) < 0.15
+        boolean there = air < 0 && Math.hypot(tx - x, tz - z) < 0.1 && Math.abs(ty - y) < 0.15
                 && Math.abs(Mth.wrapDegrees(body - yaw)) < 15;
         return there || ++following > 120;
     }
@@ -197,7 +255,7 @@ final class MobMotion {
         puppet.setOldPosAndRot();
         puppet.yBodyRotO = puppet.yBodyRot;
         puppet.yHeadRotO = puppet.yHeadRot;
-        puppet.setPos(x, y, z);
+        puppet.setPos(x, y + lift, z);
         puppet.setYRot(body);
         puppet.setXRot(pitch);
         puppet.yBodyRot = body;
@@ -209,5 +267,38 @@ final class MobMotion {
             Puppets.walk(puppet, (float) Math.min(moved * 4.0, 1.0), 0.4f, puppet.isBaby() ? 3f : 1f);
             puppet.tickCount++;
         }
+        if (gait != null) gait.pose(puppet, tookOff, landed, lift > 0 || climbing);
+        tookOff = false;
+    }
+
+    /**
+     * Blocks a hopping mob covers this tick, {@code d} blocks from where it should be, at
+     * most {@code reach} a tick were it walking: nothing while it waits on the ground, then a
+     * whole hop's worth over the hop's ticks in the air.
+     */
+    private double hop(double d, double reach) {
+        if (air < 0) {
+            if (rest > 0) {
+                rest--;
+                return 0;
+            }
+            if (d < 0.3) return 0;
+            // A hop's length, or more when it has fallen behind and walking would be faster.
+            hopPace = Math.min(d, Math.max(gait.length, reach * gait.air)) / gait.air;
+            air = 0;
+            tookOff = true;
+        }
+        return Math.min(d, hopPace);
+    }
+
+    /** One tick further through a hop, if in one: lands at its end, and waits for the next. */
+    private void land(double ahead) {
+        landed = false;
+        if (air >= 0 && ++air >= gait.air) {
+            air = -1;
+            landed = true;
+            rest = gait.rest(seed, hops++, ahead);
+        }
+        lift = air >= 0 ? gait.lift(air) : 0;
     }
 }

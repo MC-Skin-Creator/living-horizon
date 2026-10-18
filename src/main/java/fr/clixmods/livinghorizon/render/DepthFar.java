@@ -46,8 +46,22 @@ public final class DepthFar {
         //?}
     }
 
+    /** The projection's vertical scale, {@code 1 / tan(fov / 2)}: the zoom of a spyglass included. 0 until a frame is seen. */
+    private static volatile float focal;
+
+    /**
+     * How many pixels a radian is across the screen, as this frame is projected: the field of
+     * view the game really draws with, which the option does not say while a spyglass is up.
+     */
+    public static double pixelsPerRadian(Minecraft minecraft) {
+        double height = Math.max(1, minecraft.getWindow().getHeight());
+        if (focal > 0f) return height * 0.5 * focal;
+        return height / (2.0 * Math.tan(Math.toRadians(minecraft.options.fov().get()) / 2.0));
+    }
+
     /** This frame's projection: reversed when a nearer point gets a greater depth. */
     public static void noteProjection(Matrix4fc projection) {
+        if (projection.m23() != 0f && projection.m11() > 0f) focal = projection.m11();
         //? if >=26.2 {
         /*if (projection.m23() != 0f) reversed = projection.m32() > 0f;
         *///?}

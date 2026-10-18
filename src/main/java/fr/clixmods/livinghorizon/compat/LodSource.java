@@ -54,6 +54,14 @@ interface LodSource {
     double firstHit(Object world, double ax, double ay, double az, double dx, double dy, double dz,
                     double from, double to) throws Throwable;
 
+    /**
+     * Blocks across to which the mod draws its terrain and its far fog still leaves it clear,
+     * read from its settings on the game's thread; 0 when it draws nothing or cannot say.
+     */
+    default double clearDistance() {
+        return 0;
+    }
+
     /** What the reads found so far, for {@code /livinghorizon lod}; empty when there is nothing to say. */
     default String details() {
         return "";

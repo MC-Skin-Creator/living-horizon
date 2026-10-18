@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.render;
 
 import fr.clixmods.livinghorizon.FarConfig;
+import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Stats;
 import fr.clixmods.livinghorizon.ambient.Ambience;
 import fr.clixmods.livinghorizon.compat.FarDepth;
@@ -16,6 +17,7 @@ import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobMemory;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
+import fr.clixmods.livinghorizon.track.RestingPuppet;
 import fr.clixmods.livinghorizon.track.SharedPositions;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -36,6 +38,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import java.util.ArrayList;
 *///?}
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -113,7 +116,7 @@ public final class GhostRenderer {
         // Half the screen's diagonal, as an angle, with a margin for a quick turn of the head.
         double aspect = width / (double) height;
         viewAngle = Math.atan(Math.tan(fov / 2) * Math.sqrt(1 + aspect * aspect)) + 0.15;
-        pixelsPerRadian = height / (2.0 * Math.tan(fov / 2));
+        pixelsPerRadian = DepthFar.pixelsPerRadian(minecraft);
         drawnRange = minecraft.options.getEffectiveRenderDistance() * 16 - 16;
         debug = DebugMarks.active();
         if (debug) DebugMarks.begin(eye, pixelsPerRadian);
@@ -211,15 +214,57 @@ public final class GhostRenderer {
         return glowing;
     }
 
-    /** The state of an entity as its renderer sees it this frame; the impostors are baked from it too. */
-    public static EntityRenderState extract(EntityRenderDispatcher dispatcher, Entity entity, float partialTick) {
-        //? if >=1.21.9 {
-        return dispatcher.extractEntity(entity, partialTick);
-        //?} elif >=1.21.2 {
-        /*return state(renderer(dispatcher, entity), entity, partialTick);
-        *///?} else {
-        /*return EntityRenderState.of(entity, partialTick);
+    /**
+     * The state of an entity as its renderer sees it this frame; the impostors are baked from
+     * it too. Null when its renderer cannot give one: that entity is not drawn far away.
+     */
+    public static @Nullable EntityRenderState extract(EntityRenderDispatcher dispatcher, Entity entity, float partialTick) {
+        if (!drawable(dispatcher, entity)) return null;
+        try {
+            //? if >=1.21.9 {
+            return dispatcher.extractEntity(entity, partialTick);
+            //?} elif >=1.21.2 {
+            /*return state(renderer(dispatcher, entity), entity, partialTick);
+            *///?} else {
+            /*return EntityRenderState.of(entity, partialTick);
+            *///?}
+        } catch (RuntimeException | LinkageError error) {
+            // Another mod's renderer, called for an entity in no world: never worth a crash.
+            leaveOut(entity.getType(), error);
+            return null;
+        }
+    }
+
+    /** Entity types whose renderer gave no state, or failed: never drawn far away again. */
+    private static final Set<EntityType<?>> LEFT_OUT = Collections.newSetFromMap(new IdentityHashMap<>());
+    //? if >=1.21.2 && <1.21.9
+    /*private static final Set<EntityType<?>> PROBED = Collections.newSetFromMap(new IdentityHashMap<>());*/
+
+    /**
+     * Whether this entity's renderer can give the mod a state of its own. Before 1.21.9,
+     * GeckoLib 4's gives none: it only keeps the one it reuses, for the entity it was last
+     * handed, and draws that entity whatever state it is given.
+     */
+    public static boolean drawable(EntityRenderDispatcher dispatcher, Entity entity) {
+        EntityType<?> type = entity.getType();
+        if (LEFT_OUT.contains(type)) return false;
+        //? if >=1.21.2 && <1.21.9 {
+        /*if (PROBED.add(type) && dispatcher.getRenderer(entity).createRenderState() == null) {
+            leaveOut(type, null);
+            return false;
+        }
         *///?}
+        return true;
+    }
+
+    private static void leaveOut(EntityType<?> type, @Nullable Throwable error) {
+        if (!LEFT_OUT.add(type)) return;
+        String id = EntityType.getKey(type).toString();
+        if (error == null) {
+            LivingHorizonClient.LOGGER.warn("{} is not drawn far away: its renderer gives no render state", id);
+        } else {
+            LivingHorizonClient.LOGGER.warn("{} is not drawn far away: its renderer failed", id, error);
+        }
     }
 
     //? if >=1.21.2 && <1.21.9 {
@@ -345,7 +390,7 @@ public final class GhostRenderer {
                 if (EXTRACTED.contains(live) || live.isInvisible()) continue;
                 Entity mount = live.getRootVehicle();
                 if (debug) DebugMarks.mark(live, Mark.PLAYER);
-                if (mount == live && impostor(minecraft, eye, live, partialTick, config)) continue;
+                if (mount == live && config.impostorPlayers && impostor(minecraft, eye, live, partialTick, config)) continue;
                 EntityRenderState body = extract(dispatcher, live, partialTick);
                 EntityRenderState mountState = mount != live && !EXTRACTED.contains(mount)
                         ? extract(dispatcher, mount, partialTick) : null;
@@ -356,7 +401,7 @@ public final class GhostRenderer {
                 if (skipped(puppet, false)) continue;
                 if (debug) DebugMarks.mark(puppet, Mark.PLAYER);
                 Entity mount = config.showVehicles ? player.mountPuppet() : null;
-                if (mount == null && impostor(minecraft, eye, puppet, partialTick, config)) continue;
+                if (mount == null && config.impostorPlayers && impostor(minecraft, eye, puppet, partialTick, config)) continue;
                 EntityRenderState body = extract(dispatcher, puppet, partialTick);
                 EntityRenderState mountState = mount == null ? null : extract(dispatcher, mount, partialTick);
                 if (mountState != null && body instanceof HumanoidRenderState humanoid) {
@@ -369,8 +414,7 @@ public final class GhostRenderer {
         if (config.enabled) rest(frame, minecraft, dispatcher, eye, partialTick, config);
         mobs(frame, minecraft, dispatcher, eye, partialTick, config);
         unseen(frame, minecraft, dispatcher, eye, partialTick, config);
-        LivingEntity cow = config.ufo ? FarPlayerTracker.get().ambience().ufo().cow() : null;
-        if (cow != null) add(frame, minecraft, eye, extract(dispatcher, cow, partialTick), null, true, Mark.FAKE, config, null);
+        if (config.easterEggs) eggs(frame, minecraft, dispatcher, eye, partialTick, config);
         if (config.skyBirds) {
             // Parrots and bats; the silhouettes are drawn by AmbientRenderer.
             for (Ambience.Flyer flyer : FarPlayerTracker.get().ambience().flyers()) {
@@ -382,6 +426,16 @@ public final class GhostRenderer {
         }
         Stats.extract(System.nanoTime() - started, drawn, skipped);
         if (debug) DebugMarks.end();
+    }
+
+    /** The figures of the easter eggs that are the game's own: the cow taken, the watcher. */
+    private static void eggs(List<EntityRenderState> frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
+                             Vec3 eye, float partialTick, FarConfig config) {
+        Ambience ambience = FarPlayerTracker.get().ambience();
+        LivingEntity cow = ambience.ufo().cow();
+        if (cow != null) add(frame, minecraft, eye, extract(dispatcher, cow, partialTick), null, true, Mark.FAKE, config, null);
+        LivingEntity watcher = ambience.herobrine().figure();
+        if (watcher != null) add(frame, minecraft, eye, extract(dispatcher, watcher, partialTick), null, true, Mark.FAKE, config, null);
     }
 
     /** Past the distance set in the options; 0 is no limit. */
@@ -510,27 +564,33 @@ public final class GhostRenderer {
                 || category == MobCategory.UNDERGROUND_WATER_CREATURE || category == MobCategory.AXOLOTLS;
     }
 
-    /** Players who logged off, lying or sitting where they were last. */
+    /**
+     * Players who logged off: standing, walking or on guard as the game would draw any
+     * player, or seated, lying on the ground or asleep in a bed.
+     */
     private static void rest(List<EntityRenderState> frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
                              Vec3 eye, float partialTick, FarConfig config) {
-        boolean sleep = "sleep".equals(config.offlinePose);
-        if (!sleep && !"sit".equals(config.offlinePose)) return;
+        if (!config.offlinePlayers) return;
         ClientLevel level = minecraft.level;
         if (level == null) return;
         RestingPlayers resting = FarPlayerTracker.get().resting();
         int dimension = SharedPositions.dimensionCode(level.dimension());
         for (RestingPlayers.Spot spot : resting.spots()) {
             if (spot.dimension() != dimension) continue;
-            Entity puppet = resting.puppet(level, spot);
-            if (puppet == null) continue;
+            RestingPuppet puppet = resting.puppet(level, spot);
             if (skipped(puppet, true)) continue;
             if (debug) DebugMarks.mark(puppet, Mark.PLAYER);
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
-            if (body instanceof LivingEntityRenderState living) {
+            if (body == null) continue;
+            RestingPuppet.Look look = puppet.look();
+            if (look != RestingPuppet.Look.STAND && body instanceof LivingEntityRenderState living) {
                 living.yRot = 0;
                 living.xRot = 0;
                 living.walkAnimationSpeed = 0;
-                if (sleep) {
+                if (look == RestingPuppet.Look.BED) {
+                    // In the bed: its sleeping position, so the game lays it along the bed.
+                    living.pose = Pose.SLEEPING;
+                } else if (look == RestingPuppet.Look.LIE) {
                     // Lying on the ground: the game lays a sleeper out along its body
                     // rotation when there is no bed, a little lower than on a mattress.
                     living.pose = Pose.SLEEPING;
@@ -538,16 +598,26 @@ public final class GhostRenderer {
                     body.y += 0.13;
                 }
             }
-            if (!sleep && body instanceof HumanoidRenderState humanoid) {
+            if (look == RestingPuppet.Look.SIT && body instanceof HumanoidRenderState humanoid) {
                 // The riding pose, without a mount: legs out in front, on the ground.
                 humanoid.isPassenger = true;
                 body.y -= 0.6;
             }
+            // Their name, marked offline, where the game would show it: close by, as for anyone.
+            Component name = config.offlineNames ? body.nameTag : null;
+            //? if >=1.21.2 {
+            if (name != null && (look == RestingPuppet.Look.BED || look == RestingPuppet.Look.LIE)
+                    && body.nameTagAttachment != null) {
+                // Lying down: just above the body, as the game puts a sleeper's name (the tag adds half a block).
+                body.nameTagAttachment = new Vec3(0, 0.3, 0);
+            }
+            //?}
             add(frame, minecraft, eye, body, null, true, Mark.PLAYER, config, spot.name());
+            body.nameTag = name;
         }
     }
 
-    private static void add(List<EntityRenderState> frame, Minecraft minecraft, Vec3 eye, EntityRenderState body,
+    private static void add(List<EntityRenderState> frame, Minecraft minecraft, Vec3 eye, @Nullable EntityRenderState body,
                             @Nullable EntityRenderState mount, boolean puppet, Mark kind, FarConfig config,
                             @Nullable Object who) {
         add(frame, minecraft, eye, body, mount, puppet, kind, config, who, 1.0);
@@ -557,9 +627,10 @@ public final class GhostRenderer {
      * @param kind what it is, for its outline: {@link Mark#PLAYER}, {@link Mark#FAKE} or {@link Mark#LIVE}
      * @param size drawn this many times bigger, around the feet
      */
-    private static void add(List<EntityRenderState> frame, Minecraft minecraft, Vec3 eye, EntityRenderState body,
+    private static void add(List<EntityRenderState> frame, Minecraft minecraft, Vec3 eye, @Nullable EntityRenderState body,
                             @Nullable EntityRenderState mount, boolean puppet, Mark kind, FarConfig config,
                             @Nullable Object who, double size) {
+        if (body == null) return;
         double ax = body.x - eye.x, ay = body.y - eye.y, az = body.z - eye.z;
         double distance = Math.sqrt(ax * ax + ay * ay + az * az);
         if (distance < 1e-3) return;
@@ -575,8 +646,7 @@ public final class GhostRenderer {
 
         double boost = 1.0;
         if (config.minApparentPixels > 0) {
-            double fov = Math.toRadians(minecraft.options.fov().get());
-            double pixelsPerRadian = minecraft.getWindow().getHeight() / (2.0 * Math.tan(fov / 2.0));
+            double pixelsPerRadian = DepthFar.pixelsPerRadian(minecraft);
             // The longest side: a sleeper is 1.8 blocks long and 0.2 high.
             double extent = Math.max(1.8, Math.max(body.boundingBoxHeight, body.boundingBoxWidth)) * size;
             double apparent = extent / distance * pixelsPerRadian;
@@ -667,7 +737,7 @@ public final class GhostRenderer {
         long now = System.currentTimeMillis();
         if (now - lastPrewarm < 1000) return;
         lastPrewarm = now;
-        for (FarPlayer player : FarPlayerTracker.get().players()) {
+        for (FarPlayer player : config.impostorPlayers ? FarPlayerTracker.get().players() : List.<FarPlayer>of()) {
             if (player.puppet() != null) ImpostorAtlas.request(ImpostorKey.of(player.puppet()), player.puppet());
         }
         if (!config.distantMobs) return;
@@ -699,7 +769,8 @@ public final class GhostRenderer {
      */
     private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config) {
         if (!ImpostorAtlas.usable() || !(entity instanceof LivingEntity living)
-                || entity.isPassenger() || entity.isVehicle()) {
+                || entity.isPassenger() || entity.isVehicle()
+                || !drawable(minecraft.getEntityRenderDispatcher(), entity)) {
             return false;
         }
         double x = Mth.lerp(partialTick, entity.xOld, entity.getX());
@@ -737,7 +808,7 @@ public final class GhostRenderer {
         int outline = minecraft.player == null ? 0 : DebugMarks.impostorOutline(config);
         if (outline != 0 && ImpostorRenderer.OUTLINES) glowing = true;
         ImpostorRenderer.add(new ImpostorRenderer.Billboard(ax * pull, ay * pull, az * pull,
-                sheet.worldSize() * pull * boost, sheet, view, light, outline));
+                sheet.worldSize() * pull * boost, sheet, view, light, outline, false));
         if (distance > drawnRange) {
             double extent = sheet.worldSize() * boost;
             FarDepth.figure(ax, ay + extent * 0.5, az, extent * 0.75);

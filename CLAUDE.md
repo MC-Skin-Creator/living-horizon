@@ -9,6 +9,12 @@ commit messages, pull request descriptions. Do not write French into the
 repository. User-facing strings are the exception and are translated through
 `assets/livinghorizon/lang/` — never hardcode a display string in the code.
 
+The mod ships in English, French, German, Spanish, Italian, Brazilian Portuguese, Polish,
+Turkish, Russian, Ukrainian, Simplified and Traditional Chinese, Japanese and Korean. A new or
+changed string goes into **every** file of `lang/`, in the words vanilla Minecraft uses in that
+language (its own lang file is the glossary); `LangTest` fails on a missing key or a different
+set of `%s`, and the `options` game test on a settings button whose text is wider than it.
+
 Commit subjects follow **conventional commits**: `type(scope): summary`, short,
 imperative and in English.
 
@@ -74,6 +80,20 @@ an older node is checked by starting its client.
 Mod and dependency versions live in `stonecutter.properties.toml`, never hardcoded
 in the build scripts. The README describes how each part works.
 
+## Settings live in two screens
+
+Every setting a player changes in game is shown twice: in the mod's own screen
+(`ui/FarConfigScreen` and its sub-screens) and in Sodium's video settings
+(`ui/SodiumOptions`, Sodium 0.8 and later). **A setting added, renamed, moved or removed
+changes both in the same pull request**, with the same name, tooltip, range and value
+text. A new sub-screen gets an "Open" button on Sodium's page as well. A row on Sodium's
+page is named by the key `livinghorizon.options.<field>` of the `FarConfig` field it sets:
+the `sodiumcontrols` scenario finds rows by that name and checks that each one writes its
+field. Run it (`run.sh sodium,sodiumcontrols --sodium`) after any change to the settings.
+
+Older Sodium (0.5 to 0.7: 1.20.x, 1.21.3 to 1.21.10) has no API for other mods' pages: there
+the settings stay on the mod's own screen, which the *Living Horizon...* button opens.
+
 ## Never change another mod's rendering
 
 The mod draws its own figures and nothing else. Voxy, Distant Horizons, Iris and shader packs
@@ -91,6 +111,28 @@ must look exactly the same with Living Horizon installed as without it:
 
 Writing the mobs into Voxy's depth over the whole screen, for Photon's shadows, broke Voxy's
 water under Photon. Check any change to `compat/` against this section.
+
+## Easter eggs are secret
+
+The mod hides a few easter eggs, in `ambient/` (the `eeN` commands in `LivingHorizonCommand`
+say which class is which). Players find them; nothing they read gives one away:
+
+- never describe one in the README, the changelog, a tooltip, a translation or a release
+  note, and never in a commit subject or a pull request title (the GitHub release lists
+  those): say "easter egg" and its number at most;
+- one settings switch covers them all, `easterEggs` ("Easter eggs", a tooltip that says
+  nothing of what they are);
+- each is called by number, `/livinghorizon ee1`, `ee2` and so on, never by a name that
+  says what it is, and only in a game started with `-Dlh.ee=true`: without it the
+  commands are not there at all, not even among the suggestions, so nothing in the game
+  tells a player which easter eggs there are. The same switch (`ambient/EggLog`) writes in
+  the log where each one comes; without it the log says nothing of them. Its lang keys are
+  `livinghorizon.eeN.*`, and `livinghorizon.ee.nothing` when it cannot come;
+- by chance, only as `ambient/EggCalendar` allows: each from a day of its own (days lived in
+  that world, counted at dawn), two to four days apart, one at a time; the watcher (ee4)
+  keeps nights of his own and stays out of the others' way. The commands skip all of it;
+- an easter egg gets no changelog entry, even when it changes. One wink that names none
+  ("I thought I saw something in the sky") is the most a release may carry.
 
 ## Branch model: Git Flow
 
@@ -247,6 +289,19 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Mobs near the player never drawn far away**, only those met later: the mob memory is opened
   on the first tick with a player, and opening clears the mobs sent so far, which the level may
   have loaded just before. `FarPlayerTracker` hands it the level's entities again once open.
+- **Distant mobs jumping or sprinting as the player comes back** (the copy runs or teleports to
+  the real mob once it is sent again): the server stops sending a mob at its tracking range
+  (160 blocks for animals, scaled by *Entity Distance*) but keeps moving it out to the
+  simulation distance, a square of chunks that reaches farther on its diagonals. In single
+  player `ServerMobs` asks the server where those are and the copies follow; on a server only
+  the data pack closes that gap.
+- **Distant mobs only turning on the spot**, never walking, after the world was opened, while
+  those met since walk: their ground was read (`MobPaths.plan`) where the far world had nothing
+  (Voxy or Distant Horizons not open yet, or Voxy turned off for the session by one failed
+  read as its world opened: `VoxySource.fail` now pauses 20 s, as `DhSource` does), and the
+  mob got no animation. A ground read whole is saved with the mob (`Remembered.ground`,
+  `MobPaths.Ground.save`) and walked on at once in the next session; a choice read with
+  columns missing is not `complete()` and is read again, later and later.
 - **Impostors before 1.21.6** (empty or missing pictures, or a figure flashing over the screen
   at the start of a frame): the game has no output override there, so `ImpostorAtlas` bakes
   at the start of the frame (`GameRendererMixin`) into a target of its own, which
@@ -254,6 +309,49 @@ come back, add it here in the same pull request: this file is what the next sess
   item target while `ImpostorAtlas.drawing()` is set. A render type that binds yet another
   target of the game's escapes it; before 1.21.5 the eight views share one target, each in its
   own viewport.
+- **Impostors baked over and over** (the game slows down with impostors on, the same figures
+  appear again and again in the impostor screen): a figure's key changes while its look does
+  not (a helmet worn by the sun changed its item, and the key, every few seconds; a pig's
+  random sound variant), or a kind of figure has more looks than its pages may hold. With the
+  pages full, "waiting" going round and round with the baked count stuck: a figure baked
+  small, grown, refused for lack of room and asked for again the next second. `room` squeezes
+  it into smaller tiles, or `REFUSED` keeps it a model for a while; `crowd` checks it. The same
+  figure twice in the impostor screen: two keys for one look (a value the picture does not show);
+  `ImpostorAtlas.place` compares the pixels and makes the second an alias of the first.
+  `ImpostorKey` leaves out what never shows (positions, times, owners, names, sound variants,
+  an item's damage), names variants by their registry key so that a sheet is found again in
+  the next world, and learns per kind of mob the values seen changing again and again
+  (`RESTLESS`). `ImpostorAtlas` gives each kind of figure pages of its own (`Page`), keeps the
+  mobs' sheets, throws the players' away once unused, and never evicts a sheet drawn or asked
+  for within `IN_USE`. `ImpostorDisk` keeps the mobs' sheets on disk under a fingerprint
+  (game, resource packs, mods): a sheet never read back from disk means its key is not
+  stable across games (an identity hash in `ImpostorKey.stable`). The `sharing` scenario
+  checks all of it, except across games: the client game tests start from an empty run
+  folder every time.
+- **Specks along an impostor's edge, or a figure cut off by its tile** (black dashes over a far
+  mob, a horse without its muzzle): the texture filter reads half a pixel of the smallest level
+  past each tile, so the quad and its UVs keep `ImpostorRenderer.INSET` clear on all four sides,
+  and the feet stand above it (`ImpostorAtlas.FEET`). A figure reaching into that strip is baked
+  again with more room round it (`ImpostorPixels.growth`), drawn smaller in a tile of the same 64
+  pixels: tiles two or three times larger took four or nine times the memory for a figure a dozen
+  pixels tall. `impostoredges` and `longmobs` show both.
+- **Crash extracting a distant mob on 1.21.2 to 1.21.8** (`NullPointerException` under
+  `GhostRenderer.state`, often blamed on another mod's mixin into `extractRenderState`):
+  GeckoLib 4's `createRenderState()` returns null and its `render` draws the entity it was
+  last handed. `GhostRenderer.drawable` leaves such types out (issue #67 is about drawing
+  them), and a renderer that throws while extracting is left out too, logged once.
+- **Perched birds darting to and fro, standing in the air or inside a block** (tits, robins,
+  ducks): a move's progress is `timer / length`, so the rest after landing is `rest`, never
+  added to `length` (which put an arrived bird back part of the way). Where a bird lands comes
+  from `Perchers.perchAt` (leaves, water, dry ground), away from column edges, and a resting
+  bird is stood again on what is under it. Birds jumping in a loop: a move is a flight once it
+  is long, so a target is only moved in from a column's edge (never re-drawn on the block), and a
+  duck swims as far as the water goes on (`Perchers.swims`). The `perchers` scenario counts all three.
+- **Escape from a screen opened on Sodium's page goes back to the game**, not to Sodium's:
+  Sodium runs its "close" shortcut when Escape is released, so a screen that closes on the
+  press hands the release to Sodium's. Over Sodium's screen the mod's screens and
+  confirmations close on the release (`ui/SodiumReturn`); a new screen opened from
+  `SodiumOptions` needs the same.
 - **Broken after the window is resized** (depth view stuck or gone, mobs through the far terrain,
   occlusion wrong until a restart): the game, Voxy and `FarDepth.prepare` make their textures again,
   often under the same names, and a framebuffer not bound at that moment keeps the deleted one. Our

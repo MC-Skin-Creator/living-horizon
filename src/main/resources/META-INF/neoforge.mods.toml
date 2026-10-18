@@ -1,6 +1,6 @@
 modLoader = "javafml"
 loaderVersion = "[1,)"
-license = "GPL-3.0-only"
+license = "LicenseRef-LivingHorizon"
 issueTrackerURL = "https://github.com/MC-Skin-Creator/living-horizon/issues"
 
 [[mods]]
@@ -11,6 +11,7 @@ description = "Gives life to the distance: animals, villagers, birds and other p
 authors = "clixmods"
 displayURL = "https://github.com/MC-Skin-Creator/living-horizon"
 logoFile = "assets/livinghorizon/icon.png"
+${sodium}
 
 [[mixins]]
 config = "livinghorizon.mixins.json"

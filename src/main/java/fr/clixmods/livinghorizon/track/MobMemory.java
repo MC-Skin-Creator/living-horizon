@@ -6,6 +6,7 @@ import com.google.gson.reflect.TypeToken;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.platform.Platform;
+import fr.clixmods.livinghorizon.render.DepthFar;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.client.Minecraft;
@@ -66,6 +67,9 @@ import java.util.concurrent.CompletableFuture;
  * When the server sends the real mob again, the copy walks up to it first: the real one
  * is only drawn once the copy stands where it is.
  *
+ * <p>In a single player world, where the server is right here, a remembered mob the server
+ * still moves is followed instead ({@link ServerMobs}): the copy walks where the real one is.
+ *
  * <p>Only mobs that stay put are worth remembering: animals do, hostile mobs despawn as
  * soon as nobody is around. Which ones is {@link FarConfig#mobTypes}, plus every mob with
  * a name tag ({@link FarConfig#rememberNamedMobs}). A memory is dropped
@@ -93,11 +97,20 @@ public final class MobMemory {
         boolean fromPack;
         /** Wore a name tag when last seen. */
         boolean named;
+        /**
+         * The ground around it, read whole where it was last remembered ({@link MobPaths.Ground#save()}):
+         * it walks on it from the start next time, before the far world is read, or where it knows nothing.
+         */
+        @Nullable String ground;
 
         transient @Nullable Entity puppet;
         /** The animation it plays, chosen from the blocks around where it is remembered; null until read. */
         transient volatile MobPaths.@Nullable Choice choice;
         transient volatile boolean planning;
+        /** Its ground was read with columns missing: when to read it again, and how many times it was. */
+        transient int replanAt, replans;
+        /** The choice whose ground is saved in {@link #ground}. */
+        transient MobPaths.@Nullable Choice saved;
         /** Where its animation took it, where it looks. */
         transient @Nullable MobMotion motion;
         /** The real mob, sent again by the server, that the copy walks up to before it takes over. */
@@ -110,6 +123,10 @@ public final class MobMemory {
         transient double distance;
         /** Forgotten while still on the list being drawn: not drawn again, nor rebuilt. */
         transient boolean gone;
+        /** The single player server moves it now: the copy follows it instead of playing its animation. */
+        transient boolean simulated;
+        /** How the server last had it turned, body and head; NaN before its first answer. */
+        transient float serverBody = Float.NaN, serverHead = Float.NaN;
         /** Too small or too far for its animation to show; kept between ticks for the hysteresis. */
         transient boolean still;
         /** When it was last drawn, in nanoseconds; 0 if never. */
@@ -139,6 +156,11 @@ public final class MobMemory {
     private static final long FREEZE_AFTER = 500_000_000L;
     /** Grounds read per tick, at most: a few thousand blocks each, when the chunks are loaded. */
     private static final int READS_PER_TICK = 6;
+    /**
+     * Ticks before a ground read with columns missing is read again - the far world may not
+     * be open yet, as when the world was just entered - doubled each time, up to a minute.
+     */
+    private static final int REPLAN_FIRST = 40, REPLAN_MAX = 1200;
 
     private final Map<UUID, Remembered> mobs = new LinkedHashMap<>();
     /** The render distance, in blocks, as of the last tick. */
@@ -173,6 +195,8 @@ public final class MobMemory {
     private boolean selfKnown;
     /** Nanoseconds spent since the last tick building copies of mobs as they unloaded. */
     private long builtNow;
+    /** In a single player world, where the server has the remembered mobs. */
+    private final ServerMobs serverMobs = new ServerMobs();
 
     public List<Remembered> shown() {
         return shown;
@@ -254,6 +278,7 @@ public final class MobMemory {
         file = null;
         bound = null;
         selfKnown = false;
+        serverMobs.reset();
     }
 
     /** Puppets belong to one level. */
@@ -263,9 +288,11 @@ public final class MobMemory {
             mob.motion = null;
             mob.handover = null;
             mob.failed = false;
+            mob.simulated = false;
         }
         joining.clear();
         shown = List.of();
+        serverMobs.reset();
     }
 
     // --- What the server sends and stops sending ----------------------------------------
@@ -496,6 +523,7 @@ public final class MobMemory {
             return;
         }
         String dimension = level.dimension().identifier().toString();
+        followServer(level, dimension);
 
         if (clock % 20 == 0) {
             if (pack != null) sync(pack, scoreboard);
@@ -546,15 +574,30 @@ public final class MobMemory {
                 // Not drawn for a moment: it keeps its place, as a position and nothing more.
                 if (config.optFreezeHidden && mob.motion != null && mob.motion.placed()
                         && System.nanoTime() - mob.drawnAt > FREEZE_AFTER) {
+                    // Moved by the server meanwhile: there when it shows again, not running there.
+                    if (mob.simulated) mob.motion.jump(living, mob);
                     continue;
                 }
                 boolean roam = !still.contains(mob.type);
                 // Moved by the data pack: the blocks are read again around where it is now.
                 MobPaths.Choice choice = mob.choice;
                 if (choice != null && !choice.ground().around(mob.x, mob.z)) mob.choice = choice = null;
-                if (choice == null && roam && !mob.planning && reads < READS_PER_TICK) {
+                // Read with part of the far world missing: read again, now that it may be there.
+                boolean again = choice != null && !choice.complete() && clock >= mob.replanAt;
+                if (choice == null && roam && !mob.simulated && !mob.planning && mob.ground != null) {
+                    // Saved with it: the ground it was last seen on, if it is still where it was.
+                    MobPaths.Ground saved = MobPaths.Ground.load(mob.ground);
+                    if (saved != null && saved.around(mob.x, mob.z) && walker(living)) {
+                        mob.choice = choice = mob.saved = MobPaths.choose(saved, living.getBbWidth(), seed(mob));
+                    } else {
+                        mob.ground = null;
+                    }
+                }
+                if ((choice == null || again) && roam && !mob.simulated && !mob.planning && reads < READS_PER_TICK) {
                     reads++;
                     mob.planning = true;
+                    if (choice == null) mob.replans = 0;
+                    mob.replanAt = clock + Math.min(REPLAN_MAX, REPLAN_FIRST << Math.min(mob.replans++, 5));
                     double x = mob.x, y = mob.y, z = mob.z;
                     long seed = seed(mob);
                     CompletableFuture<MobPaths.Choice> read = walker(living)
@@ -564,6 +607,12 @@ public final class MobMemory {
                         mob.choice = found != null ? found : MobPaths.stand(x, y, z);
                         mob.planning = false;
                     });
+                }
+                // Read whole: kept with it, for the next time the world is entered.
+                if (choice != null && choice != mob.saved && choice.complete() && walker(living)) {
+                    mob.saved = choice;
+                    mob.ground = choice.ground().save();
+                    dirty = true;
                 }
                 mob.still = isStill(living, mob, config, pixelsPerRadian);
                 boolean tiny = mob.still;
@@ -595,9 +644,7 @@ public final class MobMemory {
 
     /** How many pixels a radian is across the screen, as the renderer counts them. */
     private static double pixelsPerRadian() {
-        Minecraft minecraft = Minecraft.getInstance();
-        double fov = Math.toRadians(minecraft.options.fov().get());
-        return Math.max(1, minecraft.getWindow().getHeight()) / (2.0 * Math.tan(fov / 2));
+        return DepthFar.pixelsPerRadian(Minecraft.getInstance());
     }
 
     /**
@@ -641,6 +688,8 @@ public final class MobMemory {
             }
 
             Remembered mob = mobs.get(id);
+            // Followed on the single player server, which knows better than the pack's last report.
+            if (mob != null && mob.simulated) continue;
             if (mob == null) {
                 mob = new Remembered();
                 mob.id = id;
@@ -666,6 +715,56 @@ public final class MobMemory {
             if (mob.fromPack && isHere(mob) && !published.contains(mob.id) && !live.containsKey(mob.id)) dead.add(mob.id);
         }
         dead.forEach(this::forget);
+    }
+
+    /**
+     * In a single player world, where the server has the remembered mobs it no longer sends:
+     * those it still moves are followed by their copies, those that died there are forgotten.
+     * Asked every {@link ServerMobs#EVERY} ticks; each answer is applied as it comes.
+     */
+    private void followServer(ClientLevel level, String dimension) {
+        ServerMobs.Answer answer = serverMobs.answer();
+        if (answer != null) {
+            for (Remembered mob : mobs.values()) {
+                ServerMobs.Where where = answer.found().get(mob.id);
+                if (where == null || !mob.dimension.equals(dimension) || !isHere(mob)
+                        || live.containsKey(mob.id) || mob.handover != null) {
+                    mob.simulated = false;
+                    continue;
+                }
+                mob.simulated = where.simulated();
+                double moved = Math.abs(where.x() - mob.x) + Math.abs(where.y() - mob.y) + Math.abs(where.z() - mob.z);
+                if (moved > 0) {
+                    mob.x = where.x();
+                    mob.y = where.y();
+                    mob.z = where.z();
+                    dirty = true;
+                }
+                // Turned as the game drew it until the real one walks or turns: the server
+                // works out a body of its own for a mob standing still.
+                boolean turned = !Float.isNaN(mob.serverBody)
+                        && (where.body() != mob.serverBody || where.head() != mob.serverHead);
+                if (moved > 0.05 || turned) {
+                    mob.yaw = where.body();
+                    mob.head = where.head();
+                }
+                mob.serverBody = where.body();
+                mob.serverHead = where.head();
+            }
+            for (UUID id : answer.gone()) {
+                if (!live.containsKey(id)) forget(id);
+            }
+        }
+        if (clock % ServerMobs.EVERY != 0 || !serverMobs.idle()) return;
+        IntegratedServer local = Minecraft.getInstance().getSingleplayerServer();
+        if (local == null) return;
+        List<ServerMobs.Asked> asked = new ArrayList<>();
+        for (Remembered mob : mobs.values()) {
+            if (mob.dimension.equals(dimension) && isHere(mob) && !live.containsKey(mob.id) && mob.handover == null) {
+                asked.add(new ServerMobs.Asked(mob.id, mob.x, mob.y, mob.z, mob.simulated));
+            }
+        }
+        if (!asked.isEmpty()) serverMobs.ask(local, level.dimension(), asked);
     }
 
     /**
@@ -820,6 +919,30 @@ public final class MobMemory {
             mob.puppet = entity;
         } catch (Exception e) {
             mob.failed = true;
+        }
+    }
+
+    /**
+     * A second copy of a remembered mob, the same to look at (coat, variant) but with no
+     * name and an id of its own, never remembered nor added to the level: something the mod
+     * draws beside it. Null if its saved data was not read yet. Render thread only.
+     */
+    public @Nullable LivingEntity twin(Remembered mob, ClientLevel level) {
+        CompletableFuture<CompoundTag> parsed = mob.parsed;
+        EntityType<?> type = type(mob);
+        if (mob.gone || parsed == null || !parsed.isDone() || type == null) return null;
+        try {
+            CompoundTag tag = parsed.join();
+            if (tag == null || !(Puppets.create(type, level) instanceof LivingEntity twin)) return null;
+            EntityNbt.load(twin, level, tag);
+            twin.setUUID(UUID.randomUUID());
+            twin.setCustomName(null);
+            twin.hurtTime = 0;
+            twin.hurtDuration = 0;
+            twin.deathTime = 0;
+            return twin;
+        } catch (Exception e) {
+            return null;
         }
     }
 

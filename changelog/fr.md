@@ -3,17 +3,66 @@
 ## Prochaine version
 
 ### Nouveautés
+- **Joueurs simplifiés** — un nouveau paramètre garde les joueurs lointains en modèles complets, tandis que les créatures deviennent toujours des images plates au loin.
+- **Langues** — Living Horizon parle désormais allemand, espagnol, italien, portugais du Brésil, polonais, turc, russe, ukrainien, chinois simplifié et traditionnel, japonais et coréen.
+- **Sodium** — les réglages de Living Horizon apparaissent aussi dans les *Paramètres vidéo* de Sodium, sur des pages à eux sous celles de Sodium (Sodium 0.8 et plus récent).
+
+### Améliorations
+- **Paramètres** — chaque paramètre a un nom et une description plus clairs, dans le style des options de Minecraft, et les distances ont des curseurs sur toute la largeur de la liste.
+
+### Corrections
+- **Redimensionner la fenêtre du jeu** — les créatures lointaines continuent de se cacher derrière les collines, celles de Voxy et de Distant Horizons comprises, quand la fenêtre change de taille, au lieu de les traverser jusqu'au redémarrage du jeu.
+
+## 0.7.0 — 2026-10-17
+
+### Nouveautés
+- **Joueurs déconnectés** — ils vivent leur vie autour de l'endroit où ils sont partis, à l'échelle d'un village : ils se promènent, s'assoient, regardent les coffres et les blocs de métier, passent les portes pour aller au lit la nuit, et lèvent un bouclier face aux monstres en vue et aux coups ; ils restent au sol : cassez le bloc sous eux, ils tombent ; enterrez-les, ils remontent.
+- **Noms hors ligne** — les joueurs déconnectés affichent leur nom marqué *(hors ligne)*, et en viser un de près indique quand il a été vu pour la dernière fois ; des réglages masquent leurs noms, ou les joueurs eux-mêmes.
+- **Oiseaux en 3D** — chaque oiseau est maintenant un petit modèle, comme les mobs du jeu, qui bat des ailes et se pose sur ses pattes ; au loin, il devient une image légère, comme les créatures lointaines quand les imposteurs sont activés. *Style des oiseaux* dans les réglages remet les oiseaux plats en 2D.
+- **Hmm…** — j'ai cru voir quelque chose dans le ciel. 😉
+
+### Améliorations
+- **Créatures lointaines** — les slimes, les cubes de magma et les lapins se déplacent maintenant par bonds au lieu de glisser, le slime s'écrasant en retombant, et les poules battent des ailes en descendant d'un bloc.
+- **Canards** — quand vous approchez, ils s'envolent ensemble et se reposent plus loin sur l'eau au lieu de partir pour de bon.
+
+### Corrections
+- **Longue-vue** — les créatures lointaines vues à la longue-vue sont mesurées à leur taille zoomée : *Taille animation* correspond maintenant à ce qu'on voit, et elles continuent de marcher quand elles paraissent grosses.
+- **Ouverture d'un monde** — les créatures lointaines marchent et broutent dès le début, au lieu de seulement tourner sur elles-mêmes.
+- **Oiseaux posés** — les mésanges, rouges-gorges et canards ne font plus de va-et-vient, ne se posent plus dans le vide ou dans les feuilles, ne nagent plus sur la terre ferme, et les canards n'apparaissent plus juste à côté de vous pour s'envoler aussitôt ; les canards nagent maintenant tranquillement sur leur mare au lieu de sauter en boucle, et les rouges-gorges et mésanges sautillent plus et s'envolent moins.
+- **Liste des mods** — Forge, NeoForge et Quilt n'affichent plus Living Horizon sous la mauvaise licence.
+
+## 0.6.0 — 2026-10-15
+
+### Nouveautés
+- **Imposteurs** — les images des créatures sont enregistrées sur le disque et réutilisées à la partie suivante : elles ne sont redessinées qu'après un changement de packs de ressources, de mods ou de version du jeu.
+
+### Améliorations
+- **Icône du mod** — une nouvelle icône en pixel art : Steve au premier plan, et des créatures, des villageois, des joueurs et des oiseaux bien vivants jusqu'aux montagnes derrière lui.
+- **En solo** — les créatures lointaines se téléportent ou foncent bien moins souvent vers un autre endroit quand tu reviens : elles suivent désormais les vraies créatures tant que le jeu les fait bouger, et disparaissent quand celles-ci meurent.
+
+### Corrections
+- **Écran des imposteurs** — deux silhouettes du même nom, comme des villageois aux tenues différentes, n'échangent plus leur place en clignotant.
+- **Imposteurs** — les fins traits sombres et les pixels noirs qui apparaissaient parfois en haut ou en bas des créatures lointaines ont disparu, et les créatures longues comme les chevaux et les renifleurs ne sont plus coupées au museau ou à la queue.
+- **Créatures GeckoLib sur Minecraft 1.21.2 à 1.21.8** — un monde ne plante plus quelques secondes après son chargement quand une créature d'un mod GeckoLib a été croisée au loin ; ces créatures ne sont pas encore montrées au loin.
+- **Imposteurs** — le jeu ne ralentit plus avec les imposteurs activés : les mêmes créatures ne sont plus redessinées en boucle dans de nouvelles images, et les créatures qui se ressemblent partagent une seule image, gardée d'un monde à l'autre.
+
+## 0.5.0 — 2026-10-13
+
+### Nouveautés
 - **Imposteurs sur Minecraft 1.20.1 à 1.21.8** — les joueurs et créatures lointains sont dessinés en images légères d'eux-mêmes sur ces versions aussi, et le Gestionnaire d'imposteurs les montre.
 
 ### Corrections
 - **Forge 1.20.1 à 1.20.4** — le jeu ne plante plus au démarrage avec le mod installé.
 - **Écran des imposteurs sur Minecraft 1.21.8 et avant** — l'ouvrir ne fait plus planter le jeu.
 - **En rejoignant un monde** — les créatures déjà autour de toi à ton arrivée sont elles aussi dessinées au loin, et plus seulement celles rencontrées ensuite.
+
+## 0.4.2 — 2026-10-12
+
+### Corrections
 - **Créatures qui s'éloignent** — une créature ne disparaît plus pendant quelques images avant que sa copie lointaine n'apparaisse.
 - **Créatures qui s'éloignent** — la copie lointaine regarde maintenant dans la même direction que la créature, au lieu de parfois se tourner ailleurs.
 - **Minecraft 1.21.9 à 26.1** — des morceaux de créatures lointaines, comme les vêtements d'un villageois ou un objet tenu en main, ne traversent plus le terrain de Voxy avec les shaders, ni celui de Distant Horizons.
 - **Minecraft 26.1 et plus** — les parties transparentes des créatures lointaines, comme l'enveloppe d'un slime, ne traversent plus le terrain de Voxy avec les shaders, ni celui de Distant Horizons.
-- **Redimensionner la fenêtre du jeu** — les créatures lointaines continuent de se cacher derrière les collines, celles de Voxy et de Distant Horizons comprises, quand la fenêtre change de taille, au lieu de les traverser jusqu'au redémarrage du jeu.
 
 ## 0.4.1 — 2026-10-11
 

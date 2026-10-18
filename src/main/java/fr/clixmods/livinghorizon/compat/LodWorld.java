@@ -130,6 +130,15 @@ public final class LodWorld {
         return null;
     }
 
+    /**
+     * Blocks across to which the far world's terrain is drawn and still clear of its fog, on
+     * the game's thread; 0 without Voxy or Distant Horizons, or when it cannot say.
+     */
+    public static double clearDistance() {
+        LodSource source = source();
+        return source == null ? 0 : source.clearDistance();
+    }
+
     /** For {@code /livinghorizon lod}. */
     public record Status(boolean loaded, String name, @Nullable String failure) {
     }

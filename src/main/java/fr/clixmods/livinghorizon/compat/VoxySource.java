@@ -25,9 +25,17 @@ final class VoxySource implements LodSource {
     private static final double STEP = 0.75;
     /** Sections each reader keeps acquired between reads: 256 KiB each in Voxy's memory. */
     private static final int CACHED_SECTIONS = 96;
+    /** A section Voxy did not have is asked for again after this long: it may have it by then. */
+    private static final long MISS_NANOS = 2_000_000_000L;
+
+    /** Where Voxy had nothing, and since when. */
+    private record Miss(long at) {
+    }
 
     private volatile boolean ready;
     private volatile boolean broken;
+    /** After a failed read, nothing is read until then: Voxy's world may only have been closing or opening. */
+    private volatile long pausedUntil;
     private volatile @Nullable String failure;
     private MethodHandle renderSystem, engine, acquire, data, release, mapper, opacity, isAir, isLive;
     private MethodHandle biomeId, biomeEntries, biomeName, blockState, blockId;
@@ -59,7 +67,7 @@ final class VoxySource implements LodSource {
         for (Cache cache : ALL_CACHES) releaseAll(cache);
     }
 
-    /** One reader's sections, for one world. */
+    /** One reader's sections, for one world; a {@link Miss} where Voxy had none. */
     private static final class Cache {
         final LinkedHashMap<Long, Object> sections = new LinkedHashMap<>(128, 0.75f, true);
         @Nullable Object world;
@@ -99,7 +107,7 @@ final class VoxySource implements LodSource {
 
     @Override
     public synchronized boolean available() {
-        if (broken) return false;
+        if (broken || System.nanoTime() < pausedUntil) return false;
         if (!ready) {
             ready = true;
             if (!Platform.isModLoaded("voxy")) {
@@ -118,11 +126,46 @@ final class VoxySource implements LodSource {
         return true;
     }
 
+    /**
+     * Voxy's render distance, from its settings: {@code sectionRenderDistance} times 512
+     * blocks (its menu shows it times 32, in chunks); half of that while its fog or fade is
+     * on, which hides the far part. 0 with its rendering off, or a version this does not know.
+     */
+    @Override
+    public double clearDistance() {
+        try {
+            Class<?> type = Class.forName("me.cortex.voxy.client.config.VoxyConfig");
+            Object config = type.getField("CONFIG").get(null);
+            if (config == null) return 0;
+            try {
+                if (!(boolean) type.getMethod("isRenderingEnabled").invoke(config)) return 0;
+            } catch (NoSuchMethodException e) {
+                // A version without it: drawing, as far as this can tell.
+            }
+            double drawn = type.getField("sectionRenderDistance").getFloat(config) * 512.0;
+            return drawn * (fogged(type, config) ? 0.5 : 0.9);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return 0;
+        }
+    }
+
+    /** Voxy's fog or fade on: its {@code getFogMode()} from 0.2.19, {@code useEnvironmentalFog} before. */
+    private static boolean fogged(Class<?> type, Object config) throws ReflectiveOperationException {
+        try {
+            Object mode = type.getMethod("getFogMode").invoke(config);
+            return mode.getClass().getField("hasFog").getBoolean(mode) || mode.getClass().getField("hasFade").getBoolean(mode);
+        } catch (NoSuchMethodException e) {
+            return type.getField("useEnvironmentalFog").getBoolean(config);
+        }
+    }
+
     @Override
     public void fail(Throwable e) {
-        broken = true;
+        // Not for good: a world closing or opening as the player joins fails one read ("World
+        // is not live"), and the mobs would then find no ground until the game restarted.
+        pausedUntil = System.nanoTime() + 20_000_000_000L;
         failure = "Voxy did not answer as expected: " + e;
-        LivingHorizonClient.LOGGER.warn("Reading Voxy's world turned off: Voxy did not answer as expected", e);
+        LivingHorizonClient.LOGGER.warn("Reading Voxy's world paused for 20 seconds: it did not answer as expected", e);
     }
 
     /**
@@ -241,25 +284,26 @@ final class VoxySource implements LodSource {
     private long @Nullable [] section(Object world, int sx, int sy, int sz, long key) throws Throwable {
         LinkedHashMap<Long, Object> sections = CACHES.get().sections;
         Object section = sections.get(key);
-        if (section == null && !sections.containsKey(key)) {
+        if (section == null || section instanceof Miss miss && System.nanoTime() - miss.at() > MISS_NANOS) {
             section = (Object) acquire.invokeExact(world, 0, sx, sy, sz);
+            if (section == null) section = new Miss(System.nanoTime());
             sections.put(key, section);
             if (sections.size() > CACHED_SECTIONS) {
                 Iterator<Map.Entry<Long, Object>> oldest = sections.entrySet().iterator();
                 Object evicted = oldest.next().getValue();
                 oldest.remove();
-                if (evicted != null) {
+                if (!(evicted instanceof Miss)) {
                     int ignored = (int) release.invokeExact(evicted);
                 }
             }
         }
-        return section == null ? null : (long[]) data.invokeExact(section);
+        return section instanceof Miss ? null : (long[]) data.invokeExact(section);
     }
 
     private void releaseAll(Cache cache) {
         try {
             for (Object section : cache.sections.values()) {
-                if (section != null) {
+                if (!(section instanceof Miss)) {
                     int ignored = (int) release.invokeExact(section);
                 }
             }

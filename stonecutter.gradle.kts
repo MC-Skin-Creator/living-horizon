@@ -22,6 +22,10 @@ stonecutter parameters {
 
     node.project.findProperty("deps.fabric_api")?.let { dependencies["fapi"] = it as String }
 
+    // Sodium's config API, from Sodium 0.8, on the targets whose table names a version of it:
+    // `//? if sodium {` keeps the class that adds the mod's pages to Sodium's screen.
+    constants["sodium"] = node.project.findProperty("deps.sodium") != null
+
     // Mojang renamed ResourceLocation to Identifier in 1.21.11 and changed nothing else
     // about it. A pure rename used in many files is a replacement, not a conditional in
     // each of them: the sources say Identifier, and older targets read ResourceLocation.
@@ -132,6 +136,10 @@ stonecutter parameters {
                 "\\bnet\\.minecraft\\.world\\.entity\\.vehicle\\.boat\\.AbstractBoat\\b", "net.minecraft.world.entity.vehicle.AbstractBoat")
         replace("\\bnet\\.minecraft\\.world\\.entity\\.animal\\.Parrot\\b", "net.minecraft.world.entity.animal.parrot.Parrot",
                 "\\bnet\\.minecraft\\.world\\.entity\\.animal\\.parrot\\.Parrot\\b", "net.minecraft.world.entity.animal.Parrot")
+        replace("\\bnet\\.minecraft\\.world\\.entity\\.animal\\.Chicken\\b", "net.minecraft.world.entity.animal.chicken.Chicken",
+                "\\bnet\\.minecraft\\.world\\.entity\\.animal\\.chicken\\.Chicken\\b", "net.minecraft.world.entity.animal.Chicken")
+        replace("\\bnet\\.minecraft\\.world\\.entity\\.animal\\.Rabbit\\b", "net.minecraft.world.entity.animal.rabbit.Rabbit",
+                "\\bnet\\.minecraft\\.world\\.entity\\.animal\\.rabbit\\.Rabbit\\b", "net.minecraft.world.entity.animal.Rabbit")
     }
 
     // 26.1 renamed what draws the GUI, and the methods that go with it, and moved the

@@ -74,6 +74,9 @@ public final class Scene {
             minecraft.options.fov().set(70);
             minecraft.options.renderDistance().set(12);
             minecraft.options.entityDistanceScaling().set(1.0);
+            // The menus' blur is drawn on the CPU here: frames of the loading screen slow enough
+            // with it for a new world to time out before it loads.
+            minecraft.options.menuBackgroundBlurriness().set(0);
             FarConfig defaults = new FarConfig();
             FarConfig config = FarConfig.get();
             // Field by field: the config object is the one the mod holds.
@@ -85,9 +88,9 @@ public final class Scene {
                     throw new IllegalStateException(e);
                 }
             }
-            // Birds and the saucer move on their own: off, so that two screenshots compare.
+            // Birds and the easter eggs move on their own: off, so that two screenshots compare.
             config.skyBirds = false;
-            config.ufo = false;
+            config.easterEggs = false;
         });
     }
 
@@ -104,8 +107,14 @@ public final class Scene {
         TestSingleplayerContext world = context.worldBuilder().setUseConsistentSettings(true).create();
         // The chunks round the player draw slowly without a graphics card.
         context.waitTicks(100);
-        command(world, "gamerule doDaylightCycle false");
+        // The game rules took ids of their own in 1.21.11; the old names are refused there.
+        //? if >=1.21.11 {
+        command(world, "gamerule advance_time false");
+        command(world, "gamerule spawn_mobs false");
+        //?} else {
+        /*command(world, "gamerule doDaylightCycle false");
         command(world, "gamerule doMobSpawning false");
+        *///?}
         command(world, "weather clear");
         command(world, "time set noon");
         command(world, "tp @a 0 ~ 0 0 0");
@@ -177,14 +186,14 @@ public final class Scene {
         *///?}
     }
 
-    /** The first impostor page as it is in memory: the first four rows of sheets, at 1:1. */
+    /** The impostor pages as they are in memory, at half size, side by side. */
     public static void screenshotAtlas(ClientGameTestContext context, Scenario scenario) {
         context.setScreen(AtlasScreen::new);
         screenshot(context, scenario, "atlas");
         context.setScreen(() -> null);
     }
 
-    /** The impostor page, for {@link #screenshotAtlas}. */
+    /** The impostor pages, for {@link #screenshotAtlas}. */
     private static final class AtlasScreen extends Screen {
         AtlasScreen() {
             super(Component.literal("atlas"));
@@ -193,15 +202,24 @@ public final class Scene {
         @Override
         public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
             graphics.fill(0, 0, width, height, 0xFF7090B0);
-            var page = ImpostorAtlas.id(0);
-            // 1:1 the first 854 pixels of the first four rows, then two sheets per row at a quarter.
-            //? if >=1.21.6 {
-            graphics.blit(page, 0, 0, 854, 256, 0f, 854f / 2048f, 0f, 256f / 2048f);
-            graphics.blit(page, 0, 270, 512, 334, 0f, 1f, 0f, 256f / 2048f);
-            //?} else {
-            /*graphics.blit(net.minecraft.client.renderer.rendertype.RenderTypes::guiTextured, page, 0, 0, 0f, 0f, 854, 256, 854, 256, 2048, 2048);
-            graphics.blit(net.minecraft.client.renderer.rendertype.RenderTypes::guiTextured, page, 0, 270, 0f, 0f, 512, 64, 2048, 256, 2048, 2048);
-            *///?}
+            int x = 0, y = 0, line = 0;
+            for (int number = 0; number < ImpostorAtlas.pages(); number++) {
+                int wide = ImpostorAtlas.pageWidth(number), tall = ImpostorAtlas.pageHeight(number);
+                if (tall == 0) continue;
+                if (x + wide / 2 > width) {
+                    x = 0;
+                    y += line + 8;
+                    line = 0;
+                }
+                var page = ImpostorAtlas.id(number);
+                //? if >=1.21.6 {
+                graphics.blit(page, x, y, x + wide / 2, y + tall / 2, 0f, 1f, 0f, 1f);
+                //?} else {
+                /*graphics.blit(net.minecraft.client.renderer.rendertype.RenderTypes::guiTextured, page, x, y, 0f, 0f, wide / 2, tall / 2, wide, tall, wide, tall);
+                *///?}
+                x += wide / 2 + 8;
+                line = Math.max(line, tall / 2);
+            }
         }
 
         @Override
