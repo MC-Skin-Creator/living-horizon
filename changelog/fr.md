@@ -2,6 +2,8 @@
 
 ## Prochaine version
 
+## 0.8.0 — 2026-10-18
+
 ### Nouveautés
 - **Réglage Joueurs simplifiés** — garde les joueurs lointains en modèles complets, tandis que les créatures lointaines deviennent toujours des images plates au loin.
 - **12 nouvelles langues** — allemand, espagnol, italien, portugais du Brésil, polonais, turc, russe, ukrainien, chinois simplifié et traditionnel, japonais et coréen.

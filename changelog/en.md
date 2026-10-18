@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.8.0 — 2026-10-18
+
 ### New
 - **Simplified Players setting** — keeps distant players as full models while distant mobs still turn into flat pictures far away.
 - **12 new languages** — German, Spanish, Italian, Brazilian Portuguese, Polish, Turkish, Russian, Ukrainian, Simplified and Traditional Chinese, Japanese and Korean.
