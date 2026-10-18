@@ -10,6 +10,9 @@
 ### Improved
 - **Settings** — every setting has a clearer name and description, worded like Minecraft's own options, and distances get sliders the full width of the list.
 
+### Fixed
+- **Resizing the game window** — distant mobs keep hiding behind hills, Voxy's and Distant Horizons' included, after the window changes size, instead of showing through them until the game restarts.
+
 ## 0.7.0 — 2026-10-17
 
 ### New

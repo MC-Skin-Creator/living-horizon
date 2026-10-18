@@ -10,6 +10,9 @@
 ### Améliorations
 - **Paramètres** — chaque paramètre a un nom et une description plus clairs, dans le style des options de Minecraft, et les distances ont des curseurs sur toute la largeur de la liste.
 
+### Corrections
+- **Redimensionner la fenêtre du jeu** — les créatures lointaines continuent de se cacher derrière les collines, celles de Voxy et de Distant Horizons comprises, quand la fenêtre change de taille, au lieu de les traverser jusqu'au redémarrage du jeu.
+
 ## 0.7.0 — 2026-10-17
 
 ### Nouveautés

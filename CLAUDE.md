@@ -352,6 +352,11 @@ come back, add it here in the same pull request: this file is what the next sess
   press hands the release to Sodium's. Over Sodium's screen the mod's screens and
   confirmations close on the release (`ui/SodiumReturn`); a new screen opened from
   `SodiumOptions` needs the same.
+- **Broken after the window is resized** (depth view stuck or gone, mobs through the far terrain,
+  occlusion wrong until a restart): the game, Voxy and `FarDepth.prepare` make their textures again,
+  often under the same names, and a framebuffer not bound at that moment keeps the deleted one. Our
+  framebuffers attach their texture again every frame (`FarDepth.attachDepth`), never by name only;
+  the `resize` scenario checks it.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
