@@ -66,8 +66,11 @@ public final class MinecartCoast {
         this.carrying = carrying;
     }
 
-    /** How a minecart was moving as it left: null if it was not, or is no minecart. */
-    static @Nullable MinecartCoast of(Entity entity) {
+    /**
+     * How a minecart was moving as it left: null if it was not, or is no minecart. Whether it
+     * carried a mob is told apart: the game has its passengers get off before it says it left.
+     */
+    static @Nullable MinecartCoast of(Entity entity, boolean carrying) {
         if (!(entity instanceof AbstractMinecart)) return null;
         // What it moved during the last tick, as this client drew it.
         double vx = entity.getX() - entity.xo, vz = entity.getZ() - entity.zo;
@@ -76,7 +79,7 @@ public final class MinecartCoast {
             vz = entity.getDeltaMovement().z;
         }
         if (vx * vx + vz * vz < STILL * STILL) return null;
-        return new MinecartCoast(vx, vz, entity.isVehicle());
+        return new MinecartCoast(vx, vz, carrying);
     }
 
     public double speed() {

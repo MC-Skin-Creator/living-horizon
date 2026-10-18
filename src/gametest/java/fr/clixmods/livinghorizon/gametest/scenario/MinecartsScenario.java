@@ -29,6 +29,10 @@ public final class MinecartsScenario implements Scenario {
     private static final UUID MOVING = new UUID(0L, 42L);
     /** The minecart the villager sits in, {@code UUID:[I;0,0,0,43]}. */
     private static final UUID CARRYING = new UUID(0L, 43L);
+    /** The villager riding the moving minecart, {@code UUID:[I;0,0,0,44]}. */
+    private static final UUID PASSENGER = new UUID(0L, 44L);
+    /** The villager sitting in the parked minecart, {@code UUID:[I;0,0,0,45]}. */
+    private static final UUID SEATED = new UUID(0L, 45L);
 
     @Override
     public String name() {
@@ -48,7 +52,7 @@ public final class MinecartsScenario implements Scenario {
             // Past 32 blocks: a cart that vanishes closer is taken as broken.
             Scene.row(world, CARTS, 1, 40, 3.0);
             Scene.command(world, "execute at @p run summon minecraft:minecart ~-4 ~ ~50 "
-                    + "{UUID:[I;0,0,0,43],Passengers:[{id:\"minecraft:villager\",NoAI:1b}]}");
+                    + "{UUID:[I;0,0,0,43],Passengers:[{id:\"minecraft:villager\",UUID:[I;0,0,0,45],NoAI:1b}]}");
             Scene.command(world, "execute at @p run summon minecraft:oak_boat ~4 ~ ~50 {Passengers:[{id:\"minecraft:cow\",NoAI:1b}]}");
             // A powered line to the south, along x = 12: the cart keeps going at 8 blocks a second.
             // A piece at a time: a fill reaching past the chunks the server has loaded does
@@ -65,21 +69,27 @@ public final class MinecartsScenario implements Scenario {
             Scene.screenshot(context, this, "sent");
             context.runOnClient(minecraft -> minecraft.options.fov().set(70));
 
-            Scene.command(world, "execute at @p run summon minecraft:minecart ~12 ~ ~4 {UUID:[I;0,0,0,42],Motion:[0.0,0.0,0.4]}");
+            Scene.command(world, "execute at @p run summon minecraft:minecart ~12 ~ ~4 {UUID:[I;0,0,0,42],Motion:[0.0,0.0,0.4],"
+                    + "Passengers:[{id:\"minecraft:villager\",UUID:[I;0,0,0,44],NoAI:1b}]}");
+            double apart = 0;
             for (int second = 5; second <= 40; second += 5) {
                 context.waitTicks(100);
                 double real = serverZ(world);
                 int at = second;
                 context.runOnClient(minecraft -> Scene.log("minecarts t=" + at + "s server z=" + Math.round(real)
-                        + " copy z=" + copyZ() + " sent=" + FarPlayerTracker.get().mobs().live().stream().anyMatch(e -> e.getUUID().equals(MOVING))
+                        + " copy z=" + copyZ(MOVING) + " passenger z=" + copyZ(PASSENGER)
+                        + " sent=" + FarPlayerTracker.get().mobs().live().stream().anyMatch(e -> e.getUUID().equals(MOVING))
                         + " simulation=" + (minecraft.level == null ? -1 : minecraft.level.getServerSimulationDistance())));
+                double gap = context.computeOnClient(minecraft -> Math.abs(copyZ(PASSENGER) - copyZ(MOVING)));
+                if (!Double.isNaN(gap)) apart = Math.max(apart, gap);
             }
             double real = serverZ(world);
-            double copy = context.computeOnClient(minecraft -> copyZ());
-            Scene.log("minecarts stopped: server z=" + real + " copy z=" + copy);
+            double copy = context.computeOnClient(minecraft -> copyZ(MOVING));
+            Scene.log("minecarts stopped: server z=" + real + " copy z=" + copy + ", passenger at most " + apart + " from it");
             if (Double.isNaN(copy) || Math.abs(copy - real) > 4) {
                 throw new AssertionError("the copy stopped at z=" + copy + ", the server's cart at z=" + real);
             }
+            if (apart > 0.5) throw new AssertionError("the villager's copy was " + apart + " blocks from its minecart's");
             context.runOnClient(minecraft -> minecraft.options.fov().set(30));
             Scene.command(world, "tp @a 12.5 ~2 0 0 10");
             Scene.screenshot(context, this, "line");
@@ -96,7 +106,7 @@ public final class MinecartsScenario implements Scenario {
                             + (puppet == null ? " not built" : " drawn at " + puppet.position()));
                     if (puppet == null) continue;
                     types.add(mob.type());
-                    if (mob.type().equals("minecraft:villager")) villager = puppet;
+                    if (mob.id().equals(SEATED)) villager = puppet;
                     if (mob.id().equals(CARRYING)) cart = puppet;
                 }
                 return check(types, villager, cart);
@@ -123,9 +133,10 @@ public final class MinecartsScenario implements Scenario {
         });
     }
 
-    private static double copyZ() {
+    private static double copyZ(UUID id) {
         for (MobMemory.Remembered mob : FarPlayerTracker.get().mobs().shown()) {
-            if (mob.id().equals(MOVING)) return mob.z();
+            Entity puppet = mob.puppet();
+            if (mob.id().equals(id) && puppet != null) return puppet.getZ();
         }
         return Double.NaN;
     }

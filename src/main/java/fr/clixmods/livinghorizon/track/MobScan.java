@@ -40,7 +40,7 @@ import java.util.concurrent.CompletableFuture;
 public final class MobScan {
     /** One mob found, as the game saves it, ready to be remembered. */
     public record Found(UUID id, String type, double x, double y, double z, float yaw, CompoundTag nbt, boolean named,
-                        boolean riding) {
+                        @Nullable UUID vehicle) {
     }
 
     /** What a scan found, and the chunks it covered: a remembered mob in those that was not found is gone. */
@@ -182,7 +182,7 @@ public final class MobScan {
             if (MobMemory.buriedCart(entity, saved)) return;
             found.add(new Found(entity.getUUID(), EntityType.getKey(entity.getType()).toString(),
                     entity.getX(), entity.getY(), entity.getZ(), entity.getYRot(), saved,
-                    entity.hasCustomName(), entity.isPassenger()));
+                    entity.hasCustomName(), entity.isPassenger() ? entity.getRootVehicle().getUUID() : null));
         } catch (RuntimeException e) {
             seen.remove(entity.getUUID());
         }

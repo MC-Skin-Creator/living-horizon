@@ -431,12 +431,14 @@ lives there.
   server stops sending it rolls on along its rails (`track/MinecartCoast`, the server's
   own rail physics: slopes, curves, powered rails, friction) while it stays within the
   server's simulation distance of you and on blocks this client has. Off its rails it
-  stops; a position from the data pack wins over its own run. Minecarts under more than
+  stops; a position from the data pack wins over its own run, and in single player the
+  server's own (`ServerMobs`) corrects it every few ticks. Minecarts under more than
   8 blocks of ground (outside the Nether) are not remembered, and the scan and the data
   pack leave out the chest minecarts nobody ever opened: the mineshafts' dozens.
 - **A mob riding something** (a villager in a minecart, a cow in a boat) is drawn with its
-  ride while the server sends them, and its copy stays where it sat instead of strolling
-  off. Only a stack with a player in it is left to that player's copy.
+  ride while the server sends them. Its copy then rides its ride's copy, seated as the game
+  seats a passenger, wherever that one goes (`MobMemory.sit`); without one it stays where it
+  sat. Only a stack with a player in it is left to that player's copy.
 
 ### Birds
 
