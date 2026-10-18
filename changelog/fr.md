@@ -8,7 +8,7 @@
 - **Sodium** — les réglages de Living Horizon apparaissent aussi dans les *Paramètres vidéo* de Sodium, sur des pages à eux sous celles de Sodium (Sodium 0.8 et plus récent).
 - **Joueurs déconnectés sur une monture** — ils gardent leur cheval, leur bateau ou leur ghast joyeux et se promènent avec autour de l'endroit où ils sont partis : le cheval marche, le bateau reste sur l'eau et le ghast joyeux flotte dans les airs.
 - **Mémoire vidéo** — *Entités simplifiées...* affiche, dans un onglet pour les créatures et un pour les joueurs, la mémoire vidéo que prennent leurs images, et deux nouveaux réglages choisissent le maximum de chacun.
-- **Wagons au loin** — les wagons restent visibles à l'horizon comme les bateaux, et un wagon qui roulait encore quand tu le perds de vue continue sur ses rails.
+- **Wagons au loin** — les wagons restent visibles à l'horizon comme les bateaux, et un wagon qui roulait encore quand tu le perds de vue continue sur ses rails, comme le serveur le fait rouler.
 
 ### Améliorations
 - **Paramètres** — chaque paramètre a un nom et une description plus clairs, dans le style des options de Minecraft, et les distances ont des curseurs sur toute la largeur de la liste.
@@ -21,6 +21,7 @@
 - **Distant Horizons** — au loin, les joueurs, les joueurs déconnectés et les slimes s'affichent comme les autres créatures, au lieu de disparaître sous son terrain (Minecraft 26.1 et plus récent).
 - **Distant Horizons** — au loin, son terrain ne mord plus sur les créatures et les joueurs placés devant lui, comme s'il était plus proche qu'il ne l'est (Minecraft 26.1 et plus récent).
 - **Balancement de la vue** — marcher ne fait plus clignoter les créatures lointaines, ni avancer et reculer le terrain de Distant Horizons devant elles, à chaque pas (Minecraft 26.1 et plus récent).
+- **Créatures dans un bateau ou un wagon** — elles ne disparaissent plus au loin avec leur véhicule, et leur copie lointaine reste à sa place au lieu de partir se promener.
 
 ## 0.7.0 — 2026-10-17
 

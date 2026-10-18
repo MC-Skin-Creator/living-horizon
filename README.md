@@ -434,6 +434,9 @@ lives there.
   stops; a position from the data pack wins over its own run. Minecarts under more than
   8 blocks of ground (outside the Nether) are not remembered, and the scan and the data
   pack leave out the chest minecarts nobody ever opened: the mineshafts' dozens.
+- **A mob riding something** (a villager in a minecart, a cow in a boat) is drawn with its
+  ride while the server sends them, and its copy stays where it sat instead of strolling
+  off. Only a stack with a player in it is left to that player's copy.
 
 ### Birds
 

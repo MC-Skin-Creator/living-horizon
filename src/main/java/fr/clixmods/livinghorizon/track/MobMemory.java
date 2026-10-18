@@ -105,6 +105,12 @@ public final class MobMemory {
          * it walks on it from the start next time, before the far world is read, or where it knows nothing.
          */
         @Nullable String ground;
+        /** Sat in a minecart, a boat or on another mob when last seen: it stays put there. */
+        boolean riding;
+        /** A minecart still rolling along its rails, where the server keeps moving it; null once it stands. */
+        transient @Nullable MinecartCoast coast;
+        /** Where the data pack last put it: a minecart rolls on from there, and is not put back. */
+        transient double packX = Double.NaN, packY, packZ;
 
         transient @Nullable Entity puppet;
         /** The animation it plays, chosen from the blocks around where it is remembered; null until read. */
@@ -134,10 +140,6 @@ public final class MobMemory {
         transient boolean still;
         /** When it was last drawn, in nanoseconds; 0 if never. */
         transient long drawnAt;
-        /** A minecart still rolling along its rails, where the server keeps moving it; null once it stands. */
-        transient @Nullable MinecartCoast coast;
-        /** Where the data pack last put it: a minecart rolls on from there, and is not put back. */
-        transient double packX = Double.NaN, packY, packZ;
 
         /** Said by the renderer each frame it draws this copy. */
         public void drawn() { drawnAt = System.nanoTime(); }
@@ -174,6 +176,12 @@ public final class MobMemory {
     private int renderBlocks;
     /** Mobs the server sends right now: never drawn twice. */
     private final Map<UUID, Entity> live = new HashMap<>();
+    /**
+     * Mobs riding something as of the last tick. The game makes a vehicle's passengers get
+     * off before it says the vehicle left: by the time a villager in a minecart is said to
+     * leave, it is not in it any more.
+     */
+    private final Set<UUID> riders = new HashSet<>();
     /** Real mobs kept out of the frame while their copy walks up to them. */
     private final Map<Entity, Remembered> joining = new IdentityHashMap<>();
     /**
@@ -277,6 +285,7 @@ public final class MobMemory {
         firstVisit = false;
         mobs.clear();
         live.clear();
+        riders.clear();
         joining.clear();
         reach.clear();
         dismissed.clear();
@@ -394,7 +403,8 @@ public final class MobMemory {
         // The body as the game drew it: a mob standing still turns it, not its yaw.
         float body = mob instanceof LivingEntity living ? living.yBodyRot : mob.getYRot();
         remember(new MobScan.Found(mob.getUUID(), EntityType.getKey(mob.getType()).toString(),
-                mob.getX(), mob.getY(), mob.getZ(), body, tag, mob.hasCustomName()),
+                mob.getX(), mob.getY(), mob.getZ(), body, tag, mob.hasCustomName(),
+                mob.isPassenger() || riders.contains(mob.getUUID())),
                 level.dimension().identifier().toString(), worldOf(level));
         Remembered fresh = mobs.get(entity.getUUID());
         if (fresh != null) {
@@ -476,6 +486,7 @@ public final class MobMemory {
         memory.parsed = CompletableFuture.completedFuture(mob.nbt());
         memory.seenAt = System.currentTimeMillis();
         memory.named = mob.named();
+        memory.riding = mob.riding();
         forget(memory.id);
         mobs.put(memory.id, memory);
         chooseSoon = true;
@@ -556,6 +567,10 @@ public final class MobMemory {
         renderBlocks = renderDistanceBlocks;
         builtNow = 0;
         clock++;
+        riders.clear();
+        for (Entity entity : live.values()) {
+            if (entity.isPassenger()) riders.add(entity.getUUID());
+        }
         if (!config.distantMobs) {
             shown = List.of();
             return;
@@ -616,7 +631,7 @@ public final class MobMemory {
                     if (mob.simulated) mob.motion.jump(living, mob);
                     continue;
                 }
-                boolean roam = !still.contains(mob.type);
+                boolean roam = !still.contains(mob.type) && !mob.riding;
                 // Moved by the data pack: the blocks are read again around where it is now.
                 MobPaths.Choice choice = mob.choice;
                 if (choice != null && !choice.ground().around(mob.x, mob.z)) mob.choice = choice = null;
