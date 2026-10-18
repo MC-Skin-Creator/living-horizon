@@ -445,7 +445,7 @@ public final class FarDepth {
 
     // --- Debug view ---------------------------------------------------------------------
 
-    private static int viewProgram, viewTarget, viewColor;
+    private static int viewProgram, viewTarget;
 
     /**
      * Draws one of the depth copies of the last frame in the bottom right corner of the
@@ -460,12 +460,9 @@ public final class FarDepth {
             int colorId = mainTexture(false);
             if (colorId == 0) return;
             if (viewProgram == 0) viewProgram = compileView();
-            if (viewTarget == 0 || viewColor != colorId) {
-                if (viewTarget != 0) GL30C.glDeleteFramebuffers(viewTarget);
-                viewTarget = GL45C.glCreateFramebuffers();
-                GL45C.glNamedFramebufferTexture(viewTarget, GL30C.GL_COLOR_ATTACHMENT0, colorId, 0);
-                viewColor = colorId;
-            }
+            if (viewTarget == 0) viewTarget = GL45C.glCreateFramebuffers();
+            // Every frame: see attachDepth.
+            GL45C.glNamedFramebufferTexture(viewTarget, GL30C.GL_COLOR_ATTACHMENT0, colorId, 0);
             int screenW = minecraft.getMainRenderTarget().width, screenH = minecraft.getMainRenderTarget().height;
             int w = screenW * 2 / 5, h = screenH * 2 / 5, x = screenW - w - 8, y = 8;
             GlState gl = GlState.save();
@@ -583,16 +580,9 @@ public final class FarDepth {
     private static int ownTarget() {
         int depth = mainTexture(true);
         if (depth == 0) return 0;
-        if (ownTarget != 0 && ownTargetDepth == depth) return ownTarget;
-        if (ownTarget != 0) GL30C.glDeleteFramebuffers(ownTarget);
-        int format = GL45C.glGetTextureLevelParameteri(depth, 0, GL11C.GL_TEXTURE_INTERNAL_FORMAT);
-        boolean stencil = format == GL30C.GL_DEPTH24_STENCIL8 || format == GL30C.GL_DEPTH32F_STENCIL8
-                || format == GL30C.GL_DEPTH_STENCIL;
-        ownTarget = GL45C.glCreateFramebuffers();
-        GL45C.glNamedFramebufferTexture(ownTarget,
-                stencil ? GL30C.GL_DEPTH_STENCIL_ATTACHMENT : GL30C.GL_DEPTH_ATTACHMENT, depth, 0);
+        if (ownTargetDepth != depth) voxyWidth = voxyHeight = 0;
+        ownTarget = attachDepth(ownTarget, depth);
         ownTargetDepth = depth;
-        voxyWidth = voxyHeight = 0;
         return ownTarget;
     }
 
@@ -920,7 +910,7 @@ public final class FarDepth {
     private static final int[] RECTANGLES = new int[4 * 512];
 
     /** Our framebuffers around Voxy's opaque and translucent depth textures. */
-    private static int voxyOpaqueTarget, voxyOpaqueDepth, voxyTranslucentTarget, voxyTranslucentDepth;
+    private static int voxyOpaqueTarget, voxyTranslucentTarget;
     private static int intoVoxyProgram;
 
     /** Voxy draws under a shader pack that keeps its terrain out of the game's depth. */
@@ -963,15 +953,8 @@ public final class FarDepth {
         float[] fromGame = new Matrix4f((Matrix4f) projectionField.get(viewport)).invert().get(new float[16]);
         float[] toVoxy = ((Matrix4f) voxyProjectionField.get(viewport)).get(new float[16]);
         if (intoVoxyProgram == 0) intoVoxyProgram = compileIntoVoxy();
-        int opaqueId = textureIdField.getInt(opaque), translucentId = textureIdField.getInt(translucent);
-        if (voxyOpaqueDepth != opaqueId) {
-            voxyOpaqueTarget = wrap(voxyOpaqueTarget, opaqueId);
-            voxyOpaqueDepth = opaqueId;
-        }
-        if (voxyTranslucentDepth != translucentId) {
-            voxyTranslucentTarget = wrap(voxyTranslucentTarget, translucentId);
-            voxyTranslucentDepth = translucentId;
-        }
+        voxyOpaqueTarget = attachDepth(voxyOpaqueTarget, textureIdField.getInt(opaque));
+        voxyTranslucentTarget = attachDepth(voxyTranslucentTarget, textureIdField.getInt(translucent));
         GlState gl = GlState.save();
         try {
             GL11C.glDisable(GL11C.GL_SCISSOR_TEST);
@@ -1010,13 +993,19 @@ public final class FarDepth {
         }
     }
 
-    /** A framebuffer of our own around a depth texture, in place of {@code previous}. */
-    private static int wrap(int previous, int depth) {
-        if (previous != 0) GL30C.glDeleteFramebuffers(previous);
+    /**
+     * A framebuffer of our own around a depth texture: {@code framebuffer}, or a new one when
+     * 0, with {@code depth} attached again on every call. A texture deleted and made again -
+     * the window resized - often gets its old name back, and a framebuffer that was not bound
+     * at that moment keeps the deleted texture: kept by its name only, everything drawn
+     * through it went to a picture of the old size that nobody reads any more.
+     */
+    static int attachDepth(int framebuffer, int depth) {
+        if (framebuffer == 0) framebuffer = GL45C.glCreateFramebuffers();
         int format = GL45C.glGetTextureLevelParameteri(depth, 0, GL11C.GL_TEXTURE_INTERNAL_FORMAT);
         boolean stencil = format == GL30C.GL_DEPTH24_STENCIL8 || format == GL30C.GL_DEPTH32F_STENCIL8
                 || format == GL30C.GL_DEPTH_STENCIL;
-        int framebuffer = GL45C.glCreateFramebuffers();
+        if (!stencil) GL45C.glNamedFramebufferTexture(framebuffer, GL30C.GL_DEPTH_STENCIL_ATTACHMENT, 0, 0);
         GL45C.glNamedFramebufferTexture(framebuffer,
                 stencil ? GL30C.GL_DEPTH_STENCIL_ATTACHMENT : GL30C.GL_DEPTH_ATTACHMENT, depth, 0);
         return framebuffer;

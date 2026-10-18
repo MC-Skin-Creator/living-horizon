@@ -254,6 +254,11 @@ come back, add it here in the same pull request: this file is what the next sess
   item target while `ImpostorAtlas.drawing()` is set. A render type that binds yet another
   target of the game's escapes it; before 1.21.5 the eight views share one target, each in its
   own viewport.
+- **Broken after the window is resized** (depth view stuck or gone, mobs through the far terrain,
+  occlusion wrong until a restart): the game, Voxy and `FarDepth.prepare` make their textures again,
+  often under the same names, and a framebuffer not bound at that moment keeps the deleted one. Our
+  framebuffers attach their texture again every frame (`FarDepth.attachDepth`), never by name only;
+  the `resize` scenario checks it.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

@@ -13,6 +13,7 @@
 - **Créatures qui s'éloignent** — la copie lointaine regarde maintenant dans la même direction que la créature, au lieu de parfois se tourner ailleurs.
 - **Minecraft 1.21.9 à 26.1** — des morceaux de créatures lointaines, comme les vêtements d'un villageois ou un objet tenu en main, ne traversent plus le terrain de Voxy avec les shaders, ni celui de Distant Horizons.
 - **Minecraft 26.1 et plus** — les parties transparentes des créatures lointaines, comme l'enveloppe d'un slime, ne traversent plus le terrain de Voxy avec les shaders, ni celui de Distant Horizons.
+- **Redimensionner la fenêtre du jeu** — les créatures lointaines continuent de se cacher derrière les collines, celles de Voxy et de Distant Horizons comprises, quand la fenêtre change de taille, au lieu de les traverser jusqu'au redémarrage du jeu.
 
 ## 0.4.1 — 2026-10-11
 
