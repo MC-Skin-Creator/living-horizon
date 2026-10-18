@@ -154,6 +154,8 @@ extra["lhMixins"] = buildList {
     add("EntityRenderDispatcherMixin")
     // The far plane: the game renderer's before 26.1, the camera's from there.
     add(if (atLeast("26.1")) "CameraMixin" else "GameRendererMixin")
+    // From 26.1 the projection with view bobbing in it only goes to the GPU: read on its way.
+    if (atLeast("26.1")) add("GameRendererProjectionMixin")
     add("GuiMixin")
     // The feature renderers came in 1.21.9.
     if (atLeast("1.21.9")) {

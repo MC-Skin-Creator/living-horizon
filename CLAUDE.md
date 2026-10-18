@@ -247,6 +247,12 @@ come back, add it here in the same pull request: this file is what the next sess
   `CameraMixin` pushes that plane out right after it is set, before the projection; pushed at
   the end, `DepthFar.of` gave a plane the projection did not use, and Distant Horizons' depth
   converted with it came out nearer. Whatever converts a depth must use the projection's planes.
+- **Distant mobs blinking at every step, far terrain lighter and darker in the depth view as
+  the player walks** (from 26.1, view bobbing on): the world is drawn with the camera's
+  projection times the bobbing, which from 26.1 only the GPU gets (`GameRendererProjectionMixin`
+  reads it for `FarDepth.noteView`). Distant Horizons takes that bobbed projection and replaces
+  its two depth terms only, so its depth is converted through its whole matrix
+  (`DhDepth.inverse`), never through the two terms alone.
 - **Voxy version.** `FarDepth` and `VoxySource` reach Voxy by reflection; a renamed class turns
   both off ("Voxy found, but not the version this mod knows"). 0.2.18 renamed
   `IGetVoxyRenderSystem` to `IVoxyRenderSystemHolder` (`VoxySource.renderSystemGetter` tries
