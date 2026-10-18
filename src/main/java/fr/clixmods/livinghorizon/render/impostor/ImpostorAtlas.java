@@ -101,6 +101,7 @@ import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.jspecify.annotations.Nullable;
@@ -754,6 +755,8 @@ public final class ImpostorAtlas {
             }
             Runnable back = request.puppet != null ? Puppets.atRest(request.puppet) : () -> {
             };
+            Runnable turnedBack = request.puppet != null ? facingBack(request.puppet) : () -> {
+            };
             try {
                 bake(minecraft, request);
             } catch (LeftOut leftOut) {
@@ -765,6 +768,7 @@ public final class ImpostorAtlas {
                 return;
             } finally {
                 back.run();
+                turnedBack.run();
                 //? if >=1.21.6 && <26.3 {
                 RenderSystem.outputColorTextureOverride = null;
                 RenderSystem.outputDepthTextureOverride = null;
@@ -917,6 +921,15 @@ public final class ImpostorAtlas {
     /** A figure's state for one view, still and lit evenly; seated if its key says so. */
     private static EntityRenderState staged(Minecraft minecraft, Request request, int view) {
         Entity puppet = request.puppet;
+        if (!(puppet instanceof LivingEntity)) {
+            // A boat, a minecart: no body to turn in its state, the entity itself is turned
+            // for each view, the way stage turns a mob's body. Put back after the bake.
+            float facing = 180f - view * (360f / ImpostorViews.VIEWS);
+            puppet.setYRot(facing);
+            puppet.yRotO = facing;
+            puppet.setXRot(0f);
+            puppet.xRotO = 0f;
+        }
         EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), puppet, 1.0f);
         if (state == null) throw new LeftOut();
         stage(state, view);
@@ -937,6 +950,19 @@ public final class ImpostorAtlas {
 
     private static double lift(Request request) {
         return request.rider == null && ImpostorKey.posture(request.key) == ImpostorKey.LYING ? LYING_LIFT : 0;
+    }
+
+    /** What puts back the way an entity that is not a mob faces, turned view by view while baked. */
+    private static Runnable facingBack(Entity puppet) {
+        if (puppet instanceof LivingEntity) return () -> {
+        };
+        float yaw = puppet.getYRot(), yawO = puppet.yRotO, pitch = puppet.getXRot(), pitchO = puppet.xRotO;
+        return () -> {
+            puppet.setYRot(yaw);
+            puppet.yRotO = yawO;
+            puppet.setXRot(pitch);
+            puppet.xRotO = pitchO;
+        };
     }
 
     /** A rider's state for one view: on the mount, turned with it, in the riding pose. */

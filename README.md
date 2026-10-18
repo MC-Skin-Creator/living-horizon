@@ -314,7 +314,8 @@ they have no life of their own (`track/RestingLoop`): nothing is read nor decide
 one of the animations distant mobs play (`track/MobAnimations`), in a loop around their spot,
 on the ground read around it once (`track/MobPaths`), seated in some of its pauses and lying
 down where they are at night. Coming from wherever their life left them, they walk back to
-it; once the camera is near again, their life goes on from where the loop left them.
+it at a stroll, stopping now and then to look around, and start their loop once there; once
+the camera is near again, their life goes on from where the loop left them.
 
 A player who logs off riding something keeps it (`track/RestingMount`), when `showVehicles` is
 on: the server takes the mount away with them, so a copy of it, as this client last saw it
@@ -534,11 +535,13 @@ nothing, and the game no longer builds a render state and a model for it every f
   figure, drawn lowered to the ground as the model is; lying along its body for a sleeper,
   baked raised (`ImpostorAtlas.LYING_LIFT`) so that none of it falls below the tile, laid
   along its bed when it is in one.
-- **Riders** (players online or not, on a horse, a camel, a happy ghast...) are baked with their
-  mount in one picture (`ImpostorKey.riding`, `ImpostorAtlas.Rider`): the rider seated where it
-  sits on it, turned as it is turned. Filed as a player's, never kept on disk.
-- **Not impostors:** boats, minecarts and other mounts that are not mobs, with whoever is on
-  them, the 2D birds, parrots and bats.
+- **Riders** (players online or not, on a horse, a camel, a happy ghast, in a boat, a raft, a
+  minecart...) are baked with what carries them in one picture (`ImpostorKey.riding`,
+  `ImpostorAtlas.Rider`): the rider seated where it sits on it, turned as it is turned. A
+  vehicle has no body to turn in its state: the entity itself is turned for each view and put
+  back after the bake. Filed as a player's, never kept on disk.
+- **Not impostors:** a vehicle carrying more than one passenger (drawn as models, all of
+  them), the 2D birds, parrots and bats.
 
 ### The far terrain's depth
 

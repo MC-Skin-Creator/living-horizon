@@ -806,22 +806,25 @@ public final class GhostRenderer {
     }
 
     /**
-     * A rider and its mount as one picture, baked together: the rider seated where it sits,
-     * turned as it is turned on it. False when either cannot be pictured (a boat, a figure
-     * whose renderer gives nothing), and both are drawn as models.
+     * A rider and its mount or vehicle as one picture, baked together: a horse, a camel, a
+     * happy ghast, a boat, a minecart, the rider seated where it sits, turned as it is
+     * turned on it. False when either cannot be pictured (a renderer that gives nothing, a
+     * vehicle carrying someone else too), and both are drawn as models.
      */
     private static boolean impostorRiding(Minecraft minecraft, Vec3 eye, Entity rider, Entity mount, float partialTick,
                                           FarConfig config) {
         EntityRenderDispatcher dispatcher = minecraft.getEntityRenderDispatcher();
-        if (!ImpostorAtlas.usable() || !(mount instanceof LivingEntity horse) || !(rider instanceof LivingEntity person)
+        if (!ImpostorAtlas.usable() || !(rider instanceof LivingEntity person) || mount.getPassengers().size() > 1
                 || !drawable(dispatcher, mount) || !drawable(dispatcher, rider)) {
             return false;
         }
-        float facing = horse.yBodyRot;
+        // A mob's body turns on its own, a vehicle is the way it faces.
+        float facing = mount instanceof LivingEntity horse ? horse.yBodyRot : mount.getYRot();
+        float facingO = mount instanceof LivingEntity horse ? horse.yBodyRotO : mount.yRotO;
         Vec3 seat = rider.position().subtract(mount.position()).yRot((float) Math.toRadians(facing));
         float turned = Mth.wrapDegrees(person.yBodyRot - facing);
         ImpostorKey key = ImpostorKey.riding(rider, mount, seat, turned);
-        float yaw = Mth.rotLerp(partialTick, horse.yBodyRotO, horse.yBodyRot);
+        float yaw = Mth.rotLerp(partialTick, facingO, facing);
         double extent = Math.max(Math.max(mount.getBbHeight(), seat.y + rider.getBbHeight()), mount.getBbWidth());
         return picture(minecraft, eye, rider, mount, key,
                 () -> ImpostorAtlas.request(key, mount, new ImpostorAtlas.Rider(rider, seat, turned)), partialTick, config,

@@ -11,7 +11,7 @@
 ### Improved
 - **Settings** — every setting has a clearer name and description, worded like Minecraft's own options, and distances get sliders the full width of the list.
 - **Players who logged off** — away from you they walk a small round around where they left, as distant animals do, riders included, and far away they turn into light pictures like players online, standing, seated, lying down or in a bed.
-- **Riders** — far away, a player on a horse or another mount becomes one light picture with it, instead of two full models.
+- **Riders** — far away, a player on a horse, a boat, a minecart or anything else they ride becomes one light picture with it, instead of two full models.
 
 ## 0.7.0 — 2026-10-17
 
