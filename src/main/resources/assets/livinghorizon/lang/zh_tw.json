@@ -207,6 +207,10 @@
   "livinghorizon.options.debugHud": "除錯面板",
   "livinghorizon.options.impostorPlayers": "簡化玩家",
   "livinghorizon.options.impostorPlayers.tooltip": "遠處玩家也會像生物一樣被簡化。關閉：他們在任何距離都保持完整模型，外觀和盔甲保留全部細節。需要開啟「簡化實體」。",
+  "livinghorizon.options.impostorMobMemory": "生物圖片顯示記憶體",
+  "livinghorizon.options.impostorMobMemory.tooltip": "簡化生物的圖片可占用的顯示記憶體，與玩家的分開。只在遇到新外觀時逐步占用；占滿後，最久未使用的圖片會讓出位置。",
+  "livinghorizon.options.impostorPlayerMemory": "玩家圖片顯示記憶體",
+  "livinghorizon.options.impostorPlayerMemory.tooltip": "簡化玩家的圖片可占用的顯示記憶體，包括騎乘者及其坐騎，與生物的分開。一分鐘未使用的圖片會被丟棄。",
   "livinghorizon.options.debugHud.tooltip": "位於左上角。在 F3 畫面中，於除錯選項（F3 + F6）裡開啟「living_horizon」：每刻和每幀的開銷、上一幀中每個遠處生物的結果、遠景地形的讀取與深度、此伺服器傳送生物的距離、已開啟的最佳化。",
   "livinghorizon.options.debugBoxes": "生物方框",
   "livinghorizon.options.debugBoxes.tooltip": "在每個遠處生物和玩家周圍顯示一個方框和一個點，可穿透地形看到，顏色表示其結果：綠色為已繪製的副本，青色為由模組繪製的真實生物，藍色為玩家，黃色為太小，橙色為在方塊後面，紅色為在視野外，紫色為正在建構，灰色為超出上限。",
@@ -284,7 +288,9 @@
   "livinghorizon.debug.f3.impostors": "Living Horizon 簡化圖片：已烘焙 %s 張圖集，等待中 %s",
   "livinghorizon.debug.f3.impostorsFailed": "Living Horizon 簡化圖片：烘焙失敗，改用完整模型（請查看記錄檔）",
   "livinghorizon.impostors.title": "簡化實體",
-  "livinghorizon.impostors.status": "就緒：%s，等待中：%s",
+  "livinghorizon.impostors.memory": "顯示記憶體：%s / %s - 圖片：%s，等待中：%s",
+  "livinghorizon.impostors.tab.mobs": "生物",
+  "livinghorizon.impostors.tab.players": "玩家",
   "livinghorizon.impostors.off": "「簡化實體」已關閉：請在設定中開啟以產生和使用圖片。",
   "livinghorizon.impostors.empty": "尚無圖片：周圍遠處玩家和生物的圖片會在幾秒內產生。",
   "livinghorizon.impostors.regenerate": "重新產生",
@@ -319,5 +325,6 @@
   "livinghorizon.options.seconds": "%s 秒",
   "livinghorizon.options.pixels": "%spx",
   "livinghorizon.options.multiplier": "%s×",
-  "livinghorizon.options.percent": "%s%%"
+  "livinghorizon.options.percent": "%s%%",
+  "livinghorizon.options.megabytes": "%s MB"
 }

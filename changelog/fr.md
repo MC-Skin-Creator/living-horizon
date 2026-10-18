@@ -7,11 +7,13 @@
 - **Langues** — Living Horizon parle désormais allemand, espagnol, italien, portugais du Brésil, polonais, turc, russe, ukrainien, chinois simplifié et traditionnel, japonais et coréen.
 - **Sodium** — les réglages de Living Horizon apparaissent aussi dans les *Paramètres vidéo* de Sodium, sur des pages à eux sous celles de Sodium (Sodium 0.8 et plus récent).
 - **Joueurs déconnectés sur une monture** — ils gardent leur cheval, leur bateau ou leur ghast joyeux et se promènent avec autour de l'endroit où ils sont partis : le cheval marche, le bateau reste sur l'eau et le ghast joyeux flotte dans les airs.
+- **Mémoire vidéo** — *Entités simplifiées...* affiche, dans un onglet pour les créatures et un pour les joueurs, la mémoire vidéo que prennent leurs images, et deux nouveaux réglages choisissent le maximum de chacun.
 
 ### Améliorations
 - **Paramètres** — chaque paramètre a un nom et une description plus clairs, dans le style des options de Minecraft, et les distances ont des curseurs sur toute la largeur de la liste.
 - **Joueurs déconnectés** — loin de vous, ils font une petite ronde autour de l'endroit où ils sont partis, comme les animaux lointains, cavaliers compris, et au loin ils deviennent des images légères comme les joueurs connectés, debout, assis, couchés ou dans un lit.
 - **Cavaliers** — au loin, un joueur sur un cheval, dans un bateau, un wagonnet ou tout ce qu'il monte devient une seule image légère avec, au lieu de deux modèles complets.
+- **Foules de joueurs** — au-delà d'une centaine de joueurs au loin, les suivants ne restent plus en modèles complets.
 
 ## 0.7.0 — 2026-10-17
 

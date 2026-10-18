@@ -205,6 +205,10 @@
   "livinghorizon.options.debug.view": "Afficher à l'écran",
   "livinghorizon.options.impostorPlayers": "Joueurs simplifiés",
   "livinghorizon.options.impostorPlayers.tooltip": "Les joueurs lointains sont simplifiés eux aussi, comme les créatures. Non : ils gardent leur modèle complet à toute distance, avec leur skin et leur armure en détail. Nécessite Entités simplifiées sur Oui.",
+  "livinghorizon.options.impostorMobMemory": "Mémoire des images de créatures",
+  "livinghorizon.options.impostorMobMemory.tooltip": "Mémoire vidéo que peuvent prendre les images des créatures simplifiées, à part de celle des joueurs. Prise seulement au fil des nouvelles apparences ; une fois pleine, l'image inutilisée depuis le plus longtemps laisse sa place.",
+  "livinghorizon.options.impostorPlayerMemory": "Mémoire des images de joueurs",
+  "livinghorizon.options.impostorPlayerMemory.tooltip": "Mémoire vidéo que peuvent prendre les images des joueurs simplifiés, cavaliers et montures compris, à part de celle des créatures. Une image inutilisée depuis une minute est jetée.",
   "livinghorizon.options.debug.optimisations": "Optimisations (à couper pour comparer)",
   "livinghorizon.options.debugHud": "Panneau de débogage",
   "livinghorizon.options.debugHud.tooltip": "En haut à gauche. Dans l'écran F3, active « living_horizon » dans les options de debug (F3 + F6) : coût par tick et par image, ce qu'est devenu chaque mob lointain à la dernière image, lectures et profondeur du terrain lointain, jusqu'où le serveur envoie les mobs, optimisations actives.",
@@ -284,7 +288,9 @@
   "livinghorizon.debug.f3.impostors": "Imposteurs Living Horizon : %s planches générées, %s en attente",
   "livinghorizon.debug.f3.impostorsFailed": "Imposteurs Living Horizon : la génération a échoué, les modèles complets sont utilisés (voir le journal)",
   "livinghorizon.impostors.title": "Entités simplifiées",
-  "livinghorizon.impostors.status": "Prêtes : %s, en attente : %s",
+  "livinghorizon.impostors.memory": "Mémoire vidéo : %s sur %s - images : %s, en attente : %s",
+  "livinghorizon.impostors.tab.mobs": "Créatures",
+  "livinghorizon.impostors.tab.players": "Joueurs",
   "livinghorizon.impostors.off": "Entités simplifiées est désactivé : à activer dans les paramètres pour créer et utiliser les images.",
   "livinghorizon.impostors.empty": "Aucune image pour l'instant : celles des joueurs et créatures lointains présents sont créées en quelques secondes.",
   "livinghorizon.impostors.regenerate": "Régénérer",
@@ -319,5 +325,6 @@
   "livinghorizon.options.seconds": "%s s",
   "livinghorizon.options.pixels": "%s px",
   "livinghorizon.options.multiplier": "%sx",
-  "livinghorizon.options.percent": "%s %%"
+  "livinghorizon.options.percent": "%s %%",
+  "livinghorizon.options.megabytes": "%s Mo"
 }

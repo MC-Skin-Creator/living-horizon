@@ -207,6 +207,10 @@
   "livinghorizon.options.debugHud": "Debug Panel",
   "livinghorizon.options.impostorPlayers": "Simplified Players",
   "livinghorizon.options.impostorPlayers.tooltip": "Distant players are simplified too, like mobs. OFF: they keep their full model at any distance, so their skin and armor stay in full detail. Needs Simplified Entities ON.",
+  "livinghorizon.options.impostorMobMemory": "Mob Picture Memory",
+  "livinghorizon.options.impostorMobMemory.tooltip": "Video memory the pictures of simplified mobs may take, apart from the players'. Taken only as new looks are met; when it is full, the picture unused for longest makes room.",
+  "livinghorizon.options.impostorPlayerMemory": "Player Picture Memory",
+  "livinghorizon.options.impostorPlayerMemory.tooltip": "Video memory the pictures of simplified players may take, riders and what they ride included, apart from the mobs'. A picture unused for a minute is thrown away.",
   "livinghorizon.options.debugHud.tooltip": "Top left. In the F3 screen, turn on \"living_horizon\" in the debug options (F3 + F6): cost per tick and frame, what became of every distant mob in the last frame, far terrain reads and depth, how far this server sends mobs, which optimisations are on.",
   "livinghorizon.options.debugBoxes": "Boxes on Mobs",
   "livinghorizon.options.debugBoxes.tooltip": "A box and a dot around every distant mob and player, seen through terrain, in the colour of what became of it: green copy drawn, cyan real mob drawn by the mod, blue player, yellow too small, orange behind blocks, red outside the view, purple being built, grey past the maximum.",
@@ -284,7 +288,9 @@
   "livinghorizon.debug.f3.impostors": "Living Horizon impostors: %s sheets baked, %s waiting",
   "livinghorizon.debug.f3.impostorsFailed": "Living Horizon impostors: baking failed, full models are used (see the log)",
   "livinghorizon.impostors.title": "Simplified Entities",
-  "livinghorizon.impostors.status": "Ready: %s, waiting: %s",
+  "livinghorizon.impostors.memory": "Video memory: %s of %s - pictures: %s, waiting: %s",
+  "livinghorizon.impostors.tab.mobs": "Mobs",
+  "livinghorizon.impostors.tab.players": "Players",
   "livinghorizon.impostors.off": "Simplified Entities is OFF: turn it on in the settings to make and use the pictures.",
   "livinghorizon.impostors.empty": "No pictures yet: those of the distant players and mobs around are made within a few seconds.",
   "livinghorizon.impostors.regenerate": "Rebuild",
@@ -319,5 +325,6 @@
   "livinghorizon.options.seconds": "%ss",
   "livinghorizon.options.pixels": "%spx",
   "livinghorizon.options.multiplier": "%sx",
-  "livinghorizon.options.percent": "%s%%"
+  "livinghorizon.options.percent": "%s%%",
+  "livinghorizon.options.megabytes": "%s MB"
 }

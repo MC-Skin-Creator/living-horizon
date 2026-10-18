@@ -189,27 +189,43 @@ public final class ImpostorAtlas {
     /** Bytes of video memory a row of scale 1 takes: a strip of 512 by 64 pixels and its mip levels. */
     private static final long ROW_BYTES = rowBytes();
     /**
-     * Video memory the pages of the mobs may take in all: 1 GB. Taken only as looks are met (a
-     * world of 50 looks takes a few tens of MB), it bounds a server of endless variations.
+     * Rows the pages of the mobs may hold, set by the game tests in place of what the settings
+     * allow; 0 for the settings.
      */
-    private static final long MOB_MEMORY = 1L << 30;
+    private static int mobRowsForTests;
 
     /**
-     * Video memory the pages of the players may take, apart from the mobs': 512 MB, some three
-     * thousand sheets. Every player has a look of its own, and a rider one more with what it
+     * Rows the pages of the mobs, or of the players, may hold in all, counted at scale 1 (a sheet
+     * of scale 2 counts as 4): the video memory the settings allow each
+     * ({@link FarConfig#impostorMobMemory}, 1 GB, and {@link FarConfig#impostorPlayerMemory},
+     * 512 MB), taken only as pages are needed. Each has its own: the players never take the mobs'
+     * room, nor the mobs the players'. The mobs keep theirs: a world has only so many looks, met
+     * again from one world to the next, and a server of endless variations stays bounded. The
+     * players come and go: theirs are thrown away once unused for {@link #PLAYER_KEEP}, or when
+     * their pages are full. Every player has a look of its own, and a rider one more with what it
      * rides: a crowded server, or hundreds of players who logged off, need them all.
      */
-    private static final long PLAYER_MEMORY = 1L << 29;
+    private static int rows(boolean players) {
+        if (!players && mobRowsForTests > 0) return mobRowsForTests;
+        FarConfig config = FarConfig.get();
+        long megabytes = players ? config.impostorPlayerMemory : config.impostorMobMemory;
+        return (int) Math.max(1, (megabytes << 20) / ROW_BYTES);
+    }
 
-    /**
-     * Rows the pages of the mobs may hold in all, and of the players, counted at scale 1 (a
-     * sheet of scale 2 counts as 4). Each has its own: the players never take the mobs' room,
-     * nor the mobs the players'. The mobs keep theirs: a world has only so many looks, met
-     * again from one world to the next. The players come and go: theirs are thrown away once
-     * unused for {@link #PLAYER_KEEP}, or when their pages are full.
-     */
-    private static int mobRows = (int) (MOB_MEMORY / ROW_BYTES);
-    private static final int PLAYER_ROWS = (int) (PLAYER_MEMORY / ROW_BYTES);
+    /** Bytes of video memory the pages of the players, or of the mobs, take now. */
+    public static long memory(boolean players) {
+        return (long) taken(players) * ROW_BYTES;
+    }
+
+    /** Bytes of video memory the pages of the players, or of the mobs, may take at most. */
+    public static long memoryLimit(boolean players) {
+        return (long) rows(players) * ROW_BYTES;
+    }
+
+    /** Whether a sheet is filed with the players' (players, riders with what they ride), not the mobs'. */
+    public static boolean player(ImpostorKey key) {
+        return PLAYER.equals(key.type());
+    }
     /** Milliseconds a player's sheet is kept once nobody draws or asks for it. */
     private static final long PLAYER_KEEP = 60_000L;
     private static final String PLAYER = "minecraft:player";
@@ -817,7 +833,7 @@ public final class ImpostorAtlas {
         }
         int rows = Math.min(ROWS / scale, FIRST_ROWS << Math.min(pagesOfType, 3));
         boolean player = PLAYER.equals(type);
-        if (taken(player) + rows * scale * scale <= (player ? PLAYER_ROWS : mobRows)) {
+        if (taken(player) + rows * scale * scale <= rows(player)) {
             int number = open(type, scale, rows);
             return number * ROWS + PAGES.get(number).free.pop();
         }
@@ -861,11 +877,11 @@ public final class ImpostorAtlas {
     }
 
     /**
-     * Rows the pages of the mobs may hold, in place of the 1 GB they may take, 0 for that again:
+     * Rows the pages of the mobs may hold, in place of what the settings allow, 0 for that again:
      * for the game tests, which fill them with a few hundred figures.
      */
     public static void limitMobRows(int rows) {
-        mobRows = rows > 0 ? rows : (int) (MOB_MEMORY / ROW_BYTES);
+        mobRowsForTests = Math.max(0, rows);
     }
 
     /** Rows of the pages of the players, or of the mobs, counted at scale 1. */

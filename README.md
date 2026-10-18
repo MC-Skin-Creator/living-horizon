@@ -208,6 +208,8 @@ label `mod compatibility`.
 | `hideOccludedMobs` | `true` | | Do not draw distant mobs behind terrain at all (see *Mobs hidden by depth* below). In *Debug Options...*, with `depthOcclusion` |
 | `impostors` | `true` | | Draw far players and mobs as a flat picture of themselves (see *Impostors*) |
 | `impostorDistance` | `128` | blocks | Past this distance an impostor stands in for the model |
+| `impostorMobMemory` | `1024` | MB | Video memory the mobs' pictures may take, from 64 to 4096, apart from the players' |
+| `impostorPlayerMemory` | `512` | MB | Video memory the players' pictures may take (riders with what they ride), from 32 to 2048, apart from the mobs' |
 | `animationMinPixels` | `10` | pixels | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
 | `animationMaxDistance` | `0` | blocks | Past this, no distant mob plays an animation (`0`: no limit) |
 
@@ -509,11 +511,12 @@ nothing, and the game no longer builds a render state and a model for it every f
   4 rows, then 8, 16, then 32, every tile 64 pixels. A figure larger than its box (a
   horse's muzzle) is drawn smaller in its tile rather than cut off: at a hundred blocks a
   figure is a dozen pixels tall. Two looks whose pictures come out the same, pixel for
-  pixel, share one sheet. The mobs keep their sheets, up to 1 GB of video memory in all,
+  pixel, share one sheet. The mobs keep their sheets, up to `impostorMobMemory` (1 GB) of
+  video memory in all,
   taken only as looks are met (a world of 50 looks takes a few MB); past that, an unused
   sheet of the same kind gives way, or the figure stays a model for 30 seconds. The
-  players' (riders with what they ride included) have 512 MB of their own, some three
-  thousand sheets, and are thrown away after a minute unused: they never take the mobs' room,
+  players' (riders with what they ride included) have `impostorPlayerMemory` (512 MB) of their
+  own, some three thousand sheets, and are thrown away after a minute unused: they never take the mobs' room,
   nor the mobs theirs. A sheet takes 170 KB of video memory (512 by 64 pixels and three
   smaller levels). A sheet drawn or asked for in the last 10 seconds is never replaced.
 - **On disk.** `ImpostorDisk` keeps the mobs' sheets in

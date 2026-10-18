@@ -207,6 +207,10 @@
   "livinghorizon.options.debugHud": "Debug‐Panel",
   "livinghorizon.options.impostorPlayers": "Vereinfachte Spieler",
   "livinghorizon.options.impostorPlayers.tooltip": "Ferne Spieler werden ebenfalls vereinfacht, wie Kreaturen. Aus: Sie behalten in jeder Entfernung ihr volles Modell, sodass Skin und Rüstung voll detailliert bleiben. Erfordert „Vereinfachte Objekte“ an.",
+  "livinghorizon.options.impostorMobMemory": "Speicher für Kreaturenbilder",
+  "livinghorizon.options.impostorMobMemory.tooltip": "Grafikspeicher, den die Bilder vereinfachter Kreaturen belegen dürfen, getrennt von dem der Spieler. Wird erst nach und nach belegt; ist er voll, macht das am längsten ungenutzte Bild Platz.",
+  "livinghorizon.options.impostorPlayerMemory": "Speicher für Spielerbilder",
+  "livinghorizon.options.impostorPlayerMemory.tooltip": "Grafikspeicher, den die Bilder vereinfachter Spieler belegen dürfen, Reiter samt Reittier eingeschlossen, getrennt von dem der Kreaturen. Ein Bild, das eine Minute ungenutzt bleibt, wird verworfen.",
   "livinghorizon.options.debugHud.tooltip": "Oben links. Im F3‐Bildschirm „living_horizon“ in den Debug‐Optionen (F3 + F6) einschalten: Kosten pro Tick und Bild, was im letzten Bild aus jeder fernen Kreatur wurde, Lesevorgänge und Tiefe des fernen Geländes, wie weit dieser Server Kreaturen sendet, welche Optimierungen an sind.",
   "livinghorizon.options.debugBoxes": "Boxen um Kreaturen",
   "livinghorizon.options.debugBoxes.tooltip": "Eine Box und ein Punkt um jede ferne Kreatur und jeden Spieler, durch Gelände sichtbar, in der Farbe dessen, was aus ihr wurde: grün Kopie gezeichnet, türkis echte Kreatur von der Mod gezeichnet, blau Spieler, gelb zu klein, orange hinter Blöcken, rot außerhalb der Sicht, violett im Aufbau, grau jenseits des Maximums.",
@@ -284,7 +288,9 @@
   "livinghorizon.debug.f3.impostors": "Living‐Horizon‐Impostoren: %s Bögen gebacken, %s wartend",
   "livinghorizon.debug.f3.impostorsFailed": "Living‐Horizon‐Impostoren: Backen fehlgeschlagen, volle Modelle werden verwendet (siehe Protokoll)",
   "livinghorizon.impostors.title": "Vereinfachte Objekte",
-  "livinghorizon.impostors.status": "Bereit: %s, wartend: %s",
+  "livinghorizon.impostors.memory": "Grafikspeicher: %s von %s - Bilder: %s, wartend: %s",
+  "livinghorizon.impostors.tab.mobs": "Kreaturen",
+  "livinghorizon.impostors.tab.players": "Spieler",
   "livinghorizon.impostors.off": "„Vereinfachte Objekte“ ist aus: In den Einstellungen einschalten, um die Bilder zu erstellen und zu verwenden.",
   "livinghorizon.impostors.empty": "Noch keine Bilder: Die der fernen Spieler und Kreaturen ringsum entstehen innerhalb weniger Sekunden.",
   "livinghorizon.impostors.regenerate": "Neu erstellen",
@@ -319,5 +325,6 @@
   "livinghorizon.options.seconds": "%s s",
   "livinghorizon.options.pixels": "%s px",
   "livinghorizon.options.multiplier": "%s×",
-  "livinghorizon.options.percent": "%s %%"
+  "livinghorizon.options.percent": "%s %%",
+  "livinghorizon.options.megabytes": "%s MB"
 }

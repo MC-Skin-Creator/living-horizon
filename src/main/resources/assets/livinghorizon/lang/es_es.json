@@ -207,6 +207,10 @@
   "livinghorizon.options.debugHud": "Panel de depuración",
   "livinghorizon.options.impostorPlayers": "Jugadores simplificados",
   "livinghorizon.options.impostorPlayers.tooltip": "Los jugadores lejanos también se simplifican, como las criaturas. NO: mantienen su modelo completo a cualquier distancia, así que su aspecto y su armadura se ven con todo detalle. Requiere Entidades simplificadas en SÍ.",
+  "livinghorizon.options.impostorMobMemory": "Memoria de imágenes de criaturas",
+  "livinghorizon.options.impostorMobMemory.tooltip": "Memoria de vídeo que pueden ocupar las imágenes de las criaturas simplificadas, aparte de la de los jugadores. Solo se ocupa a medida que aparecen aspectos nuevos; cuando se llena, la imagen sin usar desde hace más tiempo deja su sitio.",
+  "livinghorizon.options.impostorPlayerMemory": "Memoria de imágenes de jugadores",
+  "livinghorizon.options.impostorPlayerMemory.tooltip": "Memoria de vídeo que pueden ocupar las imágenes de los jugadores simplificados, jinetes y monturas incluidos, aparte de la de las criaturas. Una imagen sin usar durante un minuto se descarta.",
   "livinghorizon.options.debugHud.tooltip": "Arriba a la izquierda. En la pantalla F3, activa «living_horizon» en las opciones de depuración (F3 + F6): coste por tic y por fotograma, qué fue de cada mob lejano en el último fotograma, lecturas y profundidad del terreno lejano, hasta dónde envía mobs este servidor, qué optimizaciones están activas.",
   "livinghorizon.options.debugBoxes": "Cajas en los mobs",
   "livinghorizon.options.debugBoxes.tooltip": "Una caja y un punto alrededor de cada mob y jugador lejano, visibles a través del terreno, del color de lo que fue de él: verde copia dibujada, cian mob real dibujado por el mod, azul jugador, amarillo demasiado pequeño, naranja detrás de bloques, rojo fuera de la vista, morado en construcción, gris más allá del máximo.",
@@ -284,7 +288,9 @@
   "livinghorizon.debug.f3.impostors": "Impostores de Living Horizon: %s hojas generadas, %s en espera",
   "livinghorizon.debug.f3.impostorsFailed": "Impostores de Living Horizon: la generación ha fallado, se usan los modelos completos (consulta el registro)",
   "livinghorizon.impostors.title": "Entidades simplificadas",
-  "livinghorizon.impostors.status": "Listas: %s, en espera: %s",
+  "livinghorizon.impostors.memory": "Memoria de vídeo: %s de %s - imágenes: %s, en espera: %s",
+  "livinghorizon.impostors.tab.mobs": "Criaturas",
+  "livinghorizon.impostors.tab.players": "Jugadores",
   "livinghorizon.impostors.off": "Entidades simplificadas está en NO: actívalo en los ajustes para crear y usar las imágenes.",
   "livinghorizon.impostors.empty": "Aún no hay imágenes: las de los jugadores y criaturas lejanos de alrededor se crean en unos segundos.",
   "livinghorizon.impostors.regenerate": "Regenerar",
@@ -319,5 +325,6 @@
   "livinghorizon.options.seconds": "%ss",
   "livinghorizon.options.pixels": "%spx",
   "livinghorizon.options.multiplier": "x%s",
-  "livinghorizon.options.percent": "%s %%"
+  "livinghorizon.options.percent": "%s %%",
+  "livinghorizon.options.megabytes": "%s MB"
 }

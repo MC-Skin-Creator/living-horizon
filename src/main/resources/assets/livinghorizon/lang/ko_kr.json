@@ -207,6 +207,10 @@
   "livinghorizon.options.debugHud": "디버그 패널",
   "livinghorizon.options.impostorPlayers": "간소화된 플레이어",
   "livinghorizon.options.impostorPlayers.tooltip": "멀리 있는 플레이어도 몹처럼 간소화됩니다. 꺼짐: 어떤 거리에서도 완전한 모델을 유지해 스킨과 갑옷이 세밀하게 보입니다. 간소화된 개체가 켜져 있어야 합니다.",
+  "livinghorizon.options.impostorMobMemory": "몹 그림 메모리",
+  "livinghorizon.options.impostorMobMemory.tooltip": "간소화된 몹의 그림이 차지할 수 있는 비디오 메모리로, 플레이어의 것과 따로입니다. 새로운 모습을 만날 때마다 조금씩 쓰이며, 가득 차면 가장 오래 쓰이지 않은 그림이 자리를 비웁니다.",
+  "livinghorizon.options.impostorPlayerMemory": "플레이어 그림 메모리",
+  "livinghorizon.options.impostorPlayerMemory.tooltip": "간소화된 플레이어의 그림이 차지할 수 있는 비디오 메모리로, 타고 있는 것도 포함하며 몹의 것과 따로입니다. 1분 동안 쓰이지 않은 그림은 버려집니다.",
   "livinghorizon.options.debugHud.tooltip": "왼쪽 위. F3 화면에서 디버그 설정(F3 + F6)의 \"living_horizon\"을 켜세요: 틱 및 프레임당 부하, 지난 프레임에서 멀리 있는 각 몹이 어떻게 되었는지, 원거리 지형 읽기와 깊이, 이 서버가 몹을 보내는 거리, 켜져 있는 최적화.",
   "livinghorizon.options.debugBoxes": "몹 박스",
   "livinghorizon.options.debugBoxes.tooltip": "멀리 있는 몹과 플레이어마다 지형 너머로 보이는 박스와 점을 어떻게 되었는지에 따른 색으로 표시합니다: 초록은 그려진 복사본, 청록은 모드가 그린 실제 몹, 파랑은 플레이어, 노랑은 너무 작음, 주황은 블록 뒤, 빨강은 시야 밖, 보라는 구성 중, 회색은 최대치 초과.",
@@ -284,7 +288,9 @@
   "livinghorizon.debug.f3.impostors": "Living Horizon 임포스터: 시트 %s개 베이크됨, %s개 대기 중",
   "livinghorizon.debug.f3.impostorsFailed": "Living Horizon 임포스터: 베이크에 실패해 완전한 모델을 사용합니다 (로그 참조)",
   "livinghorizon.impostors.title": "간소화된 개체",
-  "livinghorizon.impostors.status": "준비됨: %s, 대기 중: %s",
+  "livinghorizon.impostors.memory": "비디오 메모리: %s / %s - 그림: %s, 대기 중: %s",
+  "livinghorizon.impostors.tab.mobs": "몹",
+  "livinghorizon.impostors.tab.players": "플레이어",
   "livinghorizon.impostors.off": "간소화된 개체가 꺼져 있습니다: 그림을 만들고 사용하려면 설정에서 켜세요.",
   "livinghorizon.impostors.empty": "아직 그림이 없습니다: 주변의 멀리 있는 플레이어와 몹의 그림이 몇 초 안에 만들어집니다.",
   "livinghorizon.impostors.regenerate": "다시 만들기",
@@ -319,5 +325,6 @@
   "livinghorizon.options.seconds": "%s초",
   "livinghorizon.options.pixels": "%spx",
   "livinghorizon.options.multiplier": "%sx",
-  "livinghorizon.options.percent": "%s%%"
+  "livinghorizon.options.percent": "%s%%",
+  "livinghorizon.options.megabytes": "%s MB"
 }

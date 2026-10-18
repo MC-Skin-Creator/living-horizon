@@ -88,6 +88,16 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 .setEnabledProvider(on("impostors"), id("impostors")))
                         .addOption(blocks(b, "impostorDistance", 32, 2000, d.impostorDistance,
                                 v -> FarConfig.get().impostorDistance = v, () -> FarConfig.get().impostorDistance)
+                                .setEnabledProvider(on("impostors"), id("impostors")))
+                        .addOption(integer(b, "impostorMobMemory", FarConfig.MIN_MOB_MEMORY, FarConfig.MAX_MOB_MEMORY,
+                                d.impostorMobMemory, v -> FarConfig.get().impostorMobMemory = v,
+                                () -> FarConfig.get().impostorMobMemory,
+                                unit("impostorMobMemory", "megabytes", FarConfig.MIN_MOB_MEMORY))
+                                .setEnabledProvider(on("impostors"), id("impostors")))
+                        .addOption(integer(b, "impostorPlayerMemory", FarConfig.MIN_PLAYER_MEMORY, FarConfig.MAX_PLAYER_MEMORY,
+                                d.impostorPlayerMemory, v -> FarConfig.get().impostorPlayerMemory = v,
+                                () -> FarConfig.get().impostorPlayerMemory,
+                                unit("impostorPlayerMemory", "megabytes", FarConfig.MIN_PLAYER_MEMORY))
                                 .setEnabledProvider(on("impostors"), id("impostors"))))
                 .addOptionGroup(b.createOptionGroup()
                         .addOption(opens(b, "impostorPreview", ImpostorScreen::new)));
