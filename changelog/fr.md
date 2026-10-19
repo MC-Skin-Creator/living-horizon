@@ -2,6 +2,8 @@
 
 ## Prochaine version
 
+## 0.9.0 — 2026-10-19
+
 ### Corrections
 - **Joueurs déconnectés debout dans l'eau** — les joueurs partis en nageant ne restent plus debout dans l'eau : ils attendent sur le rivage le plus proche, ou rament dans un bateau quand le rivage est à plus de 10 blocs.
 - **Eau qui disparaît autour des bateaux** — l'eau ne devient plus transparente autour des joueurs déconnectés qui rament, avec un pack de shaders comme Photon, et ne disparaît plus en un grand carré autour des bateaux au loin.
