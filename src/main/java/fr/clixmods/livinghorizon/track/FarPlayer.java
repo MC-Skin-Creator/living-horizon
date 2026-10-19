@@ -56,6 +56,10 @@ public final class FarPlayer {
     private @Nullable UUID mountId;
     /** Ticks before looking again for a mount under a rider whose mount was never seen. */
     private int adoptIn;
+    /** The mount drawn is a remembered mob taken from under them: its seat is a guess. */
+    private boolean mountGuessed;
+    /** The mount drawn is the server's copy: its seat is the server's. */
+    private boolean mountShared;
     private double knownY = Double.NaN;
     /** Where they look, when the server says it. */
     private float knownYaw = Float.NaN;
@@ -201,6 +205,7 @@ public final class FarPlayer {
         yaw = player.getYRot();
         puppet = null;
         mountPuppet = null;
+        mountGuessed = mountShared = false;
         shownInfo = null;
         shownGear = null;
     }
@@ -227,12 +232,22 @@ public final class FarPlayer {
             // Got onto another mount out of sight: the one drawn is no longer theirs.
             if (vehicle != null && !vehicle.equals(mountId)) {
                 mountPuppet = null;
+                mountGuessed = mountShared = false;
                 mountId = null;
                 adoptIn = 0;
             }
-            if (mountPuppet == null && vehicle != null && --adoptIn <= 0) adopt(level, shared, vehicle, mobs);
-            // No remembered mob to take: a copy of the mount the server saved.
-            if (mountPuppet == null && sharedMount != null) mountFrom(level, sharedMount, vehicle);
+            // The server's copy of the mount, with the seat it measured, before a remembered mob
+            // taken from under them, whose seat is only guessed from two positions of different ages.
+            if (sharedMount != null && (mountPuppet == null || mountGuessed)) {
+                mountFrom(level, sharedMount, vehicle);
+            } else if (mountPuppet == null && vehicle != null && --adoptIn <= 0) {
+                adopt(level, shared, vehicle, mobs);
+            }
+            // The seat as the server measures it now, every few seconds.
+            if (mountShared && sharedMount != null) {
+                riderOffset = new Vec3(sharedMount.seatX(), sharedMount.seatY(), sharedMount.seatZ());
+                riderYaw = sharedMount.riderYaw();
+            }
         }
 
         if (heard != null) {
@@ -269,6 +284,7 @@ public final class FarPlayer {
         if (lastSeen != null) {
             puppet = copyPlayer(level, lastSeen);
             mountPuppet = lastVehicle == null ? null : copyEntity(level, lastVehicle);
+            mountGuessed = mountShared = false;
             if (mountPuppet != null) {
                 mountPuppet.setYRot(lastVehicle.getYRot());
             }
@@ -305,6 +321,8 @@ public final class FarPlayer {
         if (mount == null) return;
         mountPuppet = mount;
         mountId = under.id();
+        mountGuessed = true;
+        mountShared = false;
         // On its back, as high above it as the two were last published.
         riderOffset = new Vec3(0, Math.min(Math.max(0, report.y() - under.y()), mount.getBbHeight() + 0.5), 0);
         riderYaw = 0;
@@ -316,6 +334,8 @@ public final class FarPlayer {
         if (mount == null) return;
         mountPuppet = mount;
         mountId = vehicle;
+        mountGuessed = false;
+        mountShared = true;
         riderOffset = new Vec3(shared.seatX(), shared.seatY(), shared.seatZ());
         riderYaw = shared.riderYaw();
     }
@@ -394,6 +414,7 @@ public final class FarPlayer {
     private void freshPuppet(ClientLevel level, PlayerInfo info) {
         puppet = Puppets.player(level, info.getProfile());
         mountPuppet = null;
+        mountGuessed = mountShared = false;
         mountId = null;
         shownGear = null;
     }
