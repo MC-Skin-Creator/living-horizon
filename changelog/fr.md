@@ -2,6 +2,10 @@
 
 ## Prochaine version
 
+### Corrections
+- **Joueurs déconnectés debout dans l'eau** — les joueurs partis en nageant ne restent plus debout dans l'eau : ils attendent sur le rivage le plus proche, ou rament dans un bateau quand le rivage est à plus de 10 blocs.
+- **Eau qui disparaît autour des bateaux lointains** — l'eau autour des bateaux au loin, et des joueurs déconnectés qui rament au loin, ne disparaît plus en un grand carré, avec ou sans pack de shaders.
+
 ## 0.8.0 — 2026-10-18
 
 ### Nouveautés
@@ -16,14 +20,12 @@
 - **Joueurs déconnectés** — les joueurs déconnectés font une petite ronde autour de l'endroit où ils sont partis, et deviennent des images plates au loin comme les joueurs connectés, debout, assis, couchés ou dans un lit.
 - **Cavaliers** — au loin, un joueur sur un cheval, dans un bateau, un wagonnet ou tout autre monture devient une seule image plate avec elle, bien plus légère que deux modèles complets.
 - **Grandes foules de joueurs** — au-delà d'une centaine de joueurs lointains, les suivants deviennent eux aussi des images plates au lieu de rester en modèles complets.
-- **Joueurs déconnectés hors de l'eau** — les joueurs partis en nageant ne restent plus debout dans l'eau : ils attendent sur le rivage le plus proche, ou rament dans un bateau quand le rivage est à plus de 10 blocs.
 
 ### Corrections
 - **Créatures visibles à travers les collines après avoir redimensionné la fenêtre** — les créatures lointaines ne traversent plus les collines, celles de Voxy et de Distant Horizons comprises, quand la fenêtre du jeu change de taille.
 - **Joueurs et slimes qui disparaissent avec Distant Horizons** — les joueurs lointains, les joueurs déconnectés et les slimes ne disparaissent plus sous le terrain de Distant Horizons (Minecraft 26.1 et plus).
 - **Terrain de Distant Horizons qui mord sur les créatures** — le terrain de Distant Horizons ne mord plus sur les créatures et les joueurs placés devant lui (Minecraft 26.1 et plus).
 - **Créatures lointaines qui clignotent en marchant** — avec le balancement de la vue, les créatures lointaines ne clignotent plus et le terrain de Distant Horizons ne vacille plus devant elles à chaque pas (Minecraft 26.1 et plus).
-- **Eau qui disparaît autour des bateaux lointains** — l'eau autour des bateaux au loin, et des joueurs déconnectés qui rament au loin, ne disparaît plus en un grand carré, avec ou sans pack de shaders.
 
 ## 0.7.0 — 2026-10-17
 
