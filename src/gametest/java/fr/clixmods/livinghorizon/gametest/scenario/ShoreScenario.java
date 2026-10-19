@@ -70,6 +70,19 @@ public final class ShoreScenario implements Scenario {
                 check(context, "jumper far " + i, "LH_Jumper", false, 24);
             }
             Scene.screenshot(context, this, "lake-far");
+            // Zoomed in on them, as models (within the pictures' distance) and as pictures (past it).
+            context.runOnClient(minecraft -> minecraft.options.fov().set(30));
+            for (int d : new int[]{90, 160}) {
+                Scene.command(world, "tp @a 6.5 " + (GROUND + 2) + " " + (32.5 + d) + " 180 3");
+                context.waitTicks(60);
+                context.runOnClient(minecraft -> {
+                    RestingPuppet rower = puppet(minecraft, "LH_Rower");
+                    Scene.log("shore far zoom " + d + ": look " + rower.look() + ", mount " + rower.mount() + ", away "
+                            + rower.away() + ", pictured " + fr.clixmods.livinghorizon.render.GhostRenderer.pictured(rower));
+                });
+                Scene.screenshot(context, this, "lake-zoom-" + d);
+            }
+            context.runOnClient(minecraft -> minecraft.options.fov().set(70));
             // From above, figures drawn bigger than they are: the water round the boat stays.
             Scene.configure(context, config -> config.minApparentPixels = 120);
             Scene.command(world, "gamemode spectator @a");
