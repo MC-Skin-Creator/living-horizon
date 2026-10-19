@@ -65,8 +65,6 @@ public final class FarConfig {
         return types;
     }
 
-    /** Seconds a player stays drawn where they were last placed once the locator bar loses them. */
-    public double lostTimeoutSeconds = 30.0;
 
     /**
      * Players who logged off stay where they were last, until they come back. Off, they are
@@ -115,7 +113,7 @@ public final class FarConfig {
 
     /**
      * The mobs shown far away, by type id ({@code "minecraft:horse"}). This client
-     * remembers these when it sees them leave; the data pack publishes its own list
+     * remembers these when it sees them leave; a server with the mod shares its own list
      * ({@link MobKinds#TYPES}), and only those of its mobs in this list are shown.
      * Hostile mobs despawn when nobody is near, so remembering them shows ghosts.
      * Chosen in game under "Choose mobs...".

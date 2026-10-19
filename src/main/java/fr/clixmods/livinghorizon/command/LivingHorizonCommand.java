@@ -18,6 +18,7 @@ import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.LastSeen;
 import fr.clixmods.livinghorizon.track.Profiles;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
+import fr.clixmods.livinghorizon.track.Gear;
 import fr.clixmods.livinghorizon.track.MobScan;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
 import fr.clixmods.livinghorizon.track.SharedPositions;
@@ -259,8 +260,9 @@ public final class LivingHorizonCommand {
         List<String> skins = RestingPlayers.skinsFor(names.size(), random);
         for (String each : names) {
             if (count == 1 && radius == 0) {
+                // A copy of you: your skin, what you wear and hold, what you ride.
                 resting.fake(each, self.getGameProfile(), dimension, self.getX(), self.getY(), self.getZ(), self.getYRot(),
-                        minutesAgo, mount);
+                        minutesAgo, mount, Gear.of(self, self.level().registryAccess()));
                 continue;
             }
             // Evenly over the disc, on the ground where the blocks are known, at your height elsewhere.
@@ -276,7 +278,7 @@ public final class LivingHorizonCommand {
             // The default skin of its name until the real player's skin is fetched.
             resting.fake(each, new GameProfile(UUIDUtil.createOfflinePlayerUUID(each), each), dimension, x, y, z,
                     random.nextFloat() * 360f - 180f, minutesAgo,
-                    mount == null ? null : mount.facing(random.nextFloat() * 360f - 180f));
+                    mount == null ? null : mount.facing(random.nextFloat() * 360f - 180f), null);
             // Each in the skin of a real player, a different one each: a crowd, not clones of you.
             resting.dressFake(each, skins.get(names.indexOf(each)));
         }

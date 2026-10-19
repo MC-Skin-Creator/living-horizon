@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### New
+- **The mod on a server** — put the jar of the server's loader in its `mods` folder, on a Fabric, Quilt, NeoForge or Forge server (with the Fabric API on Fabric and Quilt, nothing else on NeoForge and Forge), and every player who has the mod sees the other players at any distance.
+- **LAN and single player worlds** — a world opened to LAN shares everything by itself through the host's game, and players who logged off in your own world show as soon as you open it.
+- **What the server shares** — where every player is, their skin, armour, what they hold and what they ride, and the mobs around you with their saddle, harness or armour.
+- **Players who logged off** — the server keeps where each player logged off, how they looked, the mount they rode and when they left, so everyone sees them, even players who joined later.
+- **Everything as you join** — distant mobs and players who logged off show as soon as you join a server with the mod, not a few seconds later.
+- **Without the mod** — players without the mod can still join a server with the mod, and a server without the mod shows no distant players: the console says so once.
+- **No more data pack** — the data pack is gone: a server that used it now needs the mod instead.
+
+### Improved
+- **Distant players** — they are placed from what the server shares alone: the locator bar guess is gone, and so is the *Lost Player Time* setting.
+
+### Fixed
+- **Players on a happy ghast** — a far player riding a happy ghast no longer has a second ghast beside them, and one already riding when you join no longer floats in the air.
+- **Happy ghast flying back after its rider gets off** — the happy ghast a far player gets off no longer reappears where it was first ridden and flies back: it stays where it was left.
+- **Old skins far away** — a distant player who changes skin no longer keeps the old one far away.
+- **Players turned sideways in boats** — a player who logs off in a boat no longer sits turned to the side: they face the way the boat does.
+- **Players vanishing when a world closes** — when a server or a LAN world closes, the players in it now stay where they were as offline players.
+
 ## 0.9.0 — 2026-10-19
 
 ### Fixed

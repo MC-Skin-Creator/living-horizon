@@ -14,7 +14,7 @@ import org.jspecify.annotations.Nullable;
  * does not move as one.
  *
  * <p>The one thing added to the animation: the mob never jumps. When where it should be
- * changes at once - the data pack moved it, or the real mob is sent again and the copy
+ * changes at once - the server's shared position moved it, or the real mob is sent again and the copy
  * hands over to it - it walks there in a straight line instead. And as the player comes
  * near enough for the real mob to be sent, the copy is called back to the spot where the
  * real one was last seen, so that the hand-over has little left to walk.

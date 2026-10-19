@@ -168,6 +168,8 @@ public final class RestingPuppet extends RemotePlayer {
     private Walkway.@Nullable Route route;
     private float headYaw, headPitch, headYawGoal, headPitchGoal;
     private int glance;
+    /** What it held in each hand when its player logged off, given back once the sword and shield are put away. */
+    private ItemStack held = ItemStack.EMPTY, heldOff = ItemStack.EMPTY;
 
     RestingPuppet(ClientLevel level, RestingPlayers.Spot spot, GameProfile profile) {
         super(level, profile);
@@ -183,6 +185,10 @@ public final class RestingPuppet extends RemotePlayer {
         yHeadRot = yHeadRotO = spot.yaw();
         timer = 40 + random.nextInt(80);
         this.mount = RestingMount.of(level, spot, random);
+        // Dressed as they were when they logged off; the sword and shield it draws are its own.
+        Gear.apply(this, spot.gear(), level.registryAccess());
+        held = getItemBySlot(EquipmentSlot.MAINHAND).copy();
+        heldOff = getItemBySlot(EquipmentSlot.OFFHAND).copy();
     }
 
     @Override
@@ -963,14 +969,14 @@ public final class RestingPuppet extends RemotePlayer {
     private void arm(boolean sword, boolean shield) {
         if (sword != armed) {
             armed = sword;
-            setItemSlot(EquipmentSlot.MAINHAND, sword ? new ItemStack(Items.IRON_SWORD) : ItemStack.EMPTY);
+            setItemSlot(EquipmentSlot.MAINHAND, sword ? new ItemStack(Items.IRON_SWORD) : held.copy());
         }
         if (shield != raised) {
             raised = shield;
             if (shield) setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
             // Using the item in the off hand: the game draws the shield raised.
             getEntityData().set(DATA_LIVING_ENTITY_FLAGS, (byte) (shield ? 3 : 0));
-            if (!shield) setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
+            if (!shield) setItemSlot(EquipmentSlot.OFFHAND, heldOff.copy());
         }
     }
 

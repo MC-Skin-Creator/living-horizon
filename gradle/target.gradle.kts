@@ -1,7 +1,7 @@
 // What every target works out the same way, whichever loader builds it, so that the four
 // build scripts only say what is theirs. Applied by each of them after it has set
-// `extra["lhGame"]` to the game version it builds: the Java level, the data pack's
-// pack.mcmeta, the access widener and access transformer, and the list of mixins.
+// `extra["lhGame"]` to the game version it builds: the Java level, the access widener and
+// access transformer, and the list of mixins.
 //
 // Everything is written into the build folder at configuration time; the scripts and the
 // tests read it from there.
@@ -28,46 +28,12 @@ extra["lhJava"] = when {
     else -> JavaVersion.VERSION_17
 }
 
-// The companion data pack's pack.mcmeta, which names the data pack format of one game
-// version, from the target's `mod.datapack_format`. The pack's own folder keeps the file of
-// the version it is developed on. From data pack format 88 (1.21.9) the file gives a range,
-// min_format and max_format; before, a single pack_format.
+// The kinds of mob the mod shares (MobKinds.TYPES) that this game version does not have yet,
+// for the tests: they check every other one exists.
 run {
-    val format: Int = property("mod.datapack_format").toString().toInt()
-    val description = "Living Horizon: shares every player's position with the clients that run the mod"
-    val mcmeta: File = layout.buildDirectory.file("generated/datapack/pack.mcmeta").get().asFile
-    mcmeta.parentFile.mkdirs()
-    mcmeta.writeText(
-        if (format >= 88) {
-            "{\n  \"pack\": {\n    \"description\": \"$description\",\n    \"min_format\": $format,\n    \"max_format\": $format\n  }\n}\n"
-        } else {
-            "{\n  \"pack\": {\n    \"description\": \"$description\",\n    \"pack_format\": $format\n  }\n}\n"
-        }
-    )
-    extra["lhMcmeta"] = mcmeta
-
-    // From 26.3 a predicate names its condition under "type", where it said "condition".
-    // The pack's own folder keeps the older form; this version's copy of each predicate
-    // is written next to pack.mcmeta, and replaces the pack's in the zip and the tests.
-    val overrides = mutableListOf<String>()
-    if (atLeast("26.3")) {
-        val pack = rootProject.file("datapack")
-        pack.walkTopDown().filter { it.isFile && it.extension == "json" && it.parentFile.name == "predicate" }.forEach { file ->
-            val path = file.relativeTo(pack).invariantSeparatorsPath
-            val copy = mcmeta.parentFile.resolve(path)
-            copy.parentFile.mkdirs()
-            copy.writeText(file.readText().replace(Regex("\"condition\"(\\s*):"), "\"type\"$1:"))
-            overrides += path
-        }
-    }
-
-    // Mob kinds the pack names that this game version does not have yet: a selector or a
-    // tag naming an unknown entity type fails to load. This version's copy of the kind
-    // function and of the tag leaves them out; the kinds keep their numbers.
-    val pack = rootProject.file("datapack")
-    val tagPath = "data/livinghorizon/tags/entity_type/remembered.json"
-    val kindPath = "data/livinghorizon/function/mob_kind.mcfunction"
-    val types = Regex("\"(minecraft:[a-z_]+)\"").findAll(pack.resolve(tagPath).readText()).map { it.groupValues[1] }.toList()
+    val kinds = rootProject.file("src/main/java/fr/clixmods/livinghorizon/track/MobKinds.java").readText()
+    val list = kinds.substringAfter("TYPES = List.of(").substringBefore(");")
+    val types = Regex("\"(minecraft:[a-z_]+)\"").findAll(list).map { it.groupValues[1] }.toList()
     fun since(type: String): String? = when {
         type == "minecraft:happy_ghast" -> "1.21.6"
         type.startsWith("minecraft:pale_oak_") -> "1.21.4"
@@ -77,22 +43,7 @@ run {
         else -> null
     }
     val missing = types.filter { type -> since(type)?.let { !atLeast(it) } ?: false }
-    if (missing.isNotEmpty()) {
-        val tag = mcmeta.parentFile.resolve(tagPath)
-        tag.parentFile.mkdirs()
-        tag.writeText("{\n  \"values\": [\n" + types.filter { it !in missing }.joinToString(",\n") { "    \"$it\"" } + "\n  ]\n}\n")
-        val kinds = mcmeta.parentFile.resolve(kindPath)
-        kinds.parentFile.mkdirs()
-        kinds.writeText(pack.resolve(kindPath).readLines().filter { line -> missing.none { "type=$it]" in line } }
-            .joinToString("\n") + "\n")
-        overrides += tagPath
-        overrides += kindPath
-    }
-    extra["lhDatapackOverrides"] = overrides
     tasks.withType<Test>().configureEach {
-        inputs.dir(mcmeta.parentFile)
-        systemProperty("livinghorizon.mcmeta", mcmeta.absolutePath)
-        systemProperty("livinghorizon.datapackOverrides", mcmeta.parentFile.absolutePath)
         systemProperty("livinghorizon.missingTypes", missing.joinToString(","))
     }
 }

@@ -5,7 +5,7 @@ name: build
 on:
   pull_request:
 
-# Compiles and tests every Minecraft target and attaches the jar and the data pack as a
+# Compiles and tests every Minecraft target and attaches the jar as a
 # short-lived workflow artifact, so a PR can be test-installed before it merges.
 # These are not releases: no tag, no GitHub release, no version bump.
 permissions:
@@ -121,8 +121,8 @@ jobs:
           cache-cleanup: always
 
       - name: Build
-        # build compiles and runs the tests; buildAndCollect copies the jar and zips
-        # the data pack into build/libs/<mod version>/, which is what gets uploaded.
+        # build compiles and runs the tests; buildAndCollect copies the jar into
+        # build/libs/<mod version>/, which is what gets uploaded.
         # --configure-on-demand configures this one target and the root alone.
         run: >-
           ./gradlew ":${{ matrix.minecraft }}:build" ":${{ matrix.minecraft }}:buildAndCollect"
@@ -139,7 +139,7 @@ jobs:
           path: versions/${{ matrix.minecraft }}/build/reports/tests/test
           retention-days: 7
 
-      - name: Upload jar and data pack
+      - name: Upload jar
         uses: actions/upload-artifact@v4
         with:
           name: livinghorizon-${{ matrix.minecraft }}

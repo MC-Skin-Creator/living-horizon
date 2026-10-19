@@ -152,8 +152,8 @@ jobs:
           grep '^mod.version' stonecutter.properties.toml
 
       - name: Build
-        # The tests already ran on the pull request; this only builds the jar and the
-        # data pack. Over fifty runners download the same plugins and Minecraft files at
+        # The tests already ran on the pull request; this only builds the jar.
+        # Over fifty runners download the same plugins and Minecraft files at
         # once, so a download that fails is tried again; any other failure is not.
         env:
           NODE: ${{ matrix.target.node }}
@@ -276,9 +276,8 @@ jobs:
             fi
           fi
 
-          # Wherever the artifacts unpacked them: the jar and the data pack zip of
-          # every target.
-          mapfile -t files < <(find files \( -name '*.jar' -o -name '*.zip' \) | sort)
+          # Wherever the artifacts unpacked them: the jar of every target.
+          mapfile -t files < <(find files -name '*.jar' | sort)
           echo "${#files[@]} files"
           gh release create "v${VERSION}" "${args[@]}" "${files[@]}"
 

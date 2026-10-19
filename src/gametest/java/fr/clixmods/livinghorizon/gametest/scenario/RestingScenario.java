@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon.gametest.scenario;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
+import fr.clixmods.livinghorizon.track.PositionsMessage;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
 import fr.clixmods.livinghorizon.track.RestingPuppet;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -13,11 +14,12 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
+import java.util.List;
 import java.util.function.Function;
 
 /**
- * A player who logged off, 8 blocks ahead. The data pack's scores are written by hand, as
- * the pack would: the sleeper is someone who left before.
+ * A player who logged off, 8 blocks ahead. What a server with the mod would share is handed
+ * to the client by hand: the sleeper is someone who left before.
  *
  * <p>Seated first ({@code offlineLife} off), on a pillar: the pillar is broken (they fall),
  * they are looked at from afar (their name only) and from close by (when they were last seen
@@ -46,19 +48,6 @@ public final class RestingScenario implements Scenario {
             Scene.command(world, "gamerule mobGriefing false");
             Scene.command(world, "gamerule mob_griefing false");
             Scene.command(world, "fill 0 " + GROUND + " 8 0 " + (GROUND + 2) + " 8 stone");
-            // The pack's four objectives, shown in sidebars nobody sees so that the client gets them.
-            String[] slots = {"black", "dark_blue", "dark_green", "dark_aqua"};
-            String[] objectives = {"lh.x", "lh.y", "lh.z", "lh.m"};
-            for (int i = 0; i < 4; i++) {
-                Scene.command(world, "scoreboard objectives add " + objectives[i] + " dummy");
-                Scene.command(world, "scoreboard objectives setdisplay sidebar.team." + slots[i] + " " + objectives[i]);
-            }
-            Scene.command(world, "scoreboard players set #version lh.m 1");
-            // On top of the pillar, facing the camera.
-            Scene.command(world, "scoreboard players set " + NAME + " lh.x 5");
-            Scene.command(world, "scoreboard players set " + NAME + " lh.y " + (GROUND + 3) * 10);
-            Scene.command(world, "scoreboard players set " + NAME + " lh.z 85");
-            Scene.command(world, "scoreboard players set " + NAME + " lh.m 180");
             Scene.command(world, "tp @a 0.5 " + GROUND + " 0.5 0 0");
             wait(context, world, 60);
             check(context, "pillar", GROUND + 3, false);
@@ -276,10 +265,17 @@ public final class RestingScenario implements Scenario {
         context.runOnClient(minecraft -> minecraft.player.connection.sendCommand(command));
     }
 
-    /** Waits, moving the pack's clock as the pack does, so that its scores stay trusted. */
+    /** On top of the pillar, facing the camera, logged off: as a server with the mod would share them. */
+    private static final PositionsMessage.Player SLEEPER =
+            new PositionsMessage.Player(NAME, 0.5, GROUND + 3, 8.5, 180f, 0, false, false, null);
+
+    /** Waits, sharing the sleeper as the server would, so that what it shares stays trusted. */
     private static void wait(ClientGameTestContext context, TestSingleplayerContext world, int ticks) {
         for (int done = 0; done < ticks; done += 10) {
-            Scene.command(world, "scoreboard players add #clock lh.m 1");
+            context.runOnClient(minecraft -> {
+                FarPlayerTracker.get().receive(PositionsMessage.players(List.of()));
+                FarPlayerTracker.get().receive(PositionsMessage.offline(List.of(SLEEPER)));
+            });
             context.waitTicks(10);
         }
     }
