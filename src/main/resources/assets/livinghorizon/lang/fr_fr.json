@@ -2,6 +2,7 @@
   "key.category.livinghorizon.main": "Living Horizon",
   "key.livinghorizon.toggle": "Afficher/masquer les joueurs lointains",
   "key.livinghorizon.settings": "Ouvrir les paramètres de Living Horizon",
+  "modmenu.descriptionTranslation.livinghorizon": "Donne vie au lointain : animaux, villageois et autres joueurs restent visibles bien au-delà de ta distance d'affichage, les joueurs déconnectés continuent de vivre là où ils sont partis, et les oiseaux peuplent le ciel. Fonctionne avec le jeu seul ou par-dessus Voxy et Distant Horizons.",
   "livinghorizon.options.title": "Living Horizon",
   "livinghorizon.options.players": "Joueurs lointains",
   "livinghorizon.options.mobs": "Créatures lointaines",

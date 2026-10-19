@@ -2,6 +2,7 @@
   "key.category.livinghorizon.main": "Living Horizon",
   "key.livinghorizon.toggle": "切換遠處玩家顯示",
   "key.livinghorizon.settings": "開啟 Living Horizon 設定",
+  "modmenu.descriptionTranslation.livinghorizon": "讓遠方充滿生機：動物、村民與其他玩家在顯示距離之外依然可見，離線玩家在離開的地方繼續生活，鳥兒飛滿天空。可單獨使用，也可搭配 Voxy 與 Distant Horizons。",
   "livinghorizon.options.title": "Living Horizon",
   "livinghorizon.options.players": "遠處玩家",
   "livinghorizon.options.mobs": "遠處生物",
