@@ -20,16 +20,27 @@ public final class SharedPositions {
     /** Ticks without news of the players before what was received is no longer trusted. */
     private static final int STALE_TICKS = 60;
 
-    public record Report(double x, double y, double z, float yaw, int dimension, boolean riding) {
+    /**
+     * Where a player is, as the server last said. {@code lastSeen} is when they logged off (0
+     * when online or not known); {@code test} marks a test player the host placed.
+     */
+    public record Report(double x, double y, double z, float yaw, int dimension, boolean riding, long lastSeen,
+                         boolean test) {
+        public Report(double x, double y, double z, float yaw, int dimension, boolean riding) {
+            this(x, y, z, yaw, dimension, riding, 0, false);
+        }
     }
 
-    /** A mob the server publishes, under its UUID. */
-    public record MobReport(UUID id, double x, double y, double z, int kind, int dimension, boolean baby, int variant) {
+    /** A mob the server publishes, under its UUID; {@code extra} is what it wears, as the game saves it. */
+    public record MobReport(UUID id, double x, double y, double z, int kind, int dimension, boolean baby, int variant,
+                            @Nullable String extra) {
     }
 
     private final Map<String, PositionsMessage.Player> players = new HashMap<>();
     private final Map<String, PositionsMessage.Player> offline = new HashMap<>();
     private final Map<UUID, MobReport> mobs = new HashMap<>();
+    /** The last word on each player that came with their look and mount, which come every few seconds only. */
+    private final Map<String, PositionsMessage.Player> dressed = new HashMap<>();
     private PositionsMessage.@Nullable Mobs lastMobs;
     private int ticksSinceNews = STALE_TICKS;
     private boolean active;
@@ -40,19 +51,25 @@ public final class SharedPositions {
         if (message == null) return;
         if (message.kind() == PositionsMessage.PLAYERS && message.players() != null) {
             players.clear();
-            for (PositionsMessage.Player player : message.players()) players.put(player.name(), player);
+            for (PositionsMessage.Player player : message.players()) {
+                players.put(player.name(), player);
+                if (player.look() != null || player.mount() != null) dressed.put(player.name(), player);
+            }
             ticksSinceNews = 0;
             active = true;
         }
         if (message.kind() == PositionsMessage.OFFLINE && message.players() != null) {
             offline.clear();
-            for (PositionsMessage.Player player : message.players()) offline.put(player.name(), player);
+            for (PositionsMessage.Player player : message.players()) {
+                offline.put(player.name(), player);
+                if (player.look() != null || player.mount() != null) dressed.put(player.name(), player);
+            }
         }
         if (message.mobs() != null) {
             mobs.clear();
             for (PositionsMessage.Mob mob : message.mobs().mobs()) {
                 mobs.put(mob.id(), new MobReport(mob.id(), mob.x(), mob.y(), mob.z(), mob.kind(), mob.dimension(),
-                        mob.baby(), mob.variant()));
+                        mob.baby(), mob.variant(), mob.extra()));
             }
             lastMobs = message.mobs();
         }
@@ -70,6 +87,7 @@ public final class SharedPositions {
         players.clear();
         offline.clear();
         mobs.clear();
+        dressed.clear();
         lastMobs = null;
         ticksSinceNews = STALE_TICKS;
         active = false;
@@ -83,7 +101,8 @@ public final class SharedPositions {
     public @Nullable Report read(String name) {
         PositionsMessage.Player player = active ? players.getOrDefault(name, offline.get(name)) : null;
         return player == null ? null
-                : new Report(player.x(), player.y(), player.z(), player.yaw(), player.dimension(), player.riding());
+                : new Report(player.x(), player.y(), player.z(), player.yaw(), player.dimension(), player.riding(),
+                        player.lastSeen(), player.test());
     }
 
     /** Every player the server has a position for, online or not. */
@@ -99,10 +118,21 @@ public final class SharedPositions {
         return player == null ? null : player.vehicle();
     }
 
-    /** What a player who logged off riding took away with them, as the server saved it; null when nothing. */
+    /**
+     * What a player rides, or rode when they logged off, as the server saved it: null when they
+     * ride nothing, or the server has not said what yet.
+     */
     public PositionsMessage.@Nullable Mount mount(String name) {
-        PositionsMessage.Player player = active && !players.containsKey(name) ? offline.get(name) : null;
-        return player == null ? null : player.mount();
+        PositionsMessage.Player now = active ? players.getOrDefault(name, offline.get(name)) : null;
+        if (now == null || !now.riding()) return null;
+        PositionsMessage.Player last = dressed.get(name);
+        return last == null || last.online() != now.online() ? null : last.mount();
+    }
+
+    /** How a player looks, as the server last said: null when it has not said yet. */
+    public PositionsMessage.@Nullable Look look(String name) {
+        PositionsMessage.Player last = active ? dressed.get(name) : null;
+        return last == null ? null : last.look();
     }
 
     /** Every mob the server last published around this client. */

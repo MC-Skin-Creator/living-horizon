@@ -3,12 +3,16 @@ package fr.clixmods.livinghorizon.gametest.scenario;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
+import fr.clixmods.livinghorizon.track.PositionsMessage;
+import fr.clixmods.livinghorizon.track.RestingPuppet;
 import fr.clixmods.livinghorizon.track.SharedPositions;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 //? if >=26.2
 /*import net.minecraft.server.MinecraftServer;*/
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.Items;
 //? if <26.3
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.storage.LevelResource;
@@ -21,10 +25,11 @@ import java.util.UUID;
 import java.util.zip.GZIPInputStream;
 
 /**
- * A world opened to LAN: the host's mod shares the positions over the network, and its own
- * client reads them back as a friend's would: the host, a cow, the host moving, the pig the
- * host rides and gets off. Nothing is written into the scoreboard, and the positions are kept
- * in the world's own file once it closes.
+ * A world played alone, then opened to LAN: the mod of the game's own server shares the
+ * positions over the network from the start, and its client reads them back as a friend's
+ * would: the host, a cow, the host moving, the pig the host rides and gets off, a test player
+ * the host places (in what the host wears), shared too and gone once cleared. Nothing is written
+ * into the scoreboard, and the positions are kept in the world's own file once it closes.
  */
 public final class LanShareScenario implements Scenario {
     @Override
@@ -39,8 +44,9 @@ public final class LanShareScenario implements Scenario {
             root = context.computeOnClient(minecraft -> minecraft.getSingleplayerServer().getWorldPath(LevelResource.ROOT));
             Scene.summon(world, "cow", 10, 10, 0);
             context.waitTicks(40);
+            // Alone in the world: shared already, so that those who logged off here show without LAN.
             context.runOnClient(minecraft -> {
-                if (FarPlayerTracker.get().sharing()) throw new AssertionError("sharing before the world is opened to LAN");
+                if (!FarPlayerTracker.get().sharing()) throw new AssertionError("no sharing in a world played alone");
             });
 
             // 26.2 asks who may join (the LAN), and 26.3 no longer asks for the game mode.
@@ -99,6 +105,35 @@ public final class LanShareScenario implements Scenario {
             });
             Scene.command(world, "ride @p dismount");
             context.waitTicks(20);
+            // A test player in what the host wears: the server shares it, and forgets it once cleared.
+            Scene.command(world, "item replace entity @p armor.head with minecraft:diamond_helmet");
+            context.waitTicks(5);
+            context.runOnClient(minecraft -> minecraft.player.connection.sendCommand("livinghorizon debug offline test spawn Tester"));
+            context.waitTicks(60);
+            context.runOnClient(minecraft -> {
+                SharedPositions shared = FarPlayerTracker.get().shared();
+                SharedPositions.Report tester = shared.read("Tester");
+                PositionsMessage.Look look = shared.look("Tester");
+                if (tester == null || !tester.test()) throw new AssertionError("the test player is not shared by the server");
+                if (look == null || look.gear().stream().noneMatch(item -> item.contains("diamond_helmet"))) {
+                    throw new AssertionError("the test player is shared without the helmet: " + look);
+                }
+                RestingPuppet puppet = FarPlayerTracker.get().resting().puppet(minecraft.level,
+                        FarPlayerTracker.get().resting().spots().stream().filter(spot -> spot.name().equals("Tester"))
+                                .findFirst().orElseThrow());
+                if (!puppet.getItemBySlot(EquipmentSlot.HEAD).is(Items.DIAMOND_HELMET)) {
+                    throw new AssertionError("the test player does not wear the helmet");
+                }
+                Scene.log("lanshare test player shared, in its helmet");
+            });
+            context.runOnClient(minecraft -> minecraft.player.connection.sendCommand("livinghorizon debug offline test clear"));
+            context.waitTicks(60);
+            context.runOnClient(minecraft -> {
+                if (FarPlayerTracker.get().shared().read("Tester") != null) {
+                    throw new AssertionError("the server still shares the cleared test player");
+                }
+                Scene.log("lanshare test player cleared on the server too");
+            });
             context.runOnClient(minecraft -> {
                 String name = minecraft.player.getScoreboardName();
                 SharedPositions.Report host = FarPlayerTracker.get().shared().read(name);

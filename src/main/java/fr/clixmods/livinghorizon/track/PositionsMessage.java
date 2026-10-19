@@ -18,12 +18,14 @@ import java.util.UUID;
  * the game's, so that it reads the same on every loader and version, and in a unit test.
  *
  * <p>Three kinds of message: {@link #PLAYERS} online, a few times a second; {@link #OFFLINE},
- * the players who logged off, and {@link #MOBS}, every few seconds. The server keeps the same lists in the world ({@link PositionPublisher}),
- * written in this format too.
+ * the players who logged off, and {@link #MOBS}, every few seconds, and all three at once to a
+ * player who just joined. How a player looks ({@link Look}) and what they ride ({@link Mount})
+ * come every few seconds only. The server keeps the same lists in the world
+ * ({@link PositionPublisher}), written in this format too.
  */
 public final class PositionsMessage {
     /** The layout below; a client that reads another one ignores the message. */
-    public static final int VERSION = 1;
+    public static final int VERSION = 2;
     public static final byte PLAYERS = 0;
     public static final byte MOBS = 1;
     public static final byte OFFLINE = 2;
@@ -31,14 +33,41 @@ public final class PositionsMessage {
     /**
      * One player: online now, or where they were when they logged off. {@code dimension} is
      * {@link SharedPositions#dimensionCode}; {@code vehicle} the published mob they ride, if any;
-     * {@code mount} what a player who logged off riding took away with them, if any.
+     * {@code mount} what they ride, as the server saves it, and {@code look} how they look: both
+     * sent every few seconds only, so null in most messages. {@code lastSeen} is when they logged
+     * off, in milliseconds since 1970 (0 when not known), and {@code test} marks a test player the
+     * host placed with the debug command.
      */
     public record Player(String name, double x, double y, double z, float yaw, int dimension, boolean online,
-                         boolean riding, @Nullable UUID vehicle, @Nullable Mount mount) {
+                         boolean riding, @Nullable UUID vehicle, @Nullable Mount mount, @Nullable Look look,
+                         long lastSeen, boolean test) {
         public Player(String name, double x, double y, double z, float yaw, int dimension, boolean online,
                       boolean riding, @Nullable UUID vehicle) {
-            this(name, x, y, z, yaw, dimension, online, riding, vehicle, null);
+            this(name, x, y, z, yaw, dimension, online, riding, vehicle, null, null, 0, false);
         }
+
+        public Player(String name, double x, double y, double z, float yaw, int dimension, boolean online,
+                      boolean riding, @Nullable UUID vehicle, @Nullable Mount mount) {
+            this(name, x, y, z, yaw, dimension, online, riding, vehicle, mount, null, 0, false);
+        }
+
+        /** The same player, without what is sent every few seconds only. */
+        public Player plain() {
+            return mount == null && look == null ? this
+                    : new Player(name, x, y, z, yaw, dimension, online, riding, vehicle, null, null, lastSeen, test);
+        }
+
+        /** The same player, with how they look and what they ride. */
+        public Player full(@Nullable Mount mount, @Nullable Look look) {
+            return new Player(name, x, y, z, yaw, dimension, online, riding, vehicle, mount, look, lastSeen, test);
+        }
+    }
+
+    /**
+     * How a player looks: their skin, as the {@code textures} property of their profile (value
+     * and signature; null when the server has none), and what they wear and hold ({@link Gear}).
+     */
+    public record Look(@Nullable String textures, @Nullable String signature, List<String> gear) {
     }
 
     /**
@@ -52,8 +81,15 @@ public final class PositionsMessage {
         public static final int MAX_NBT = 32_000;
     }
 
-    /** One remembered mob: its kind ({@link MobKinds}), and what its look needs. */
-    public record Mob(UUID id, double x, double y, double z, int kind, int dimension, boolean baby, int variant) {
+    /**
+     * One remembered mob: its kind ({@link MobKinds}), and what its look needs; {@code extra} is
+     * what it wears (saddle, harness, armour, carpet, chest), as the game saves it, or null.
+     */
+    public record Mob(UUID id, double x, double y, double z, int kind, int dimension, boolean baby, int variant,
+                      @Nullable String extra) {
+        public Mob(UUID id, double x, double y, double z, int kind, int dimension, boolean baby, int variant) {
+            this(id, x, y, z, kind, dimension, baby, variant, null);
+        }
     }
 
     /**
@@ -163,9 +199,18 @@ public final class PositionsMessage {
             out.writeFloat(player.yaw());
             out.writeByte(player.dimension());
             Mount mount = player.mount();
+            Look look = player.look();
             out.writeByte((player.online() ? 1 : 0) | (player.riding() ? 2 : 0) | (player.vehicle() != null ? 4 : 0)
-                    | (mount != null ? 8 : 0));
+                    | (mount != null ? 8 : 0) | (look != null ? 16 : 0) | (player.test() ? 32 : 0)
+                    | (player.lastSeen() != 0 ? 64 : 0));
             if (player.vehicle() != null) writeId(out, player.vehicle());
+            if (player.lastSeen() != 0) out.writeLong(player.lastSeen());
+            if (look != null) {
+                writeText(out, look.textures());
+                writeText(out, look.signature());
+                out.writeByte(look.gear().size());
+                for (String item : look.gear()) out.writeUTF(item);
+            }
             if (mount != null) {
                 out.writeUTF(mount.type());
                 out.writeUTF(mount.nbt());
@@ -188,11 +233,21 @@ public final class PositionsMessage {
             int dimension = in.readByte();
             int flags = in.readByte();
             UUID vehicle = (flags & 4) != 0 ? readId(in) : null;
+            long lastSeen = (flags & 64) != 0 ? in.readLong() : 0;
+            Look look = null;
+            if ((flags & 16) != 0) {
+                String textures = readText(in), signature = readText(in);
+                int slots = in.readByte();
+                List<String> gear = new ArrayList<>(slots);
+                for (int slot = 0; slot < slots; slot++) gear.add(in.readUTF());
+                look = new Look(textures, signature, gear);
+            }
             Mount mount = (flags & 8) != 0
                     ? new Mount(in.readUTF(), in.readUTF(), in.readDouble(), in.readDouble(), in.readDouble(),
                             in.readFloat(), in.readFloat())
                     : null;
-            players.add(new Player(name, x, y, z, yaw, dimension, (flags & 1) != 0, (flags & 2) != 0, vehicle, mount));
+            players.add(new Player(name, x, y, z, yaw, dimension, (flags & 1) != 0, (flags & 2) != 0, vehicle, mount,
+                    look, lastSeen, (flags & 32) != 0));
         }
         return players;
     }
@@ -205,8 +260,9 @@ public final class PositionsMessage {
             out.writeDouble(mob.y());
             out.writeDouble(mob.z());
             out.writeShort(mob.kind());
-            out.writeByte(mob.dimension() | (mob.baby() ? 0x10 : 0));
+            out.writeByte(mob.dimension() | (mob.baby() ? 0x10 : 0) | (mob.extra() != null ? 0x20 : 0));
             out.writeInt(mob.variant());
+            if (mob.extra() != null) out.writeUTF(mob.extra());
         }
     }
 
@@ -219,9 +275,21 @@ public final class PositionsMessage {
             int kind = in.readShort();
             int flags = in.readByte();
             int variant = in.readInt();
-            mobs.add(new Mob(id, x, y, z, kind, flags & 0x0F, (flags & 0x10) != 0, variant));
+            String extra = (flags & 0x20) != 0 ? in.readUTF() : null;
+            mobs.add(new Mob(id, x, y, z, kind, flags & 0x0F, (flags & 0x10) != 0, variant, extra));
         }
         return mobs;
+    }
+
+    /** A text that may be missing; longer than {@code writeUTF} allows, it is left out. */
+    private static void writeText(DataOutputStream out, @Nullable String text) throws IOException {
+        boolean kept = text != null && text.length() < 16_000;
+        out.writeBoolean(kept);
+        if (kept) out.writeUTF(text);
+    }
+
+    private static @Nullable String readText(DataInputStream in) throws IOException {
+        return in.readBoolean() ? in.readUTF() : null;
     }
 
     private static void writeId(DataOutputStream out, UUID id) throws IOException {

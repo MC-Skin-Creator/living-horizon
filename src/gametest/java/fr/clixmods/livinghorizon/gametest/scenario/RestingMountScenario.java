@@ -67,7 +67,13 @@ public final class RestingMountScenario implements Scenario {
             // A boat on a pond: it rows about, on the water.
             Scene.command(world, "fill -10 " + (GROUND - 3) + " 20 10 " + (GROUND - 1) + " 40 water");
             context.waitTicks(20);
-            mounted(context, world, "Rower", "oak_boat", 0.5, GROUND - 0.1, 30.5, "{}");
+            // The boat turned a quarter from where the camera looks: the rower sits facing the boat, not the camera.
+            mounted(context, world, "Rower", "oak_boat", 0.5, GROUND - 0.1, 30.5, "{Rotation:[90f,0f]}");
+            String facing = rider(context, "Rower", p -> {
+                float off = net.minecraft.util.Mth.wrapDegrees(p.yBodyRot - p.mount().getYRot());
+                return Math.abs(off) < 20 ? null : "body " + p.yBodyRot + ", boat " + p.mount().getYRot();
+            });
+            if (facing != null) throw new AssertionError("restingmount: the rower does not face the boat's way, " + facing);
             Scene.command(world, "tp @a 0.5 " + GROUND + " 12 0 15");
             roams(context, "Rower", 0.5, 30.5, 600, GROUND - 1);
             lookAt(context, world, "Rower");

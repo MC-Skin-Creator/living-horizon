@@ -29,10 +29,22 @@ public final class DedicatedServerScenario implements Scenario {
         Path root;
         try (TestDedicatedServerContext server = context.worldBuilder().setUseConsistentSettings(true).createServer()) {
             root = server.computeOnServer(minecraft -> minecraft.getWorldPath(LevelResource.ROOT));
+            // A saddled pig, the saddle as each game version keeps it: sent to the player as soon as they join.
+            server.runCommand("summon pig 20 -60 20 {NoAI:1b,Saddle:1b,equipment:{saddle:{id:\"minecraft:saddle\",count:1}}}");
             // Its type was renamed in the Fabric API for 26.3; both close the connection.
             try (var connection = server.connect()) {
+                // Everything at once to a player who joins, not at the next round five seconds later.
+                context.waitTicks(30);
+                context.runOnClient(minecraft -> {
+                    SharedPositions shared = FarPlayerTracker.get().shared();
+                    String saddled = shared.mobs().stream().map(shared::readMob)
+                            .filter(mob -> mob != null && mob.extra() != null && mob.extra().contains("saddle"))
+                            .map(SharedPositions.MobReport::extra).findFirst().orElse(null);
+                    if (saddled == null) throw new AssertionError("the saddled pig is not sent on joining: " + shared.mobs().size() + " mobs");
+                    Scene.log("dedicated pig sent on joining, with " + saddled);
+                });
                 // The positions are all this needs: no waiting for the chunks, slow to make without a graphics card.
-                context.waitTicks(60);
+                context.waitTicks(30);
                 server.runCommand("tp @a 30 ~ 0");
                 context.waitTicks(40);
                 context.runOnClient(minecraft -> {

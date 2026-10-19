@@ -111,6 +111,42 @@ class SharedPositionsTest {
     }
 
     @Test
+    void keepsLooksAndMountsBetweenTheirMessages() {
+        SharedPositions shared = new SharedPositions();
+        PositionsMessage.Look look = new PositionsMessage.Look("dGV4dHVyZXM=", "c2lnbg==",
+                List.of("{count:1,id:\"minecraft:diamond_sword\"}", "", "", "", "", ""));
+        PositionsMessage.Mount boat = new PositionsMessage.Mount("minecraft:oak_boat", "{}", 0, -0.2, 0, 90f, 0f);
+        // Every few seconds: how they look and what they ride.
+        shared.receive(PositionsMessage.players(List.of(new PositionsMessage.Player("Steve", 1, 2, 3, 0f, 0, true, true,
+                null, null, null, 0, false).full(boat, look))));
+        // In between: positions alone, which keep what came before.
+        shared.receive(PositionsMessage.players(List.of(new PositionsMessage.Player("Steve", 4, 2, 3, 0f, 0, true, true, null))));
+        shared.update();
+        assertEquals(look, shared.look("Steve"));
+        assertEquals(boat, shared.mount("Steve"));
+        assertEquals(4, shared.read("Steve").x(), 1e-9);
+        // Off the boat: no mount any more.
+        shared.receive(PositionsMessage.players(List.of(new PositionsMessage.Player("Steve", 4, 2, 3, 0f, 0, true, false, null))));
+        assertNull(shared.mount("Steve"));
+        // A test player of the host's, logged off a while ago.
+        shared.receive(PositionsMessage.offline(List.of(new PositionsMessage.Player("Sleeper1", 0, 64, 0, 0f, 0, false, false,
+                null, null, look, 1760100000000L, true))));
+        assertTrue(shared.read("Sleeper1").test());
+        assertEquals(1760100000000L, shared.read("Sleeper1").lastSeen());
+        assertEquals(look, shared.look("Sleeper1"));
+    }
+
+    @Test
+    void sharesWhatAMobWears() {
+        SharedPositions shared = new SharedPositions();
+        shared.receive(PositionsMessage.players(List.of()));
+        shared.receive(PositionsMessage.mobs(new PositionsMessage.Mobs(List.of(new PositionsMessage.Mob(GHAST, 0, 90, 0,
+                1, 0, false, 0, "{equipment:{body:{count:1,id:\"minecraft:white_harness\"}}}")), 0, 0, 0, 2048)));
+        shared.update();
+        assertEquals("{equipment:{body:{count:1,id:\"minecraft:white_harness\"}}}", shared.readMob(GHAST).extra());
+    }
+
+    @Test
     void ignoresAnotherVersionOrGarbage() {
         SharedPositions shared = new SharedPositions();
         byte[] message = PositionsMessage.players(List.of(new PositionsMessage.Player("Steve", 0, 0, 0, 0, 0, true, false, null)));

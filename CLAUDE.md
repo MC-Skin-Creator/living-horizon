@@ -48,8 +48,9 @@ Quilt, NeoForge and Forge, on several Minecraft versions: animals, villagers, bi
 on the horizon, past the render distance, on top of Voxy's far terrain. Everything is drawn on
 the client and nothing is sent to the server. Distant players are placed from positions a
 server with the mod shares over the mod's own network channel (`platform/Network`): the same
-jar sends them when it runs on a server (`PositionPublisher`, driven by `LanShare` on a LAN
-host and by `MinecraftServerMixin` on a dedicated server), in `PositionsMessage`'s format, and
+jar sends them when it runs on a server (`PositionPublisher`, driven by `MinecraftServerMixin`
+on a dedicated server and on the one inside a player's game, alone or on LAN), in
+`PositionsMessage`'s format, and
 the client keeps them in `SharedPositions`. Nothing goes through the scoreboard; a server
 without the mod shares nothing. Code that a dedicated server loads (`LivingHorizonCommon`,
 `Network`, `PositionPublisher`, `MinecraftServerMixin`, what they use) must never touch a
@@ -388,6 +389,22 @@ come back, add it here in the same pull request: this file is what the next sess
   the server's copy of the mount (`PositionsMessage.Mount`, kept by `PositionPublisher` with
   their last position) unless this client saw it itself. `CarriedMountTest`,
   `SharedPositionsTest` and the `lanshare`, `dedicated` and `restingmount` scenarios check it.
+- **A far player in an old skin** (they changed it, the puppet did not): a `RemotePlayer` finds its
+  `PlayerInfo` by id once and keeps it. A new tab list entry means a new skin, so
+  `FarPlayer.observeRemote` makes a new puppet when the entry changes (`newSkin`). The server's
+  word on a player who logged off (`PositionsMessage.Look`) replaces the skin a spot kept.
+- **A rider turned sideways** (a player resting in a boat facing left or right of it): the seat's
+  yaw is the rider's body (`yBodyRot`), which the boat keeps in line with itself, never the head
+  (`getYRot`), which looks wherever the player looked as they left.
+- **A mount walking back from where it was first ridden** (a happy ghast, after its far rider got
+  off): its remembered copy is left out while carried and kept the old spot. `FarPlayerTracker`
+  hands `MobMemory.released` where the copy under the rider was, and the server's older word on it
+  is set aside (`dismissed`) until it says something new.
+- **Client game tests failing with "Network synchronizer in invalid state"**: the Fabric API counts
+  every packet until the other side reads it, and gives up after ten seconds. The server's
+  messages go out from the head of `tickServer`, flushed with that tick, and the host's game hands
+  its test players over through a field the publisher reads (`offerTestPlayers`), never a task in
+  the server's queue.
 - **A dedicated server crashes on load with the mod** ("Attempted to load class
   net/minecraft/client/... for invalid dist DEDICATED_SERVER"): something the server loads
   reaches a client class. Forge's `@Mod` has no side, so it sits on `LivingHorizonCommon`,

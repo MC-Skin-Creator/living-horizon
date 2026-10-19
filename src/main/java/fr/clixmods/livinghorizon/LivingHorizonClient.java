@@ -8,7 +8,6 @@ import fr.clixmods.livinghorizon.platform.Events;
 import fr.clixmods.livinghorizon.platform.Network;
 import fr.clixmods.livinghorizon.render.Occlusion;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
-import fr.clixmods.livinghorizon.track.LanShare;
 import fr.clixmods.livinghorizon.ui.FarConfigScreen;
 import fr.clixmods.livinghorizon.ui.MobList;
 import fr.clixmods.livinghorizon.ui.OptionsButton;
@@ -124,9 +123,6 @@ public final class LivingHorizonClient {
         // Voxy's world cannot close while the readers still hold its sections.
         Events.disconnect(LodWorld::suspend);
         Events.stopping(LodWorld::suspend);
-        // A world opened to LAN is left as it was found.
-        Events.disconnect(LanShare::close);
-        Events.stopping(LanShare::close);
         Events.entityLoad((entity, level) -> FarPlayerTracker.get().mobs().onLoad(entity));
         Events.entityUnload((entity, level) -> FarPlayerTracker.get().mobs().onUnload(entity, level));
         //? if fabric || quilt {
@@ -177,7 +173,6 @@ public final class LivingHorizonClient {
         }
         long started = System.nanoTime();
         FarPlayerTracker.get().tick(minecraft);
-        LanShare.tick(minecraft);
         if (minecraft.level != null) Occlusion.tick(minecraft.gameRenderer.getMainCamera().position());
         Stats.tick(System.nanoTime() - started);
     }

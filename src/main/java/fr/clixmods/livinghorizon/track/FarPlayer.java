@@ -84,6 +84,10 @@ public final class FarPlayer {
 
     /** Their profile as the tab list last gave it: name and skin, kept for when they log off. */
     @Nullable GameProfile profile;
+    /** The tab list entry the puppet takes its skin from: a new one (a new skin) makes a new puppet. */
+    private @Nullable PlayerInfo shownInfo;
+    /** The gear the server last said they wear, as put on the puppet; null when none was put on. */
+    private @Nullable List<String> shownGear;
     /** The code ({@link SharedPositions#dimensionCode}) of the dimension x, y, z belong to; -1 when none. */
     private int knownDimension = -1;
 
@@ -120,11 +124,24 @@ public final class FarPlayer {
      */
     RestingPlayers.@Nullable Mount mountToRest() {
         Entity vehicle = mount();
+        // Never seen up close: the copy drawn under them, from what the server said.
+        if (vehicle == null) vehicle = mountPuppet();
         if (vehicle == null) return null;
         for (Entity passenger : vehicle.getIndirectPassengers()) {
             if (passenger instanceof Player other && !other.getUUID().equals(id)) return null;
         }
         return RestingPlayers.Mount.of(vehicle, riderOffset, mountYaw, riderYaw);
+    }
+
+    /** What they wear and hold, to keep when they log off: as last seen, or as the server last said. */
+    @Nullable List<String> gearToRest() {
+        LivingEntity worn = live != null ? live : puppet != null ? puppet : lastSeen;
+        return worn == null ? null : Gear.of(worn, worn.level().registryAccess());
+    }
+
+    /** The copy of their mount, drawn while they ride it; null when there is none. */
+    @Nullable Entity mountCopy() {
+        return mountPuppet;
     }
 
     /**
@@ -164,7 +181,8 @@ public final class FarPlayer {
             lastVehicle = root;
             mountId = root.getUUID();
             riderOffset = player.position().subtract(root.position()).yRot((float) Math.toRadians(root.getYRot()));
-            riderYaw = player.getYRot() - root.getYRot();
+            // The body, not the head: a rider looking aside still sits facing the way of their mount.
+            riderYaw = player.yBodyRot - root.getYRot();
             mountYaw = root.getYRot();
         } else {
             lastVehicle = null;
@@ -183,14 +201,26 @@ public final class FarPlayer {
         yaw = player.getYRot();
         puppet = null;
         mountPuppet = null;
+        shownInfo = null;
+        shownGear = null;
     }
 
     // --- Once it stops ------------------------------------------------------------
 
     void observeRemote(ClientLevel level, Player self, PlayerInfo info, SharedPositions.@Nullable Report shared,
-                       @Nullable UUID vehicle, int dimension, double vanishRadius, FarConfig config, MobMemory mobs) {
+                       @Nullable UUID vehicle, PositionsMessage.@Nullable Mount sharedMount,
+                       PositionsMessage.@Nullable Look look, int dimension, double vanishRadius, FarConfig config,
+                       MobMemory mobs) {
         if (source == Source.LIVE) leaveLive(level, self, vanishRadius);
         if (puppet == null) freshPuppet(level, info);
+        // A new tab list entry: a new skin. The puppet keeps the one it was made with, so a new one.
+        if (shownInfo != null && shownInfo != info) newSkin(level, info);
+        shownInfo = info;
+        // What the server says they wear now, put on once each time it changes.
+        if (look != null && puppet != null && !look.gear().equals(shownGear)) {
+            Gear.apply(puppet, look.gear(), level.registryAccess());
+            shownGear = look.gear();
+        }
 
         Source heard = shared == null ? null : share(shared, dimension);
         if (heard != null && riding) {
@@ -201,6 +231,8 @@ public final class FarPlayer {
                 adoptIn = 0;
             }
             if (mountPuppet == null && vehicle != null && --adoptIn <= 0) adopt(level, shared, vehicle, mobs);
+            // No remembered mob to take: a copy of the mount the server saved.
+            if (mountPuppet == null && sharedMount != null) mountFrom(level, sharedMount, vehicle);
         }
 
         if (heard != null) {
@@ -278,6 +310,23 @@ public final class FarPlayer {
         riderYaw = 0;
     }
 
+    /** Their mount, from the copy the server saved: the rider sits where they sat on it. */
+    private void mountFrom(ClientLevel level, PositionsMessage.Mount shared, @Nullable UUID vehicle) {
+        Entity mount = RestingMount.copy(level, RestingPlayers.Mount.of(shared));
+        if (mount == null) return;
+        mountPuppet = mount;
+        mountId = vehicle;
+        riderOffset = new Vec3(shared.seatX(), shared.seatY(), shared.seatZ());
+        riderYaw = shared.riderYaw();
+    }
+
+    /** A new puppet in the skin of a new tab list entry, wearing what the old one wore. */
+    private void newSkin(ClientLevel level, PlayerInfo info) {
+        RemotePlayer old = puppet;
+        puppet = Puppets.player(level, info.getProfile());
+        if (old != null) copyState(old, puppet);
+    }
+
     /** Moves what is drawn towards the estimate, smoothly unless the jump is a teleport. */
     private void follow(Player self) {
         double tx = targetX, tz = targetZ;
@@ -346,6 +395,7 @@ public final class FarPlayer {
         puppet = Puppets.player(level, info.getProfile());
         mountPuppet = null;
         mountId = null;
+        shownGear = null;
     }
 
     private static RemotePlayer copyPlayer(ClientLevel level, AbstractClientPlayer source) {

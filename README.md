@@ -268,20 +268,31 @@ scoreboard or any other part of the world, and a player without the mod is sent 
 
 - **Five times a second**, every player online: position, yaw, dimension, and the mob they
   ride, so that a far player is drawn on their own mount, never beside a second copy of it.
-- **Every five seconds**, the players who logged off, where they were last, and the
-  remembered mobs within 2048 blocks of each player (see *Mobs far away* below).
-- The server keeps both in a file of its world, `livinghorizon-positions.dat`, so that a
-  player who joins later sees them too. A mob is forgotten when its chunk is loaded and it is
-  not there any more.
+- **Every five seconds**, how the players look (their skin, armour and what they hold, read
+  every second) and what they ride, as the server saves it, for the 64 nearest each player;
+  the players who logged off, where they were last, as they looked, on the mount they took
+  away with them, and when they left; and the remembered mobs within 2048 blocks of each
+  player, with what they wear (saddle, harness, armour, carpet, chest; see *Mobs far away*).
+- **At once, to a player who joins**: all of it, without waiting for the next five seconds.
+- The server keeps the players and the mobs in a file of its world,
+  `livinghorizon-positions.dat`, so that a player who joins later sees them too. Those still
+  online when it stops are kept as they were, logged off then. A mob is forgotten when its
+  chunk is loaded and it is not there any more.
+- Test players the host places with `/livinghorizon debug offline test` are shared too,
+  marked as tests: the others' games show them while the host keeps them, and never save them.
 
 The messages are written with plain Java streams (`PositionsMessage`), the same on every
 loader and version. It runs where the server is:
 
-- **A world opened to LAN** (*Open to LAN*): the server runs inside the host's game, so
-  `LanShare` drives it from the host's client, and saves the file when the world closes.
+- **A world played alone, or opened to LAN** (*Open to LAN*): the server runs inside the
+  host's game, which reads its messages back like any other: players who logged off there show
+  as soon as the world opens.
 - **A dedicated server**: the same jar in the server's `mods` folder (with the Fabric API on
-  Fabric and Quilt). `MinecraftServerMixin` drives it from the server's tick, and saves the
-  file every minute and as the server stops.
+  Fabric and Quilt).
+
+`MinecraftServerMixin` drives it from the start of the server's tick, so that what it sends
+goes out when that tick flushes the connections, and saves the file every minute and as the
+server stops.
 
 ### Players who logged off
 
@@ -289,8 +300,10 @@ A player who logs off stays around where they were last, until they come back.
 `offlinePlayers` off turns this off completely: nobody is shown, remembered or written to the
 file. This is remembered per server across sessions, in
 `config/livinghorizon/resting/<server>.json`. On a server with the mod, even players who
-logged off before you joined are there: the server keeps everyone's last position, and their
-skin is fetched from Mojang by name.
+logged off before you joined are there: the server keeps everyone's last position, skin and
+gear. Without the server's word, their skin is fetched from Mojang by name. When the world or
+the server closes, or you leave it, everyone you saw stays where they were last, as they
+looked, on what they rode: they logged off then, as far as this client knows.
 
 With `offlineLife` on (the default) they live their life there, as long as the blocks
 around are loaded (`track/RestingPuppet`), within `offlineRoam` blocks of their spot (50, about
