@@ -9,6 +9,7 @@ version = "${version}"
 displayName = "${name}"
 description = "Gives life to the distance: animals, villagers, birds and other players keep living on the horizon, past the render distance."
 authors = "clixmods"
+credits = "Testers: ISessen"
 displayURL = "https://github.com/MC-Skin-Creator/living-horizon"
 logoFile = "assets/livinghorizon/icon.png"
 ${sodium}

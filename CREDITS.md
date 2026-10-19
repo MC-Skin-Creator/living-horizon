@@ -10,6 +10,10 @@ Source and issues: this repository, the official home of the project.
 
 - **clixmods**
 
+## Collaborators and testers
+
+- **ISessen**, tester.
+
 ## Contributors
 
 Added by the maintainer when a pull request is merged, in the order of the first

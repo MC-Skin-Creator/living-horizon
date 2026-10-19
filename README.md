@@ -675,6 +675,13 @@ Every contributor is credited, whatever happens to the license or to the project
 
 Versions published before this license were under the GPL-3.0 and keep it.
 
+## Credits
+
+- **Author:** clixmods
+- **Collaborators and testers:** ISessen
+
+The full list is in [CREDITS.md](CREDITS.md).
+
 ## Contributing
 
 Pull requests are welcome, to this repository only. [CONTRIBUTING.md](CONTRIBUTING.md)

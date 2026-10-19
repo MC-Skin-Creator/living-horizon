@@ -8,7 +8,8 @@
       "name": "${name}",
       "description": "Gives life to the distance: animals, villagers, birds and other players keep living on the horizon, past the render distance.",
       "contributors": {
-        "clixmods": "Owner"
+        "clixmods": "Owner",
+        "ISessen": "Tester"
       },
       "contact": {
         "homepage": "https://github.com/MC-Skin-Creator/living-horizon",

@@ -5,6 +5,7 @@
   "name": "${name}",
   "description": "Gives life to the distance: animals, villagers, birds and other players keep living on the horizon, past the render distance.",
   "authors": ["clixmods"],
+  "contributors": ["ISessen"],
   "license": "LicenseRef-LivingHorizon",
   "icon": "assets/livinghorizon/icon.png",
   "environment": "client",
