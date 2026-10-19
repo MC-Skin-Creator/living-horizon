@@ -197,7 +197,7 @@ baseline, no commit back, no Modrinth, CurseForge, Nexus Mods or Discord. A push
   the page's URL) exist: one file per target, found by its name ("Living Horizon (Fabric
   26.1.x)"), created on the first release and given a new version on the next ones. The API
   cannot create the page itself. The Discord announcement uses `DISCORD_WEBHOOK_EN` / `_FR` and pings the
-  role whose ID is in `DISCORD_ROLE` (variable; `DISCORD_ROLE_EN` / `_FR` per language).
+  role whose ID is in `DISCORD_ROLE` (variable, @Updates when unset; `DISCORD_ROLE_EN` / `_FR` per language).
 
 The mod version is `mod.version` in `stonecutter.properties.toml`; the Minecraft version
 never touches it.

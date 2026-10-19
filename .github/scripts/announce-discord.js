@@ -12,7 +12,8 @@
  * the script says so and exits cleanly.
  *
  * The role to ping (@Updates) is a repository variable, also optional: its ID in
- * DISCORD_ROLE_EN, _FR, or DISCORD_ROLE for every language. Without one, no ping.
+ * DISCORD_ROLE_EN, _FR, or DISCORD_ROLE for every language (release.yml defaults it
+ * to @Updates). Without one, no ping.
  *
  * The version must have its own dated section in the file: a release that carries
  * nothing for the players announces nothing, and an older version is never
