@@ -401,10 +401,12 @@ come back, add it here in the same pull request: this file is what the next sess
   hands `MobMemory.released` where the copy under the rider was, and the server's older word on it
   is set aside (`dismissed`) until it says something new.
 - **Client game tests failing with "Network synchronizer in invalid state"**: the Fabric API counts
-  every packet until the other side reads it, and gives up after ten seconds. The server's
-  messages go out from the head of `tickServer`, flushed with that tick, and the host's game hands
-  its test players over through a field the publisher reads (`offerTestPlayers`), never a task in
-  the server's queue.
+  every packet until the other side reads it, and gives up after ten seconds. Since the server of a
+  single player world shares too, it shows now and then in long runs (one scenario fine, several in
+  a row sometimes not), with no error of the mod's in the log: run the scenario again, alone. What
+  helped: the server's messages go out from the head of `tickServer`, flushed with that tick, and
+  the host's game hands its test players over through a field the publisher reads
+  (`offerTestPlayers`), never a task in the server's queue.
 - **A dedicated server crashes on load with the mod** ("Attempted to load class
   net/minecraft/client/... for invalid dist DEDICATED_SERVER"): something the server loads
   reaches a client class. Forge's `@Mod` has no side, so it sits on `LivingHorizonCommon`,

@@ -32,6 +32,31 @@ server).
 - **NeoForge** (1.20.6 and later) and **Forge**: nothing else; the mod list's *Config*
   button opens the settings.
 
+### Playing with others
+
+The mobs far away work everywhere on their own. The **other players** far away need the
+server to tell your game where they are, and only a server with the mod does:
+
+- **On a dedicated server**: put the same jar in the server's `mods` folder, with the
+  [Fabric API](https://modrinth.com/mod/fabric-api) on Fabric and Quilt. Its console says
+  "Living Horizon: sharing the positions of this server with the players who have the mod".
+  Nothing to set up, no data pack, no command.
+- **In a world opened to LAN**: nothing to do. The host's game is the server, so the host's
+  mod shares everything with the friends who join with the mod.
+- **Alone in your world**: nothing to do either; players who logged off there show as soon as
+  you open it.
+
+What the server shares with the players who have the mod: where every player is (five times
+a second), how they look (skin, armour, what they hold) and what they ride; where each
+player logged off, how they looked, their mount and when they left; and the mobs around you,
+with their saddle, harness or armour. It keeps all of it in its world
+(`livinghorizon-positions.dat`), so a player who joins later sees it at once. Nothing else
+changes on the server: no scoreboard, no data pack, nothing written into the world's own data.
+
+Players **without** the mod can still join a server with the mod: they are sent nothing and
+see the game as usual. On a server **without** the mod, your game shows the mobs far away but
+no distant players, and says so once in its log.
+
 [Voxy](https://modrinth.com/mod/voxy) and
 [Distant Horizons](https://modrinth.com/mod/distanthorizons) are optional. The mod works
 with the game alone, at whatever render distance you like, and on top of either of them if

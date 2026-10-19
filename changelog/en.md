@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### New
+- **The mod on a server** — put the same jar in a dedicated server's `mods` folder (with the Fabric API on Fabric and Quilt) and every player who has the mod sees the other players at any distance.
+- **LAN and single player worlds** — a world opened to LAN shares everything by itself through the host's game, and players who logged off in your own world show as soon as you open it.
+- **What the server shares** — where every player is, their skin, armour, what they hold and what they ride, and the mobs around you with their saddle, harness or armour.
+- **Players who logged off** — the server keeps where each player logged off, how they looked, the mount they rode and when they left, so everyone sees them, even players who joined later.
+- **Everything as you join** — distant mobs and players who logged off show as soon as you join a server with the mod, not a few seconds later.
+- **Without the mod** — players without the mod can still join a server with the mod, and a server without the mod shows no distant players: the console says so once.
+- **No more data pack** — the data pack is gone: a server that used it now needs the mod instead.
+
+### Improved
+- **Distant players** — they are placed from what the server shares alone: the locator bar guess is gone, and so is the *Lost Player Time* setting.
+
+### Fixed
+- **Players on a happy ghast** — a far player riding a happy ghast no longer has a second ghast beside them, and one already riding when you join no longer floats in the air.
+- **Happy ghast flying back after its rider gets off** — the happy ghast a far player gets off no longer reappears where it was first ridden and flies back: it stays where it was left.
+- **Old skins far away** — a distant player who changes skin no longer keeps the old one far away.
+- **Players turned sideways in boats** — a player who logs off in a boat no longer sits turned to the side: they face the way the boat does.
+- **Players vanishing when a world closes** — when a server or a LAN world closes, the players in it now stay where they were as offline players.
+
 ## 0.9.0 — 2026-10-19
 
 ### Fixed
@@ -17,27 +36,18 @@
 - **Settings in Sodium's menu** — Living Horizon's settings also appear in Sodium's *Video Settings*, on pages of their own (Sodium 0.8 and newer).
 - **Offline players keep their mount** — players who logged off on a horse, a boat or a happy ghast keep riding it around where they left.
 - **Video memory settings** — the *Simplified Entities...* screen shows how much video memory the pictures of mobs and players use, and *Mob Picture Memory* and *Player Picture Memory* set a limit for each.
-- **The mod on the server replaces the data pack** — put the mod in the server's `mods` folder (or open your world to LAN) and everyone with the mod sees the other players and the mobs at any distance. The data pack is gone: a server that used it now needs the mod.
 
 ### Improved
 - **Clearer settings** — every setting has a clearer name and description, in the style of Minecraft's own options, and distance sliders use the full width.
 - **Offline players** — players who logged off walk a small loop around where they left, and turn into flat pictures far away like online players, whether standing, sitting, lying down or in bed.
 - **Riders** — far away, a player riding a horse, a boat, a minecart or anything else becomes one flat picture with their mount, which is much lighter than two full models.
 - **Large crowds of players** — with more than about a hundred distant players, the extra ones now turn into flat pictures too instead of staying full models.
-- **Distant players** — they are placed from the shared positions alone: the locator bar guess is gone, and so is the "Lost Player Time" setting. Without the mod on the server, the console says so once instead.
 
 ### Fixed
 - **Mobs showing through hills after resizing the window** — distant mobs no longer show through hills, Voxy's and Distant Horizons' included, after the game window changes size.
 - **Players and slimes vanishing with Distant Horizons** — distant players, offline players and slimes no longer disappear under Distant Horizons' terrain (Minecraft 26.1 and newer).
 - **Distant Horizons' terrain cutting into mobs** — Distant Horizons' terrain no longer cuts into mobs and players standing in front of it (Minecraft 26.1 and newer).
 - **Distant mobs blinking while walking** — with view bobbing on, distant mobs no longer blink and Distant Horizons' terrain no longer flickers in front of them at every step (Minecraft 26.1 and newer).
-- **Players on a happy ghast** — a far player riding a happy ghast no longer has a second ghast beside them, and one already riding when you join no longer floats in the air.
-
-### Improved
-- **Distant players** — they are placed from the shared positions alone: the locator bar guess is gone, and so is the "Signal lost" setting. Without a data pack or the mod on the server, the console says so once instead.
-
-### Fixed
-- **Players on a happy ghast** — a far player riding a happy ghast no longer has a second ghast beside them, and one already riding when you join no longer floats in the air.
 
 ## 0.7.0 — 2026-10-17
 
