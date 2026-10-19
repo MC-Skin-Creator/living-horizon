@@ -182,7 +182,7 @@ final class WorldPlayers {
 
     private static CompoundTag readTag(Path file) throws IOException {
         try (InputStream in = Files.newInputStream(file)) {
-            //? if >=1.20.2 {
+            //? if >=1.20.3 {
             return NbtIo.readCompressed(in, NbtAccounter.unlimitedHeap());
             //?} else
             /*return NbtIo.readCompressed(in);*/
