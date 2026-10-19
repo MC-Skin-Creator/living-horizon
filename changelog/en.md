@@ -5,6 +5,7 @@
 ### Fixed
 - **Offline players standing in the water** — players who logged off while swimming are no longer left standing in the water: they wait on the nearest shore, or row a boat when the shore is more than 10 blocks away.
 - **Water vanishing around boats** — the water no longer turns clear around offline players rowing a boat under a shader pack such as Photon, nor disappears in a large square around far boats.
+- **Rowers losing their boat far away** — far away, offline players rowing a boat are no longer shown standing without it while their picture is made.
 
 ## 0.8.0 — 2026-10-18
 
