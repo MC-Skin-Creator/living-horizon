@@ -75,6 +75,11 @@ public final class ShoreScenario implements Scenario {
             Scene.command(world, "gamemode spectator @a");
             Scene.command(world, "tp @a 6.5 " + (GROUND + 30) + " -20.5 0 35");
             context.waitTicks(40);
+            Scene.configure(context, config -> config.offlinePlayers = false);
+            context.waitTicks(10);
+            Scene.screenshot(context, this, "lake-above-without");
+            Scene.configure(context, config -> config.offlinePlayers = true);
+            context.waitTicks(10);
             Scene.screenshot(context, this, "lake-bigger");
             Scene.configure(context, config -> config.minApparentPixels = 0);
             Scene.command(world, "gamemode creative @a");
