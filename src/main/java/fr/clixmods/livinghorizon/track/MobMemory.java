@@ -189,6 +189,8 @@ public final class MobMemory {
      * them: not taken back from the server until it says they moved.
      */
     private final Map<UUID, Double> dismissed = new HashMap<>();
+    /** Mounts players took away as they logged off: never remembered when the server takes them out of the world. */
+    private final Set<UUID> takenAway = new HashSet<>();
     /** What the server shared, as last synced. */
     private @Nullable SharedPositions lastPack;
     private List<Remembered> shown = List.of();
@@ -318,6 +320,7 @@ public final class MobMemory {
         joining.clear();
         reach.clear();
         dismissed.clear();
+        takenAway.clear();
         shown = List.of();
         chooseSoon = false;
         file = null;
@@ -348,6 +351,8 @@ public final class MobMemory {
      */
     public void onLoad(Entity entity) {
         if (rememberable(entity)) live.put(entity.getUUID(), entity);
+        // Back in the world with its rider: remembered again once it leaves.
+        takenAway.remove(entity.getUUID());
         Remembered mob = mobs.get(entity.getUUID());
         if (mob != null && joins(mob, entity)) {
             mob.handover = entity;
@@ -424,6 +429,10 @@ public final class MobMemory {
     /** A mount a player took with them as they logged off: it rests under them, not here. */
     void forgetRidden(UUID id) {
         forget(id);
+        takenAway.add(id);
+        // What the server last said of it is older than that: not taken back until it says something new.
+        SharedPositions.MobReport report = lastPack == null ? null : lastPack.readMob(id);
+        if (report != null) dismissed.put(id, report.x() + report.y() * 31 + report.z() * 961);
     }
 
     /** No longer sent: remembered if it walked out of range, forgotten if it died. */
@@ -439,7 +448,8 @@ public final class MobMemory {
         Entity mob = entity;
         FarConfig config = FarConfig.get();
         if (!config.distantMobs || !worthRemembering(mob, config)) return;
-        if ((mob instanceof LivingEntity living && living.isDeadOrDying()) || carriesPlayer(mob)) {
+        if ((mob instanceof LivingEntity living && living.isDeadOrDying()) || carriesPlayer(mob)
+                || takenAway.contains(mob.getUUID())) {
             forget(mob.getUUID());
             return;
         }
@@ -1075,6 +1085,7 @@ public final class MobMemory {
         mobs.clear();
         joining.clear();
         dismissed.clear();
+        takenAway.clear();
         shown = List.of();
         dirty = true;
         save();
