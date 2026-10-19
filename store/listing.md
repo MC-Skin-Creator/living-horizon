@@ -117,13 +117,13 @@ You can now play with a lower simulation distance and still see a living world.
 
 1. Install the file of your game version and loader (see *Requirements*). Voxy and
    Distant Horizons are optional.
-2. Keep the default settings: they are the best balance. *Restore defaults* puts them back.
-3. In single player, run *Scan the chunks around* in the settings (or `/livinghorizon scan`)
+2. Keep the default settings: they are the best balance. *Restore Defaults* puts them back.
+3. In single player, press *Scan Nearby Mobs* in the settings (or `/livinghorizon scan`)
    to show the mobs around you at once.
 
 The scan radius is in **chunks** (32 = 512 blocks); every other distance is in **blocks**.
 
-**Careful:** *Mobs drawn at most* and *Mob distance* both on *Unlimited* can crash the game.
+**Careful:** *Max Mobs* and *Mob Render Distance* both on *Unlimited* can crash the game.
 
 ## Good to know
 
