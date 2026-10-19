@@ -681,11 +681,10 @@ public final class GhostRenderer {
         for (EntityRenderState state : mount == null ? new EntityRenderState[]{body} : new EntityRenderState[]{mount, body}) {
             TRANSFORMS.put(state, transform);
             // A boat hides the water inside its hull with a patch that the water then fails to
-            // draw over: drawn bigger or nearer than it is, that patch would hide the water
-            // around it, a pack's water included. Taken for under water, it has none.
-            if (state instanceof BoatRenderState boat && (Math.abs(transform.scale() - 1) > 1e-3 || pull != 1.0)) {
-                boat.isUnderWater = true;
-            }
+            // draw over. Drawn bigger or nearer than it is, that patch hides the water around
+            // it; under a shader pack (Photon), drawn with our figures, it turns the game's
+            // water clear far around. Taken for under water, a boat has none.
+            if (state instanceof BoatRenderState boat) boat.isUnderWater = true;
             state.nameTag = null;
             //? if >=1.21.9 {
             state.shadowPieces.clear();

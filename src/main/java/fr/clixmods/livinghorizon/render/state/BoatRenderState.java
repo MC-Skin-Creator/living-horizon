@@ -5,8 +5,7 @@ package fr.clixmods.livinghorizon.render.state;
 
 /^*
  * A boat's figure before 1.21.2. Taken for under water, the game leaves out the patch that
- * hides the water inside its hull, which a figure drawn bigger or nearer than it is would
- * press over the water around it.
+ * hides the water inside its hull, which drawn with our figures hides the water around it.
  ^/
 public class BoatRenderState extends EntityRenderState {
     public boolean isUnderWater;
