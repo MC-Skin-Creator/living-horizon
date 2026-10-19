@@ -55,6 +55,12 @@ final class RestingMount {
     private static final int GROW = 250;
     /** Degrees it turns per tick. */
     private static final float TURN = 10f;
+    //? if >=1.21.2 {
+    private static final EntityType<?> BOAT = EntityType.OAK_BOAT;
+    //?} else
+    /*private static final EntityType<?> BOAT = EntityType.BOAT;*/
+    /** The boat given to a swimmer: how deep it sits in the water, and its rider's feet under its own. */
+    private static final double DRAFT = 0.1, SEAT = -0.41;
 
     final Entity entity;
     final Kind kind;
@@ -128,6 +134,20 @@ final class RestingMount {
             // Saved by a game or a mod that reads it differently: they rest on foot.
             return null;
         }
+    }
+
+    /**
+     * A boat for a player who logged off in water with no shore near, on the surface at
+     * {@code surface} above their spot, facing their way: rowed about the water as anyone's
+     * boat. Null when the game cannot make one.
+     */
+    static @Nullable RestingMount boat(ClientLevel level, RestingPlayers.Spot spot, double surface, Random random) {
+        Entity entity = Puppets.create(BOAT, level);
+        if (entity == null) return null;
+        RestingPlayers.Mount mount = new RestingPlayers.Mount(EntityType.getKey(BOAT).toString(), "{}", null,
+                0, SEAT, 0, spot.yaw(), 0);
+        long seed = spot.name().toLowerCase(java.util.Locale.ROOT).hashCode() * 0xBF58476D1CE4E5B9L;
+        return new RestingMount(level, entity, mount, new Vec3(spot.x(), surface - DRAFT + SEAT, spot.z()), random, seed);
     }
 
     // --- What the server told this client of it ------------------------------------------

@@ -28,6 +28,7 @@ import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
+import net.minecraft.client.renderer.entity.state.BoatRenderState;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.HumanoidRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
@@ -679,6 +680,11 @@ public final class GhostRenderer {
         ClientLevel level = minecraft.level;
         for (EntityRenderState state : mount == null ? new EntityRenderState[]{body} : new EntityRenderState[]{mount, body}) {
             TRANSFORMS.put(state, transform);
+            // A boat hides the water inside its hull with a patch that the water then fails to
+            // draw over. Drawn bigger or nearer than it is, that patch hides the water around
+            // it; under a shader pack (Photon), drawn with our figures, it turns the game's
+            // water clear far around. Taken for under water, a boat has none.
+            if (state instanceof BoatRenderState boat) boat.isUnderWater = true;
             state.nameTag = null;
             //? if >=1.21.9 {
             state.shadowPieces.clear();
@@ -764,7 +770,7 @@ public final class GhostRenderer {
     }
 
     /** What a figure showed last as an impostor, so that neither its sheet nor its picture flickers. */
-    private record Shown(ImpostorKey key, int view, long frame) {
+    private record Shown(ImpostorKey key, int view, long frame, boolean ridden) {
     }
 
     private static final Map<Entity, Shown> SHOWN = new IdentityHashMap<>();
@@ -851,10 +857,14 @@ public final class GhostRenderer {
             if (last != null) SHOWN.remove(shown);
             return false;
         }
+        // A rider is pictured with its mount, at the mount's place.
+        boolean ridden = at != shown;
         ImpostorAtlas.Sheet sheet = ImpostorAtlas.sheet(key);
         if (sheet == null) {
             request.run();
-            sheet = last == null ? null : ImpostorAtlas.sheet(last.key);
+            // The last picture stands in while this one is baked, or refused for want of room,
+            // only if it shows the same: never a player on foot for one in a boat, nor the reverse.
+            sheet = last == null || last.ridden != ridden ? null : ImpostorAtlas.sheet(last.key);
             if (sheet == null) return false;
             key = last.key;
         }
@@ -867,7 +877,7 @@ public final class GhostRenderer {
             boost = Math.clamp(config.minApparentPixels / (size / distance * pixelsPerRadian), 1.0, 400.0);
         }
         int view = ImpostorViews.view(yaw, -ax, -az, last == null ? -1 : last.view);
-        SHOWN.put(shown, new Shown(key, view, frame));
+        SHOWN.put(shown, new Shown(key, view, frame, ridden));
         int light = light(minecraft.level, x, y, z);
         int outline = minecraft.player == null ? 0 : DebugMarks.impostorOutline(config);
         if (outline != 0 && ImpostorRenderer.OUTLINES) glowing = true;

@@ -67,6 +67,10 @@ import java.util.Set;
  * {@link FarConfig#offlineLife} on, the horse walks, the boat rows and the happy ghast drifts
  * about the spot, the rider looking around; off, both wait on the spot. No bed, no chest
  * then, and no sword: hit, the rider raises a shield.
+ *
+ * <p>Never left in water: a player who logged off swimming or wading is on the nearest shore
+ * within {@link #SHORE} blocks of their spot, living their life or playing their loop from
+ * there, or, with no shore that near, in a boat on the surface, rowed as a mount is.
  */
 public final class RestingPuppet extends RemotePlayer {
     /** How it is drawn. */
@@ -103,6 +107,10 @@ public final class RestingPuppet extends RemotePlayer {
      * its loop again: apart, so that it does not switch to and fro on the edge.
      */
     static final double NEAR_IN = 48, NEAR_OUT = 64;
+    /** Blocks across: how far from the water it looks for a shore before taking a boat. */
+    private static final int SHORE = 10;
+    /** Ticks between two looks for a shore, and between two looks at the water under its boat. */
+    private static final int SHORE_WAIT = 20;
     /** Colours of the fire resistance and water breathing potions' swirls. */
     private static final int FIRE_RESISTANCE = 0xFF9900, WATER_BREATHING = 0x98DAC0;
 
@@ -119,6 +127,13 @@ public final class RestingPuppet extends RemotePlayer {
     private final Random random;
     private final Walkway walkway;
     private final @Nullable RestingMount mount;
+    /** The boat it was given, its spot being in water far from any shore. */
+    private @Nullable RestingMount boat;
+    /** What it rides now: its own mount, or that boat. */
+    private @Nullable RestingMount carried;
+    /** Its spot being in water: the nearest shore, where it rests instead. */
+    private @Nullable Vec3 shore;
+    private int shoreWait, dryWait;
 
     private boolean placed;
     private boolean lively;
@@ -202,7 +217,7 @@ public final class RestingPuppet extends RemotePlayer {
 
     /** What it rides, to draw under it; null when on foot. */
     public @Nullable Entity mount() {
-        return riding && mount != null ? mount.entity : null;
+        return riding && carried != null ? carried.entity : null;
     }
 
     /** Shield up. */
@@ -212,7 +227,7 @@ public final class RestingPuppet extends RemotePlayer {
 
     /** What it does and what it knows of around it, for the debug tools. */
     public String state() {
-        if (riding && mount != null) return mount.state();
+        if (riding && carried != null) return carried.state();
         if (far && loop != null) return "away: " + loop.state();
         Walkway.Survey reading = survey, map = known;
         return activity.name().toLowerCase(java.util.Locale.ROOT)
@@ -277,7 +292,7 @@ public final class RestingPuppet extends RemotePlayer {
 
     /** Playing its loop, away from the camera, rather than living its life. */
     public boolean away() {
-        return riding && mount != null ? mount.away() : far;
+        return riding && carried != null ? carried.away() : far;
     }
 
     void tick(ClientLevel level, FarConfig config, Set<BlockPos> beds, boolean night, int[] work) {
@@ -293,18 +308,22 @@ public final class RestingPuppet extends RemotePlayer {
             if (!lively) snap(spot.x(), spot.y(), spot.z());
             placed = false;
             if (mount != null) mount.reset();
+            if (boat != null) boat.reset();
         }
-        boolean rides = mount != null && config.showVehicles;
-        if (rides != riding) {
-            // On or off its mount, by the switch that shows mounts: back on its spot either way.
-            riding = rides;
+        if (carried == null || carried == boat) keepDry(level);
+        RestingMount carrier = mount != null && config.showVehicles ? mount : boat;
+        if (carrier != carried) {
+            // On or off its mount, by the switch that shows mounts, or into or out of its
+            // boat: back on its spot either way.
+            carried = carrier;
+            riding = carrier != null;
             calmDown(beds);
             placed = false;
-            if (mount != null) mount.reset();
+            if (carrier != null) carrier.reset();
             snap(spot.x(), spot.y(), spot.z());
         }
-        if (riding && mount != null) {
-            ride(level, mount, config, work);
+        if (riding && carried != null) {
+            ride(level, carried, config, work);
             return;
         }
         if (!lively) {
@@ -413,14 +432,86 @@ public final class RestingPuppet extends RemotePlayer {
         setYRot(yBodyRot);
     }
 
-    /** Its loop around its spot, the ground under it read once. */
+    /** Its loop around its spot, or the shore it rests on, the ground under it read once. */
     private RestingLoop loop(ClientLevel level) {
         if (loop == null) {
             long seed = spot.name().toLowerCase(java.util.Locale.ROOT).hashCode() * 0x9E3779B97F4A7C15L;
-            loop = new RestingLoop(seed, spot.x(), spot.y(), spot.z(), spot.yaw(), MobAnimations.WALK,
-                    () -> MobPaths.plan(level, spot.x(), spot.y(), spot.z(), 0.6, seed));
+            Vec3 at = shore != null ? shore : new Vec3(spot.x(), spot.y(), spot.z());
+            loop = new RestingLoop(seed, at.x, at.y, at.z, spot.yaw(), MobAnimations.WALK,
+                    () -> MobPaths.plan(level, at.x, at.y, at.z, 0.6, seed));
         }
         return loop;
+    }
+
+    // --- Out of the water -------------------------------------------------------------------
+
+    /**
+     * Its spot in water, or over it (water is what it falls onto): the nearest shore within
+     * {@link #SHORE} blocks, where it rests instead, or a boat when there is none; decided
+     * once the blocks around are all there, again when the shore is gone. Out of the boat
+     * once the water at its spot is gone. Looked at once a second.
+     */
+    private void keepDry(ClientLevel level) {
+        if (dryWait > 0) {
+            dryWait--;
+            return;
+        }
+        dryWait = SHORE_WAIT;
+        if (!level.hasChunkAt(home())) return;
+        double x = spot.x(), y = landing(level), z = spot.z();
+        boolean wet = Footing.wet(level, x, y, z);
+        if (boat != null) {
+            if (!wet) boat = null;
+            return;
+        }
+        if (!wet) {
+            if (shore != null) forgetShore(null);
+            return;
+        }
+        Vec3 known = shore;
+        if (known != null && !Double.isNaN(Footing.stand(level, (int) Math.floor(known.x),
+                (int) Math.floor(known.y + 0.01), (int) Math.floor(known.z)))) {
+            return;
+        }
+        if (!Footing.loadedAround(level, x, z, SHORE)) return;
+        Vec3 land = Footing.shore(level, x, y, z, SHORE);
+        forgetShore(land);
+        if (land == null) boat = RestingMount.boat(level, spot, Footing.surface(level, x, y, z), random);
+    }
+
+    /** Where its spot comes to rest: the spot, or what is under it when it is in the air, water included. */
+    private double landing(ClientLevel level) {
+        double x = spot.x(), y = spot.y(), z = spot.z();
+        if (Footing.wet(level, x, y, z) || Footing.supported(level, x, y, z)) return y;
+        return Footing.floorBelow(level, x, y, z);
+    }
+
+    /** A new place to rest: its loop is drawn again around it, from wherever it is. */
+    private void forgetShore(@Nullable Vec3 land) {
+        shore = land;
+        loop = null;
+        far = false;
+    }
+
+    /**
+     * Living, near the camera, and in water (its spot was, or it was thrown in): out onto the
+     * nearest shore within {@link #SHORE} blocks of where it is, or its spot's.
+     */
+    private void ashore(ClientLevel level) {
+        if (!Footing.wet(level, getX(), getY(), getZ())) return;
+        if (shoreWait > 0) {
+            shoreWait--;
+            return;
+        }
+        shoreWait = SHORE_WAIT;
+        if (!Footing.loadedAround(level, getX(), getZ(), SHORE)) return;
+        Vec3 land = Footing.shore(level, getX(), getY(), getZ(), SHORE);
+        if (land == null) land = shore;
+        if (land == null) return;
+        bed = null;
+        calmDownQuietly();
+        fall = 0;
+        snap(land.x, land.y, land.z);
     }
 
     // --- A life ---------------------------------------------------------------------------
@@ -1024,9 +1115,13 @@ public final class RestingPuppet extends RemotePlayer {
         else if (!Footing.supported(level, x, y, z)) target = Footing.floorBelow(level, x, y, z);
         else target = y;
         move(level, x, z, y, target, height, now);
+        if (getY() == target) ashore(level);
     }
 
-    /** Sitting on its spot, which it goes back to once it has room and something under it again. */
+    /**
+     * Sitting on its spot, or the shore near it when the spot is in water, which it goes back
+     * to once it has room and something under it again.
+     */
     private void sit(ClientLevel level) {
         if (!level.hasChunkAt(BlockPos.containing(spot.x(), spot.y(), spot.z()))) {
             placed = false;
@@ -1034,11 +1129,19 @@ public final class RestingPuppet extends RemotePlayer {
         }
         boolean first = !placed;
         placed = true;
-        double x = spot.x(), z = spot.z(), height = 1.2;
+        // Its spot in water: on the shore instead.
+        Vec3 land = shore;
+        double x = land != null ? land.x : spot.x(), home = land != null ? land.y : spot.y();
+        double z = land != null ? land.z : spot.z(), height = 1.2;
         double y = getY();
+        if (x != getX() || z != getZ()) {
+            fall = 0;
+            snap(x, home, z);
+            return;
+        }
         double target;
-        if (Footing.fits(level, x, spot.y(), z, height) && Footing.supported(level, x, spot.y(), z)) {
-            target = spot.y();
+        if (Footing.fits(level, x, home, z, height) && Footing.supported(level, x, home, z)) {
+            target = home;
         } else if (!Footing.fits(level, x, y, z, height)) {
             target = Footing.freeAbove(level, x, y, z, height);
         } else if (!Footing.supported(level, x, y, z)) {
