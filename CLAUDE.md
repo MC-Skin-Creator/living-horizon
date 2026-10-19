@@ -189,6 +189,9 @@ baseline, no commit back, no Modrinth, CurseForge, Nexus Mods or Discord. A push
   the page's URL) exist: one file per target, found by its name ("Living Horizon (Fabric
   26.1.x)"), created on the first release and given a new version on the next ones. The API
   cannot create the page itself. The Discord announcement uses `DISCORD_WEBHOOK_EN` / `_FR`.
+  Patreon's API cannot create posts: `.github/scripts/patreon-post.js` prepares the devlog post
+  from the changelog, for a private channel (`DISCORD_WEBHOOK_PATREON`), the run's summary and
+  a `patreon-post` artifact, to paste by hand.
 
 The mod version is `mod.version` in `stonecutter.properties.toml`; the Minecraft version
 never touches it.
