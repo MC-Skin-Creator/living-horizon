@@ -41,6 +41,7 @@ public class EntityRenderState {
     /^* The state of an entity, of the kind the game would have made for it. ^/
     public static EntityRenderState of(Entity entity, float partialTick) {
         if (entity instanceof AbstractClientPlayer player) return new HumanoidRenderState(player, partialTick);
+        if (entity instanceof net.minecraft.world.entity.vehicle.Boat boat) return new BoatRenderState(boat, partialTick);
         if (entity instanceof LivingEntity living) return new LivingEntityRenderState(living, partialTick);
         return new EntityRenderState(entity, partialTick);
     }
