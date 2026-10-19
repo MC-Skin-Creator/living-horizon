@@ -53,7 +53,10 @@ What the server shares with the players who have the mod: where every player is 
 a second), how they look (skin, armour, what they hold) and what they ride; where each
 player logged off, how they looked, their mount and when they left; and the mobs around you,
 with their saddle, harness or armour. It keeps all of it in its world
-(`livinghorizon-positions.dat`), so a player who joins later sees it at once. Nothing else
+(`livinghorizon-positions.dat`), so a player who joins later sees it at once. Players the
+world had before the mod was added show too: the first time it runs, the server reads where
+each one logged off and what they wore from the world's `playerdata` folder, and their names
+from its `usercache.json`. Nothing else
 changes on the server: no scoreboard, no data pack, nothing written into the world's own data.
 
 Players **without** the mod can still join a server with the mod: they are sent nothing and

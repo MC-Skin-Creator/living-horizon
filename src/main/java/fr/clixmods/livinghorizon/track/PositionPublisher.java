@@ -220,7 +220,9 @@ public final class PositionPublisher {
     /** An online player as they are now, kept once they log off. */
     private PositionsMessage.Player loggedOff(PositionsMessage.Player player) {
         PositionsMessage.Mount mount = riding.remove(player.name());
-        ridden.remove(player.name());
+        UUID taken = ridden.remove(player.name());
+        // The server took the mount away with them: it rests under them now, no longer a mob of its own.
+        if (mount != null && taken != null && mobs.remove(taken) != null) reads.remove(taken);
         PositionsMessage.Look look = looks.remove(player.name());
         return new PositionsMessage.Player(player.name(), player.x(), player.y(), player.z(), player.yaw(),
                 player.dimension(), false, mount != null, null, mount, look, System.currentTimeMillis(), false);
@@ -374,6 +376,19 @@ public final class PositionPublisher {
 
     private void load() {
         loaded = true;
+        readFile();
+        // Those the world saved before the mod saw them log off: logged off where they were.
+        int found = 0;
+        for (PositionsMessage.Player player : WorldPlayers.read(server)) {
+            if (players.putIfAbsent(player.name(), player) == null) found++;
+        }
+        if (found > 0) {
+            dirty = true;
+            LOGGER.info("Living Horizon: {} players of this world shown where they logged off", found);
+        }
+    }
+
+    private void readFile() {
         Path file = file();
         if (!Files.isRegularFile(file)) return;
         try {
