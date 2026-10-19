@@ -23,6 +23,7 @@
 - **Riders sitting inside their horse** — a distant player riding a horse no longer sits inside it or on its back end, as a full model or as a flat picture.
 - **Horse shown twice after its rider logs off** — a player who logs off on a horse no longer leaves a second copy of the horse beside the one they rest on.
 - **Players vanishing when a world closes** — when a server or a LAN world closes, the players in it now stay where they were as offline players.
+- **Greyed-out Website and Issues buttons** — the Website and Issues buttons on the mod's page in Mod Menu are no longer greyed out (Fabric).
 
 ## 0.9.0 — 2026-10-19
 

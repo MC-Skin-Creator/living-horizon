@@ -23,6 +23,7 @@
 - **Cavaliers assis dans leur cheval** — un joueur lointain à cheval n'est plus assis dans le cheval ou sur sa croupe, en modèle complet comme en image plate.
 - **Cheval en double après la déconnexion de son cavalier** — un joueur qui se déconnecte à cheval ne laisse plus une seconde copie du cheval à côté de celui sur lequel il reste.
 - **Joueurs qui disparaissent à la fermeture d'un monde** — quand un serveur ou un monde LAN se ferme, les joueurs présents restent là où ils étaient, en joueurs déconnectés.
+- **Boutons Website et Issues grisés** — les boutons Website et Issues de la page du mod dans Mod Menu ne sont plus grisés (Fabric).
 
 ## 0.9.0 — 2026-10-19
 
