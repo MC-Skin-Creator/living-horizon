@@ -123,4 +123,9 @@ async function main(argv) {
   return failed;
 }
 
-main(process.argv.slice(2)).then(code => process.exit(code), e => { console.error(e); process.exit(1); });
+// patreon-post.js reads the changelog with the same parser.
+module.exports = { parse, HEADINGS };
+
+if (require.main === module) {
+  main(process.argv.slice(2)).then(code => process.exit(code), e => { console.error(e); process.exit(1); });
+}

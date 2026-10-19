@@ -37,9 +37,10 @@ env:
   CURSEFORGE_ID: ${{ vars.CURSEFORGE_ID }}
   NEXUSMODS_ID: ${{ vars.NEXUSMODS_ID }}
 
-# Six jobs, so the slow part runs in parallel and nothing is tagged before every jar
+# Seven jobs, so the slow part runs in parallel and nothing is tagged before every jar
 # exists: the version is worked out once, each target builds on its own runner, then
-# the release, the uploads, the Nexus changelog and the announcement follow.
+# the release, the uploads, the Nexus changelog, the announcement and the Patreon post
+# follow.
 jobs:
   version:
     runs-on: ubuntu-latest
@@ -442,3 +443,48 @@ jobs:
           DISCORD_WEBHOOK_EN: ${{ secrets.DISCORD_WEBHOOK_EN }}
           DISCORD_WEBHOOK_FR: ${{ secrets.DISCORD_WEBHOOK_FR }}
         run: node .github/scripts/announce-discord.js --version "$VERSION"
+
+  # The Patreon devlog post of this version, ready to paste: Patreon's API cannot
+  # create posts. Stable releases from main only, and never blocking. The post goes to
+  # a private Discord channel when DISCORD_WEBHOOK_PATREON exists, and always to this
+  # run's summary and a "patreon-post" artifact. Not to the release page: players read it.
+  patreon:
+    needs: [version, release, publish]
+    if: always() && github.ref_name == 'main' && needs.version.outputs.channel == 'stable' && needs.release.result == 'success'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout the release
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.version.outputs.version }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Prepare the Patreon post
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          DISCORD_WEBHOOK_PATREON: ${{ secrets.DISCORD_WEBHOOK_PATREON }}
+        run: |
+          set -euo pipefail
+          node .github/scripts/patreon-post.js --version "$VERSION" --out patreon
+          if [ -f patreon/patreon-post.txt ]; then
+            {
+              echo "## Patreon post: Living Horizon v${VERSION}"
+              echo 'Tags: Minecraft, Living Horizon, Update, Dev Log. Collection: Living Horizon - Devlogs.'
+              echo
+              echo '```text'
+              cat patreon/patreon-post.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Keep the post
+        uses: actions/upload-artifact@v4
+        with:
+          name: patreon-post
+          path: patreon/
+          if-no-files-found: ignore
+          retention-days: 30
