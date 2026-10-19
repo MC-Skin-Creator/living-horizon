@@ -25,7 +25,7 @@ together with a reply to post under the comment.
    - Body in English, with these sections:
      - `## Context`: the comment, quoted or closely paraphrased, and where it came from.
      - `## Request`: what is being asked, in one or two sentences.
-     - `## Notes`: how it would fit in the code (the README describes each part: the
+     - `## Notes`: how it would fit in the code (`docs/how-it-works.md` describes each part: the
        tracking in `track/`, the drawing in `render/` and `ambient/`, the Voxy
        compatibility in `compat/`, the settings in `ui/` and `FarConfig`), what needs
        translated strings in `assets/livinghorizon/lang/`, edge cases, and any open
