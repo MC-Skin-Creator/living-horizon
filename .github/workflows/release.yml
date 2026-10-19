@@ -418,7 +418,8 @@ jobs:
   # undo a release that is already on GitHub, Modrinth and CurseForge. It reads the
   # changelog from the release tag - where the release job dated it - and posts that
   # version in each language that has a webhook secret (DISCORD_WEBHOOK_EN / _FR, or
-  # DISCORD_WEBHOOK alone for English). Stable releases only: the -dev builds are
+  # DISCORD_WEBHOOK alone for English), pinging the role whose ID is in the
+  # DISCORD_ROLE_EN / _FR or DISCORD_ROLE variable. Stable releases only: the -dev builds are
   # never announced.
   announce:
     needs: [version, release, publish]
@@ -440,4 +441,7 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           DISCORD_WEBHOOK_EN: ${{ secrets.DISCORD_WEBHOOK_EN }}
           DISCORD_WEBHOOK_FR: ${{ secrets.DISCORD_WEBHOOK_FR }}
+          DISCORD_ROLE: ${{ vars.DISCORD_ROLE }}
+          DISCORD_ROLE_EN: ${{ vars.DISCORD_ROLE_EN }}
+          DISCORD_ROLE_FR: ${{ vars.DISCORD_ROLE_FR }}
         run: node .github/scripts/announce-discord.js --version "$VERSION"
