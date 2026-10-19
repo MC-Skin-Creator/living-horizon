@@ -19,6 +19,7 @@ import net.minecraft.nbt.TagParser;
 import net.minecraft.util.Util;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobCategory;
@@ -32,7 +33,6 @@ import net.minecraft.world.entity.animal.FlyingAnimal;
 import net.minecraft.world.entity.decoration.Mannequin;
 //? if >=1.21.2
 import net.minecraft.world.entity.vehicle.boat.AbstractBoat;
-import net.minecraft.world.scores.Scoreboard;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
@@ -93,10 +93,15 @@ public final class MobMemory {
         transient float head = Float.NaN;
         String nbt;
         long seenAt;
-        /** Published by the data pack: dropped when the pack drops it, which means it died. */
+        /** Published by the server (the field kept its name in saved files): dropped when the server drops it, which means it died. */
         boolean fromPack;
         /** Wore a name tag when last seen. */
         boolean named;
+        /**
+         * Built from what the server said of it alone (kind, variant, age, what it wears), as that
+         * text: rebuilt when the server says something else. Null for a mob this client saw.
+         */
+        @Nullable String packLook;
         /**
          * The ground around it, read whole where it was last remembered ({@link MobPaths.Ground#save()}):
          * it walks on it from the start next time, before the far world is read, or where it knows nothing.
@@ -177,11 +182,17 @@ public final class MobMemory {
     private final Map<MobCategory, Double> reach = new EnumMap<>(MobCategory.class);
     /** A mob just left or came back: choose what is drawn on the next tick, not in a second. */
     private boolean chooseSoon;
+    /** The mounts far players ride: their copy is drawn under the player, never on its own. */
+    private Set<UUID> carried = Set.of();
     /**
-     * Pack mobs this client went to look at and did not find, with where the pack had
-     * them: not taken back from the pack until it says they moved.
+     * Published mobs this client went to look at and did not find, with where the server had
+     * them: not taken back from the server until it says they moved.
      */
     private final Map<UUID, Double> dismissed = new HashMap<>();
+    /** Mounts players took away as they logged off: never remembered when the server takes them out of the world. */
+    private final Set<UUID> takenAway = new HashSet<>();
+    /** What the server shared, as last synced. */
+    private @Nullable SharedPositions lastPack;
     private List<Remembered> shown = List.of();
     private @Nullable Path file;
     private boolean firstVisit;
@@ -235,6 +246,42 @@ public final class MobMemory {
         return here;
     }
 
+    /**
+     * The mobs far players ride, told each tick: a mount is drawn under its rider, so the copy
+     * remembered on its own (met, or published by the server) is left out at once.
+     */
+    void carried(Set<UUID> ids) {
+        if (ids.equals(carried)) return;
+        carried = Set.copyOf(ids);
+        if (shown.stream().anyMatch(mob -> carried.contains(mob.id))) {
+            shown = shown.stream().filter(mob -> !carried.contains(mob.id)).toList();
+        }
+        chooseSoon = true;
+    }
+
+    /** The remembered mob with this id, in this world: null when none is. */
+    @Nullable Remembered known(UUID id) {
+        Remembered mob = mobs.get(id);
+        return mob != null && isHere(mob) ? mob : null;
+    }
+
+    /** A new copy of a remembered mob, for a far player to ride: null when it cannot be made. */
+    @Nullable Entity copy(Remembered mob, ClientLevel level) {
+        EntityType<?> type = type(mob);
+        CompoundTag tag = parse(mob.nbt);
+        Entity entity = type == null || tag == null ? null : Puppets.create(type, level);
+        if (entity == null) return null;
+        try {
+            EntityNbt.load(entity, level, tag);
+        } catch (RuntimeException e) {
+            return null;
+        }
+        entity.setPos(mob.x, mob.y, mob.z);
+        entity.setYRot(mob.yaw);
+        entity.setOldPosAndRot();
+        return entity;
+    }
+
     // --- Lifecycle ---------------------------------------------------------------------
 
     void open(String server) {
@@ -273,6 +320,7 @@ public final class MobMemory {
         joining.clear();
         reach.clear();
         dismissed.clear();
+        takenAway.clear();
         shown = List.of();
         chooseSoon = false;
         file = null;
@@ -303,6 +351,8 @@ public final class MobMemory {
      */
     public void onLoad(Entity entity) {
         if (rememberable(entity)) live.put(entity.getUUID(), entity);
+        // Back in the world with its rider: remembered again once it leaves.
+        takenAway.remove(entity.getUUID());
         Remembered mob = mobs.get(entity.getUUID());
         if (mob != null && joins(mob, entity)) {
             mob.handover = entity;
@@ -351,9 +401,38 @@ public final class MobMemory {
         chooseSoon = true;
     }
 
+    /**
+     * A mount a far player got off, where its copy under them was: it stays there, rather than
+     * walk from where it was remembered before it was ridden. What the server last said of it is
+     * older than that, and is not taken until it says something new.
+     */
+    void released(UUID id, Vec3 at, float yaw) {
+        Remembered mob = mobs.get(id);
+        if (mob == null || live.containsKey(id) || !isHere(mob)) return;
+        mob.x = at.x;
+        mob.y = at.y;
+        mob.z = at.z;
+        mob.yaw = yaw;
+        mob.head = Float.NaN;
+        mob.puppet = null;
+        mob.motion = null;
+        mob.choice = null;
+        mob.saved = null;
+        mob.ground = null;
+        mob.failed = false;
+        SharedPositions.MobReport report = lastPack == null ? null : lastPack.readMob(id);
+        if (report != null) dismissed.put(id, report.x() + report.y() * 31 + report.z() * 961);
+        dirty = true;
+        chooseSoon = true;
+    }
+
     /** A mount a player took with them as they logged off: it rests under them, not here. */
     void forgetRidden(UUID id) {
         forget(id);
+        takenAway.add(id);
+        // What the server last said of it is older than that: not taken back until it says something new.
+        SharedPositions.MobReport report = lastPack == null ? null : lastPack.readMob(id);
+        if (report != null) dismissed.put(id, report.x() + report.y() * 31 + report.z() * 961);
     }
 
     /** No longer sent: remembered if it walked out of range, forgotten if it died. */
@@ -369,7 +448,8 @@ public final class MobMemory {
         Entity mob = entity;
         FarConfig config = FarConfig.get();
         if (!config.distantMobs || !worthRemembering(mob, config)) return;
-        if ((mob instanceof LivingEntity living && living.isDeadOrDying()) || carriesPlayer(mob)) {
+        if ((mob instanceof LivingEntity living && living.isDeadOrDying()) || carriesPlayer(mob)
+                || takenAway.contains(mob.getUUID())) {
             forget(mob.getUUID());
             return;
         }
@@ -403,7 +483,7 @@ public final class MobMemory {
      * between with neither the real mob nor its copy. The next choice puts the list in order.
      */
     private void showNow(Remembered mob, ClientLevel level, FarConfig config) {
-        if (config.maxDistantMobs <= 0) return;
+        if (config.maxDistantMobs <= 0 || carried.contains(mob.id)) return;
         if (mob.puppet == null) {
             // A crowd unloaded at once (a teleport) is left to the ticks and their budget.
             if (config.optBackgroundBuild && builtNow >= BUILD_BUDGET) return;
@@ -513,7 +593,7 @@ public final class MobMemory {
     // --- Every tick --------------------------------------------------------------------
 
     void tick(ClientLevel level, LocalPlayer self, int renderDistanceBlocks, FarConfig config,
-              @Nullable SharedPositions pack, Scoreboard scoreboard) {
+              @Nullable SharedPositions pack) {
         bound = level;
         world = worldOf(level);
         selfX = self.getX();
@@ -531,7 +611,8 @@ public final class MobMemory {
         followServer(level, dimension);
 
         if (clock % 20 == 0) {
-            if (pack != null) sync(pack, scoreboard);
+            lastPack = pack;
+            if (pack != null) sync(pack);
             learnReach();
             reconcile(level, dimension, renderDistanceBlocks);
             choose(dimension, config);
@@ -584,7 +665,7 @@ public final class MobMemory {
                     continue;
                 }
                 boolean roam = !still.contains(mob.type);
-                // Moved by the data pack: the blocks are read again around where it is now.
+                // Moved by the server's word: the blocks are read again around where it is now.
                 MobPaths.Choice choice = mob.choice;
                 if (choice != null && !choice.ground().around(mob.x, mob.z)) mob.choice = choice = null;
                 // Read with part of the far world missing: read again, now that it may be there.
@@ -670,16 +751,21 @@ public final class MobMemory {
         return Math.max(apparent, config.minApparentPixels);
     }
 
+    private static int dimensionCode(String dimension) {
+        int code = DIMENSIONS.indexOf(dimension);
+        return code < 0 ? 3 : code;
+    }
+
     /**
-     * Takes the data pack's word: where every mob it publishes is now, as last seen by
-     * whoever was near it. A mob this client has seen keeps the look it saved; one it
-     * never met is built from its kind, variant and age. One the pack stopped publishing
-     * died: the server resets the scores of a dead mob.
+     * Takes the server's word: where every mob it publishes around this client is now, as last
+     * seen by whoever was near it. A mob this client has seen keeps the look it saved; one it
+     * never met is built from its kind, variant and age. One the server stopped publishing where
+     * it sent the mobs died: the server forgets a mob whose chunk is loaded without it.
      */
-    private void sync(SharedPositions pack, Scoreboard scoreboard) {
+    private void sync(SharedPositions pack) {
         Set<UUID> published = new HashSet<>();
-        for (UUID id : pack.mobs(scoreboard)) {
-            SharedPositions.MobReport report = pack.readMob(scoreboard, id);
+        for (UUID id : pack.mobs()) {
+            SharedPositions.MobReport report = pack.readMob(id);
             String type = report == null ? null : MobKinds.type(report.kind());
             String dimension = report == null || report.dimension() >= DIMENSIONS.size()
                     ? null : DIMENSIONS.get(report.dimension());
@@ -693,15 +779,25 @@ public final class MobMemory {
             }
 
             Remembered mob = mobs.get(id);
-            // Followed on the single player server, which knows better than the pack's last report.
+            // Followed on the single player server, which knows better than the last report.
             if (mob != null && mob.simulated) continue;
+            String look = packLook(report);
             if (mob == null) {
                 mob = new Remembered();
                 mob.id = id;
                 mob.type = type;
-                mob.nbt = MobKinds.nbt(type, report.variant(), report.baby());
+                mob.nbt = packNbt(type, report);
+                mob.packLook = look;
                 mob.seenAt = System.currentTimeMillis();
                 mobs.put(id, mob);
+            } else if (builtFromPack(mob, report) && !look.equals(mob.packLook)) {
+                // Saddled, harnessed, given a chest since: built again.
+                mob.nbt = packNbt(type, report);
+                mob.packLook = look;
+                mob.parsed = null;
+                mob.puppet = null;
+                mob.failed = false;
+                dirty = true;
             } else if (mob.x == report.x() && mob.y == report.y() && mob.z == report.z()
                     && dimension.equals(mob.dimension) && isHere(mob) && mob.fromPack) {
                 continue;
@@ -717,9 +813,36 @@ public final class MobMemory {
         }
         List<UUID> dead = new ArrayList<>();
         for (Remembered mob : mobs.values()) {
-            if (mob.fromPack && isHere(mob) && !published.contains(mob.id) && !live.containsKey(mob.id)) dead.add(mob.id);
+            // Only where the server just sent the mobs around: one farther off is out of reach, not gone.
+            if (mob.fromPack && isHere(mob) && !published.contains(mob.id) && !live.containsKey(mob.id)
+                    && pack.covers(dimensionCode(mob.dimension), mob.x, mob.z)) dead.add(mob.id);
         }
         dead.forEach(this::forget);
+    }
+
+    /** How the server says a mob looks, as one text. */
+    private static String packLook(SharedPositions.MobReport report) {
+        return report.variant() + "|" + report.baby() + "|" + report.extra();
+    }
+
+    /** Whether a remembered mob was built from what the server said, not seen by this client. */
+    private static boolean builtFromPack(Remembered mob, SharedPositions.MobReport report) {
+        if (mob.packLook != null) return true;
+        // Remembered before the server said what mobs wear.
+        return mob.fromPack && mob.nbt != null && mob.nbt.equals(MobKinds.nbt(mob.type, report.variant(), report.baby()));
+    }
+
+    /** A mob known only from the server: its kind, variant and age, and what it wears. */
+    private static String packNbt(String type, SharedPositions.MobReport report) {
+        String base = MobKinds.nbt(type, report.variant(), report.baby());
+        if (report.extra() == null) return base;
+        try {
+            CompoundTag tag = TagParser.parseCompoundFully(base);
+            tag.merge(TagParser.parseCompoundFully(report.extra()));
+            return tag.toString();
+        } catch (Exception e) {
+            return base;
+        }
     }
 
     /**
@@ -790,7 +913,7 @@ public final class MobMemory {
      * Within range means well inside where this server was seen sending that kind of mob,
      * not merely inside the loaded chunks: a server that sends animals to 48 blocks only
      * would otherwise wipe out, a few seconds after they appear, every copy between 48
-     * blocks and the render distance - to bring them back when the pack next moves them.
+     * blocks and the render distance - to bring them back when the server next moves them.
      */
     /**
      * How close to the player a copy of this kind of mob cannot be: where the real mob would be
@@ -849,7 +972,7 @@ public final class MobMemory {
         List<Remembered> here = new ArrayList<>();
         for (Remembered mob : mobs.values()) {
             if (!mob.dimension.equals(dimension) || !isHere(mob)
-                    || (live.containsKey(mob.id) && mob.handover == null)) continue;
+                    || (live.containsKey(mob.id) && mob.handover == null) || carried.contains(mob.id)) continue;
             if (!wanted.contains(mob.type) && !(config.rememberNamedMobs && mob.named)) continue;
             mob.distance = distance(mob.x, mob.y, mob.z);
             here.add(mob);
@@ -962,6 +1085,7 @@ public final class MobMemory {
         mobs.clear();
         joining.clear();
         dismissed.clear();
+        takenAway.clear();
         shown = List.of();
         dirty = true;
         save();

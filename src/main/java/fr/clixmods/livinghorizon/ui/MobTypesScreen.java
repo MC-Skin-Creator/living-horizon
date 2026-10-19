@@ -27,8 +27,8 @@ import java.util.Map;
 
 /**
  * Which mobs are shown far away: every mob of the game, one switch each, with a search
- * field. The ones the data pack publishes are marked; the others are only shown when this
- * client met them itself.
+ * field. The ones a server with the mod shares are marked; the others are only shown when
+ * this client met them itself.
  */
 public final class MobTypesScreen extends SideOptionsScreen {
     private static final String KEY = "livinghorizon.options.mobTypes.";

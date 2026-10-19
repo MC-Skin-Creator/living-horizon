@@ -25,7 +25,7 @@ import java.util.concurrent.CompletableFuture;
  * grazes, wanders and walks to its bed while its copy stands where it was last seen. In a
  * single player world the server runs in this game: it is asked a few times a second where
  * those mobs are, and the copies follow them ({@link MobMotion}). On another server nothing
- * can be asked; the data pack is the way there.
+ * can be asked; a server with the mod shares where they are ({@link PositionPublisher}).
  */
 final class ServerMobs {
     /** Ticks between two questions: the copies walk at the server's pace, this many ticks behind. */

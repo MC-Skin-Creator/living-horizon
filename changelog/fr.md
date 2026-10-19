@@ -2,8 +2,28 @@
 
 ## Prochaine version
 
+### Nouveautés
+- **Le mod sur un serveur** — mets le jar du loader du serveur dans son dossier `mods`, sur un serveur Fabric, Quilt, NeoForge ou Forge (avec la Fabric API sur Fabric et Quilt, rien d'autre sur NeoForge et Forge), et chaque joueur qui a le mod voit les autres joueurs à n'importe quelle distance.
+- **Mondes LAN et solo** — un monde ouvert au LAN partage tout de lui-même par le jeu de l'hôte, et les joueurs partis de ton propre monde apparaissent dès que tu l'ouvres.
+- **Ce que partage le serveur** — la position de chaque joueur, son skin, son armure, ce qu'il tient et ce qu'il monte, et les mobs autour de toi avec leur selle, leur harnais ou leur armure.
+- **Joueurs déconnectés** — le serveur garde l'endroit où chaque joueur s'est déconnecté, son apparence, sa monture et l'heure de son départ, pour que tout le monde le voie, même ceux arrivés après.
+- **Joueurs d'avant le mod** — sur un serveur ou dans un monde qui avait des joueurs avant l'ajout du mod, ceux qui ne sont pas connectés apparaissent tout de suite en joueurs déconnectés, là où ils sont partis, avec ce qu'ils portaient.
+- **Tout dès l'arrivée** — les mobs lointains et les joueurs déconnectés apparaissent dès que tu rejoins un serveur avec le mod, et non quelques secondes plus tard.
+- **Sans le mod** — les joueurs sans le mod peuvent toujours rejoindre un serveur avec le mod, et un serveur sans le mod n'affiche aucun joueur lointain : la console le signale une fois.
+- **Fini le datapack** — le datapack disparaît : un serveur qui l'utilisait a maintenant besoin du mod à la place.
+
+### Améliorations
+- **Joueurs lointains** — ils sont placés d'après ce que partage le serveur uniquement : l'estimation par la barre de localisation disparaît, et le réglage *Délai joueur perdu* avec.
+
 ### Corrections
-- **Mod Menu** — les boutons Website et Issues de la page du mod ne sont plus grisés et ouvrent la page du projet.
+- **Joueurs sur un ghast joyeux** — un joueur lointain qui chevauche un ghast joyeux n'a plus de second ghast à côté de lui, et celui qui le chevauchait déjà quand tu arrives ne flotte plus dans le vide.
+- **Ghast joyeux qui revient après la descente de son cavalier** — le ghast joyeux dont descend un joueur lointain ne réapparaît plus là où il a été monté pour revenir en volant : il reste là où il a été laissé.
+- **Anciens skins au loin** — un joueur lointain qui change de skin ne garde plus l'ancien au loin.
+- **Joueurs de travers dans les bateaux** — un joueur qui se déconnecte dans un bateau n'est plus assis tourné sur le côté : il regarde dans le sens du bateau.
+- **Cavaliers assis dans leur cheval** — un joueur lointain à cheval n'est plus assis dans le cheval ou sur sa croupe, en modèle complet comme en image plate.
+- **Cheval en double après la déconnexion de son cavalier** — un joueur qui se déconnecte à cheval ne laisse plus une seconde copie du cheval à côté de celui sur lequel il reste.
+- **Joueurs qui disparaissent à la fermeture d'un monde** — quand un serveur ou un monde LAN se ferme, les joueurs présents restent là où ils étaient, en joueurs déconnectés.
+- **Boutons Website et Issues grisés** — les boutons Website et Issues de la page du mod dans Mod Menu ne sont plus grisés (Fabric).
 
 ## 0.9.0 — 2026-10-19
 

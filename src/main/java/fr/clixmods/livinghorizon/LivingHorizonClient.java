@@ -3,7 +3,9 @@ package fr.clixmods.livinghorizon;
 import com.mojang.blaze3d.platform.InputConstants;
 import fr.clixmods.livinghorizon.command.LivingHorizonCommand;
 import fr.clixmods.livinghorizon.compat.LodWorld;
+import fr.clixmods.livinghorizon.platform.ClientNetwork;
 import fr.clixmods.livinghorizon.platform.Events;
+import fr.clixmods.livinghorizon.platform.Network;
 import fr.clixmods.livinghorizon.render.Occlusion;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.ui.FarConfigScreen;
@@ -31,20 +33,19 @@ import net.neoforged.neoforge.common.NeoForge;
 /*import net.minecraft.client.gui.screens.Screen;
 import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import java.util.function.Function;
 *///?}
 
 /**
- * Client entry point. There is no server side: everything the mod knows, a vanilla
- * client already receives.
+ * Client entry point. A dedicated server never loads it: there, {@code MinecraftServerMixin}
+ * shares the positions on its own.
  *
  * <p>Fabric and Quilt find it through {@code fabric.mod.json} and {@code quilt.mod.json}
  * and call {@code onInitializeClient}; NeoForge finds it by its annotation and calls the
- * constructor, on the client only; Forge does the same, and keeps it off a server through
- * {@code clientSideOnly} in {@code mods.toml}, its annotation having no side. Every loader
- * ends in the same {@code start}.
+ * constructor, on the client only; Forge's annotation has no side, so {@link LivingHorizonCommon}
+ * carries it and builds this one on a client only. Every loader ends in the same {@code start}.
+ * The common entry point ({@link LivingHorizonCommon}) has run before, on every loader.
  */
 //? if fabric || quilt {
 public final class LivingHorizonClient implements ClientModInitializer {
@@ -52,8 +53,7 @@ public final class LivingHorizonClient implements ClientModInitializer {
 /*@Mod(value = LivingHorizonClient.MOD_ID, dist = Dist.CLIENT)
 public final class LivingHorizonClient {
 *///?} else {
-/*@Mod(LivingHorizonClient.MOD_ID)
-public final class LivingHorizonClient {
+/*public final class LivingHorizonClient {
 *///?}
     public static final String MOD_ID = "livinghorizon";
     public static final Logger LOGGER = LoggerFactory.getLogger("Living Horizon");
@@ -102,6 +102,9 @@ public final class LivingHorizonClient {
 
     private static void start() {
         FarConfig.load();
+        // What a server with the mod shares, handled on the game's thread.
+        Network.receiver(data -> Minecraft.getInstance().execute(() -> FarPlayerTracker.get().receive(data)));
+        ClientNetwork.register();
         // Key categories are registered objects from 1.21.9; before, a translation key.
         //? if >=1.21.9 {
         KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID, "main"));

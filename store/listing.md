@@ -6,12 +6,11 @@ change here does not trigger a release (`**.md` is ignored by `release.yml`).
 Do first: **make the GitHub repository public.** It is private today, and a project
 with a source link that leads nowhere will be refused or distrusted.
 
-## Two projects
+## One project
 
-1. **Living Horizon** (the mod): the jar.
-2. **Living Horizon Data Pack** (optional companion): the zip, as a *Data Pack* project on
-   each platform, linked from the mod page. The release workflow only publishes the jar;
-   the zip is on the GitHub release and is uploaded by hand to the data pack project.
+**Living Horizon** (the mod): the jar, on the clients and, to share the positions, on the
+server. There is no data pack any more: a data pack project published before is to be
+archived, with a note that the mod on the server replaces it.
 
 ## Modrinth: the mod
 
@@ -99,48 +98,6 @@ versions in its description, then adds a version to that same file on every rele
 archives the previous one. The page's changelog gets the release notes once per release.
 Renaming a file on Nexus makes the next release create a new one beside it.
 
-## Modrinth and CurseForge: the data pack
-
-Project type **Data Pack** on each.
-
-| Field | Value |
-|---|---|
-| Name | `Living Horizon Data Pack` |
-| Slug | `living-horizon-data-pack` |
-| Summary | `Companion of Living Horizon: publishes exact positions of players and mobs, so far-away ones appear where they really are. A data pack, no server mod.` |
-| Categories | `Utility` (Modrinth); Utility & QoL (CurseForge) |
-| License | Living Horizon License, as the mod |
-| Game versions | one zip per game version, as the mod: 1.20 to 1.21.11, 26.1 to 26.3 |
-| File | `livinghorizon-datapack-0.1.0+mc<game version>.zip`, from the GitHub release |
-| Release type | Beta |
-
-Description:
-
-```markdown
-# Living Horizon Data Pack
-
-Companion of [Living Horizon](https://modrinth.com/mod/living-horizon). Put it in a
-world's `datapacks/` folder and run `/reload`: the mod then knows the exact position of
-every player and remembered mob, at any distance, instead of estimating it.
-
-## What it does
-
-Five times a second it writes each player's position, yaw and dimension into scoreboard
-objectives shown in sidebars of four team colours. The server sends those to every client;
-nobody sees them on screen. Every five seconds it also publishes the mobs it remembers
-(animals, villagers, golems, named mobs).
-
-## Good to know
-
-- Everyone's position becomes public to whoever reads the scores. Tell your players.
-- Anyone in a team of colour `black`, `dark_blue`, `dark_green` or `dark_aqua` would see
-  the coordinates in their sidebar. If your server uses them, edit the four `setdisplay`
-  lines in `load.mcfunction`.
-- `/function livinghorizon:uninstall`, then `/datapack disable`, removes everything.
-
-Needs the Living Horizon mod on the client. Nothing to install on the clients otherwise.
-```
-
 ## Description of the mod (both platforms)
 
 Markdown. Modrinth takes it as is; on CurseForge, paste it in the editor and let it
@@ -152,7 +109,7 @@ format the headings and lists.
 **Gives life to the distance.** Players and mobs stay visible far past your render
 distance, through several rendering techniques. It supports far-terrain mods such as
 Voxy and Distant Horizons, and adds birds to bring the sky to life, so you can take in
-your Minecraft world at its best. Client-side, on any server.
+your Minecraft world at its best. Works on any server; add the mod to the server (or play on LAN) to see players at any distance.
 
 You can now play with a lower simulation distance and still see a living world.
 
@@ -171,9 +128,9 @@ The scan radius is in **chunks** (32 = 512 blocks); every other distance is in *
 ## Good to know
 
 - Settings: Options screen, Mod Menu or `/livinghorizon config`.
-- The scan only works in single player. On a server, the optional **data pack** shares
-  the mobs and makes player positions exact.
-- With the data pack, every player's position is public: tell your players.
+- The scan only works in single player. On a server, put the mod on the server too: it
+  shares the players and the mobs with everyone who has the mod.
+- Every player's position is then shared with the players who have the mod: tell your players.
 
 ## Features
 
@@ -206,8 +163,7 @@ The first image is the card in search results: it has to read at a glance.
 4. The settings screen (mobs and birds lists).
 5. The same view with the mod off and on, side by side.
 
-Icon: the mod's own, `src/main/resources/assets/livinghorizon/icon.png`; the same picture is the
-data pack's `pack.png`, to use as the data pack project's icon.
+Icon: the mod's own, `src/main/resources/assets/livinghorizon/icon.png`.
 
 ## First version changelog
 
