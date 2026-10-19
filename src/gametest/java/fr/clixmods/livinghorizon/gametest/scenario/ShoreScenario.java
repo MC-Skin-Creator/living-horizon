@@ -16,7 +16,9 @@ import net.minecraft.tags.FluidTags;
  * Players who logged off in water are never left standing in it. One logs off swimming in a
  * pond: they sit on its bank, then, living, stay on dry land. One logs off in the middle of a
  * lake, more than 10 blocks from any shore: they get a boat, rowed about the lake while they
- * live, waiting on their spot while they sit; the lake drained, the boat is gone.
+ * live, waiting on their spot while they sit; the lake drained, the boat is gone. One placed
+ * in the air above the lake lands on its shore. Seen from 100 blocks away, where they play
+ * their loop, they stay in the boat and on the shore.
  */
 public final class ShoreScenario implements Scenario {
     /** The flat world's grass is the block below this one. */
@@ -53,7 +55,26 @@ public final class ShoreScenario implements Scenario {
             fake(context, "LH_Rower", 6.5, GROUND - 1.2, 32.5);
             context.waitTicks(40);
             check(context, "lake living", "LH_Rower", true, 12);
+            // Placed in the air above the lake, near its edge: what they land on is water, so the shore.
+            fake(context, "LH_Jumper", -3.5, GROUND + 5, 32.5);
+            context.waitTicks(60);
+            check(context, "jumper", "LH_Jumper", false, 10);
             Scene.screenshot(context, this, "lake-living");
+
+            // Away from them, past where they live their life: they play their loop, still in
+            // the boat and still out of the water.
+            Scene.command(world, "tp @a 6.5 " + GROUND + " 132.5 180 10");
+            for (int i = 0; i < 10; i++) {
+                context.waitTicks(20);
+                check(context, "lake far " + i, "LH_Rower", true, 12);
+                check(context, "jumper far " + i, "LH_Jumper", false, 24);
+            }
+            Scene.screenshot(context, this, "lake-far");
+            Scene.command(world, "tp @a 6.5 " + GROUND + " 16.5 0 15");
+            context.waitTicks(40);
+            context.runOnClient(minecraft -> FarPlayerTracker.get().resting().clearFakes());
+            fake(context, "LH_Rower", 6.5, GROUND - 1.2, 32.5);
+            context.waitTicks(40);
 
             Scene.configure(context, config -> config.offlineLife = false);
             context.waitTicks(40);

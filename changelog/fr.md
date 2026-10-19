@@ -23,6 +23,7 @@
 - **Joueurs et slimes qui disparaissent avec Distant Horizons** — les joueurs lointains, les joueurs déconnectés et les slimes ne disparaissent plus sous le terrain de Distant Horizons (Minecraft 26.1 et plus).
 - **Terrain de Distant Horizons qui mord sur les créatures** — le terrain de Distant Horizons ne mord plus sur les créatures et les joueurs placés devant lui (Minecraft 26.1 et plus).
 - **Créatures lointaines qui clignotent en marchant** — avec le balancement de la vue, les créatures lointaines ne clignotent plus et le terrain de Distant Horizons ne vacille plus devant elles à chaque pas (Minecraft 26.1 et plus).
+- **Eau qui disparaît autour des bateaux lointains** — l'eau autour des bateaux au loin, et des joueurs déconnectés qui rament au loin, ne disparaît plus en un grand carré, avec ou sans pack de shaders.
 
 ## 0.7.0 — 2026-10-17
 

@@ -133,7 +133,7 @@ public final class RestingPuppet extends RemotePlayer {
     private @Nullable RestingMount carried;
     /** Its spot being in water: the nearest shore, where it rests instead. */
     private @Nullable Vec3 shore;
-    private int shoreWait;
+    private int shoreWait, dryWait;
 
     private boolean placed;
     private boolean lively;
@@ -446,22 +446,25 @@ public final class RestingPuppet extends RemotePlayer {
     // --- Out of the water -------------------------------------------------------------------
 
     /**
-     * Its spot in water: the nearest shore within {@link #SHORE} blocks, where it rests
-     * instead, or a boat when there is none; decided once the blocks around are all there,
-     * again when the shore is gone. Out of the boat once the water under it is gone.
+     * Its spot in water, or over it (water is what it falls onto): the nearest shore within
+     * {@link #SHORE} blocks, where it rests instead, or a boat when there is none; decided
+     * once the blocks around are all there, again when the shore is gone. Out of the boat
+     * once the water at its spot is gone. Looked at once a second.
      */
     private void keepDry(ClientLevel level) {
-        RestingMount afloat = boat;
-        if (afloat != null) {
-            Entity hull = afloat.entity;
-            if (tickCount % SHORE_WAIT == 0 && level.hasChunkAt(hull.blockPosition())
-                    && !Footing.wet(level, hull.getX(), hull.getY(), hull.getZ())) {
-                boat = null;
-            }
+        if (dryWait > 0) {
+            dryWait--;
             return;
         }
+        dryWait = SHORE_WAIT;
         if (!level.hasChunkAt(home())) return;
-        if (!Footing.wet(level, spot.x(), spot.y(), spot.z())) {
+        double x = spot.x(), y = landing(level), z = spot.z();
+        boolean wet = Footing.wet(level, x, y, z);
+        if (boat != null) {
+            if (!wet) boat = null;
+            return;
+        }
+        if (!wet) {
             if (shore != null) forgetShore(null);
             return;
         }
@@ -470,15 +473,17 @@ public final class RestingPuppet extends RemotePlayer {
                 (int) Math.floor(known.y + 0.01), (int) Math.floor(known.z)))) {
             return;
         }
-        if (shoreWait > 0) {
-            shoreWait--;
-            return;
-        }
-        shoreWait = SHORE_WAIT;
-        if (!Footing.loadedAround(level, spot.x(), spot.z(), SHORE)) return;
-        Vec3 land = Footing.shore(level, spot.x(), spot.y(), spot.z(), SHORE);
+        if (!Footing.loadedAround(level, x, z, SHORE)) return;
+        Vec3 land = Footing.shore(level, x, y, z, SHORE);
         forgetShore(land);
-        if (land == null) boat = RestingMount.boat(level, spot, Footing.surface(level, spot.x(), spot.y(), spot.z()), random);
+        if (land == null) boat = RestingMount.boat(level, spot, Footing.surface(level, x, y, z), random);
+    }
+
+    /** Where its spot comes to rest: the spot, or what is under it when it is in the air, water included. */
+    private double landing(ClientLevel level) {
+        double x = spot.x(), y = spot.y(), z = spot.z();
+        if (Footing.wet(level, x, y, z) || Footing.supported(level, x, y, z)) return y;
+        return Footing.floorBelow(level, x, y, z);
     }
 
     /** A new place to rest: its loop is drawn again around it, from wherever it is. */

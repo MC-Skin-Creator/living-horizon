@@ -28,6 +28,7 @@ import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
+import net.minecraft.client.renderer.entity.state.BoatRenderState;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.HumanoidRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
@@ -679,6 +680,12 @@ public final class GhostRenderer {
         ClientLevel level = minecraft.level;
         for (EntityRenderState state : mount == null ? new EntityRenderState[]{body} : new EntityRenderState[]{mount, body}) {
             TRANSFORMS.put(state, transform);
+            // A boat hides the water inside its hull with a patch that the water then fails to
+            // draw over: drawn bigger or nearer than it is, that patch would hide the water
+            // around it, a pack's water included. Taken for under water, it has none.
+            if (state instanceof BoatRenderState boat && (Math.abs(transform.scale() - 1) > 1e-3 || pull != 1.0)) {
+                boat.isUnderWater = true;
+            }
             state.nameTag = null;
             //? if >=1.21.9 {
             state.shadowPieces.clear();

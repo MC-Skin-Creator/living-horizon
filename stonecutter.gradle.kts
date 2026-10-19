@@ -90,9 +90,9 @@ stonecutter parameters {
         replace("\\.getDeltaTracker\\(\\)", ".getTimer()", "\\.getTimer\\(\\)", ".getDeltaTracker()")
         replace("\\.getMinY\\(\\)", ".getMinBuildHeight()", "\\.getMinBuildHeight\\(\\)", ".getMinY()")
         // No render states yet: the mod's own stand-ins, of the same names, in their place.
-        replace("\\bnet\\.minecraft\\.client\\.renderer\\.entity\\.state\\.(EntityRenderState|LivingEntityRenderState|HumanoidRenderState);",
+        replace("\\bnet\\.minecraft\\.client\\.renderer\\.entity\\.state\\.(EntityRenderState|LivingEntityRenderState|HumanoidRenderState|BoatRenderState);",
                 "fr.clixmods.livinghorizon.render.state.$1;",
-                "\\bfr\\.clixmods\\.livinghorizon\\.render\\.state\\.(EntityRenderState|LivingEntityRenderState|HumanoidRenderState);",
+                "\\bfr\\.clixmods\\.livinghorizon\\.render\\.state\\.(EntityRenderState|LivingEntityRenderState|HumanoidRenderState|BoatRenderState);",
                 "net.minecraft.client.renderer.entity.state.$1;")
     }
 

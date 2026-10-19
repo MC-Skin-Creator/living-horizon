@@ -23,6 +23,7 @@
 - **Players and slimes vanishing with Distant Horizons** — distant players, offline players and slimes no longer disappear under Distant Horizons' terrain (Minecraft 26.1 and newer).
 - **Distant Horizons' terrain cutting into mobs** — Distant Horizons' terrain no longer cuts into mobs and players standing in front of it (Minecraft 26.1 and newer).
 - **Distant mobs blinking while walking** — with view bobbing on, distant mobs no longer blink and Distant Horizons' terrain no longer flickers in front of them at every step (Minecraft 26.1 and newer).
+- **Water vanishing around distant boats** — the water around far boats, and offline players rowing far away, no longer disappears in a large square, with or without a shader pack.
 
 ## 0.7.0 — 2026-10-17
 
