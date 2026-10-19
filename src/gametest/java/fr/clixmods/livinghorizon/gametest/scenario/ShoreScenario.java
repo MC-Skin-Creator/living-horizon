@@ -70,6 +70,12 @@ public final class ShoreScenario implements Scenario {
                 check(context, "jumper far " + i, "LH_Jumper", false, 24);
             }
             Scene.screenshot(context, this, "lake-far");
+            // From above, figures drawn bigger than they are: the water round the boat stays.
+            Scene.configure(context, config -> config.minApparentPixels = 120);
+            Scene.command(world, "tp @a 6.5 " + (GROUND + 30) + " -20.5 0 35");
+            context.waitTicks(40);
+            Scene.screenshot(context, this, "lake-bigger");
+            Scene.configure(context, config -> config.minApparentPixels = 0);
             Scene.command(world, "tp @a 6.5 " + GROUND + " 16.5 0 15");
             context.waitTicks(40);
             context.runOnClient(minecraft -> FarPlayerTracker.get().resting().clearFakes());
