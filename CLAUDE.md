@@ -86,7 +86,7 @@ same names, which the figures are drawn from through the entity's own renderer. 
 an older node is checked by starting its client.
 
 Mod and dependency versions live in `stonecutter.properties.toml`, never hardcoded
-in the build scripts. `docs/how-it-works.md` describes how each part works.
+in the build scripts. `docs/technical.md` describes how each part works.
 
 ## Settings live in two screens
 

@@ -1,7 +1,7 @@
-# How Living Horizon works
+# Living Horizon: technical notes
 
-The technical side of the mod: every setting, the debug tools, and how each part works.
-For players, the [README](../README.md) is enough.
+For whoever works on the mod: every setting of `config/livinghorizon.json`, the debug tools,
+and how each part works in the code. Players want the [README](../README.md).
 
 ## Settings reference
 
