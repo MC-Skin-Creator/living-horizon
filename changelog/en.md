@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- **Mod Menu** — the Website and Issues buttons on the mod's page are no longer greyed out and open the project's page.
+
 ## 0.9.0 — 2026-10-19
 
 ### Fixed

@@ -2,6 +2,9 @@
 
 ## Prochaine version
 
+### Corrections
+- **Mod Menu** — les boutons Website et Issues de la page du mod ne sont plus grisés et ouvrent la page du projet.
+
 ## 0.9.0 — 2026-10-19
 
 ### Corrections
