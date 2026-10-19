@@ -37,8 +37,11 @@ server).
 The mobs far away work everywhere on their own. The **other players** far away need the
 server to tell your game where they are, and only a server with the mod does:
 
-- **On a dedicated server**: put the same jar in the server's `mods` folder, with the
-  [Fabric API](https://modrinth.com/mod/fabric-api) on Fabric and Quilt. Its console says
+- **On a dedicated server**: put the jar of the server's loader and game version in its
+  `mods` folder. That works on all four: a **Fabric** or **Quilt** server needs the
+  [Fabric API](https://modrinth.com/mod/fabric-api) next to it, a **NeoForge** (1.20.6 and
+  later) or **Forge** server needs nothing else. The players use the jar of the same loader
+  and version, as for any modded server. Its console says
   "Living Horizon: sharing the positions of this server with the players who have the mod".
   Nothing to set up, no data pack, no command.
 - **In a world opened to LAN**: nothing to do. The host's game is the server, so the host's

@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### New
-- **The mod on a server** — put the same jar in a dedicated server's `mods` folder (with the Fabric API on Fabric and Quilt) and every player who has the mod sees the other players at any distance.
+- **The mod on a server** — put the jar of the server's loader in its `mods` folder, on a Fabric, Quilt, NeoForge or Forge server (with the Fabric API on Fabric and Quilt, nothing else on NeoForge and Forge), and every player who has the mod sees the other players at any distance.
 - **LAN and single player worlds** — a world opened to LAN shares everything by itself through the host's game, and players who logged off in your own world show as soon as you open it.
 - **What the server shares** — where every player is, their skin, armour, what they hold and what they ride, and the mobs around you with their saddle, harness or armour.
 - **Players who logged off** — the server keeps where each player logged off, how they looked, the mount they rode and when they left, so everyone sees them, even players who joined later.

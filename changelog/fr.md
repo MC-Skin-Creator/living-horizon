@@ -3,7 +3,7 @@
 ## Prochaine version
 
 ### Nouveautés
-- **Le mod sur un serveur** — mets le même jar dans le dossier `mods` d'un serveur dédié (avec la Fabric API sur Fabric et Quilt) et chaque joueur qui a le mod voit les autres joueurs à n'importe quelle distance.
+- **Le mod sur un serveur** — mets le jar du loader du serveur dans son dossier `mods`, sur un serveur Fabric, Quilt, NeoForge ou Forge (avec la Fabric API sur Fabric et Quilt, rien d'autre sur NeoForge et Forge), et chaque joueur qui a le mod voit les autres joueurs à n'importe quelle distance.
 - **Mondes LAN et solo** — un monde ouvert au LAN partage tout de lui-même par le jeu de l'hôte, et les joueurs partis de ton propre monde apparaissent dès que tu l'ouvres.
 - **Ce que partage le serveur** — la position de chaque joueur, son skin, son armure, ce qu'il tient et ce qu'il monte, et les mobs autour de toi avec leur selle, leur harnais ou leur armure.
 - **Joueurs déconnectés** — le serveur garde l'endroit où chaque joueur s'est déconnecté, son apparence, sa monture et l'heure de son départ, pour que tout le monde le voie, même ceux arrivés après.
