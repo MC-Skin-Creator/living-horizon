@@ -15,9 +15,8 @@ You can now play with a lower simulation distance and still see a living world.
 ### Other players, at any distance
 
 Other players stay visible wherever they are, with their skin, cape, elytra and armour, and
-riding what they ride: a horse, a boat, a happy ghast... They hide behind hills and
-buildings like anything else, so you see someone walk over a ridge or disappear into a
-valley. Needs the mod on the server (or a world opened to LAN).
+riding what they ride: a horse, a boat, a happy ghast... Needs the mod on the server (or a
+world opened to LAN).
 
 ### Players who logged off live on
 
@@ -29,14 +28,13 @@ When someone leaves, they stay where they were and go on with their day until th
 - someone who left on a horse, a boat or a happy ghast keeps it and rides it about.
 
 Their name shows with *(offline)*, and looking at one up close tells you when they were last
-seen. They are only a picture on your screen: they block nobody and nothing can hurt them.
+seen.
 
 ### Mobs on the horizon
 
 Animals, villagers, golems and named mobs stay visible far away once you have met them. They
 graze, wander and look around, each in its own way: rabbits and slimes hop, chickens flap up
-a step. They only walk where they could, never off a cliff or through a fence, and when you
-come back the copy walks to the real mob and hands over without a jump.
+a step.
 
 In single player, *Scan Nearby Mobs* shows every mob in the chunks around you at once. On a
 server with the mod, the server shares its mobs, so you also see the ones others met. Mobs
@@ -53,8 +51,7 @@ farther. Birds are small 3D models with beating wings, or flat pixel sprites if 
 
 Past a distance, far players and mobs are drawn as flat pictures of themselves
 (*Simplified Entities*). A mob 200 blocks away is only a few pixels tall: you hardly see the
-difference, and hundreds of figures on screen stay smooth. The pictures are made by the game
-itself, so skins, armour, resource packs and other mods' models all show.
+difference, and hundreds of figures on screen stay smooth.
 
 ### Fully configurable
 
@@ -129,14 +126,13 @@ page, one per game version and loader:
 
 | Mod | Notes |
 |---|---|
-| [Voxy](https://modrinth.com/mod/voxy) | Mobs and players are visible on its terrain, hidden behind its hills. |
-| [Distant Horizons](https://modrinth.com/mod/distanthorizons) | From 2.3 on. Mobs and players are visible on its terrain, hidden behind its hills. |
+| [Voxy](https://modrinth.com/mod/voxy) | Mobs and players are visible on its terrain. |
+| [Distant Horizons](https://modrinth.com/mod/distanthorizons) | From 2.3 on. Mobs and players are visible on its terrain. |
 | Iris and shader packs | Photon and Complementary checked. |
 | [Sodium](https://modrinth.com/mod/sodium) | From 0.8, the settings are also in Sodium's *Video Settings*. |
 | GeckoLib | Works. From 1.21.2 to 1.21.8 its mobs are not drawn far away yet ([#67](https://github.com/MC-Skin-Creator/living-horizon/issues/67)). |
 
-Voxy, Distant Horizons and shader packs look exactly the same with or without Living
-Horizon. Mobs from other mods should just work; mods still to check are tracked under the
+Mobs from other mods should just work; mods still to check are tracked under the
 [`mod compatibility`](https://github.com/MC-Skin-Creator/living-horizon/labels/mod%20compatibility)
 label.
 
