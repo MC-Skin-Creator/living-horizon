@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.track;
 
 import com.mojang.authlib.properties.Property;
+import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.platform.Network;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -126,6 +127,16 @@ public final class PositionPublisher {
 
     /** One publication; call it every {@link #PERIOD} ticks. */
     public void run() {
+        long started = Profile.begin(Profile.Section.PUBLISH);
+        long[] sentBytes = {0};
+        try {
+            publish(sentBytes);
+        } finally {
+            Profile.end(Profile.Section.PUBLISH, started, sentBytes[0]);
+        }
+    }
+
+    private void publish(long[] sentBytes) {
         if (!server.isRunning()) return;
         if (!loaded) load();
         tell();
@@ -149,11 +160,16 @@ public final class PositionPublisher {
             sent.add(player.getUUID());
             if (full || !greeted.contains(player.getUUID())) {
                 // Every few seconds, and at once to a player who just joined: everything.
-                Network.send(player, PositionsMessage.players(withLooks(onlinePlayers(), player)));
-                Network.send(player, PositionsMessage.offline(withLooks(offlinePlayers(), player)));
-                Network.send(player, PositionsMessage.mobs(mobsAround(player)));
+                byte[] everyone = PositionsMessage.players(withLooks(onlinePlayers(), player));
+                byte[] offline = PositionsMessage.offline(withLooks(offlinePlayers(), player));
+                byte[] around = PositionsMessage.mobs(mobsAround(player));
+                sentBytes[0] += everyone.length + offline.length + around.length;
+                Network.send(player, everyone);
+                Network.send(player, offline);
+                Network.send(player, around);
             } else {
                 if (plain == null) plain = PositionsMessage.players(onlinePlayers());
+                sentBytes[0] += plain.length;
                 Network.send(player, plain);
             }
         }
@@ -411,6 +427,8 @@ public final class PositionPublisher {
         if (!loaded || !dirty) return;
         dirty = false;
         Path file = file();
+        long started = Profile.begin(Profile.Section.SAVE_POSITIONS);
+        long bytes = -1;
         try {
             Path written = file.resolveSibling(FILE + ".tmp");
             // Those still online when the server stops log off as they are, on what they ride.
@@ -422,10 +440,14 @@ public final class PositionPublisher {
                                 riding.get(player.name()), looks.get(player.name()), System.currentTimeMillis(), false)
                         : player);
             }
-            Files.write(written, PositionsMessage.saved(kept, new ArrayList<>(mobs.values())));
+            byte[] saved = PositionsMessage.saved(kept, new ArrayList<>(mobs.values()));
+            bytes = saved.length;
+            Files.write(written, saved);
             Files.move(written, file, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             LOGGER.warn("Could not save the shared positions of this world", e);
+        } finally {
+            Profile.end(Profile.Section.SAVE_POSITIONS, started, bytes);
         }
     }
 

@@ -1,5 +1,6 @@
 package fr.clixmods.livinghorizon.ambient;
 
+import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -54,6 +55,15 @@ public final class AmbientRenderer {
     }
 
     public static void submit(PoseStack pose, Vec3 camera, Sink collector) {
+        long started = Profile.begin(Profile.Section.SUBMIT_BIRDS);
+        try {
+            submitBirds(pose, camera, collector);
+        } finally {
+            Profile.end(Profile.Section.SUBMIT_BIRDS, started);
+        }
+    }
+
+    private static void submitBirds(PoseStack pose, Vec3 camera, Sink collector) {
         FarConfig config = FarConfig.get();
         Minecraft minecraft = Minecraft.getInstance();
         float partial = minecraft.getDeltaTracker().getGameTimeDeltaPartialTick(true);

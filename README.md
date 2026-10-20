@@ -251,6 +251,19 @@ label `mod compatibility`.
 - **Panel** (top left; in the F3 screen, the `living_horizon` option of the game's debug options, F3 + F6,
   which `/livinghorizon debug` turns on too): cost per tick and frame, what became of
   every distant mob in the last frame, far terrain reads and depth, how far this server sends mobs, optimisations on.
+- **Cost per section** (a second column of the panel, and `/livinghorizon`): for each part of the
+  mod the last time, a smoothed average and the worst of the last 5 seconds, which an average
+  alone hides (a save of 100 ms once a minute). Sections: the client tick (following the server's
+  mobs, choosing, building copies, reading the ground, motion, resting players, birds, the hidden
+  mobs), the frame (extraction, each step of the far terrain's depth, the occlusion queries,
+  baking and storing the flat pictures, submitting birds and flat pictures), the saves with their
+  size in bytes, and the server's publication. Times over 2 ms show yellow, over 8 ms red. With
+  OpenGL the GPU's time is shown too for the depth steps, the occlusion boxes and the baking
+  (`GL_TIME_ELAPSED` queries read a few frames later, never waited for; measured only while the
+  panel or the command was asked for in the last 10 seconds), and so is what the game's thread
+  allocates per tick. The sections are named in the game's own profiler as
+  `livinghorizon:<section>` (F3 pie chart, spark). Code: `Profile`, `debug/ProfileHook`,
+  `debug/GpuTimer`.
 - **F3 screen**: a line with the polygons of the mod's own entities - the distant players
   and mobs, never the game's - split into full models and impostors (one quad each), and
   a line of impostor sheets baked and waiting. It is in the F3 + F6 list as `fake_entities`.

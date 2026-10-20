@@ -2,6 +2,7 @@ package fr.clixmods.livinghorizon.track;
 
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
+import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.ambient.Ambience;
 import fr.clixmods.livinghorizon.compat.LodWorld;
 import net.minecraft.client.Minecraft;
@@ -223,9 +224,19 @@ public final class FarPlayerTracker {
             List<PositionsMessage.Player> placed = resting.placedTests(current.registryAccess());
             PositionPublisher.of(local).offerTestPlayers(placed);
         }
-        if (config.offlinePlayers) resting.tick(current, config);
-        resting.aim(minecraft, config);
-        ambience.tick(current, self, config);
+        long restingStarted = Profile.begin(Profile.Section.TICK_RESTING);
+        try {
+            if (config.offlinePlayers) resting.tick(current, config);
+            resting.aim(minecraft, config);
+        } finally {
+            Profile.end(Profile.Section.TICK_RESTING, restingStarted);
+        }
+        long ambient = Profile.begin(Profile.Section.TICK_AMBIENCE);
+        try {
+            ambience.tick(current, self, config);
+        } finally {
+            Profile.end(Profile.Section.TICK_AMBIENCE, ambient);
+        }
         // A mount drawn under its far rider is not drawn again on its own.
         Map<UUID, Vec3> carried = new HashMap<>();
         Map<UUID, Float> carriedYaw = new HashMap<>();

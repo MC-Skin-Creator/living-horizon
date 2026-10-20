@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon.compat;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
+import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.platform.Platform;
 //? if >=1.21.5
 import com.mojang.blaze3d.opengl.GlTexture;
@@ -267,6 +268,15 @@ public final class FarDepth {
 
     /** Just before the entities are drawn. */
     public static void before() {
+        long started = Profile.begin(Profile.Section.DEPTH_BEFORE);
+        try {
+            beforeEntities();
+        } finally {
+            Profile.end(Profile.Section.DEPTH_BEFORE, started);
+        }
+    }
+
+    private static void beforeEntities() {
         if (!armed || irisShadowPass()) return;
         merged = false;
         captured = false;
@@ -360,6 +370,15 @@ public final class FarDepth {
      * step follows, see {@link #beforeTranslucent}. Null where the call drew them all.
      */
     public static void after(@Nullable Object owner) {
+        long started = Profile.begin(Profile.Section.DEPTH_AFTER);
+        try {
+            afterEntities(owner);
+        } finally {
+            Profile.end(Profile.Section.DEPTH_AFTER, started);
+        }
+    }
+
+    private static void afterEntities(@Nullable Object owner) {
         if (!armed || irisShadowPass()) return;
         armed = false;
         lateMerge = lateCopy = lateMerged = lateFade = false;
@@ -406,6 +425,15 @@ public final class FarDepth {
 
     /** Just before the translucent parts of the entities are drawn, by {@code owner}. */
     public static void beforeTranslucent(Object owner) {
+        long started = Profile.begin(Profile.Section.DEPTH_BEFORE_TRANSLUCENT);
+        try {
+            beforeLate(owner);
+        } finally {
+            Profile.end(Profile.Section.DEPTH_BEFORE_TRANSLUCENT, started);
+        }
+    }
+
+    private static void beforeLate(Object owner) {
         if (!late(owner)) return;
         try {
             if (lateMerge) lateMerged = available() ? merge(true) : mergeDh(true);
@@ -426,6 +454,15 @@ public final class FarDepth {
 
     /** Just after the translucent parts of the entities are drawn, by {@code owner}. */
     public static void afterTranslucent(Object owner) {
+        long started = Profile.begin(Profile.Section.DEPTH_AFTER_TRANSLUCENT);
+        try {
+            afterLate(owner);
+        } finally {
+            Profile.end(Profile.Section.DEPTH_AFTER_TRANSLUCENT, started);
+        }
+    }
+
+    private static void afterLate(Object owner) {
         if (!late(owner)) return;
         try {
             if (lateMerged) restore(true);
@@ -1121,6 +1158,15 @@ public final class FarDepth {
      * fade, the pixels of the entities read as sky, which it leaves alone.
      */
     public static void beforeFade() {
+        long started = Profile.begin(Profile.Section.DEPTH_BEFORE_FADE);
+        try {
+            beforeUnmask();
+        } finally {
+            Profile.end(Profile.Section.DEPTH_BEFORE_FADE, started);
+        }
+    }
+
+    private static void beforeUnmask() {
         if (!fadeMask || fading || !DepthFar.openGl()) return;
         try {
             copy(depthTexture, faded);
@@ -1163,6 +1209,15 @@ public final class FarDepth {
 
     /** Distant Horizons' fade is done: the entities' depth comes back. */
     public static void afterFade() {
+        long started = Profile.begin(Profile.Section.DEPTH_AFTER_FADE);
+        try {
+            afterUnmask();
+        } finally {
+            Profile.end(Profile.Section.DEPTH_AFTER_FADE, started);
+        }
+    }
+
+    private static void afterUnmask() {
         if (!fading) return;
         fading = false;
         try {

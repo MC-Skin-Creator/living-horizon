@@ -2,6 +2,7 @@ package fr.clixmods.livinghorizon.render;
 
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
+import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.Stats;
 import fr.clixmods.livinghorizon.ambient.Ambience;
 import fr.clixmods.livinghorizon.compat.FarDepth;
@@ -433,6 +434,8 @@ public final class GhostRenderer {
             }
         }
         Stats.extract(System.nanoTime() - started, drawn, skipped);
+        Profile.record(Profile.Section.EXTRACT, System.nanoTime() - started);
+        Profile.frame();
         if (debug) DebugMarks.end();
     }
 
