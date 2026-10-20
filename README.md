@@ -35,23 +35,42 @@ fields and beaches, and take off again when you come near.
 
 ## Performance
 
-A mod that adds this many figures has to stay light, so it never simulates them:
+A mod that adds this many figures has to stay light. It relies on two techniques.
 
-- **Mobs**: their AI is off, for good. The mod reads the ground around each mob once, then
-  plays predefined animations that fit there: a stroll, a pause to graze, a look around.
+### How far entities behave
+
+Most of the time, the AI of the far entities is off. They play predefined animations
+instead, chosen from the ground around them:
+
+- **Mobs**: their AI stays off. The mod reads the ground around each mob once, then plays
+  animations that fit there: a stroll, a pause to graze, a look around.
 - **Players who logged off**: up close, a small AI lets them use what is around them (beds,
   chests, workstations). Farther away, they play predefined animations, like mobs.
 - **Birds**: a little AI up close, predefined flights farther away.
 
-This keeps the game stable. You can push *Mob Render Distance* and *Max Mobs* as far as you
-like, but thousands of 3D models will lag. That is where **Simplified Entities** come in:
-past a distance, mobs and players are drawn as flat 2D pictures of themselves instead of 3D
-models, which takes far less rendering work. A mob 200 blocks away is only a few pixels
-tall, so you hardly see the difference.
+So some interactions cannot happen past a certain distance: a far mob does not react to
+what goes on around it, and a far player who logged off does not go to a bed or a chest.
 
-Pick a *Preset* (*Low*, *Normal*, *High*, *Ultra*) to set it all at once.
+### Simplified Entities
+
+Games have long drawn far objects as **impostors**: a flat picture standing in for a 3D
+model, for distant trees, crowds or armies. Living Horizon does the same for mobs and
+players: past a distance, they are drawn as 2D pictures of themselves, which takes far less
+rendering work. A mob 200 blocks away is only a few pixels tall, so you hardly see the
+difference, and the game keeps its frame rate with as many entities as possible.
+
+You can push *Mob Render Distance* and *Max Mobs* as far as you like, but thousands of 3D
+models will lag: keep *Simplified Entities* on. Pick a *Preset* (*Low*, *Normal*, *High*,
+*Ultra*) to set it all at once.
 
 **Careful:** *Max Mobs* and *Mob Render Distance* both on *Unlimited* can crash the game.
+
+### Everything runs on your computer
+
+Almost all of it is handled by your own game, not by the server: the far animations, the
+life of players who logged off, the birds. The server only shares where the players and
+mobs are. So what you see far away is not always in sync with what other players see: two
+players can watch the same far mob at different points of its stroll.
 
 ## Multiplayer
 
