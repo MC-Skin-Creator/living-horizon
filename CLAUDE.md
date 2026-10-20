@@ -430,10 +430,15 @@ changelog in a later commit or pull request.
 
 A pull request that changes what a player sees or feels adds its entry to
 `changelog/en.md` and `changelog/fr.md`, under `## Unreleased` / `## Prochaine version`
-and nowhere else: a dated section is a version already released, never edited. Headings
-are `### New`, `### Improved`, `### Fixed` (`### Nouveautés`, `### Améliorations`,
-`### Corrections`); both files have the same headings and number of bullets, in the same
-order. The `changelog` CI job checks all of this.
+and nowhere else: a dated section is a version already released, never edited. A version
+is split in two parts, **Server** first (what a server owner installs, sets up or gets, and
+what the mod does on a server, a LAN host included), then **Client** (what a player sees and
+feels in game, single player included): `### Server` / `### Client` (`### Serveur` /
+`### Client`), each with the kinds it needs under it, `#### New`, `#### Improved`,
+`#### Fixed` (`#### Nouveautés`, `#### Améliorations`, `#### Corrections`); a kind with
+nothing in it is left out. Both files have the same parts, kinds and number of bullets, in
+the same order. Versions released before the split keep their flat `### New` headings. The
+`changelog` CI job checks all of this.
 
 The release dates the section, opens a new empty one, and posts the entries on Modrinth
 (Changelog tab), CurseForge (file page) and Discord. Players read them, so write for

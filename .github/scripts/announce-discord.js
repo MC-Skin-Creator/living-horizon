@@ -38,29 +38,35 @@ const HEADINGS = {
   en: { new: 'New', improved: 'Improved', fixed: 'Fixed' },
   fr: { new: 'Nouveautés', improved: 'Améliorations', fixed: 'Corrections' }
 };
+const AREAS = { server: 'server', serveur: 'server', client: 'client' };
+const AREA_NAMES = { en: { server: 'Server', client: 'Client' }, fr: { server: 'Serveur', client: 'Client' } };
 const LINK = { en: 'Full changelog', fr: 'Journal complet' };
 const UNRELEASED = /^(unreleased|prochaine version)$/i;
 const RELEASE = /^(\d+\.\d+\.\d+[^\s]*)\s*[—–-]\s*(\d{4}-\d{2}-\d{2})$/;
 
 function parse(markdown) {
   const releases = [];
-  let release = null, section = null, open = null;
+  let release = null, section = null, open = null, area = null;
   const close = () => { if (open && section) section.items.push(open.join(' ').trim()); open = null; };
   for (const line of markdown.split(/\r?\n/)) {
     const h2 = /^##\s+(.+?)\s*$/.exec(line);
     const h3 = /^###\s+(.+?)\s*$/.exec(line);
+    const h4 = /^####\s+(.+?)\s*$/.exec(line);
     if (h2) {
-      close(); section = null;
+      close(); section = null; area = null;
       if (UNRELEASED.test(h2[1])) release = { version: null, date: null, sections: [] };
       else {
         const r = RELEASE.exec(h2[1]);
         release = r ? { version: r[1], date: r[2], sections: [] } : null;
       }
       if (release) releases.push(release);
-    } else if (h3) {
+    } else if (h3 || h4) {
       close();
-      const kind = KINDS[h3[1].toLowerCase()];
-      section = release && kind ? { kind, items: [] } : null;
+      const title = (h3 || h4)[1].toLowerCase();
+      if (h3 && AREAS[title]) { area = AREAS[title]; section = null; continue; }
+      if (h3) area = null; // a flat "### New": a version released before the split
+      const kind = KINDS[title];
+      section = release && kind ? { area, kind, items: [] } : null;
       if (section) release.sections.push(section);
     } else if (/^-\s+/.test(line) && section) {
       close(); open = [line.replace(/^-\s+/, '')];
@@ -78,7 +84,15 @@ const markdownOf = (release, lang) => release.sections
   .map(s => '**' + HEADINGS[lang][s.kind] + '**\n' + s.items.map(i => '• ' + i).join('\n'))
   .join('\n\n');
 
-function payload(release, lang, role) {
+// One message per area (Server, then Client): a single embed holds 4096 characters, and
+// a long release would lose its Client half. A version from before the split is one message.
+function payloads(release, lang, role) {
+  const areas = [...new Set(release.sections.map(s => s.area))];
+  return areas.map((area, i) => payload({ ...release, sections: release.sections.filter(s => s.area === area) },
+    lang, i === 0 ? role : '', area));
+}
+
+function payload(release, lang, role, area) {
   const link = '\n\n[' + LINK[lang] + '](' + SITE_URL + ')';
   let text = markdownOf(release, lang);
   const room = 4096 - link.length - 2;
@@ -87,7 +101,7 @@ function payload(release, lang, role) {
     text = text.slice(0, text.lastIndexOf('\n')) + '\n…';
   }
   const embed = {
-    title: PROJECT + ' ' + release.version,
+    title: PROJECT + ' ' + release.version + (area ? ' — ' + AREA_NAMES[lang][area] : ''),
     url: SITE_URL,
     description: text + link,
     color: 0x4a90d9,
@@ -131,13 +145,15 @@ async function main(argv) {
       console.log('::notice::changelog/' + lang + '.md has no section for ' + version + ': nothing to announce in ' + lang + '.');
       continue;
     }
-    const body = payload(release, lang, roleOf(lang));
-    if (dry) { console.log('--- ' + lang + ' ---\n' + JSON.stringify(body, null, 2)); continue; }
+    const bodies = payloads(release, lang, roleOf(lang));
+    if (dry) { console.log('--- ' + lang + ' ---\n' + JSON.stringify(bodies, null, 2)); continue; }
     const url = webhook(lang);
     if (!url) { console.log(lang + ': no webhook, skipped.'); continue; }
-    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (res.ok) console.log(lang + ': ' + PROJECT + ' ' + version + ' announced.');
-    else { failed = 1; console.log('::error::' + lang + ': Discord answered ' + res.status + ' ' + (await res.text()).slice(0, 200)); }
+    for (const body of bodies) {
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (res.ok) console.log(lang + ': ' + body.embeds[0].title + ' announced.');
+      else { failed = 1; console.log('::error::' + lang + ': Discord answered ' + res.status + ' ' + (await res.text()).slice(0, 200)); }
+    }
   }
   return failed;
 }

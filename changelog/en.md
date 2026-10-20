@@ -2,27 +2,44 @@
 
 ## Unreleased
 
-### New
-- **The mod on a server** — put the jar of the server's loader in its `mods` folder, on a Fabric, Quilt, NeoForge or Forge server (with the Fabric API on Fabric and Quilt, nothing else on NeoForge and Forge), and every player who has the mod sees the other players at any distance.
-- **LAN and single player worlds** — a world opened to LAN shares everything by itself through the host's game, and players who logged off in your own world show as soon as you open it.
-- **What the server shares** — where every player is, their skin, armour, what they hold and what they ride, and the mobs around you with their saddle, harness or armour.
-- **Players who logged off** — the server keeps where each player logged off, how they looked, the mount they rode and when they left, so everyone sees them, even players who joined later.
-- **Players from before the mod** — on a server or in a world that had players before the mod was added, those not online show at once as offline players where they logged off, in what they wore.
-- **Everything as you join** — distant mobs and players who logged off show as soon as you join a server with the mod, not a few seconds later.
-- **Without the mod** — players without the mod can still join a server with the mod, and a server without the mod shows no distant players: the console says so once.
-- **No more data pack** — the data pack is gone: a server that used it now needs the mod instead.
+### Server
 
-### Improved
-- **Distant players** — they are placed from what the server shares alone: the locator bar guess is gone, and so is the *Lost Player Time* setting.
+#### New
+- **Mod on a server** — put the jar in the server's `mods` folder, on Fabric, Quilt, NeoForge or Forge (plus the Fabric API on Fabric and Quilt). Nothing else to set up. It replaces the data pack.
+- **Player positions** — the server sends where every player is, five times a second, to the players who have the mod. It also sends their skin, armour, held items and mount.
+- **Mobs** — the server sends the mobs within 2,048 blocks of each player, even ones they never met: animals, villagers, golems, allays and boats, with their saddle, harness, armour or chest.
+- **Players who logged off** — the server keeps where each player logged off, how they looked, their mount and when they left, and sends it to everyone, even players who join later.
+- **Players from before the mod** — the first time it runs, the server reads the players the world already had (the `playerdata` folder, their names from `usercache.json`) and shows them as logged off, where they left, in what they wore.
+- **World file** — the server saves all of this in `livinghorizon-positions.dat`, in the world folder. A mob is forgotten when its chunk loads and it is no longer there.
+- **LAN worlds** — a world opened to LAN shares everything through the host's game. Nothing to install.
+- **Players without the mod** — they can still join. The server sends them nothing.
+- **Same mod on both sides** — keep the mod up to date on the server and on the players' games: a game that cannot read the server's messages ignores them.
+- **Positions are shared** — the server shares every player's position with all the players who have the mod. Tell your players.
+- **No more data pack** — the mod no longer reads it: remove it from the world's `datapacks` folder. Nothing goes through the scoreboard any more, so coordinates are no longer readable in scores or in the sidebar.
 
-### Fixed
+#### Fixed
+- **Players vanishing when a world closes** — when a server or a LAN world closes, the players in it now stay where they were as offline players.
+
+### Client
+
+#### New
+- **Every player at any distance** — on a server with the mod, you see all the other players, with their skin, armour, held items and mount.
+- **Mobs you never met** — on a server with the mod, distant mobs show at once, even ones you never walked near, with their saddle, harness, armour or chest.
+- **Players who logged off, even before you joined** — you see them where they left, with how they looked and what they rode.
+- **Your own world** — in single player, players who logged off in your world show as soon as you open it, even those from before the mod.
+- **Everything as you join** — distant mobs and players who logged off show as soon as you join, not a few seconds later.
+- **Servers without the mod** — you can still join. No distant player is shown, only the mobs you met, and the log says so once.
+
+#### Improved
+- **Distant players' positions** — they come from what the server shares only. The locator bar guess is gone, and so is the *Lost Player Time* setting.
+
+#### Fixed
 - **Players on a happy ghast** — a far player riding a happy ghast no longer has a second ghast beside them, and one already riding when you join no longer floats in the air.
 - **Happy ghast flying back after its rider gets off** — the happy ghast a far player gets off no longer reappears where it was first ridden and flies back: it stays where it was left.
 - **Old skins far away** — a distant player who changes skin no longer keeps the old one far away.
 - **Players turned sideways in boats** — a player who logs off in a boat no longer sits turned to the side: they face the way the boat does.
 - **Riders sitting inside their horse** — a distant player riding a horse no longer sits inside it or on its back end, as a full model or as a flat picture.
 - **Horse shown twice after its rider logs off** — a player who logs off on a horse no longer leaves a second copy of the horse beside the one they rest on.
-- **Players vanishing when a world closes** — when a server or a LAN world closes, the players in it now stay where they were as offline players.
 - **Greyed-out Website and Issues buttons** — the Website and Issues buttons on the mod's page in Mod Menu are no longer greyed out (Fabric).
 
 ## 0.9.0 — 2026-10-19
