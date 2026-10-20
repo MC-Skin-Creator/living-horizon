@@ -20,11 +20,11 @@ Create > Project > **Mod**.
 |---|---|
 | Name | `Living Horizon` |
 | URL (slug) | `living-horizon` |
-| Summary (256 max) | `Gives life to the distance: players and mobs stay visible far past your render distance, with or without Voxy or Distant Horizons, and birds bring the sky to life. Client-side.` |
+| Summary (256 max) | `Shows mobs and players far past your render distance, on the game's terrain and on Voxy and Distant Horizons terrain. Players who logged off live on, and birds fill the sky.` |
 | Visibility | Public once ready (draft until the first version is approved) |
 | Categories (pick up to 3 featured) | `Decoration`, `Mobs`, `Utility` |
 | Client side | **Required** |
-| Server side | **Unsupported** |
+| Server side | **Optional** (shares the players and the mobs) |
 | Description | the block below |
 | License | **Custom license**, link to the `LICENSE` file of the repository (Living Horizon License) |
 | Issue tracker | `https://github.com/MC-Skin-Creator/living-horizon/issues` |
@@ -56,7 +56,7 @@ Create > Project > Class **Mods** (Minecraft).
 |---|---|
 | Project name | `Living Horizon` |
 | Slug | `living-horizon` |
-| Summary (200 to stay safe) | `Gives life to the distance: players and mobs stay visible past your render distance, with or without Voxy or Distant Horizons, and birds bring the sky to life.` |
+| Summary (200 to stay safe) | `Shows mobs and players far past your render distance, on the game's terrain and on Voxy and Distant Horizons terrain, with birds in the sky.` |
 | Main category | **Cosmetic** |
 | Additional categories | **Mobs**, **Utility & QoL** |
 | License | **Custom** (Living Horizon License), link to the `LICENSE` file |
@@ -64,7 +64,7 @@ Create > Project > Class **Mods** (Minecraft).
 | Logo | `src/main/resources/assets/livinghorizon/icon.png` (512x512) |
 | Links | Source and Issues as above; Donation: your link |
 | Allow others to distribute | leave **allowed**: the license allows the unchanged jar in modpacks, with credit |
-| Environment | **Client** |
+| Environment | **Client** and **Server** (the server side is optional) |
 
 Files: one per jar, uploaded by the release workflow once `CURSEFORGE_TOKEN` and
 `CURSEFORGE_ID` exist, with the same title, release type, loader and game versions as on
@@ -106,46 +106,73 @@ format the headings and lists.
 ```markdown
 # Living Horizon
 
-**Gives life to the distance.** Players and mobs stay visible far past your render
-distance, through several rendering techniques. It supports far-terrain mods such as
-Voxy and Distant Horizons, and adds birds to bring the sky to life, so you can take in
-your Minecraft world at its best. Works on any server; add the mod to the server (or play on LAN) to see players at any distance.
-
-You can now play with a lower simulation distance and still see a living world.
-
-## Getting started
-
-1. Install the file of your game version and loader (see *Requirements*). Voxy and
-   Distant Horizons are optional.
-2. Keep the default settings: they are the best balance. *Restore defaults* puts them back.
-3. In single player, run *Scan the chunks around* in the settings (or `/livinghorizon scan`)
-   to show the mobs around you at once.
-
-The scan radius is in **chunks** (32 = 512 blocks); every other distance is in **blocks**.
-
-**Careful:** *Mobs drawn at most* and *Mob distance* both on *Unlimited* can crash the game.
-
-## Good to know
-
-- Settings: Options screen, Mod Menu or `/livinghorizon config`.
-- The scan only works in single player. On a server, put the mod on the server too: it
-  shares the players and the mobs with everyone who has the mod.
-- Every player's position is then shared with the players who have the mod: tell your players.
+**Living Horizon** shows mobs and players far past your render distance. It draws them on
+the game's terrain and on the terrain of **Voxy** and **Distant Horizons**. It can also help
+performance: you can lower your simulation distance and still see a living world.
 
 ## Features
 
-- See other players far away.
-- See mobs far away.
-- Birds added to the sky.
-- Players who logged off stay where they left.
-- Play with a lower simulation distance, the distance stays alive.
-- Everything can be configured.
+### Mobs on the horizon
+
+All mobs are visible from far away, on the game's terrain and **on Voxy and Distant
+Horizons terrain**. This works for any entity Minecraft can draw, mobs from other mods
+included. Choose which ones in *Mobs & Entities...*.
+
+### Players at any distance
+
+Other players are visible at any distance, with their gear and their mount.
+
+**Players who logged off live on.** When a player logs off, a copy with their name appears
+where they left. It walks around, sits, opens chests and sleeps at night, until the player
+comes back.
+
+### Birds in the sky
+
+Birds fly over the land and are visible from far away: flocks, geese, birds of prey, gulls,
+ducks, bats... They land on trees, buildings, fields and beaches.
+
+## Performance
+
+- **No AI far away.** Far entities play ready-made animations that fit the ground around
+  them. Players who logged off and birds have a small AI only when you are close.
+- **Simplified Entities.** Far mobs and players are drawn as flat pictures instead of 3D
+  models. It costs much less to draw, so you can show many more entities.
+- **Everything runs on your computer.** The server only shares positions, so two players
+  can see the same far mob doing different things.
+
+Players who logged off are only visual: you walk through them, they cannot block or push
+you, and mobs ignore them.
+
+**Careful:** *Max Mobs* and *Mob Render Distance* both on *Unlimited* can crash the game.
+
+## Multiplayer
+
+Everything works in single player. On a server, some features need the mod on the server:
+
+| Feature | Single player | LAN | Server with the mod | Server without the mod |
+|---|---|---|---|---|
+| Mobs on the horizon | ✓ | ✓ | ✓ | Only the mobs you met |
+| Players at any distance | — | ✓ | ✓ | ✗ |
+| Players who logged off | ✓ | ✓ | ✓ | Only those you saw leave |
+| Birds | ✓ | ✓ | ✓ | ✓ |
+
+To set up a server, put the same file in its `mods` folder. Nothing else to set up. Players
+without the mod can still join. The server shares every player's position with the players
+who have the mod: tell your players.
+
+## Getting started
+
+1. Install the file for your game version and loader. Voxy and Distant Horizons are optional.
+2. Keep the default settings. *Restore Defaults* puts them back.
+
+Open the settings from the Options screen, Mod Menu, Sodium's *Video Settings* or
+`/livinghorizon config`.
 
 ## Requirements
 
 - Minecraft 1.20 to 1.21.11 and 26.1 to 26.3.
 - Fabric or Quilt (with [Fabric API](https://modrinth.com/mod/fabric-api)), NeoForge or Forge.
-- [Voxy](https://modrinth.com/mod/voxy) or [Distant Horizons](https://modrinth.com/mod/distanthorizons): optional. The mod also works without them, at any render distance.
+- [Voxy](https://modrinth.com/mod/voxy) or [Distant Horizons](https://modrinth.com/mod/distanthorizons): optional.
 - [Mod Menu](https://modrinth.com/mod/modmenu): optional, on Fabric and Quilt.
 
 ## Links
