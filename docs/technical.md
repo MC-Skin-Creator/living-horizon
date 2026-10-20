@@ -649,8 +649,8 @@ boxes on or off together.
 | Tool | Switch | What it shows |
 |---|---|---|
 | Panel | `debugHud` | Top left: cost per tick and frame, what became of every distant mob in the last frame, far terrain reads and depth, how far this server sends mobs, which optimisations are on |
-| Panel in F3 | `living_horizon` in the game's debug options (F3 + F6) | The panel's lines in the F3 screen. `/livinghorizon debug` turns it on too |
-| Polygons in F3 | `fake_entities` in the game's debug options (F3 + F6) | The polygons of the mod's own entities (distant players and mobs, never the game's), split into full models and impostors (one quad each), and a line of impostor sheets baked and waiting |
+| Panel in F3 | `living_horizon` in the game's debug options (F3 + F6, from 1.21.9) | The panel's lines in the F3 screen. `/livinghorizon debug` turns it on too |
+| Polygons in F3 | `fake_entities` in the game's debug options (F3 + F6, from 1.21.9) | The polygons of the mod's own entities (distant players and mobs, never the game's), split into full models and impostors (one quad each), and a line of impostor sheets baked and waiting |
 | Boxes | `debugBoxes` | A box around every distant mob and player, seen through terrain, coloured by what became of it (below). A dot in the middle keeps it visible when the box is smaller than its lines |
 | Game's mobs | `debugGameMobs` | Boxes around the mobs the game draws itself too |
 | Labels | `debugLabels` | State, kind, distance and size on screen above each box, at a constant size |
@@ -678,14 +678,14 @@ boxes on or off together.
 Outlines are seen through terrain, in the colours of the boxes, each on its own switch. They
 are made for screenshots that compare optimisations.
 
-| Switch | Outline |
-|---|---|
-| `outlineGameMobs` | White, around the mobs and players the game draws |
-| `outlineLiveMobs` | Cyan, around the real mobs the mod draws |
-| `outlineCopies` | Green, around the 3D copies |
-| `outlinePlayers` | Blue, around the distant players |
-| `outlineImpostors` | Magenta, around the impostors |
-| `outlineLeftOut` | A cross a few pixels wide where a distant mob is not drawn at all, in the colour of why: where it is, not what it is |
+| Switch | In game | Outline |
+|---|---|---|
+| `outlineGameMobs` | Real (game) | White, around the mobs and players the game draws |
+| `outlineLiveMobs` | Real (mod) | Cyan, around the real mobs the mod draws |
+| `outlineCopies` | 3D Copies | Green, around the 3D copies |
+| `outlinePlayers` | Players | Blue, around the distant players |
+| `outlineImpostors` | Impostors | Magenta, around the impostors |
+| `outlineLeftOut` | Not Drawn | A cross a few pixels wide where a distant mob is not drawn at all, in the colour of why: where it is, not what it is |
 
 Outlines need 1.21.9 (impostor outlines: 1.21.9 to 26.1); crosses need 1.21.11.
 
@@ -726,7 +726,9 @@ Living Horizon Settings*.
 ## Settings reference
 
 Every setting is in `config/livinghorizon.json` (`FarConfig`). The file is read at start and
-written back with every setting in it, including the ones a newer version adds.
+written back with every setting in it, including the ones a newer version adds. Its
+`version` field is the file's layout, not a setting: an older file is brought up to date on
+load.
 
 In game, the settings are in the mod's screen: the *Living Horizon...* button of the Options
 screen, Mod Menu, the settings key, or `/livinghorizon config`. From Sodium 0.8 they are on
@@ -774,7 +776,7 @@ the mod, they come back at their last position.
 | Setting | In game | Default | Range | What it does |
 |---|---|---|---|---|
 | `distantMobs` | Show Mobs | `true` | | Remembered mobs stay visible far away |
-| `maxDistantMobs` | Max Mobs | `512` | 0 to 1000 | How many are drawn at once, nearest first (`1000`: no limit). No limit here and in `mobMaxDistance` together can crash the game |
+| `maxDistantMobs` | Max Mobs | `512` | 0 to 1000 | How many are drawn at once, nearest first (`0`: none, `1000`: no limit). No limit here and in `mobMaxDistance` together can crash the game |
 | `mobMaxDistance` | Mob Render Distance | `512` blocks | 0 to 4000 | Past this, distant mobs are not drawn (`0`: no limit) |
 | `rememberNamedMobs` | Name-Tagged Mobs | `true` | | A mob with a name tag is shown whatever its type |
 | `animationMinPixels` | Min. Animated Size | `10` pixels | 0 to 40 | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
@@ -814,11 +816,11 @@ come back by themselves. *Scan Nearby Mobs* runs a scan.
 
 #### Display
 
-| Setting | In game | Default | What it does |
-|---|---|---|---|
-| `extendFarPlane` | Extended View Range | `true` | Push the far clipping plane out to the farthest player, so terrain can hide them |
-| `minApparentPixels` | Minimum Size | `0` pixels (0 to 32) | Above 0, a far player is never drawn smaller than this, and stops shrinking |
-| `renderTrackedVehiclesFar` | Keep Ridden Vehicles | `true` | Never cull a mount that carries another player |
+| Setting | In game | Default | Range | What it does |
+|---|---|---|---|---|
+| `extendFarPlane` | Extended View Range | `true` | | Push the far clipping plane out to the farthest player, so terrain can hide them |
+| `minApparentPixels` | Minimum Size | `0` pixels | 0 to 32 | Above 0, a far player is never drawn smaller than this, and stops shrinking (`0`: off) |
+| `renderTrackedVehiclesFar` | Keep Ridden Vehicles | `true` | | Never cull a mount that carries another player |
 
 #### Optimizations
 
@@ -840,5 +842,11 @@ Every one is on by default except `optFreezeHidden`. Switch one off to see what 
 | `optStillTiny` | Still Tiny Mobs | Mobs under `animationMinPixels` play no walking or idle animation |
 | `optFreezeHidden` | Freeze Undrawn Mobs | A copy not drawn for half a second is not ticked at all |
 
-Older names are still read from the file: `voxyOcclusion` (now `depthOcclusion`),
-`optLazyVoxyDepth`, `optParallelVoxy` and `optHiZ`.
+Older names are still read from the file:
+
+| Old name | Now |
+|---|---|
+| `voxyOcclusion` | `depthOcclusion` |
+| `optLazyVoxyDepth` | `optLazyDepth` |
+| `optParallelVoxy` | `optParallelRead` |
+| `optHiZ` | `optOcclusionQueries` |
