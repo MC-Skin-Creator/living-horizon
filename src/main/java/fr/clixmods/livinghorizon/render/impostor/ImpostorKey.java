@@ -1,7 +1,10 @@
 package fr.clixmods.livinghorizon.render.impostor;
 
+import fr.clixmods.livinghorizon.track.Puppets;
 import fr.clixmods.livinghorizon.track.RestingPuppet;
 import net.minecraft.ChatFormatting;
+//? if >=1.21.9
+import net.minecraft.client.entity.ClientAvatarEntity;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -119,6 +122,7 @@ public record ImpostorKey(String type, long appearance) {
      * hardly ever change; and its posture, which changes often, every time.
      */
     public static ImpostorKey of(Entity entity) {
+        Puppets.skin(entity);
         ImpostorKey key = look(entity);
         int posture = posture(entity);
         if (posture == STANDING) return key;
@@ -285,13 +289,16 @@ public record ImpostorKey(String type, long appearance) {
         String type = type(entity);
         Map<Integer, Long> restless = RESTLESS.getOrDefault(type, Map.of());
         long hash = 17;
-        if (entity instanceof AbstractClientPlayer player) {
-            // A skin was its texture alone before 1.20.2.
-            //? if >=1.20.2 {
-            hash = hash * 31 + player.getSkin().hashCode();
-            //?} else
-            /*hash = hash * 31 + player.getSkinTextureLocation().hashCode();*/
-        }
+        // A player's skin, and from 1.21.9 a mannequin's: it comes from its profile, looked up
+        // after the figure is made, and none of its synched values change when it arrives. A
+        // mannequin's sheet is kept on disk, so its skin is hashed the same in every game. A
+        // skin was its texture alone before 1.20.2.
+        //? if >=1.21.9 {
+        if (entity instanceof ClientAvatarEntity avatar) hash = hash * 31 + stable(avatar.getSkin());
+        //?} elif >=1.20.2 {
+        /*if (entity instanceof AbstractClientPlayer player) hash = hash * 31 + player.getSkin().hashCode();
+        *///?} else
+        /*if (entity instanceof AbstractClientPlayer player) hash = hash * 31 + player.getSkinTextureLocation().hashCode();*/
         // In the order of the ids: the same values always give the same key.
         for (int id : values.keySet().stream().sorted().toList()) {
             Object data = values.get(id);

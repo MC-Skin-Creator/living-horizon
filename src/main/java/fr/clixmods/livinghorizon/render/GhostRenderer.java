@@ -16,6 +16,7 @@ import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
 import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobMemory;
+import fr.clixmods.livinghorizon.track.Puppets;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
 import fr.clixmods.livinghorizon.track.RestingPuppet;
 import fr.clixmods.livinghorizon.track.SharedPositions;
@@ -222,6 +223,7 @@ public final class GhostRenderer {
      */
     public static @Nullable EntityRenderState extract(EntityRenderDispatcher dispatcher, Entity entity, float partialTick) {
         if (!drawable(dispatcher, entity)) return null;
+        Puppets.skin(entity);
         try {
             //? if >=1.21.9 {
             return dispatcher.extractEntity(entity, partialTick);
