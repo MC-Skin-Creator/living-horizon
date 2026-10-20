@@ -64,16 +64,21 @@ the result (before and after, model and impostor) with `SendUserFile`.
 ## Measure what the mod costs
 
 `LH_NODE=1.21.11 run.sh perf` builds a scene far from the player (about 500 remembered
-mobs, 40 test players who logged off, birds), turns the camera once round per phase and
-prints a table: the frame time (average, maximum, cost against the mod off), the mod's
-own tick and extraction times, and what the render thread allocates per frame. The
-phases are the mod off, the defaults, each `opt*` switch flipped in turn, impostors off,
-then the mod off again; the gap between the two "mod off" rows is the noise. Run it on
-the same machine before and after a change and compare. The frame time here is the whole
-game's, server tick included, and moves by a millisecond or two between runs: the mod's
-own columns are the precise ones. llvmpipe draws on the CPU: the frame times say nothing
-of a graphics card, and Voxy's and Distant Horizons' parts are not covered. It takes
-about 6 minutes.
+mobs, 40 test players who logged off, birds), turns the camera once round per measure and
+prints two parts in words:
+
+- **What the mod costs:** the frame time without the mod and with its defaults, the mod's
+  own code per frame (average and worst), and the memory it allocates per frame.
+- **What each setting does:** every `opt*` switch and *Simplified Entities*, changed alone
+  and compared with the defaults measured just before and after it, so a slow drift of the
+  game cancels out. `+` is slower once changed. The verdict reads the frame time when it
+  moved more than the noise, else the mod's own code, else says "no difference".
+
+The noise is how much the defaults, measured again before each setting, differ from one
+another. Run it on the same machine before and after a change and compare the two
+reports. llvmpipe draws on the CPU: the frame times say nothing of a graphics card, and
+the settings marked `*` (Voxy's and Distant Horizons' terrain) cannot change anything
+here. It takes about 8 minutes.
 
 ## Write a scenario
 
