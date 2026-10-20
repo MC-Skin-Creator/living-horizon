@@ -17,7 +17,7 @@ public final class ProfileLines {
     private static final double SLOW_NANOS = 2_000_000, VERY_SLOW_NANOS = 8_000_000;
 
     /** A line and how bad its worst time is: 0 fine, 1 slow, 2 very slow. */
-    public record Line(String text, int severity) {
+    public record Line(String content, int severity) {
     }
 
     private ProfileLines() {

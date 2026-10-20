@@ -409,7 +409,7 @@ public final class LivingHorizonCommand {
                 Stats.drawn(), Stats.skipped()));
         // The numbers of each section; the GPU's time is measured from now on, and shows the next time.
         source.feedback(Component.translatable("livinghorizon.debug.hud.profile"));
-        for (ProfileLines.Line line : ProfileLines.lines()) source.feedback(Component.literal(line.text()));
+        for (ProfileLines.Line line : ProfileLines.lines()) source.feedback(Component.literal(line.content()));
         Collection<FarPlayer> players = FarPlayerTracker.get().players();
         if (players.isEmpty()) {
             source.feedback(Component.translatable("livinghorizon.status.none"));

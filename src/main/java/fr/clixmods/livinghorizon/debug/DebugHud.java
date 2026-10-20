@@ -68,7 +68,7 @@ public final class DebugHud {
         List<Line> lines = new ArrayList<>();
         lines.add(new Line(I18n.get("livinghorizon.debug.hud.profile"), WHITE));
         for (ProfileLines.Line line : ProfileLines.lines()) {
-            lines.add(new Line(line.text(), line.severity() == 2 ? OFF : line.severity() == 1 ? SLOW : GREY));
+            lines.add(new Line(line.content(), line.severity() == 2 ? OFF : line.severity() == 1 ? SLOW : GREY));
         }
         return lines;
     }
