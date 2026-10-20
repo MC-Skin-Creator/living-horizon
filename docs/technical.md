@@ -291,7 +291,9 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
   vanilla kinds.
 - **Mannequins** (from 1.21.9) are shown too, standing still: Distant Friends uses them as its fake
   players. Mobs in `stillMobTypes` (happy ghast, mannequin) stand still instead of walking
-  their loop.
+  their loop. A copy wears its mannequin's skin, from a player's name or a texture of a
+  resource pack: the game looks it up when the copy is loaded, and `Puppets.skin` hands it
+  over, since the game only does it in a tick a copy never runs.
 
 ### Scanning nearby mobs
 

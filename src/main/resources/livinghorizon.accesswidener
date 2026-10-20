@@ -12,6 +12,11 @@ accessible field net/minecraft/world/entity/Avatar DATA_PLAYER_MODE_CUSTOMISATIO
 # @until 1.21.8
 accessible field net/minecraft/world/entity/player/Player DATA_PLAYER_MODE_CUSTOMISATION Lnet/minecraft/network/syncher/EntityDataAccessor;
 
+# A mannequin takes the skin its profile was looked up to in tick(), which a puppet never runs.
+# @since 1.21.9
+accessible field net/minecraft/client/entity/ClientMannequin skinLookup Ljava/util/concurrent/CompletableFuture;
+accessible method net/minecraft/client/entity/ClientMannequin setSkin (Lnet/minecraft/world/entity/player/PlayerSkin;)V
+
 # Before 1.21.2, with no render states: a figure is told it swims, stands still or walks
 # while it is drawn, and the faces of each cube of a model are counted as it is drawn.
 # @until 1.21.1

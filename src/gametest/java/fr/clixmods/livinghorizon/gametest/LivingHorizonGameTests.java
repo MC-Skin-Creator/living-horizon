@@ -15,6 +15,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.ImpostorScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorSharingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LanShareScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.MannequinsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
@@ -57,6 +58,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new ImpostorScreenScenario(),
             new LightingScenario(),
             new RememberedMobsScenario(),
+            new MannequinsScenario(),
             new OutlinesScenario(),
             new RestingScenario(),
             new RestingMountScenario(),

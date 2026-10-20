@@ -411,6 +411,11 @@ come back, add it here in the same pull request: this file is what the next sess
   `PlayerInfo` by id once and keeps it. A new tab list entry means a new skin, so
   `FarPlayer.observeRemote` makes a new puppet when the entry changes (`newSkin`). The server's
   word on a player who logged off (`PositionsMessage.Look`) replaces the skin a spot kept.
+- **Distant mannequins in the default skin** (Alex far away, their own skin up close; from
+  1.21.9): a `ClientMannequin` looks its profile's skin up as it is loaded, but only takes it
+  in `tick()`, which a puppet never runs. `Puppets.skin` hands it over, called wherever a copy
+  is drawn or keyed (`GhostRenderer.extract`, `ImpostorKey.of`), and the impostor key counts
+  the skin of any `ClientAvatarEntity`. The `mannequins` scenario checks it.
 - **A rider turned sideways** (a player resting in a boat facing left or right of it): the seat's
   yaw is the rider's body (`yBodyRot`), which the boat keeps in line with itself, never the head
   (`getYRot`), which looks wherever the player looked as they left.
