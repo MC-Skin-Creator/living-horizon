@@ -81,14 +81,12 @@ server too:
 The settings are on the Options screen, in Mod Menu, in Sodium's *Video Settings*
 (Sodium 0.8 and later) or with `/livinghorizon config`.
 
-## Commands
+## Useful commands
 
 | Command | What it does |
 |---|---|
-| `/livinghorizon` | Lists the players followed and says whether the server shares positions |
 | `/livinghorizon config` | Opens the settings |
 | `/livinghorizon scan` | Scans the mobs around you again, if ever needed (single player; done on its own the first time you open a world) |
-| `/livinghorizon bird <kind>` | Calls a group of birds: `geese`, `gulls`, `ducks`, `raptors`... |
 
 ## Requirements
 
