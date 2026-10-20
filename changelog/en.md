@@ -3,17 +3,18 @@
 ## Unreleased
 
 ### New
-- **The mod on a server** — put the jar of the server's loader in its `mods` folder, on a Fabric, Quilt, NeoForge or Forge server (with the Fabric API on Fabric and Quilt, nothing else on NeoForge and Forge), and every player who has the mod sees the other players at any distance.
-- **LAN and single player worlds** — a world opened to LAN shares everything by itself through the host's game, and players who logged off in your own world show as soon as you open it.
-- **What the server shares** — where every player is, their skin, armour, what they hold and what they ride, and the mobs around you with their saddle, harness or armour.
-- **Players who logged off** — the server keeps where each player logged off, how they looked, the mount they rode and when they left, so everyone sees them, even players who joined later.
-- **Players from before the mod** — on a server or in a world that had players before the mod was added, those not online show at once as offline players where they logged off, in what they wore.
-- **Everything as you join** — distant mobs and players who logged off show as soon as you join a server with the mod, not a few seconds later.
-- **Without the mod** — players without the mod can still join a server with the mod, and a server without the mod shows no distant players: the console says so once.
-- **No more data pack** — the data pack is gone: a server that used it now needs the mod instead.
+- **Mod on a server** — put the jar in the server's `mods` folder. Every player who has the mod sees the other players at any distance. Fabric and Quilt servers also need the Fabric API. Nothing else to set up.
+- **LAN worlds** — a world opened to LAN shares everything by itself. Nothing to install.
+- **Mobs with their gear** — the server shares the mobs around you with their saddle, harness or armour.
+- **Players who logged off, for everyone** — the server keeps where each player logged off, how they looked, their mount and when they left. Everyone sees them, even players who joined later.
+- **Players who logged off in single player** — they show as soon as you open your world.
+- **Players from before the mod** — players the world already had before the mod was added show where they logged off, in what they wore.
+- **Instant on join** — distant mobs and players who logged off show as soon as you join, not a few seconds later.
+- **Without the mod** — players without the mod can still join a server that has it. A server without the mod shows no distant players, and the console says so once.
+- **No more data pack** — a server that used it needs the mod instead.
 
 ### Improved
-- **Distant players** — they are placed from what the server shares alone: the locator bar guess is gone, and so is the *Lost Player Time* setting.
+- **Distant players' positions** — they come from what the server shares only. The locator bar guess is gone, and so is the *Lost Player Time* setting.
 
 ### Fixed
 - **Players on a happy ghast** — a far player riding a happy ghast no longer has a second ghast beside them, and one already riding when you join no longer floats in the air.

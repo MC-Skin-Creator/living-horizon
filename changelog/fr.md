@@ -3,17 +3,18 @@
 ## Prochaine version
 
 ### Nouveautés
-- **Le mod sur un serveur** — mets le jar du loader du serveur dans son dossier `mods`, sur un serveur Fabric, Quilt, NeoForge ou Forge (avec la Fabric API sur Fabric et Quilt, rien d'autre sur NeoForge et Forge), et chaque joueur qui a le mod voit les autres joueurs à n'importe quelle distance.
-- **Mondes LAN et solo** — un monde ouvert au LAN partage tout de lui-même par le jeu de l'hôte, et les joueurs partis de ton propre monde apparaissent dès que tu l'ouvres.
-- **Ce que partage le serveur** — la position de chaque joueur, son skin, son armure, ce qu'il tient et ce qu'il monte, et les mobs autour de toi avec leur selle, leur harnais ou leur armure.
-- **Joueurs déconnectés** — le serveur garde l'endroit où chaque joueur s'est déconnecté, son apparence, sa monture et l'heure de son départ, pour que tout le monde le voie, même ceux arrivés après.
-- **Joueurs d'avant le mod** — sur un serveur ou dans un monde qui avait des joueurs avant l'ajout du mod, ceux qui ne sont pas connectés apparaissent tout de suite en joueurs déconnectés, là où ils sont partis, avec ce qu'ils portaient.
-- **Tout dès l'arrivée** — les mobs lointains et les joueurs déconnectés apparaissent dès que tu rejoins un serveur avec le mod, et non quelques secondes plus tard.
-- **Sans le mod** — les joueurs sans le mod peuvent toujours rejoindre un serveur avec le mod, et un serveur sans le mod n'affiche aucun joueur lointain : la console le signale une fois.
-- **Fini le datapack** — le datapack disparaît : un serveur qui l'utilisait a maintenant besoin du mod à la place.
+- **Le mod sur un serveur** — mets le jar dans le dossier `mods` du serveur. Chaque joueur qui a le mod voit les autres joueurs à n'importe quelle distance. Un serveur Fabric ou Quilt a aussi besoin de la Fabric API. Rien d'autre à configurer.
+- **Mondes LAN** — un monde ouvert au LAN partage tout tout seul. Rien à installer.
+- **Mobs avec leur équipement** — le serveur partage les mobs autour de toi avec leur selle, leur harnais ou leur armure.
+- **Joueurs déconnectés, pour tout le monde** — le serveur garde l'endroit où chaque joueur s'est déconnecté, son apparence, sa monture et l'heure de son départ. Tout le monde le voit, même ceux arrivés après.
+- **Joueurs déconnectés en solo** — ils apparaissent dès que tu ouvres ton monde.
+- **Joueurs d'avant le mod** — les joueurs que le monde avait déjà avant l'ajout du mod apparaissent là où ils sont partis, avec ce qu'ils portaient.
+- **Tout dès l'arrivée** — les mobs lointains et les joueurs déconnectés apparaissent dès que tu rejoins, et non quelques secondes plus tard.
+- **Sans le mod** — les joueurs sans le mod peuvent toujours rejoindre un serveur qui l'a. Un serveur sans le mod n'affiche aucun joueur lointain, et la console le signale une fois.
+- **Fini le datapack** — un serveur qui l'utilisait a maintenant besoin du mod.
 
 ### Améliorations
-- **Joueurs lointains** — ils sont placés d'après ce que partage le serveur uniquement : l'estimation par la barre de localisation disparaît, et le réglage *Délai joueur perdu* avec.
+- **Position des joueurs lointains** — elle vient uniquement de ce que partage le serveur. L'estimation par la barre de localisation disparaît, et le réglage *Délai joueur perdu* avec.
 
 ### Corrections
 - **Joueurs sur un ghast joyeux** — un joueur lointain qui chevauche un ghast joyeux n'a plus de second ghast à côté de lui, et celui qui le chevauchait déjà quand tu arrives ne flotte plus dans le vide.

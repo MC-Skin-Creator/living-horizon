@@ -439,9 +439,12 @@ The release dates the section, opens a new empty one, and posts the entries on M
 (Changelog tab), CurseForge (file page) and Discord. Players read them, so write for
 someone who has never seen the code:
 
-- write like Minecraft's own release notes: one short sentence per bullet, a bold subject
-  first that names what the player sees (the feature, or the bug as it looked), never a
-  version or a mod alone; where it applies goes in brackets at the end:
+- be clear and blunt, like the README: short, direct sentences that say what the feature
+  does and what the player has to do (put the jar there, flip this setting). A release with
+  many new features has many bullets: **one bullet per feature**, never several features
+  folded into one long sentence, and a vague bullet is worse than a long list;
+- a bold subject first that names what the player sees (the feature, or the bug as it
+  looked), never a version or a mod alone; where it applies goes in brackets at the end:
   `**Distant mobs showing through hills** — distant mobs no longer show through Voxy's
   hills (Minecraft 26.1).`
 - a fix says what was wrong and that it is gone ("no longer…"), never only the new
