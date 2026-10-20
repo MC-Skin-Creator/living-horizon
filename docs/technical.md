@@ -73,10 +73,11 @@ client class.
 - **Drawn where they really are, at their true size**, so terrain in front of them hides
   them. Voxy writes its terrain into the game's depth buffer and removes the distance fog;
   for Distant Horizons and shader packs, see [Far terrain depth](#far-terrain-depth).
-- **The far clipping plane** (four times the render distance) is pushed out to the farthest
-  player when needed (`extendFarPlane`). With it off, a player past the plane is drawn closer
-  along the same line of sight and smaller by the same ratio: the same picture, but in front
-  of the terrain between.
+- **The far clipping plane** (four times the render distance) is pushed out past the farthest
+  figure drawn the frame before, players, mobs and birds alike (`extendFarPlane`): a tenth
+  farther and 64 blocks more, up to 65536 blocks. A figure still near or past the plane (95%
+  of it) is drawn closer along the same line of sight and smaller by the same ratio: the same
+  picture, but in front of the terrain between.
 - **Mounts.** A player is drawn on the mob they ride (`FarPlayer.mountPuppet`), and the
   remembered mobs leave that mob out (`MobMemory.carried`), so it is never drawn twice.
 
@@ -84,26 +85,28 @@ What breaks it:
 
 - No shared positions (no mod on the server or the LAN host): no copy at all.
 - Another dimension: the copy is hidden until they are back in yours.
-- A player who was **never** close to you is drawn standing, with their skin, and without a
-  mount until the server has shared the mob they ride.
+- A player who was **never** close to you is drawn with the skin and gear the server shares,
+  standing until the server's copy of their mount arrives (every five seconds).
 
 ## Sharing positions from the server
 
 A server with the mod tells the clients that have the mod where everyone is
 (`track/PositionPublisher`). It uses the mod's own network channel,
 `livinghorizon:positions` (`platform/Network`, on the loader's networking: Fabric's payloads,
-NeoForge's, Forge's channels). Nothing goes through the scoreboard or any other part of the
+a named channel before 1.20.5; NeoForge's; Forge's channels, its `NetworkRegistry` before
+1.20.2). Nothing goes through the scoreboard or any other part of the
 world, and a player without the mod is sent nothing.
 
 ### What is sent, and when
 
 - **Five times a second**, to every player online: each player's position, yaw, dimension
-  and the mob they ride, so that a far player is drawn on their own mount.
+  and which mob they ride (a vehicle not in `track/MobKinds.TYPES` only as "riding"), so that
+  a far player is drawn on their own mount.
 - **Every five seconds**, to every player online:
-  - how the 64 players nearest them look (skin, armour and what they hold, read every
-    second) and what they ride, as the server saves it;
-  - the players who logged off: where they were last, how they looked, the mount they took
-    away with them, and when they left;
+  - how the 64 players nearest them look, online or logged off (skin, armour and what they
+    hold, read every second), and what they ride, as the server saves it;
+  - the players who logged off: where they were last and when they left, with how they
+    looked and the mount they took away for those among the 64;
   - the remembered mobs within 2048 blocks of them, with what they wear (saddle, harness,
     armour, carpet, chest; see [Distant mobs](#distant-mobs)).
 - **At once, to a player who joins**: all of it, without waiting for the next five seconds.
@@ -130,10 +133,12 @@ its world folder, so that a player who joins later sees them too.
 - It is saved every minute and when the server stops.
 - Players still online when the server stops are kept as they were, as if they logged off
   then.
-- A mob is forgotten when its chunk is loaded and it is not there any more.
-- The first time it shares, the server also reads the players the world saved before the mod
-  was installed (`track/WorldPlayers`: positions and gear from `playerdata`, names from
-  `usercache.json`), so they show as logged off at once.
+- A mob is forgotten when its chunk is loaded and it is not there any more, and the oldest
+  go past 4000 mobs.
+- Each time the server starts, its first share also adds the players the world saved that
+  the file does not have yet (`track/WorldPlayers`: the 1000 most recent in `playerdata`,
+  with their position and gear, named from `usercache.json`, last seen when their file was
+  written, no skin), so players from before the mod show as logged off at once.
 - Test players placed by the host with `/livinghorizon debug offline test` are shared too,
   marked as tests: the other clients show them while the host keeps them, and nobody saves
   them.
@@ -149,29 +154,31 @@ on this client: nothing is sent to the server, they block nobody, and nothing ca
   (`track/RestingPlayers`).
 - On a server with the mod, even players who logged off before you joined are there: the
   server keeps everyone's last position, skin and gear. Without the server's word, their skin
-  is fetched from Mojang by name.
+  is fetched from Mojang by name (from 1.21.9; before, the default skin).
 - When the world or the server closes, or you leave it, everyone you saw stays where they
   were last, as they looked, on what they rode: as far as this client knows, they logged off
   then.
-- `offlinePlayers` off turns all of it off: nobody is shown, remembered or written to the
-  file.
+- `offlinePlayers` off turns all of it off: nobody is shown or remembered.
 
 ### Their life, near the camera
 
 With `offlineLife` on (the default), they live around their spot (`track/RestingPuppet`),
 within `offlineRoam` blocks of it (50, about a village; up to 128). This runs only near the
-camera and where the blocks around are loaded: it stops past 64 blocks and starts again under
-48.
+camera and where the chunk they stand in is loaded: it stops past 64 blocks and starts again
+under 48.
 
 - **By day** they stand and look around, sit down, stroll, or stand in front of a chest, a
   crafting table or a villager's workstation and look at it.
 - **At night** they walk to a free bed they can reach and sleep in it, or lie down where
-  they are. In the morning they get up.
+  they are. In the morning they get up. Night is whenever the sky is dark: a thunderstorm
+  too, and always in the Nether and the End.
 - **Walking** (`track/Walkway`) only where a player could: one block up, two down, no corner
   cut, nothing walked through but doors and fence gates, which they cannot open. It is worked
   out on the client from the blocks it has. The area around is read a little every tick (600
-  spots per tick for all of them together), and again every 30 seconds or when they find
-  themselves off it. Each way is searched towards where they go.
+  spots per tick for all of them and their mounts together, 250 at most for one), and again
+  every 30 seconds or when they find themselves off it. Each way is searched towards where
+  they go. Looking for beds and chests, dodging and walking back after a blast have budgets
+  of their own.
 - **Monsters** within 10 blocks and in plain sight put them on guard: an iron sword drawn,
   the shield up, eyes on the nearest, a step away when it comes closer than 3.5 blocks. They
   never fight. Safe indoors, behind walls, shut doors or windows, they ignore them.
@@ -186,10 +193,11 @@ Where the blocks are not loaded, they only stand, sit or sleep where they are. W
 
 ### Far from the camera
 
-Past 64 blocks they have no life of their own (`track/RestingLoop`): nothing is read or
-decided. They play one of the animations distant mobs play (`track/MobAnimations`) in a loop
-around their spot, on the ground read around it once (`track/MobPaths`), sitting in some of
-its pauses and lying down where they are at night.
+Past 64 blocks they have no life of their own (`track/RestingLoop`): nothing is decided,
+but once a second they are still kept out of water (below). They play one of the animations
+distant mobs play (`track/MobAnimations`) in a loop around their spot, on the ground read
+around it (`track/MobPaths`, read again every 30 seconds while some of it is missing),
+sitting in some of its pauses and lying down at night, in their bed if they are in one.
 
 - From wherever their life left them, they stroll back to the loop, stopping now and then to
   look around, and start it once there.
@@ -201,11 +209,11 @@ Whether they live or sit, they keep to the ground:
 
 - Break the pile they sit on and they fall to the floor below; bury them and they reappear
   on top.
-- Sitting, their own spot wins again once it has room and something under it, since that is
-  where they will come back.
+- Sitting with `offlineLife` off, their own spot wins again once it has room and something
+  under it, since that is where they will come back.
 - With nothing below down to the bottom of the world, they stay where they are.
 
-They are never left standing in water, `offlineLife` on or off:
+They are kept out of the water, `offlineLife` on or off:
 
 - Someone who logged off swimming or wading rests on the nearest place to stand within 10
   blocks of their spot (a bank or a beach, from the water's surface up to three blocks above
@@ -214,6 +222,8 @@ They are never left standing in water, `offlineLife` on or off:
 - With no shore that near, they get an oak boat on the surface, which carries them as a
   mount does (below), whether `showVehicles` is on or not. Once its water is gone, they are
   back on foot.
+- One thrown into the water while their own spot is dry, with no shore within 10 blocks,
+  stays in it.
 
 ### Mounts
 
@@ -224,7 +234,8 @@ A player who logs off riding something keeps it when `showVehicles` is on
   saw it (coat, saddle, armour) with their spot, and draws it under them, never as a
   remembered mob of its own.
 - A server with the mod keeps its own copy with their last position and shares it, so a
-  player who never saw them log off sees them riding too.
+  player who never saw them log off sees them riding too, when they are among that player's
+  64 nearest (see [What is sent](#what-is-sent-and-when)).
 - Players who shared their mount with another player rest on foot: the server leaves the
   mount to the other one.
 
@@ -233,11 +244,13 @@ then rests a while and goes again:
 
 | Mount | Near the camera | Away from the camera |
 |---|---|---|
-| Horse (any mount that walks) | Only where it has room for itself and its rider, worked out like a walk on foot | A loop on the ground read around the spot |
+| Horse (any mount that walks) | Only where it has room for itself and its rider (0.9 blocks wide at most), worked out like a walk on foot | A loop on the ground read around the spot |
 | Boat | On the water it floats on; stays put on land | A loop on the water |
 | Happy ghast | Straight lines through open air, at most 24 blocks from its spot and 4 up or down | A loop in the air, at its height |
 
-Anything else (a minecart, another mod's mount) stays where it was. In the saddle they look
+Another mod's mount goes by what it is: a living one walks like a horse, or flies like the
+happy ghast without gravity; a water creature stays put. Anything neither alive nor a boat (a
+minecart) stays where it was. In the saddle they look
 around and raise their shield when hit; no bed, no chest, no sword. With `offlineLife` off,
 rider and mount wait on the spot.
 
@@ -247,7 +260,8 @@ rider and mount wait on the spot.
   blocks).
 - Aiming at one from right next to it (3 blocks) shows under the crosshair when they were
   last seen, in the game's language (`ui/OfflineHud`). A player known only from the server
-  shows as offline without a date.
+  shows the time the server saw them leave; *offline* without a date only comes from a file
+  an older version saved.
 - That time is kept in the file with their spot (`lastSeen`, milliseconds since 1970).
 - `offlineNames` turns both off.
 
@@ -261,9 +275,10 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
 
 ### Where the mobs come from
 
-- **On a server with the mod**, the server shares the remembered mobs loaded around any
-  player, every five seconds: position, kind, variant (horse coat, sheep colour, llama,
-  rabbit, axolotl, parrot) and age, by the mob's UUID. Whoever was last near a mob leaves its
+- **On a server with the mod**, the server shares the remembered mobs loaded anywhere with
+  every player within 2048 blocks of them, every five seconds: position, kind, variant (horse
+  coat, sheep colour, llama, rabbit, axolotl, parrot), age and what they wear, by the mob's
+  UUID. Whoever was last near a mob leaves its
   position for everyone, and a mob gone from its loaded chunk disappears for everyone. The
   server shares the 31 mobs and the boats of `track/MobKinds.TYPES`, numbered in that order.
 - **Otherwise**, each client remembers the mobs it met itself (the types in `mobTypes`), in
@@ -274,7 +289,7 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
 - **Other mods' mobs** are shown from the start (monsters excepted), then left as the player
   sets them (`knownModdedMobs`). Each client remembers them itself: the server only shares
   vanilla kinds.
-- **Mannequins** are shown too, standing still: Distant Friends uses them as its fake
+- **Mannequins** (from 1.21.9) are shown too, standing still: Distant Friends uses them as its fake
   players. Mobs in `stillMobTypes` (happy ghast, mannequin) stand still instead of walking
   their loop.
 
@@ -305,8 +320,12 @@ off, then run or jump to it once it was sent again.
 
 ### Ground and animation
 
-When a mob is remembered, the blocks within 8 blocks of it are read once (`track/MobPaths`),
-from loaded chunks or from the far world (Voxy or Distant Horizons).
+Once its copy is drawn, the blocks within 8 blocks of a mob (a square of 17 by 17 columns,
+`track/MobPaths`) are read, a few mobs per tick, from loaded chunks or from the far world
+(Voxy or Distant Horizons). They are read again when the mob moves, and later and later while
+columns are missing; a ground read whole is saved with the mob and used at once next time.
+Mobs that stand still and mobs the server moves read nothing, and flyers and swimmers get a
+flat disc at their own height.
 
 - **The ground**: in each column, the floor nearest the mob's height with room above it.
   Grass, flowers, crops and snow layers count as air; a path dug with a shovel counts as
@@ -314,10 +333,11 @@ from loaded chunks or from the far world (Voxy or Distant Horizons).
   column, Distant Horizons only its top one.
 - **Choosing an animation**: every animation is laid on that ground, turned eight ways and
   mirrored. It fits when it never leaves the ground and never climbs or drops more than a
-  block at a time: never off a cliff, never over a fence. One of the widest that fit is
-  played; with none, the mob turns on the spot.
+  block at a time: never off a cliff, never over a fence. Those at least 0.6 times as wide as
+  the widest that fits are kept and the mob's UUID picks one; with none, the mob turns on the
+  spot.
 - **Playing it**: nothing is computed but a point of the animation (`track/MobMotion`). Head
-  glances come at their own pace; animals graze in the pauses the animation has.
+  glances come at their own pace; animals graze in the pauses the animation marks for it.
 - **Gaits** (`track/MobGait`): each kind covers the way as its real one does. Most walk.
   Slimes, magma cubes and rabbits hop: still on the ground between two hops and along an arc
   in the air, a slime stretching as it leaves the ground and squashing as it lands, a
@@ -336,22 +356,30 @@ from loaded chunks or from the far world (Voxy or Distant Horizons).
   The simulation distance does not shrink that zone. With the debug boxes on, it shows as
   "too close for a copy".
 - **Coming back.** Coming up to the distance where the server starts sending a mob
-  (`MobMotion.home`), its copy stops playing and walks back to where it was last seen. When
-  the server sends the real mob, the copy walks the rest of the way up to it (faster the
-  farther it is) while the real one is kept out of the frame. The real one takes over once
-  both stand in the same place. This is the one time a copy is drawn in the near zone.
+  (`MobMotion.home`), its copy is drawn back from its animation to where it was last seen:
+  the pull starts 48 blocks before that distance and is whole 8 blocks before it. When the
+  server sends the real mob, the copy walks the rest of the way up to it (faster the farther
+  it is) while the real one is kept out of the frame. The real one takes over once both stand
+  in the same place, or after 6 seconds. This is the one time a copy is drawn in the near
+  zone. A copy not drawn, not a living mob, riding or ridden, or more than 48 blocks from the
+  real one is forgotten instead, and the real mob shows at once.
 - **No gap.** A mob the server still sends but the game does not draw (past the *Entity
   Distance* slider, or in a part of the world it does not draw) is drawn by the mod. The
-  moment the server stops sending it, its copy takes its place, on the next tick.
-- **Sending distance.** How far the server sends each kind of mob is learnt from what it
-  sends (vanilla: up to the view distance; Paper: 48 blocks for animals). A copy is only
-  judged missing well inside that distance, never just because its chunk is loaded.
+  moment the server stops sending it, its copy takes its place, in the same frame (on the next
+  ticks only when a crowd goes at once).
+- **Sending distance.** In single player it is the server's own, scaled by the *Entity
+  Distance* slider. On another server, how far it sends each category of mob is learnt from
+  what it sends, up to the game's tracking range for the type (vanilla: up to the view
+  distance; Paper: 48 blocks for animals). A copy is only judged missing well inside that
+  distance, never just because its chunk is loaded.
 
 ### How many are drawn and animated
 
-- `maxDistantMobs` of them are drawn at once (512; 1000 is no limit): the nearest. Past
-  `mobMaxDistance` (512 blocks) none are drawn.
-- A mob shorter on screen than `animationMinPixels` (10 pixels; 0 always animates) plays no
+- `maxDistantMobs` of them are drawn at once (512; 1000 is no limit): the nearest remembered
+  ones. Past `mobMaxDistance` (512 blocks) none are drawn. Both that distance and the near zone
+  are applied after the choice, so copies there still take places and fewer may show.
+- A mob smaller on screen than `animationMinPixels` (10 pixels; 0 always animates; its height
+  or width, whichever is larger, and never under `minApparentPixels`) plays no
   walking or idle animation (`optStillTiny`): it keeps sliding along its animation and turning
   every tick, but its legs stay still. It resumes at that size plus a quarter and a pixel, so
   it never flickers. Sizes use the field of view the frame is really projected with
@@ -360,7 +388,7 @@ from loaded chunks or from the far world (Voxy or Distant Horizons).
   (`MobMemory.isStill`).
 - With `optFreezeHidden` (*Debug Options...*, off by default), a copy not drawn for half a
   second (out of view, hidden, too small) is not ticked at all until it is drawn again: no
-  animation, no path read, only a position.
+  animation, no ground read, only moved where the server says it is.
 
 ## Birds
 
@@ -381,10 +409,13 @@ Purely a picture, on this client (`ambient/Ambience`): nothing is spawned and no
 
 ### Behaviour
 
-- Perched birds fly off when you come close and land again a little farther.
+- Robins and tits fly off when you come within 7 blocks and land 12 to 22 blocks farther.
+  Pigeons circle and land back on their perches; gulls on the beach take to the air again.
 - Ducks never let you near: they take off together for farther along the water, or for
   another water known around.
-- Birds that leave never vanish at once: they scatter and shrink away.
+- Birds that leave never vanish at once: they scatter and shrink away. All of them go at
+  once only when the world changes or the birds are switched off. Birds live in the
+  Overworld only.
 
 ### Where they go
 
@@ -392,7 +423,7 @@ Where each kind goes is read off the terrain a few columns at a time: from the c
 here, or farther from the far world (`compat/LodWorld`, which reads Voxy through
 `VoxySource` or Distant Horizons through `DhSource`, its public API). Robins look for crops or
 farmland, tits for leaves, ducks for water, pigeons for a man-made block well above its
-neighbours, gulls for a beach or ocean biome.
+neighbours, gulls for a beach, shore or ocean biome.
 
 ### How they are drawn
 
@@ -453,16 +484,19 @@ keep their whole model at any distance.
   quad back, without changing how it looks on screen, to face it where the light should come
   from.
 - **When.** Every figure on hand (distant players, remembered mobs) is queued about once a
-  second, near or far, and baked a little each frame from the GUI pass (3 ms at most, one
-  sheet at least), so it is ready when the figure crosses the distance. A figure whose sheet
-  is missing is drawn as a model meanwhile.
-- **Resource reload.** A reload throws every sheet away. They are read back from disk when
-  nothing that changes a picture changed, and baked again otherwise.
+  second, near or far, and baked a little each frame (from the GUI pass from 1.21.6; see
+  below), 3 ms of it, checked after each sheet, one sheet at least, so it is ready when the
+  figure crosses the distance. Sheets read back from disk are uploaded all at once. A figure
+  whose sheet is missing is drawn as a model meanwhile.
+- **Resource reload.** A reload throws every sheet away. The mobs' sheets are read back from
+  disk when the fingerprint (see [On disk](#on-disk)) is the same, and baked again otherwise;
+  the others are always baked again.
 
 ### Older game versions
 
-- **From 1.21.6** the views are drawn the way the GUI draws its pictures, through the game's
-  output overrides.
+- **From 1.21.6 to 26.2** the views are drawn the way the GUI draws its pictures, through the
+  game's output overrides. **On 26.3** they are drawn through a render pass on a target of the
+  mod's own.
 - **Before 1.21.6** they are drawn at the start of the frame into a target of the mod's own,
   which `MinecraftMixin` and `LevelRendererTargetMixin` hand the game as its main target and
   its Fabulous item target while a figure is drawn:
@@ -480,18 +514,21 @@ keep their whole model at any distance.
 - **In the key**: the type, the player's skin, the synched data that changes the look
   (variant, colour, profession, baby, pose; not health, air, score or being on fire), and
   what it wears, however worn.
-- **Left out**: what never shows (positions, times, owners, names, sound variants) and,
+- **Left out**: what never shows (positions, times, owners, sound variants, names but the four
+  the game draws differently: Dinnerbone, Grumm, jeb_ and Toast) and,
   learnt per kind of mob, what keeps changing on one (a dolphin drying, a zombie raising its
   arms).
 - **The same in every game**: the key is hashed so that the same figure has the same key in
   every world and every game (variants by name, records by parts).
-- Two looks whose pictures come out the same, pixel for pixel, share one sheet too.
+- Two looks of the same kind whose pictures come out the same (their full-size pixels hash
+  the same) share one sheet too.
 
 ### No blinking
 
 - A figure becomes an impostor past `impostorDistance`, and a model again only 5% inside it.
-- It keeps a picture until it has turned 8 degrees past the next one.
-- When its look changes, it keeps its old picture until the new one is baked.
+- It keeps a picture until it has turned 8 degrees past the edge between it and the next one.
+- When its look changes, a player or a mob keeps its old picture until the new one is baked;
+  a 3D bird is drawn as a model meanwhile.
 
 ### Video memory
 
@@ -501,7 +538,8 @@ keep their whole model at any distance.
 - **Large figures.** A figure larger than its box (a horse's muzzle) is drawn smaller in its
   tile rather than cut off: at a hundred blocks a figure is a dozen pixels tall.
 - **Mobs** keep their sheets, up to `impostorMobMemory` (1 GB) in all, taken only as looks are
-  met (a world of 50 looks takes a few MB). Past that, an unused sheet of the same kind gives
+  met (pages are taken 4 rows at a time and more: 50 looks of one kind take about 10 MB, 50
+  kinds of one look each about 35 MB). Past that, an unused sheet of the same kind gives
   way, or the figure stays a model for 30 seconds.
 - **Players** (riders with what they ride included) have `impostorPlayerMemory` (512 MB) of
   their own, some three thousand sheets, thrown away after a minute unused. They never take
@@ -515,8 +553,9 @@ that a mob met in an earlier game is read back rather than baked.
 
 - The fingerprint is the game version, the resource packs chosen and their files, the jars in
   `mods/` and the sheet format. When one of them changes, the folder is thrown away.
-- At most 4096 sheets, some 35 KB each once compressed (140 MB at most). The ones met longest
-  ago go first.
+- 4096 sheets are kept, some 35 KB each once compressed (about 140 MB), counted when the
+  folder is opened, at the start and after a reload: a game may write more until then. The
+  ones met longest ago go first.
 
 ### Special figures
 
@@ -543,7 +582,8 @@ that a mob met in an earlier game is read back rather than baked.
   no body to turn in its state, so the entity itself is turned for each view and put back
   after the bake. Filed as a player's sheet, never kept on disk.
 - **Never impostors**: a vehicle carrying more than one passenger (drawn as models, all of
-  them), the 2D birds, parrots and bats.
+  them), a mob carrying another that is not a player, the 2D birds, parrots and bats, and the
+  types `GhostRenderer.drawable` leaves out (GeckoLib 4).
 
 ### Preview
 
@@ -558,7 +598,8 @@ Our figures must hide behind the far terrain pixel by pixel, like any mob behind
 That needs the far terrain's depth in the game's depth buffer while the entities are drawn,
 and only then (`depthOcclusion`). `compat/FarDepth` does it, then puts everything back, so
 that the far terrain mod and the shader pack see exactly what they would without Living
-Horizon.
+Horizon (on 26.3 the game's GPU device path works otherwise, see
+[Distant Horizons](#distant-horizons)).
 
 | Setup | Who puts the far terrain into the game's depth |
 |---|---|
@@ -578,9 +619,9 @@ around the call that draws the entities:
 
 The pack still finds the depth it expects.
 
-- **Up to 26.1** the game's call only fills its buffers, and draws what is left in them after
-  it (the last kind of model, items, block sheets): that is drawn before the saved depth
-  comes back.
+- **From 1.21.9 to 26.1** the game's call only fills its buffers, and draws what is left in
+  them after it (the last batch, items and their glint): that is drawn before the saved depth
+  comes back. Before 1.21.9 the mod brackets the entities itself and ends the batch first.
 - **From 26.1** the translucent parts (a slime's outer layer) are drawn in a step of their
   own, just after Iris copies the depth for the pack. Voxy's depth goes back in at the start
   of that step and out at its end.
@@ -598,6 +639,14 @@ entities).
 Without a shader pack, Distant Horizons fades the game's picture into its terrain after the
 entities. `FarDepth.beforeFade` keeps that fade off our figures (`optDhFade`); otherwise it
 paints its terrain over distant mobs.
+
+**On 26.3**, with Vulkan, or with OpenGL over Distant Horizons without a shader pack (unless
+Distant Horizons draws with OpenGL itself, as it does with Iris installed), all of this goes
+through the game's own GPU device (`compat/FarDepthGpu`). Nothing can be copied in the middle
+of the world's pass there, so the merge is a draw in that pass and is not taken back: Distant
+Horizons' depth stays in the game's for the rest of the frame, which its fade treats as sky.
+`FarDepthGpu.beforeFade` keeps the fade off our figures on a copy of the depth, put back
+after.
 
 ### Shadows under Photon
 
@@ -625,11 +674,16 @@ the depth of the picture, where Voxy's or Distant Horizons' terrain already is (
 
 1. Just before the entities are drawn, the box around each distant mob is drawn against that
    depth, writing nothing, inside an occlusion query (`GL_ANY_SAMPLES_PASSED_CONSERVATIVE`, or
-   `GL_ANY_SAMPLES_PASSED` without OpenGL 4.3), with the matrices of the frame
-   (`LevelRendererMixin`, `renderLevel`).
-2. The answers are read a frame or two later, never waited for.
-3. A mob whose last answer is "no pixel passed" is not drawn. It is asked about again every
-   frame, so it comes back as soon as one pixel of it would show.
+   `GL_ANY_SAMPLES_PASSED` without OpenGL 4.3 or `GL_ARB_ES3_compatibility`), with the
+   matrices of the frame (`LevelRendererMixin`, `renderLevel`; `render` from 26.2).
+2. The answers are read once the GPU has them, up to 4 frames of them waiting, never waited
+   for.
+3. A mob whose last answer is "no pixel passed" is not drawn. It is asked about again on the
+   next frame that has room for a batch, so it comes back as soon as one pixel of it would
+   show.
+
+On 26.3's GPU device path (see [Distant Horizons](#distant-horizons)), the boxes are tested
+in `compat/FarDepthGpu` and the answers read back from there, a capped number per frame.
 
 Why the answer can be trusted:
 
@@ -639,25 +693,27 @@ Why the answer can be trusted:
 - A mob never asked about, or whose answer is more than six frames old, is drawn.
 
 With `optOcclusionQueries` off, or once the queries have failed, the mobs are tested in the
-far terrain's world instead (`render/Occlusion`). The two answers are never mixed.
+far terrain's world instead (`render/Occlusion`). The two answers are never mixed. With
+Vulkan, once Distant Horizons' depth is merged, no mob is skipped: the depth test hides them
+pixel by pixel.
 
 ## Debug tools
 
-All in *Debug Options...* in the settings. `/livinghorizon debug` turns the panel and the
-boxes on or off together.
+The switches are in *Debug Options...* in the settings, the F3 entries in the game's own
+debug options. `/livinghorizon debug` turns the panel and the boxes on or off together.
 
 | Tool | Switch | What it shows |
 |---|---|---|
 | Panel | `debugHud` | Top left: cost per tick and frame, what became of every distant mob in the last frame, far terrain reads and depth, how far this server sends mobs, which optimisations are on |
 | Panel in F3 | `living_horizon` in the game's debug options (F3 + F6, from 1.21.9) | The panel's lines in the F3 screen. `/livinghorizon debug` turns it on too |
 | Polygons in F3 | `fake_entities` in the game's debug options (F3 + F6, from 1.21.9) | The polygons of the mod's own entities (distant players and mobs, never the game's), split into full models and impostors (one quad each), and a line of impostor sheets baked and waiting |
-| Boxes | `debugBoxes` | A box around every distant mob and player, seen through terrain, coloured by what became of it (below). A dot in the middle keeps it visible when the box is smaller than its lines |
+| Boxes (from 1.21.11) | `debugBoxes` | A box around every distant mob and player, seen through terrain, coloured by what became of it (below). A dot in the middle keeps it visible when the box is smaller than its lines |
 | Game's mobs | `debugGameMobs` | Boxes around the mobs the game draws itself too |
-| Labels | `debugLabels` | State, kind, distance and size on screen above each box, at a constant size |
+| Labels (from 1.21.11) | `debugLabels` | State, kind, distance and size on screen above each box, at a constant size |
 | Outlines | `outline*`, in *Outlines...* | An outline around each kind of figure, and a cross where a mob is not drawn (below) |
-| Depth view | `debugDepthView` | Bottom right: the game's depth, with the far terrain merged, or after the entities. Near is white, far black, sky blue |
+| Depth view | `debugDepthView` | Bottom right: the game's depth alone, with the far terrain merged in, or after the entities. Near is white, far black, sky blue |
 | Far terrain | `/livinghorizon lod` (or `voxy`) | Which far terrain mod is read (Voxy or Distant Horizons), whether reading it failed, and the state of its depth |
-| Optimisations | `opt*` | Every optimisation has its own switch, to compare the cost (see [Optimizations](#optimizations)) |
+| Optimisations | `opt*`, `depthOcclusion`, `hideOccludedMobs` | Every optimisation has its own switch, to compare the cost (see [Optimizations](#optimizations)) |
 
 ### Box colours
 
@@ -669,6 +725,7 @@ boxes on or off together.
 | White | Real mob drawn by the game (with `debugGameMobs`) |
 | Yellow | Too small (under about half a pixel) |
 | Orange | Behind blocks |
+| Brown | Too close for a copy (the [near zone](#handing-over-to-the-real-mob)) |
 | Red | Outside the view |
 | Purple | Being built |
 | Grey | Past `maxDistantMobs` |
@@ -696,7 +753,7 @@ To try that feature alone in single player:
 | Command | What it does |
 |---|---|
 | `/livinghorizon debug offline test spawn [name] [minutes]` | Places one where you stand, wearing your skin, logged off that many minutes ago (default: `Sleeper1`, `Sleeper2`..., just now), on a copy of what you ride if you ride something |
-| `... test spawn <name> <minutes> <count> [radius]` | Places that many (`name1`, `name2`...), up to 100, each on the ground somewhere within the radius around you (16 blocks by default, up to 256), facing a way of its own, on your mount at your height if it flies. Each wears the skin of a different real player, fetched from Mojang (from 1.21.9; before, the default skin of its name) |
+| `... test spawn <name> <minutes> <count> [radius]` | Places that many (`name1`, `name2`...), up to 100, each on the ground somewhere within the radius around you (16 blocks by default, up to 256), facing a way of its own, on your mount at your height if it flies. Each wears the skin of a different real player (50 of them, then again from the first), fetched from Mojang (from 1.21.9; before, the default skin of its name) |
 | `... test crowd <count> [radius] [minutes]` | The same, with names of their own (`Sleeper1`...) |
 | `... test clear` | Removes them |
 | `... test list` | Shows everyone resting on this server, where and since when |
@@ -731,8 +788,9 @@ written back with every setting in it, including the ones a newer version adds. 
 load.
 
 In game, the settings are in the mod's screen: the *Living Horizon...* button of the Options
-screen, Mod Menu, the settings key, or `/livinghorizon config`. From Sodium 0.8 they are on
-Sodium's video settings page too, with the same names.
+screen, Mod Menu (Fabric, Quilt) or the mods list (NeoForge, Forge), the settings key, or
+`/livinghorizon config`. From Sodium 0.8 the main screen's settings are on Sodium's video
+settings pages too, with the same names, and its sub-screens open from there.
 
 The *Preset* button (*Low*, *Normal*, *High*, *Ultra*) sets only the settings that scale the
 cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
@@ -796,7 +854,7 @@ come back by themselves. *Scan Nearby Mobs* runs a scan.
 | `skyBirds` | Show Birds | `true` | | Birds and bats around you |
 | `birdDensity` | Bird Density | `100` percent | 0 to 500 | How many birds, all kinds together (`0`: none, `500`: five times as many) |
 | `birdMaxDistance` | Bird Distance | `800` blocks | 100 to 3000 | How far away birds can be |
-| `birdMinHeight` | Min. Flight Height | `30` blocks | 0 to 200 | Height above you (or the sea, whichever is higher) below which flocks never fly |
+| `birdMinHeight` | Min. Flight Height | `30` blocks | 0 to 200 | Height above you (or the sea, whichever is higher) below which flocks and birds of prey never fly |
 | `birdSize` | Bird Size | `1` times | 1 to 6 | How much bigger than life birds are drawn |
 | `birdStyle` | Bird Style | `3d` | `3d`, `2d` | `3d`: small models with beating wings; `2d`: flat pixel sprites |
 | `hiddenBirds` | Bird Types... | Empty | | Kinds switched off: `flocks`, `geese`, `raptors`, `gulls`, `pigeons`, `robins`, `tits`, `ducks`, `bats`, `parrots` |
@@ -818,8 +876,8 @@ come back by themselves. *Scan Nearby Mobs* runs a scan.
 
 | Setting | In game | Default | Range | What it does |
 |---|---|---|---|---|
-| `extendFarPlane` | Extended View Range | `true` | | Push the far clipping plane out to the farthest player, so terrain can hide them |
-| `minApparentPixels` | Minimum Size | `0` pixels | 0 to 32 | Above 0, a far player is never drawn smaller than this, and stops shrinking (`0`: off) |
+| `extendFarPlane` | Extended View Range | `true` | | Push the far clipping plane out past the farthest figure, so terrain can hide it |
+| `minApparentPixels` | Minimum Size | `0` pixels | 0 to 32 | Above 0, a distant figure (player, mob, bird) is never drawn smaller than this, and stops shrinking (`0`: off) |
 | `renderTrackedVehiclesFar` | Keep Ridden Vehicles | `true` | | Never cull a mount that carries another player |
 
 #### Optimizations
@@ -840,7 +898,7 @@ Every one is on by default except `optFreezeHidden`. Switch one off to see what 
 | `optVoxyShadows` | Voxy Shadow Fix | Our far figures are written into Voxy's depth, on their own pixels only, so that Photon's terrain shadows do not fall across them |
 | `optBackgroundBuild` | Background Build | Saved mobs are read off the game's thread and built within 2 ms per tick |
 | `optStillTiny` | Still Tiny Mobs | Mobs under `animationMinPixels` play no walking or idle animation |
-| `optFreezeHidden` | Freeze Undrawn Mobs | A copy not drawn for half a second is not ticked at all |
+| `optFreezeHidden` | Freeze Undrawn Mobs | A copy not drawn for half a second is not animated, only moved where the server says |
 
 Older names are still read from the file:
 
