@@ -1,5 +1,6 @@
 package fr.clixmods.livinghorizon.render.impostor;
 
+import fr.clixmods.livinghorizon.Profile;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import fr.clixmods.livinghorizon.render.Sink;
@@ -72,6 +73,15 @@ public final class ImpostorRenderer {
 
     /** From the entity submission, with the pose at the camera. */
     public static void submit(PoseStack pose, Sink collector) {
+        long started = Profile.begin(Profile.Section.SUBMIT_IMPOSTORS);
+        try {
+            submitImpostors(pose, collector);
+        } finally {
+            Profile.end(Profile.Section.SUBMIT_IMPOSTORS, started);
+        }
+    }
+
+    private static void submitImpostors(PoseStack pose, Sink collector) {
         for (Billboard board : FRAME) {
             double across = Math.sqrt(board.x * board.x + board.z * board.z);
             if (across < 1e-3) continue;

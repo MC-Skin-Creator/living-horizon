@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
+import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.platform.Platform;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -608,22 +609,33 @@ public final class MobMemory {
             return;
         }
         String dimension = level.dimension().identifier().toString();
-        followServer(level, dimension);
+        long following = Profile.begin(Profile.Section.TICK_MOBS_FOLLOW);
+        try {
+            followServer(level, dimension);
+        } finally {
+            Profile.end(Profile.Section.TICK_MOBS_FOLLOW, following);
+        }
 
-        if (clock % 20 == 0) {
-            lastPack = pack;
-            if (pack != null) sync(pack);
-            learnReach();
-            reconcile(level, dimension, renderDistanceBlocks);
-            choose(dimension, config);
-        } else if (chooseSoon) {
-            choose(dimension, config);
+        if (clock % 20 == 0 || chooseSoon) {
+            long choosing = Profile.begin(Profile.Section.TICK_MOBS_CHOOSE);
+            try {
+                if (clock % 20 == 0) {
+                    lastPack = pack;
+                    if (pack != null) sync(pack);
+                    learnReach();
+                    reconcile(level, dimension, renderDistanceBlocks);
+                }
+                choose(dimension, config);
+            } finally {
+                Profile.end(Profile.Section.TICK_MOBS_CHOOSE, choosing);
+            }
         }
         if (clock % 1200 == 0 && dirty) save();
 
         Set<String> still = new HashSet<>(config.stillMobTypes);
         double pixelsPerRadian = config.optStillTiny ? pixelsPerRadian() : 0;
 
+        long buildNanos = 0, groundNanos = 0, joiningStarted = System.nanoTime();
         // Copies walking up to their real mob, before anything else.
         if (!joining.isEmpty()) {
             List<Remembered> arrived = new ArrayList<>();
@@ -636,6 +648,7 @@ public final class MobMemory {
             }
             arrived.forEach(this::handOver);
         }
+        long motionNanos = System.nanoTime() - joiningStarted;
 
         boolean background = config.optBackgroundBuild;
         long budget = System.nanoTime() + BUILD_BUDGET;
@@ -652,7 +665,9 @@ public final class MobMemory {
                             : CompletableFuture.completedFuture(parse(nbt));
                 }
                 if (mob.parsed.isDone() && (!background || System.nanoTime() < budget)) {
+                    long building = System.nanoTime();
                     build(mob, level);
+                    buildNanos += System.nanoTime() - building;
                 }
             }
             if (mob.puppet == null) continue;
@@ -665,6 +680,7 @@ public final class MobMemory {
                     continue;
                 }
                 boolean roam = !still.contains(mob.type);
+                long grounding = System.nanoTime();
                 // Moved by the server's word: the blocks are read again around where it is now.
                 MobPaths.Choice choice = mob.choice;
                 if (choice != null && !choice.ground().around(mob.x, mob.z)) mob.choice = choice = null;
@@ -700,15 +716,23 @@ public final class MobMemory {
                     mob.ground = choice.ground().save();
                     dirty = true;
                 }
+                long moving = System.nanoTime();
+                groundNanos += moving - grounding;
                 mob.still = isStill(living, mob, config, pixelsPerRadian);
                 boolean tiny = mob.still;
                 double handover = Math.max(24, Math.min(sent(type(mob)), renderDistanceBlocks));
                 float home = MobMotion.home(Math.hypot(mob.x - selfX, mob.z - selfZ), handover);
                 motion(mob).tick(living, mob, choice, clock, roam, tiny, home);
+                motionNanos += System.nanoTime() - moving;
             } else {
+                long holding = System.nanoTime();
                 hold(mob.puppet, mob);
+                motionNanos += System.nanoTime() - holding;
             }
         }
+        Profile.record(Profile.Section.TICK_MOBS_BUILD, buildNanos);
+        Profile.record(Profile.Section.TICK_MOBS_GROUND, groundNanos);
+        Profile.record(Profile.Section.TICK_MOBS_MOTION, motionNanos);
     }
 
     private static long seed(Remembered mob) {
@@ -1096,13 +1120,18 @@ public final class MobMemory {
     private void save() {
         if (file == null) return;
         dirty = false;
+        long started = Profile.begin(Profile.Section.SAVE_MOBS);
+        long bytes = -1;
         try {
             Files.createDirectories(file.getParent());
             try (Writer writer = Files.newBufferedWriter(file)) {
                 GSON.toJson(new ArrayList<>(mobs.values()), writer);
             }
+            bytes = Files.size(file);
         } catch (IOException e) {
             LivingHorizonClient.LOGGER.warn("Could not write {}", file, e);
+        } finally {
+            Profile.end(Profile.Section.SAVE_MOBS, started, bytes);
         }
     }
 }

@@ -3,6 +3,8 @@ package fr.clixmods.livinghorizon;
 import com.mojang.blaze3d.platform.InputConstants;
 import fr.clixmods.livinghorizon.command.LivingHorizonCommand;
 import fr.clixmods.livinghorizon.compat.LodWorld;
+import fr.clixmods.livinghorizon.debug.Allocation;
+import fr.clixmods.livinghorizon.debug.ProfileHook;
 import fr.clixmods.livinghorizon.platform.ClientNetwork;
 import fr.clixmods.livinghorizon.platform.Events;
 import fr.clixmods.livinghorizon.platform.Network;
@@ -102,6 +104,7 @@ public final class LivingHorizonClient {
 
     private static void start() {
         FarConfig.load();
+        ProfileHook.register();
         // What a server with the mod shares, handled on the game's thread.
         Network.receiver(data -> Minecraft.getInstance().execute(() -> FarPlayerTracker.get().receive(data)));
         ClientNetwork.register();
@@ -172,8 +175,17 @@ public final class LivingHorizonClient {
             minecraft.setScreen(new FarConfigScreen(minecraft.screen));
         }
         long started = System.nanoTime();
+        long allocated = Allocation.begin();
         FarPlayerTracker.get().tick(minecraft);
-        if (minecraft.level != null) Occlusion.tick(minecraft.gameRenderer.getMainCamera().position());
+        if (minecraft.level != null) {
+            long occluding = Profile.begin(Profile.Section.TICK_OCCLUSION);
+            try {
+                Occlusion.tick(minecraft.gameRenderer.getMainCamera().position());
+            } finally {
+                Profile.end(Profile.Section.TICK_OCCLUSION, occluding);
+            }
+        }
+        Allocation.end(allocated);
         Stats.tick(System.nanoTime() - started);
     }
 }

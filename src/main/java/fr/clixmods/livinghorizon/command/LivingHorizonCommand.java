@@ -14,6 +14,7 @@ import fr.clixmods.livinghorizon.ambient.Ufo;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.LodWorld;
 import fr.clixmods.livinghorizon.debug.DebugHud;
+import fr.clixmods.livinghorizon.debug.ProfileLines;
 import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.LastSeen;
 import fr.clixmods.livinghorizon.track.Profiles;
@@ -406,6 +407,9 @@ public final class LivingHorizonCommand {
                 FarPlayerTracker.get().mobs().size(), FarPlayerTracker.get().mobs().shown().size()));
         source.feedback(Component.translatable("livinghorizon.status.cost", Stats.tickMillis(), Stats.extractMillis(),
                 Stats.drawn(), Stats.skipped()));
+        // The numbers of each section; the GPU's time is measured from now on, and shows the next time.
+        source.feedback(Component.translatable("livinghorizon.debug.hud.profile"));
+        for (ProfileLines.Line line : ProfileLines.lines()) source.feedback(Component.literal(line.content()));
         Collection<FarPlayer> players = FarPlayerTracker.get().players();
         if (players.isEmpty()) {
             source.feedback(Component.translatable("livinghorizon.status.none"));

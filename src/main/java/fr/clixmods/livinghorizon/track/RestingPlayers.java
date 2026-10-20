@@ -7,6 +7,7 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
+import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.platform.Platform;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -509,13 +510,18 @@ public final class RestingPlayers {
 
     private void save() {
         if (file == null) return;
+        long started = Profile.begin(Profile.Section.SAVE_RESTING);
+        long bytes = -1;
         try {
             Files.createDirectories(file.getParent());
             try (Writer writer = Files.newBufferedWriter(file)) {
                 write(spots.values().stream().filter(spot -> !fakes.contains(key(spot.name()))).toList(), writer);
             }
+            bytes = Files.size(file);
         } catch (IOException e) {
             LivingHorizonClient.LOGGER.warn("Could not write {}", file, e);
+        } finally {
+            Profile.end(Profile.Section.SAVE_RESTING, started, bytes);
         }
     }
 
