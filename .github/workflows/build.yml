@@ -2,8 +2,11 @@ name: build
 
 # Only pull requests trigger it: main is built by the release workflow on the same
 # commit, and a push trigger as well would run every commit twice once a PR is open.
+# Closing is listened to as well: merging a feature/ or fix/ branch cancels its build
+# still running, which the merge made pointless. Every job skips on that event.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, closed]
 
 # Compiles and tests every Minecraft target and attaches the jar as a
 # short-lived workflow artifact, so a PR can be test-installed before it merges.
@@ -11,9 +14,16 @@ on:
 permissions:
   contents: read
 
-# A newer push to the same branch or PR makes the run in progress obsolete.
+# A newer push to the same branch or PR makes the run in progress obsolete, and so does
+# merging a feature/ or fix/ branch. Any other close (develop into main, a PR closed
+# unmerged) takes a group of its own, so that it cancels nothing.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: >-
+    ${{ github.event.action == 'closed'
+    && !(github.event.pull_request.merged
+    && (startsWith(github.head_ref, 'feature/') || startsWith(github.head_ref, 'fix/')))
+    && format('{0}-closed-{1}', github.workflow, github.run_id)
+    || format('{0}-{1}', github.workflow, github.ref) }}
   cancel-in-progress: true
 
 jobs:
@@ -21,6 +31,7 @@ jobs:
   # English and French: the release dates that section and posts it on Modrinth,
   # CurseForge and Discord.
   changelog:
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -32,6 +43,7 @@ jobs:
         run: node .github/scripts/changelog-check.js "origin/${{ github.base_ref }}"
 
   build:
+    if: github.event.action != 'closed'
     # One job per Stonecutter target, so a version that stops compiling fails on its
     # own line. A target added to stonecutter.properties.toml is added here too.
     strategy:
