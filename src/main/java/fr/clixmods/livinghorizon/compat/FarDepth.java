@@ -614,6 +614,11 @@ public final class FarDepth {
         return linked;
     }
 
+    /** Whether a shader pack is on, for the benchmark's report. */
+    public static boolean shaderPack() {
+        return DhDepth.shaderPackOn();
+    }
+
     /** For {@code /livinghorizon voxy}. */
     public static String state() {
         if (!ready && !DhDepth.started()) return "not started";

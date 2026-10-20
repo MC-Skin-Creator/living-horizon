@@ -765,6 +765,54 @@ Test players are never written to the file: they are gone at the next start. In 
 host shares, the other players see them too (see
 [The server's file](#the-servers-file)).
 
+### Benchmark
+
+`/livinghorizon benchmark [seconds]` (`debug/Benchmark`) measures what the mod costs where the
+player stands, on their own machine. The player stands still; the settings go through phases:
+a warm-up of 20 seconds that is not measured, the mod off, the player's settings, each preset,
+the mod off again, distant players, mobs and birds each on their own, then mobs with
+*Simplified Entities*, *Skip Hidden Mobs* and *Hide Behind Far Terrain* off in turn, and the mod
+off a third time. Each phase settles for 4 seconds, then is measured for `seconds` (8 by
+default, 3 to 60): about three minutes in all. `/livinghorizon benchmark stop` ends it early,
+and it stops by itself if the world closes or the game pauses.
+
+While it runs, the debug views and the easter eggs are off, and the frame rate cap, vsync and
+the game's slowdown when idle (from 1.21.2) are lifted; `MinecraftFrameMixin` times every
+frame from the top of `Minecraft.runTick`. Everything is put back at the end, and nothing is
+saved. The report goes to `livinghorizon/benchmarks/benchmark-<date>.txt` in the game folder
+and to the log. Per phase: frames per second, the 1% low, the 99th percentile and worst frame
+times, and the cost in milliseconds against the mod off (the mean of its three phases, whose
+spread is given as the drift: a smaller cost is noise); then the mod's own counters, the
+game, GPU, mods and settings. A phase where the player moved or a screen was open is marked.
+
+`/livinghorizon benchmark world` (`debug/BenchmarkWorld`) makes a world to run it in, the same
+every time it is made. It is a new single player world, "Living Horizon benchmark", added to
+the world list: the world the player is in is saved and closed first (as *Save and Quit*),
+never changed. The command says so and only goes ahead on `/livinghorizon benchmark world
+confirm`. Nothing in it is random:
+
+- a flat world of a fixed seed, without structures, creative, filled in through the world
+  creation screen (`CreateWorldScreenAccessor` presses *Create*);
+- time stopped at noon, clear weather, and no mob, patrol, trader or phantom spawning, no
+  random ticks, no fire (the game rules under their old names and their 1.21.11 ones);
+- a flat world spawns animals as its chunks are generated, so every chunk within 48 of the
+  start is generated first with `/forceload`, 16 by 16, and emptied;
+- then every mob is summoned with data: its kind, place and facing chosen, a fixed id, no AI,
+  the tag `lh_bench`. Given data, `/summon` does not pick a random variant.
+
+The player stands at 0, 0 facing south, where each part of the mod has its zone: mobs the
+game draws (20 to 56 blocks), mobs past its entity distance (72 to 136), part of them behind
+a wall, about 500 remembered copies (192 to 480), part of them behind a hill, a herd past the
+default mob distance (576 to 672), and a pond, a wheat field, a tree and a tower for the
+birds. The far herds are never sent to the client: a scan of 48 chunks remembers them once
+the world is built.
+
+Once built, the world gets a marker file, `livinghorizon-benchmark`, in its folder. In a world
+with that file, the benchmark puts the player back at 0, 0 facing south and fixes the render
+distance (12), the entity distance (100%) and the field of view (70) for the run, then puts
+them back; the report says it ran there. Two reports from that world, before and after an
+update, measure the same scene. Birds still choose where they fly by chance.
+
 ## Commands
 
 `/livinghorizon` is a client command: it never reaches the server.
@@ -779,6 +827,8 @@ host shares, the other players see them too (see
 | `/livinghorizon lod` (or `voxy`) | Which far terrain mod is read and the state of its depth |
 | `/livinghorizon debug` | Turns the debug panel and the boxes on or off together |
 | `/livinghorizon debug offline test ...` | Test players who logged off (see [Test players](#test-players-who-logged-off)) |
+| `/livinghorizon benchmark [seconds]` | Measures what the mod costs, part by part, and writes a report (see [Benchmark](#benchmark)) |
+| `/livinghorizon benchmark world` | Makes the benchmark's world, the same every time, after saying so; `... confirm` goes ahead |
 
 Two key bindings, unbound by default: *Toggle Distant Players* (flips `enabled`) and *Open
 Living Horizon Settings*.
