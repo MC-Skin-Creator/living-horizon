@@ -278,7 +278,7 @@ public final class BenchmarkWorld {
                 for (int cx = bx; cx < bx + BATCH; cx++) {
                     for (int cz = bz; cz < bz + BATCH; cz++) {
                         if (!level.getChunkSource().hasChunk(cx, cz)
-                                || !level.areEntitiesLoaded(net.minecraft.world.level.ChunkPos.asLong(cx, cz))) return;
+                                || !level.areEntitiesLoaded(chunk(cx, cz))) return;
                     }
                 }
                 batchLoaded = true;
@@ -292,6 +292,15 @@ public final class BenchmarkWorld {
         });
         batch++;
         batchForced = false;
+    }
+
+    /** A chunk's position as one number, as the level's entity lookups take it. */
+    private static long chunk(int x, int z) {
+        // Renamed in 26.1.
+        //? if >=26.1 {
+        /*return net.minecraft.world.level.ChunkPos.pack(x, z);
+        *///?} else
+        return net.minecraft.world.level.ChunkPos.asLong(x, z);
     }
 
     /** The part of a piece inside this batch: a fill is cut to it, a summon is in it or not. */
