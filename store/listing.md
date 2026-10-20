@@ -29,7 +29,8 @@ Create > Project > **Mod**.
 | License | **Custom license**, link to the `LICENSE` file of the repository (Living Horizon License) |
 | Issue tracker | `https://github.com/MC-Skin-Creator/living-horizon/issues` |
 | Source code | `https://github.com/MC-Skin-Creator/living-horizon` |
-| Wiki / Discord | empty until they exist |
+| Discord | `https://discord.gg/THSV9dexNj` |
+| Wiki | empty until it exists |
 | Donation | your link (Ko-fi, GitHub Sponsors, Patreon, PayPal), labelled as support for you |
 | Icon | `src/main/resources/assets/livinghorizon/icon.png` (512x512) |
 | Gallery | the five shots below; first one featured |
@@ -110,6 +111,11 @@ format the headings and lists.
 the game's terrain and on the terrain of **Voxy** and **Distant Horizons**. It can also help
 performance: you can lower your simulation distance and still see a living world.
 
+> ⚠️ **This is a beta, so expect bugs.** I mainly play on 1.21.11 with Voxy, and it works
+> there. I have not tested every loader and game version. Found a bug? Tell me on the
+> [issues](https://github.com/MC-Skin-Creator/living-horizon/issues) page or on the
+> [Discord](https://discord.gg/THSV9dexNj). Thanks to anyone who helps!
+
 ## Features
 
 ### Mobs on the horizon
@@ -177,7 +183,7 @@ Open the settings from the Options screen, Mod Menu, Sodium's *Video Settings* o
 
 ## Links
 
-[Source and issues](https://github.com/MC-Skin-Creator/living-horizon)
+[Source and issues](https://github.com/MC-Skin-Creator/living-horizon) · [Discord](https://discord.gg/THSV9dexNj)
 ```
 
 ## Gallery, in this order
