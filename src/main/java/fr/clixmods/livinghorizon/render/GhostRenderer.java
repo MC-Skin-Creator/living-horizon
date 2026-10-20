@@ -595,15 +595,21 @@ public final class GhostRenderer {
         for (RestingPlayers.Spot spot : resting.spots()) {
             if (spot.dimension() != dimension) continue;
             RestingPuppet puppet = resting.puppet(level, spot);
+            if (!drawable(dispatcher, puppet)) continue;
+            if (tooFar(puppet, eye, config.playerMaxDistance)) continue;
             if (skipped(puppet, true)) continue;
-            if (debug) DebugMarks.mark(puppet, Mark.PLAYER);
-            EntityRenderState body = extract(dispatcher, puppet, partialTick);
-            if (body == null) continue;
             RestingPuppet.Look look = puppet.look();
             // On what they rode when they logged off: the mount drawn under them, they seated on it.
             Entity mount = look == RestingPuppet.Look.RIDE ? puppet.mount() : null;
-            // Far away a picture, as for players online, in whatever posture they are.
+            // Behind terrain, as mobs are. Not on a mount: the rider's box leaves out a tall
+            // mount under it (a happy ghast), which may show while the rider is hidden.
+            if (mount == null && occluded(spot.name(), puppet, config)) continue;
+            if (debug) DebugMarks.mark(puppet, Mark.PLAYER);
+            // Far away a picture, as for players online, in whatever posture they are: drawn
+            // from the puppet and its look, so nothing is extracted for it.
             if (config.impostorPlayers && restingImpostor(minecraft, eye, puppet, mount, look, partialTick, config)) continue;
+            EntityRenderState body = extract(dispatcher, puppet, partialTick);
+            if (body == null) continue;
             EntityRenderState mountState = mount == null ? null : extract(dispatcher, mount, partialTick);
             if (mountState != null && body instanceof HumanoidRenderState humanoid) {
                 humanoid.isPassenger = true;
