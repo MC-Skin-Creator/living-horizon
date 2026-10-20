@@ -437,6 +437,11 @@ come back, add it here in the same pull request: this file is what the next sess
   The Fabric API's client networking stays in `ClientNetwork`, which a server never loads.
   Check a server by installing the loader's server from its installer, the jar in `mods/`,
   and reading the console for "sharing the positions of this server".
+- **Frame rate lost to the mod** (with Voxy or not): measure before guessing. On the player's
+  machine, ask for the report of `/livinghorizon benchmark` (`debug/Benchmark`): frame times with
+  the mod off, each preset and each part on its own, on their GPU and mods. Run in the world
+  `/livinghorizon benchmark world` makes, it starts from a fixed spot and view, so two reports,
+  before and after an update, compare. Here, the `perf` game test does the same headless.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon;
 import com.mojang.blaze3d.platform.InputConstants;
 import fr.clixmods.livinghorizon.command.LivingHorizonCommand;
 import fr.clixmods.livinghorizon.compat.LodWorld;
+import fr.clixmods.livinghorizon.debug.BenchmarkWorld;
 import fr.clixmods.livinghorizon.debug.Allocation;
 import fr.clixmods.livinghorizon.debug.ProfileHook;
 import fr.clixmods.livinghorizon.platform.ClientNetwork;
@@ -174,6 +175,7 @@ public final class LivingHorizonClient {
         while (settings.consumeClick()) {
             minecraft.setScreen(new FarConfigScreen(minecraft.screen));
         }
+        BenchmarkWorld.tick(minecraft);
         long started = System.nanoTime();
         long allocated = Allocation.begin();
         FarPlayerTracker.get().tick(minecraft);
