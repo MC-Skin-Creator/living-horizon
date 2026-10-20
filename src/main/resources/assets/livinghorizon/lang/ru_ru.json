@@ -307,6 +307,7 @@
   "livinghorizon.debug.hud.sectionGpu": " | GPU %s мс (худшее %s)",
   "livinghorizon.debug.hud.sectionCount": " | %s на кадр",
   "livinghorizon.debug.hud.sectionBytes": " | %s КБ",
+  "livinghorizon.debug.hud.sectionIdle": " | не работает %s с",
   "livinghorizon.debug.hud.alloc": "Памяти выделено за такт: %s КБ",
   "livinghorizon.profile.tickMobsFollow": "Такт: слежение за мобами сервера",
   "livinghorizon.profile.tickMobsChoose": "Такт: выбор мобов",

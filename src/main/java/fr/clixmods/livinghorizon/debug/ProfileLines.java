@@ -14,6 +14,7 @@ public final class ProfileLines {
     /** Sections that run several times in a frame: how many times is worth knowing. */
     private static final Set<Profile.Section> COUNTED = EnumSet.of(Profile.Section.BAKE,
             Profile.Section.BAKE_READ_BACK, Profile.Section.BAKE_STORE);
+    private static final long IDLE_SECONDS = 5;
     private static final double SLOW_NANOS = 2_000_000, VERY_SLOW_NANOS = 8_000_000;
 
     /** A line and how bad its worst time is: 0 fine, 1 slow, 2 very slow. */
@@ -35,12 +36,17 @@ public final class ProfileLines {
             StringBuilder text = new StringBuilder(I18n.get("livinghorizon.debug.hud.section", I18n.get(section.langKey()),
                     Profile.millis(cpu.last()), Profile.millis(cpu.average()), Profile.millis(worst)));
             Profile.Stat gpu = section.gpuTime();
-            if (section.gpu() && gpu.seen()) {
+            if (section.gpu() && gpu.seen() && gpu.idleSeconds(now) < IDLE_SECONDS) {
                 text.append(I18n.get("livinghorizon.debug.hud.sectionGpu", Profile.millis(gpu.last()),
                         Profile.millis(gpu.worst(now))));
             }
             if (COUNTED.contains(section)) {
                 text.append(I18n.get("livinghorizon.debug.hud.sectionCount", String.valueOf(cpu.perFrame())));
+            }
+            // The worst of five seconds is empty when nothing ran in them: say so, rather than a last time beside a worst of zero.
+            long idle = cpu.idleSeconds(now);
+            if (idle >= IDLE_SECONDS) {
+                text.append(I18n.get("livinghorizon.debug.hud.sectionIdle", String.valueOf(idle)));
             }
             if (cpu.bytes() >= 0) {
                 text.append(I18n.get("livinghorizon.debug.hud.sectionBytes",

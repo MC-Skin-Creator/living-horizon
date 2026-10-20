@@ -307,6 +307,7 @@
   "livinghorizon.debug.hud.sectionGpu": " | GPU %s ms (najgorszy %s)",
   "livinghorizon.debug.hud.sectionCount": " | %s na klatkę",
   "livinghorizon.debug.hud.sectionBytes": " | %s KB",
+  "livinghorizon.debug.hud.sectionIdle": " | nieaktywne od %s s",
   "livinghorizon.debug.hud.alloc": "Pamięć przydzielona na tik: %s KB",
   "livinghorizon.profile.tickMobsFollow": "Tik: śledzenie mobów serwera",
   "livinghorizon.profile.tickMobsChoose": "Tik: wybór mobów",

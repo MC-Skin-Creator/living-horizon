@@ -307,6 +307,7 @@
   "livinghorizon.debug.hud.sectionGpu": " | GPU %s ms（最大 %s）",
   "livinghorizon.debug.hud.sectionCount": " | 1フレームあたり %s",
   "livinghorizon.debug.hud.sectionBytes": " | %s KB",
+  "livinghorizon.debug.hud.sectionIdle": " | %s秒間未実行",
   "livinghorizon.debug.hud.alloc": "1ティックあたりの確保メモリ：%s KB",
   "livinghorizon.profile.tickMobsFollow": "ティック：サーバーのMobの追跡",
   "livinghorizon.profile.tickMobsChoose": "ティック：Mobの選択",

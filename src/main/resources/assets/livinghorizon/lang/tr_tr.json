@@ -307,6 +307,7 @@
   "livinghorizon.debug.hud.sectionGpu": " | GPU %s ms (en kötü %s)",
   "livinghorizon.debug.hud.sectionCount": " | kare başına %s",
   "livinghorizon.debug.hud.sectionBytes": " | %s KB",
+  "livinghorizon.debug.hud.sectionIdle": " | %s sn'dir etkin değil",
   "livinghorizon.debug.hud.alloc": "Birim zaman başına ayrılan bellek: %s KB",
   "livinghorizon.profile.tickMobsFollow": "Birim zaman: sunucunun yaratıklarını izleme",
   "livinghorizon.profile.tickMobsChoose": "Birim zaman: yaratıkları seçme",

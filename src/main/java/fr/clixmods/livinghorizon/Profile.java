@@ -150,7 +150,7 @@ public final class Profile {
         private static final double SMOOTHING = 0.95;
         private final long[] worst = new long[(int) WINDOW_SECONDS];
         private final long[] worstSecond = new long[(int) WINDOW_SECONDS];
-        private long last, bytes = -1, calls, perFrame, thisFrame;
+        private long last, bytes = -1, calls, perFrame, thisFrame, at;
         private double average;
         private boolean seen;
 
@@ -162,6 +162,7 @@ public final class Profile {
             seen = true;
             calls++;
             thisFrame++;
+            at = now;
             long second = Math.floorDiv(now, 1_000_000_000L);
             int slot = (int) Math.floorMod(second, WINDOW_SECONDS);
             if (worstSecond[slot] != second) {
@@ -203,6 +204,11 @@ public final class Profile {
             return calls;
         }
 
+        /** Whole seconds since the last call, 0 where it never ran. */
+        public synchronized long idleSeconds(long now) {
+            return seen ? Math.max(0, now - at) / 1_000_000_000L : 0;
+        }
+
         /** How many times it ran in the last whole frame. */
         public synchronized long perFrame() {
             return perFrame;
@@ -219,7 +225,7 @@ public final class Profile {
             java.util.Arrays.fill(worstSecond, 0);
             last = 0;
             bytes = -1;
-            calls = perFrame = thisFrame = 0;
+            calls = perFrame = thisFrame = at = 0;
             average = 0;
             seen = false;
         }

@@ -307,6 +307,7 @@
   "livinghorizon.debug.hud.sectionGpu": " | GPU %s毫秒（最差%s）",
   "livinghorizon.debug.hud.sectionCount": " | 每帧%s",
   "livinghorizon.debug.hud.sectionBytes": " | %s KB",
+  "livinghorizon.debug.hud.sectionIdle": " | 已空闲%s秒",
   "livinghorizon.debug.hud.alloc": "每刻分配的内存：%s KB",
   "livinghorizon.profile.tickMobsFollow": "刻：跟随服务器的生物",
   "livinghorizon.profile.tickMobsChoose": "刻：选择生物",

@@ -34,6 +34,15 @@ class ProfileTest {
     }
 
     @Test
+    void saysHowLongASectionHasBeenIdle() {
+        Profile.Stat stat = new Profile.Stat();
+        assertEquals(0, stat.idleSeconds(100 * SECOND));
+        stat.record(1, -1, 10 * SECOND);
+        assertEquals(0, stat.idleSeconds(10 * SECOND + 1));
+        assertEquals(7, stat.idleSeconds(17 * SECOND));
+    }
+
+    @Test
     void countsCallsPerFrameAndRemembersBytes() {
         Profile.Stat stat = new Profile.Stat();
         stat.record(1, 4096, SECOND);

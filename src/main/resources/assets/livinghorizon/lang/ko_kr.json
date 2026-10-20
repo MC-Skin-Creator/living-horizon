@@ -307,6 +307,7 @@
   "livinghorizon.debug.hud.sectionGpu": " | GPU %s ms (최악 %s)",
   "livinghorizon.debug.hud.sectionCount": " | 프레임당 %s",
   "livinghorizon.debug.hud.sectionBytes": " | %s KB",
+  "livinghorizon.debug.hud.sectionIdle": " | %s초째 실행 안 됨",
   "livinghorizon.debug.hud.alloc": "틱당 할당된 메모리: %s KB",
   "livinghorizon.profile.tickMobsFollow": "틱: 서버 몹 추적",
   "livinghorizon.profile.tickMobsChoose": "틱: 몹 선택",
