@@ -200,14 +200,21 @@ baseline, no commit back, no Modrinth, CurseForge, Nexus Mods or Discord. A push
   then the release is tagged, the version and the dated changelog are committed back to
   `main`, and the GitHub release gets the jars. Below 1.0.0 it is a pre-release titled
   `vX.Y.Z (beta)`.
-- Modrinth and CurseForge are published by `mc-publish` when `MODRINTH_TOKEN` /
+- Then Modrinth, CurseForge and Nexus Mods each get a job of their own, a call to
+  `.github/workflows/publish.yml` that takes the jars from the GitHub release: a platform
+  that fails is re-run alone ("Re-run failed jobs"), and the same workflow, run by hand with
+  a version and a platform, publishes a release a platform missed. A version already on
+  Modrinth or Nexus is left alone; CurseForge cannot be asked, so re-run only its failed
+  targets. Modrinth and CurseForge are published by `mc-publish` when `MODRINTH_TOKEN` /
   `CURSEFORGE_TOKEN` (secrets) and `MODRINTH_ID` / `CURSEFORGE_ID` (repository variables)
   exist, and skipped otherwise. Nexus Mods is published by `.github/scripts/nexus-publish.js`
   (its v3 API) when `NEXUSMODS_TOKEN` (secret) and `NEXUSMODS_ID` (variable, the number in
-  the page's URL) exist: one file per target, found by its name ("Living Horizon (Fabric
-  26.1.x)"), created on the first release and given a new version on the next ones. The API
-  cannot create the page itself. The Discord announcement uses `DISCORD_WEBHOOK_EN` / `_FR` and pings the
-  role whose ID is in `DISCORD_ROLE` (variable, @Updates when unset; `DISCORD_ROLE_EN` / `_FR` per language).
+  the page's URL) exist: one file per target, the jar in a zip (Nexus refuses a `.jar`),
+  found by its name ("Living Horizon (Fabric 26.1.x)"), created on the first release and
+  given a new version on the next ones. The API cannot create the page itself. The Discord
+  announcement waits for the GitHub release only, never for the platforms, uses
+  `DISCORD_WEBHOOK_EN` / `_FR` and pings the role whose ID is in `DISCORD_ROLE` (variable,
+  @Updates when unset; `DISCORD_ROLE_EN` / `_FR` per language).
 
 The mod version is `mod.version` in `stonecutter.properties.toml`; the Minecraft version
 never touches it.
