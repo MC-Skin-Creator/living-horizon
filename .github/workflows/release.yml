@@ -152,8 +152,8 @@ jobs:
           grep '^mod.version' stonecutter.properties.toml
 
       - name: Build
-        # The tests already ran on the pull request; this only builds the jar and the
-        # data pack. Over fifty runners download the same plugins and Minecraft files at
+        # The tests already ran on the pull request; this only builds the jar.
+        # Over fifty runners download the same plugins and Minecraft files at
         # once, so a download that fails is tried again; any other failure is not.
         env:
           NODE: ${{ matrix.target.node }}
@@ -276,9 +276,8 @@ jobs:
             fi
           fi
 
-          # Wherever the artifacts unpacked them: the jar and the data pack zip of
-          # every target.
-          mapfile -t files < <(find files \( -name '*.jar' -o -name '*.zip' \) | sort)
+          # Wherever the artifacts unpacked them: the jar of every target.
+          mapfile -t files < <(find files -name '*.jar' | sort)
           echo "${#files[@]} files"
           gh release create "v${VERSION}" "${args[@]}" "${files[@]}"
 
@@ -419,7 +418,8 @@ jobs:
   # undo a release that is already on GitHub, Modrinth and CurseForge. It reads the
   # changelog from the release tag - where the release job dated it - and posts that
   # version in each language that has a webhook secret (DISCORD_WEBHOOK_EN / _FR, or
-  # DISCORD_WEBHOOK alone for English). Stable releases only: the -dev builds are
+  # DISCORD_WEBHOOK alone for English), pinging the role whose ID is in the
+  # DISCORD_ROLE_EN / _FR or DISCORD_ROLE variable (@Updates when unset). Stable releases only: the -dev builds are
   # never announced.
   announce:
     needs: [version, release, publish]
@@ -441,4 +441,7 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           DISCORD_WEBHOOK_EN: ${{ secrets.DISCORD_WEBHOOK_EN }}
           DISCORD_WEBHOOK_FR: ${{ secrets.DISCORD_WEBHOOK_FR }}
+          DISCORD_ROLE: ${{ vars.DISCORD_ROLE || '1561725342664626237' }}
+          DISCORD_ROLE_EN: ${{ vars.DISCORD_ROLE_EN }}
+          DISCORD_ROLE_FR: ${{ vars.DISCORD_ROLE_FR }}
         run: node .github/scripts/announce-discord.js --version "$VERSION"

@@ -111,10 +111,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                         .addOption(bool(b, "showVehicles", d.showVehicles, v -> FarConfig.get().showVehicles = v,
                                 () -> FarConfig.get().showVehicles))
                         .addOption(blocks(b, "playerMaxDistance", 0, 4000, d.playerMaxDistance,
-                                v -> FarConfig.get().playerMaxDistance = v, () -> FarConfig.get().playerMaxDistance))
-                        .addOption(integer(b, "lostTimeoutSeconds", 5, 300, (int) d.lostTimeoutSeconds,
-                                v -> FarConfig.get().lostTimeoutSeconds = v, () -> (int) FarConfig.get().lostTimeoutSeconds,
-                                unit("lostTimeoutSeconds", "seconds", 5))))
+                                v -> FarConfig.get().playerMaxDistance = v, () -> FarConfig.get().playerMaxDistance)))
                 .addOptionGroup(b.createOptionGroup()
                         .addOption(bool(b, "offlinePlayers", d.offlinePlayers, v -> FarConfig.get().offlinePlayers = v,
                                 () -> FarConfig.get().offlinePlayers))

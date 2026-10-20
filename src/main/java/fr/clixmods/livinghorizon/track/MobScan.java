@@ -35,7 +35,7 @@ import java.util.concurrent.CompletableFuture;
  * without loading it, nor generating anything. A chunk never visited has nothing saved.
  *
  * <p>On another server there is nothing to read: a client only receives the mobs near it,
- * and the data pack is how they are shared from farther.
+ * and a server with the mod shares them from farther ({@link PositionPublisher}).
  */
 public final class MobScan {
     /** One mob found, as the game saves it, ready to be remembered. */

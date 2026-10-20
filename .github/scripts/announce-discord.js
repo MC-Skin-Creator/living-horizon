@@ -11,6 +11,10 @@
  * channel per language), or DISCORD_WEBHOOK alone, which serves English. With none,
  * the script says so and exits cleanly.
  *
+ * The role to ping (@Updates) is a repository variable, also optional: its ID in
+ * DISCORD_ROLE_EN, _FR, or DISCORD_ROLE for every language (release.yml defaults it
+ * to @Updates). Without one, no ping.
+ *
  * The version must have its own dated section in the file: a release that carries
  * nothing for the players announces nothing, and an older version is never
  * announced again by mistake.
@@ -74,7 +78,7 @@ const markdownOf = (release, lang) => release.sections
   .map(s => '**' + HEADINGS[lang][s.kind] + '**\n' + s.items.map(i => '• ' + i).join('\n'))
   .join('\n\n');
 
-function payload(release, lang) {
+function payload(release, lang, role) {
   const link = '\n\n[' + LINK[lang] + '](' + SITE_URL + ')';
   let text = markdownOf(release, lang);
   const room = 4096 - link.length - 2;
@@ -90,7 +94,22 @@ function payload(release, lang) {
     timestamp: release.date + 'T12:00:00.000Z',
     footer: { text: 'MC-Skin-Creator/living-horizon' }
   };
-  return { username: 'Living Horizon', allowed_mentions: { parse: [] }, embeds: [embed] };
+  const body = { username: 'Living Horizon', allowed_mentions: { parse: [] }, embeds: [embed] };
+  if (role) {
+    body.content = '<@&' + role + '>';
+    body.allowed_mentions.roles = [role];
+  }
+  return body;
+}
+
+// The ID of the role to ping, or '' when there is none or it is not an ID.
+function roleOf(lang) {
+  const id = (process.env['DISCORD_ROLE_' + lang.toUpperCase()] || process.env.DISCORD_ROLE || '').trim();
+  if (id && !/^\d+$/.test(id)) {
+    console.log('::warning::' + lang + ': the Discord role is not a role ID, announced without a ping.');
+    return '';
+  }
+  return id;
 }
 
 const webhook = lang => process.env['DISCORD_WEBHOOK_' + lang.toUpperCase()]
@@ -112,7 +131,7 @@ async function main(argv) {
       console.log('::notice::changelog/' + lang + '.md has no section for ' + version + ': nothing to announce in ' + lang + '.');
       continue;
     }
-    const body = payload(release, lang);
+    const body = payload(release, lang, roleOf(lang));
     if (dry) { console.log('--- ' + lang + ' ---\n' + JSON.stringify(body, null, 2)); continue; }
     const url = webhook(lang);
     if (!url) { console.log(lang + ': no webhook, skipped.'); continue; }
