@@ -483,6 +483,13 @@ someone who has never seen the code:
 
 `.claude/skills/issue-from-comment/` turns a pasted comment into a GitHub issue.
 
+**When a pull request that resolves an issue is merged, close the issue and tick its box.**
+GitHub closes an issue on its own only when a "Closes #N" pull request lands on `main`, the
+default branch; pull requests go to `develop`, so the issue stays open. As soon as the merge
+is seen, close the issue as completed, and tick its `- [ ]` line in the task list of every
+issue that names it (a parent plan such as #157), leaving the rest of that body unchanged.
+An issue that the pull request resolves only in part stays open; say what is left.
+
 ## License
 
 Living Horizon License (custom, source-available), `LICENSE` at the root and
