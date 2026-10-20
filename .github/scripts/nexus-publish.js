@@ -4,13 +4,14 @@
  *
  *   node .github/scripts/nexus-publish.js check
  *       says which account the key belongs to (never the key itself)
- *   node .github/scripts/nexus-publish.js file --jar <path> --name <file name>
+ *   node .github/scripts/nexus-publish.js file --file <archive> --name <file name>
  *       --version <version> [--description <text>] [--dry]
- *       uploads the jar as the newest version of the Nexus file of that name,
- *       or as a new file when the page has none of that name yet
+ *       uploads the archive (Nexus takes no .jar: the workflow zips it) as the newest
+ *       version of the Nexus file of that name, or as a new file when the page has
+ *       none of that name yet; nothing when that file is already at this version
  *   node .github/scripts/nexus-publish.js changelog --version <version>
  *       --notes <path> [--dry]
- *       adds that version's changelog to the page
+ *       adds that version's changelog to the page, unless it is there already
  *
  * NEXUSMODS_TOKEN is the API key (a repository secret), NEXUSMODS_ID the number in the
  * page's URL (a repository variable), NEXUSMODS_GAME the game's domain (minecraft).
@@ -29,6 +30,8 @@ const KEY = process.env.NEXUSMODS_TOKEN || '';
 const PAGE = process.env.NEXUSMODS_ID || '';
 const GAME = process.env.NEXUSMODS_GAME || 'minecraft';
 const AGENT = 'living-horizon-release';
+// What Nexus accepts as a mod file; anything else is refused only after the upload.
+const ARCHIVES = ['.zip', '.rar', '.7z', '.exe', '.omod'];
 
 function args(argv) {
   const out = { _: [] };
@@ -113,17 +116,24 @@ async function upload(file) {
 }
 
 async function file(opts) {
-  for (const k of ['jar', 'name', 'version']) if (!opts[k]) throw new Error(`--${k} is missing`);
+  for (const k of ['file', 'name', 'version']) if (!opts[k]) throw new Error(`--${k} is missing`);
+  if (!ARCHIVES.includes(path.extname(opts.file).toLowerCase())) {
+    throw new Error(`${path.basename(opts.file)}: Nexus only takes ${ARCHIVES.join(', ')}`);
+  }
   const mod = await page();
   const { data } = await api('GET', `/v3/mods/${mod}/files`);
   const same = data.mod_files.filter(f => f.name === opts.name);
+  // Publishing twice must not add the same version twice: a re-run skips it.
+  if (same.some(f => f.version === opts.version)) {
+    return console.log(`${opts.name}: version ${opts.version} is already there`);
+  }
   const existing = same.find(f => f.is_active) || same[0];
   console.log(existing
     ? `${opts.name}: new version ${opts.version} of file ${existing.id}`
     : `${opts.name}: new file, version ${opts.version}`);
   if (opts.dry) return;
 
-  const id = await upload(opts.jar);
+  const id = await upload(opts.file);
   const common = {
     upload_id: id,
     name: opts.name,
@@ -152,7 +162,7 @@ function plain(markdown) {
   return markdown
     .replace(/\*\*(.+?)\*\*/g, '$1')
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)')
-    .replace(/^###\s+(.+)$/gm, '$1:')
+    .replace(/^#{3,4}\s+(.+)$/gm, '$1:')
     .trim();
 }
 
@@ -161,6 +171,11 @@ async function changelog(opts) {
   const text = plain(fs.readFileSync(opts.notes, 'utf8'));
   if (!text) return console.log('No changelog for this version.');
   if (opts.dry) return console.log(text);
+  // The v1 API lists the page's changelogs by version; a re-run leaves one alone.
+  const posted = await api('GET', `/v1/games/${GAME}/mods/${PAGE}/changelogs.json`);
+  if (posted && Object.prototype.hasOwnProperty.call(posted, opts.version)) {
+    return console.log(`The changelog of ${opts.version} is already there.`);
+  }
   await api('POST', `/v3/mods/${await page()}/changelogs`, { version: opts.version, changelog: text });
   console.log('changelog added');
 }

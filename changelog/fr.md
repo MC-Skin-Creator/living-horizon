@@ -2,27 +2,46 @@
 
 ## Prochaine version
 
-### Nouveautés
-- **Le mod sur un serveur** — mets le jar du loader du serveur dans son dossier `mods`, sur un serveur Fabric, Quilt, NeoForge ou Forge (avec la Fabric API sur Fabric et Quilt, rien d'autre sur NeoForge et Forge), et chaque joueur qui a le mod voit les autres joueurs à n'importe quelle distance.
-- **Mondes LAN et solo** — un monde ouvert au LAN partage tout de lui-même par le jeu de l'hôte, et les joueurs partis de ton propre monde apparaissent dès que tu l'ouvres.
-- **Ce que partage le serveur** — la position de chaque joueur, son skin, son armure, ce qu'il tient et ce qu'il monte, et les mobs autour de toi avec leur selle, leur harnais ou leur armure.
-- **Joueurs déconnectés** — le serveur garde l'endroit où chaque joueur s'est déconnecté, son apparence, sa monture et l'heure de son départ, pour que tout le monde le voie, même ceux arrivés après.
-- **Joueurs d'avant le mod** — sur un serveur ou dans un monde qui avait des joueurs avant l'ajout du mod, ceux qui ne sont pas connectés apparaissent tout de suite en joueurs déconnectés, là où ils sont partis, avec ce qu'ils portaient.
-- **Tout dès l'arrivée** — les mobs lointains et les joueurs déconnectés apparaissent dès que tu rejoins un serveur avec le mod, et non quelques secondes plus tard.
-- **Sans le mod** — les joueurs sans le mod peuvent toujours rejoindre un serveur avec le mod, et un serveur sans le mod n'affiche aucun joueur lointain : la console le signale une fois.
-- **Fini le datapack** — le datapack disparaît : un serveur qui l'utilisait a maintenant besoin du mod à la place.
+## 0.10.0 — 2026-10-20
 
-### Améliorations
-- **Joueurs lointains** — ils sont placés d'après ce que partage le serveur uniquement : l'estimation par la barre de localisation disparaît, et le réglage *Délai joueur perdu* avec.
+### Serveur
 
-### Corrections
+#### Nouveautés
+- **Le mod sur un serveur** — mets le jar dans le dossier `mods` du serveur, sur Fabric, Quilt, NeoForge ou Forge (plus la Fabric API sur Fabric et Quilt). Rien d'autre à régler. Il remplace le datapack.
+- **Positions des joueurs** — le serveur envoie où est chaque joueur, cinq fois par seconde, aux joueurs qui ont le mod. Il envoie aussi leur skin, leur armure, ce qu'ils tiennent et leur monture.
+- **Mobs** — le serveur envoie les mobs jusqu'à 2 048 blocs autour de chaque joueur, même ceux qu'il n'a jamais croisés : animaux, villageois, golems, allays et bateaux, avec leur selle, leur harnais, leur armure ou leur coffre.
+- **Joueurs déconnectés** — le serveur garde l'endroit où chaque joueur s'est déconnecté, son apparence, sa monture et l'heure de son départ, et l'envoie à tout le monde, même aux joueurs qui arrivent après.
+- **Joueurs d'avant le mod** — au premier démarrage, le serveur lit les joueurs que le monde avait déjà (le dossier `playerdata`, leurs noms dans `usercache.json`) et les affiche comme déconnectés, là où ils sont partis, avec ce qu'ils portaient.
+- **Fichier du monde** — le serveur sauvegarde tout cela dans `livinghorizon-positions.dat`, dans le dossier du monde. Un mob est oublié quand son chunk se charge et qu'il n'y est plus.
+- **Mondes LAN** — un monde ouvert au LAN partage tout par le jeu de l'hôte. Rien à installer.
+- **Joueurs sans le mod** — ils peuvent toujours rejoindre. Le serveur ne leur envoie rien.
+- **Même mod des deux côtés** — garde le mod à jour sur le serveur et chez les joueurs : un jeu qui ne sait pas lire les messages du serveur les ignore.
+- **Positions partagées** — le serveur partage la position de chaque joueur avec tous les joueurs qui ont le mod. Préviens tes joueurs.
+- **Fini le datapack** — le mod ne le lit plus : retire-le du dossier `datapacks` du monde. Plus rien ne passe par le scoreboard, donc les coordonnées ne sont plus lisibles dans les scores ni dans la barre latérale.
+
+#### Corrections
+- **Joueurs qui disparaissent à la fermeture d'un monde** — quand un serveur ou un monde LAN se ferme, les joueurs présents restent là où ils étaient, en joueurs déconnectés.
+
+### Client
+
+#### Nouveautés
+- **Tous les joueurs, à n'importe quelle distance** — sur un serveur avec le mod, tu vois tous les autres joueurs, avec leur skin, leur armure, ce qu'ils tiennent et leur monture.
+- **Mobs jamais croisés** — sur un serveur avec le mod, les mobs lointains apparaissent tout de suite, même ceux près desquels tu n'es jamais passé, avec leur selle, leur harnais, leur armure ou leur coffre.
+- **Joueurs déconnectés, même avant ton arrivée** — tu les vois là où ils sont partis, avec leur apparence et ce qu'ils montaient.
+- **Ton propre monde** — en solo, les joueurs déconnectés de ton monde apparaissent dès que tu l'ouvres, même ceux d'avant le mod.
+- **Tout dès l'arrivée** — les mobs lointains et les joueurs déconnectés apparaissent dès que tu rejoins, et non quelques secondes plus tard.
+- **Serveurs sans le mod** — tu peux toujours les rejoindre. Aucun joueur lointain n'est affiché, seulement les mobs que tu as croisés, et le journal le signale une fois.
+
+#### Améliorations
+- **Position des joueurs lointains** — elle vient uniquement de ce que partage le serveur. L'estimation par la barre de localisation disparaît, et le réglage *Délai joueur perdu* avec.
+
+#### Corrections
 - **Joueurs sur un ghast joyeux** — un joueur lointain qui chevauche un ghast joyeux n'a plus de second ghast à côté de lui, et celui qui le chevauchait déjà quand tu arrives ne flotte plus dans le vide.
 - **Ghast joyeux qui revient après la descente de son cavalier** — le ghast joyeux dont descend un joueur lointain ne réapparaît plus là où il a été monté pour revenir en volant : il reste là où il a été laissé.
 - **Anciens skins au loin** — un joueur lointain qui change de skin ne garde plus l'ancien au loin.
 - **Joueurs de travers dans les bateaux** — un joueur qui se déconnecte dans un bateau n'est plus assis tourné sur le côté : il regarde dans le sens du bateau.
 - **Cavaliers assis dans leur cheval** — un joueur lointain à cheval n'est plus assis dans le cheval ou sur sa croupe, en modèle complet comme en image plate.
 - **Cheval en double après la déconnexion de son cavalier** — un joueur qui se déconnecte à cheval ne laisse plus une seconde copie du cheval à côté de celui sur lequel il reste.
-- **Joueurs qui disparaissent à la fermeture d'un monde** — quand un serveur ou un monde LAN se ferme, les joueurs présents restent là où ils étaient, en joueurs déconnectés.
 - **Boutons Website et Issues grisés** — les boutons Website et Issues de la page du mod dans Mod Menu ne sont plus grisés (Fabric).
 
 ## 0.9.0 — 2026-10-19

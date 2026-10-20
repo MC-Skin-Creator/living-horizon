@@ -5,8 +5,10 @@
  * - entries only go into the Unreleased section: a released version never gains an
  *   entry, and no new dated section appears for a version that was never tagged
  *   (the release dates the Unreleased section by itself);
- * - the section headings are the ones the release scripts read: New, Improved,
- *   Fixed (Nouveautés, Améliorations, Corrections);
+ * - the section headings are the ones the release scripts read: "### Server" and
+ *   "### Client" (Serveur, Client), each with "#### New", "#### Improved", "#### Fixed"
+ *   (Nouveautés, Améliorations, Corrections). Released versions written before the
+ *   split keep their flat "### New" headings;
  * - en.md and fr.md have the same sections, headings and number of entries.
  *
  *   node .github/scripts/changelog-check.js <base-ref>
@@ -25,23 +27,35 @@ if (!base) {
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const HEADINGS = { en: ['New', 'Improved', 'Fixed'], fr: ['Nouveautés', 'Améliorations', 'Corrections'] };
+const AREAS = { en: ['Server', 'Client'], fr: ['Serveur', 'Client'] };
 const UNRELEASED = /^(Unreleased|Prochaine version)$/;
 const git = args => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' });
 
-// [{ version: '0.3.0' | null, kinds: [{ heading, entries }] }]
-function parse(text) {
+// [{ version: '0.3.0' | null, kinds: [{ area, heading, entries, flat }] }]
+// "### Server" / "### Client" open an area, "#### New" and so on a kind inside it; a
+// "### New" with no area is the flat layout of the versions released before the split.
+function parse(text, lang) {
   const releases = [];
+  let area = null;
   for (const line of text.split(/\r?\n/)) {
     const h2 = /^## (.+?)\s*$/.exec(line);
     const h3 = /^### (.+?)\s*$/.exec(line);
+    const h4 = /^#### (.+?)\s*$/.exec(line);
     if (h2) {
       const dated = /^(\d+\.\d+\.\d+)\s+—\s+\d{4}-\d{2}-\d{2}$/.exec(h2[1]);
       releases.push({ title: h2[1], version: dated ? dated[1] : null, unreleased: UNRELEASED.test(h2[1]), kinds: [] });
+      area = null;
     } else if (h3 && releases.length) {
-      releases[releases.length - 1].kinds.push({ heading: h3[1], entries: 0 });
+      if (AREAS[lang].includes(h3[1])) area = h3[1];
+      else {
+        area = null;
+        releases[releases.length - 1].kinds.push({ area: null, heading: h3[1], entries: 0, flat: true });
+      }
+    } else if (h4 && releases.length) {
+      releases[releases.length - 1].kinds.push({ area, heading: h4[1], entries: 0, flat: false });
     } else if (/^- /.test(line) && releases.length) {
       const r = releases[releases.length - 1];
-      if (!r.kinds.length) r.kinds.push({ heading: '(none)', entries: 0 });
+      if (!r.kinds.length) r.kinds.push({ area: null, heading: '(none)', entries: 0, flat: true });
       r.kinds[r.kinds.length - 1].entries++;
     }
   }
@@ -55,15 +69,21 @@ const files = {};
 
 for (const lang of ['en', 'fr']) {
   const name = 'changelog/' + lang + '.md';
-  const now = parse(fs.readFileSync(path.join(ROOT, name), 'utf8'));
+  const now = parse(fs.readFileSync(path.join(ROOT, name), 'utf8'), lang);
   let before = [];
-  try { before = parse(git(['show', base + ':' + name])); } catch (e) { /* new file */ }
+  try { before = parse(git(['show', base + ':' + name]), lang); } catch (e) { /* new file */ }
   files[lang] = now;
 
   for (const r of now) {
     if (!r.version && !r.unreleased) errors.push(name + ': "## ' + r.title + '" is neither "## ' + (lang === 'en' ? 'Unreleased' : 'Prochaine version') + '" nor "## X.Y.Z — YYYY-MM-DD".');
     for (const k of r.kinds) {
-      if (!HEADINGS[lang].includes(k.heading)) errors.push(name + ': "### ' + k.heading + '" under "' + r.title + '" must be one of ' + HEADINGS[lang].join(', ') + '.');
+      if (!HEADINGS[lang].includes(k.heading)) {
+        errors.push(name + ': "' + (k.flat ? '### ' : '#### ') + k.heading + '" under "' + r.title + '" must be one of ' + HEADINGS[lang].join(', ') + '.');
+      } else if (!k.area && !k.flat) {
+        errors.push(name + ': "#### ' + k.heading + '" under "' + r.title + '" has no "### ' + AREAS[lang].join('" or "### ') + '" above it.');
+      } else if (k.flat && !r.version) {
+        errors.push(name + ': "### ' + k.heading + '" under "' + r.title + '" must sit under "### ' + AREAS[lang].join('" or "### ') + '": only released versions keep the flat layout.');
+      }
     }
     if (!r.version) continue;
     const old = before.find(o => o.version === r.version);
@@ -76,8 +96,12 @@ for (const lang of ['en', 'fr']) {
   if (!now.some(r => r.unreleased)) errors.push(name + ': the "## ' + (lang === 'en' ? 'Unreleased' : 'Prochaine version') + '" section is missing.');
 }
 
-const shape = rs => rs.map(r => (r.version || 'unreleased') + ': ' + r.kinds.map(k => HEADINGS.en[HEADINGS.fr.indexOf(k.heading)] || k.heading).map((h, i) => h + ' ' + r.kinds[i].entries).join(', '));
-const en = shape(files.en), fr = shape(files.fr);
+const shape = (rs, lang) => rs.map(r => (r.version || 'unreleased') + ': ' + r.kinds.map(k => {
+  const kind = HEADINGS.en[HEADINGS[lang].indexOf(k.heading)] || k.heading;
+  const area = k.area ? AREAS.en[AREAS[lang].indexOf(k.area)] + ' ' : '';
+  return area + kind + ' ' + k.entries;
+}).join(', '));
+const en = shape(files.en, 'en'), fr = shape(files.fr, 'fr');
 for (let i = 0; i < Math.max(en.length, fr.length); i++) {
   if (en[i] !== fr[i]) errors.push('en.md and fr.md differ: "' + (en[i] || 'nothing') + '" in English, "' + (fr[i] || 'nothing') + '" in French.');
 }

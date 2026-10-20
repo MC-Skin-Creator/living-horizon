@@ -21,6 +21,8 @@ on:
 
 permissions:
   contents: write
+  # Reads the pull request build's jars, which are artifacts of another run.
+  actions: read
 
 # Two merges in a row must not compute the same number at once. Nothing is cancelled,
 # because a release may be halfway through tagging and pushing.
@@ -28,18 +30,11 @@ concurrency:
   group: release
   cancel-in-progress: false
 
-env:
-  # The project ids are public, so they are repository *variables*, not secrets:
-  # Settings > Secrets and variables > Actions > Variables. The tokens are secrets
-  # (MODRINTH_TOKEN, CURSEFORGE_TOKEN, NEXUSMODS_TOKEN). Without a token and an id, a
-  # platform is skipped. NEXUSMODS_ID is the number in the Nexus page's URL.
-  MODRINTH_ID: ${{ vars.MODRINTH_ID }}
-  CURSEFORGE_ID: ${{ vars.CURSEFORGE_ID }}
-  NEXUSMODS_ID: ${{ vars.NEXUSMODS_ID }}
-
-# Six jobs, so the slow part runs in parallel and nothing is tagged before every jar
-# exists: the version is worked out once, each target builds on its own runner, then
-# the release, the uploads, the Nexus changelog and the announcement follow.
+# The version is worked out once, each target builds on its own runner (or takes the
+# jar its pull request already built), and nothing is tagged before every jar exists.
+# Then the GitHub release, and from it, side by side and each on its own, Modrinth,
+# CurseForge, Nexus Mods (publish.yml) and the Discord announcement: one platform
+# failing is re-run alone, without publishing the others or announcing twice.
 jobs:
   version:
     runs-on: ubuntu-latest
@@ -48,6 +43,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       channel: ${{ steps.version.outputs.channel }}
       targets: ${{ steps.targets.outputs.targets }}
+      prebuilt: ${{ steps.prebuilt.outputs.run }}
 
     steps:
       - name: Checkout
@@ -61,16 +57,13 @@ jobs:
         id: version
         env:
           MANUAL_VERSION: ${{ inputs.version }}
-          RUN_NUMBER: ${{ github.run_number }}
         run: |
           set -euo pipefail
 
           if [ "${{ github.ref_name }}" = 'develop' ]; then
-            # Every merge into develop gets a build, even one carrying no
-            # release-worthy commit. The -dev. suffix sorts below the release it
-            # previews, which is exactly what it is.
-            base=$(.github/scripts/next-version.sh --min-patch)
-            version="${base}-dev.${RUN_NUMBER}"
+            # The same script as the pull request build, so a merge gets the number
+            # its pull request stamped on its jars.
+            version=$(.github/scripts/release-version.sh develop)
             channel=dev
           elif [ -n "$MANUAL_VERSION" ]; then
             # The manual path exists for the versions no commit message should
@@ -78,7 +71,7 @@ jobs:
             version="$MANUAL_VERSION"
             channel=stable
           else
-            version=$(.github/scripts/next-version.sh)
+            version=$(.github/scripts/release-version.sh main)
             channel=stable
           fi
 
@@ -107,6 +100,35 @@ jobs:
         id: targets
         run: echo "targets=$(python3 .github/scripts/release-targets.py)" >> "$GITHUB_OUTPUT"
 
+      - name: Look for the pull request's build
+        # The build workflow leaves a marker once every target of a pull request into
+        # develop or main is built, named after the merged files and the version it
+        # stamped. Its jars are taken when both match this commit's, and the run built
+        # the pull request this commit merged: its head is one of the parents, so the
+        # workflow that made them is the reviewed one now on this branch. Anything
+        # else (a newer base, an expired artifact, a squash merge) builds again.
+        if: steps.version.outputs.release == 'true'
+        id: prebuilt
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          tree=$(git rev-parse 'HEAD^{tree}')
+          parents=$(git rev-parse 'HEAD^@')
+          run=''
+          # Newest first.
+          while read -r id head; do
+            if grep -qxF "$head" <<<"$parents"; then run=$id; break; fi
+          done < <(gh api "repos/${{ github.repository }}/actions/artifacts?name=prebuilt-${tree}-${VERSION}&per_page=100" \
+            --jq '.artifacts[] | select(.expired | not) | "\(.workflow_run.id) \(.workflow_run.head_sha)"')
+          if [ -n "$run" ]; then
+            echo "Taking the jars of build run ${run}."
+          else
+            echo 'No pull request build of these files at this version: building.'
+          fi
+          echo "run=${run}" >> "$GITHUB_OUTPUT"
+
   build:
     needs: version
     if: needs.version.outputs.release == 'true'
@@ -123,7 +145,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Take the pull request's jar
+        # A target the pull request did not build, or a download that fails, is built
+        # below instead.
+        if: needs.version.outputs.prebuilt != ''
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: livinghorizon-${{ matrix.target.node }}
+          path: build/libs/${{ needs.version.outputs.version }}
+          run-id: ${{ needs.version.outputs.prebuilt }}
+          github-token: ${{ github.token }}
+
+      - name: Check the pull request's jar
+        # One jar carrying this version, or nothing is taken.
+        id: reuse
+        if: needs.version.outputs.prebuilt != ''
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          jars=(build/libs/"$VERSION"/livinghorizon-"$VERSION"+*.jar)
+          if [ "${#jars[@]}" -eq 1 ]; then
+            ls -l build/libs/"$VERSION"
+            echo 'taken=true' >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No jar at ${VERSION} from the pull request's build; building it."
+            rm -rf build/libs
+          fi
+
       - name: Set up JDKs
+        if: steps.reuse.outputs.taken != 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -136,12 +189,14 @@ jobs:
             21
 
       - name: Set up Gradle
+        if: steps.reuse.outputs.taken != 'true'
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: false
           cache-cleanup: always
 
       - name: Stamp the version
+        if: steps.reuse.outputs.taken != 'true'
         env:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
@@ -152,6 +207,7 @@ jobs:
           grep '^mod.version' stonecutter.properties.toml
 
       - name: Build
+        if: steps.reuse.outputs.taken != 'true'
         # The tests already ran on the pull request; this only builds the jar.
         # Over fifty runners download the same plugins and Minecraft files at
         # once, so a download that fails is tried again; any other failure is not.
@@ -182,8 +238,6 @@ jobs:
   release:
     needs: [version, build]
     runs-on: ubuntu-latest
-    outputs:
-      changelog: ${{ steps.notes.outputs.changelog }}
 
     steps:
       - name: Checkout
@@ -226,24 +280,6 @@ jobs:
           git push origin HEAD:"${{ github.ref_name }}"
           git push origin "v${VERSION}"
 
-      - name: Read the changelog
-        # This version's section of changelog/en.md, dated just above, for the
-        # Modrinth and CurseForge version pages.
-        if: needs.version.outputs.channel == 'stable'
-        id: notes
-        env:
-          VERSION: ${{ needs.version.outputs.version }}
-        run: |
-          set -euo pipefail
-          link="[Full release on GitHub](https://github.com/${{ github.repository }}/releases/tag/v${VERSION})"
-          notes=$(node .github/scripts/changelog-notes.js "$VERSION")
-          {
-            echo 'changelog<<LH_CHANGELOG_EOF'
-            if [ -n "$notes" ]; then printf '%s\n\n' "$notes"; fi
-            echo "$link"
-            echo 'LH_CHANGELOG_EOF'
-          } >> "$GITHUB_OUTPUT"
-
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -282,148 +318,49 @@ jobs:
           gh release create "v${VERSION}" "${args[@]}" "${files[@]}"
 
   # Stable releases only: the -dev builds are untested previews and stay on GitHub.
-  # One Modrinth and CurseForge version per jar, each marked with the game releases its
-  # TOML table lists and with its release type there - beta unless its table says
-  # otherwise. One Nexus Mods file per jar too, named after its target. Skipped, not
-  # failed, while the token or the id of a platform is missing.
-  publish:
+  # One job per platform, so a failure on one is re-run alone. Each takes the jars from
+  # the GitHub release and is skipped, not failed, while the platform's token or id is
+  # missing: MODRINTH_TOKEN, CURSEFORGE_TOKEN, NEXUSMODS_TOKEN (secrets) and
+  # MODRINTH_ID, CURSEFORGE_ID, NEXUSMODS_ID (variables; the last is the number in the
+  # Nexus page's URL).
+  modrinth:
     needs: [version, release]
     if: needs.version.outputs.channel == 'stable'
-    strategy:
-      fail-fast: false
-      max-parallel: 2
-      matrix:
-        target: ${{ fromJSON(needs.version.outputs.targets) }}
-    name: publish ${{ matrix.target.node }}
-    runs-on: ubuntu-latest
-    env:
-      MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-      CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
-      NEXUSMODS_TOKEN: ${{ secrets.NEXUSMODS_TOKEN }}
+    uses: ./.github/workflows/publish.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+      platform: modrinth
+    secrets: inherit
 
-    steps:
-      - name: Fetch the jar
-        if: env.MODRINTH_TOKEN != '' || env.CURSEFORGE_TOKEN != '' || (env.NEXUSMODS_TOKEN != '' && env.NEXUSMODS_ID != '')
-        uses: actions/download-artifact@v4
-        with:
-          name: files-${{ matrix.target.node }}
-          path: files
+  curseforge:
+    needs: [version, release]
+    if: needs.version.outputs.channel == 'stable'
+    uses: ./.github/workflows/publish.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+      platform: curseforge
+    secrets: inherit
 
-      - name: Name the version
-        # The jar's own name carries the version string and the game version it was
-        # built on: livinghorizon-0.1.0+mc1.21.11.jar. Nexus has no loader or game
-        # version fields, so its file is named after the target instead, a name that
-        # stays the same from one release to the next: "Living Horizon (Fabric 26.1.x)".
-        if: env.MODRINTH_TOKEN != '' || env.CURSEFORGE_TOKEN != '' || (env.NEXUSMODS_TOKEN != '' && env.NEXUSMODS_ID != '')
-        id: name
-        env:
-          LOADER: ${{ matrix.target.loader }}
-          NODE: ${{ matrix.target.node }}
-          RELEASES: ${{ matrix.target.releases }}
-        run: |
-          set -euo pipefail
-          jar=$(find files -name '*.jar')
-          full=$(basename "$jar" .jar)
-          full=${full#livinghorizon-}
-          game=${full#*+mc}
-          game=${game%-"$LOADER"}
-          case "$LOADER" in
-            fabric) label="$game"; loader=Fabric ;;
-            quilt) label="Quilt $game"; loader=Quilt ;;
-            neoforge) label="NeoForge $game"; loader=NeoForge ;;
-            forge) label="Forge $game"; loader=Forge ;;
-          esac
-          needs=''
-          case "$LOADER" in fabric|quilt) needs=' Needs the Fabric API.' ;; esac
-          {
-            echo "jar=${jar}"
-            echo "version=${full}"
-            echo "label=${label}"
-            echo "nexus_name=Living Horizon (${loader} ${NODE%-"$LOADER"})"
-            echo "nexus_description=${loader}, Minecraft $(echo "$RELEASES" | paste -sd, - | sed 's/,/, /g').${needs}"
-          } >> "$GITHUB_OUTPUT"
+  nexus:
+    needs: [version, release]
+    if: needs.version.outputs.channel == 'stable'
+    uses: ./.github/workflows/publish.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+      platform: nexus
+    secrets: inherit
 
-      - name: Publish to Modrinth and CurseForge
-        if: env.MODRINTH_TOKEN != '' || env.CURSEFORGE_TOKEN != ''
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: ${{ env.MODRINTH_ID }}
-          modrinth-token: ${{ env.MODRINTH_TOKEN }}
-          curseforge-id: ${{ env.CURSEFORGE_ID }}
-          curseforge-token: ${{ env.CURSEFORGE_TOKEN }}
-          files: ${{ steps.name.outputs.jar }}
-          name: Living Horizon ${{ needs.version.outputs.version }} (${{ steps.name.outputs.label }})
-          version: ${{ steps.name.outputs.version }}
-          version-type: ${{ matrix.target.type }}
-          loaders: ${{ matrix.target.loader }}
-          game-versions: ${{ matrix.target.releases }}
-          # Fabric and Quilt ask for the Fabric API, which Quilt runs as it runs any Fabric
-          # mod; Voxy and Distant Horizons are both optional, alike. NeoForge and
-          # Forge ask for nothing. Mod Menu is not asked for: the mod only uses its API
-          # for the settings button.
-          dependencies: |
-            ${{ (matrix.target.loader == 'fabric' || matrix.target.loader == 'quilt') && 'fabric-api(required){modrinth:P7dR8mSH}{curseforge:306612}' || '' }}
-            ${{ (matrix.target.loader == 'fabric' || matrix.target.loader == 'quilt') && 'voxy(optional){modrinth:fxxUqruK}' || '' }}
-            distanthorizons(optional){modrinth:uCdwusMi}
-          # The player changelog of this version, shown in the Changelog tab of Modrinth
-          # and on the file page of CurseForge.
-          changelog: ${{ needs.release.outputs.changelog }}
-
-      - name: Fetch the Nexus Mods script
-        if: ${{ !cancelled() && env.NEXUSMODS_TOKEN != '' && env.NEXUSMODS_ID != '' }}
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: .github/scripts
-          path: repo
-
-      - name: Publish to Nexus Mods
-        # Not held back by a Modrinth or CurseForge failure: each platform stands alone.
-        # The first release creates the file on the page, the next ones add a version
-        # to it and archive the previous one.
-        if: ${{ !cancelled() && env.NEXUSMODS_TOKEN != '' && env.NEXUSMODS_ID != '' }}
-        env:
-          JAR: ${{ steps.name.outputs.jar }}
-          NAME: ${{ steps.name.outputs.nexus_name }}
-          DESCRIPTION: ${{ steps.name.outputs.nexus_description }}
-          VERSION: ${{ needs.version.outputs.version }}
-        run: |
-          node repo/.github/scripts/nexus-publish.js file \
-            --jar "$JAR" --name "$NAME" --version "$VERSION" --description "$DESCRIPTION"
-
-  # The page's changelog, once per release rather than once per file, after the files.
-  # Never blocking: nothing depends on it.
-  nexus-changelog:
-    needs: [version, release, publish]
-    if: always() && needs.version.outputs.channel == 'stable' && needs.release.result == 'success'
-    runs-on: ubuntu-latest
-    env:
-      NEXUSMODS_TOKEN: ${{ secrets.NEXUSMODS_TOKEN }}
-    steps:
-      - name: Fetch the Nexus Mods script
-        if: env.NEXUSMODS_TOKEN != '' && env.NEXUSMODS_ID != ''
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: .github/scripts
-
-      - name: Add the changelog on Nexus Mods
-        if: env.NEXUSMODS_TOKEN != '' && env.NEXUSMODS_ID != ''
-        env:
-          VERSION: ${{ needs.version.outputs.version }}
-          NOTES: ${{ needs.release.outputs.changelog }}
-        run: |
-          printf '%s\n' "$NOTES" > notes.md
-          node .github/scripts/nexus-publish.js changelog --version "$VERSION" --notes notes.md
-
-  # Last, and never blocking: nothing depends on this job, so a Discord hiccup cannot
-  # undo a release that is already on GitHub, Modrinth and CurseForge. It reads the
+  # Never blocking: nothing depends on this job, so a Discord hiccup cannot undo a
+  # release that is already on GitHub. It waits for the release only, never for the
+  # platforms, so re-running one of them never announces the release again. It reads the
   # changelog from the release tag - where the release job dated it - and posts that
   # version in each language that has a webhook secret (DISCORD_WEBHOOK_EN / _FR, or
   # DISCORD_WEBHOOK alone for English), pinging the role whose ID is in the
   # DISCORD_ROLE_EN / _FR or DISCORD_ROLE variable (@Updates when unset). Stable releases only: the -dev builds are
   # never announced.
   announce:
-    needs: [version, release, publish]
-    if: always() && needs.version.outputs.channel == 'stable' && needs.release.result == 'success'
+    needs: [version, release]
+    if: needs.version.outputs.channel == 'stable'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the release

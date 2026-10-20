@@ -1,0 +1,280 @@
+name: publish
+
+# Puts a version already released on GitHub on one platform: Modrinth, CurseForge or
+# Nexus Mods. The release calls it once per platform, so each one stands alone: a
+# failure on one is re-run ("Re-run failed jobs") without publishing the others again
+# or announcing the release twice. It can also be started by hand for a version and a
+# platform (Actions > publish > Run workflow), when a platform was missed.
+#
+# The jars come from the GitHub release itself, never from the release run's
+# artifacts, which expire after a day. Without the token or the id of the platform,
+# nothing is published and nothing fails.
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+      platform:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version already released on GitHub, e.g. 0.10.0.'
+        required: true
+        type: string
+      platform:
+        description: 'Where to publish it.'
+        required: true
+        type: choice
+        options:
+          - modrinth
+          - curseforge
+          - nexus
+
+permissions:
+  contents: read
+
+jobs:
+  # What every file needs, read once: the targets and the changelog of the release's
+  # own tag, and whether the platform is set up at all.
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.platform.outputs.enabled }}
+      targets: ${{ steps.targets.outputs.targets }}
+      changelog: ${{ steps.notes.outputs.changelog }}
+    env:
+      PLATFORM: ${{ inputs.platform }}
+      VERSION: ${{ inputs.version }}
+    steps:
+      - name: Check the platform
+        id: platform
+        env:
+          MODRINTH: ${{ secrets.MODRINTH_TOKEN != '' && vars.MODRINTH_ID != '' }}
+          CURSEFORGE: ${{ secrets.CURSEFORGE_TOKEN != '' && vars.CURSEFORGE_ID != '' }}
+          NEXUS: ${{ secrets.NEXUSMODS_TOKEN != '' && vars.NEXUSMODS_ID != '' }}
+        run: |
+          set -euo pipefail
+          case "$PLATFORM" in
+            modrinth) enabled=$MODRINTH ;;
+            curseforge) enabled=$CURSEFORGE ;;
+            nexus) enabled=$NEXUS ;;
+            *) echo "::error::Unknown platform: ${PLATFORM}"; exit 1 ;;
+          esac
+          if [ "$enabled" != 'true' ]; then
+            echo "::notice::No token or no id for ${PLATFORM}: skipped."
+          fi
+          echo "enabled=${enabled}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout the release
+        # Its targets and its dated changelog are the ones of the release's own tag.
+        if: steps.platform.outputs.enabled == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ inputs.version }}
+
+      - name: List the targets
+        if: steps.platform.outputs.enabled == 'true'
+        id: targets
+        run: echo "targets=$(python3 .github/scripts/release-targets.py)" >> "$GITHUB_OUTPUT"
+
+      - name: Read the changelog
+        # This version's section of changelog/en.md, dated by the release, for the
+        # Modrinth and CurseForge version pages.
+        if: steps.platform.outputs.enabled == 'true'
+        id: notes
+        run: |
+          set -euo pipefail
+          link="[Full release on GitHub](https://github.com/${{ github.repository }}/releases/tag/v${VERSION})"
+          notes=$(node .github/scripts/changelog-notes.js "$VERSION")
+          {
+            echo 'changelog<<LH_CHANGELOG_EOF'
+            if [ -n "$notes" ]; then printf '%s\n\n' "$notes"; fi
+            echo "$link"
+            echo 'LH_CHANGELOG_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+  # One file per jar. On Modrinth and CurseForge, one version marked with the game
+  # releases its TOML table lists and with its release type there. On Nexus Mods, one
+  # file named after its target, zipped: Nexus takes no .jar.
+  file:
+    needs: prepare
+    if: needs.prepare.outputs.enabled == 'true'
+    strategy:
+      # One target failing must not cancel the others: "Re-run failed jobs" then
+      # retries only that one.
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        target: ${{ fromJSON(needs.prepare.outputs.targets) }}
+    name: ${{ inputs.platform }} ${{ matrix.target.node }}
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version }}
+
+    steps:
+      - name: Fetch the scripts
+        # From the branch this workflow runs on, not the release's tag, so a fix to
+        # them also serves a version released before it.
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Fetch the jar
+        # The release carries every target's jar: livinghorizon-0.1.0+mc1.21.11.jar,
+        # with -quilt, -neoforge or -forge after the game version for the other
+        # loaders. The game version is one of the releases the target's table lists.
+        id: jar
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LOADER: ${{ matrix.target.loader }}
+          RELEASES: ${{ matrix.target.releases }}
+        run: |
+          set -euo pipefail
+          assets=$(gh release view "v${VERSION}" --repo "${{ github.repository }}" --json assets --jq '.assets[].name')
+          suffix=''
+          [ "$LOADER" = fabric ] || suffix="-${LOADER}"
+          jar=''
+          while read -r mc; do
+            name="livinghorizon-${VERSION}+mc${mc}${suffix}.jar"
+            if grep -qxF "$name" <<<"$assets"; then jar=$name; fi
+          done <<<"$RELEASES"
+          if [ -z "$jar" ]; then
+            echo "::error::v${VERSION} has no jar for this target."
+            exit 1
+          fi
+          gh release download "v${VERSION}" --repo "${{ github.repository }}" --pattern "$jar" --dir files
+          echo "jar=files/${jar}" >> "$GITHUB_OUTPUT"
+
+      - name: Name the version
+        # The jar's own name carries the version string and the game version it was
+        # built on. Nexus has no loader or game version fields, so its file is named
+        # after the target instead, a name that stays the same from one release to the
+        # next: "Living Horizon (Fabric 26.1.x)".
+        id: name
+        env:
+          JAR: ${{ steps.jar.outputs.jar }}
+          LOADER: ${{ matrix.target.loader }}
+          NODE: ${{ matrix.target.node }}
+          RELEASES: ${{ matrix.target.releases }}
+        run: |
+          set -euo pipefail
+          full=$(basename "$JAR" .jar)
+          full=${full#livinghorizon-}
+          game=${full#*+mc}
+          game=${game%-"$LOADER"}
+          case "$LOADER" in
+            fabric) label="$game"; loader=Fabric ;;
+            quilt) label="Quilt $game"; loader=Quilt ;;
+            neoforge) label="NeoForge $game"; loader=NeoForge ;;
+            forge) label="Forge $game"; loader=Forge ;;
+          esac
+          needs=''
+          case "$LOADER" in fabric|quilt) needs=' Needs the Fabric API.' ;; esac
+          {
+            echo "version=${full}"
+            echo "label=${label}"
+            echo "nexus_name=Living Horizon (${loader} ${NODE%-"$LOADER"})"
+            echo "nexus_description=${loader}, Minecraft $(echo "$RELEASES" | paste -sd, - | sed 's/,/, /g').${needs} Unzip it and put the .jar in the mods folder."
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Look for it on Modrinth
+        # Modrinth refuses a file it already has: a version already there is left
+        # alone, so publishing twice changes nothing.
+        if: inputs.platform == 'modrinth'
+        id: modrinth
+        env:
+          PROJECT: ${{ vars.MODRINTH_ID }}
+          NUMBER: ${{ steps.name.outputs.version }}
+        run: |
+          set -euo pipefail
+          if curl -fsS "https://api.modrinth.com/v2/project/${PROJECT}/version" \
+              | jq -e --arg n "$NUMBER" 'any(.[]; .version_number == $n)' >/dev/null; then
+            echo "::notice::${NUMBER} is already on Modrinth."
+            echo 'done=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to Modrinth
+        if: inputs.platform == 'modrinth' && steps.modrinth.outputs.done != 'true'
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: ${{ vars.MODRINTH_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          files: ${{ steps.jar.outputs.jar }}
+          name: Living Horizon ${{ inputs.version }} (${{ steps.name.outputs.label }})
+          version: ${{ steps.name.outputs.version }}
+          version-type: ${{ matrix.target.type }}
+          loaders: ${{ matrix.target.loader }}
+          game-versions: ${{ matrix.target.releases }}
+          # Fabric and Quilt ask for the Fabric API, which Quilt runs as it runs any Fabric
+          # mod; Voxy and Distant Horizons are both optional, alike. NeoForge and
+          # Forge ask for nothing. Mod Menu is not asked for: the mod only uses its API
+          # for the settings button.
+          dependencies: |
+            ${{ (matrix.target.loader == 'fabric' || matrix.target.loader == 'quilt') && 'fabric-api(required){modrinth:P7dR8mSH}' || '' }}
+            ${{ (matrix.target.loader == 'fabric' || matrix.target.loader == 'quilt') && 'voxy(optional){modrinth:fxxUqruK}' || '' }}
+            distanthorizons(optional){modrinth:uCdwusMi}
+          # The player changelog of this version, in the Changelog tab.
+          changelog: ${{ needs.prepare.outputs.changelog }}
+
+      - name: Publish to CurseForge
+        # CurseForge's upload key cannot list the files already there: re-run only the
+        # targets that failed.
+        if: inputs.platform == 'curseforge'
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          curseforge-id: ${{ vars.CURSEFORGE_ID }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          files: ${{ steps.jar.outputs.jar }}
+          name: Living Horizon ${{ inputs.version }} (${{ steps.name.outputs.label }})
+          version: ${{ steps.name.outputs.version }}
+          version-type: ${{ matrix.target.type }}
+          loaders: ${{ matrix.target.loader }}
+          game-versions: ${{ matrix.target.releases }}
+          dependencies: |
+            ${{ (matrix.target.loader == 'fabric' || matrix.target.loader == 'quilt') && 'fabric-api(required){curseforge:306612}' || '' }}
+          # The player changelog of this version, on the file page.
+          changelog: ${{ needs.prepare.outputs.changelog }}
+
+      - name: Publish to Nexus Mods
+        # Nexus takes archives only, so the jar goes in a zip of the same name. The
+        # first release creates the file on the page, the next ones add a version to
+        # it and archive the previous one; a file already at this version is left alone.
+        if: inputs.platform == 'nexus'
+        env:
+          NEXUSMODS_TOKEN: ${{ secrets.NEXUSMODS_TOKEN }}
+          NEXUSMODS_ID: ${{ vars.NEXUSMODS_ID }}
+          JAR: ${{ steps.jar.outputs.jar }}
+          NAME: ${{ steps.name.outputs.nexus_name }}
+          DESCRIPTION: ${{ steps.name.outputs.nexus_description }}
+        run: |
+          set -euo pipefail
+          zip="${JAR%.jar}.zip"
+          zip -j "$zip" "$JAR"
+          node .github/scripts/nexus-publish.js file \
+            --file "$zip" --name "$NAME" --version "$VERSION" --description "$DESCRIPTION"
+
+  # The Nexus page's changelog, once per release rather than once per file. It does not
+  # wait for the files, so a file re-run never posts it again; and a version whose
+  # changelog is already there is left alone.
+  nexus-changelog:
+    needs: prepare
+    if: needs.prepare.outputs.enabled == 'true' && inputs.platform == 'nexus'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch the scripts
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Add the changelog on Nexus Mods
+        env:
+          NEXUSMODS_TOKEN: ${{ secrets.NEXUSMODS_TOKEN }}
+          NEXUSMODS_ID: ${{ vars.NEXUSMODS_ID }}
+          VERSION: ${{ inputs.version }}
+          NOTES: ${{ needs.prepare.outputs.changelog }}
+        run: |
+          printf '%s\n' "$NOTES" > notes.md
+          node .github/scripts/nexus-publish.js changelog --version "$VERSION" --notes notes.md

@@ -86,7 +86,8 @@ same names, which the figures are drawn from through the entity's own renderer. 
 an older node is checked by starting its client.
 
 Mod and dependency versions live in `stonecutter.properties.toml`, never hardcoded
-in the build scripts. The README describes how each part works.
+in the build scripts. `docs/technical.md` describes how each part works. The README and the
+store description (`store/listing.md`) are written with the `readme-writing` skill.
 
 ## Settings live in two screens
 
@@ -174,11 +175,19 @@ when everything on `develop` has shipped, merges `main` into it otherwise, and o
 ## CI and releases
 
 `.github/workflows/build.yml` builds and tests every Stonecutter target on each pull
-request, and attaches the jar as a 7-day workflow artifact. CI is
+request, and attaches the jar as a 14-day workflow artifact. CI is
 what checks a change; a pull request is not done until it is green.
 
+The release does not build again what a pull request built. A pull request into `develop`
+or `main` stamps the version its merge will release (`.github/scripts/release-version.sh`,
+shared by both workflows) and, once every target is built, leaves a `prebuilt-<tree>-<version>`
+marker. The release takes that run's jars when the pushed commit has the same tree and
+version and one of its parents is the run's head; otherwise (base moved since the build,
+artifact expired, squash merge) it builds, target by target where a jar is missing.
+
 `.github/workflows/release.yml` runs on every push to `main` and `develop` (except doc-only
-ones). A push to `develop` publishes a GitHub pre-release `vX.Y.Z-dev.N` only: no tag
+ones). A push to `develop` publishes a GitHub pre-release `vX.Y.Z-dev.N` (`N` the commit
+count of `develop`, the same on the pull request's merge and the merge commit) only: no tag
 baseline, no commit back, no Modrinth, CurseForge, Nexus Mods or Discord. A push to `main` does this:
 
 - `.github/scripts/next-version.sh` derives the version from the conventional-commit
@@ -186,18 +195,26 @@ baseline, no commit back, no Modrinth, CurseForge, Nexus Mods or Discord. A push
   a minor below 1.0.0, and `docs`/`chore`/`ci`/`refactor`/`test`/`build` alone make no
   release. `1.0.0` is never computed: cut it by hand with the workflow's `version` input.
   So is a first release at a number the commits would not give.
-- Each target builds on its own runner (`.github/scripts/release-targets.py` reads the
-  tables of `stonecutter.properties.toml`), then the release is tagged, the version and the
-  dated changelog are committed back to `main`, and the GitHub release gets the jars.
-  Below 1.0.0 it is a pre-release titled `vX.Y.Z (beta)`.
-- Modrinth and CurseForge are published by `mc-publish` when `MODRINTH_TOKEN` /
+- Each target builds on its own runner, or takes the pull request's jar
+  (`.github/scripts/release-targets.py` reads the tables of `stonecutter.properties.toml`),
+  then the release is tagged, the version and the dated changelog are committed back to
+  `main`, and the GitHub release gets the jars. Below 1.0.0 it is a pre-release titled
+  `vX.Y.Z (beta)`.
+- Then Modrinth, CurseForge and Nexus Mods each get a job of their own, a call to
+  `.github/workflows/publish.yml` that takes the jars from the GitHub release: a platform
+  that fails is re-run alone ("Re-run failed jobs"), and the same workflow, run by hand with
+  a version and a platform, publishes a release a platform missed. A version already on
+  Modrinth or Nexus is left alone; CurseForge cannot be asked, so re-run only its failed
+  targets. Modrinth and CurseForge are published by `mc-publish` when `MODRINTH_TOKEN` /
   `CURSEFORGE_TOKEN` (secrets) and `MODRINTH_ID` / `CURSEFORGE_ID` (repository variables)
   exist, and skipped otherwise. Nexus Mods is published by `.github/scripts/nexus-publish.js`
   (its v3 API) when `NEXUSMODS_TOKEN` (secret) and `NEXUSMODS_ID` (variable, the number in
-  the page's URL) exist: one file per target, found by its name ("Living Horizon (Fabric
-  26.1.x)"), created on the first release and given a new version on the next ones. The API
-  cannot create the page itself. The Discord announcement uses `DISCORD_WEBHOOK_EN` / `_FR` and pings the
-  role whose ID is in `DISCORD_ROLE` (variable, @Updates when unset; `DISCORD_ROLE_EN` / `_FR` per language).
+  the page's URL) exist: one file per target, the jar in a zip (Nexus refuses a `.jar`),
+  found by its name ("Living Horizon (Fabric 26.1.x)"), created on the first release and
+  given a new version on the next ones. The API cannot create the page itself. The Discord
+  announcement waits for the GitHub release only, never for the platforms, uses
+  `DISCORD_WEBHOOK_EN` / `_FR` and pings the role whose ID is in `DISCORD_ROLE` (variable,
+  @Updates when unset; `DISCORD_ROLE_EN` / `_FR` per language).
 
 The mod version is `mod.version` in `stonecutter.properties.toml`; the Minecraft version
 never touches it.
@@ -429,10 +446,15 @@ changelog in a later commit or pull request.
 
 A pull request that changes what a player sees or feels adds its entry to
 `changelog/en.md` and `changelog/fr.md`, under `## Unreleased` / `## Prochaine version`
-and nowhere else: a dated section is a version already released, never edited. Headings
-are `### New`, `### Improved`, `### Fixed` (`### Nouveautés`, `### Améliorations`,
-`### Corrections`); both files have the same headings and number of bullets, in the same
-order. The `changelog` CI job checks all of this.
+and nowhere else: a dated section is a version already released, never edited. A version
+is split in two parts, **Server** first (what a server owner installs, sets up or gets, and
+what the mod does on a server, a LAN host included), then **Client** (what a player sees and
+feels in game, single player included): `### Server` / `### Client` (`### Serveur` /
+`### Client`), each with the kinds it needs under it, `#### New`, `#### Improved`,
+`#### Fixed` (`#### Nouveautés`, `#### Améliorations`, `#### Corrections`); a kind with
+nothing in it is left out. Both files have the same parts, kinds and number of bullets, in
+the same order. Versions released before the split keep their flat `### New` headings. The
+`changelog` CI job checks all of this.
 
 The release dates the section, opens a new empty one, and posts the entries on Modrinth
 (Changelog tab), CurseForge (file page) and Discord. Players read them, so write for
