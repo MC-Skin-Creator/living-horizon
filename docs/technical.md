@@ -807,6 +807,13 @@ default mob distance (576 to 672), and a pond, a wheat field, a tree and a tower
 birds. The far herds are never sent to the client: a scan of 48 chunks remembers them once
 the world is built.
 
+Players who logged off cannot be built into the world: test players are never saved. While the
+benchmark runs there, it places a crowd of 48 of them itself (`BenchmarkWorld.placeCrowd`), on a
+grid from 48 to 240 blocks clear of the mobs' rows, near enough to be drawn as models, far
+enough to be pictures, some behind the wall and the hill. They wear the default skin of their
+names (`LhBench1` and on), so nothing is fetched, and are taken away as it ends; test players
+placed by hand stay. With *Offline Player Activity* on they still move about as they like.
+
 Once built, the world gets a marker file, `livinghorizon-benchmark`, in its folder. In a world
 with that file, the benchmark puts the player back at 0, 0 facing south and fixes the render
 distance (12), the entity distance (100%) and the field of view (70) for the run, then puts
