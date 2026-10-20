@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Server
+
+#### Fixed
+- **Offline players lost when the world file cannot be read** — a `livinghorizon-positions.dat` the server cannot read is no longer written over: it is kept as `livinghorizon-positions.dat.bad`, and the console says so.
+
 ### Client
 
 #### New
@@ -10,6 +15,10 @@
 
 #### Fixed
 - **Distant mannequins wearing the default skin** — mannequins far away no longer lose their skin and show as Alex: they keep the one they wear up close, a player's or a resource pack's (Minecraft 1.21.9 and later).
+- **Settings reset after a typo** — a mistake made editing `livinghorizon.json` by hand no longer wipes the file: it is kept as `livinghorizon.json.bad`, and the log says so.
+- **Remembered mobs and offline players lost** — a game that closes while saving no longer damages the files of remembered mobs and players who logged off, and a damaged one is kept as a `.bad` file instead of being emptied.
+- **Stutter when joining a big server** — joining a server with many players who logged off no longer makes the game stutter.
+- **Out of memory from a damaged picture** — a damaged saved picture of a far mob (*Simplified Entities*) can no longer make the game run out of memory: it is drawn again instead.
 
 ## 0.10.0 — 2026-10-20
 

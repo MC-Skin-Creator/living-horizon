@@ -130,7 +130,11 @@ sends goes out when that tick flushes the connections.
 The server keeps the players and the mobs in `livinghorizon-positions.dat`, at the root of
 its world folder, so that a player who joins later sees them too.
 
-- It is saved every minute and when the server stops.
+- It is saved every minute and when the server stops, into a temporary file moved over it.
+- It starts with a version of its own (`PositionsMessage.FILE_VERSION`, 2), apart from the
+  messages' `VERSION`: a new message layout must not make servers drop their file. A file
+  that does not read (another version, damaged) is kept as `livinghorizon-positions.dat.bad`,
+  with a line in the console, and a new one is started.
 - Players still online when the server stops are kept as they were, as if they logged off
   then.
 - A mob is forgotten when its chunk is loaded and it is not there any more, and the oldest
@@ -151,10 +155,12 @@ on this client: nothing is sent to the server, they block nobody, and nothing ca
 ### Where they come from
 
 - Remembered per server, across sessions, in `config/livinghorizon/resting/<server>.json`
-  (`track/RestingPlayers`).
+  (`track/RestingPlayers`), written every five seconds when something changed, not at each
+  player the server reports.
 - On a server with the mod, even players who logged off before you joined are there: the
   server keeps everyone's last position, skin and gear. Without the server's word, their skin
-  is fetched from Mojang by name (from 1.21.9; before, the default skin).
+  is fetched from Mojang by name (from 1.21.9; before, the default skin), one at a time,
+  1.5 seconds apart at least, each name once.
 - When the world or the server closes, or you leave it, everyone you saw stays where they
   were last, as they looked, on what they rode: as far as this client knows, they logged off
   then.
@@ -555,6 +561,8 @@ that a mob met in an earlier game is read back rather than baked.
 
 - The fingerprint is the game version, the resource packs chosen and their files, the jars in
   `mods/` and the sheet format. When one of them changes, the folder is thrown away.
+- A sheet read back is checked against the size of a sheet (`ImpostorDisk.decode`) before
+  anything is allocated: a damaged file is baked again, it never asks for more memory.
 - 4096 sheets are kept, some 35 KB each once compressed (about 140 MB), counted when the
   folder is opened, at the start and after a reload: a game may write more until then. The
   ones met longest ago go first.
@@ -845,7 +853,21 @@ Living Horizon Settings*.
 Every setting is in `config/livinghorizon.json` (`FarConfig`). The file is read at start and
 written back with every setting in it, including the ones a newer version adds. Its
 `version` field is the file's layout, not a setting: an older file is brought up to date on
-load.
+load, one step per version (`FarConfig.migrate`, each step tested in `FarConfigTest`).
+
+### The client's files
+
+The settings, the remembered mobs and the players who logged off are written through
+`JsonStore`:
+
+- into a temporary file beside the real one, then moved over it: a game that stops while
+  saving leaves the old file whole;
+- a file that does not read (a typo made by hand, a file cut short) is moved aside as
+  `<name>.bad`, said in the log, and the mod starts from the defaults or an empty list;
+- the lists keep the version of their layout, `{"version": 1, "mobs": [...]}` and
+  `{"version": 1, "players": [...]}`; a bare list, as files were before, reads as version 0.
+  A file of a newer version is read as well as this one can, after a copy is kept as
+  `<name>.v<version>`.
 
 In game, the settings are in the mod's screen: the *Living Horizon...* button of the Options
 screen, Mod Menu (Fabric, Quilt) or the mods list (NeoForge, Forge), the settings key, or
