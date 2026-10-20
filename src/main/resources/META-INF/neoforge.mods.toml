@@ -7,8 +7,9 @@ issueTrackerURL = "https://github.com/MC-Skin-Creator/living-horizon/issues"
 modId = "${id}"
 version = "${version}"
 displayName = "${name}"
-description = "Gives life to the distance: animals, villagers, birds and other players keep living on the horizon, past the render distance."
+description = "Gives life to the distance: animals, villagers and other players stay visible far past your render distance, players who logged off live on where they left, and birds fill the sky. Works with the game alone or on top of Voxy and Distant Horizons."
 authors = "clixmods"
+credits = "Testers: ISessen"
 displayURL = "https://github.com/MC-Skin-Creator/living-horizon"
 logoFile = "assets/livinghorizon/icon.png"
 ${sodium}
@@ -20,13 +21,13 @@ config = "livinghorizon.mixins.json"
 modId = "neoforge"
 type = "required"
 versionRange = "${neoforge}"
-side = "CLIENT"
+side = "BOTH"
 
 [[dependencies.${id}]]
 modId = "minecraft"
 type = "required"
 versionRange = "${minecraft}"
-side = "CLIENT"
+side = "BOTH"
 
 [[dependencies.${id}]]
 modId = "voxy"

@@ -3,18 +3,25 @@
   "id": "${id}",
   "version": "${version}",
   "name": "${name}",
-  "description": "Gives life to the distance: animals, villagers, birds and other players keep living on the horizon, past the render distance.",
+  "description": "Gives life to the distance: animals, villagers and other players stay visible far past your render distance, players who logged off live on where they left, and birds fill the sky. Works with the game alone or on top of Voxy and Distant Horizons.",
   "authors": ["clixmods"],
+  "contributors": ["ISessen"],
+  "contact": {
+    "homepage": "https://github.com/MC-Skin-Creator/living-horizon",
+    "sources": "https://github.com/MC-Skin-Creator/living-horizon",
+    "issues": "https://github.com/MC-Skin-Creator/living-horizon/issues"
+  },
   "license": "LicenseRef-LivingHorizon",
   "icon": "assets/livinghorizon/icon.png",
-  "environment": "client",
+  "environment": "*",
   "entrypoints": {
+    "main": ["fr.clixmods.livinghorizon.LivingHorizonCommon"],
     "client": ["fr.clixmods.livinghorizon.LivingHorizonClient"],
     ${sodium}
     "modmenu": ["fr.clixmods.livinghorizon.ui.ModMenuEntry"]
   },
   "mixins": [
-    { "config": "livinghorizon.mixins.json", "environment": "client" }
+    "livinghorizon.mixins.json"
   ],
   "accessWidener": "livinghorizon.accesswidener",
   "depends": {

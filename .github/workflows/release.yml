@@ -21,6 +21,8 @@ on:
 
 permissions:
   contents: write
+  # Reads the pull request build's jars, which are artifacts of another run.
+  actions: read
 
 # Two merges in a row must not compute the same number at once. Nothing is cancelled,
 # because a release may be halfway through tagging and pushing.
@@ -38,8 +40,9 @@ env:
   NEXUSMODS_ID: ${{ vars.NEXUSMODS_ID }}
 
 # Six jobs, so the slow part runs in parallel and nothing is tagged before every jar
-# exists: the version is worked out once, each target builds on its own runner, then
-# the release, the uploads, the Nexus changelog and the announcement follow.
+# exists: the version is worked out once, each target builds on its own runner (or
+# takes the jar its pull request already built), then the release, the uploads, the
+# Nexus changelog and the announcement follow.
 jobs:
   version:
     runs-on: ubuntu-latest
@@ -48,6 +51,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       channel: ${{ steps.version.outputs.channel }}
       targets: ${{ steps.targets.outputs.targets }}
+      prebuilt: ${{ steps.prebuilt.outputs.run }}
 
     steps:
       - name: Checkout
@@ -61,16 +65,13 @@ jobs:
         id: version
         env:
           MANUAL_VERSION: ${{ inputs.version }}
-          RUN_NUMBER: ${{ github.run_number }}
         run: |
           set -euo pipefail
 
           if [ "${{ github.ref_name }}" = 'develop' ]; then
-            # Every merge into develop gets a build, even one carrying no
-            # release-worthy commit. The -dev. suffix sorts below the release it
-            # previews, which is exactly what it is.
-            base=$(.github/scripts/next-version.sh --min-patch)
-            version="${base}-dev.${RUN_NUMBER}"
+            # The same script as the pull request build, so a merge gets the number
+            # its pull request stamped on its jars.
+            version=$(.github/scripts/release-version.sh develop)
             channel=dev
           elif [ -n "$MANUAL_VERSION" ]; then
             # The manual path exists for the versions no commit message should
@@ -78,7 +79,7 @@ jobs:
             version="$MANUAL_VERSION"
             channel=stable
           else
-            version=$(.github/scripts/next-version.sh)
+            version=$(.github/scripts/release-version.sh main)
             channel=stable
           fi
 
@@ -107,6 +108,35 @@ jobs:
         id: targets
         run: echo "targets=$(python3 .github/scripts/release-targets.py)" >> "$GITHUB_OUTPUT"
 
+      - name: Look for the pull request's build
+        # The build workflow leaves a marker once every target of a pull request into
+        # develop or main is built, named after the merged files and the version it
+        # stamped. Its jars are taken when both match this commit's, and the run built
+        # the pull request this commit merged: its head is one of the parents, so the
+        # workflow that made them is the reviewed one now on this branch. Anything
+        # else (a newer base, an expired artifact, a squash merge) builds again.
+        if: steps.version.outputs.release == 'true'
+        id: prebuilt
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          tree=$(git rev-parse 'HEAD^{tree}')
+          parents=$(git rev-parse 'HEAD^@')
+          run=''
+          # Newest first.
+          while read -r id head; do
+            if grep -qxF "$head" <<<"$parents"; then run=$id; break; fi
+          done < <(gh api "repos/${{ github.repository }}/actions/artifacts?name=prebuilt-${tree}-${VERSION}&per_page=100" \
+            --jq '.artifacts[] | select(.expired | not) | "\(.workflow_run.id) \(.workflow_run.head_sha)"')
+          if [ -n "$run" ]; then
+            echo "Taking the jars of build run ${run}."
+          else
+            echo 'No pull request build of these files at this version: building.'
+          fi
+          echo "run=${run}" >> "$GITHUB_OUTPUT"
+
   build:
     needs: version
     if: needs.version.outputs.release == 'true'
@@ -123,7 +153,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Take the pull request's jar
+        # A target the pull request did not build, or a download that fails, is built
+        # below instead.
+        if: needs.version.outputs.prebuilt != ''
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: livinghorizon-${{ matrix.target.node }}
+          path: build/libs/${{ needs.version.outputs.version }}
+          run-id: ${{ needs.version.outputs.prebuilt }}
+          github-token: ${{ github.token }}
+
+      - name: Check the pull request's jar
+        # One jar carrying this version, or nothing is taken.
+        id: reuse
+        if: needs.version.outputs.prebuilt != ''
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          jars=(build/libs/"$VERSION"/livinghorizon-"$VERSION"+*.jar)
+          if [ "${#jars[@]}" -eq 1 ]; then
+            ls -l build/libs/"$VERSION"
+            echo 'taken=true' >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No jar at ${VERSION} from the pull request's build; building it."
+            rm -rf build/libs
+          fi
+
       - name: Set up JDKs
+        if: steps.reuse.outputs.taken != 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -136,12 +197,14 @@ jobs:
             21
 
       - name: Set up Gradle
+        if: steps.reuse.outputs.taken != 'true'
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: false
           cache-cleanup: always
 
       - name: Stamp the version
+        if: steps.reuse.outputs.taken != 'true'
         env:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
@@ -152,8 +215,9 @@ jobs:
           grep '^mod.version' stonecutter.properties.toml
 
       - name: Build
-        # The tests already ran on the pull request; this only builds the jar and the
-        # data pack. Over fifty runners download the same plugins and Minecraft files at
+        if: steps.reuse.outputs.taken != 'true'
+        # The tests already ran on the pull request; this only builds the jar.
+        # Over fifty runners download the same plugins and Minecraft files at
         # once, so a download that fails is tried again; any other failure is not.
         env:
           NODE: ${{ matrix.target.node }}
@@ -276,9 +340,8 @@ jobs:
             fi
           fi
 
-          # Wherever the artifacts unpacked them: the jar and the data pack zip of
-          # every target.
-          mapfile -t files < <(find files \( -name '*.jar' -o -name '*.zip' \) | sort)
+          # Wherever the artifacts unpacked them: the jar of every target.
+          mapfile -t files < <(find files -name '*.jar' | sort)
           echo "${#files[@]} files"
           gh release create "v${VERSION}" "${args[@]}" "${files[@]}"
 
@@ -419,7 +482,8 @@ jobs:
   # undo a release that is already on GitHub, Modrinth and CurseForge. It reads the
   # changelog from the release tag - where the release job dated it - and posts that
   # version in each language that has a webhook secret (DISCORD_WEBHOOK_EN / _FR, or
-  # DISCORD_WEBHOOK alone for English). Stable releases only: the -dev builds are
+  # DISCORD_WEBHOOK alone for English), pinging the role whose ID is in the
+  # DISCORD_ROLE_EN / _FR or DISCORD_ROLE variable (@Updates when unset). Stable releases only: the -dev builds are
   # never announced.
   announce:
     needs: [version, release, publish]
@@ -441,4 +505,7 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           DISCORD_WEBHOOK_EN: ${{ secrets.DISCORD_WEBHOOK_EN }}
           DISCORD_WEBHOOK_FR: ${{ secrets.DISCORD_WEBHOOK_FR }}
+          DISCORD_ROLE: ${{ vars.DISCORD_ROLE || '1561725342664626237' }}
+          DISCORD_ROLE_EN: ${{ vars.DISCORD_ROLE_EN }}
+          DISCORD_ROLE_FR: ${{ vars.DISCORD_ROLE_FR }}
         run: node .github/scripts/announce-discord.js --version "$VERSION"

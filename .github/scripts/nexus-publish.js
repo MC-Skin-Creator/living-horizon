@@ -152,7 +152,7 @@ function plain(markdown) {
   return markdown
     .replace(/\*\*(.+?)\*\*/g, '$1')
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)')
-    .replace(/^###\s+(.+)$/gm, '$1:')
+    .replace(/^#{3,4}\s+(.+)$/gm, '$1:')
     .trim();
 }
 

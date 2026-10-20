@@ -114,7 +114,14 @@ final class RestingMount {
     /** The mount a spot keeps, ready to draw; null when there is none, or its type is gone. */
     static @Nullable RestingMount of(ClientLevel level, RestingPlayers.Spot spot, Random random) {
         RestingPlayers.Mount mount = spot.mount();
-        if (mount == null) return null;
+        Entity entity = mount == null ? null : copy(level, mount);
+        if (entity == null) return null;
+        long seed = spot.name().toLowerCase(java.util.Locale.ROOT).hashCode() * 0xBF58476D1CE4E5B9L;
+        return new RestingMount(level, entity, mount, new Vec3(spot.x(), spot.y(), spot.z()), random, seed);
+    }
+
+    /** A copy of a kept mount, as it was saved; null when its type is gone or it does not read. */
+    static @Nullable Entity copy(ClientLevel level, RestingPlayers.Mount mount) {
         try {
             EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getOptional(Identifier.tryParse(mount.type())).orElse(null);
             Entity entity = type == null ? null : Puppets.create(type, level);
@@ -128,8 +135,7 @@ final class RestingMount {
                 living.hurtDuration = 0;
                 living.deathTime = 0;
             }
-            long seed = spot.name().toLowerCase(java.util.Locale.ROOT).hashCode() * 0xBF58476D1CE4E5B9L;
-            return new RestingMount(level, entity, mount, new Vec3(spot.x(), spot.y(), spot.z()), random, seed);
+            return entity;
         } catch (Exception e) {
             // Saved by a game or a mod that reads it differently: they rest on foot.
             return null;

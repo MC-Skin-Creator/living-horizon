@@ -5,10 +5,9 @@ import org.jspecify.annotations.Nullable;
 import java.util.List;
 
 /**
- * The mobs the data pack publishes, numbered the way it numbers them: kind 1 is the
- * first of {@link #TYPES}. The pack has the same list twice, in
- * {@code tags/entity_type/remembered.json} and {@code function/mob_kind.mcfunction};
- * {@code DatapackTest} fails when the three disagree.
+ * The mobs a server with the mod shares ({@link PositionPublisher}), numbered: kind 1 is the
+ * first of {@link #TYPES}. The numbers travel in {@link PositionsMessage}, so a kind is only
+ * ever added at the end, never moved.
  */
 public final class MobKinds {
     public static final List<String> TYPES = List.of(
@@ -41,7 +40,7 @@ public final class MobKinds {
     }
 
     /**
-     * The saved field the pack reads the variant from, written back the same way so
+     * The saved field the server reads the variant from, written back the same way so
      * the game itself turns the number into a coat, a fleece, a colour.
      */
     static @Nullable String variantField(String type) {
@@ -53,7 +52,7 @@ public final class MobKinds {
         };
     }
 
-    /** The saved data of a mob known only from the pack: its variant, and its age. */
+    /** The saved data of a mob known only from the server: its variant, and its age. */
     static String nbt(String type, int variant, boolean baby) {
         StringBuilder nbt = new StringBuilder("{");
         String field = variantField(type);
