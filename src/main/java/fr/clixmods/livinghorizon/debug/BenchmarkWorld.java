@@ -1,14 +1,19 @@
 package fr.clixmods.livinghorizon.debug;
 
+import com.mojang.authlib.GameProfile;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.mixin.CreateWorldScreenAccessor;
+import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobScan;
+import fr.clixmods.livinghorizon.track.RestingPlayers;
+import fr.clixmods.livinghorizon.track.SharedPositions;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.worldselection.CreateWorldScreen;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.client.server.IntegratedServer;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
@@ -20,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Stream;
 
 /**
@@ -37,7 +43,8 @@ import java.util.stream.Stream;
  * <p>The player stands at 0, 0 looking south, where the mod's parts each have a zone: mobs the
  * game draws itself, mobs it leaves to the mod past its entity distance, some of them behind a
  * wall, remembered copies far away (more than the most drawn at once by default), some behind
- * a hill, a herd past the default mob distance, and places birds land on.
+ * a hill, a herd past the default mob distance, and places birds land on. While the benchmark
+ * runs here, a crowd of players who logged off stands among them ({@link #placeCrowd}).
  *
  * <p>Once built, a marker file in the world's folder says it is this world: {@link Benchmark}
  * then puts the player back on the spot and fixes the view, so that runs before and after
@@ -61,6 +68,12 @@ public final class BenchmarkWorld {
     /** The render distance the benchmark runs at here, the game's default. */
     public static final int RENDER_DISTANCE = 12;
     private static final String[] KINDS = {"cow", "sheep", "pig", "chicken", "horse", "villager", "wolf", "cow"};
+    /** The names of the crowd of players who logged off, numbered: {@code LhBench1} and on. */
+    private static final String CROWD = "LhBench";
+    /** The rows of the crowd, blocks south of the spot, clear of the mobs' rows, the wall and the hill. */
+    private static final int[] CROWD_ROWS = {48, 80, 112, 144, 208, 240};
+    /** The columns of the crowd, blocks east of the spot. */
+    private static final int CROWD_FROM_X = -84, CROWD_TO_X = 84, CROWD_STEP_X = 24;
 
     private enum Step { LEAVE, OPEN, CREATE, JOIN, BUILD, SCAN, IDLE }
 
@@ -164,6 +177,47 @@ public final class BenchmarkWorld {
         minecraft.player.setXRot(0);
         server.execute(() -> run(server, server.createCommandSourceStack().withSuppressedOutput(),
                 "tp @a 0 " + FEET + " 0 0 0"));
+    }
+
+    /**
+     * Places the crowd of players who logged off, the same every run: test players are never
+     * saved with a world, so the benchmark places them as it starts here and {@link #clearCrowd}
+     * takes them away as it ends. Near enough to be drawn as models, far enough to be pictures,
+     * some behind the wall and the hill. In the default skin of their names, wearing nothing:
+     * nothing is fetched, and this game's server, which shares them back, says the same of them.
+     */
+    public static void placeCrowd(Minecraft minecraft) {
+        if (minecraft.level == null) return;
+        RestingPlayers resting = FarPlayerTracker.get().resting();
+        int dimension = SharedPositions.dimensionCode(minecraft.level.dimension());
+        int n = 0;
+        for (int z : CROWD_ROWS) {
+            for (int x = CROWD_FROM_X; x <= CROWD_TO_X; x += CROWD_STEP_X) {
+                String name = CROWD + ++n;
+                resting.fake(name, new GameProfile(UUIDUtil.createOfflinePlayerUUID(name), name), dimension,
+                        x + 0.5, FEET, z + 0.5, (n * 137) % 360 - 180f, 60, null, List.of());
+            }
+        }
+    }
+
+    /** Takes the crowd away; test players placed by hand stay. */
+    public static void clearCrowd() {
+        String prefix = CROWD.toLowerCase(Locale.ROOT);
+        FarPlayerTracker.get().resting().clearFakes(name -> name.startsWith(prefix));
+    }
+
+    /** How many players who logged off the crowd holds. */
+    public static int crowd() {
+        return CROWD_ROWS.length * ((CROWD_TO_X - CROWD_FROM_X) / CROWD_STEP_X + 1);
+    }
+
+    /** How many of the crowd are placed now. */
+    public static int crowdPlaced() {
+        int count = 0;
+        for (RestingPlayers.Spot spot : FarPlayerTracker.get().resting().spots()) {
+            if (spot.name().startsWith(CROWD)) count++;
+        }
+        return count;
     }
 
     private static void mark(Minecraft minecraft) {

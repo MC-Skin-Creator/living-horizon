@@ -151,6 +151,7 @@ public final class Benchmark {
             minecraft.options.renderDistance().set(BenchmarkWorld.RENDER_DISTANCE);
             minecraft.options.entityDistanceScaling().set(1.0);
             minecraft.options.fov().set(70);
+            BenchmarkWorld.placeCrowd(minecraft);
         }
         // The game's caps would measure the cap, not the game.
         savedFramerate = minecraft.options.framerateLimit().get();
@@ -296,6 +297,7 @@ public final class Benchmark {
         //? if >=1.21.2
         minecraft.options.inactivityFpsLimit().set(savedInactivity);
         if (fixedScene) {
+            BenchmarkWorld.clearCrowd();
             minecraft.options.renderDistance().set(savedRenderDistance);
             minecraft.options.entityDistanceScaling().set(savedEntityDistance);
             minecraft.options.fov().set(savedFov);
@@ -465,7 +467,8 @@ public final class Benchmark {
                         : minecraft.getSingleplayerServer() != null ? "single player" : "server")
                 .append(", ").append(minecraft.level == null ? "?" : minecraft.level.dimension().identifier())
                 .append(", ").append(FarPlayerTracker.get().mobs().size()).append(" mobs remembered, ")
-                .append(FarPlayerTracker.get().players().size()).append(" other players followed\n");
+                .append(FarPlayerTracker.get().players().size()).append(" other players followed, ")
+                .append(FarPlayerTracker.get().resting().spots().size()).append(" players who logged off\n");
         StringBuilder mods = new StringBuilder();
         for (String id : new String[]{"voxy", "distanthorizons", "iris", "sodium", "embeddium", "lithium", "c2me",
                 "immediatelyfast", "entityculling", "moreculling", "nvidium", "distant_friends"}) {

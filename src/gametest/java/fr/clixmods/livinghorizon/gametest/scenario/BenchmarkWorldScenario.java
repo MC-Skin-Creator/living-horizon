@@ -85,10 +85,17 @@ public final class BenchmarkWorldScenario implements Scenario {
         Scene.log("benchmark world: player during the benchmark at " + pose);
         // The middle of the block, where /tp puts a player given whole numbers.
         if (!pose.equals("0.5 0.5 yaw 0.0 pitch 0.0")) throw new AssertionError("Not put back on the spot: " + pose);
+        int crowd = context.computeOnClient(minecraft -> BenchmarkWorld.crowdPlaced());
+        Scene.log("benchmark world: " + crowd + " of " + BenchmarkWorld.crowd() + " players who logged off placed");
+        if (crowd != BenchmarkWorld.crowd()) throw new AssertionError("The crowd is not all there: " + crowd + " of " + BenchmarkWorld.crowd());
         for (int i = 0; i < 600 && context.computeOnClient(minecraft -> Benchmark.running()); i++) {
             context.waitTicks(10);
         }
         if (context.computeOnClient(minecraft -> Benchmark.running())) throw new AssertionError("The benchmark never ended");
+        // The server of this game shares test players back for a second or so after they are cleared.
+        context.waitTicks(100);
+        int left = context.computeOnClient(minecraft -> BenchmarkWorld.crowdPlaced());
+        if (left != 0) throw new AssertionError("The crowd was not taken away: " + left + " left");
         Path folder = context.computeOnClient(minecraft -> minecraft.gameDirectory.toPath()).resolve("livinghorizon").resolve("benchmarks");
         try (Stream<Path> files = Files.list(folder)) {
             Path report = files.max(Comparator.comparing(Path::toString)).orElseThrow(() -> new AssertionError("No report"));

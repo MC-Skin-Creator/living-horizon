@@ -44,6 +44,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Predicate;
 
 /**
  * Players who logged off, left where they were last, asleep or sitting.
@@ -404,9 +405,14 @@ public final class RestingPlayers {
 
     /** Removes every test player placed here; how many there were. Those the host placed stay theirs. */
     public int clearFakes() {
+        return clearFakes(name -> true);
+    }
+
+    /** Removes the test players placed here whose lower-case name {@code which} accepts; how many there were. */
+    public int clearFakes(Predicate<String> which) {
         int count = 0;
         for (String name : List.copyOf(fakes)) {
-            if (fromHost.contains(name)) continue;
+            if (fromHost.contains(name) || !which.test(name)) continue;
             if (spots.remove(name) != null) count++;
             puppets.remove(name);
             if (lookedAt != null && key(lookedAt.name()).equals(name)) lookedAt = null;
