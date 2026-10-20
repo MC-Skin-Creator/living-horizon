@@ -19,6 +19,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PerchersScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.PerfScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RememberedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ResizeScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingCrowdScenario;
@@ -78,7 +79,8 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new PerchersScenario(),
             new BirdCommandScenario(),
             new LanShareScenario(),
-            new DedicatedServerScenario());
+            new DedicatedServerScenario(),
+            new PerfScenario());
 
     @Override
     public void runTest(ClientGameTestContext context) {
