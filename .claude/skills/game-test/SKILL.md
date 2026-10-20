@@ -61,6 +61,20 @@ Write such working images to the scratchpad, not the repository. Mean colours ov
 (`getpixel`) compare brightness between two shots. Send the user the images that show
 the result (before and after, model and impostor) with `SendUserFile`.
 
+## Measure what the mod costs
+
+`LH_NODE=1.21.11 run.sh perf` builds a scene far from the player (about 500 remembered
+mobs, 40 test players who logged off, birds), turns the camera once round per phase and
+prints a table: the frame time (average, maximum, cost against the mod off), the mod's
+own tick and extraction times, and what the render thread allocates per frame. The
+phases are the mod off, the defaults, each `opt*` switch flipped in turn, impostors off,
+then the mod off again; the gap between the two "mod off" rows is the noise. Run it on
+the same machine before and after a change and compare. The frame time here is the whole
+game's, server tick included, and moves by a millisecond or two between runs: the mod's
+own columns are the precise ones. llvmpipe draws on the CPU: the frame times say nothing
+of a graphics card, and Voxy's and Distant Horizons' parts are not covered. It takes
+about 6 minutes.
+
 ## Write a scenario
 
 The scenarios are in `src/gametest/java/fr/clixmods/livinghorizon/gametest/`:
