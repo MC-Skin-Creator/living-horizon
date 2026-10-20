@@ -7,6 +7,11 @@ distance. It draws them on the game's terrain and on the terrain of **Voxy** and
 Horizons**. It can also help performance: you can lower your simulation distance and still
 see a living world.
 
+> ⚠️ **This is a beta, so expect bugs.** I mainly play on 1.21.11 with Voxy, and it works
+> there. I have not tested every loader and game version. Found a bug? Tell me on the
+> [issues](https://github.com/MC-Skin-Creator/living-horizon/issues) page or on the
+> [Discord](https://discord.gg/THSV9dexNj). Thanks to anyone who helps!
+
 ## Features
 
 ### Mobs on the horizon
@@ -137,6 +142,7 @@ label.
 
 - Something wrong? Open an [issue](https://github.com/MC-Skin-Creator/living-horizon/issues)
   with your game version, loader and a screenshot.
+- Questions, news and help: join the [Discord](https://discord.gg/THSV9dexNj).
 - [docs/technical.md](docs/technical.md): every setting, the debug tools and how the mod
   works in the code.
 - Build: `./gradlew :1.21.11:build` for one target, `./gradlew buildAndCollect` for every jar.
