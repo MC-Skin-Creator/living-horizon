@@ -2,15 +2,40 @@
 
 ## Unreleased
 
+### Server
+
+#### Improved
+- **Lighter on big servers** — the server spends less time choosing whose skin and mount to send each player, and sends a long list of players who logged off in several parts instead of one message too large for the game.
+- **Players need this version too** — on a server with this version, players need it as well to see distant players.
+
+#### Fixed
+- **Offline players lost when the world file cannot be read** — a `livinghorizon-positions.dat` the server cannot read is no longer written over: it is kept as `livinghorizon-positions.dat.bad`, and the console says so.
+
 ### Client
 
 #### New
 - **Benchmark** — `/livinghorizon benchmark` measures what the mod costs in your world, part by part, and writes a report you can send with a bug report.
 - **Benchmark world** — `/livinghorizon benchmark world` makes a new test world, always the same, where the benchmark runs from the same spot every time, among mobs and players who logged off; your own world is kept as it is.
+- **Max Offline** — a new setting chooses how many players who logged off are shown at once, the nearest first (256 by default); the others show again as you come near.
+
+#### Improved
+- **Clearer message when versions differ** — when the mod on the server is too old or too new for yours, the log says which one to update, instead of saying the server does not have the mod.
+
+#### Improved
+- **Smoother with many players who logged off** — players who logged off cost less to show far away, and those hidden behind hills are skipped.
 
 #### Fixed
+- **Players who logged off past the Player Render Distance** — players who logged off no longer show farther than the *Player Render Distance* setting.
 - **Distant mobs only turning on the spot** — in single player, distant animals no longer stand turning on the spot for good, even right after *Forget Mobs*: they walk again.
 - **Distant mannequins wearing the default skin** — mannequins far away no longer lose their skin and show as Alex: they keep the one they wear up close, a player's or a resource pack's (Minecraft 1.21.9 and later).
+- **Distant mannequins' capes sticking up** — capes of mannequins far away no longer stick up in the air: they hang down as they do up close (Minecraft 1.21.9 and later).
+- **Settings file lost after a typo** — a mistake made editing `livinghorizon.json` by hand no longer wipes the file: it is kept as `livinghorizon.json.bad`, and the log says so.
+- **Remembered mobs and offline players lost** — a game that closes while saving no longer damages the files of remembered mobs and players who logged off, and a damaged one is kept as a `.bad` file instead of being emptied.
+- **Stutter when joining a big server** — joining a server with many players who logged off no longer makes the game stutter.
+- **Out of memory from a damaged picture** — a damaged saved picture of a far mob (*Simplified Entities*) can no longer make the game run out of memory: it is drawn again instead.
+- **Distant mobs hidden by Distant Horizons' terrain under shaders** — with Oculus and a shader pack, distant mobs no longer vanish behind Distant Horizons' terrain, more and more as the render distance grows (Forge).
+- **Distant mobs shaking their heads** — mobs and players far away no longer shake their heads very fast with Entity Culling, alone or with Chloride.
+- **Players drawn in the wrong modded dimension** — players online or logged off in one modded dimension, such as the Aether, are no longer drawn in another, such as the Twilight Forest (on a server, it needs this version too).
 
 ## 0.10.0 — 2026-10-20
 

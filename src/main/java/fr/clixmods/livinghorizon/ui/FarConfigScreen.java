@@ -80,6 +80,8 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addBig(blocks("playerMaxDistance", 0, 4000, c.playerMaxDistance, v -> c.playerMaxDistance = v));
         list.addSmall(
                 bool("offlinePlayers", c.offlinePlayers, v -> c.offlinePlayers = v),
+                integer("maxOfflinePlayers", 0, FarConfig.UNLIMITED_OFFLINE, c.maxOfflinePlayers,
+                        v -> c.maxOfflinePlayers = v, true),
                 bool("offlineLife", c.offlineLife, v -> c.offlineLife = v),
                 blocks("offlineRoam", 8, 128, c.offlineRoam, v -> c.offlineRoam = v));
         list.addSmall(

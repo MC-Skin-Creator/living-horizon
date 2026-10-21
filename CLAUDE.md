@@ -143,6 +143,19 @@ say which class is which). Players find them; nothing they read gives one away:
 - an easter egg gets no changelog entry, even when it changes. One wink that names none
   ("I thought I saw something in the sky") is the most a release may carry.
 
+## Credit every contributor
+
+Everyone whose work is in this repository is credited as a **contributor** (never as an
+author, which stays `clixmods`) in `CREDITS.md`, the mod metadata (`fabric.mod.json`,
+`quilt.mod.json`, `mods.toml`, `neoforge.mods.toml`) and the README's credits line. The
+`add-contributor` skill lists the places and the format.
+
+**At the start of every task that ends in a pull request, check that its author is
+credited**, and add them in that same pull request if they are not. This applies to an AI
+agent working for someone else too: the credit goes to the person the agent works for,
+by their GitHub login, never to the agent. The author is `clixmods` or already listed:
+nothing to do.
+
 ## Branch model: Git Flow
 
 Trimmed Git Flow.
@@ -198,8 +211,8 @@ baseline, no commit back, no Modrinth, CurseForge, Nexus Mods or Discord. A push
 - Each target builds on its own runner, or takes the pull request's jar
   (`.github/scripts/release-targets.py` reads the tables of `stonecutter.properties.toml`),
   then the release is tagged, the version and the dated changelog are committed back to
-  `main`, and the GitHub release gets the jars. Below 1.0.0 it is a pre-release titled
-  `vX.Y.Z (beta)`.
+  `main`, and the GitHub release gets the jars. It is a full release, GitHub's "Latest",
+  never a pre-release; below 1.0.0 it is titled `vX.Y.Z (beta)`.
 - Then Modrinth, CurseForge and Nexus Mods each get a job of their own, a call to
   `.github/workflows/publish.yml` that takes the jars from the GitHub release: a platform
   that fails is re-run alone ("Re-run failed jobs"), and the same workflow, run by hand with
@@ -272,7 +285,9 @@ come back, add it here in the same pull request: this file is what the next sess
   behind it, from 26.1): the game makes its projection inside `Camera.update`, from `depthFar`.
   `CameraMixin` pushes that plane out right after it is set, before the projection; pushed at
   the end, `DepthFar.of` gave a plane the projection did not use, and Distant Horizons' depth
-  converted with it came out nearer. Whatever converts a depth must use the projection's planes.
+  converted with it came out nearer. Whatever converts a depth must use the projection's planes:
+  `DepthFar.terms` reads the game's from the projection `FarDepth.noteView` is handed, bobbing
+  or not (`DepthMath.fromProjection`), never from a near plane and `DepthFar.of` put together.
 - **Distant mobs blinking at every step, far terrain lighter and darker in the depth view as
   the player walks** (from 26.1, view bobbing on): the world is drawn with the camera's
   projection times the bobbing, which from 26.1 only the GPU gets (`GameRendererProjectionMixin`
@@ -287,6 +302,11 @@ come back, add it here in the same pull request: this file is what the next sess
   pack on or off, it switches itself to OpenGL and fills only `getDhDepthTextureGlId`; the
   Blaze3D wrapper the game's GPU device path reads stays empty ("has no depth texture").
   `FarDepth.gpuPath` falls back to the OpenGL path when `DhDepth.drawsWithOpenGl`.
+- **Distant mobs hidden by Distant Horizons' terrain under a shader pack on Forge** (worse as the
+  render distance grows, depth view wrong; Oculus): Oculus is Iris under the mod id `oculus`, with
+  Iris's classes. Missed, a pack read as none, and Distant Horizons' depth, which Oculus draws with
+  Iris's near plane (it follows the render distance), was converted with Distant Horizons' own.
+  Anything that asks whether Iris is loaded asks for both ids.
 - **Distant Horizons under a shader pack from 26.2** (depth view flat grey, or a grey veil, under
   shaders only): Iris draws its terrain with Iris's near and far planes, but in the depth layout
   Distant Horizons reports (`getDepthRange`, `getDepthDirection`: reversed and 0..1 on 26.2,
@@ -380,6 +400,12 @@ come back, add it here in the same pull request: this file is what the next sess
   again with more room round it (`ImpostorPixels.growth`), drawn smaller in a tile of the same 64
   pixels: tiles two or three times larger took four or nine times the memory for a figure a dozen
   pixels tall. `impostoredges` and `longmobs` show both.
+- **Distant mobs shaking their heads very fast** (often reported with Entity Culling, more so with
+  Chloride or anything that makes the game stop drawing mobs sooner): Entity Culling holds every
+  entity out of view until the game's own `renderEntity` draws it, and gives it a shorter tick
+  that turns the head without `yHeadRotO`. A mob the mod draws in the game's place is told seen
+  (`compat/EntityCulling.drawn`, from `GhostRenderer`); the `headturn` scenario checks it with
+  Entity Culling in `-Plh.mods`.
 - **Crash extracting a distant mob on 1.21.2 to 1.21.8** (`NullPointerException` under
   `GhostRenderer.state`, often blamed on another mod's mixin into `extractRenderState`):
   GeckoLib 4's `createRenderState()` returns null and its `render` draws the entity it was
@@ -420,6 +446,14 @@ come back, add it here in the same pull request: this file is what the next sess
   in `tick()`, which a puppet never runs. `Puppets.skin` hands it over, called wherever a copy
   is drawn or keyed (`GhostRenderer.extract`, `ImpostorKey.of`), and the impostor key counts
   the skin of any `ClientAvatarEntity`. The `mannequins` scenario checks it.
+- **Distant mannequins' capes sticking up** (standing out from their back; from 1.21.9): the tick
+  moves a mannequin's cape after it (`ClientAvatarState`), which a puppet never runs, so the cape
+  hangs from 0, 0, 0. The tick snaps it only when more than ten blocks off along an axis and
+  otherwise moves it a quarter of the way: `Puppets.cape` sets it outright in
+  `GhostRenderer.extract`, since each impostor view is baked from one call (`ImpostorAtlas.staged`).
+  The `mannequins` scenario checks it. Far, resting and logged-off player puppets are not ticked
+  either, on every version (`Player.xCloak` before 1.21.9): not covered yet, and `cape` cannot
+  just take any `ClientAvatarEntity`, since live players go through the same `extract` and tick.
 - **A rider turned sideways** (a player resting in a boat facing left or right of it): the seat's
   yaw is the rider's body (`yBodyRot`), which the boat keeps in line with itself, never the head
   (`getYRot`), which looks wherever the player looked as they left.
@@ -441,11 +475,29 @@ come back, add it here in the same pull request: this file is what the next sess
   The Fabric API's client networking stays in `ClientNetwork`, which a server never loads.
   Check a server by installing the loader's server from its installer, the jar in `mods/`,
   and reading the console for "sharing the positions of this server".
+- **Settings, remembered mobs or players who logged off gone after a restart**: a file that
+  did not read is kept beside it as `<name>.bad` (`JsonStore`; the server's
+  `livinghorizon-positions.dat.bad`), with a line in the log saying why. The server's file has a
+  version of its own (`PositionsMessage.FILE_VERSION`): a change to the messages' `VERSION`
+  never touches it, and a change to the file's layout reads the older one too.
+- **Players or mobs of one modded dimension drawn in another** (the Aether's players in the
+  Twilight Forest): a dimension is named by its id everywhere (`SharedPositions.dimensionId`,
+  the messages' table of dimensions, `RestingPlayers.Spot`), never by a number, which cannot
+  tell two mods' dimensions apart: message format 2 and the resting file's layout 1 gave them
+  all 3, and their readers leave those out.
+- **Distant players gone after an update, the log saying "the server shares format vN"**: the
+  server and the client run mods whose `PositionsMessage` layouts are too far apart. A field
+  added at the end of a record, or after the records, raises `VERSION` only; anything else
+  raises `READABLE_FROM` too, and older clients stop reading. `PositionsMessageTest` holds the
+  exact bytes: a layout change that fails it needs one of the two.
 - **Frame rate lost to the mod** (with Voxy or not): measure before guessing. On the player's
   machine, ask for the report of `/livinghorizon benchmark` (`debug/Benchmark`): frame times with
   the mod off, each preset and each part on its own, on their GPU and mods. Run in the world
   `/livinghorizon benchmark world` makes, it starts from a fixed spot and view, so two reports,
   before and after an update, compare. Here, the `perf` game test does the same headless.
+- **Depth arithmetic** (a distance to a depth and back, in any layout, a matrix stored either
+  way, its inverse, the rectangles written into Voxy's depth) lives in `render/DepthMath`, which
+  asks the game nothing. A fix to the depth code adds a case to `DepthMathTest`.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

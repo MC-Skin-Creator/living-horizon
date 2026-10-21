@@ -17,6 +17,15 @@ accessible field net/minecraft/world/entity/player/Player DATA_PLAYER_MODE_CUSTO
 accessible field net/minecraft/client/entity/ClientMannequin skinLookup Ljava/util/concurrent/CompletableFuture;
 accessible method net/minecraft/client/entity/ClientMannequin setSkin (Lnet/minecraft/world/entity/player/PlayerSkin;)V
 
+# Where a mannequin's cape hangs from, which its tick() also moves after it.
+# @since 1.21.9
+accessible field net/minecraft/client/entity/ClientAvatarState xCloak D
+accessible field net/minecraft/client/entity/ClientAvatarState yCloak D
+accessible field net/minecraft/client/entity/ClientAvatarState zCloak D
+accessible field net/minecraft/client/entity/ClientAvatarState xCloakO D
+accessible field net/minecraft/client/entity/ClientAvatarState yCloakO D
+accessible field net/minecraft/client/entity/ClientAvatarState zCloakO D
+
 # Before 1.21.2, with no render states: a figure is told it swims, stands still or walks
 # while it is drawn, and the faces of each cube of a model are counted as it is drawn.
 # @until 1.21.1

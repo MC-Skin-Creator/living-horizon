@@ -130,7 +130,7 @@ public final class PerfScenario implements Scenario {
      */
     private static void crowd(Minecraft minecraft) {
         RestingPlayers resting = FarPlayerTracker.get().resting();
-        int dimension = SharedPositions.dimensionCode(minecraft.level.dimension());
+        String dimension = SharedPositions.dimensionId(minecraft.level.dimension());
         double golden = Math.PI * (3 - Math.sqrt(5));
         for (int n = 0; n < CROWD; n++) {
             String name = "Perf" + n;

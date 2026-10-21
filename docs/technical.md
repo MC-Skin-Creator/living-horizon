@@ -46,8 +46,8 @@ never added to a level (`track/Puppets`).
 |---|---|
 | root | `LivingHorizonCommon` (entry point on both sides, opens the network channel), `LivingHorizonClient` (client entry point), `FarConfig` (the settings file), `QualityPreset`, `Stats` |
 | `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
-| `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`), `Occlusion`; `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
-| `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`) |
+| `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`; `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
+| `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
 | `ambient/` | The birds (`Ambience`, `BirdModels`, `BirdFigure`, `AmbientRenderer`) and the easter eggs |
 | `platform/` | What differs between loaders: events, network, config folder |
 | `ui/` | The settings screens (`FarConfigScreen` and its sub-screens, `SodiumOptions`), the impostor screen, the text under the crosshair (`OfflineHud`) |
@@ -105,14 +105,38 @@ world, and a player without the mod is sent nothing.
 - **Every five seconds**, to every player online:
   - how the 64 players nearest them look, online or logged off (skin, armour and what they
     hold, read every second), and what they ride, as the server saves it;
-  - the players who logged off: where they were last and when they left, with how they
-    looked and the mount they took away for those among the 64;
+  - every player who logged off, and the host's test players: where they were last and when
+    they left, with how they looked and the mount they took away for those among the 64. The
+    server sends them all; each client chooses how many it draws (`maxOfflinePlayers`);
   - the remembered mobs within 2048 blocks of them, with what they wear (saddle, harness,
     armour, carpet, chest; see [Distant mobs](#distant-mobs)).
 - **At once, to a player who joins**: all of it, without waiting for the next five seconds.
 
 The messages (`track/PositionsMessage`) are written with plain Java streams, the same on
 every loader and version. The client keeps what it receives in `track/SharedPositions`.
+
+Their layout, from version 3:
+
+- two numbers first: the version written (`VERSION`) and the oldest version that reads it
+  (`READABLE_FROM`). A version that only adds fields at the end of a record, or after the
+  records, keeps `READABLE_FROM` and older clients skip what they do not know; one that
+  changes what is there raises it. A client that cannot read the server's messages says so in
+  its log, with both versions, ten seconds after joining;
+- the kind of message, then the table of the dimensions it names, by id
+  (`minecraft:overworld`, `aether:the_aether`): a record names its dimension by its place in
+  the table. Version 2 numbered them 0 to 2 and gave 3 to every other one, so players in two
+  dimensions of mods were drawn in each other's; it is still read, those in 3 left out;
+- the records, each after its length (a varint). The players who logged off come after which
+  part of their list the message is and how many parts there are.
+
+A message stays under 1 MiB, past which the game refuses it (`MAX_BYTES`). The players who
+logged off go in as many messages as it takes, none left out; the client takes the list once
+its last part has come, and drops a list whose parts come out of order. Players online that do
+not fit are sent by their position alone, then left out, the first in the list kept, so the
+nearest come first. Mobs that do not fit leave out the farthest, and the circle they were
+chosen in shrinks so that the client does not take those left out for gone.
+`PositionsMessageTest` holds the exact bytes of two messages: a change to the layout fails
+it, and is a new version.
 
 ### Where it runs
 
@@ -130,15 +154,25 @@ sends goes out when that tick flushes the connections.
 The server keeps the players and the mobs in `livinghorizon-positions.dat`, at the root of
 its world folder, so that a player who joins later sees them too.
 
-- It is saved every minute and when the server stops.
+- It is saved every minute and when the server stops, into a temporary file moved over it.
+- It starts with a version of its own (`PositionsMessage.FILE_VERSION`, 3, and
+  `FILE_READABLE_FROM`), apart from the messages' `VERSION`: a new message layout must not make
+  servers drop their file. Its layout is the messages', without the kind: the table of
+  dimensions, the players, the mobs. A file of version 2 is read, those it put in a dimension
+  of a mod left out, then read again from `playerdata`, which names it. A file that does not
+  read (another version, damaged) is kept as `livinghorizon-positions.dat.bad`, with a line in
+  the console, and a new one is started; one from a newer version that still reads is copied to
+  `livinghorizon-positions.dat.v<version>` first.
 - Players still online when the server stops are kept as they were, as if they logged off
   then.
 - A mob is forgotten when its chunk is loaded and it is not there any more, and the oldest
-  go past 4000 mobs.
+  go past 4000 mobs. Every player who logged off is kept, however many.
 - Each time the server starts, its first share also adds the players the world saved that
-  the file does not have yet (`track/WorldPlayers`: the 1000 most recent in `playerdata`,
+  the file does not have yet (`track/WorldPlayers`: every one in `playerdata`, however many,
   with their position and gear, named from `usercache.json`, last seen when their file was
-  written, no skin), so players from before the mod show as logged off at once.
+  written, no skin), so players from before the mod show as logged off at once. A player the
+  cache does not name is left out, and the game keeps only the 1000 profiles used last in it
+  (`CachedUserNameToIdResolver`), so that is the bound on a server without a mod that keeps more.
 - Test players placed by the host with `/livinghorizon debug offline test` are shared too,
   marked as tests: the other clients show them while the host keeps them, and nobody saves
   them.
@@ -151,14 +185,20 @@ on this client: nothing is sent to the server, they block nobody, and nothing ca
 ### Where they come from
 
 - Remembered per server, across sessions, in `config/livinghorizon/resting/<server>.json`
-  (`track/RestingPlayers`).
+  (`track/RestingPlayers`), written every five seconds when something changed, not at each
+  player the server reports. Each spot names its dimension by id (layout 2); a file of layout
+  1 numbered them, and its spots in 3, a dimension of a mod, are left out.
 - On a server with the mod, even players who logged off before you joined are there: the
   server keeps everyone's last position, skin and gear. Without the server's word, their skin
-  is fetched from Mojang by name (from 1.21.9; before, the default skin).
+  is fetched from Mojang by name (from 1.21.9; before, the default skin), one at a time,
+  1.5 seconds apart at least, each name once.
 - When the world or the server closes, or you leave it, everyone you saw stays where they
   were last, as they looked, on what they rode: as far as this client knows, they logged off
   then.
 - `offlinePlayers` off turns all of it off: nobody is shown or remembered.
+- `maxOfflinePlayers` of them are drawn at once (256; 1000 is no limit): the nearest the
+  camera in its dimension, chosen again every tick (`RestingPlayers.shown`). The others stay
+  remembered and lose their puppet until they are among the nearest again.
 
 ### Their life, near the camera
 
@@ -293,7 +333,9 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
   players. Mobs in `stillMobTypes` (happy ghast, mannequin) stand still instead of walking
   their loop. A copy wears its mannequin's skin, from a player's name or a texture of a
   resource pack: the game looks it up when the copy is loaded, and `Puppets.skin` hands it
-  over, since the game only does it in a tick a copy never runs.
+  over, since the game only does it in a tick a copy never runs. Its cape is hung from where it
+  stands (`Puppets.cape`), where the tick would move it over time, or it would reach out
+  towards 0, 0, 0.
 
 ### Scanning nearby mobs
 
@@ -559,6 +601,8 @@ that a mob met in an earlier game is read back rather than baked.
 
 - The fingerprint is the game version, the resource packs chosen and their files, the jars in
   `mods/` and the sheet format. When one of them changes, the folder is thrown away.
+- A sheet read back is checked against the size of a sheet (`ImpostorDisk.decode`) before
+  anything is allocated: a damaged file is baked again, it never asks for more memory.
 - 4096 sheets are kept, some 35 KB each once compressed (about 140 MB), counted when the
   folder is opened, at the start and after a reload: a game may write more until then. The
   ones met longest ago go first.
@@ -849,7 +893,21 @@ Living Horizon Settings*.
 Every setting is in `config/livinghorizon.json` (`FarConfig`). The file is read at start and
 written back with every setting in it, including the ones a newer version adds. Its
 `version` field is the file's layout, not a setting: an older file is brought up to date on
-load.
+load, one step per version (`FarConfig.migrate`, each step tested in `FarConfigTest`).
+
+### The client's files
+
+The settings, the remembered mobs and the players who logged off are written through
+`JsonStore`:
+
+- into a temporary file beside the real one, then moved over it: a game that stops while
+  saving leaves the old file whole;
+- a file that does not read (a typo made by hand, a file cut short) is moved aside as
+  `<name>.bad`, said in the log, and the mod starts from the defaults or an empty list;
+- the lists keep the version of their layout, `{"version": 1, "mobs": [...]}` and
+  `{"version": 1, "players": [...]}`; a bare list, as files were before, reads as version 0.
+  A file of a newer version is read as well as this one can, after a copy is kept as
+  `<name>.v<version>`.
 
 In game, the settings are in the mod's screen: the *Living Horizon...* button of the Options
 screen, Mod Menu (Fabric, Quilt) or the mods list (NeoForge, Forge), the settings key, or
@@ -886,6 +944,7 @@ cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 | `showVehicles` | Mounts & Vehicles | `true` | | Draw the mount they were last seen on |
 | `playerMaxDistance` | Player Render Distance | `0` blocks | 0 to 4000 | Past this, distant players are not drawn (`0`: no limit) |
 | `offlinePlayers` | Offline Players | `true` | | Players who logged off are shown and remembered; off, neither |
+| `maxOfflinePlayers` | Max Offline | `256` | 0 to 1000 | How many players who logged off are drawn at once, nearest first (`0`: none, `1000`: no limit) |
 | `offlineLife` | Offline Player Activity | `true` | | They live their life around their spot; off, they sit on it |
 | `offlineRoam` | Roaming Radius | `50` blocks | 8 to 128 | How far from their spot they walk around and look for a bed or a chest (50 is about a village) |
 | `offlineNames` | Offline Player Names | `true` | | Their name above them, marked offline, and when they were last seen, under the crosshair |

@@ -138,6 +138,14 @@ Mobs from other mods should work. Mods not tested yet are listed under the
 [`mod compatibility`](https://github.com/MC-Skin-Creator/living-horizon/labels/mod%20compatibility)
 label.
 
+## Made with AI
+
+AI is part of this project's workflow: Living Horizon is made with [Claude](https://claude.ai).
+
+You can use AI to contribute too, no problem. Just keep thinking about what it writes.
+Claude works best here: it reads `CLAUDE.md` and the skills in `.claude/skills/`, which
+describe how the project works.
+
 ## More
 
 - Something wrong? Open an [issue](https://github.com/MC-Skin-Creator/living-horizon/issues)
@@ -148,7 +156,7 @@ label.
 - Build: `./gradlew :1.21.11:build` for one target, `./gradlew buildAndCollect` for every jar.
 - License: source-available under the [Living Horizon License](LICENSE), copyright 2026
   clixmods. The unchanged jar may be redistributed with credit; forks are not allowed.
-- Credits: made by clixmods. Collaborators and testers: ISessen. Full list in [CREDITS.md](CREDITS.md).
+- Credits: made by clixmods. Contributors: JonesJugHead. Testers: ISessen, largitalian. Full list in [CREDITS.md](CREDITS.md).
 - Contributing: pull requests to this repository only, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Minecraft is a trademark of Mojang Studios. This project is not affiliated with or
