@@ -394,6 +394,12 @@ come back, add it here in the same pull request: this file is what the next sess
   again with more room round it (`ImpostorPixels.growth`), drawn smaller in a tile of the same 64
   pixels: tiles two or three times larger took four or nine times the memory for a figure a dozen
   pixels tall. `impostoredges` and `longmobs` show both.
+- **Distant mobs shaking their heads very fast** (often reported with Entity Culling, more so with
+  Chloride or anything that makes the game stop drawing mobs sooner): Entity Culling holds every
+  entity out of view until the game's own `renderEntity` draws it, and gives it a shorter tick
+  that turns the head without `yHeadRotO`. A mob the mod draws in the game's place is told seen
+  (`compat/EntityCulling.drawn`, from `GhostRenderer`); the `headturn` scenario checks it with
+  Entity Culling in `-Plh.mods`.
 - **Crash extracting a distant mob on 1.21.2 to 1.21.8** (`NullPointerException` under
   `GhostRenderer.state`, often blamed on another mod's mixin into `extractRenderState`):
   GeckoLib 4's `createRenderState()` returns null and its `render` draws the entity it was

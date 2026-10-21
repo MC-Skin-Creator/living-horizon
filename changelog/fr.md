@@ -21,6 +21,7 @@
 - **Saccades en rejoignant un gros serveur** — rejoindre un serveur avec beaucoup de joueurs déconnectés ne fait plus saccader le jeu.
 - **Manque de mémoire à cause d'une image abîmée** — une image sauvegardée abîmée d'un mob lointain (*Entités simplifiées*) ne peut plus faire manquer de mémoire au jeu : elle est redessinée à la place.
 - **Mobs lointains cachés par le terrain de Distant Horizons sous shaders** — avec Oculus et un shader pack, les mobs lointains ne disparaissent plus derrière le terrain de Distant Horizons, de plus en plus à mesure que la distance de rendu augmente (Forge).
+- **Mobs lointains qui secouent la tête** — les mobs et les joueurs au loin ne secouent plus la tête à toute vitesse avec Entity Culling, seul ou avec Chloride.
 
 ## 0.10.0 — 2026-10-20
 

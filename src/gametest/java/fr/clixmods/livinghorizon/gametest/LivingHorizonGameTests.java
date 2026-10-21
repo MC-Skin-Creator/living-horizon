@@ -10,6 +10,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.EasterEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FollowedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.GaitsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.HeadTurnScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorCrowdScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorEdgesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorLongMobsScenario;
@@ -77,6 +78,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new ResizeScenario(),
             new UnloadScenario(),
             new FollowedMobsScenario(),
+            new HeadTurnScenario(),
             new GaitsScenario(),
             new EasterEggsScenario(),
             new BirdsScenario(),
