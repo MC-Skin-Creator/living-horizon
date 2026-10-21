@@ -458,6 +458,11 @@ come back, add it here in the same pull request: this file is what the next sess
   The Fabric API's client networking stays in `ClientNetwork`, which a server never loads.
   Check a server by installing the loader's server from its installer, the jar in `mods/`,
   and reading the console for "sharing the positions of this server".
+- **Settings, remembered mobs or players who logged off gone after a restart**: a file that
+  did not read is kept beside it as `<name>.bad` (`JsonStore`; the server's
+  `livinghorizon-positions.dat.bad`), with a line in the log saying why. The server's file has a
+  version of its own (`PositionsMessage.FILE_VERSION`): a change to the messages' `VERSION`
+  never touches it, and a change to the file's layout reads the older one too.
 - **Frame rate lost to the mod** (with Voxy or not): measure before guessing. On the player's
   machine, ask for the report of `/livinghorizon benchmark` (`debug/Benchmark`): frame times with
   the mod off, each preset and each part on its own, on their GPU and mods. Run in the world

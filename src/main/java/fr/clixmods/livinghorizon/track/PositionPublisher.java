@@ -408,8 +408,19 @@ public final class PositionPublisher {
         Path file = file();
         if (!Files.isRegularFile(file)) return;
         try {
-            PositionsMessage.Saved saved = PositionsMessage.readSaved(Files.readAllBytes(file));
-            if (saved == null) return;
+            byte[] data = Files.readAllBytes(file);
+            PositionsMessage.Saved saved = PositionsMessage.readSaved(data);
+            if (saved == null) {
+                // Kept aside, never written over: the next save starts a new file beside it.
+                Path bad = file.resolveSibling(FILE + ".bad");
+                Files.move(file, bad, StandardCopyOption.REPLACE_EXISTING);
+                int version = PositionsMessage.savedVersion(data);
+                LOGGER.warn("Living Horizon: could not read the shared positions of this world ({}), kept the file as {}",
+                        version == PositionsMessage.FILE_VERSION ? "damaged"
+                                : "version " + version + ", this one reads " + PositionsMessage.FILE_VERSION,
+                        bad.getFileName());
+                return;
+            }
             // Whoever was online when it was saved logged off then.
             for (PositionsMessage.Player player : saved.players()) {
                 players.put(player.name(), new PositionsMessage.Player(player.name(), player.x(), player.y(), player.z(),

@@ -136,6 +136,7 @@ public final class FarPlayerTracker {
                 for (Entity entity : current.entitiesForRendering()) mobs.onLoad(entity);
             }
         }
+        resting.maintain();
         // Paused in single player: the world is frozen, and so is everything drawn on its horizon.
         if (minecraft.isPaused()) return;
         FarConfig config = FarConfig.get();
