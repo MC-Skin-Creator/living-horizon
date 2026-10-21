@@ -9,18 +9,22 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 //? if >=1.21.9
 import net.minecraft.client.entity.ClientAvatarEntity;
+//? if >=1.21.9
+import net.minecraft.client.entity.ClientAvatarState;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 
 /**
  * Mannequins with skins, left behind until the mod draws its copies of them: each copy must
- * wear its mannequin's skin, never the default one. Two take a texture of the game's through
- * their profile, as a server's resource pack gives one; a third a player's name, whose skin
- * comes from Mojang when the network allows (logged, not checked).
+ * wear its mannequin's skin, never the default one, and hang its cape from where it stands.
+ * Two take a texture of the game's through their profile, as a server's resource pack gives
+ * one, the first with a cape; a third a player's name, whose skin comes from Mojang when the
+ * network allows (logged, not checked).
  *
  * <p>The server sends mannequins as far as its view distance, which follows the render
  * distance here: their copies stand past the fog, out of sight without Voxy. The check is on
- * the copies' skins and the impostor page; the screenshot up close shows the skins expected.
- * Mannequins came in 1.21.9: nothing to do before.
+ * the copies' skins and capes and the impostor page; the screenshot up close shows the skins
+ * and the cape expected. Mannequins came in 1.21.9: nothing to do before.
  */
 public final class MannequinsScenario implements Scenario {
     /** A texture of the game's for each skinned mannequin, by its place across the row. */
@@ -42,7 +46,8 @@ public final class MannequinsScenario implements Scenario {
         });
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
             // Past 32 blocks: a figure that vanishes closer is taken as gone for good.
-            summon(world, -4, "{texture:\"" + TEXTURES[0] + "\"}");
+            // The game ships no cape: the skin texture stands in for one, scrambled on the cape's model.
+            summon(world, -4, "{texture:\"" + TEXTURES[0] + "\",cape:\"" + TEXTURES[0] + "\"}");
             summon(world, 0, "{texture:\"" + TEXTURES[1] + "\",model:\"slim\"}");
             summon(world, 4, "\"Notch\"");
             context.waitTicks(100);
@@ -58,6 +63,7 @@ public final class MannequinsScenario implements Scenario {
                 Scene.log("mobs still sent by the server: " + memory.live().size());
                 int checked = 0;
                 StringBuilder wrong = new StringBuilder();
+                StringBuilder capes = new StringBuilder();
                 for (MobMemory.Remembered mob : memory.shown()) {
                     if (!mob.type().equals("minecraft:mannequin")) continue;
                     Entity puppet = mob.puppet();
@@ -67,14 +73,28 @@ public final class MannequinsScenario implements Scenario {
                     }
                     String skin = String.valueOf(avatar.getSkin().body().texturePath());
                     Scene.log("mannequin copy at x=" + Math.round(puppet.getX()) + " wears " + skin);
+                    // Where its cape hangs from: left at 0, 0, 0, the cape reaches out towards there.
+                    // Both ends, since a model is drawn between them.
+                    ClientAvatarState state = avatar.avatarState();
+                    double cape = 0;
+                    for (float partial : new float[]{0f, 1f}) {
+                        cape += Math.abs(state.getInterpolatedCloakX(partial) - Mth.lerp(partial, puppet.xo, puppet.getX()))
+                                + Math.abs(state.getInterpolatedCloakY(partial) - Mth.lerp(partial, puppet.yo, puppet.getY()))
+                                + Math.abs(state.getInterpolatedCloakZ(partial) - Mth.lerp(partial, puppet.zo, puppet.getZ()));
+                    }
+                    if (cape > 0.01) {
+                        capes.append(" x=").append(Math.round(puppet.getX())).append(String.format(" %.2f blocks off", cape));
+                    }
                     int place = (int) Math.round(puppet.getX() / 4) + 1;
                     if (place < 0 || place >= TEXTURES.length) continue;
                     checked++;
                     String expected = TEXTURES[place].substring("minecraft:".length());
                     if (!skin.contains(expected)) wrong.append(" x=").append(Math.round(puppet.getX())).append(" wears ").append(skin);
+                    if (place == 0 && avatar.getSkin().cape() == null) wrong.append(" x=-4 without its cape");
                 }
                 if (checked < TEXTURES.length) return "only " + checked + " textured mannequin copies were shown";
-                return wrong.isEmpty() ? null : "mannequin copies without their skin:" + wrong;
+                if (!wrong.isEmpty()) return "mannequin copies without their skin or cape:" + wrong;
+                return capes.isEmpty() ? null : "mannequin copies with their cape away from them:" + capes;
             });
             context.runOnClient(minecraft -> Scene.log("mannequins impostor sheets=" + ImpostorAtlas.sheets()));
             Scene.screenshotAtlas(context, this);
