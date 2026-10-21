@@ -2,6 +2,7 @@ package fr.clixmods.livinghorizon.compat;
 
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.platform.Platform;
+import fr.clixmods.livinghorizon.render.DepthMath;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.jspecify.annotations.Nullable;
@@ -155,19 +156,18 @@ final class DhDepth {
             Object params = renderParams.get(null);
             Object matrix = params == null ? null : projection.get(params);
             if (matrix == null) return none("Distant Horizons has not drawn yet");
-            a = m22.getFloat(matrix);
-            float c = m23.getFloat(matrix), d = m32.getFloat(matrix);
-            // The matrix is stored one way or the other: the entry that is -1 is the one that
-            // divides by depth, the other one is the offset.
-            boolean rowByRow = !(Math.abs(c + 1.0f) < 1.0e-3f);
-            b = rowByRow ? c : d;
-            exact = invert(matrix, rowByRow);
+            float c = m23.getFloat(matrix);
+            // The matrix is stored one way or the other: see DepthMath.rowByRow.
+            float[] read = DepthMath.fromMatrix(m22.getFloat(matrix), c, m32.getFloat(matrix));
+            a = read[0];
+            b = read[1];
+            exact = invert(matrix, DepthMath.rowByRow(c));
         } else {
             float[] planes = planes(proxy);
             if (planes == null) return none("Distant Horizons has no clip planes yet");
-            float near = planes[0], far = planes[1];
-            a = (far + near) / (near - far);
-            b = 2.0f * far * near / (near - far);
+            float[] read = DepthMath.terms(planes[0], planes[1], false, false);
+            a = read[0];
+            b = read[1];
         }
         boolean signed = depthRange == null
                 || "NEG_ONE_TO_POS_ONE".equals(String.valueOf(name.invoke(depthRange.invoke(proxy))));
@@ -176,21 +176,19 @@ final class DhDepth {
             exact = false;
             // A shader pack draws Distant Horizons' terrain with Iris's own projection, whose
             // near plane is not the one Distant Horizons clamps for itself: OpenGL's -1..1.
-            float near = iris[0], far = iris[1];
-            a = (far + near) / (near - far);
-            b = 2.0f * far * near / (near - far);
             //? if >=26.2 {
             /*// From 26.2 Iris draws Distant Horizons' terrain with Iris's planes but in Distant
             // Horizons' own depth layout - reversed and 0..1 as the game's, empty at 0 - which it
             // reports: Iris's planes, in the layout Distant Horizons gives (signed set above).
             boolean reversed = depthDirection != null && farDepth != null
                     && farDepth.getFloat(depthDirection.invoke(proxy)) < 0.5f;
-            float n = reversed ? far : near, f = reversed ? near : far;
-            a = signed ? (f + n) / (n - f) : f / (n - f);
-            b = signed ? 2.0f * f * n / (n - f) : n * f / (n - f);
+            float[] read = DepthMath.terms(iris[0], iris[1], reversed, !signed);
             *///?} else {
             signed = true;
+            float[] read = DepthMath.terms(iris[0], iris[1], false, false);
             //?}
+            a = read[0];
+            b = read[1];
         }
         if (Math.abs(b) < 1.0e-6f) return none("Distant Horizons has no projection yet");
         float nothing = depthDirection == null || farDepth == null ? 1.0f : farDepth.getFloat(depthDirection.invoke(proxy));
@@ -201,14 +199,7 @@ final class DhDepth {
     private static boolean invert(Object matrix, boolean rowByRow) {
         if (valuesAsArray == null) return false;
         try {
-            if (!(valuesAsArray.invoke(matrix) instanceof float[] values) || values.length != 16) return false;
-            // JOML reads its arrays column by column.
-            INVERSE.set(values);
-            if (rowByRow) INVERSE.transpose();
-            float determinant = INVERSE.determinant();
-            if (!Float.isFinite(determinant) || Math.abs(determinant) < 1.0e-12f) return false;
-            INVERSE.invert();
-            return INVERSE.isFinite();
+            return valuesAsArray.invoke(matrix) instanceof float[] values && DepthMath.invert(values, rowByRow, INVERSE);
         } catch (ReflectiveOperationException | RuntimeException e) {
             valuesAsArray = null;
             LivingHorizonClient.LOGGER.warn("Distant Horizons' projection could not be read whole: its depth may move with view bobbing", e);
