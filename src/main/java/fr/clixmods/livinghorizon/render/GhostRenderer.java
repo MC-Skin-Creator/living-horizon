@@ -591,9 +591,10 @@ public final class GhostRenderer {
         ClientLevel level = minecraft.level;
         if (level == null) return;
         RestingPlayers resting = FarPlayerTracker.get().resting();
-        int dimension = SharedPositions.dimensionCode(level.dimension());
-        for (RestingPlayers.Spot spot : resting.spots()) {
-            if (spot.dimension() != dimension) continue;
+        String dimension = SharedPositions.dimensionId(level.dimension());
+        // The nearest only, as many as the settings say.
+        for (RestingPlayers.Spot spot : resting.shown()) {
+            if (!spot.dimension().equals(dimension)) continue;
             RestingPuppet puppet = resting.puppet(level, spot);
             if (!drawable(dispatcher, puppet)) continue;
             if (tooFar(puppet, eye, config.playerMaxDistance)) continue;

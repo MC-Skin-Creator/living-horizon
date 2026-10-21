@@ -23,6 +23,7 @@ import fr.clixmods.livinghorizon.track.Profiles;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.Gear;
 import fr.clixmods.livinghorizon.track.MobScan;
+import fr.clixmods.livinghorizon.track.PositionsMessage;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
 import fr.clixmods.livinghorizon.track.SharedPositions;
 import fr.clixmods.livinghorizon.ui.FarConfigScreen;
@@ -297,7 +298,7 @@ public final class LivingHorizonCommand {
         // On what you ride, if anything: a copy of it, which each of them keeps.
         RestingPlayers.Mount mount = RestingPlayers.Mount.ridden(self);
         boolean flies = mount != null && RestingPlayers.Mount.flies(self.getRootVehicle());
-        int dimension = SharedPositions.dimensionCode(self.level().dimension());
+        String dimension = SharedPositions.dimensionId(self.level().dimension());
         Random random = new Random();
         List<String> skins = RestingPlayers.skinsFor(names.size(), random);
         for (String each : names) {
@@ -340,6 +341,13 @@ public final class LivingHorizonCommand {
         return false;
     }
 
+    /** The game's three dimensions by their name; one of a mod by its id, as the game has no name for it. */
+    private static Component dimensionName(String dimension) {
+        int vanilla = PositionsMessage.LEGACY_DIMENSIONS.indexOf(dimension);
+        return vanilla >= 0 ? Component.translatable("livinghorizon.offline.test.dimension." + vanilla)
+                : Component.literal(dimension);
+    }
+
     /** Everyone resting on this server: where, and since when. */
     private static int listOffline(Source source) {
         RestingPlayers resting = FarPlayerTracker.get().resting();
@@ -354,7 +362,7 @@ public final class LivingHorizonCommand {
             String date = LastSeen.format(spot.lastSeen(), language, ZoneId.systemDefault());
             source.feedback(Component.translatable("livinghorizon.offline.test.line",
                     spot.name(),
-                    Component.translatable("livinghorizon.offline.test.dimension." + Math.clamp(spot.dimension(), 0, 3)),
+                    dimensionName(spot.dimension()),
                     Math.round(spot.x()), Math.round(spot.y()), Math.round(spot.z()),
                     date == null ? Component.translatable("livinghorizon.offline.test.unknown") : Component.literal(date),
                     resting.isFake(spot) ? Component.translatable("livinghorizon.offline.test.mark") : Component.empty()));

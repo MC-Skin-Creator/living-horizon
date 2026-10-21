@@ -144,7 +144,7 @@ public final class FarPlayerTracker {
         if (mobs.takeFirstVisit() && config.distantMobs && MobScan.available(minecraft)) {
             MobScan.start(minecraft, config.scanRadius);
         }
-        int dimension = SharedPositions.dimensionCode(current.dimension());
+        String dimension = SharedPositions.dimensionId(current.dimension());
 
         Set<UUID> live = new HashSet<>();
         for (AbstractClientPlayer player : current.players()) {
@@ -162,7 +162,13 @@ public final class FarPlayerTracker {
         // A world played alone is shared by its own server; never warned about.
         if (!warnedNoSharing && ++sinceJoin >= 200) {
             warnedNoSharing = true;
-            if (!shared.active() && minecraft.getSingleplayerServer() == null) {
+            PositionsMessage.Format unreadable = shared.unreadable();
+            if (!shared.active() && unreadable != null) {
+                // The server has the mod, in a version too far from this one.
+                LivingHorizonClient.LOGGER.warn("Living Horizon: the server shares format v{}, this mod reads v{}, so distant "
+                        + "players are not shown. Update the mod on {}.", unreadable.version(), PositionsMessage.VERSION,
+                        unreadable.version() > PositionsMessage.VERSION ? "this game" : "the server");
+            } else if (!shared.active() && minecraft.getSingleplayerServer() == null) {
                 LivingHorizonClient.LOGGER.warn("Living Horizon: this server does not have the mod, so distant players are not shown. "
                         + "Put the mod in the server's mods folder, or ask the host of a LAN world to use the mod.");
             }
@@ -195,7 +201,7 @@ public final class FarPlayerTracker {
         // Gone from the tab list: logged off. They rest where they were last known.
         players.values().removeIf(player -> {
             if (connection.getPlayerInfo(player.id()) != null) return false;
-            if (config.offlinePlayers && player.profile != null && player.knownDimension() >= 0) {
+            if (config.offlinePlayers && player.profile != null && player.knownDimension() != null) {
                 RestingPlayers.Mount mount = player.mountToRest();
                 resting.rest(player.profile, player.knownDimension(), player.x(), player.y(), player.z(), player.yaw(),
                         mount, player.gearToRest());
@@ -265,7 +271,7 @@ public final class FarPlayerTracker {
     private void restEveryone() {
         if (!FarConfig.get().offlinePlayers) return;
         for (FarPlayer player : players.values()) {
-            if (player.profile == null || player.knownDimension() < 0 || !player.placed() || player.vanished()
+            if (player.profile == null || player.knownDimension() == null || !player.placed() || player.vanished()
                     || player.source() == FarPlayer.Source.LOST) {
                 continue;
             }

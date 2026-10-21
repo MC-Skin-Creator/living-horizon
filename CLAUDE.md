@@ -476,6 +476,16 @@ come back, add it here in the same pull request: this file is what the next sess
   `livinghorizon-positions.dat.bad`), with a line in the log saying why. The server's file has a
   version of its own (`PositionsMessage.FILE_VERSION`): a change to the messages' `VERSION`
   never touches it, and a change to the file's layout reads the older one too.
+- **Players or mobs of one modded dimension drawn in another** (the Aether's players in the
+  Twilight Forest): a dimension is named by its id everywhere (`SharedPositions.dimensionId`,
+  the messages' table of dimensions, `RestingPlayers.Spot`), never by a number, which cannot
+  tell two mods' dimensions apart: message format 2 and the resting file's layout 1 gave them
+  all 3, and their readers leave those out.
+- **Distant players gone after an update, the log saying "the server shares format vN"**: the
+  server and the client run mods whose `PositionsMessage` layouts are too far apart. A field
+  added at the end of a record, or after the records, raises `VERSION` only; anything else
+  raises `READABLE_FROM` too, and older clients stop reading. `PositionsMessageTest` holds the
+  exact bytes: a layout change that fails it needs one of the two.
 - **Frame rate lost to the mod** (with Voxy or not): measure before guessing. On the player's
   machine, ask for the report of `/livinghorizon benchmark` (`debug/Benchmark`): frame times with
   the mod off, each preset and each part on its own, on their GPU and mods. Run in the world

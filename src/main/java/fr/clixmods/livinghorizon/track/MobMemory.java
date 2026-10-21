@@ -155,8 +155,6 @@ public final class MobMemory {
     private static final Gson GSON = new GsonBuilder().create();
     /** Layout of the file: 1 is the list under {@code "mobs"}, with its version; 0 the bare list before it. */
     static final int VERSION = 1;
-    private static final List<String> DIMENSIONS =
-            List.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end");
     /** Bounds the file; the oldest sightings go first. */
     private static final int MAX_REMEMBERED = 2000;
     /** Nanoseconds per tick for building puppets, so that a crowd does not cost one long frame. */
@@ -804,11 +802,6 @@ public final class MobMemory {
         return Math.max(apparent, config.minApparentPixels);
     }
 
-    private static int dimensionCode(String dimension) {
-        int code = DIMENSIONS.indexOf(dimension);
-        return code < 0 ? 3 : code;
-    }
-
     /**
      * Takes the server's word: where every mob it publishes around this client is now, as last
      * seen by whoever was near it. A mob this client has seen keeps the look it saved; one it
@@ -820,8 +813,7 @@ public final class MobMemory {
         for (UUID id : pack.mobs()) {
             SharedPositions.MobReport report = pack.readMob(id);
             String type = report == null ? null : MobKinds.type(report.kind());
-            String dimension = report == null || report.dimension() >= DIMENSIONS.size()
-                    ? null : DIMENSIONS.get(report.dimension());
+            String dimension = report == null ? null : report.dimension();
             if (type == null || dimension == null) continue;
             published.add(id);
             if (live.containsKey(id)) continue;
@@ -868,7 +860,7 @@ public final class MobMemory {
         for (Remembered mob : mobs.values()) {
             // Only where the server just sent the mobs around: one farther off is out of reach, not gone.
             if (mob.fromPack && isHere(mob) && !published.contains(mob.id) && !live.containsKey(mob.id)
-                    && pack.covers(dimensionCode(mob.dimension), mob.x, mob.z)) dead.add(mob.id);
+                    && pack.covers(mob.dimension, mob.x, mob.z)) dead.add(mob.id);
         }
         dead.forEach(this::forget);
     }

@@ -2,7 +2,9 @@ package fr.clixmods.livinghorizon.track;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
@@ -64,16 +66,17 @@ public final class RestingPlayers {
     /**
      * Where one player rests. Keyed by name: the server shares names only.
      *
+     * @param dimension the id of the dimension they rest in, {@code minecraft:overworld}
      * @param lastSeen when they logged off, in milliseconds since 1970; 0 when unknown (seen
      *                 by the server alone, or saved by a version that did not keep it)
      * @param mount    what they rode when they logged off, or null
      * @param gear     what they wore and held ({@link Gear}), or null when not known
      */
     public record Spot(String name, @Nullable UUID id, @Nullable String textures, @Nullable String signature,
-                       int dimension, double x, double y, double z, float yaw, long lastSeen,
+                       String dimension, double x, double y, double z, float yaw, long lastSeen,
                        @Nullable Mount mount, @Nullable List<String> gear) {
 
-        Spot moved(int dimension, double x, double y, double z, float yaw, @Nullable Mount mount) {
+        Spot moved(String dimension, double x, double y, double z, float yaw, @Nullable Mount mount) {
             return new Spot(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen, mount, gear);
         }
 
@@ -165,8 +168,11 @@ public final class RestingPlayers {
     }
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    /** Layout of the file: 1 is the list under {@code "players"}, with its version; 0 the bare list before it. */
-    static final int VERSION = 1;
+    /**
+     * Layout of the file: 2 names each spot's dimension by its id; 1 numbered it (0 overworld, 1
+     * nether, 2 end, 3 any other); 0 is the bare list, before the list came with its version.
+     */
+    static final int VERSION = 2;
     /** Ticks between two saves of the file, when something changed: five seconds. */
     private static final int SAVE_EVERY = 100;
     /** Milliseconds between two skins asked of Mojang, which turns away a client asking too often. */
@@ -193,6 +199,10 @@ public final class RestingPlayers {
     private final Set<String> fromHost = new HashSet<>();
     private @Nullable Path file;
     private @Nullable Spot lookedAt;
+    /** Who is drawn now ({@link #shown}). */
+    private List<Spot> shown = List.of();
+    /** A spot changed or went since {@link #shown} was chosen: brought up to date when next asked. */
+    private boolean shownStale;
     private boolean wasAttacking;
 
     /** Blocks from the eye to the point aimed at on a sleeper: about the reach of a hand. */
@@ -200,8 +210,52 @@ public final class RestingPlayers {
     /** Spots of the world the puppets may read per tick, all of them together. */
     private static final int WORK = 600;
 
+    /** Every player resting on this server, drawn or not. */
     public Collection<Spot> spots() {
         return Collections.unmodifiableCollection(spots.values());
+    }
+
+    /**
+     * Those drawn: in the camera's dimension, the {@link FarConfig#maxOfflinePlayers} nearest
+     * it, chosen again every tick ({@link #choose}). One woken or cleared since is left out at
+     * once, one moved is there as it is now; drawing a frame otherwise works out nothing.
+     */
+    public List<Spot> shown() {
+        if (shownStale) {
+            shownStale = false;
+            List<Spot> now = new ArrayList<>(shown.size());
+            for (Spot spot : shown) {
+                Spot current = spots.get(key(spot.name()));
+                if (current != null && current.dimension().equals(spot.dimension())) now.add(current);
+            }
+            shown = now;
+        }
+        return shown;
+    }
+
+    /**
+     * The spots of {@code dimension} nearest {@code x, z}, at most {@code most}
+     * ({@link FarConfig#UNLIMITED_OFFLINE} and above: all of them), the nearest first.
+     */
+    static List<Spot> nearest(Collection<Spot> spots, String dimension, double x, double z, int most) {
+        List<Spot> here = new ArrayList<>();
+        for (Spot spot : spots) {
+            if (spot.dimension().equals(dimension)) here.add(spot);
+        }
+        int count = most >= FarConfig.UNLIMITED_OFFLINE ? here.size() : Math.max(0, most);
+        return PlayerLists.nearest(here, count, spot -> Math.hypot(spot.x() - x, spot.z() - z));
+    }
+
+    /** Chooses who is drawn ({@link #shown}); the puppets of the others are let go. */
+    private void choose(ClientLevel level, FarConfig config) {
+        Entity camera = Minecraft.getInstance().getCameraEntity();
+        shown = camera == null ? List.of() : nearest(spots.values(), SharedPositions.dimensionId(level.dimension()),
+                camera.getX(), camera.getZ(), config.maxOfflinePlayers);
+        shownStale = false;
+        Set<Spot> kept = Collections.newSetFromMap(new IdentityHashMap<>());
+        kept.addAll(shown);
+        puppets.keySet().retainAll(kept);
+        if (lookedAt != null && !kept.contains(lookedAt)) lookedAt = null;
     }
 
     // --- Lifecycle ---------------------------------------------------------------------
@@ -222,6 +276,7 @@ public final class RestingPlayers {
         fakes.clear();
         fromHost.clear();
         puppets.clear();
+        shown = List.of();
         lookedAt = null;
         file = null;
     }
@@ -229,13 +284,14 @@ public final class RestingPlayers {
     /** Puppets belong to one level; a new dimension needs new ones. */
     void forgetPuppets() {
         puppets.clear();
+        shown = List.of();
         lookedAt = null;
     }
 
     // --- Who rests where ---------------------------------------------------------------
 
     /** A player who just logged off, at the last place this client knew, on what they rode, in what they wore. */
-    void rest(GameProfile profile, int dimension, double x, double y, double z, float yaw, @Nullable Mount mount,
+    void rest(GameProfile profile, String dimension, double x, double y, double z, float yaw, @Nullable Mount mount,
               @Nullable List<String> gear) {
         Spot spot = new Spot(Profiles.name(profile), Profiles.id(profile), null, null, dimension, x, y, z, yaw,
                 System.currentTimeMillis(), mount, gear).dressed(profile);
@@ -259,7 +315,7 @@ public final class RestingPlayers {
             Mount seen = known != null ? known.mount() : null;
             mount = seen != null && (shared == null || seen.type().equals(shared.type())) ? seen : Mount.of(shared);
         }
-        if (known != null && known.dimension() == report.dimension()
+        if (known != null && known.dimension().equals(report.dimension())
                 && Math.abs(known.x() - report.x()) < 0.05 && Math.abs(known.y() - report.y()) < 0.05
                 && Math.abs(known.z() - report.z()) < 0.05 && (known.mount() == null) == (mount == null)
                 && (look == null || looksLike(known, look))) {
@@ -292,6 +348,7 @@ public final class RestingPlayers {
             fromHost.remove(name);
             fakes.remove(name);
             Spot gone = spots.remove(name);
+            shownStale = true;
             if (gone != null) puppets.remove(gone);
             if (lookedAt != null && key(lookedAt.name()).equals(name)) lookedAt = null;
         }
@@ -318,6 +375,7 @@ public final class RestingPlayers {
         fromHost.remove(key(name));
         fakes.remove(key(name));
         Spot gone = spots.remove(key(name));
+        shownStale = true;
         if (gone != null) {
             puppets.remove(gone);
             if (lookedAt != null && key(lookedAt.name()).equals(key(name))) lookedAt = null;
@@ -337,6 +395,7 @@ public final class RestingPlayers {
 
     private void put(Spot spot) {
         Spot old = spots.put(key(spot.name()), spot);
+        shownStale = true;
         if (old != null) puppets.remove(old);
         if (!fakes.contains(key(spot.name()))) dirty = true;
     }
@@ -384,7 +443,7 @@ public final class RestingPlayers {
      * {@code skin} and riding {@code mount} if not null: shown like any other until
      * {@link #clearFakes}, but never written to the file, so gone at the next start.
      */
-    public void fake(String name, GameProfile skin, int dimension, double x, double y, double z, float yaw,
+    public void fake(String name, GameProfile skin, String dimension, double x, double y, double z, float yaw,
                      long minutesAgo, @Nullable Mount mount, @Nullable List<String> gear) {
         Property textures = skinOf(skin);
         fakes.add(key(name));
@@ -464,6 +523,7 @@ public final class RestingPlayers {
         for (String name : List.copyOf(fakes)) {
             if (fromHost.contains(name) || !which.test(name)) continue;
             Spot gone = spots.remove(name);
+            shownStale = true;
             if (gone != null) {
                 count++;
                 puppets.remove(gone);
@@ -477,6 +537,7 @@ public final class RestingPlayers {
     /** Wakes everyone up: nobody rests anywhere any more, here and in the file. */
     public void forgetAll() {
         spots.clear();
+        shown = List.of();
         fakes.clear();
         fromHost.clear();
         puppets.clear();
@@ -519,12 +580,11 @@ public final class RestingPlayers {
         if (!config.offlineNames && !(struck && config.offlineLife)) return;
         Vec3 eye = camera.getEyePosition();
         Vec3 look = camera.getViewVector(1.0f);
-        int dimension = SharedPositions.dimensionCode(level.dimension());
         double nearest = Double.MAX_VALUE;
         Spot aimed = null;
-        for (Spot spot : spots.values()) {
+        for (Spot spot : shown()) {
             RestingPuppet puppet = puppets.get(spot);
-            if (spot.dimension() != dimension || puppet == null) continue;
+            if (puppet == null) continue;
             double distance = eye.distanceTo(puppet.position());
             // The box reaches 1 block round its feet, its top 2 blocks over them.
             if (distance > MAX_AIM + 2.5) continue;
@@ -556,6 +616,7 @@ public final class RestingPlayers {
 
     /** Every one of them lives a tick: idle animations, their life around their spot, the ground under them. */
     void tick(ClientLevel level, FarConfig config) {
+        choose(level, config);
         Set<BlockPos> beds = new HashSet<>();
         for (RestingPuppet puppet : puppets.values()) {
             if (puppet.bed() != null) beds.add(puppet.bed());
@@ -613,9 +674,32 @@ public final class RestingPlayers {
         JsonStore.Versioned saved = JsonStore.unwrap(root, "players");
         if (saved == null) throw new IllegalStateException("not a list of players");
         if (file != null && saved.version() > VERSION) JsonStore.keepNewer(file, saved.version());
-        List<Spot> read = GSON.fromJson(saved.data(), new TypeToken<List<Spot>>() { }.getType());
+        JsonElement data = saved.version() < 2 ? namedDimensions(saved.data()) : saved.data();
+        List<Spot> read = GSON.fromJson(data, new TypeToken<List<Spot>>() { }.getType());
         if (read == null) return List.of();
-        return read.stream().filter(spot -> spot != null && spot.name() != null).toList();
+        return read.stream().filter(spot -> spot != null && spot.name() != null && spot.dimension() != null).toList();
+    }
+
+    /**
+     * The spots of a file of layout 0 or 1, their dimensions numbered, with the ids in place of
+     * the numbers. A spot in 3, a dimension of a mod, is left out: which one cannot be told.
+     */
+    private static JsonElement namedDimensions(JsonElement data) {
+        if (!data.isJsonArray()) return data;
+        JsonArray named = new JsonArray();
+        for (JsonElement element : data.getAsJsonArray()) {
+            if (!element.isJsonObject()) continue;
+            JsonObject spot = element.getAsJsonObject().deepCopy();
+            JsonElement code = spot.get("dimension");
+            // Missing, it read as 0 then.
+            String id = code == null ? PositionsMessage.legacyDimension(0)
+                    : code.isJsonPrimitive() && code.getAsJsonPrimitive().isNumber()
+                    ? PositionsMessage.legacyDimension(code.getAsInt()) : null;
+            if (id == null) continue;
+            spot.addProperty("dimension", id);
+            named.add(spot);
+        }
+        return named;
     }
 
     static void write(Collection<Spot> spots, Writer writer) throws IOException {
