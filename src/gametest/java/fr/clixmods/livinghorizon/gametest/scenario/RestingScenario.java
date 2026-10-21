@@ -272,14 +272,14 @@ public final class RestingScenario implements Scenario {
 
     /** On top of the pillar, facing the camera, logged off: as a server with the mod would share them. */
     private static final PositionsMessage.Player SLEEPER =
-            new PositionsMessage.Player(NAME, 0.5, GROUND + 3, 8.5, 180f, 0, false, false, null);
+            new PositionsMessage.Player(NAME, 0.5, GROUND + 3, 8.5, 180f, "minecraft:overworld", false, false, null);
 
     /** Waits, sharing the sleeper as the server would, so that what it shares stays trusted. */
     private static void wait(ClientGameTestContext context, TestSingleplayerContext world, int ticks) {
         for (int done = 0; done < ticks; done += 10) {
             context.runOnClient(minecraft -> {
                 FarPlayerTracker.get().receive(PositionsMessage.players(List.of()));
-                FarPlayerTracker.get().receive(PositionsMessage.offline(List.of(SLEEPER)));
+                PositionsMessage.offline(List.of(SLEEPER)).forEach(FarPlayerTracker.get()::receive);
             });
             context.waitTicks(10);
         }

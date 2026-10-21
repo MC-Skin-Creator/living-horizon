@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon.render;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import org.joml.Matrix4fc;
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.opengl.GL;
 
 /**
@@ -59,9 +60,16 @@ public final class DepthFar {
         return height / (2.0 * Math.tan(Math.toRadians(minecraft.options.fov().get()) / 2.0));
     }
 
+    /** The game's depth terms, read from this frame's projection: see {@link #terms(Minecraft)}. */
+    private static volatile float @Nullable [] terms;
+
     /** This frame's projection: reversed when a nearer point gets a greater depth. */
     public static void noteProjection(Matrix4fc projection) {
         if (projection.m23() != 0f && projection.m11() > 0f) focal = projection.m11();
+        if (projection.m23() != 0f) {
+            float[] read = DepthMath.fromProjection(projection);
+            if (read != null) terms = read;
+        }
         //? if >=26.2 {
         /*if (projection.m23() != 0f) reversed = projection.m32() > 0f;
         *///?}
@@ -92,15 +100,19 @@ public final class DepthFar {
     }
 
     /**
-     * The two terms of the game's projection that turn a distance in front of the camera
-     * into a depth, and back: depth {@code = (a * z + b) / -z} for a view-space {@code z},
-     * then halved and moved to 0..1 when the projection is OpenGL's -1..1; and the distance
-     * {@code = b / (ndc + a)}. Swapped near and far when the depth is reversed.
+     * The two terms of the game's projection that turn a distance in front of the camera into a
+     * depth, and back: see {@link DepthMath}. Read from the projection the world is drawn with
+     * this frame, so its planes are the ones the depth was made with, the pushed far plane
+     * included; before the first frame, rebuilt from the game's near plane and {@link #of}.
      */
-    public static float[] terms(float near, float far) {
-        float n = reversed() ? far : near, f = reversed() ? near : far;
-        return zeroToOne()
-                ? new float[]{f / (n - f), n * f / (n - f)}
-                : new float[]{(f + n) / (n - f), 2.0f * f * n / (n - f)};
+    public static float[] terms(Minecraft minecraft) {
+        float[] read = terms;
+        return read != null ? read.clone() : DepthMath.terms(0.05f, of(minecraft), reversed(), zeroToOne());
+    }
+
+    /** {@code {near, far}} of the game's projection this frame, from {@link #terms(Minecraft)}. */
+    public static float[] planes(Minecraft minecraft) {
+        float[] t = terms(minecraft);
+        return DepthMath.planes(t[0], t[1], reversed(), zeroToOne());
     }
 }

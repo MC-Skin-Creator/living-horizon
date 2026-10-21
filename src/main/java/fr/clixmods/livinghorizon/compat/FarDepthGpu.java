@@ -174,7 +174,7 @@ public final class FarDepthGpu {
                 preparedReason = DhDepth.reason();
                 return;
             }
-            float[] game = DepthFar.terms(0.05f, DepthFar.of(Minecraft.getInstance()));
+            float[] game = DepthFar.terms(Minecraft.getInstance());
             org.joml.Matrix4fc inverse = DhDepth.inverse();
             preparedExact = inverse != null;
             if (inverse != null) PREPARED_INVERSE.set(inverse);
@@ -434,13 +434,12 @@ public final class FarDepthGpu {
                 viewUniforms = new MappableRingBuffer(() -> "Living Horizon depth view", GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_MAP_WRITE, VIEW_SIZE);
             }
             GpuBuffer uniforms = next(viewUniforms);
-            float far = DepthFar.of(minecraft), near = 0.05f;
-            float[] terms = DepthFar.terms(near, far);
+            float[] terms = DepthFar.terms(minecraft), planes = DepthFar.planes(minecraft);
             float margin = 8f / Math.max(1, main.width);
             try (GpuBufferSlice.MappedView view = uniforms.map(false, true)) {
                 Std140Builder.intoBuffer(view.data())
                         .putVec4(1f - 0.4f - margin, 8f / Math.max(1, main.height), 0.4f, 0.4f)
-                        .putVec4(terms[0], terms[1], near, far)
+                        .putVec4(terms[0], terms[1], planes[0], planes[1])
                         .putVec4(DepthFar.REVERSED ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f, 0f, 0f);
             }
             try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(

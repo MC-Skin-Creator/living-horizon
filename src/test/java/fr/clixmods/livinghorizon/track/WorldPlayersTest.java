@@ -51,7 +51,7 @@ class WorldPlayersTest {
         assertEquals(64.0, steve.y(), 1e-9);
         assertEquals(-20.25, steve.z(), 1e-9);
         assertEquals(90f, steve.yaw());
-        assertEquals(1, steve.dimension());
+        assertEquals("minecraft:the_nether", steve.dimension());
         assertFalse(steve.online());
         assertTrue(steve.lastSeen() > 0);
         assertNotNull(steve.look());

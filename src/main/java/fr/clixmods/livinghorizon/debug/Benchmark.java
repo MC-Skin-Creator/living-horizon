@@ -470,7 +470,7 @@ public final class Benchmark {
                 .append(FarPlayerTracker.get().players().size()).append(" other players followed, ")
                 .append(FarPlayerTracker.get().resting().spots().size()).append(" players who logged off\n");
         StringBuilder mods = new StringBuilder();
-        for (String id : new String[]{"voxy", "distanthorizons", "iris", "sodium", "embeddium", "lithium", "c2me",
+        for (String id : new String[]{"voxy", "distanthorizons", "iris", "oculus", "sodium", "embeddium", "lithium", "c2me",
                 "immediatelyfast", "entityculling", "moreculling", "nvidium", "distant_friends"}) {
             String version = version(id);
             if (version != null) mods.append(mods.isEmpty() ? "" : ", ").append(id).append(version.isEmpty() ? "" : " " + version);

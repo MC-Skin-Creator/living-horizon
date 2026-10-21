@@ -115,6 +115,10 @@ public final class SodiumOptions implements ConfigEntryPoint {
                 .addOptionGroup(b.createOptionGroup()
                         .addOption(bool(b, "offlinePlayers", d.offlinePlayers, v -> FarConfig.get().offlinePlayers = v,
                                 () -> FarConfig.get().offlinePlayers))
+                        .addOption(integer(b, "maxOfflinePlayers", 0, FarConfig.UNLIMITED_OFFLINE, d.maxOfflinePlayers,
+                                v -> FarConfig.get().maxOfflinePlayers = v, () -> FarConfig.get().maxOfflinePlayers,
+                                plain("maxOfflinePlayers", 0, true))
+                                .setEnabledProvider(on("offlinePlayers"), id("offlinePlayers")))
                         .addOption(bool(b, "offlineLife", d.offlineLife, v -> FarConfig.get().offlineLife = v,
                                 () -> FarConfig.get().offlineLife)
                                 .setEnabledProvider(on("offlinePlayers"), id("offlinePlayers")))
