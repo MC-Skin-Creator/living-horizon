@@ -45,7 +45,6 @@
   "livinghorizon.offline.test.dimension.0": "Oberwelt",
   "livinghorizon.offline.test.dimension.1": "Nether",
   "livinghorizon.offline.test.dimension.2": "Das Ende",
-  "livinghorizon.offline.test.dimension.3": "eine andere Dimension",
   "livinghorizon.options.renderTrackedVehiclesFar": "Fahrmittel behalten",
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "Das Spiel blendet kleine Objekte wie Boote früh aus, sodass ein Spieler im Boot über dem Nichts schweben würde. Hält ein Fahrmittel sichtbar, solange ein Spieler es benutzt.",
   "livinghorizon.options.distantMobs": "Kreaturen anzeigen",

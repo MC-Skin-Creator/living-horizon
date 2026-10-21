@@ -2,7 +2,9 @@ package fr.clixmods.livinghorizon.track;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
@@ -63,16 +65,17 @@ public final class RestingPlayers {
     /**
      * Where one player rests. Keyed by name: the server shares names only.
      *
+     * @param dimension the id of the dimension they rest in, {@code minecraft:overworld}
      * @param lastSeen when they logged off, in milliseconds since 1970; 0 when unknown (seen
      *                 by the server alone, or saved by a version that did not keep it)
      * @param mount    what they rode when they logged off, or null
      * @param gear     what they wore and held ({@link Gear}), or null when not known
      */
     public record Spot(String name, @Nullable UUID id, @Nullable String textures, @Nullable String signature,
-                       int dimension, double x, double y, double z, float yaw, long lastSeen,
+                       String dimension, double x, double y, double z, float yaw, long lastSeen,
                        @Nullable Mount mount, @Nullable List<String> gear) {
 
-        Spot moved(int dimension, double x, double y, double z, float yaw, @Nullable Mount mount) {
+        Spot moved(String dimension, double x, double y, double z, float yaw, @Nullable Mount mount) {
             return new Spot(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen, mount, gear);
         }
 
@@ -164,8 +167,11 @@ public final class RestingPlayers {
     }
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    /** Layout of the file: 1 is the list under {@code "players"}, with its version; 0 the bare list before it. */
-    static final int VERSION = 1;
+    /**
+     * Layout of the file: 2 names each spot's dimension by its id; 1 numbered it (0 overworld, 1
+     * nether, 2 end, 3 any other); 0 is the bare list, before the list came with its version.
+     */
+    static final int VERSION = 2;
     /** Ticks between two saves of the file, when something changed: five seconds. */
     private static final int SAVE_EVERY = 100;
     /** Milliseconds between two skins asked of Mojang, which turns away a client asking too often. */
@@ -230,7 +236,7 @@ public final class RestingPlayers {
     // --- Who rests where ---------------------------------------------------------------
 
     /** A player who just logged off, at the last place this client knew, on what they rode, in what they wore. */
-    void rest(GameProfile profile, int dimension, double x, double y, double z, float yaw, @Nullable Mount mount,
+    void rest(GameProfile profile, String dimension, double x, double y, double z, float yaw, @Nullable Mount mount,
               @Nullable List<String> gear) {
         Spot spot = new Spot(Profiles.name(profile), Profiles.id(profile), null, null, dimension, x, y, z, yaw,
                 System.currentTimeMillis(), mount, gear).dressed(profile);
@@ -254,7 +260,7 @@ public final class RestingPlayers {
             Mount seen = known != null ? known.mount() : null;
             mount = seen != null && (shared == null || seen.type().equals(shared.type())) ? seen : Mount.of(shared);
         }
-        if (known != null && known.dimension() == report.dimension()
+        if (known != null && known.dimension().equals(report.dimension())
                 && Math.abs(known.x() - report.x()) < 0.05 && Math.abs(known.y() - report.y()) < 0.05
                 && Math.abs(known.z() - report.z()) < 0.05 && (known.mount() == null) == (mount == null)
                 && (look == null || looksLike(known, look))) {
@@ -378,7 +384,7 @@ public final class RestingPlayers {
      * {@code skin} and riding {@code mount} if not null: shown like any other until
      * {@link #clearFakes}, but never written to the file, so gone at the next start.
      */
-    public void fake(String name, GameProfile skin, int dimension, double x, double y, double z, float yaw,
+    public void fake(String name, GameProfile skin, String dimension, double x, double y, double z, float yaw,
                      long minutesAgo, @Nullable Mount mount, @Nullable List<String> gear) {
         Property textures = skinOf(skin);
         fakes.add(key(name));
@@ -505,12 +511,12 @@ public final class RestingPlayers {
         if (!config.offlineNames && !(struck && config.offlineLife)) return;
         Vec3 eye = camera.getEyePosition();
         Vec3 look = camera.getViewVector(1.0f);
-        int dimension = SharedPositions.dimensionCode(level.dimension());
+        String dimension = SharedPositions.dimensionId(level.dimension());
         double nearest = Double.MAX_VALUE;
         Spot aimed = null;
         for (Spot spot : spots.values()) {
             RestingPuppet puppet = puppets.get(key(spot.name()));
-            if (spot.dimension() != dimension || puppet == null) continue;
+            if (!spot.dimension().equals(dimension) || puppet == null) continue;
             double distance = eye.distanceTo(puppet.position());
             // The box reaches 1 block round its feet, its top 2 blocks over them.
             if (distance > MAX_AIM + 2.5) continue;
@@ -599,9 +605,32 @@ public final class RestingPlayers {
         JsonStore.Versioned saved = JsonStore.unwrap(root, "players");
         if (saved == null) throw new IllegalStateException("not a list of players");
         if (file != null && saved.version() > VERSION) JsonStore.keepNewer(file, saved.version());
-        List<Spot> read = GSON.fromJson(saved.data(), new TypeToken<List<Spot>>() { }.getType());
+        JsonElement data = saved.version() < 2 ? namedDimensions(saved.data()) : saved.data();
+        List<Spot> read = GSON.fromJson(data, new TypeToken<List<Spot>>() { }.getType());
         if (read == null) return List.of();
-        return read.stream().filter(spot -> spot != null && spot.name() != null).toList();
+        return read.stream().filter(spot -> spot != null && spot.name() != null && spot.dimension() != null).toList();
+    }
+
+    /**
+     * The spots of a file of layout 0 or 1, their dimensions numbered, with the ids in place of
+     * the numbers. A spot in 3, a dimension of a mod, is left out: which one cannot be told.
+     */
+    private static JsonElement namedDimensions(JsonElement data) {
+        if (!data.isJsonArray()) return data;
+        JsonArray named = new JsonArray();
+        for (JsonElement element : data.getAsJsonArray()) {
+            if (!element.isJsonObject()) continue;
+            JsonObject spot = element.getAsJsonObject().deepCopy();
+            JsonElement code = spot.get("dimension");
+            // Missing, it read as 0 then.
+            String id = code == null ? PositionsMessage.legacyDimension(0)
+                    : code.isJsonPrimitive() && code.getAsJsonPrimitive().isNumber()
+                    ? PositionsMessage.legacyDimension(code.getAsInt()) : null;
+            if (id == null) continue;
+            spot.addProperty("dimension", id);
+            named.add(spot);
+        }
+        return named;
     }
 
     static void write(Collection<Spot> spots, Writer writer) throws IOException {

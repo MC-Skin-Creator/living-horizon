@@ -591,9 +591,9 @@ public final class GhostRenderer {
         ClientLevel level = minecraft.level;
         if (level == null) return;
         RestingPlayers resting = FarPlayerTracker.get().resting();
-        int dimension = SharedPositions.dimensionCode(level.dimension());
+        String dimension = SharedPositions.dimensionId(level.dimension());
         for (RestingPlayers.Spot spot : resting.spots()) {
-            if (spot.dimension() != dimension) continue;
+            if (!spot.dimension().equals(dimension)) continue;
             RestingPuppet puppet = resting.puppet(level, spot);
             if (skipped(puppet, true)) continue;
             if (debug) DebugMarks.mark(puppet, Mark.PLAYER);

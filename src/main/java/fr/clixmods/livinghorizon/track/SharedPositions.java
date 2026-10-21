@@ -24,15 +24,15 @@ public final class SharedPositions {
      * Where a player is, as the server last said. {@code lastSeen} is when they logged off (0
      * when online or not known); {@code test} marks a test player the host placed.
      */
-    public record Report(double x, double y, double z, float yaw, int dimension, boolean riding, long lastSeen,
+    public record Report(double x, double y, double z, float yaw, String dimension, boolean riding, long lastSeen,
                          boolean test) {
-        public Report(double x, double y, double z, float yaw, int dimension, boolean riding) {
+        public Report(double x, double y, double z, float yaw, String dimension, boolean riding) {
             this(x, y, z, yaw, dimension, riding, 0, false);
         }
     }
 
     /** A mob the server publishes, under its UUID; {@code extra} is what it wears, as the game saves it. */
-    public record MobReport(UUID id, double x, double y, double z, int kind, int dimension, boolean baby, int variant,
+    public record MobReport(UUID id, double x, double y, double z, int kind, String dimension, boolean baby, int variant,
                             @Nullable String extra) {
     }
 
@@ -44,11 +44,17 @@ public final class SharedPositions {
     private PositionsMessage.@Nullable Mobs lastMobs;
     private int ticksSinceNews = STALE_TICKS;
     private boolean active;
+    /** The format of the last message from a version of the mod this one cannot read; null when none came. */
+    private PositionsMessage.@Nullable Format unreadable;
 
     /** A message from the server, on the game's thread. */
     void receive(byte[] data) {
         PositionsMessage.Decoded message = PositionsMessage.read(data);
-        if (message == null) return;
+        if (message == null) {
+            PositionsMessage.Format format = PositionsMessage.format(data);
+            if (format != null && !format.readableBy(PositionsMessage.VERSION)) unreadable = format;
+            return;
+        }
         if (message.kind() == PositionsMessage.PLAYERS && message.players() != null) {
             players.clear();
             for (PositionsMessage.Player player : message.players()) {
@@ -91,6 +97,15 @@ public final class SharedPositions {
         lastMobs = null;
         ticksSinceNews = STALE_TICKS;
         active = false;
+        unreadable = null;
+    }
+
+    /**
+     * The format of the messages the server sends, when this version of the mod cannot read
+     * them: the server and this client run versions of the mod too far apart. Null otherwise.
+     */
+    public PositionsMessage.@Nullable Format unreadable() {
+        return unreadable;
     }
 
     public boolean active() {
@@ -148,15 +163,12 @@ public final class SharedPositions {
      * Whether the last mobs sent were chosen where a mob stands: a remembered mob there that
      * was not sent is gone; one farther off was only out of reach.
      */
-    boolean covers(int dimension, double x, double z) {
+    boolean covers(String dimension, double x, double z) {
         return lastMobs != null && lastMobs.covers(dimension, x, z);
     }
 
-    /** The code of a dimension: 0 overworld, 1 nether, 2 end, 3 anything else. */
-    public static int dimensionCode(ResourceKey<Level> dimension) {
-        if (dimension == Level.OVERWORLD) return 0;
-        if (dimension == Level.NETHER) return 1;
-        if (dimension == Level.END) return 2;
-        return 3;
+    /** A dimension as the messages name it: its id, {@code minecraft:overworld}, {@code aether:the_aether}. */
+    public static String dimensionId(ResourceKey<Level> dimension) {
+        return dimension.identifier().toString();
     }
 }

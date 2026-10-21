@@ -45,7 +45,6 @@
   "livinghorizon.offline.test.dimension.0": "Overworld",
   "livinghorizon.offline.test.dimension.1": "Nether",
   "livinghorizon.offline.test.dimension.2": "End",
-  "livinghorizon.offline.test.dimension.3": "une autre dimension",
   "livinghorizon.options.renderTrackedVehiclesFar": "Véhicules montés",
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "Le jeu masque tôt les petites entités comme les bateaux : un joueur en bateau flotterait dans le vide. Garde un véhicule affiché tant qu'un joueur est dessus.",
   "livinghorizon.options.distantMobs": "Afficher les créatures",

@@ -45,7 +45,6 @@
   "livinghorizon.offline.test.dimension.0": "Верхній світ",
   "livinghorizon.offline.test.dimension.1": "Незер",
   "livinghorizon.offline.test.dimension.2": "Енд",
-  "livinghorizon.offline.test.dimension.3": "інший вимір",
   "livinghorizon.options.renderTrackedVehiclesFar": "Транспорт гравців",
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "Гра рано приховує малі сутності, як-от човни, тож гравець у човні ширяв би в порожнечі. Транспорт залишається видимим, доки на ньому їде гравець.",
   "livinghorizon.options.distantMobs": "Показувати мобів",

@@ -45,7 +45,6 @@
   "livinghorizon.offline.test.dimension.0": "Mundo superior",
   "livinghorizon.offline.test.dimension.1": "Nether",
   "livinghorizon.offline.test.dimension.2": "End",
-  "livinghorizon.offline.test.dimension.3": "otra dimensión",
   "livinghorizon.options.renderTrackedVehiclesFar": "Vehículos en uso",
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "El juego oculta pronto las entidades pequeñas como las barcas, así que un jugador en barca flotaría sobre la nada. Mantiene visible un vehículo mientras un jugador va en él.",
   "livinghorizon.options.distantMobs": "Mostrar criaturas",

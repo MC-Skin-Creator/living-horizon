@@ -189,7 +189,7 @@ public final class BenchmarkWorld {
     public static void placeCrowd(Minecraft minecraft) {
         if (minecraft.level == null) return;
         RestingPlayers resting = FarPlayerTracker.get().resting();
-        int dimension = SharedPositions.dimensionCode(minecraft.level.dimension());
+        String dimension = SharedPositions.dimensionId(minecraft.level.dimension());
         int n = 0;
         for (int z : CROWD_ROWS) {
             for (int x = CROWD_FROM_X; x <= CROWD_TO_X; x += CROWD_STEP_X) {

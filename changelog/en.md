@@ -4,6 +4,10 @@
 
 ### Server
 
+#### Improved
+- **Lighter on big servers** — the server sends each player the 256 nearest players who logged off instead of all of them, keeps the 1,000 seen most recently, and never sends more at once than the game accepts.
+- **Players need this version too** — on a server with this version, players need it as well to see distant players.
+
 #### Fixed
 - **Offline players lost when the world file cannot be read** — a `livinghorizon-positions.dat` the server cannot read is no longer written over: it is kept as `livinghorizon-positions.dat.bad`, and the console says so.
 
@@ -12,6 +16,9 @@
 #### New
 - **Benchmark** — `/livinghorizon benchmark` measures what the mod costs in your world, part by part, and writes a report you can send with a bug report.
 - **Benchmark world** — `/livinghorizon benchmark world` makes a new test world, always the same, where the benchmark runs from the same spot every time, among mobs and players who logged off; your own world is kept as it is.
+
+#### Improved
+- **Clearer message when versions differ** — when the mod on the server is too old or too new for yours, the log says which one to update, instead of saying the server does not have the mod.
 
 #### Fixed
 - **Distant mannequins wearing the default skin** — mannequins far away no longer lose their skin and show as Alex: they keep the one they wear up close, a player's or a resource pack's (Minecraft 1.21.9 and later).
@@ -22,6 +29,7 @@
 - **Out of memory from a damaged picture** — a damaged saved picture of a far mob (*Simplified Entities*) can no longer make the game run out of memory: it is drawn again instead.
 - **Distant mobs hidden by Distant Horizons' terrain under shaders** — with Oculus and a shader pack, distant mobs no longer vanish behind Distant Horizons' terrain, more and more as the render distance grows (Forge).
 - **Distant mobs shaking their heads** — mobs and players far away no longer shake their heads very fast with Entity Culling, alone or with Chloride.
+- **Players drawn in the wrong modded dimension** — players online or logged off in one modded dimension, such as the Aether, are no longer drawn in another, such as the Twilight Forest (on a server, it needs this version too).
 
 ## 0.10.0 — 2026-10-20
 

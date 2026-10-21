@@ -25,7 +25,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -65,6 +64,10 @@ public final class PositionPublisher {
     private static final int MAX_MOBS = 4000;
     /** Players sent with how they look and what they ride, the nearest first; the others are known by their position. */
     private static final int MAX_LOOKS = 64;
+    /** Players who logged off sent to each player, the nearest first: a client keeps those it was sent before. */
+    private static final int MAX_OFFLINE_SENT = 256;
+    /** Players who logged off kept, in the file too: those seen longest ago are forgotten first. */
+    static final int MAX_OFFLINE_KEPT = 1000;
     /** Publications between two reads of a mob's saved data: thirty seconds. */
     private static final int MOB_READ_EVERY = 150;
     /** Past this, what a mob wears is left out. */
@@ -161,7 +164,7 @@ public final class PositionPublisher {
             if (full || !greeted.contains(player.getUUID())) {
                 // Every few seconds, and at once to a player who just joined: everything.
                 byte[] everyone = PositionsMessage.players(withLooks(onlinePlayers(), player));
-                byte[] offline = PositionsMessage.offline(withLooks(offlinePlayers(), player));
+                byte[] offline = PositionsMessage.offline(withLooks(offlinePlayers(player), player));
                 byte[] around = PositionsMessage.mobs(mobsAround(player));
                 sentBytes[0] += everyone.length + offline.length + around.length;
                 Network.send(player, everyone);
@@ -222,15 +225,31 @@ public final class PositionPublisher {
             UUID published = vehicle != null && KINDS.containsKey(EntityType.getKey(vehicle.getType()).toString())
                     ? vehicle.getUUID() : null;
             players.put(name, new PositionsMessage.Player(name, player.getX(), player.getY(), player.getZ(),
-                    player.getYRot(), SharedPositions.dimensionCode(player.level().dimension()), true,
+                    player.getYRot(), SharedPositions.dimensionId(player.level().dimension()), true,
                     vehicle != null, published));
             dirty = true;
         }
         // Those who logged off stay where they were last, as they looked, on what they rode.
+        boolean left = false;
         for (Map.Entry<String, PositionsMessage.Player> entry : players.entrySet()) {
             PositionsMessage.Player player = entry.getValue();
-            if (player.online() && !names.contains(entry.getKey())) entry.setValue(loggedOff(player));
+            if (player.online() && !names.contains(entry.getKey())) {
+                entry.setValue(loggedOff(player));
+                left = true;
+            }
         }
+        if (left) forgetOldest();
+    }
+
+    /** Past {@link #MAX_OFFLINE_KEPT} players who logged off, those seen longest ago are forgotten. */
+    private void forgetOldest() {
+        List<PositionsMessage.Player> offline = new ArrayList<>();
+        for (PositionsMessage.Player player : players.values()) {
+            if (!player.online()) offline.add(player);
+        }
+        List<String> forgotten = PlayerLists.oldest(offline, MAX_OFFLINE_KEPT);
+        for (String name : forgotten) players.remove(name);
+        if (!forgotten.isEmpty()) dirty = true;
     }
 
     /** An online player as they are now, kept once they log off. */
@@ -290,35 +309,37 @@ public final class PositionPublisher {
         return now;
     }
 
-    private List<PositionsMessage.Player> offlinePlayers() {
+    /**
+     * The players who logged off that {@code to} is sent: the {@link #MAX_OFFLINE_SENT} nearest,
+     * and the host's test players, which a client forgets once they are not sent.
+     */
+    private List<PositionsMessage.Player> offlinePlayers(ServerPlayer to) {
         List<PositionsMessage.Player> gone = new ArrayList<>();
         for (PositionsMessage.Player player : players.values()) {
             if (!player.online() && !tests.containsKey(player.name())) gone.add(player);
         }
-        gone.addAll(tests.values());
-        return gone;
+        List<PositionsMessage.Player> sent = new ArrayList<>(PlayerLists.nearest(gone,
+                SharedPositions.dimensionId(to.level().dimension()), to.getX(), to.getZ(), MAX_OFFLINE_SENT));
+        sent.addAll(tests.values());
+        return sent;
     }
 
     /**
-     * The players, the {@link #MAX_LOOKS} nearest {@code to} with how they look and what they
-     * ride, the others by their position alone, which keeps the message small on a big server.
+     * The players, the {@link #MAX_LOOKS} nearest {@code to} first, with how they look and what
+     * they ride, then the others by their position alone, which keeps the message small on a big
+     * server. Should the message still be too large, those at the end are left out.
      */
     private List<PositionsMessage.Player> withLooks(List<PositionsMessage.Player> list, ServerPlayer to) {
-        int dimension = SharedPositions.dimensionCode(to.level().dimension());
-        List<PositionsMessage.Player> nearest = new ArrayList<>(list);
-        nearest.sort(Comparator.comparingDouble(player -> player.dimension() != dimension ? Double.MAX_VALUE
-                : Math.hypot(player.x() - to.getX(), player.z() - to.getZ())));
+        List<PositionsMessage.Player> nearest = PlayerLists.nearest(list,
+                SharedPositions.dimensionId(to.level().dimension()), to.getX(), to.getZ(), MAX_LOOKS);
         Set<String> dressed = new HashSet<>();
-        for (int i = 0; i < Math.min(MAX_LOOKS, nearest.size()); i++) dressed.add(nearest.get(i).name());
         List<PositionsMessage.Player> sent = new ArrayList<>(list.size());
+        for (PositionsMessage.Player player : nearest) {
+            dressed.add(player.name());
+            sent.add(player.online() ? player.full(riding.get(player.name()), looks.get(player.name())) : player);
+        }
         for (PositionsMessage.Player player : list) {
-            if (!dressed.contains(player.name())) {
-                sent.add(player.plain());
-            } else if (player.online()) {
-                sent.add(player.full(riding.get(player.name()), looks.get(player.name())));
-            } else {
-                sent.add(player);
-            }
+            if (!dressed.contains(player.name())) sent.add(player.plain());
         }
         return sent;
     }
@@ -326,7 +347,7 @@ public final class PositionPublisher {
     private void refreshMobs() {
         Set<UUID> seen = new HashSet<>();
         for (ServerLevel level : server.getAllLevels()) {
-            int dimension = SharedPositions.dimensionCode(level.dimension());
+            String dimension = SharedPositions.dimensionId(level.dimension());
             for (Entity entity : level.getAllEntities()) {
                 if (entity.isRemoved()) continue;
                 String type = EntityType.getKey(entity.getType()).toString();
@@ -348,7 +369,7 @@ public final class PositionPublisher {
                 dirty = true;
             }
             // Its chunk is loaded and it is not there: dead, despawned, or gone through a portal.
-            mobs.values().removeIf(mob -> mob.dimension() == dimension && !seen.contains(mob.id())
+            mobs.values().removeIf(mob -> mob.dimension().equals(dimension) && !seen.contains(mob.id())
                     && level.areEntitiesLoaded(chunk(mob.x(), mob.z())));
         }
         while (mobs.size() > MAX_MOBS) mobs.remove(mobs.keySet().iterator().next());
@@ -375,7 +396,7 @@ public final class PositionPublisher {
     }
 
     private PositionsMessage.Mobs mobsAround(ServerPlayer player) {
-        int dimension = SharedPositions.dimensionCode(player.level().dimension());
+        String dimension = SharedPositions.dimensionId(player.level().dimension());
         PositionsMessage.Mobs around = new PositionsMessage.Mobs(new ArrayList<>(), dimension,
                 player.getX(), player.getZ(), MOB_RANGE);
         for (PositionsMessage.Mob mob : mobs.values()) {
@@ -402,6 +423,7 @@ public final class PositionPublisher {
             dirty = true;
             LOGGER.info("Living Horizon: {} players of this world shown where they logged off", found);
         }
+        forgetOldest();
     }
 
     private void readFile() {
@@ -414,12 +436,20 @@ public final class PositionPublisher {
                 // Kept aside, never written over: the next save starts a new file beside it.
                 Path bad = file.resolveSibling(FILE + ".bad");
                 Files.move(file, bad, StandardCopyOption.REPLACE_EXISTING);
-                int version = PositionsMessage.savedVersion(data);
+                PositionsMessage.Format format = PositionsMessage.format(data);
                 LOGGER.warn("Living Horizon: could not read the shared positions of this world ({}), kept the file as {}",
-                        version == PositionsMessage.FILE_VERSION ? "damaged"
-                                : "version " + version + ", this one reads " + PositionsMessage.FILE_VERSION,
+                        format == null || format.readableBy(PositionsMessage.FILE_VERSION) ? "damaged"
+                                : "version " + format.version() + ", this one reads " + PositionsMessage.FILE_VERSION,
                         bad.getFileName());
                 return;
+            }
+            PositionsMessage.Format format = PositionsMessage.format(data);
+            if (format != null && format.version() > PositionsMessage.FILE_VERSION) {
+                // Saving it again leaves out what this version does not know: a copy first.
+                Path copy = file.resolveSibling(FILE + ".v" + format.version());
+                Files.copy(file, copy, StandardCopyOption.REPLACE_EXISTING);
+                LOGGER.warn("Living Horizon: the shared positions of this world were saved by a newer version of the mod, "
+                        + "kept a copy as {}", copy.getFileName());
             }
             // Whoever was online when it was saved logged off then.
             for (PositionsMessage.Player player : saved.players()) {

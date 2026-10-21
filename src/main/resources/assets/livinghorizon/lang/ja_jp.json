@@ -45,7 +45,6 @@
   "livinghorizon.offline.test.dimension.0": "オーバーワールド",
   "livinghorizon.offline.test.dimension.1": "ネザー",
   "livinghorizon.offline.test.dimension.2": "ジ・エンド",
-  "livinghorizon.offline.test.dimension.3": "別のディメンション",
   "livinghorizon.options.renderTrackedVehiclesFar": "乗車中の乗り物を表示",
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "ゲームはボートなどの小さなエンティティを早めに非表示にするため、ボートに乗ったプレイヤーが何もない所に浮いてしまいます。プレイヤーが乗っている間は乗り物を表示し続けます。",
   "livinghorizon.options.distantMobs": "Mobを表示",

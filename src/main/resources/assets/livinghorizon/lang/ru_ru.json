@@ -45,7 +45,6 @@
   "livinghorizon.offline.test.dimension.0": "Обычный мир",
   "livinghorizon.offline.test.dimension.1": "Незер",
   "livinghorizon.offline.test.dimension.2": "Энд",
-  "livinghorizon.offline.test.dimension.3": "другое измерение",
   "livinghorizon.options.renderTrackedVehiclesFar": "Занятый транспорт",
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "Игра рано скрывает мелкие сущности вроде лодок, и игрок в лодке парил бы в пустоте. Транспорт остаётся видимым, пока на нём едет игрок.",
   "livinghorizon.options.distantMobs": "Показывать мобов",

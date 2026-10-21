@@ -105,14 +105,36 @@ world, and a player without the mod is sent nothing.
 - **Every five seconds**, to every player online:
   - how the 64 players nearest them look, online or logged off (skin, armour and what they
     hold, read every second), and what they ride, as the server saves it;
-  - the players who logged off: where they were last and when they left, with how they
-    looked and the mount they took away for those among the 64;
+  - the 256 players who logged off nearest them (those in their dimension first), and the
+    host's test players: where they were last and when they left, with how they looked and
+    the mount they took away for those among the 64. A client keeps the ones it was sent
+    before;
   - the remembered mobs within 2048 blocks of them, with what they wear (saddle, harness,
     armour, carpet, chest; see [Distant mobs](#distant-mobs)).
 - **At once, to a player who joins**: all of it, without waiting for the next five seconds.
 
 The messages (`track/PositionsMessage`) are written with plain Java streams, the same on
 every loader and version. The client keeps what it receives in `track/SharedPositions`.
+
+Their layout, from version 3:
+
+- two numbers first: the version written (`VERSION`) and the oldest version that reads it
+  (`READABLE_FROM`). A version that only adds fields at the end of a record, or after the
+  records, keeps `READABLE_FROM` and older clients skip what they do not know; one that
+  changes what is there raises it. A client that cannot read the server's messages says so in
+  its log, with both versions, ten seconds after joining;
+- the kind of message, then the table of the dimensions it names, by id
+  (`minecraft:overworld`, `aether:the_aether`): a record names its dimension by its place in
+  the table. Version 2 numbered them 0 to 2 and gave 3 to every other one, so players in two
+  dimensions of mods were drawn in each other's; it is still read, those in 3 left out;
+- the records, each after its length (a varint).
+
+A message stays under 1 MiB, past which the game refuses it (`MAX_BYTES`): players that do
+not fit are sent by their position alone, then left out, the first in the list kept, so the
+nearest come first. Mobs that do not fit leave out the farthest, and the circle they were
+chosen in shrinks so that the client does not take those left out for gone.
+`PositionsMessageTest` holds the exact bytes of two messages: a change to the layout fails
+it, and is a new version.
 
 ### Where it runs
 
@@ -131,14 +153,19 @@ The server keeps the players and the mobs in `livinghorizon-positions.dat`, at t
 its world folder, so that a player who joins later sees them too.
 
 - It is saved every minute and when the server stops, into a temporary file moved over it.
-- It starts with a version of its own (`PositionsMessage.FILE_VERSION`, 2), apart from the
-  messages' `VERSION`: a new message layout must not make servers drop their file. A file
-  that does not read (another version, damaged) is kept as `livinghorizon-positions.dat.bad`,
-  with a line in the console, and a new one is started.
+- It starts with a version of its own (`PositionsMessage.FILE_VERSION`, 3, and
+  `FILE_READABLE_FROM`), apart from the messages' `VERSION`: a new message layout must not make
+  servers drop their file. Its layout is the messages', without the kind: the table of
+  dimensions, the players, the mobs. A file of version 2 is read, those it put in a dimension
+  of a mod left out, then read again from `playerdata`, which names it. A file that does not
+  read (another version, damaged) is kept as `livinghorizon-positions.dat.bad`, with a line in
+  the console, and a new one is started; one from a newer version that still reads is copied to
+  `livinghorizon-positions.dat.v<version>` first.
 - Players still online when the server stops are kept as they were, as if they logged off
   then.
 - A mob is forgotten when its chunk is loaded and it is not there any more, and the oldest
-  go past 4000 mobs.
+  go past 4000 mobs. Past 1000 players who logged off, those seen longest ago are forgotten
+  (`PositionPublisher.MAX_OFFLINE_KEPT`).
 - Each time the server starts, its first share also adds the players the world saved that
   the file does not have yet (`track/WorldPlayers`: the 1000 most recent in `playerdata`,
   with their position and gear, named from `usercache.json`, last seen when their file was
@@ -156,7 +183,8 @@ on this client: nothing is sent to the server, they block nobody, and nothing ca
 
 - Remembered per server, across sessions, in `config/livinghorizon/resting/<server>.json`
   (`track/RestingPlayers`), written every five seconds when something changed, not at each
-  player the server reports.
+  player the server reports. Each spot names its dimension by id (layout 2); a file of layout
+  1 numbered them, and its spots in 3, a dimension of a mod, are left out.
 - On a server with the mod, even players who logged off before you joined are there: the
   server keeps everyone's last position, skin and gear. Without the server's word, their skin
   is fetched from Mojang by name (from 1.21.9; before, the default skin), one at a time,

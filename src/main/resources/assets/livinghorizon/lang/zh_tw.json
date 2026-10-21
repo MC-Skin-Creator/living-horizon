@@ -45,7 +45,6 @@
   "livinghorizon.offline.test.dimension.0": "主世界",
   "livinghorizon.offline.test.dimension.1": "地獄",
   "livinghorizon.offline.test.dimension.2": "終界",
-  "livinghorizon.offline.test.dimension.3": "其他維度",
   "livinghorizon.options.renderTrackedVehiclesFar": "保留騎乘中的載具",
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "遊戲會較早隱藏船等小型實體，使坐船的玩家懸浮在空中。玩家騎乘期間持續顯示其載具。",
   "livinghorizon.options.distantMobs": "顯示生物",

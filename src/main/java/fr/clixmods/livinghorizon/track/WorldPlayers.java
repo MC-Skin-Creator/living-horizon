@@ -127,13 +127,9 @@ final class WorldPlayers {
         return text.length() > Gear.MAX_ITEM ? "" : text;
     }
 
-    private static int dimension(String key) {
-        return switch (key) {
-            case "minecraft:overworld", "" -> 0;
-            case "minecraft:the_nether" -> 1;
-            case "minecraft:the_end" -> 2;
-            default -> 3;
-        };
+    /** The dimension's id, as the game saved it; a save without one is in the overworld. */
+    private static String dimension(String key) {
+        return key.isEmpty() ? "minecraft:overworld" : key;
     }
 
     /** Names by id, from the server's cache of the profiles it has seen. */
