@@ -38,6 +38,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -172,7 +173,11 @@ public final class RestingPlayers {
     private static final long LOOKUP_GAP = 1500;
 
     private final Map<String, Spot> spots = new LinkedHashMap<>();
-    private final Map<String, RestingPuppet> puppets = new HashMap<>();
+    /**
+     * Each spot's puppet, found by the spot itself, so that drawing a frame works out no key.
+     * A spot replaced or removed takes its puppet with it.
+     */
+    private final Map<Spot, RestingPuppet> puppets = new IdentityHashMap<>();
     /** Names whose skin was asked for, or will be: each once. */
     private final Set<String> lookups = new HashSet<>();
     /** Names waiting for their skin to be asked, one at a time ({@link #LOOKUP_GAP}). */
@@ -286,8 +291,8 @@ public final class RestingPlayers {
             if (kept.contains(name)) continue;
             fromHost.remove(name);
             fakes.remove(name);
-            spots.remove(name);
-            puppets.remove(name);
+            Spot gone = spots.remove(name);
+            if (gone != null) puppets.remove(gone);
             if (lookedAt != null && key(lookedAt.name()).equals(name)) lookedAt = null;
         }
     }
@@ -312,8 +317,9 @@ public final class RestingPlayers {
     void wake(String name) {
         fromHost.remove(key(name));
         fakes.remove(key(name));
-        if (spots.remove(key(name)) != null) {
-            puppets.remove(key(name));
+        Spot gone = spots.remove(key(name));
+        if (gone != null) {
+            puppets.remove(gone);
             if (lookedAt != null && key(lookedAt.name()).equals(key(name))) lookedAt = null;
             dirty = true;
         }
@@ -330,8 +336,8 @@ public final class RestingPlayers {
     }
 
     private void put(Spot spot) {
-        spots.put(key(spot.name()), spot);
-        puppets.remove(key(spot.name()));
+        Spot old = spots.put(key(spot.name()), spot);
+        if (old != null) puppets.remove(old);
         if (!fakes.contains(key(spot.name()))) dirty = true;
     }
 
@@ -457,8 +463,11 @@ public final class RestingPlayers {
         int count = 0;
         for (String name : List.copyOf(fakes)) {
             if (fromHost.contains(name) || !which.test(name)) continue;
-            if (spots.remove(name) != null) count++;
-            puppets.remove(name);
+            Spot gone = spots.remove(name);
+            if (gone != null) {
+                count++;
+                puppets.remove(gone);
+            }
             if (lookedAt != null && key(lookedAt.name()).equals(name)) lookedAt = null;
             fakes.remove(name);
         }
@@ -478,9 +487,14 @@ public final class RestingPlayers {
 
     // --- Puppets -----------------------------------------------------------------------
 
+    /** The puppet of one of {@link #spots()}, made the first time it is asked for. */
     public RestingPuppet puppet(ClientLevel level, Spot spot) {
-        return puppets.computeIfAbsent(key(spot.name()),
-                k -> Puppets.numbered(new RestingPuppet(level, spot, spot.profile())));
+        RestingPuppet puppet = puppets.get(spot);
+        if (puppet != null) return puppet;
+        puppet = Puppets.numbered(new RestingPuppet(level, spot, spot.profile()));
+        // A spot no longer listed (moved, back online) gets one that is not kept: nothing would take it away.
+        if (spots.get(key(spot.name())) == spot) puppets.put(spot, puppet);
+        return puppet;
     }
 
     /** The sleeper under the crosshair, or null. */
@@ -509,7 +523,7 @@ public final class RestingPlayers {
         double nearest = Double.MAX_VALUE;
         Spot aimed = null;
         for (Spot spot : spots.values()) {
-            RestingPuppet puppet = puppets.get(key(spot.name()));
+            RestingPuppet puppet = puppets.get(spot);
             if (spot.dimension() != dimension || puppet == null) continue;
             double distance = eye.distanceTo(puppet.position());
             // The box reaches 1 block round its feet, its top 2 blocks over them.
@@ -537,7 +551,7 @@ public final class RestingPlayers {
         if (aimed == null) return;
         if (config.offlineNames) lookedAt = aimed;
         // Hit: it raises its shield. Nothing reaches the server: the hit lands on whatever is behind.
-        if (struck && config.offlineLife) puppets.get(key(aimed.name())).strike(eye);
+        if (struck && config.offlineLife) puppets.get(aimed).strike(eye);
     }
 
     /** Every one of them lives a tick: idle animations, their life around their spot, the ground under them. */

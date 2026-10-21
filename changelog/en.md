@@ -13,7 +13,11 @@
 - **Benchmark** — `/livinghorizon benchmark` measures what the mod costs in your world, part by part, and writes a report you can send with a bug report.
 - **Benchmark world** — `/livinghorizon benchmark world` makes a new test world, always the same, where the benchmark runs from the same spot every time, among mobs and players who logged off; your own world is kept as it is.
 
+#### Improved
+- **Smoother with many players who logged off** — players who logged off cost less to show far away, and those hidden behind hills are skipped.
+
 #### Fixed
+- **Players who logged off past the Player Render Distance** — players who logged off no longer show farther than the *Player Render Distance* setting.
 - **Distant mannequins wearing the default skin** — mannequins far away no longer lose their skin and show as Alex: they keep the one they wear up close, a player's or a resource pack's (Minecraft 1.21.9 and later).
 - **Distant mannequins' capes sticking up** — capes of mannequins far away no longer stick up in the air: they hang down as they do up close (Minecraft 1.21.9 and later).
 - **Settings file lost after a typo** — a mistake made editing `livinghorizon.json` by hand no longer wipes the file: it is kept as `livinghorizon.json.bad`, and the log says so.
