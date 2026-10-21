@@ -9,6 +9,7 @@
 - **Monde de benchmark** — `/livinghorizon benchmark world` crée un nouveau monde de test, toujours le même, où le benchmark part du même endroit à chaque fois, au milieu de mobs et de joueurs déconnectés ; ton propre monde reste tel quel.
 
 #### Corrections
+- **Créatures lointaines qui tournent sur place** — en solo, les animaux au loin ne restent plus à tourner sur eux-mêmes sans jamais avancer, même juste après *Oublier les créatures* : ils se remettent à marcher.
 - **Mannequins lointains avec le skin par défaut** — les mannequins au loin ne perdent plus leur skin pour apparaître en Alex : ils gardent celui qu'ils portent de près, celui d'un joueur ou d'un pack de ressources (Minecraft 1.21.9 et plus).
 
 ## 0.10.0 — 2026-10-20

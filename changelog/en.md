@@ -9,6 +9,7 @@
 - **Benchmark world** — `/livinghorizon benchmark world` makes a new test world, always the same, where the benchmark runs from the same spot every time, among mobs and players who logged off; your own world is kept as it is.
 
 #### Fixed
+- **Distant mobs only turning on the spot** — in single player, distant animals no longer stand turning on the spot for good, even right after *Forget Mobs*: they walk again.
 - **Distant mannequins wearing the default skin** — mannequins far away no longer lose their skin and show as Alex: they keep the one they wear up close, a player's or a resource pack's (Minecraft 1.21.9 and later).
 
 ## 0.10.0 — 2026-10-20

@@ -312,9 +312,13 @@ remembers them at once, with no need to walk there. Single player only.
 In single player the server runs in the game itself. Four times a second it is asked where
 the remembered mobs are (`track/ServerMobs`).
 
-- The ones it still moves (past the distance it sends them at, but inside the simulation
+- The ones it walks (past the distance it sends them at, but inside the simulation
   distance) are followed by their copies, at its pace and facing the way they face, with no
   animation of their own.
+- The game stops an animal wandering once no player came within 32 blocks of it for five
+  seconds (its `noActionTime`): it stands and looks around. Ten seconds after the server last
+  moved it, its copy plays its own animation again, around where the real one stands, until
+  the server walks it again (`Remembered.followed`).
 - One that dies there is forgotten.
 
 Without this, the copy would stand where the mob was last seen while the real one wandered
@@ -326,7 +330,7 @@ Once its copy is drawn, the blocks within 8 blocks of a mob (a square of 17 by 1
 `track/MobPaths`) are read, a few mobs per tick, from loaded chunks or from the far world
 (Voxy or Distant Horizons). They are read again when the mob moves, and later and later while
 columns are missing; a ground read whole is saved with the mob and used at once next time.
-Mobs that stand still and mobs the server moves read nothing, and flyers and swimmers get a
+Mobs that stand still and mobs the server walks read nothing, and flyers and swimmers get a
 flat disc at their own height.
 
 - **The ground**: in each column, the floor nearest the mob's height with room above it.

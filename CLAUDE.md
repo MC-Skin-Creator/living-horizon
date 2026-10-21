@@ -343,6 +343,10 @@ come back, add it here in the same pull request: this file is what the next sess
   mob got no animation. A ground read whole is saved with the mob (`Remembered.ground`,
   `MobPaths.Ground.save`) and walked on at once in the next session; a choice read with
   columns missing is not `complete()` and is read again, later and later.
+  In single player, also a copy following a real mob that never walks: the game stops an
+  animal wandering when no player came within 32 blocks for five seconds (`noActionTime`),
+  so a copy follows the server only while it moves it (`Remembered.followed`, `STOOD`); the
+  `idlefollowed` scenario checks it, after "Forget Mobs" too.
 - **Impostors before 1.21.6** (empty or missing pictures, or a figure flashing over the screen
   at the start of a frame): the game has no output override there, so `ImpostorAtlas` bakes
   at the start of the frame (`GameRendererMixin`) into a target of its own, which
