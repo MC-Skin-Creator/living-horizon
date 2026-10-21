@@ -285,7 +285,9 @@ come back, add it here in the same pull request: this file is what the next sess
   behind it, from 26.1): the game makes its projection inside `Camera.update`, from `depthFar`.
   `CameraMixin` pushes that plane out right after it is set, before the projection; pushed at
   the end, `DepthFar.of` gave a plane the projection did not use, and Distant Horizons' depth
-  converted with it came out nearer. Whatever converts a depth must use the projection's planes.
+  converted with it came out nearer. Whatever converts a depth must use the projection's planes:
+  `DepthFar.terms` reads the game's from the projection `FarDepth.noteView` is handed, bobbing
+  or not (`DepthMath.fromProjection`), never from a near plane and `DepthFar.of` put together.
 - **Distant mobs blinking at every step, far terrain lighter and darker in the depth view as
   the player walks** (from 26.1, view bobbing on): the world is drawn with the camera's
   projection times the bobbing, which from 26.1 only the GPU gets (`GameRendererProjectionMixin`
@@ -468,6 +470,9 @@ come back, add it here in the same pull request: this file is what the next sess
   the mod off, each preset and each part on its own, on their GPU and mods. Run in the world
   `/livinghorizon benchmark world` makes, it starts from a fixed spot and view, so two reports,
   before and after an update, compare. Here, the `perf` game test does the same headless.
+- **Depth arithmetic** (a distance to a depth and back, in any layout, a matrix stored either
+  way, its inverse, the rectangles written into Voxy's depth) lives in `render/DepthMath`, which
+  asks the game nothing. A fix to the depth code adds a case to `DepthMathTest`.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
