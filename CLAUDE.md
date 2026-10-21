@@ -198,8 +198,8 @@ baseline, no commit back, no Modrinth, CurseForge, Nexus Mods or Discord. A push
 - Each target builds on its own runner, or takes the pull request's jar
   (`.github/scripts/release-targets.py` reads the tables of `stonecutter.properties.toml`),
   then the release is tagged, the version and the dated changelog are committed back to
-  `main`, and the GitHub release gets the jars. Below 1.0.0 it is a pre-release titled
-  `vX.Y.Z (beta)`.
+  `main`, and the GitHub release gets the jars. It is a full release, GitHub's "Latest",
+  never a pre-release; below 1.0.0 it is titled `vX.Y.Z (beta)`.
 - Then Modrinth, CurseForge and Nexus Mods each get a job of their own, a call to
   `.github/workflows/publish.yml` that takes the jars from the GitHub release: a platform
   that fails is re-run alone ("Re-run failed jobs"), and the same workflow, run by hand with
