@@ -24,6 +24,9 @@
 #### Améliorations
 - **Plus fluide avec beaucoup de joueurs déconnectés** — les joueurs déconnectés coûtent moins cher à afficher au loin, et ceux cachés derrière les collines sont ignorés.
 
+#### Améliorations
+- **Images par seconde avec Voxy et des shaders, ou avec Distant Horizons** — cacher les mobs lointains derrière le terrain lointain coûte moins cher, d'autant plus sur les grands écrans (Minecraft 1.21.9 et plus).
+
 #### Corrections
 - **Joueurs déconnectés au-delà de la Distance d'affichage des joueurs** — les joueurs déconnectés ne s'affichent plus au-delà du réglage *Distance d'affichage des joueurs*.
 - **Mannequins lointains avec le skin par défaut** — les mannequins au loin ne perdent plus leur skin pour apparaître en Alex : ils gardent celui qu'ils portent de près, celui d'un joueur ou d'un pack de ressources (Minecraft 1.21.9 et plus).

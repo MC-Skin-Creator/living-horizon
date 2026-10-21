@@ -24,6 +24,9 @@
 #### Improved
 - **Smoother with many players who logged off** — players who logged off cost less to show far away, and those hidden behind hills are skipped.
 
+#### Improved
+- **Frame rate with Voxy and shaders, or with Distant Horizons** — hiding distant mobs behind the far terrain costs less, the more so on large screens (Minecraft 1.21.9 and later).
+
 #### Fixed
 - **Players who logged off past the Player Render Distance** — players who logged off no longer show farther than the *Player Render Distance* setting.
 - **Distant mannequins wearing the default skin** — mannequins far away no longer lose their skin and show as Alex: they keep the one they wear up close, a player's or a resource pack's (Minecraft 1.21.9 and later).
