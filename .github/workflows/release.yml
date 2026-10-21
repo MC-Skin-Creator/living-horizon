@@ -289,8 +289,11 @@ jobs:
           set -euo pipefail
 
           # A release from main is a full release, GitHub's "Latest" one, never a
-          # pre-release, whatever its version.
+          # pre-release. Below 1.0.0 the mod is in beta: the title says so.
           args=(--generate-notes --title "v${VERSION}" --latest)
+          if [ "$CHANNEL" = 'stable' ] && [[ $VERSION == 0.* ]]; then
+            args=(--generate-notes --title "v${VERSION} (beta)" --latest)
+          fi
 
           if [ "$CHANNEL" = 'dev' ]; then
             # Marked as a pre-release so it never displays as the latest version.
