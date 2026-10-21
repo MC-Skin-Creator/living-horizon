@@ -181,6 +181,10 @@ Open the settings from the Options screen, Mod Menu, Sodium's *Video Settings* o
 - [Voxy](https://modrinth.com/mod/voxy) or [Distant Horizons](https://modrinth.com/mod/distanthorizons): optional.
 - [Mod Menu](https://modrinth.com/mod/modmenu): optional, on Fabric and Quilt.
 
+## Made with AI
+
+AI is part of this project's workflow: Living Horizon is made with [Claude](https://claude.ai).
+
 ## Links
 
 [Source and issues](https://github.com/MC-Skin-Creator/living-horizon) · [Discord](https://discord.gg/THSV9dexNj)

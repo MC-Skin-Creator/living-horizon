@@ -21,6 +21,13 @@ clone private and open a pull request when it is ready.
 
 `CLAUDE.md` describes the full conventions of this repository.
 
+## Using AI
+
+AI is part of this project's workflow, and you can use it to contribute, no problem. Just
+keep thinking about what it writes: read, understand and test your change before opening
+the pull request. Claude works best here: it reads `CLAUDE.md` and the skills in
+`.claude/skills/` on its own.
+
 ## What you agree to
 
 By opening a pull request you accept section 3 of the [LICENSE](LICENSE):

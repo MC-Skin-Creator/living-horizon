@@ -40,6 +40,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -178,7 +179,11 @@ public final class RestingPlayers {
     private static final long LOOKUP_GAP = 1500;
 
     private final Map<String, Spot> spots = new LinkedHashMap<>();
-    private final Map<String, RestingPuppet> puppets = new HashMap<>();
+    /**
+     * Each spot's puppet, found by the spot itself, so that drawing a frame works out no key.
+     * A spot replaced or removed takes its puppet with it.
+     */
+    private final Map<Spot, RestingPuppet> puppets = new IdentityHashMap<>();
     /** Names whose skin was asked for, or will be: each once. */
     private final Set<String> lookups = new HashSet<>();
     /** Names waiting for their skin to be asked, one at a time ({@link #LOOKUP_GAP}). */
@@ -194,8 +199,10 @@ public final class RestingPlayers {
     private final Set<String> fromHost = new HashSet<>();
     private @Nullable Path file;
     private @Nullable Spot lookedAt;
-    /** Who is drawn now ({@link #shown}), by key. */
-    private List<String> shown = List.of();
+    /** Who is drawn now ({@link #shown}). */
+    private List<Spot> shown = List.of();
+    /** A spot changed or went since {@link #shown} was chosen: brought up to date when next asked. */
+    private boolean shownStale;
     private boolean wasAttacking;
 
     /** Blocks from the eye to the point aimed at on a sleeper: about the reach of a hand. */
@@ -210,16 +217,20 @@ public final class RestingPlayers {
 
     /**
      * Those drawn: in the camera's dimension, the {@link FarConfig#maxOfflinePlayers} nearest
-     * it, chosen again every tick ({@link #choose}), as they are now: one woken or cleared since
-     * is left out at once.
+     * it, chosen again every tick ({@link #choose}). One woken or cleared since is left out at
+     * once, one moved is there as it is now; drawing a frame otherwise works out nothing.
      */
     public List<Spot> shown() {
-        List<Spot> now = new ArrayList<>(shown.size());
-        for (String name : shown) {
-            Spot spot = spots.get(name);
-            if (spot != null) now.add(spot);
+        if (shownStale) {
+            shownStale = false;
+            List<Spot> now = new ArrayList<>(shown.size());
+            for (Spot spot : shown) {
+                Spot current = spots.get(key(spot.name()));
+                if (current != null && current.dimension().equals(spot.dimension())) now.add(current);
+            }
+            shown = now;
         }
-        return now;
+        return shown;
     }
 
     /**
@@ -238,17 +249,13 @@ public final class RestingPlayers {
     /** Chooses who is drawn ({@link #shown}); the puppets of the others are let go. */
     private void choose(ClientLevel level, FarConfig config) {
         Entity camera = Minecraft.getInstance().getCameraEntity();
-        List<String> chosen = new ArrayList<>();
-        if (camera != null) {
-            for (Spot spot : nearest(spots.values(), SharedPositions.dimensionId(level.dimension()), camera.getX(),
-                    camera.getZ(), config.maxOfflinePlayers)) {
-                chosen.add(key(spot.name()));
-            }
-        }
-        shown = chosen;
-        Set<String> kept = new HashSet<>(chosen);
+        shown = camera == null ? List.of() : nearest(spots.values(), SharedPositions.dimensionId(level.dimension()),
+                camera.getX(), camera.getZ(), config.maxOfflinePlayers);
+        shownStale = false;
+        Set<Spot> kept = Collections.newSetFromMap(new IdentityHashMap<>());
+        kept.addAll(shown);
         puppets.keySet().retainAll(kept);
-        if (lookedAt != null && !kept.contains(key(lookedAt.name()))) lookedAt = null;
+        if (lookedAt != null && !kept.contains(lookedAt)) lookedAt = null;
     }
 
     // --- Lifecycle ---------------------------------------------------------------------
@@ -340,8 +347,9 @@ public final class RestingPlayers {
             if (kept.contains(name)) continue;
             fromHost.remove(name);
             fakes.remove(name);
-            spots.remove(name);
-            puppets.remove(name);
+            Spot gone = spots.remove(name);
+            shownStale = true;
+            if (gone != null) puppets.remove(gone);
             if (lookedAt != null && key(lookedAt.name()).equals(name)) lookedAt = null;
         }
     }
@@ -366,8 +374,10 @@ public final class RestingPlayers {
     void wake(String name) {
         fromHost.remove(key(name));
         fakes.remove(key(name));
-        if (spots.remove(key(name)) != null) {
-            puppets.remove(key(name));
+        Spot gone = spots.remove(key(name));
+        shownStale = true;
+        if (gone != null) {
+            puppets.remove(gone);
             if (lookedAt != null && key(lookedAt.name()).equals(key(name))) lookedAt = null;
             dirty = true;
         }
@@ -384,8 +394,9 @@ public final class RestingPlayers {
     }
 
     private void put(Spot spot) {
-        spots.put(key(spot.name()), spot);
-        puppets.remove(key(spot.name()));
+        Spot old = spots.put(key(spot.name()), spot);
+        shownStale = true;
+        if (old != null) puppets.remove(old);
         if (!fakes.contains(key(spot.name()))) dirty = true;
     }
 
@@ -511,8 +522,12 @@ public final class RestingPlayers {
         int count = 0;
         for (String name : List.copyOf(fakes)) {
             if (fromHost.contains(name) || !which.test(name)) continue;
-            if (spots.remove(name) != null) count++;
-            puppets.remove(name);
+            Spot gone = spots.remove(name);
+            shownStale = true;
+            if (gone != null) {
+                count++;
+                puppets.remove(gone);
+            }
             if (lookedAt != null && key(lookedAt.name()).equals(name)) lookedAt = null;
             fakes.remove(name);
         }
@@ -522,6 +537,7 @@ public final class RestingPlayers {
     /** Wakes everyone up: nobody rests anywhere any more, here and in the file. */
     public void forgetAll() {
         spots.clear();
+        shown = List.of();
         fakes.clear();
         fromHost.clear();
         puppets.clear();
@@ -532,9 +548,14 @@ public final class RestingPlayers {
 
     // --- Puppets -----------------------------------------------------------------------
 
+    /** The puppet of one of {@link #spots()}, made the first time it is asked for. */
     public RestingPuppet puppet(ClientLevel level, Spot spot) {
-        return puppets.computeIfAbsent(key(spot.name()),
-                k -> Puppets.numbered(new RestingPuppet(level, spot, spot.profile())));
+        RestingPuppet puppet = puppets.get(spot);
+        if (puppet != null) return puppet;
+        puppet = Puppets.numbered(new RestingPuppet(level, spot, spot.profile()));
+        // A spot no longer listed (moved, back online) gets one that is not kept: nothing would take it away.
+        if (spots.get(key(spot.name())) == spot) puppets.put(spot, puppet);
+        return puppet;
     }
 
     /** The sleeper under the crosshair, or null. */
@@ -562,7 +583,7 @@ public final class RestingPlayers {
         double nearest = Double.MAX_VALUE;
         Spot aimed = null;
         for (Spot spot : shown()) {
-            RestingPuppet puppet = puppets.get(key(spot.name()));
+            RestingPuppet puppet = puppets.get(spot);
             if (puppet == null) continue;
             double distance = eye.distanceTo(puppet.position());
             // The box reaches 1 block round its feet, its top 2 blocks over them.
@@ -590,7 +611,7 @@ public final class RestingPlayers {
         if (aimed == null) return;
         if (config.offlineNames) lookedAt = aimed;
         // Hit: it raises its shield. Nothing reaches the server: the hit lands on whatever is behind.
-        if (struck && config.offlineLife) puppets.get(key(aimed.name())).strike(eye);
+        if (struck && config.offlineLife) puppets.get(aimed).strike(eye);
     }
 
     /** Every one of them lives a tick: idle animations, their life around their spot, the ground under them. */
