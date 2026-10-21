@@ -22,9 +22,9 @@ import java.util.Set;
  *
  * <p>Two searches share what they read of the blocks: a {@link Survey} of everything
  * reachable around a spot (a village's worth: where to stroll, which beds and chests are in
- * reach), and a {@link Route} to one spot, guided towards it. Both grow a little at a time,
- * so that a large area is read over several ticks. The blocks are read through
- * {@link Ground}, so that this is tested without a world.
+ * reach), and a {@link Route} to one spot, guided towards it. Both can grow a little at a
+ * time; the offline players run them whole, off the game's thread, on a {@link BlockCopy}.
+ * The blocks are read through {@link Ground}, so that this is tested without a world.
  */
 public final class Walkway {
     /** What a spot is like: the height a player stands at with its feet in that block, or NaN. */
@@ -69,6 +69,18 @@ public final class Walkway {
         Survey survey = new Walkway(ground).survey(x, y, z, cx, cz, radius, budget);
         if (survey != null) survey.grow(Integer.MAX_VALUE);
         return survey;
+    }
+
+    /**
+     * A route searched to its end at once: the way from the spot with its feet in block
+     * ({@code x}, {@code y}, {@code z}) to {@code target}, the start left out; null when there
+     * is none, or no one can stand at the start.
+     */
+    public static @Nullable List<Step> way(Ground ground, int x, int y, int z, Step target, int cx, int cz, int radius, int budget) {
+        Route route = new Walkway(ground).route(x, y, z, target, cx, cz, radius, budget);
+        if (route == null) return null;
+        route.grow(Integer.MAX_VALUE);
+        return route.path();
     }
 
     /** A survey from this spot, to {@link Survey#grow grow}; null when no one can stand there. */

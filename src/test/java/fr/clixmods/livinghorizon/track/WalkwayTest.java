@@ -109,4 +109,26 @@ class WalkwayTest {
     void nowhereToStand() {
         assertNull(Walkway.around(new Blocks(), 0, 1, 0, 0, 0, 3, 100));
     }
+
+    @Test
+    void findsAWayAtOnce() {
+        Blocks ground = new Blocks().floor(0, -6, 6);
+        for (int z = -6; z <= 3; z++) ground.block(2, 1, z).block(2, 2, z);
+        List<Walkway.Step> way = Walkway.way(ground, 0, 1, 0, new Walkway.Step(4, 1, 0, 1), 0, 0, 6, 2000);
+        assertNotNull(way);
+        assertEquals(new Walkway.Step(4, 1, 0, 1), way.get(way.size() - 1));
+        for (Walkway.Step step : way) assertTrue(step.x() != 2 || step.z() > 3, "through the wall at " + step);
+    }
+
+    @Test
+    void noWayOutOfAPit() {
+        Blocks ground = new Blocks().floor(0, -6, 6);
+        // Walls three blocks high all round the start: too high to climb.
+        for (int d = -1; d <= 1; d++) {
+            for (int y = 1; y <= 3; y++) ground.block(d, y, -2).block(d, y, 2).block(-2, y, d).block(2, y, d);
+        }
+        for (int y = 1; y <= 3; y++) ground.block(-2, y, -2).block(-2, y, 2).block(2, y, -2).block(2, y, 2);
+        assertNull(Walkway.way(ground, 0, 1, 0, new Walkway.Step(5, 1, 0, 1), 0, 0, 6, 2000));
+        assertNull(Walkway.way(new Blocks(), 0, 1, 0, new Walkway.Step(5, 1, 0, 1), 0, 0, 6, 2000));
+    }
 }

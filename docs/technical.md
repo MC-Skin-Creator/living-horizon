@@ -246,11 +246,14 @@ under 48.
   too, and always in the Nether and the End.
 - **Walking** (`track/Walkway`) only where a player could: one block up, two down, no corner
   cut, nothing walked through but doors and fence gates, which they cannot open. It is worked
-  out on the client from the blocks it has. The area around is read a little every tick (600
-  spots per tick for all of them and their mounts together, 250 at most for one), and again
-  every 30 seconds or when they find themselves off it. Each way is searched towards where
-  they go. Looking for beds and chests, dodging and walking back after a blast have budgets
-  of their own.
+  out on the client from the blocks it has, off the game's thread: the chunk sections around
+  their spot (`roam` + 4 blocks across, 32 below and 48 above) are copied a few at a time (96
+  sections per tick for all of them and their mounts together, `track/BlockCopy`), then
+  searched on threads of their own (`track/GroundWork`), beds and chests looked for in the
+  same go. The area is read again every 30 seconds, when they find themselves off it, or when
+  a step of their way can no longer be stood on. Each way is searched towards where they go,
+  in the copy the area was read from. Dodging and walking back after a blast are small
+  searches made on the spot.
 - **Monsters** within 10 blocks and in plain sight put them on guard: an iron sword drawn,
   the shield up, eyes on the nearest, a step away when it comes closer than 3.5 blocks. They
   never fight. Safe indoors, behind walls, shut doors or windows, they ignore them.
@@ -398,7 +401,9 @@ off, then run or jump to it once it was sent again.
 
 Once its copy is drawn, the blocks within 8 blocks of a mob (a square of 17 by 17 columns,
 `track/MobPaths`) are read, a few mobs per tick, from loaded chunks or from the far world
-(Voxy or Distant Horizons). They are read again when the mob moves, and later and later while
+(Voxy or Distant Horizons): the loaded sections are copied on the game's thread
+(`track/BlockCopy`) and the ground and animation worked out on `track/GroundWork`'s threads,
+so the answer comes a tick or so later. They are read again when the mob moves, and later and later while
 columns are missing; a ground read whole is saved with the mob and used at once next time.
 Mobs that stand still and mobs the server moves read nothing, and flyers and swimmers get a
 flat disc at their own height.
