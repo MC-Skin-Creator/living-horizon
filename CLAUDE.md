@@ -530,12 +530,16 @@ someone who has never seen the code:
 
 `.claude/skills/issue-from-comment/` turns a pasted comment into a GitHub issue.
 
-**When a pull request that resolves an issue is merged, close the issue and tick its box.**
-GitHub closes an issue on its own only when a "Closes #N" pull request lands on `main`, the
-default branch; pull requests go to `develop`, so the issue stays open. As soon as the merge
-is seen, close the issue as completed, and tick its `- [ ]` line in the task list of every
-issue that names it (a parent plan such as #157), leaving the rest of that body unchanged.
-An issue that the pull request resolves only in part stays open; say what is left.
+**A pull request that resolves an issue says so with `Closes #N`**, one line per issue, in
+its description and in the body of the commit that resolves it. Look for the issues a change
+resolves before opening the pull request, those the user named and any other open one it
+covers. An issue resolved only in part gets `Part of #N` instead, and the description says
+what is left.
+
+GitHub closes a `Closes #N` issue on its own only when it lands on `main`; pull requests go
+to `develop`. `.github/workflows/close-issues.yml` closes them at the merge into `develop`
+and ticks their `- [ ]` line in every open issue that lists them (a plan such as #157). An
+issue fixed without the keyword stays open: close it by hand, with the pull request named.
 
 ## License
 
