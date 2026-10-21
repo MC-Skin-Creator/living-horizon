@@ -148,7 +148,7 @@ label.
 - Build: `./gradlew :1.21.11:build` for one target, `./gradlew buildAndCollect` for every jar.
 - License: source-available under the [Living Horizon License](LICENSE), copyright 2026
   clixmods. The unchanged jar may be redistributed with credit; forks are not allowed.
-- Credits: made by clixmods. Collaborators and testers: ISessen. Full list in [CREDITS.md](CREDITS.md).
+- Credits: made by clixmods. Contributors: JonesJugHead. Testers: ISessen. Full list in [CREDITS.md](CREDITS.md).
 - Contributing: pull requests to this repository only, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Minecraft is a trademark of Mojang Studios. This project is not affiliated with or
