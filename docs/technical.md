@@ -735,7 +735,8 @@ reaches there: the same fog up to the limit, Voxy's from there on.
 - The terrain, the sky and the clouds keep the game's fog. Only the enchantment glint and
   lightning, which read the fog without its alpha, fade a little sooner.
 - Without Voxy, with its fog off, with a shader pack (which fogs everything its own way), or
-  with the game's render distance fog on, the game's fog stays.
+  with the game's render distance fog on, the game's fog stays. *Voxy Fog Fix* (`optVoxyFog`,
+  debug screen, on by default) turns it off, glint and lightning included.
 
 The `farfog` scenario checks it, with a limit standing in for Voxy's.
 
@@ -1043,6 +1044,7 @@ Every one is on by default except `optFreezeHidden`. Switch one off to see what 
 | `optOcclusionQueries` | Hide Mobs by Depth | How `hideOccludedMobs` decides: occlusion queries on the GPU; off, lines of sight in the far terrain's world |
 | `optDhFade` | DH Fade | Distant Horizons' fade leaves the entities alone, without a shader pack; off, it paints its terrain over distant mobs |
 | `optVoxyShadows` | Voxy Shadow Fix | Our far figures are written into Voxy's depth, on their own pixels only, so that Photon's terrain shadows do not fall across them |
+| `optVoxyFog` | Voxy Fog Fix | Without a shader pack, the world's entities get Voxy's fog, which stops growing past a limit (see [Fog on distant figures](#fog-on-distant-figures)); off, the game's fog |
 | `optBackgroundBuild` | Background Build | Saved mobs are read off the game's thread and built within 2 ms per tick |
 | `optStillTiny` | Still Tiny Mobs | Mobs under `animationMinPixels` play no walking or idle animation |
 | `optFreezeHidden` | Freeze Undrawn Mobs | A copy not drawn for half a second is not animated, only moved where the server says |

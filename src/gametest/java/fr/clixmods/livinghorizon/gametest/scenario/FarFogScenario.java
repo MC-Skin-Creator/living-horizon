@@ -17,8 +17,8 @@ import java.nio.file.Path;
  * own, and nothing else changes. Voxy cannot run here: a limit stands in for it, at the camera,
  * so that the mobs 100 blocks away lose the little fog they had. Between the two screenshots
  * the mobs' pixels must come away from the fog colour, and every other pixel stay as it was:
- * the terrain and the sky keep the game's fog. From 1.21.6, where the overworld has a fog of
- * its own past the render distance.
+ * the terrain and the sky keep the game's fog. With *Voxy Fog Fix* off, the mobs get the game's
+ * fog back. From 1.21.6, where the overworld has a fog of its own past the render distance.
  */
 public final class FarFogScenario implements Scenario {
     private static final String[] MOBS = {"cow", "horse", "villager", "wolf", "pig", "sheep"};
@@ -62,9 +62,18 @@ public final class FarFogScenario implements Scenario {
             context.runOnClient(minecraft -> FarFog.limitForTests(0));
             Path limited = Scene.screenshot(context, this, "limited");
             compare(game, limited);
+            // Voxy Fog Fix off: the game's fog again, everywhere.
+            Scene.configure(context, config -> config.optVoxyFog = false);
+            Path off = Scene.screenshot(context, this, "off");
+            int[] moved = differences(game, off);
+            Scene.log("farfog switched off: pixels changed=" + (moved[0] + moved[2]));
+            if (moved[0] + moved[2] > 0) {
+                throw new AssertionError("Voxy Fog Fix off still changed " + (moved[0] + moved[2]) + " pixels");
+            }
         } finally {
             context.runOnClient(minecraft -> {
                 FarFog.limitForTests(Float.NaN);
+                fr.clixmods.livinghorizon.FarConfig.get().optVoxyFog = true;
                 minecraft.options.fov().set(70);
                 minecraft.options.entityDistanceScaling().set(1.0);
                 minecraft.options.cloudStatus().set(CloudStatus.FANCY);

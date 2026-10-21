@@ -41,10 +41,12 @@ public final class FarFog {
 
     /**
      * The fog the entities get, from the game's this frame, Voxy's changes in it: its end, then
-     * the factor on its colour's alpha. Null where it is the game's: no Voxy, Voxy's fog off, a
-     * shader pack, the game's render distance fog on, or Voxy's limit past the fog's end.
+     * the factor on its colour's alpha. Null where it is the game's: switched off
+     * ({@code optVoxyFog}), no Voxy, Voxy's fog off, a shader pack, the game's render distance
+     * fog on, or Voxy's limit past the fog's end.
      */
     public static float @Nullable [] capped(float environmentalStart, float environmentalEnd, float renderDistanceStart) {
+        if (!FarConfig.get().optVoxyFog) return null;
         if (!Float.isNaN(limitForTests)) {
             return environmentalEnd - environmentalStart > 1 ? limited(environmentalStart, environmentalEnd, limitForTests) : null;
         }
