@@ -17,7 +17,7 @@ working for someone else**:
 1. Find who the work is for: the GitHub login of the pull request's author, or of the
    person the user says the session works for (`git config user.name`, the PR author,
    the user's own words).
-2. Search for that login in `CREDITS.md` (all sections: author, collaborators, contributors).
+2. Search for that login in `CREDITS.md` (all sections: author, contributors, testers).
 3. Not there, and not `clixmods`: add them with the steps below, **in the same pull request**.
    An agent never skips it because the change is small.
 4. Already there: nothing to do.
@@ -32,15 +32,14 @@ Use the exact GitHub login, with its case. Keep the order of the first contribut
 2. **`src/main/resources/fabric.mod.json`**: add the login to `"contributors": [...]`.
 3. **`src/main/resources/quilt.mod.json`**: add `"Login": "Contributor"` to `"contributors"`.
 4. **`src/main/resources/META-INF/mods.toml`** and **`neoforge.mods.toml`**: the `credits`
-   line is one string, `credits = "Testers: A. Contributors: B, C"`. Append to the
-   *Contributors* part, or add it after the testers.
-5. **`README.md`**, *More*, the *Credits* line: `Contributors: B, C.` after the collaborators
-   and testers. The store description does not carry it.
+   line is one string, `credits = "Contributors: B, C. Testers: A"`. Append to the
+   *Contributors* part, which comes first.
+5. **`README.md`**, *More*, the *Credits* line: `Contributors: B, C.` before the testers.
+   The store description does not carry it.
 6. Commit as `docs(credits): add Login to the contributors`. No changelog entry: it is not a
    change a player sees.
 
-A tester or collaborator who then contributes code moves to *Contributors* in `CREDITS.md`
-and keeps their other role in the metadata.
+A tester who then contributes code moves to *Contributors* everywhere.
 
 ## Do not
 
