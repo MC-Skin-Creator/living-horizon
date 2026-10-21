@@ -100,17 +100,10 @@ public final class ImpostorDisk {
         Path file = file(folder(), key);
         return CompletableFuture.supplyAsync(() -> {
             try (DataInputStream in = new DataInputStream(new BufferedInputStream(new GZIPInputStream(Files.newInputStream(file))))) {
-                if (in.readInt() != MAGIC || in.readInt() != FORMAT) return null;
-                double worldSize = in.readDouble();
-                int scale = in.readInt();
-                int[][] levels = new int[in.readInt()][];
-                for (int level = 0; level < levels.length; level++) {
-                    levels[level] = new int[in.readInt()];
-                    for (int i = 0; i < levels[level].length; i++) levels[level][i] = in.readInt();
-                }
+                Stored stored = decode(in);
                 // Read again: kept over the ones not met for longer.
-                file.toFile().setLastModified(System.currentTimeMillis());
-                return new Stored(worldSize, scale, levels);
+                if (stored != null) file.toFile().setLastModified(System.currentTimeMillis());
+                return stored;
             } catch (IOException | RuntimeException e) {
                 LivingHorizonClient.LOGGER.warn("Could not read the impostor {}, baking it again", file, e);
                 return null;
@@ -147,15 +140,7 @@ public final class ImpostorDisk {
                 Files.createDirectories(file.getParent());
                 Path part = file.resolveSibling(file.getFileName() + ".part");
                 try (DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new GZIPOutputStream(Files.newOutputStream(part))))) {
-                    out.writeInt(MAGIC);
-                    out.writeInt(FORMAT);
-                    out.writeDouble(worldSize);
-                    out.writeInt(scale);
-                    out.writeInt(levels.length);
-                    for (int[] level : levels) {
-                        out.writeInt(level.length);
-                        for (int pixel : level) out.writeInt(pixel);
-                    }
+                    encode(out, worldSize, scale, levels);
                 }
                 Files.move(part, file, StandardCopyOption.REPLACE_EXISTING);
                 if (learnt != null) writeRestless(root, learnt);
@@ -163,6 +148,43 @@ public final class ImpostorDisk {
                 LivingHorizonClient.LOGGER.warn("Could not save the impostor {}", file, e);
             }
         });
+    }
+
+    /** A sheet as {@link #decode} reads it back. */
+    static void encode(DataOutputStream out, double worldSize, int scale, int[][] levels) throws IOException {
+        out.writeInt(MAGIC);
+        out.writeInt(FORMAT);
+        out.writeDouble(worldSize);
+        out.writeInt(scale);
+        out.writeInt(levels.length);
+        for (int[] level : levels) {
+            out.writeInt(level.length);
+            for (int pixel : level) out.writeInt(pixel);
+        }
+    }
+
+    /**
+     * A sheet written by {@link #encode}: null when it is of another format. Every length is
+     * checked against the size of a sheet before anything is made, so that a damaged file never
+     * asks for more memory than one sheet takes; it throws then.
+     */
+    static @Nullable Stored decode(DataInputStream in) throws IOException {
+        if (in.readInt() != MAGIC || in.readInt() != FORMAT) return null;
+        double worldSize = in.readDouble();
+        int scale = in.readInt();
+        if (scale < 1 || scale > ImpostorAtlas.MAX_SCALE) throw new IOException("tiles " + scale + " times larger");
+        int count = in.readInt();
+        if (count != ImpostorAtlas.MIPS) throw new IOException(count + " levels, not " + ImpostorAtlas.MIPS);
+        int[][] levels = new int[count][];
+        for (int level = 0; level < count; level++) {
+            int tile = ImpostorViews.TILE * scale >> level;
+            int expected = tile * ImpostorViews.VIEWS * tile;
+            int length = in.readInt();
+            if (length != expected) throw new IOException("level " + level + " of " + length + " pixels, not " + expected);
+            levels[level] = new int[length];
+            for (int i = 0; i < length; i++) levels[level][i] = in.readInt();
+        }
+        return new Stored(worldSize, scale, levels);
     }
 
     /**

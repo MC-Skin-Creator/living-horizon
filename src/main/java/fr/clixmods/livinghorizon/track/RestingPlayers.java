@@ -2,10 +2,12 @@ package fr.clixmods.livinghorizon.track;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import fr.clixmods.livinghorizon.FarConfig;
+import fr.clixmods.livinghorizon.JsonStore;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.platform.Platform;
@@ -30,6 +32,7 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -161,10 +164,24 @@ public final class RestingPlayers {
     }
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    /** Layout of the file: 1 is the list under {@code "players"}, with its version; 0 the bare list before it. */
+    static final int VERSION = 1;
+    /** Ticks between two saves of the file, when something changed: five seconds. */
+    private static final int SAVE_EVERY = 100;
+    /** Milliseconds between two skins asked of Mojang, which turns away a client asking too often. */
+    private static final long LOOKUP_GAP = 1500;
 
     private final Map<String, Spot> spots = new LinkedHashMap<>();
     private final Map<String, RestingPuppet> puppets = new HashMap<>();
+    /** Names whose skin was asked for, or will be: each once. */
     private final Set<String> lookups = new HashSet<>();
+    /** Names waiting for their skin to be asked, one at a time ({@link #LOOKUP_GAP}). */
+    private final ArrayDeque<String> queued = new ArrayDeque<>();
+    private boolean lookingUp;
+    private long nextLookup;
+    /** Something changed since the file was written: written at the next {@link #SAVE_EVERY}. */
+    private boolean dirty;
+    private int clock;
     /** Test players placed with {@code /livinghorizon debug offline test}: never written to the file. */
     private final Set<String> fakes = new HashSet<>();
     /** Test players the host of this world placed, which its server shares: among {@link #fakes}. */
@@ -188,16 +205,14 @@ public final class RestingPlayers {
         close();
         file = Platform.configDir()
                 .resolve("livinghorizon").resolve("resting").resolve(safe(server) + ".json");
-        if (!Files.exists(file)) return;
-        try (Reader reader = Files.newBufferedReader(file)) {
-            for (Spot spot : read(reader)) spots.put(key(spot.name()), spot);
-        } catch (IOException | RuntimeException e) {
-            LivingHorizonClient.LOGGER.warn("Could not read {}", file, e);
-        }
+        for (Spot spot : read(file)) spots.put(key(spot.name()), spot);
     }
 
     void close() {
-        save();
+        if (dirty) save();
+        // Asked again on the next server, if they rest there too.
+        for (String name : queued) lookups.remove(key(name));
+        queued.clear();
         spots.clear();
         fakes.clear();
         fromHost.clear();
@@ -300,31 +315,60 @@ public final class RestingPlayers {
         if (spots.remove(key(name)) != null) {
             puppets.remove(key(name));
             if (lookedAt != null && key(lookedAt.name()).equals(key(name))) lookedAt = null;
-            save();
+            dirty = true;
         }
+    }
+
+    /**
+     * Writes the file now and then, when something changed, rather than at each change: a
+     * server full of players who logged off sends them all as one joins. Asks for the next skin.
+     * Every tick, whatever the settings.
+     */
+    void maintain() {
+        if (++clock % SAVE_EVERY == 0 && dirty) save();
+        nextLookUp();
     }
 
     private void put(Spot spot) {
         spots.put(key(spot.name()), spot);
         puppets.remove(key(spot.name()));
-        save();
+        if (!fakes.contains(key(spot.name()))) dirty = true;
     }
 
-    /** Fetches the skin of a player this client never saw, from Mojang, off the game thread. */
+    /** Asks for the skin of a player this client never saw, in its turn ({@link #nextLookUp}). */
     private void lookUp(String name) {
-        if (!lookups.add(key(name))) return;
-        Minecraft minecraft = Minecraft.getInstance();
+        if (lookups.add(key(name))) queued.add(name);
+    }
+
+    /**
+     * Fetches the next skin waiting, from Mojang, off the game thread: one at a time, at most
+     * one every {@link #LOOKUP_GAP}, so that a server with hundreds of players who logged off
+     * is not asked for all at once.
+     */
+    private void nextLookUp() {
+        if (lookingUp || queued.isEmpty() || System.currentTimeMillis() < nextLookup) return;
+        String name = queued.poll();
         // The game asks Mojang for a profile by name from 1.21.9; before, skins of players
         // never seen stay the default ones.
         //? if >=1.21.9 {
+        Spot waiting = spots.get(key(name));
+        if (waiting == null || waiting.textures() != null) return;
+        Minecraft minecraft = Minecraft.getInstance();
+        lookingUp = true;
+        nextLookup = System.currentTimeMillis() + LOOKUP_GAP;
         CompletableFuture
                 .supplyAsync(() -> minecraft.services().profileResolver().fetchByName(name), Util.ioPool())
                 .exceptionally(e -> Optional.empty())
-                .thenAcceptAsync(found -> found.ifPresent(profile -> {
-                    Spot spot = spots.get(key(name));
-                    if (spot != null && spot.textures() == null) put(spot.dressed(profile));
-                }), minecraft);
-        //?}
+                .thenAcceptAsync(found -> {
+                    lookingUp = false;
+                    found.ifPresent(profile -> {
+                        Spot spot = spots.get(key(name));
+                        if (spot != null && spot.textures() == null) put(spot.dressed(profile));
+                    });
+                }, minecraft);
+        //?} else {
+        /*queued.clear();
+        *///?}
     }
 
     // --- Test players --------------------------------------------------------------------
@@ -428,6 +472,7 @@ public final class RestingPlayers {
         fromHost.clear();
         puppets.clear();
         lookedAt = null;
+        dirty = true;
         save();
     }
 
@@ -516,13 +561,12 @@ public final class RestingPlayers {
 
     private void save() {
         if (file == null) return;
+        dirty = false;
         long started = Profile.begin(Profile.Section.SAVE_RESTING);
         long bytes = -1;
         try {
-            Files.createDirectories(file.getParent());
-            try (Writer writer = Files.newBufferedWriter(file)) {
-                write(spots.values().stream().filter(spot -> !fakes.contains(key(spot.name()))).toList(), writer);
-            }
+            List<Spot> kept = spots.values().stream().filter(spot -> !fakes.contains(key(spot.name()))).toList();
+            JsonStore.write(file, writer -> write(kept, writer));
             bytes = Files.size(file);
         } catch (IOException e) {
             LivingHorizonClient.LOGGER.warn("Could not write {}", file, e);
@@ -531,14 +575,37 @@ public final class RestingPlayers {
         }
     }
 
+    /**
+     * The spots saved in a file: none when it does not read, then kept aside ({@link JsonStore}),
+     * so that saving again does not write over what it held.
+     */
+    static List<Spot> read(Path file) {
+        JsonElement root = JsonStore.read(file);
+        if (root == null) return List.of();
+        try {
+            return read(file, root);
+        } catch (RuntimeException e) {
+            JsonStore.keepBad(file, e);
+            return List.of();
+        }
+    }
+
+    /** The spots of a file's text, in either layout; throws when it is not one. */
     static List<Spot> read(Reader reader) {
-        List<Spot> read = GSON.fromJson(reader, new TypeToken<List<Spot>>() { }.getType());
+        return read(null, JsonStore.parse(reader));
+    }
+
+    private static List<Spot> read(@Nullable Path file, JsonElement root) {
+        JsonStore.Versioned saved = JsonStore.unwrap(root, "players");
+        if (saved == null) throw new IllegalStateException("not a list of players");
+        if (file != null && saved.version() > VERSION) JsonStore.keepNewer(file, saved.version());
+        List<Spot> read = GSON.fromJson(saved.data(), new TypeToken<List<Spot>>() { }.getType());
         if (read == null) return List.of();
         return read.stream().filter(spot -> spot != null && spot.name() != null).toList();
     }
 
-    static void write(Collection<Spot> spots, Writer writer) {
-        GSON.toJson(new ArrayList<>(spots), writer);
+    static void write(Collection<Spot> spots, Writer writer) throws IOException {
+        JsonStore.writeVersioned(writer, GSON, VERSION, "players", new ArrayList<>(spots));
     }
 
     private static @Nullable Property skinOf(GameProfile profile) {

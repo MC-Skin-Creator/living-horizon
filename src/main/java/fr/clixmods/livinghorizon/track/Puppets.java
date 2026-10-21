@@ -2,6 +2,8 @@ package fr.clixmods.livinghorizon.track;
 
 import com.mojang.authlib.GameProfile;
 //? if >=1.21.9
+import net.minecraft.client.entity.ClientAvatarState;
+//? if >=1.21.9
 import net.minecraft.client.entity.ClientMannequin;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.RemotePlayer;
@@ -82,6 +84,27 @@ public final class Puppets {
         } catch (RuntimeException failed) {
             // No skin to be found: the default one stays, as on the game's own mannequin.
         }
+        //?}
+    }
+
+    /**
+     * Hangs a mannequin's cape from where it stands. The game moves the cape after the mannequin
+     * in its tick, which a puppet never runs: it stays at 0, 0, 0, and the cape reaches out
+     * towards there. Set outright, since the tick only takes it a quarter of the way when it is
+     * less than ten blocks off along an axis, and each view of an impostor is baked from a single
+     * call. A real mannequin drawn far away loses only its cape's lag, as it stands still. Does
+     * nothing to anything else.
+     */
+    public static void cape(Entity entity) {
+        //? if >=1.21.9 {
+        if (!(entity instanceof ClientMannequin mannequin)) return;
+        ClientAvatarState state = mannequin.avatarState();
+        state.xCloak = mannequin.getX();
+        state.yCloak = mannequin.getY();
+        state.zCloak = mannequin.getZ();
+        state.xCloakO = mannequin.xo;
+        state.yCloakO = mannequin.yo;
+        state.zCloakO = mannequin.zo;
         //?}
     }
 

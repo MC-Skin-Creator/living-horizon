@@ -1,18 +1,27 @@
 package fr.clixmods.livinghorizon.track;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** The file of who rests where survives a game restart unchanged. */
 class RestingPlayersTest {
+    @TempDir
+    Path folder;
+
     @Test
-    void roundTrips() {
+    void roundTrips() throws IOException {
         List<RestingPlayers.Spot> spots = List.of(
                 new RestingPlayers.Spot("Steve", UUID.fromString("8667ba71-b85a-4004-af54-457a9734eed7"),
                         "ewogICJ0aW1lc3RhbXAiIDogMQp9", "c2lnbmF0dXJl", 1, -1234.5, 64.0, 8001.9, 270f, 1760100000000L, null,
@@ -24,7 +33,17 @@ class RestingPlayersTest {
                         new RestingPlayers.Mount("minecraft:happy_ghast", "{}", null, 0, 4, 0, 0f, 0f), null));
         StringWriter out = new StringWriter();
         RestingPlayers.write(spots, out);
+        assertTrue(out.toString().startsWith("{\n  \"version\": " + RestingPlayers.VERSION + ","));
         assertEquals(spots, RestingPlayers.read(new StringReader(out.toString())));
+    }
+
+    @Test
+    void keepsADamagedFileAside() throws IOException {
+        Path file = folder.resolve("server.json");
+        Files.writeString(file, "[{\"name\": \"Alex\", \"x\": ");
+        assertEquals(List.of(), RestingPlayers.read(file));
+        assertFalse(Files.exists(file));
+        assertTrue(Files.exists(folder.resolve("server.json.bad")));
     }
 
     @Test

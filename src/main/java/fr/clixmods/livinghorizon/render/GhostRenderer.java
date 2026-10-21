@@ -226,6 +226,7 @@ public final class GhostRenderer {
     public static @Nullable EntityRenderState extract(EntityRenderDispatcher dispatcher, Entity entity, float partialTick) {
         if (!drawable(dispatcher, entity)) return null;
         Puppets.skin(entity);
+        Puppets.cape(entity);
         try {
             //? if >=1.21.9 {
             return dispatcher.extractEntity(entity, partialTick);

@@ -143,6 +143,19 @@ say which class is which). Players find them; nothing they read gives one away:
 - an easter egg gets no changelog entry, even when it changes. One wink that names none
   ("I thought I saw something in the sky") is the most a release may carry.
 
+## Credit every contributor
+
+Everyone whose work is in this repository is credited as a **contributor** (never as an
+author, which stays `clixmods`) in `CREDITS.md`, the mod metadata (`fabric.mod.json`,
+`quilt.mod.json`, `mods.toml`, `neoforge.mods.toml`) and the README's credits line. The
+`add-contributor` skill lists the places and the format.
+
+**At the start of every task that ends in a pull request, check that its author is
+credited**, and add them in that same pull request if they are not. This applies to an AI
+agent working for someone else too: the credit goes to the person the agent works for,
+by their GitHub login, never to the agent. The author is `clixmods` or already listed:
+nothing to do.
+
 ## Branch model: Git Flow
 
 Trimmed Git Flow.
@@ -422,6 +435,14 @@ come back, add it here in the same pull request: this file is what the next sess
   in `tick()`, which a puppet never runs. `Puppets.skin` hands it over, called wherever a copy
   is drawn or keyed (`GhostRenderer.extract`, `ImpostorKey.of`), and the impostor key counts
   the skin of any `ClientAvatarEntity`. The `mannequins` scenario checks it.
+- **Distant mannequins' capes sticking up** (standing out from their back; from 1.21.9): the tick
+  moves a mannequin's cape after it (`ClientAvatarState`), which a puppet never runs, so the cape
+  hangs from 0, 0, 0. The tick snaps it only when more than ten blocks off along an axis and
+  otherwise moves it a quarter of the way: `Puppets.cape` sets it outright in
+  `GhostRenderer.extract`, since each impostor view is baked from one call (`ImpostorAtlas.staged`).
+  The `mannequins` scenario checks it. Far, resting and logged-off player puppets are not ticked
+  either, on every version (`Player.xCloak` before 1.21.9): not covered yet, and `cape` cannot
+  just take any `ClientAvatarEntity`, since live players go through the same `extract` and tick.
 - **A rider turned sideways** (a player resting in a boat facing left or right of it): the seat's
   yaw is the rider's body (`yBodyRot`), which the boat keeps in line with itself, never the head
   (`getYRot`), which looks wherever the player looked as they left.
@@ -443,6 +464,11 @@ come back, add it here in the same pull request: this file is what the next sess
   The Fabric API's client networking stays in `ClientNetwork`, which a server never loads.
   Check a server by installing the loader's server from its installer, the jar in `mods/`,
   and reading the console for "sharing the positions of this server".
+- **Settings, remembered mobs or players who logged off gone after a restart**: a file that
+  did not read is kept beside it as `<name>.bad` (`JsonStore`; the server's
+  `livinghorizon-positions.dat.bad`), with a line in the log saying why. The server's file has a
+  version of its own (`PositionsMessage.FILE_VERSION`): a change to the messages' `VERSION`
+  never touches it, and a change to the file's layout reads the older one too.
 - **Frame rate lost to the mod** (with Voxy or not): measure before guessing. On the player's
   machine, ask for the report of `/livinghorizon benchmark` (`debug/Benchmark`): frame times with
   the mod off, each preset and each part on its own, on their GPU and mods. Run in the world
