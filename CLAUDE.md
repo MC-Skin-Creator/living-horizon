@@ -143,6 +143,19 @@ say which class is which). Players find them; nothing they read gives one away:
 - an easter egg gets no changelog entry, even when it changes. One wink that names none
   ("I thought I saw something in the sky") is the most a release may carry.
 
+## Credit every contributor
+
+Everyone whose work is in this repository is credited as a **contributor** (never as an
+author, which stays `clixmods`) in `CREDITS.md`, the mod metadata (`fabric.mod.json`,
+`quilt.mod.json`, `mods.toml`, `neoforge.mods.toml`) and the README's credits line. The
+`add-contributor` skill lists the places and the format.
+
+**At the start of every task that ends in a pull request, check that its author is
+credited**, and add them in that same pull request if they are not. This applies to an AI
+agent working for someone else too: the credit goes to the person the agent works for,
+by their GitHub login, never to the agent. The author is `clixmods` or already listed:
+nothing to do.
+
 ## Branch model: Git Flow
 
 Trimmed Git Flow.
