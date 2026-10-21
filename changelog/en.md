@@ -10,6 +10,7 @@
 
 #### Fixed
 - **Distant mannequins wearing the default skin** — mannequins far away no longer lose their skin and show as Alex: they keep the one they wear up close, a player's or a resource pack's (Minecraft 1.21.9 and later).
+- **Distant mobs hidden by Distant Horizons' terrain under shaders** — with Oculus and a shader pack, distant mobs no longer vanish behind Distant Horizons' terrain, more and more as the render distance grows (Forge).
 
 ## 0.10.0 — 2026-10-20
 

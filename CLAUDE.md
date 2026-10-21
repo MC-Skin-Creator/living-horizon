@@ -287,6 +287,11 @@ come back, add it here in the same pull request: this file is what the next sess
   pack on or off, it switches itself to OpenGL and fills only `getDhDepthTextureGlId`; the
   Blaze3D wrapper the game's GPU device path reads stays empty ("has no depth texture").
   `FarDepth.gpuPath` falls back to the OpenGL path when `DhDepth.drawsWithOpenGl`.
+- **Distant mobs hidden by Distant Horizons' terrain under a shader pack on Forge** (worse as the
+  render distance grows, depth view wrong; Oculus): Oculus is Iris under the mod id `oculus`, with
+  Iris's classes. Missed, a pack read as none, and Distant Horizons' depth, which Oculus draws with
+  Iris's near plane (it follows the render distance), was converted with Distant Horizons' own.
+  Anything that asks whether Iris is loaded asks for both ids.
 - **Distant Horizons under a shader pack from 26.2** (depth view flat grey, or a grey veil, under
   shaders only): Iris draws its terrain with Iris's near and far planes, but in the depth layout
   Distant Horizons reports (`getDepthRange`, `getDepthDirection`: reversed and 0..1 on 26.2,

@@ -10,6 +10,7 @@
 
 #### Corrections
 - **Mannequins lointains avec le skin par défaut** — les mannequins au loin ne perdent plus leur skin pour apparaître en Alex : ils gardent celui qu'ils portent de près, celui d'un joueur ou d'un pack de ressources (Minecraft 1.21.9 et plus).
+- **Mobs lointains cachés par le terrain de Distant Horizons sous shaders** — avec Oculus et un shader pack, les mobs lointains ne disparaissent plus derrière le terrain de Distant Horizons, de plus en plus à mesure que la distance de rendu augmente (Forge).
 
 ## 0.10.0 — 2026-10-20
 
