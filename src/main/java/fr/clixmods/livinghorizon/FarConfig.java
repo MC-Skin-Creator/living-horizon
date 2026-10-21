@@ -71,6 +71,15 @@ public final class FarConfig {
      */
     public boolean offlinePlayers = true;
 
+    /** The value of {@link #maxOfflinePlayers} (and above) that means no limit. */
+    public static final int UNLIMITED_OFFLINE = 1000;
+
+    /**
+     * How many players who logged off are drawn at once: the nearest ones. The others stay
+     * remembered, and show again when they are among the nearest. {@link #UNLIMITED_OFFLINE}: all.
+     */
+    public int maxOfflinePlayers = 256;
+
     /**
      * Players who logged off live their life where they left, as long as the blocks there are
      * loaded: they stroll, look around, sit down, stand in front of chests and workstations,

@@ -112,7 +112,7 @@ public final class RestingMountScenario implements Scenario {
             for (int i = 0; i < 6; i++) {
                 context.runOnClient(minecraft -> {
                     FarPlayerTracker.get().receive(PositionsMessage.players(List.of()));
-                    FarPlayerTracker.get().receive(PositionsMessage.offline(List.of(faraway)));
+                    PositionsMessage.offline(List.of(faraway)).forEach(FarPlayerTracker.get()::receive);
                 });
                 context.waitTicks(10);
             }

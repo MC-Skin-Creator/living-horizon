@@ -46,6 +46,9 @@ public final class SharedPositions {
     private boolean active;
     /** The format of the last message from a version of the mod this one cannot read; null when none came. */
     private PositionsMessage.@Nullable Format unreadable;
+    /** The players who logged off, from the parts of the list received so far; null between two lists. */
+    private @Nullable List<PositionsMessage.Player> comingOffline;
+    private int expectedPart;
 
     /** A message from the server, on the game's thread. */
     void receive(byte[] data) {
@@ -64,12 +67,8 @@ public final class SharedPositions {
             ticksSinceNews = 0;
             active = true;
         }
-        if (message.kind() == PositionsMessage.OFFLINE && message.players() != null) {
-            offline.clear();
-            for (PositionsMessage.Player player : message.players()) {
-                offline.put(player.name(), player);
-                if (player.look() != null || player.mount() != null) dressed.put(player.name(), player);
-            }
+        if (message.kind() == PositionsMessage.OFFLINE && message.players() != null && message.part() != null) {
+            offlinePart(message.players(), message.part());
         }
         if (message.mobs() != null) {
             mobs.clear();
@@ -79,6 +78,28 @@ public final class SharedPositions {
             }
             lastMobs = message.mobs();
         }
+    }
+
+    /**
+     * One part of the list of players who logged off: the list is taken once whole, so that
+     * nobody seems to have left between two of its parts. A part out of order drops the list.
+     */
+    private void offlinePart(List<PositionsMessage.Player> part, PositionsMessage.Part which) {
+        if (which.index() == 0) {
+            comingOffline = new ArrayList<>();
+        } else if (comingOffline == null || which.index() != expectedPart) {
+            comingOffline = null;
+            return;
+        }
+        comingOffline.addAll(part);
+        expectedPart = which.index() + 1;
+        if (!which.last()) return;
+        offline.clear();
+        for (PositionsMessage.Player player : comingOffline) {
+            offline.put(player.name(), player);
+            if (player.look() != null || player.mount() != null) dressed.put(player.name(), player);
+        }
+        comingOffline = null;
     }
 
     /** Once per tick: whether the server shares positions right now. */
@@ -95,6 +116,7 @@ public final class SharedPositions {
         mobs.clear();
         dressed.clear();
         lastMobs = null;
+        comingOffline = null;
         ticksSinceNews = STALE_TICKS;
         active = false;
         unreadable = null;

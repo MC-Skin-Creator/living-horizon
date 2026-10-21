@@ -64,10 +64,6 @@ public final class PositionPublisher {
     private static final int MAX_MOBS = 4000;
     /** Players sent with how they look and what they ride, the nearest first; the others are known by their position. */
     private static final int MAX_LOOKS = 64;
-    /** Players who logged off sent to each player, the nearest first: a client keeps those it was sent before. */
-    private static final int MAX_OFFLINE_SENT = 256;
-    /** Players who logged off kept, in the file too: those seen longest ago are forgotten first. */
-    static final int MAX_OFFLINE_KEPT = 1000;
     /** Publications between two reads of a mob's saved data: thirty seconds. */
     private static final int MOB_READ_EVERY = 150;
     /** Past this, what a mob wears is left out. */
@@ -164,11 +160,14 @@ public final class PositionPublisher {
             if (full || !greeted.contains(player.getUUID())) {
                 // Every few seconds, and at once to a player who just joined: everything.
                 byte[] everyone = PositionsMessage.players(withLooks(onlinePlayers(), player));
-                byte[] offline = PositionsMessage.offline(withLooks(offlinePlayers(player), player));
+                List<byte[]> offline = PositionsMessage.offline(withLooks(offlinePlayers(), player));
                 byte[] around = PositionsMessage.mobs(mobsAround(player));
-                sentBytes[0] += everyone.length + offline.length + around.length;
+                sentBytes[0] += everyone.length + around.length;
                 Network.send(player, everyone);
-                Network.send(player, offline);
+                for (byte[] part : offline) {
+                    sentBytes[0] += part.length;
+                    Network.send(player, part);
+                }
                 Network.send(player, around);
             } else {
                 if (plain == null) plain = PositionsMessage.players(onlinePlayers());
@@ -230,26 +229,10 @@ public final class PositionPublisher {
             dirty = true;
         }
         // Those who logged off stay where they were last, as they looked, on what they rode.
-        boolean left = false;
         for (Map.Entry<String, PositionsMessage.Player> entry : players.entrySet()) {
             PositionsMessage.Player player = entry.getValue();
-            if (player.online() && !names.contains(entry.getKey())) {
-                entry.setValue(loggedOff(player));
-                left = true;
-            }
+            if (player.online() && !names.contains(entry.getKey())) entry.setValue(loggedOff(player));
         }
-        if (left) forgetOldest();
-    }
-
-    /** Past {@link #MAX_OFFLINE_KEPT} players who logged off, those seen longest ago are forgotten. */
-    private void forgetOldest() {
-        List<PositionsMessage.Player> offline = new ArrayList<>();
-        for (PositionsMessage.Player player : players.values()) {
-            if (!player.online()) offline.add(player);
-        }
-        List<String> forgotten = PlayerLists.oldest(offline, MAX_OFFLINE_KEPT);
-        for (String name : forgotten) players.remove(name);
-        if (!forgotten.isEmpty()) dirty = true;
     }
 
     /** An online player as they are now, kept once they log off. */
@@ -309,25 +292,21 @@ public final class PositionPublisher {
         return now;
     }
 
-    /**
-     * The players who logged off that {@code to} is sent: the {@link #MAX_OFFLINE_SENT} nearest,
-     * and the host's test players, which a client forgets once they are not sent.
-     */
-    private List<PositionsMessage.Player> offlinePlayers(ServerPlayer to) {
+    /** Every player who logged off, and the host's test players. A client chooses how many it shows. */
+    private List<PositionsMessage.Player> offlinePlayers() {
         List<PositionsMessage.Player> gone = new ArrayList<>();
         for (PositionsMessage.Player player : players.values()) {
             if (!player.online() && !tests.containsKey(player.name())) gone.add(player);
         }
-        List<PositionsMessage.Player> sent = new ArrayList<>(PlayerLists.nearest(gone,
-                SharedPositions.dimensionId(to.level().dimension()), to.getX(), to.getZ(), MAX_OFFLINE_SENT));
-        sent.addAll(tests.values());
-        return sent;
+        gone.addAll(tests.values());
+        return gone;
     }
 
     /**
      * The players, the {@link #MAX_LOOKS} nearest {@code to} first, with how they look and what
      * they ride, then the others by their position alone, which keeps the message small on a big
-     * server. Should the message still be too large, those at the end are left out.
+     * server. Should the message still be too large, those at the end are by their position
+     * alone (players online) or sent in a message after it (players who logged off).
      */
     private List<PositionsMessage.Player> withLooks(List<PositionsMessage.Player> list, ServerPlayer to) {
         List<PositionsMessage.Player> nearest = PlayerLists.nearest(list,
@@ -423,7 +402,6 @@ public final class PositionPublisher {
             dirty = true;
             LOGGER.info("Living Horizon: {} players of this world shown where they logged off", found);
         }
-        forgetOldest();
     }
 
     private void readFile() {

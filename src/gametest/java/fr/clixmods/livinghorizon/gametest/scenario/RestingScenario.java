@@ -274,7 +274,7 @@ public final class RestingScenario implements Scenario {
         for (int done = 0; done < ticks; done += 10) {
             context.runOnClient(minecraft -> {
                 FarPlayerTracker.get().receive(PositionsMessage.players(List.of()));
-                FarPlayerTracker.get().receive(PositionsMessage.offline(List.of(SLEEPER)));
+                PositionsMessage.offline(List.of(SLEEPER)).forEach(FarPlayerTracker.get()::receive);
             });
             context.waitTicks(10);
         }

@@ -153,21 +153,38 @@ class PositionsMessageTest {
         assertFalse(mobs.mobs().covers(OVERWORLD, 0, 0));
     }
 
-    /** Too many players with their mounts for one message: the first ones whole, then by position alone. */
+    /** Too many players online with their mounts for one message: the first ones whole, then by position alone. */
     @Test
     void cutsPlayersToTheSize() {
-        PositionsMessage.Mount mount = new PositionsMessage.Mount("minecraft:horse", "x".repeat(2000), 0, 0, 0, 0f, 0f);
-        List<PositionsMessage.Player> players = new ArrayList<>();
-        for (int i = 0; i < 200; i++) {
-            players.add(new PositionsMessage.Player("P" + i, i, 64, 0, 0f, OVERWORLD, false, true, null, mount));
-        }
+        List<PositionsMessage.Player> players = mounted(200, true);
         int limit = 12_000;
-        byte[] message = PositionsMessage.players(PositionsMessage.OFFLINE, players, limit);
+        byte[] message = PositionsMessage.players(PositionsMessage.PLAYERS, players, limit);
         assertTrue(message.length <= limit, message.length + " bytes");
         List<PositionsMessage.Player> read = PositionsMessage.read(message).players();
         assertEquals(players.get(0), read.get(0));
         assertNull(read.get(read.size() - 1).mount());
         assertTrue(read.size() > 5 && read.size() < 200, read.size() + " players");
+    }
+
+    /** Too many players who logged off for one message: all of them, whole and in order, in several. */
+    @Test
+    void sendsEveryPlayerWhoLoggedOffInParts() {
+        List<PositionsMessage.Player> players = mounted(200, false);
+        int limit = 12_000;
+        List<byte[]> parts = PositionsMessage.offline(players, limit);
+        assertTrue(parts.size() > 1, parts.size() + " parts");
+        List<PositionsMessage.Player> read = new ArrayList<>();
+        for (int i = 0; i < parts.size(); i++) {
+            assertTrue(parts.get(i).length <= limit, parts.get(i).length + " bytes");
+            PositionsMessage.Decoded part = PositionsMessage.read(parts.get(i));
+            assertEquals(new PositionsMessage.Part(i, parts.size()), part.part());
+            read.addAll(part.players());
+        }
+        assertEquals(players, read);
+        // A short list: one message, the whole of it.
+        List<byte[]> one = PositionsMessage.offline(List.of(STEVE_PLAYER));
+        assertEquals(1, one.size());
+        assertEquals(PositionsMessage.Part.WHOLE, PositionsMessage.read(one.get(0)).part());
     }
 
     /** Too many mobs: the nearest, and a circle that stops short of the first left out, which is not gone. */
@@ -202,14 +219,14 @@ class PositionsMessageTest {
         assertEquals(List.of(), PlayerLists.nearest(players, OVERWORLD, 0, 0, 0));
     }
 
-    @Test
-    void forgetsThoseSeenLongestAgo() {
-        List<PositionsMessage.Player> offline = List.of(
-                new PositionsMessage.Player("Recent", 0, 64, 0, 0f, OVERWORLD, false, false, null, null, null, 3000, false),
-                new PositionsMessage.Player("Unknown", 0, 64, 0, 0f, OVERWORLD, false, false, null),
-                new PositionsMessage.Player("Old", 0, 64, 0, 0f, OVERWORLD, false, false, null, null, null, 1000, false));
-        assertEquals(List.of("Unknown", "Old"), PlayerLists.oldest(offline, 1));
-        assertEquals(List.of(), PlayerLists.oldest(offline, 3));
+    /** {@code count} players on 2000 bytes of mount each, a block apart. */
+    private static List<PositionsMessage.Player> mounted(int count, boolean online) {
+        PositionsMessage.Mount mount = new PositionsMessage.Mount("minecraft:horse", "x".repeat(2000), 0, 0, 0, 0f, 0f);
+        List<PositionsMessage.Player> players = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            players.add(new PositionsMessage.Player("P" + i, i, 64, 0, 0f, OVERWORLD, online, true, null, mount));
+        }
+        return players;
     }
 
     private static List<String> names(List<PositionsMessage.Player> players) {

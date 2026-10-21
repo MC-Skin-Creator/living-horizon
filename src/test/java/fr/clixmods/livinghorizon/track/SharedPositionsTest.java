@@ -32,8 +32,8 @@ class SharedPositionsTest {
         // Steve, in the nether, looking at 270 degrees, on the ghast; Alex logged off in the end.
         shared.receive(PositionsMessage.players(List.of(
                 new PositionsMessage.Player("Steve", -1234.5, 64.25, 8001.9, 270f, NETHER, true, true, GHAST))));
-        shared.receive(PositionsMessage.offline(List.of(
-                new PositionsMessage.Player("Alex", 10, 70, -20, 90f, END, false, false, null))));
+        PositionsMessage.offline(List.of(
+                new PositionsMessage.Player("Alex", 10, 70, -20, 90f, END, false, false, null))).forEach(shared::receive);
         // A baby horse (kind 1), variant 513, in the end, sent around a player at (0, 0).
         shared.receive(PositionsMessage.mobs(new PositionsMessage.Mobs(List.of(
                 new PositionsMessage.Mob(HORSE, 1.5, 70, -2.5, 1, END, true, 513)), END, 0, 0, 2048)));
@@ -98,8 +98,8 @@ class SharedPositionsTest {
         SharedPositions shared = new SharedPositions();
         PositionsMessage.Mount horse = new PositionsMessage.Mount("minecraft:horse", "{Variant:513}", 0, 0.85, -0.2, 45f, -10f);
         shared.receive(PositionsMessage.players(List.of()));
-        shared.receive(PositionsMessage.offline(List.of(
-                new PositionsMessage.Player("Alex", 10, 70, -20, 90f, OVERWORLD, false, true, null, horse))));
+        PositionsMessage.offline(List.of(
+                new PositionsMessage.Player("Alex", 10, 70, -20, 90f, OVERWORLD, false, true, null, horse))).forEach(shared::receive);
         shared.update();
         assertTrue(shared.read("Alex").riding());
         assertEquals(horse, shared.mount("Alex"));
@@ -132,8 +132,8 @@ class SharedPositionsTest {
         shared.receive(PositionsMessage.players(List.of(new PositionsMessage.Player("Steve", 4, 2, 3, 0f, OVERWORLD, true, false, null))));
         assertNull(shared.mount("Steve"));
         // A test player of the host's, logged off a while ago.
-        shared.receive(PositionsMessage.offline(List.of(new PositionsMessage.Player("Sleeper1", 0, 64, 0, 0f, OVERWORLD, false, false,
-                null, null, look, 1760100000000L, true))));
+        PositionsMessage.offline(List.of(new PositionsMessage.Player("Sleeper1", 0, 64, 0, 0f, OVERWORLD, false, false,
+                null, null, look, 1760100000000L, true))).forEach(shared::receive);
         assertTrue(shared.read("Sleeper1").test());
         assertEquals(1760100000000L, shared.read("Sleeper1").lastSeen());
         assertEquals(look, shared.look("Sleeper1"));
@@ -147,6 +147,35 @@ class SharedPositionsTest {
                 1, OVERWORLD, false, 0, "{equipment:{body:{count:1,id:\"minecraft:white_harness\"}}}")), OVERWORLD, 0, 0, 2048)));
         shared.update();
         assertEquals("{equipment:{body:{count:1,id:\"minecraft:white_harness\"}}}", shared.readMob(GHAST).extra());
+    }
+
+    /** Too many players who logged off for one message: the list is taken once its last part has come. */
+    @Test
+    void takesTheOfflineListOnceWhole() {
+        SharedPositions shared = new SharedPositions();
+        shared.receive(PositionsMessage.players(List.of()));
+        PositionsMessage.offline(List.of(new PositionsMessage.Player("Before", 0, 64, 0, 0f, OVERWORLD, false, false,
+                null))).forEach(shared::receive);
+        List<PositionsMessage.Player> crowd = new java.util.ArrayList<>();
+        for (int i = 0; i < 60; i++) {
+            crowd.add(new PositionsMessage.Player("Sleeper" + i, i, 64, 0, 0f, OVERWORLD, false, false, null));
+        }
+        List<byte[]> parts = PositionsMessage.offline(crowd, 1000);
+        assertTrue(parts.size() >= 3, parts.size() + " parts");
+        shared.update();
+        // Halfway: still the list before.
+        for (int i = 0; i < parts.size() - 1; i++) shared.receive(parts.get(i));
+        assertEquals(List.of("Before"), shared.holders());
+        shared.receive(parts.get(parts.size() - 1));
+        assertEquals(60, shared.holders().size());
+        assertNotNull(shared.read("Sleeper59"));
+        // A part missing: the list it belonged to is dropped, the one before kept.
+        PositionsMessage.offline(List.of(new PositionsMessage.Player("Before", 0, 64, 0, 0f, OVERWORLD, false, false,
+                null))).forEach(shared::receive);
+        shared.receive(parts.get(0));
+        shared.receive(parts.get(2));
+        shared.receive(parts.get(parts.size() - 1));
+        assertEquals(List.of("Before"), shared.holders());
     }
 
     @Test

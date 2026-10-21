@@ -592,7 +592,8 @@ public final class GhostRenderer {
         if (level == null) return;
         RestingPlayers resting = FarPlayerTracker.get().resting();
         String dimension = SharedPositions.dimensionId(level.dimension());
-        for (RestingPlayers.Spot spot : resting.spots()) {
+        // The nearest only, as many as the settings say.
+        for (RestingPlayers.Spot spot : resting.shown()) {
             if (!spot.dimension().equals(dimension)) continue;
             RestingPuppet puppet = resting.puppet(level, spot);
             if (skipped(puppet, true)) continue;

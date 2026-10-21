@@ -194,6 +194,8 @@ public final class RestingPlayers {
     private final Set<String> fromHost = new HashSet<>();
     private @Nullable Path file;
     private @Nullable Spot lookedAt;
+    /** Who is drawn now ({@link #shown}), by key. */
+    private List<String> shown = List.of();
     private boolean wasAttacking;
 
     /** Blocks from the eye to the point aimed at on a sleeper: about the reach of a hand. */
@@ -201,8 +203,52 @@ public final class RestingPlayers {
     /** Spots of the world the puppets may read per tick, all of them together. */
     private static final int WORK = 600;
 
+    /** Every player resting on this server, drawn or not. */
     public Collection<Spot> spots() {
         return Collections.unmodifiableCollection(spots.values());
+    }
+
+    /**
+     * Those drawn: in the camera's dimension, the {@link FarConfig#maxOfflinePlayers} nearest
+     * it, chosen again every tick ({@link #choose}), as they are now: one woken or cleared since
+     * is left out at once.
+     */
+    public List<Spot> shown() {
+        List<Spot> now = new ArrayList<>(shown.size());
+        for (String name : shown) {
+            Spot spot = spots.get(name);
+            if (spot != null) now.add(spot);
+        }
+        return now;
+    }
+
+    /**
+     * The spots of {@code dimension} nearest {@code x, z}, at most {@code most}
+     * ({@link FarConfig#UNLIMITED_OFFLINE} and above: all of them), the nearest first.
+     */
+    static List<Spot> nearest(Collection<Spot> spots, String dimension, double x, double z, int most) {
+        List<Spot> here = new ArrayList<>();
+        for (Spot spot : spots) {
+            if (spot.dimension().equals(dimension)) here.add(spot);
+        }
+        int count = most >= FarConfig.UNLIMITED_OFFLINE ? here.size() : Math.max(0, most);
+        return PlayerLists.nearest(here, count, spot -> Math.hypot(spot.x() - x, spot.z() - z));
+    }
+
+    /** Chooses who is drawn ({@link #shown}); the puppets of the others are let go. */
+    private void choose(ClientLevel level, FarConfig config) {
+        Entity camera = Minecraft.getInstance().getCameraEntity();
+        List<String> chosen = new ArrayList<>();
+        if (camera != null) {
+            for (Spot spot : nearest(spots.values(), SharedPositions.dimensionId(level.dimension()), camera.getX(),
+                    camera.getZ(), config.maxOfflinePlayers)) {
+                chosen.add(key(spot.name()));
+            }
+        }
+        shown = chosen;
+        Set<String> kept = new HashSet<>(chosen);
+        puppets.keySet().retainAll(kept);
+        if (lookedAt != null && !kept.contains(key(lookedAt.name()))) lookedAt = null;
     }
 
     // --- Lifecycle ---------------------------------------------------------------------
@@ -223,6 +269,7 @@ public final class RestingPlayers {
         fakes.clear();
         fromHost.clear();
         puppets.clear();
+        shown = List.of();
         lookedAt = null;
         file = null;
     }
@@ -230,6 +277,7 @@ public final class RestingPlayers {
     /** Puppets belong to one level; a new dimension needs new ones. */
     void forgetPuppets() {
         puppets.clear();
+        shown = List.of();
         lookedAt = null;
     }
 
@@ -511,12 +559,11 @@ public final class RestingPlayers {
         if (!config.offlineNames && !(struck && config.offlineLife)) return;
         Vec3 eye = camera.getEyePosition();
         Vec3 look = camera.getViewVector(1.0f);
-        String dimension = SharedPositions.dimensionId(level.dimension());
         double nearest = Double.MAX_VALUE;
         Spot aimed = null;
-        for (Spot spot : spots.values()) {
+        for (Spot spot : shown()) {
             RestingPuppet puppet = puppets.get(key(spot.name()));
-            if (!spot.dimension().equals(dimension) || puppet == null) continue;
+            if (puppet == null) continue;
             double distance = eye.distanceTo(puppet.position());
             // The box reaches 1 block round its feet, its top 2 blocks over them.
             if (distance > MAX_AIM + 2.5) continue;
@@ -548,6 +595,7 @@ public final class RestingPlayers {
 
     /** Every one of them lives a tick: idle animations, their life around their spot, the ground under them. */
     void tick(ClientLevel level, FarConfig config) {
+        choose(level, config);
         Set<BlockPos> beds = new HashSet<>();
         for (RestingPuppet puppet : puppets.values()) {
             if (puppet.bed() != null) beds.add(puppet.bed());

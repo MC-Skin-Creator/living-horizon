@@ -137,8 +137,24 @@ public final class PositionsMessage {
         }
     }
 
-    /** A message read: its kind, and the list it carries (the other one is null). */
-    public record Decoded(byte kind, @Nullable List<Player> players, @Nullable Mobs mobs) {
+    /**
+     * A message read: its kind, and the list it carries (the other one is null). The players who
+     * logged off come in {@code part} of a list that may take several messages; null for the others.
+     */
+    public record Decoded(byte kind, @Nullable List<Player> players, @Nullable Mobs mobs, @Nullable Part part) {
+        public Decoded(byte kind, @Nullable List<Player> players, @Nullable Mobs mobs) {
+            this(kind, players, mobs, null);
+        }
+    }
+
+    /** Which message of a list sent in several this one is, from 0, and how many there are. */
+    public record Part(int index, int count) {
+        /** A list in one message. */
+        public static final Part WHOLE = new Part(0, 1);
+
+        public boolean last() {
+            return index == count - 1;
+        }
     }
 
     /**
@@ -170,9 +186,12 @@ public final class PositionsMessage {
         return players(PLAYERS, players, MAX_BYTES);
     }
 
-    /** The players who logged off, where they were last; as many as fit, the first ones first. */
-    public static byte[] offline(List<Player> players) {
-        return players(OFFLINE, players, MAX_BYTES);
+    /**
+     * The players who logged off, where they were last: every one of them, in as many messages as
+     * it takes, in order. A client takes the list once the last has come.
+     */
+    public static List<byte[]> offline(List<Player> players) {
+        return offline(players, MAX_BYTES);
     }
 
     /**
@@ -200,6 +219,54 @@ public final class PositionsMessage {
             encoder.writeTable(out);
             list.writeTo(out);
         });
+    }
+
+    static List<byte[]> offline(List<Player> players, int limit) {
+        // Each message says which part of the list it is, before the players: room kept for it.
+        int head = 1 + 2 * COUNT;
+        List<Encoder> encoders = new ArrayList<>();
+        List<Records> lists = new ArrayList<>();
+        Encoder encoder = new Encoder(limit, head);
+        Records list = encoder.list();
+        int cut = 0;
+        for (Player player : players) {
+            if (addPlayer(encoder, list, player)) continue;
+            if (list.count > 0) {
+                // This one is full: the next one starts with them.
+                encoders.add(encoder);
+                lists.add(list);
+                encoder = new Encoder(limit, head);
+                list = encoder.list();
+                if (addPlayer(encoder, list, player)) continue;
+            }
+            // Too much alone for a message: by their position alone, or not at all.
+            cut++;
+            Player plain = player.plain();
+            if (plain != player) addPlayer(encoder, list, plain);
+        }
+        encoders.add(encoder);
+        lists.add(list);
+        if (cut > 0) warnCut(cut, "players");
+        List<byte[]> messages = new ArrayList<>(encoders.size());
+        for (int i = 0; i < encoders.size(); i++) {
+            Encoder each = encoders.get(i);
+            Records part = lists.get(i);
+            int index = i, count = encoders.size();
+            messages.add(write(VERSION, READABLE_FROM, out -> {
+                out.writeByte(OFFLINE);
+                each.writeTable(out);
+                writeRecord(out, which -> {
+                    writeVarint(which, index);
+                    writeVarint(which, count);
+                });
+                part.writeTo(out);
+            }));
+        }
+        return messages;
+    }
+
+    private static boolean addPlayer(Encoder encoder, Records list, Player player) {
+        return encoder.add(list, out -> writePlayer(out, encoder, player));
     }
 
     static byte[] mobs(Mobs mobs, int limit) {
@@ -255,7 +322,13 @@ public final class PositionsMessage {
             in.skipNBytes(8);
             byte kind = in.readByte();
             List<String> dimensions = readTable(in);
-            if (kind == PLAYERS || kind == OFFLINE) return new Decoded(kind, readPlayers(in, dimensions), null);
+            if (kind == PLAYERS) return new Decoded(kind, readPlayers(in, dimensions), null);
+            if (kind == OFFLINE) {
+                DataInputStream head = readRecord(in);
+                Part part = new Part(readVarint(head), readVarint(head));
+                if (part.index() < 0 || part.index() >= part.count()) return null;
+                return new Decoded(kind, readPlayers(in, dimensions), null, part);
+            }
             if (kind == MOBS) {
                 DataInputStream head = readRecord(in);
                 String dimension = dimensions.get(readVarint(head));
@@ -543,7 +616,8 @@ public final class PositionsMessage {
     /** A message of version 2, after its version: a player or a mob in a dimension it could not name is left out. */
     private static @Nullable Decoded readLegacy(DataInputStream in) throws IOException {
         byte kind = in.readByte();
-        if (kind == PLAYERS || kind == OFFLINE) return new Decoded(kind, readLegacyPlayers(in), null);
+        if (kind == PLAYERS) return new Decoded(kind, readLegacyPlayers(in), null);
+        if (kind == OFFLINE) return new Decoded(kind, readLegacyPlayers(in), null, Part.WHOLE);
         if (kind == MOBS) {
             String dimension = legacyDimension(in.readByte());
             double x = in.readDouble(), z = in.readDouble(), radius = in.readDouble();

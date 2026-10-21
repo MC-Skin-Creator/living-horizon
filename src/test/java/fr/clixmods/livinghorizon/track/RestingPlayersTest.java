@@ -71,6 +71,26 @@ class RestingPlayersTest {
                 RestingPlayers.read(new StringReader(layout1)));
     }
 
+    /** Only the nearest are drawn, as many as the settings say, in the camera's dimension. */
+    @Test
+    void drawsTheNearestOnly() {
+        List<RestingPlayers.Spot> spots = List.of(spot("Far", OVERWORLD, 300), spot("Nether", NETHER, 1),
+                spot("Near", OVERWORLD, 5), spot("Middle", OVERWORLD, 50));
+        assertEquals(List.of("Near", "Middle"), names(RestingPlayers.nearest(spots, OVERWORLD, 0, 0, 2)));
+        assertEquals(List.of("Near", "Middle", "Far"),
+                names(RestingPlayers.nearest(spots, OVERWORLD, 0, 0, fr.clixmods.livinghorizon.FarConfig.UNLIMITED_OFFLINE)));
+        assertEquals(List.of(), RestingPlayers.nearest(spots, OVERWORLD, 0, 0, 0));
+        assertEquals(List.of("Nether"), names(RestingPlayers.nearest(spots, NETHER, 0, 0, 256)));
+    }
+
+    private static RestingPlayers.Spot spot(String name, String dimension, double x) {
+        return new RestingPlayers.Spot(name, null, null, null, dimension, x, 64, 0, 0f, 0, null, null);
+    }
+
+    private static List<String> names(List<RestingPlayers.Spot> spots) {
+        return spots.stream().map(RestingPlayers.Spot::name).toList();
+    }
+
     @Test
     void skipsBrokenEntries() {
         assertEquals(List.of(), RestingPlayers.read(new StringReader("[null, {\"x\": 1}]")));

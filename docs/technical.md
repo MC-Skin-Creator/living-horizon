@@ -105,10 +105,9 @@ world, and a player without the mod is sent nothing.
 - **Every five seconds**, to every player online:
   - how the 64 players nearest them look, online or logged off (skin, armour and what they
     hold, read every second), and what they ride, as the server saves it;
-  - the 256 players who logged off nearest them (those in their dimension first), and the
-    host's test players: where they were last and when they left, with how they looked and
-    the mount they took away for those among the 64. A client keeps the ones it was sent
-    before;
+  - every player who logged off, and the host's test players: where they were last and when
+    they left, with how they looked and the mount they took away for those among the 64. The
+    server sends them all; each client chooses how many it draws (`maxOfflinePlayers`);
   - the remembered mobs within 2048 blocks of them, with what they wear (saddle, harness,
     armour, carpet, chest; see [Distant mobs](#distant-mobs)).
 - **At once, to a player who joins**: all of it, without waiting for the next five seconds.
@@ -127,9 +126,12 @@ Their layout, from version 3:
   (`minecraft:overworld`, `aether:the_aether`): a record names its dimension by its place in
   the table. Version 2 numbered them 0 to 2 and gave 3 to every other one, so players in two
   dimensions of mods were drawn in each other's; it is still read, those in 3 left out;
-- the records, each after its length (a varint).
+- the records, each after its length (a varint). The players who logged off come after which
+  part of their list the message is and how many parts there are.
 
-A message stays under 1 MiB, past which the game refuses it (`MAX_BYTES`): players that do
+A message stays under 1 MiB, past which the game refuses it (`MAX_BYTES`). The players who
+logged off go in as many messages as it takes, none left out; the client takes the list once
+its last part has come, and drops a list whose parts come out of order. Players online that do
 not fit are sent by their position alone, then left out, the first in the list kept, so the
 nearest come first. Mobs that do not fit leave out the farthest, and the circle they were
 chosen in shrinks so that the client does not take those left out for gone.
@@ -164,8 +166,7 @@ its world folder, so that a player who joins later sees them too.
 - Players still online when the server stops are kept as they were, as if they logged off
   then.
 - A mob is forgotten when its chunk is loaded and it is not there any more, and the oldest
-  go past 4000 mobs. Past 1000 players who logged off, those seen longest ago are forgotten
-  (`PositionPublisher.MAX_OFFLINE_KEPT`).
+  go past 4000 mobs. Every player who logged off is kept, however many.
 - Each time the server starts, its first share also adds the players the world saved that
   the file does not have yet (`track/WorldPlayers`: the 1000 most recent in `playerdata`,
   with their position and gear, named from `usercache.json`, last seen when their file was
@@ -193,6 +194,9 @@ on this client: nothing is sent to the server, they block nobody, and nothing ca
   were last, as they looked, on what they rode: as far as this client knows, they logged off
   then.
 - `offlinePlayers` off turns all of it off: nobody is shown or remembered.
+- `maxOfflinePlayers` of them are drawn at once (256; 1000 is no limit): the nearest the
+  camera in its dimension, chosen again every tick (`RestingPlayers.shown`). The others stay
+  remembered and lose their puppet until they are among the nearest again.
 
 ### Their life, near the camera
 
@@ -934,6 +938,7 @@ cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 | `showVehicles` | Mounts & Vehicles | `true` | | Draw the mount they were last seen on |
 | `playerMaxDistance` | Player Render Distance | `0` blocks | 0 to 4000 | Past this, distant players are not drawn (`0`: no limit) |
 | `offlinePlayers` | Offline Players | `true` | | Players who logged off are shown and remembered; off, neither |
+| `maxOfflinePlayers` | Max Offline | `256` | 0 to 1000 | How many players who logged off are drawn at once, nearest first (`0`: none, `1000`: no limit) |
 | `offlineLife` | Offline Player Activity | `true` | | They live their life around their spot; off, they sit on it |
 | `offlineRoam` | Roaming Radius | `50` blocks | 8 to 128 | How far from their spot they walk around and look for a bed or a chest (50 is about a village) |
 | `offlineNames` | Offline Player Names | `true` | | Their name above them, marked offline, and when they were last seen, under the crosshair |
