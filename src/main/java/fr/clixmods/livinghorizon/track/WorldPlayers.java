@@ -37,8 +37,6 @@ import java.util.stream.Stream;
  * <p>Loaded on a dedicated server: nothing here may reach a class of the client's.
  */
 final class WorldPlayers {
-    /** Bounds the list on a big server: those who played last come first. */
-    private static final int MAX = 1000;
     private static final Logger LOGGER = LoggerFactory.getLogger("Living Horizon");
 
     private WorldPlayers() {
@@ -61,10 +59,10 @@ final class WorldPlayers {
             LOGGER.warn("Could not list the players of this world", e);
             return List.of();
         }
+        // Every one of them, those who played last first.
         files.sort(Comparator.comparingLong(WorldPlayers::modified).reversed());
         List<PositionsMessage.Player> players = new ArrayList<>();
         for (Path file : files) {
-            if (players.size() >= MAX) break;
             String id = file.getFileName().toString();
             String name;
             try {

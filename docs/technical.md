@@ -168,9 +168,11 @@ its world folder, so that a player who joins later sees them too.
 - A mob is forgotten when its chunk is loaded and it is not there any more, and the oldest
   go past 4000 mobs. Every player who logged off is kept, however many.
 - Each time the server starts, its first share also adds the players the world saved that
-  the file does not have yet (`track/WorldPlayers`: the 1000 most recent in `playerdata`,
+  the file does not have yet (`track/WorldPlayers`: every one in `playerdata`, however many,
   with their position and gear, named from `usercache.json`, last seen when their file was
-  written, no skin), so players from before the mod show as logged off at once.
+  written, no skin), so players from before the mod show as logged off at once. A player the
+  cache does not name is left out, and the game keeps only the 1000 profiles used last in it
+  (`CachedUserNameToIdResolver`), so that is the bound on a server without a mod that keeps more.
 - Test players placed by the host with `/livinghorizon debug offline test` are shared too,
   marked as tests: the other clients show them while the host keeps them, and nobody saves
   them.
