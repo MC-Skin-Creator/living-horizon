@@ -416,6 +416,14 @@ come back, add it here in the same pull request: this file is what the next sess
   in `tick()`, which a puppet never runs. `Puppets.skin` hands it over, called wherever a copy
   is drawn or keyed (`GhostRenderer.extract`, `ImpostorKey.of`), and the impostor key counts
   the skin of any `ClientAvatarEntity`. The `mannequins` scenario checks it.
+- **Distant mannequins' capes sticking up** (standing out from their back; from 1.21.9): the tick
+  moves a mannequin's cape after it (`ClientAvatarState`), which a puppet never runs, so the cape
+  hangs from 0, 0, 0. The tick snaps it only when more than ten blocks off along an axis and
+  otherwise moves it a quarter of the way: `Puppets.cape` sets it outright in
+  `GhostRenderer.extract`, since each impostor view is baked from one call (`ImpostorAtlas.staged`).
+  The `mannequins` scenario checks it. Far, resting and logged-off player puppets are not ticked
+  either, on every version (`Player.xCloak` before 1.21.9): not covered yet, and `cape` cannot
+  just take any `ClientAvatarEntity`, since live players go through the same `extract` and tick.
 - **A rider turned sideways** (a player resting in a boat facing left or right of it): the seat's
   yaw is the rider's body (`yBodyRot`), which the boat keeps in line with itself, never the head
   (`getYRot`), which looks wherever the player looked as they left.

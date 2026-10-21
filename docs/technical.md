@@ -293,7 +293,9 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
   players. Mobs in `stillMobTypes` (happy ghast, mannequin) stand still instead of walking
   their loop. A copy wears its mannequin's skin, from a player's name or a texture of a
   resource pack: the game looks it up when the copy is loaded, and `Puppets.skin` hands it
-  over, since the game only does it in a tick a copy never runs.
+  over, since the game only does it in a tick a copy never runs. Its cape is hung from where it
+  stands (`Puppets.cape`), where the tick would move it over time, or it would reach out
+  towards 0, 0, 0.
 
 ### Scanning nearby mobs
 
