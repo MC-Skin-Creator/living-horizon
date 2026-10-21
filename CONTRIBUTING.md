@@ -19,6 +19,12 @@ clone private and open a pull request when it is ready.
 
 `CLAUDE.md` describes the full conventions of this repository.
 
+## Using AI
+
+AI tools are welcome. Living Horizon is made with [Claude](https://claude.ai), so Claude
+works best: it reads `CLAUDE.md` and the skills in `.claude/skills/` on its own. You stay
+responsible for what you submit: read it and test it before opening the pull request.
+
 ## What you agree to
 
 By opening a pull request you accept section 3 of the [LICENSE](LICENSE):

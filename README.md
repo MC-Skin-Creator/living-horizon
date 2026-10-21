@@ -150,6 +150,9 @@ label.
   clixmods. The unchanged jar may be redistributed with credit; forks are not allowed.
 - Credits: made by clixmods. Collaborators and testers: ISessen. Full list in [CREDITS.md](CREDITS.md).
 - Contributing: pull requests to this repository only, see [CONTRIBUTING.md](CONTRIBUTING.md).
+- AI is welcome: you can use it to work on this project. Living Horizon is made with
+  [Claude](https://claude.ai), so Claude works best. It reads `CLAUDE.md` and the skills in
+  `.claude/skills/`, which describe how the project works.
 
 Minecraft is a trademark of Mojang Studios. This project is not affiliated with or
 endorsed by Mojang Studios or Microsoft.
