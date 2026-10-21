@@ -20,6 +20,8 @@
 - **Remembered mobs and offline players lost** — a game that closes while saving no longer damages the files of remembered mobs and players who logged off, and a damaged one is kept as a `.bad` file instead of being emptied.
 - **Stutter when joining a big server** — joining a server with many players who logged off no longer makes the game stutter.
 - **Out of memory from a damaged picture** — a damaged saved picture of a far mob (*Simplified Entities*) can no longer make the game run out of memory: it is drawn again instead.
+- **Distant mobs hidden by Distant Horizons' terrain under shaders** — with Oculus and a shader pack, distant mobs no longer vanish behind Distant Horizons' terrain, more and more as the render distance grows (Forge).
+- **Distant mobs shaking their heads** — mobs and players far away no longer shake their heads very fast with Entity Culling, alone or with Chloride.
 
 ## 0.10.0 — 2026-10-20
 

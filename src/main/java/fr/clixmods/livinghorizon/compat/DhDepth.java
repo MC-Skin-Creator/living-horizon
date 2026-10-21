@@ -46,7 +46,7 @@ final class DhDepth {
     private static @Nullable Method nearPlane, farPlane, nearOverride;
     /** From API 7.1, Distant Horizons may draw through Blaze3D, without a shader pack: its depth is reached through a wrapper. */
     private static @Nullable Method blazeDepthTexture, wrappedObject;
-    /** Iris, when installed: whether a shader pack is on, and the planes it draws Distant Horizons with. */
+    /** Iris or Oculus, when installed: whether a shader pack is on, and the planes it draws Distant Horizons with. */
     private static @Nullable Method irisApi, packInUse, irisNear, irisFar;
 
     private DhDepth() {
@@ -350,7 +350,9 @@ final class DhDepth {
         } catch (ReflectiveOperationException e) {
             blazeDepthTexture = null; // before API 7.1: OpenGL only
         }
-        if (Platform.isModLoaded("iris")) {
+        // Oculus, Iris's port to Forge, keeps Iris's classes under another mod id: missed, a pack
+        // on Forge was read as no pack, and Distant Horizons' depth with the wrong projection.
+        if (Platform.isModLoaded("iris") || Platform.isModLoaded("oculus")) {
             try {
                 Class<?> iris = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
                 Class<?> compat = Class.forName("net.irisshaders.iris.compat.dh.DHCompat");

@@ -211,8 +211,8 @@ baseline, no commit back, no Modrinth, CurseForge, Nexus Mods or Discord. A push
 - Each target builds on its own runner, or takes the pull request's jar
   (`.github/scripts/release-targets.py` reads the tables of `stonecutter.properties.toml`),
   then the release is tagged, the version and the dated changelog are committed back to
-  `main`, and the GitHub release gets the jars. Below 1.0.0 it is a pre-release titled
-  `vX.Y.Z (beta)`.
+  `main`, and the GitHub release gets the jars. It is a full release, GitHub's "Latest",
+  never a pre-release; below 1.0.0 it is titled `vX.Y.Z (beta)`.
 - Then Modrinth, CurseForge and Nexus Mods each get a job of their own, a call to
   `.github/workflows/publish.yml` that takes the jars from the GitHub release: a platform
   that fails is re-run alone ("Re-run failed jobs"), and the same workflow, run by hand with
@@ -302,6 +302,11 @@ come back, add it here in the same pull request: this file is what the next sess
   pack on or off, it switches itself to OpenGL and fills only `getDhDepthTextureGlId`; the
   Blaze3D wrapper the game's GPU device path reads stays empty ("has no depth texture").
   `FarDepth.gpuPath` falls back to the OpenGL path when `DhDepth.drawsWithOpenGl`.
+- **Distant mobs hidden by Distant Horizons' terrain under a shader pack on Forge** (worse as the
+  render distance grows, depth view wrong; Oculus): Oculus is Iris under the mod id `oculus`, with
+  Iris's classes. Missed, a pack read as none, and Distant Horizons' depth, which Oculus draws with
+  Iris's near plane (it follows the render distance), was converted with Distant Horizons' own.
+  Anything that asks whether Iris is loaded asks for both ids.
 - **Distant Horizons under a shader pack from 26.2** (depth view flat grey, or a grey veil, under
   shaders only): Iris draws its terrain with Iris's near and far planes, but in the depth layout
   Distant Horizons reports (`getDepthRange`, `getDepthDirection`: reversed and 0..1 on 26.2,
@@ -391,6 +396,12 @@ come back, add it here in the same pull request: this file is what the next sess
   again with more room round it (`ImpostorPixels.growth`), drawn smaller in a tile of the same 64
   pixels: tiles two or three times larger took four or nine times the memory for a figure a dozen
   pixels tall. `impostoredges` and `longmobs` show both.
+- **Distant mobs shaking their heads very fast** (often reported with Entity Culling, more so with
+  Chloride or anything that makes the game stop drawing mobs sooner): Entity Culling holds every
+  entity out of view until the game's own `renderEntity` draws it, and gives it a shorter tick
+  that turns the head without `yHeadRotO`. A mob the mod draws in the game's place is told seen
+  (`compat/EntityCulling.drawn`, from `GhostRenderer`); the `headturn` scenario checks it with
+  Entity Culling in `-Plh.mods`.
 - **Crash extracting a distant mob on 1.21.2 to 1.21.8** (`NullPointerException` under
   `GhostRenderer.state`, often blamed on another mod's mixin into `extractRenderState`):
   GeckoLib 4's `createRenderState()` returns null and its `render` draws the entity it was
