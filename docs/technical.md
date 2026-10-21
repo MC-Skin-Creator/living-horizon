@@ -48,7 +48,7 @@ never added to a level (`track/Puppets`).
 | root | `LivingHorizonCommon` (entry point on both sides, opens the network channel), `LivingHorizonClient` (client entry point), `FarConfig` (the settings file), `QualityPreset`, `Stats` |
 | `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
 | `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`; `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
-| `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
+| `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`, `VisibilityPass`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
 | `ambient/` | The birds (`Ambience`, `BirdModels`, `BirdFigure`, `AmbientRenderer`) and the easter eggs |
 | `platform/` | What differs between loaders: events, network, config folder |
 | `ui/` | The settings screens (`FarConfigScreen` and its sub-screens, `SodiumOptions`), the impostor screen, the text under the crosshair (`OfflineHud`) |
@@ -675,7 +675,7 @@ The pack still finds the depth it expects.
   of that step and out at its end.
 - **Render scale.** Under a pack's render scale (Photon's TAAU), the pack draws the world in
   the bottom left corner of the depth texture and says so to Voxy (`useViewportDims`). Voxy's
-  depth, the depth view and the occlusion queries all go in that corner too.
+  depth, the depth view and the test of hidden mobs all go in that corner too.
 
 ### Distant Horizons
 
@@ -747,24 +747,39 @@ entirely, which is cheaper with many mobs. `compat/OcclusionQueries` asks the GP
 the depth of the picture, where Voxy's or Distant Horizons' terrain already is (merged by
 `FarDepth`):
 
-1. Just before the entities are drawn, the box around each distant mob is drawn against that
-   depth, writing nothing, inside an occlusion query (`GL_ANY_SAMPLES_PASSED_CONSERVATIVE`, or
-   `GL_ANY_SAMPLES_PASSED` without OpenGL 4.3 or `GL_ARB_ES3_compatibility`), with the
-   matrices of the frame (`LevelRendererMixin`, `renderLevel`; `render` from 26.2).
+1. Just before the entities are drawn, every distant mob's box is tested against that depth
+   in one draw (`compat/VisibilityPass`), with the matrices of the frame
+   (`LevelRendererMixin`, `renderLevel`; `render` from 26.2). The boxes go into a buffer
+   texture; a full-screen triangle draws a row of up to 512 pixels, one per mob, into a
+   target of its own. Each pixel projects its box on the picture (the corner a render scale
+   leaves, see *Render scale* above) and reads the depth under it, every pixel of a
+   box up to 16 pixels wide and a 16 by 16 grid of a larger one, against the box's nearest
+   point. The row is read into a pixel buffer, behind a fence. More boxes than fit wait for
+   the next frame, each frame starting where the last one stopped.
 2. The answers are read once the GPU has them, up to 4 frames of them waiting, never waited
    for.
 3. A mob whose last answer is "no pixel passed" is not drawn. It is asked about again on the
    next frame that has room for a batch, so it comes back as soon as one pixel of it would
    show.
 
+*Batched Depth Test* (`optBatchedDepth`) off, or once the one draw has failed, each box is
+drawn instead against the depth, writing nothing, inside an occlusion query of its own
+(`GL_ANY_SAMPLES_PASSED_CONSERVATIVE`, or `GL_ANY_SAMPLES_PASSED` without OpenGL 4.3 or
+`GL_ARB_ES3_compatibility`): a draw and some ten GL calls per mob. The one draw tests the
+box's rectangle on the screen rather than its outline, so it may show a mob the queries hide
+at the edge of a wall (0.4% of the answers with 480 mobs), never the other way round. The
+`visibility` game test sends both on the same frames (`OcclusionQueries.compare`) and
+compares the answers.
+
 On 26.3's GPU device path (see [Distant Horizons](#distant-horizons)), the boxes are tested
-in `compat/FarDepthGpu` and the answers read back from there, a capped number per frame.
+the same way in `compat/FarDepthGpu` (`far_visibility.fsh`) and the answers read back from
+there, a capped number per frame.
 
 Why the answer can be trusted:
 
-- The GPU projects the box exactly as the mob is drawn, so the answer is the picture's.
-- Depth clamping keeps a box past the far plane at the far plane: the sky never hides a mob,
-  terrain in front does.
+- The box is projected with the matrices the mob is drawn with, so the answer is the picture's.
+- A box past the far plane is tested at the far plane (depth clamping for the queries): the
+  sky never hides a mob, terrain in front does.
 - A mob never asked about, or whose answer is more than six frames old, is drawn.
 
 With `optOcclusionQueries` off, or once the queries have failed, the mobs are tested in the
@@ -1042,6 +1057,7 @@ Every one is on by default except `optFreezeHidden`. Switch one off to see what 
 | `optColumnCache` | Remember Far Ground | Ground already read in the far world is kept for two minutes |
 | `hideOccludedMobs` | Skip Hidden Mobs | Distant mobs the terrain hides entirely are not drawn (see [Skipping hidden mobs](#skipping-hidden-mobs)) |
 | `optOcclusionQueries` | Hide Mobs by Depth | How `hideOccludedMobs` decides: occlusion queries on the GPU; off, lines of sight in the far terrain's world |
+| `optBatchedDepth` | Batched Depth Test | How `optOcclusionQueries` asks the GPU with OpenGL: every mob in one draw; off, one occlusion query per mob |
 | `optDhFade` | DH Fade | Distant Horizons' fade leaves the entities alone, without a shader pack; off, it paints its terrain over distant mobs |
 | `optVoxyShadows` | Voxy Shadow Fix | Our far figures are written into Voxy's depth, on their own pixels only, so that Photon's terrain shadows do not fall across them |
 | `optVoxyFog` | Voxy Fog Fix | Without a shader pack, the world's entities get Voxy's fog, which stops growing past a limit (see [Fog on distant figures](#fog-on-distant-figures)); off, the game's fog |

@@ -1,5 +1,6 @@
 package fr.clixmods.livinghorizon.compat;
 
+import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
@@ -26,17 +27,19 @@ import java.util.Map;
  * Whether a distant mob is hidden by what stands in front of it, asked of the GPU itself.
  *
  * <p>Just before the entities are drawn - the terrain in the depth buffer, Voxy's or Distant
- * Horizons' merged in, no entity yet - the box around each distant mob is drawn against that
- * depth, with nothing written, inside an occlusion query: the GPU answers whether a single
+ * Horizons' merged in, no entity yet - the box around each distant mob is tested against that
+ * depth: all of them in one draw ({@link VisibilityPass}, {@link FarConfig#optBatchedDepth}),
+ * or each drawn with nothing written inside an occlusion query, which answers whether a single
  * pixel of it would show. The answers are read a frame or two later, never waited for, and a
  * mob whose last answer is "no pixel" is not drawn.
  *
- * <p>The box is projected by the GPU with the matrices of the frame, exactly as the mob would
- * be, so the answer is the picture's: a mob with one pixel in view is drawn. Depth clamping
- * keeps a box past the far plane at the far plane, where only terrain in front can hide it.
- * A mob never asked about, or whose answer is too old, is drawn.
+ * <p>The box is projected with the matrices of the frame, exactly as the mob would be, so the
+ * answer is the picture's: a mob with one pixel in view is drawn. Depth clamping keeps a box
+ * past the far plane at the far plane, where only terrain in front can hide it. A mob never
+ * asked about, or whose answer is too old, is drawn.
  *
- * <p>Any GL failure turns this off for the session, and the far terrain's world is read instead.
+ * <p>A failure of the one draw falls back to the queries; any GL failure of the queries turns
+ * this off for the session, and the far terrain's world is read instead.
  */
 public final class OcclusionQueries {
     /** An answer older than this many frames is not trusted: the mob is drawn. */
@@ -60,8 +63,8 @@ public final class OcclusionQueries {
     private record Box(Object key, float lowX, float lowY, float lowZ, float highX, float highY, float highZ) {
     }
 
-    /** Queries sent in one frame, in the order of their keys. */
-    private record Batch(Object[] keys, int[] queries, long frame) {
+    /** Queries sent in one frame, in the order of their keys; {@code compared} only to compare with the one draw. */
+    private record Batch(Object[] keys, int[] queries, long frame, boolean compared) {
     }
 
     /** The last answer for a mob, and the frame it was asked in. */
@@ -72,6 +75,12 @@ public final class OcclusionQueries {
     private static final ArrayDeque<Batch> IN_FLIGHT = new ArrayDeque<>();
     private static final ArrayDeque<Integer> POOL = new ArrayDeque<>();
     private static final Map<Object, Answer> ANSWERS = new HashMap<>();
+    /** While both ways are compared: each one's answers, by mob and frame. The one draw's are the ones used. */
+    private record Seen(Object key, long frame) {
+    }
+
+    private static final Map<Seen, Boolean> SEEN_BATCHED = new HashMap<>(), SEEN_QUERIES = new HashMap<>();
+    private static boolean compare;
     private static long frame;
     private static int culled, asked;
 
@@ -98,6 +107,11 @@ public final class OcclusionQueries {
         } catch (Throwable e) {
             fail(e);
         }
+    }
+
+    /** Whether this frame tests every box in one draw rather than one query each. */
+    private static boolean batched() {
+        return FarConfig.get().optBatchedDepth && VisibilityPass.usable();
     }
 
     /** Not turned off by a GL failure. */
@@ -151,6 +165,7 @@ public final class OcclusionQueries {
 
     /** An answer from the game's device about a box asked in {@code askedIn}. */
     public static void answer(Object key, boolean visible, long askedIn) {
+        if (compare) SEEN_BATCHED.put(new Seen(key, askedIn), visible);
         Answer old = ANSWERS.get(key);
         if (old == null || old.frame <= askedIn) ANSWERS.put(key, new Answer(visible, askedIn));
     }
@@ -163,6 +178,35 @@ public final class OcclusionQueries {
     /** Another world: what was seen is of no use. */
     public static void clear() {
         ANSWERS.clear();
+        SEEN_BATCHED.clear();
+        SEEN_QUERIES.clear();
+    }
+
+    // --- Comparing the one draw with the queries ------------------------------------------------
+
+    /**
+     * For the game tests: with the one draw on, the queries are sent too on the same frames,
+     * and their answers kept apart, to be compared with {@link #compared()}.
+     */
+    public static void compare(boolean on) {
+        compare = on;
+        SEEN_BATCHED.clear();
+        SEEN_QUERIES.clear();
+    }
+
+    /**
+     * Answers both ways gave about the same mob on the same frame: how many both see, both
+     * hide, only the queries hide, only the one draw hides.
+     */
+    public static int[] compared() {
+        int[] counts = new int[4];
+        for (Map.Entry<Seen, Boolean> entry : SEEN_QUERIES.entrySet()) {
+            Boolean batched = SEEN_BATCHED.get(entry.getKey());
+            if (batched == null) continue;
+            boolean query = entry.getValue();
+            counts[batched ? (query ? 0 : 2) : (query ? 3 : 1)]++;
+        }
+        return counts;
     }
 
     // --- The test -----------------------------------------------------------------------------
@@ -186,8 +230,11 @@ public final class OcclusionQueries {
     /** For the debug panel. */
     public static String state() {
         if (broken) return "off: " + reason;
-        return asked + " asked, " + culled + " hidden, " + IN_FLIGHT.size() + " frames in flight" +
-                (reason.isEmpty() ? "" : " (" + reason + ")");
+        boolean batched = !gpuReady() && batched();
+        String why = batched && reason.isEmpty() ? VisibilityPass.reason() : reason;
+        return asked + " asked, " + culled + " hidden, "
+                + (batched ? VisibilityPass.inFlight() + " frames in flight, one draw" : IN_FLIGHT.size() + " frames in flight")
+                + (why.isEmpty() ? "" : " (" + why + ")");
     }
 
     /** How many mobs the last frame hid. */
@@ -198,85 +245,91 @@ public final class OcclusionQueries {
     // --- On the GPU ---------------------------------------------------------------------------
 
     /**
-     * Draws this frame's boxes against a depth texture holding the terrain and no entity yet,
-     * each in its own query. Called just before the entities are drawn.
+     * Tests this frame's boxes against a depth texture holding the terrain and no entity yet:
+     * in one draw, or each in its own query. Called just before the entities are drawn.
      */
     static void run(int depthTexture) {
         long started = Profile.begin(Profile.Section.OCCLUSION_RUN);
         try {
-            drawBoxes(depthTexture);
+            test(depthTexture);
+        } catch (Throwable e) {
+            fail(e);
         } finally {
+            ASKED.clear();
+            viewNoted = false;
             Profile.end(Profile.Section.OCCLUSION_RUN, started);
         }
     }
 
-    private static void drawBoxes(int depthTexture) {
+    private static void test(int depthTexture) {
         asked = ASKED.size();
         if (broken || ASKED.isEmpty()) return;
         if (!viewNoted) {
             reason = "no view this frame";
             return;
         }
+        int width = GL45C.glGetTextureLevelParameteri(depthTexture, 0, GL11C.GL_TEXTURE_WIDTH);
+        int height = GL45C.glGetTextureLevelParameteri(depthTexture, 0, GL11C.GL_TEXTURE_HEIGHT);
+        if (width <= 0 || height <= 0) {
+            reason = "the depth texture has no size";
+            return;
+        }
+        reason = "";
+        // Where the world is drawn: all of the texture, or its corner under a render scale.
+        int pictureWidth = FarDepth.pictureWidth(), pictureHeight = FarDepth.pictureHeight();
+        pictureWidth = pictureWidth > 0 ? Math.min(pictureWidth, width) : width;
+        pictureHeight = pictureHeight > 0 ? Math.min(pictureHeight, height) : height;
+        boolean batched = batched();
+        // Compared, both on the same boxes: the queries first, as the one draw takes the boxes.
+        if (!batched || compare) drawBoxes(depthTexture, pictureWidth, pictureHeight, batched);
+        if (batched) VisibilityPass.run(depthTexture, pictureWidth, pictureHeight, VIEW_PROJECTION, frame);
+    }
+
+    /** Each box in its own occlusion query; {@code compared}, only to compare with the one draw. */
+    private static void drawBoxes(int depthTexture, int pictureWidth, int pictureHeight, boolean compared) {
         if (IN_FLIGHT.size() >= IN_FLIGHT_MAX) {
             reason = "the GPU is behind";
             return;
         }
-        reason = "";
+        prepare(depthTexture);
+        // The conservative test is OpenGL 4.3; the game may run on 3.3 (26.x), where it is not to be used.
+        GLCapabilities caps = GL.getCapabilities();
+        int target = caps.OpenGL43 || caps.GL_ARB_ES3_compatibility
+                ? GL43C.GL_ANY_SAMPLES_PASSED_CONSERVATIVE : GL33C.GL_ANY_SAMPLES_PASSED;
+        Object[] keys = new Object[ASKED.size()];
+        int[] queries = new int[ASKED.size()];
+        FarDepth.GlState gl = FarDepth.GlState.save();
+        boolean clamp = GL11C.glIsEnabled(GL32C.GL_DEPTH_CLAMP);
         try {
-            int width = GL45C.glGetTextureLevelParameteri(depthTexture, 0, GL11C.GL_TEXTURE_WIDTH);
-            int height = GL45C.glGetTextureLevelParameteri(depthTexture, 0, GL11C.GL_TEXTURE_HEIGHT);
-            if (width <= 0 || height <= 0) {
-                reason = "the depth texture has no size";
-                return;
+            GL30C.glBindFramebuffer(GL30C.GL_DRAW_FRAMEBUFFER, framebuffer);
+            GL11C.glDisable(GL11C.GL_SCISSOR_TEST);
+            GL11C.glDisable(GL11C.GL_CULL_FACE);
+            GL11C.glDisable(GL11C.GL_STENCIL_TEST);
+            GL11C.glDisable(GL11C.GL_BLEND);
+            GL11C.glEnable(GL11C.GL_DEPTH_TEST);
+            GL11C.glEnable(GL32C.GL_DEPTH_CLAMP);
+            GL11C.glDepthFunc(DepthFar.reversed() ? GL11C.GL_GEQUAL : GL11C.GL_LEQUAL);
+            GL11C.glDepthMask(false);
+            GL11C.glColorMask(false, false, false, false);
+            GL11C.glViewport(0, 0, pictureWidth, pictureHeight);
+            GL20C.glUseProgram(program);
+            GL20C.glUniformMatrix4fv(matrixLocation, false, VIEW_PROJECTION);
+            GL30C.glBindVertexArray(vertexArray);
+            for (int i = 0; i < keys.length; i++) {
+                Box box = ASKED.get(i);
+                keys[i] = box.key;
+                queries[i] = POOL.isEmpty() ? GL15C.glGenQueries() : POOL.pop();
+                GL20C.glUniform3f(lowLocation, box.lowX, box.lowY, box.lowZ);
+                GL20C.glUniform3f(highLocation, box.highX, box.highY, box.highZ);
+                GL15C.glBeginQuery(target, queries[i]);
+                GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 36);
+                GL15C.glEndQuery(target);
             }
-            prepare(depthTexture);
-            // The conservative test is OpenGL 4.3; the game may run on 3.3 (26.x), where it is not to be used.
-            GLCapabilities caps = GL.getCapabilities();
-            int target = caps.OpenGL43 || caps.GL_ARB_ES3_compatibility
-                    ? GL43C.GL_ANY_SAMPLES_PASSED_CONSERVATIVE : GL33C.GL_ANY_SAMPLES_PASSED;
-            Object[] keys = new Object[ASKED.size()];
-            int[] queries = new int[ASKED.size()];
-            FarDepth.GlState gl = FarDepth.GlState.save();
-            boolean clamp = GL11C.glIsEnabled(GL32C.GL_DEPTH_CLAMP);
-            try {
-                GL30C.glBindFramebuffer(GL30C.GL_DRAW_FRAMEBUFFER, framebuffer);
-                GL11C.glDisable(GL11C.GL_SCISSOR_TEST);
-                GL11C.glDisable(GL11C.GL_CULL_FACE);
-                GL11C.glDisable(GL11C.GL_STENCIL_TEST);
-                GL11C.glDisable(GL11C.GL_BLEND);
-                GL11C.glEnable(GL11C.GL_DEPTH_TEST);
-                GL11C.glEnable(GL32C.GL_DEPTH_CLAMP);
-                GL11C.glDepthFunc(DepthFar.reversed() ? GL11C.GL_GEQUAL : GL11C.GL_LEQUAL);
-                GL11C.glDepthMask(false);
-                GL11C.glColorMask(false, false, false, false);
-                // Where the world is drawn: all of the texture, or its corner under a render scale.
-                int pictureWidth = FarDepth.pictureWidth(), pictureHeight = FarDepth.pictureHeight();
-                GL11C.glViewport(0, 0, pictureWidth > 0 ? Math.min(pictureWidth, width) : width,
-                        pictureHeight > 0 ? Math.min(pictureHeight, height) : height);
-                GL20C.glUseProgram(program);
-                GL20C.glUniformMatrix4fv(matrixLocation, false, VIEW_PROJECTION);
-                GL30C.glBindVertexArray(vertexArray);
-                for (int i = 0; i < keys.length; i++) {
-                    Box box = ASKED.get(i);
-                    keys[i] = box.key;
-                    queries[i] = POOL.isEmpty() ? GL15C.glGenQueries() : POOL.pop();
-                    GL20C.glUniform3f(lowLocation, box.lowX, box.lowY, box.lowZ);
-                    GL20C.glUniform3f(highLocation, box.highX, box.highY, box.highZ);
-                    GL15C.glBeginQuery(target, queries[i]);
-                    GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 36);
-                    GL15C.glEndQuery(target);
-                }
-            } finally {
-                if (!clamp) GL11C.glDisable(GL32C.GL_DEPTH_CLAMP);
-                gl.restore();
-            }
-            IN_FLIGHT.add(new Batch(keys, queries, frame));
-        } catch (Throwable e) {
-            fail(e);
         } finally {
-            ASKED.clear();
-            viewNoted = false;
+            if (!clamp) GL11C.glDisable(GL32C.GL_DEPTH_CLAMP);
+            gl.restore();
         }
+        IN_FLIGHT.add(new Batch(keys, queries, frame, compared));
     }
 
     /** Takes in every batch the GPU has finished, oldest first, without waiting for any. */
@@ -284,6 +337,12 @@ public final class OcclusionQueries {
         long started = Profile.begin(Profile.Section.OCCLUSION_COLLECT);
         try {
             takeAnswers();
+            VisibilityPass.collect(frame);
+            if (ANSWERS.size() > 4096) {
+                for (Iterator<Answer> it = ANSWERS.values().iterator(); it.hasNext(); ) {
+                    if (frame - it.next().frame > MAX_AGE) it.remove();
+                }
+            }
         } finally {
             Profile.end(Profile.Section.OCCLUSION_COLLECT, started);
         }
@@ -298,13 +357,9 @@ public final class OcclusionQueries {
             IN_FLIGHT.poll();
             for (int i = 0; i < batch.queries.length; i++) {
                 boolean visible = GL15C.glGetQueryObjecti(batch.queries[i], GL15C.GL_QUERY_RESULT) != 0;
-                ANSWERS.put(batch.keys[i], new Answer(visible, batch.frame));
+                if (!batch.compared) ANSWERS.put(batch.keys[i], new Answer(visible, batch.frame));
+                else if (compare) SEEN_QUERIES.put(new Seen(batch.keys[i], batch.frame), visible);
                 POOL.push(batch.queries[i]);
-            }
-        }
-        if (ANSWERS.size() > 4096) {
-            for (Iterator<Answer> it = ANSWERS.values().iterator(); it.hasNext(); ) {
-                if (frame - it.next().frame > MAX_AGE) it.remove();
             }
         }
     }

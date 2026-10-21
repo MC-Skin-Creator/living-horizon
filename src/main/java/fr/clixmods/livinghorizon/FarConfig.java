@@ -250,6 +250,12 @@ public final class FarConfig {
     @SerializedName(value = "optOcclusionQueries", alternate = "optHiZ")
     public boolean optOcclusionQueries = true;
     /**
+     * How {@link #optOcclusionQueries} asks the GPU with OpenGL: every mob in one draw, the depth
+     * under its box tested in a shader (see {@code VisibilityPass}). Off, to compare: one
+     * occlusion query per mob, a draw each.
+     */
+    public boolean optBatchedDepth = true;
+    /**
      * Distant Horizons' fade of the game's picture into its terrain, without a shader pack,
      * leaves the entities alone (see {@code FarDepth.beforeFade}). Off, to compare: it paints
      * its terrain over the distant mobs.

@@ -20,9 +20,8 @@
 
 #### Improved
 - **Clearer message when versions differ** — when the mod on the server is too old or too new for yours, the log says which one to update, instead of saying the server does not have the mod.
-
-#### Improved
 - **Smoother with many players who logged off** — players who logged off cost less to show far away, and those hidden behind hills are skipped.
+- **Hundreds of distant mobs** — the game spends less time working out which distant mobs are hidden behind the terrain, so it stays smoother with hundreds of them in view.
 
 #### Fixed
 - **Players who logged off past the Player Render Distance** — players who logged off no longer show farther than the *Player Render Distance* setting.
