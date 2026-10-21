@@ -10,6 +10,7 @@
 
 #### Fixed
 - **Distant mannequins wearing the default skin** — mannequins far away no longer lose their skin and show as Alex: they keep the one they wear up close, a player's or a resource pack's (Minecraft 1.21.9 and later).
+- **Distant mobs shaking their heads** — mobs and players far away no longer shake their heads very fast when Entity Culling is installed.
 
 ## 0.10.0 — 2026-10-20
 

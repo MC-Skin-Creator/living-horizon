@@ -5,6 +5,7 @@ import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.Stats;
 import fr.clixmods.livinghorizon.ambient.Ambience;
+import fr.clixmods.livinghorizon.compat.EntityCulling;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.OcclusionQueries;
 import fr.clixmods.livinghorizon.debug.DebugMarks;
@@ -394,6 +395,7 @@ public final class GhostRenderer {
                 // draws, when its render distance is shorter than the server's.
                 if (EXTRACTED.contains(live) || live.isInvisible()) continue;
                 Entity mount = live.getRootVehicle();
+                EntityCulling.drawn(live);
                 if (debug) DebugMarks.mark(live, Mark.PLAYER);
                 if (config.impostorPlayers && (mount == live ? impostor(minecraft, eye, live, partialTick, config)
                         : !EXTRACTED.contains(mount) && impostorRiding(minecraft, eye, live, mount, partialTick, config))) {
@@ -564,6 +566,7 @@ public final class GhostRenderer {
             if (tooFar(entity, eye, config.mobMaxDistance)) continue;
             if (skipped(entity, true)) continue;
             if (occluded(entity.getUUID(), entity, config)) continue;
+            EntityCulling.drawn(entity);
             if (debug) DebugMarks.mark(entity, Mark.LIVE);
             if (impostor(minecraft, eye, entity, partialTick, config)) continue;
             add(frame, minecraft, eye, extract(dispatcher, entity, partialTick), null, false, Mark.LIVE, config,
