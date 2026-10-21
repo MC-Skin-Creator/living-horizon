@@ -21,6 +21,8 @@ contribution: name, link to the profile, a few words on what they brought.
 ## Testers
 
 - **ISessen**.
+- **largitalian**, who found how to reproduce distant mobs vanishing under shaders with
+  Distant Horizons on Forge, and tested the fix (#89).
 
 ## Thanks
 
