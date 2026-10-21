@@ -288,17 +288,16 @@ jobs:
         run: |
           set -euo pipefail
 
-          args=(--generate-notes --title "v${VERSION}")
-
-          # Below 1.0.0 the mod is in beta: say so, and keep it off GitHub's
-          # "Latest" badge. 1.0.0 is the day this stops applying.
+          # A release from main is a full release, GitHub's "Latest" one, never a
+          # pre-release. Below 1.0.0 the mod is in beta: the title says so.
+          args=(--generate-notes --title "v${VERSION}" --latest)
           if [ "$CHANNEL" = 'stable' ] && [[ $VERSION == 0.* ]]; then
-            args=(--generate-notes --title "v${VERSION} (beta)" --prerelease)
+            args=(--generate-notes --title "v${VERSION} (beta)" --latest)
           fi
 
           if [ "$CHANNEL" = 'dev' ]; then
             # Marked as a pre-release so it never displays as the latest version.
-            args+=(--prerelease --target "${{ github.sha }}")
+            args=(--generate-notes --title "v${VERSION}" --prerelease --latest=false --target "${{ github.sha }}")
 
             # Generate the notes from the last stable release, so a dev build lists
             # what it adds over the last thing that shipped rather than over the
