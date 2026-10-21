@@ -175,8 +175,11 @@ public final class RestingPlayers {
 
     /** Blocks from the eye to the point aimed at on a sleeper: about the reach of a hand. */
     private static final double MAX_AIM = 3;
-    /** Spots of the world the puppets may read per tick, all of them together. */
-    private static final int WORK = 600;
+    /**
+     * Sections of blocks the puppets may copy per tick, all of them together, to look around
+     * off the game's thread: a village of 50 blocks around in a few ticks.
+     */
+    private static final int WORK = 96;
 
     public Collection<Spot> spots() {
         return Collections.unmodifiableCollection(spots.values());
@@ -502,7 +505,7 @@ public final class RestingPlayers {
             if (puppet.bed() != null) beds.add(puppet.bed());
         }
         boolean night = !level.isBrightOutside();
-        // Spots read per tick by all of them together, looking around and for their way.
+        // Sections copied per tick by all of them together, to look around.
         int[] work = {WORK};
         Entity camera = Minecraft.getInstance().getCameraEntity();
         for (RestingPuppet puppet : puppets.values()) {

@@ -160,7 +160,7 @@ public final class MobMemory {
     private static final long BUILD_BUDGET = 2_000_000L;
     /** A copy not drawn for this long (nanoseconds) is frozen, with {@link FarConfig#optFreezeHidden}. */
     private static final long FREEZE_AFTER = 500_000_000L;
-    /** Grounds read per tick, at most: a few thousand blocks each, when the chunks are loaded. */
+    /** Grounds asked for per tick, at most: a copy of a few sections each here, the rest off the game's thread. */
     private static final int READS_PER_TICK = 6;
     /**
      * Ticks before a ground read with columns missing is read again - the far world may not
