@@ -66,9 +66,12 @@ public final class Occlusion {
         // The GPU's answer is the better one: what the player sees, no world to read.
         // Never mixed with the world's answer, which disagrees often enough to make mobs blink.
         if (byDepth()) {
-            return OcclusionQueries.hidden(key, dx, dy, dz,
-                    Math.max(entity.getBbWidth() * 0.5, entity.getBbHeight() * 0.35) * scale,
-                    entity.getBbHeight() * scale);
+            double half = Math.max(entity.getBbWidth() * 0.5, entity.getBbHeight() * 0.35) * scale;
+            double height = entity.getBbHeight() * scale;
+            // The box is tested against the far terrain's depth: it must be merged there. Half a
+            // block more than its sides and the queries' own margin.
+            FarDepth.around(dx, dy + height * 0.5, dz, Math.max(half, height * 0.5) + 0.5);
+            return OcclusionQueries.hidden(key, dx, dy, dz, half, height);
         }
         ASKED.put(key, new double[]{entity.getX(), entity.getY(), entity.getZ(), entity.getBbHeight()});
         return HIDDEN.getOrDefault(key, false);

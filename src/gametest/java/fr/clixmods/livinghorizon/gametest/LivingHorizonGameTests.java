@@ -5,6 +5,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.BenchmarkWorldScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.BirdCommandScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.BirdsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DedicatedServerScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.DepthRegionScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EasterEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
@@ -74,6 +75,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new SodiumPagesScenario(),
             new SodiumControlsScenario(),
             new DepthViewScenario(),
+            new DepthRegionScenario(),
             new EntityDepthScenario(),
             new ResizeScenario(),
             new UnloadScenario(),

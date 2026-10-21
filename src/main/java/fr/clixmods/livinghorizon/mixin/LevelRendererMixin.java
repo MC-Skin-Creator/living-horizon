@@ -128,6 +128,9 @@ abstract class LevelRendererMixin {
         Sink sink = new Sink(collector);
         AmbientRenderer.submit(pose, frame.cameraRenderState.pos, sink);
         ImpostorRenderer.submit(pose, sink);
+        // Every figure is handed over, before the entities are drawn: the far terrain's depth may
+        // be merged around them only.
+        FarDepth.figuresKnown();
     }
 
     /** Moves a distant player's state closer along the line of sight, and scales it to match. */
