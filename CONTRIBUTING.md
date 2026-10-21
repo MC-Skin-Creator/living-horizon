@@ -21,11 +21,10 @@ clone private and open a pull request when it is ready.
 
 ## Using AI
 
-AI tools are welcome, but keep thinking for yourself. AI is a great tool when you know how
-to use it, not a replacement for understanding the change. The README's *Made with AI*
-section says how the maintainer uses it. Living Horizon is made with [Claude](https://claude.ai), so Claude works best: it
-reads `CLAUDE.md` and the skills in `.claude/skills/` on its own. You stay responsible for
-what you submit: read it, understand it and test it before opening the pull request.
+AI is part of this project's workflow, and you can use it to contribute, no problem. Just
+keep thinking about what it writes: read, understand and test your change before opening
+the pull request. Claude works best here: it reads `CLAUDE.md` and the skills in
+`.claude/skills/` on its own.
 
 ## What you agree to
 

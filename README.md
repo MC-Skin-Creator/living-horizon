@@ -140,21 +140,11 @@ label.
 
 ## Made with AI
 
-I use AI to make Living Horizon, mostly [Claude](https://claude.ai). I am not pretending I
-wrote everything by hand.
+AI is part of this project's workflow: Living Horizon is made with [Claude](https://claude.ai).
 
-I have been a developer for a long time. I learned to code before AI was a thing, in Notepad
-and Sublime Text, and I have worked with .NET, C++, PHP and Java. I am a developer by
-profession, specialised in video games, and I was one before companies used AI the way they
-do today.
-
-At work, AI was pushed into the workflow, and now I use it every day. It lets me work about
-ten times faster. Most developers I know use it too. I understand that it bothers some
-people, and I am sorry if that disappoints you, but it is part of how I work now.
-
-**Contributing with AI.** AI is welcome on this project, but keep thinking for yourself. It
-is a great tool when you know how to use it. Claude works best here: it reads `CLAUDE.md`
-and the skills in `.claude/skills/`, which describe how the project works.
+You can use AI to contribute too, no problem. Just keep thinking about what it writes.
+Claude works best here: it reads `CLAUDE.md` and the skills in `.claude/skills/`, which
+describe how the project works.
 
 ## More
 
