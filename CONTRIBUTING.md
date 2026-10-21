@@ -22,9 +22,8 @@ clone private and open a pull request when it is ready.
 ## Using AI
 
 AI tools are welcome, but keep thinking for yourself. AI is a great tool when you know how
-to use it, not a replacement for understanding the change. The maintainer is a professional
-game developer since long before AI was used in the industry, and works ten times faster
-with it. Living Horizon is made with [Claude](https://claude.ai), so Claude works best: it
+to use it, not a replacement for understanding the change. The README's *Made with AI*
+section says how the maintainer uses it. Living Horizon is made with [Claude](https://claude.ai), so Claude works best: it
 reads `CLAUDE.md` and the skills in `.claude/skills/` on its own. You stay responsible for
 what you submit: read it, understand it and test it before opening the pull request.
 

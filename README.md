@@ -138,6 +138,24 @@ Mobs from other mods should work. Mods not tested yet are listed under the
 [`mod compatibility`](https://github.com/MC-Skin-Creator/living-horizon/labels/mod%20compatibility)
 label.
 
+## Made with AI
+
+I use AI to make Living Horizon, mostly [Claude](https://claude.ai). I am not pretending I
+wrote everything by hand.
+
+I have been a developer for a long time. I learned to code before AI was a thing, in Notepad
+and Sublime Text, and I have worked with .NET, C++, PHP and Java. I am a developer by
+profession, specialised in video games, and I was one before companies used AI the way they
+do today.
+
+At work, AI was pushed into the workflow, and now I use it every day. It lets me work about
+ten times faster. Most developers I know use it too. I understand that it bothers some
+people, and I am sorry if that disappoints you, but it is part of how I work now.
+
+**Contributing with AI.** AI is welcome on this project, but keep thinking for yourself. It
+is a great tool when you know how to use it. Claude works best here: it reads `CLAUDE.md`
+and the skills in `.claude/skills/`, which describe how the project works.
+
 ## More
 
 - Something wrong? Open an [issue](https://github.com/MC-Skin-Creator/living-horizon/issues)
@@ -150,11 +168,6 @@ label.
   clixmods. The unchanged jar may be redistributed with credit; forks are not allowed.
 - Credits: made by clixmods. Collaborators and testers: ISessen. Full list in [CREDITS.md](CREDITS.md).
 - Contributing: pull requests to this repository only, see [CONTRIBUTING.md](CONTRIBUTING.md).
-- AI is welcome on this project, but keep thinking for yourself. AI is a great tool when you
-  know how to use it. I am a professional developer, specialised in video games, since long
-  before AI was used in the industry. AI lets me work ten times faster, so I use it: Living
-  Horizon is made with [Claude](https://claude.ai), and Claude works best here. It reads
-  `CLAUDE.md` and the skills in `.claude/skills/`, which describe how the project works.
 
 Minecraft is a trademark of Mojang Studios. This project is not affiliated with or
 endorsed by Mojang Studios or Microsoft.

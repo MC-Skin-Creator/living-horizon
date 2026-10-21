@@ -181,6 +181,20 @@ Open the settings from the Options screen, Mod Menu, Sodium's *Video Settings* o
 - [Voxy](https://modrinth.com/mod/voxy) or [Distant Horizons](https://modrinth.com/mod/distanthorizons): optional.
 - [Mod Menu](https://modrinth.com/mod/modmenu): optional, on Fabric and Quilt.
 
+## Made with AI
+
+I use AI to make Living Horizon, mostly [Claude](https://claude.ai). I am not pretending I
+wrote everything by hand.
+
+I have been a developer for a long time. I learned to code before AI was a thing, in Notepad
+and Sublime Text, and I have worked with .NET, C++, PHP and Java. I am a developer by
+profession, specialised in video games, and I was one before companies used AI the way they
+do today.
+
+At work, AI was pushed into the workflow, and now I use it every day. It lets me work about
+ten times faster. Most developers I know use it too. I understand that it bothers some
+people, and I am sorry if that disappoints you, but it is part of how I work now.
+
 ## Links
 
 [Source and issues](https://github.com/MC-Skin-Creator/living-horizon) · [Discord](https://discord.gg/THSV9dexNj)
