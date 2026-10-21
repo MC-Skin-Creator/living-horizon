@@ -19,8 +19,10 @@ import org.jspecify.annotations.Nullable;
  * near enough for the real mob to be sent, the copy is called back to the spot where the
  * real one was last seen, so that the hand-over has little left to walk.
  *
- * <p>A mob the single player server still moves ({@link ServerMobs}) plays no animation: it
- * walks where the server has it, at the server's pace, and faces the way the real one faces.
+ * <p>A mob the single player server walks ({@link ServerMobs}) plays no animation: it walks
+ * where the server has it, at the server's pace, and faces the way the real one faces. Once
+ * the real one stands still - the game stops an animal wandering when no player came near it
+ * for a few seconds - the copy plays its animation again, around where the real one stands.
  *
  * <p>Walks, or hops: a slime, a magma cube or a rabbit covers the same way in hops, as its
  * kind does ({@link MobGait}), and waits on the ground between two.
@@ -146,7 +148,7 @@ final class MobMotion {
         double tx = mob.x, tz = mob.z;
         float facing = mob.yaw;
         boolean walking = false, grazing = false;
-        boolean followed = mob.simulated;
+        boolean followed = mob.followed;
         MobAnimations.Animation animation = roam && choice != null && !followed ? choice.animation() : null;
         int t = clock - started - (int) Math.floorMod(seed, 200L);
         if (animation != null && t >= 0) {

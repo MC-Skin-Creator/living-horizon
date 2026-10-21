@@ -70,7 +70,8 @@ import java.util.concurrent.CompletableFuture;
  * is only drawn once the copy stands where it is.
  *
  * <p>In a single player world, where the server is right here, a remembered mob the server
- * still moves is followed instead ({@link ServerMobs}): the copy walks where the real one is.
+ * walks is followed instead ({@link ServerMobs}): the copy walks where the real one is. One the
+ * server keeps standing, as the game does an animal no player came near, plays its animation.
  *
  * <p>Only mobs that stay put are worth remembering: animals do, hostile mobs despawn as
  * soon as nobody is around. Which ones is {@link FarConfig#mobTypes}, plus every mob with
@@ -130,8 +131,16 @@ public final class MobMemory {
         transient double distance;
         /** Forgotten while still on the list being drawn: not drawn again, nor rebuilt. */
         transient boolean gone;
-        /** The single player server moves it now: the copy follows it instead of playing its animation. */
+        /** Its chunk ticks on the single player server: the server may move it, and its word comes first. */
         transient boolean simulated;
+        /**
+         * The single player server walked it a moment ago: the copy follows it instead of playing
+         * its animation. Off once the real one stands still, as the game keeps an animal that no
+         * player came near: then the copy plays its animation where the real one stands.
+         */
+        transient boolean followed;
+        /** The tick the single player server last moved it; never when it has not. */
+        transient int serverMovedAt = Integer.MIN_VALUE / 2;
         /** How the server last had it turned, body and head; NaN before its first answer. */
         transient float serverBody = Float.NaN, serverHead = Float.NaN;
         /** Too small or too far for its animation to show; kept between ticks for the hysteresis. */
@@ -168,6 +177,13 @@ public final class MobMemory {
      * be open yet, as when the world was just entered - doubled each time, up to a minute.
      */
     private static final int REPLAN_FIRST = 40, REPLAN_MAX = 1200;
+    /** Blocks the single player server moves a mob between two answers for it to be walking. */
+    private static final double WALKED = 0.05;
+    /**
+     * Ticks a mob the single player server moves may stand still before its copy plays its own
+     * animation: longer than an animal's pause between two strolls.
+     */
+    private static final int STOOD = 200;
 
     private final Map<UUID, Remembered> mobs = new LinkedHashMap<>();
     /** The render distance, in blocks, as of the last tick. */
@@ -365,6 +381,7 @@ public final class MobMemory {
             mob.handover = null;
             mob.failed = false;
             mob.simulated = false;
+            mob.followed = false;
         }
         joining.clear();
         shown = List.of();
@@ -703,7 +720,7 @@ public final class MobMemory {
                 if (config.optFreezeHidden && mob.motion != null && mob.motion.placed()
                         && System.nanoTime() - mob.drawnAt > FREEZE_AFTER) {
                     // Moved by the server meanwhile: there when it shows again, not running there.
-                    if (mob.simulated) mob.motion.jump(living, mob);
+                    if (mob.followed) mob.motion.jump(living, mob);
                     continue;
                 }
                 boolean roam = !still.contains(mob.type);
@@ -713,7 +730,7 @@ public final class MobMemory {
                 if (choice != null && !choice.ground().around(mob.x, mob.z)) mob.choice = choice = null;
                 // Read with part of the far world missing: read again, now that it may be there.
                 boolean again = choice != null && !choice.complete() && clock >= mob.replanAt;
-                if (choice == null && roam && !mob.simulated && !mob.planning && mob.ground != null) {
+                if (choice == null && roam && !mob.followed && !mob.planning && mob.ground != null) {
                     // Saved with it: the ground it was last seen on, if it is still where it was.
                     MobPaths.Ground saved = MobPaths.Ground.load(mob.ground);
                     if (saved != null && saved.around(mob.x, mob.z) && walker(living)) {
@@ -722,7 +739,7 @@ public final class MobMemory {
                         mob.ground = null;
                     }
                 }
-                if ((choice == null || again) && roam && !mob.simulated && !mob.planning && reads < READS_PER_TICK) {
+                if ((choice == null || again) && roam && !mob.followed && !mob.planning && reads < READS_PER_TICK) {
                     reads++;
                     mob.planning = true;
                     if (choice == null) mob.replans = 0;
@@ -892,7 +909,7 @@ public final class MobMemory {
 
     /**
      * In a single player world, where the server has the remembered mobs it no longer sends:
-     * those it still moves are followed by their copies, those that died there are forgotten.
+     * those it walks are followed by their copies, those that died there are forgotten.
      * Asked every {@link ServerMobs#EVERY} ticks; each answer is applied as it comes.
      */
     private void followServer(ClientLevel level, String dimension) {
@@ -903,11 +920,16 @@ public final class MobMemory {
                 if (where == null || !mob.dimension.equals(dimension) || !isHere(mob)
                         || live.containsKey(mob.id) || mob.handover != null) {
                     mob.simulated = false;
+                    mob.followed = false;
                     continue;
                 }
                 mob.simulated = where.simulated();
                 double moved = Math.abs(where.x() - mob.x) + Math.abs(where.y() - mob.y) + Math.abs(where.z() - mob.z);
-                if (moved > 0) {
+                // The first answer only corrects where the copy was left; walking is a later one.
+                if (mob.simulated && moved > WALKED && !Float.isNaN(mob.serverBody)) mob.serverMovedAt = clock;
+                mob.followed = mob.simulated && clock - mob.serverMovedAt < STOOD;
+                // Standing on the server and nudged a hair: the copy keeps the ground it walks on.
+                if (moved > WALKED || (moved > 0 && (mob.followed || !mob.simulated))) {
                     mob.x = where.x();
                     mob.y = where.y();
                     mob.z = where.z();
@@ -917,7 +939,7 @@ public final class MobMemory {
                 // works out a body of its own for a mob standing still.
                 boolean turned = !Float.isNaN(mob.serverBody)
                         && (where.body() != mob.serverBody || where.head() != mob.serverHead);
-                if (moved > 0.05 || turned) {
+                if (moved > WALKED || turned) {
                     mob.yaw = where.body();
                     mob.head = where.head();
                 }

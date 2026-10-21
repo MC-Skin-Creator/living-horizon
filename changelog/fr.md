@@ -26,6 +26,7 @@
 
 #### Corrections
 - **Joueurs déconnectés au-delà de la Distance d'affichage des joueurs** — les joueurs déconnectés ne s'affichent plus au-delà du réglage *Distance d'affichage des joueurs*.
+- **Créatures lointaines qui tournent sur place** — en solo, les animaux au loin ne restent plus à tourner sur eux-mêmes sans jamais avancer, même juste après *Oublier les créatures* : ils se remettent à marcher.
 - **Mannequins lointains avec le skin par défaut** — les mannequins au loin ne perdent plus leur skin pour apparaître en Alex : ils gardent celui qu'ils portent de près, celui d'un joueur ou d'un pack de ressources (Minecraft 1.21.9 et plus).
 - **Capes dressées des mannequins lointains** — les capes des mannequins au loin ne se dressent plus en l'air : elles pendent comme de près (Minecraft 1.21.9 et plus).
 - **Fichier de réglages perdu après une faute de frappe** — une erreur en modifiant `livinghorizon.json` à la main n'efface plus le fichier : il est gardé en `livinghorizon.json.bad`, et le journal le signale.

@@ -26,6 +26,7 @@
 
 #### Fixed
 - **Players who logged off past the Player Render Distance** — players who logged off no longer show farther than the *Player Render Distance* setting.
+- **Distant mobs only turning on the spot** — in single player, distant animals no longer stand turning on the spot for good, even right after *Forget Mobs*: they walk again.
 - **Distant mannequins wearing the default skin** — mannequins far away no longer lose their skin and show as Alex: they keep the one they wear up close, a player's or a resource pack's (Minecraft 1.21.9 and later).
 - **Distant mannequins' capes sticking up** — capes of mannequins far away no longer stick up in the air: they hang down as they do up close (Minecraft 1.21.9 and later).
 - **Settings file lost after a typo** — a mistake made editing `livinghorizon.json` by hand no longer wipes the file: it is kept as `livinghorizon.json.bad`, and the log says so.
