@@ -2,6 +2,11 @@
 
 ## Prochaine version
 
+### Serveur
+
+#### Corrections
+- **Joueurs déconnectés perdus quand le fichier du monde ne se lit pas** — un `livinghorizon-positions.dat` que le serveur ne sait pas lire n'est plus écrasé : il est gardé en `livinghorizon-positions.dat.bad`, et la console le signale.
+
 ### Client
 
 #### Nouveautés
@@ -10,6 +15,11 @@
 
 #### Corrections
 - **Mannequins lointains avec le skin par défaut** — les mannequins au loin ne perdent plus leur skin pour apparaître en Alex : ils gardent celui qu'ils portent de près, celui d'un joueur ou d'un pack de ressources (Minecraft 1.21.9 et plus).
+- **Capes dressées des mannequins lointains** — les capes des mannequins au loin ne se dressent plus en l'air : elles pendent comme de près (Minecraft 1.21.9 et plus).
+- **Fichier de réglages perdu après une faute de frappe** — une erreur en modifiant `livinghorizon.json` à la main n'efface plus le fichier : il est gardé en `livinghorizon.json.bad`, et le journal le signale.
+- **Mobs mémorisés et joueurs déconnectés perdus** — un jeu qui se ferme pendant une sauvegarde n'abîme plus les fichiers des mobs mémorisés et des joueurs déconnectés, et un fichier abîmé est gardé en `.bad` au lieu d'être vidé.
+- **Saccades en rejoignant un gros serveur** — rejoindre un serveur avec beaucoup de joueurs déconnectés ne fait plus saccader le jeu.
+- **Manque de mémoire à cause d'une image abîmée** — une image sauvegardée abîmée d'un mob lointain (*Entités simplifiées*) ne peut plus faire manquer de mémoire au jeu : elle est redessinée à la place.
 - **Mobs lointains cachés par le terrain de Distant Horizons sous shaders** — avec Oculus et un shader pack, les mobs lointains ne disparaissent plus derrière le terrain de Distant Horizons, de plus en plus à mesure que la distance de rendu augmente (Forge).
 
 ## 0.10.0 — 2026-10-20

@@ -21,11 +21,18 @@ import java.util.UUID;
  * the players who logged off, and {@link #MOBS}, every few seconds, and all three at once to a
  * player who just joined. How a player looks ({@link Look}) and what they ride ({@link Mount})
  * come every few seconds only. The server keeps the same lists in the world
- * ({@link PositionPublisher}), written in this format too.
+ * ({@link PositionPublisher}), written in this format too, under a version of its own
+ * ({@link #FILE_VERSION}).
  */
 public final class PositionsMessage {
     /** The layout below; a client that reads another one ignores the message. */
     public static final int VERSION = 2;
+    /**
+     * The layout of the server's own file ({@link #saved}), apart from the messages': a new
+     * message layout must not make every server drop its file. 2 is the one files had when it
+     * was still {@link #VERSION}; a new one is read here alongside the older ones.
+     */
+    static final int FILE_VERSION = 2;
     public static final byte PLAYERS = 0;
     public static final byte MOBS = 1;
     public static final byte OFFLINE = 2;
@@ -155,7 +162,7 @@ public final class PositionsMessage {
 
     /** The server's own file: every player and every mob it knows, in the same layout. */
     static byte[] saved(List<Player> players, List<Mob> mobs) {
-        return write(out -> {
+        return write(FILE_VERSION, out -> {
             writePlayers(out, players);
             writeMobs(out, mobs);
         });
@@ -164,7 +171,7 @@ public final class PositionsMessage {
     /** The server's file read back: the players and the mobs, or null when it does not read. */
     static @Nullable Saved readSaved(byte[] data) {
         try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(data))) {
-            if (in.readInt() != VERSION) return null;
+            if (in.readInt() != FILE_VERSION) return null;
             return new Saved(readPlayers(in), readMobs(in));
         } catch (IOException | RuntimeException e) {
             return null;
@@ -174,14 +181,24 @@ public final class PositionsMessage {
     record Saved(List<Player> players, List<Mob> mobs) {
     }
 
+    /** The version the server's file says it is in; -1 when it is too short to say. */
+    static int savedVersion(byte[] data) {
+        if (data.length < 4) return -1;
+        return (data[0] & 0xFF) << 24 | (data[1] & 0xFF) << 16 | (data[2] & 0xFF) << 8 | data[3] & 0xFF;
+    }
+
     private interface Writer {
         void write(DataOutputStream out) throws IOException;
     }
 
     private static byte[] write(Writer writer) {
+        return write(VERSION, writer);
+    }
+
+    private static byte[] write(int version, Writer writer) {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try (DataOutputStream out = new DataOutputStream(bytes)) {
-            out.writeInt(VERSION);
+            out.writeInt(version);
             writer.write(out);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
