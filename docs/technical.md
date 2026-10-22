@@ -151,6 +151,36 @@ it, and is a new version.
 `mixin/MinecraftServerMixin` drives it from the start of the server's tick, so that what it
 sends goes out when that tick flushes the connections.
 
+### What the owner chooses
+
+`ServerConfig` reads `config/livinghorizon-server.json` (the host's config folder in a world
+played alone or opened to LAN). It is written with every setting the first time the server
+shares, filled in with those a newer version adds, and read again at the next full share
+(five seconds at most) after its modification time changes; everyone is then sent everything
+again. A file that does not read at start is kept as `.bad` and the defaults are written; one
+that does not read later, while being edited, keeps the settings as they were and the file
+alone. An unknown key is said in the console and dropped.
+
+`track/ShareRules` decides, for each player sent the lists, who is left out, with no type of
+the game's but a team's name:
+
+- `sharePlayers`, `shareOfflinePlayers`, `shareMobs` switch each list off. The players
+  message is still sent, empty but for the player themselves, so the client knows the
+  server has the mod. Mobs switched off, or a player in a hidden dimension, get an empty
+  list in a circle that covers nothing (radius -1): the client keeps what it remembers.
+- `hiddenPlayers` (names, any case) and `hiddenDimensions` (ids) leave records out of both
+  lists of players, whoever looks.
+- `playerRange` (blocks across the ground, 0 for any) and `teamsOnly` (the scoreboard's
+  teams, the same team on both sides) depend on who looks: with either on, the five times a
+  second message is made for each player instead of once for all (`sameForAll`).
+- `hideSpectators` and `hideInvisible` are applied by the publisher itself, as it reads the
+  players online: such a player's record is not updated and not sent, online or logged off.
+  They log off from where they were last seen, with the mount they had then. A player seen
+  only hidden has no record; `WorldPlayers` also leaves out those saved in spectator mode.
+
+These only change what the server sends. What a client already received is kept in its own
+memory of players who logged off.
+
 ### The server's file
 
 The server keeps the players and the mobs in `livinghorizon-positions.dat`, at the root of
