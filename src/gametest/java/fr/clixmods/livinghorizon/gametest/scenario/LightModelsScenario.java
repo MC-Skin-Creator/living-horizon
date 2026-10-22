@@ -41,9 +41,13 @@ public final class LightModelsScenario implements Scenario {
             context.waitTicks(10);
             // Facing north, towards the camera at the origin: about 77, 44 and 24 pixels tall in the
             // test window, above the default size, under it, and under half of it.
-            spawn(context, world, NEAR, 8.5);
-            spawn(context, world, MID, 14.5);
-            spawn(context, world, FAR, 26.5);
+            // Side by side on screen, the nearest to the left, none hiding another.
+            spawn(context, world, NEAR, -2.5, 8.5);
+            spawn(context, world, MID, 0.5, 14.5);
+            spawn(context, world, FAR, 3.5, 26.5);
+            // The camera's own hands out of the picture.
+            Scene.command(world, "item replace entity @p weapon.mainhand with air");
+            Scene.command(world, "item replace entity @p weapon.offhand with air");
             Scene.command(world, "tp @a 0.5 " + GROUND + " 0.5 0 0");
             context.waitTicks(40);
 
@@ -63,8 +67,8 @@ public final class LightModelsScenario implements Scenario {
         }
     }
 
-    private static void spawn(ClientGameTestContext context, TestSingleplayerContext world, String name, double z) {
-        Scene.command(world, "tp @a 0.5 " + GROUND + " " + z + " 180 0");
+    private static void spawn(ClientGameTestContext context, TestSingleplayerContext world, String name, double x, double z) {
+        Scene.command(world, "tp @a " + x + " " + GROUND + " " + z + " 180 0");
         context.waitTicks(10);
         context.runOnClient(minecraft -> minecraft.player.connection.sendCommand("livinghorizon debug offline test spawn " + name));
         context.waitTicks(5);
