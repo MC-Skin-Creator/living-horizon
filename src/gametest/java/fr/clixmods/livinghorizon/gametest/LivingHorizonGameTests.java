@@ -36,6 +36,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.ShoreScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.SodiumControlsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.SodiumPagesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.UnloadScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.VisibilityScenario;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
@@ -77,6 +78,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new SodiumControlsScenario(),
             new DepthViewScenario(),
             new EntityDepthScenario(),
+            new VisibilityScenario(),
             new ResizeScenario(),
             new UnloadScenario(),
             new FollowedMobsScenario(),

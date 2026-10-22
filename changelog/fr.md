@@ -20,9 +20,8 @@
 
 #### Améliorations
 - **Message plus clair quand les versions diffèrent** — quand le mod du serveur est trop ancien ou trop récent pour le tien, le journal dit lequel mettre à jour, au lieu de dire que le serveur n'a pas le mod.
-
-#### Améliorations
 - **Plus fluide avec beaucoup de joueurs déconnectés** — les joueurs déconnectés coûtent moins cher à afficher au loin, et ceux cachés derrière les collines sont ignorés.
+- **Des centaines de mobs lointains** — le jeu passe moins de temps à savoir quels mobs lointains sont cachés par le terrain, et reste plus fluide avec des centaines d'entre eux en vue.
 
 #### Corrections
 - **Joueurs déconnectés au-delà de la Distance d'affichage des joueurs** — les joueurs déconnectés ne s'affichent plus au-delà du réglage *Distance d'affichage des joueurs*.
