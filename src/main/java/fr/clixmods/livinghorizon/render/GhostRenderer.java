@@ -23,6 +23,7 @@ import fr.clixmods.livinghorizon.track.Puppets;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
 import fr.clixmods.livinghorizon.track.RestingPuppet;
 import fr.clixmods.livinghorizon.track.SharedPositions;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.client.Camera;
@@ -735,8 +736,31 @@ public final class GhostRenderer {
         return light(level, state.x, state.y, state.z);
     }
 
+    /**
+     * The light read at each block this half second, by the block's position: hundreds of
+     * figures ask every frame, six light lookups each, for a value that changes slowly. Where
+     * the client has no light yet, nothing is kept: it comes a few frames later.
+     */
+    private static final Long2IntOpenHashMap LIGHT = new Long2IntOpenHashMap();
+    private static final long LIGHT_KEPT_NANOS = 500_000_000L;
+    private static @Nullable ClientLevel lightLevel;
+    private static long lightSince;
+
+    static {
+        LIGHT.defaultReturnValue(-1);
+    }
+
     private static int light(@Nullable ClientLevel level, double x, double y, double z) {
         BlockPos feet = BlockPos.containing(x, y + 0.1, z);
+        long now = System.nanoTime();
+        if (level != lightLevel || now - lightSince > LIGHT_KEPT_NANOS) {
+            LIGHT.clear();
+            lightLevel = level;
+            lightSince = now;
+        }
+        long key = feet.asLong();
+        int kept = LIGHT.get(key);
+        if (kept >= 0) return kept;
         if (!lit(level, feet)) return OPEN_SKY;
         int block = 0, sky = 0;
         for (int up = 0; up < 3; up++) {
@@ -744,7 +768,9 @@ public final class GhostRenderer {
             block = Math.max(block, level.getBrightness(LightLayer.BLOCK, at));
             sky = Math.max(sky, level.getBrightness(LightLayer.SKY, at));
         }
-        return LightTexture.pack(block, sky);
+        int packed = LightTexture.pack(block, sky);
+        LIGHT.put(key, packed);
+        return packed;
     }
 
     /**

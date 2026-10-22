@@ -486,6 +486,11 @@ come back, add it here in the same pull request: this file is what the next sess
   added at the end of a record, or after the records, raises `VERSION` only; anything else
   raises `READABLE_FROM` too, and older clients stop reading. `PositionsMessageTest` holds the
   exact bytes: a layout change that fails it needs one of the two.
+- **Skip Hidden Mobs costing a lot with many mobs** (the debug panel's occlusion line says "one
+  query each"): the one-draw path of `OcclusionQueries` (OpenGL 4.3, a word per box in a shader
+  storage buffer, read back behind a fence) failed and the per-box queries took over, five GL
+  calls per mob per frame; the log says why. The depth copies that only the debug view reads
+  (`saved`, `drawn` when nothing was merged) are made only with *Depth View* on.
 - **Frame rate lost to the mod** (with Voxy or not): measure before guessing. On the player's
   machine, ask for the report of `/livinghorizon benchmark` (`debug/Benchmark`): frame times with
   the mod off, each preset and each part on its own, on their GPU and mods. Run in the world
