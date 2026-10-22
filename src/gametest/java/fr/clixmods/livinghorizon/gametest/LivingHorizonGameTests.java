@@ -27,6 +27,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PerchersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PerfLightScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.PerfMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PerfScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RememberedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ResizeScenario;
@@ -95,6 +96,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new DedicatedServerScenario(),
             new PerfScenario(),
             new PerfLightScenario(),
+            new PerfMobsScenario(),
             new BenchmarkScenario(),
             new BenchmarkWorldScenario());
 
