@@ -212,6 +212,8 @@ public final class RestingPlayers {
      * off the game's thread: a village of 50 blocks around in a few ticks.
      */
     private static final int WORK = 96;
+    /** Which puppet is first served the shared {@link #WORK} this tick. */
+    private int turn;
 
     /** Every player resting on this server, drawn or not. */
     public Collection<Spot> spots() {
@@ -625,10 +627,15 @@ public final class RestingPlayers {
             if (puppet.bed() != null) beds.add(puppet.bed());
         }
         boolean night = !level.isBrightOutside();
-        // Sections copied per tick by all of them together, to look around.
+        // Sections copied per tick by all of them together, to look around. Each tick another
+        // goes first, so that the same few never take it all.
         int[] work = {WORK};
         Entity camera = Minecraft.getInstance().getCameraEntity();
-        for (RestingPuppet puppet : puppets.values()) {
+        List<RestingPuppet> order = new ArrayList<>(puppets.values());
+        int count = order.size();
+        int first = count == 0 ? 0 : Math.floorMod(turn++, count);
+        for (int i = 0; i < count; i++) {
+            RestingPuppet puppet = order.get((first + i) % count);
             // Near the camera they live their life; away from it, they play a loop.
             if (camera != null) puppet.near(camera.getEyePosition());
             puppet.tick(level, config, beds, night, work);

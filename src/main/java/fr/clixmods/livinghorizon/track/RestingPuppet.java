@@ -26,12 +26,12 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -186,6 +186,8 @@ public final class RestingPuppet extends RemotePlayer {
         this.info = new PlayerInfo(profile, false);
         this.random = new Random(spot.name().hashCode() * 31L + System.nanoTime());
         this.blocks = Footing.live(level);
+        // Each looks for monsters on a tick of its own, not all of them on the same one.
+        this.scan = Math.floorMod(spot.name().hashCode(), 5);
         setSilent(true);
         getEntityData().set(Avatar.DATA_PLAYER_MODE_CUSTOMISATION, (byte) 0x7F);
         snap(spot.x(), spot.y(), spot.z());
@@ -847,20 +849,20 @@ public final class RestingPuppet extends RemotePlayer {
             }
         }
         if (activity == Activity.FLY || ++scan % 5 != 0) return;
+        // Nearest first, and a look only where it matters: until it sees one, and at a creeper
+        // about to blow up beside it. A look is a ray through the blocks; the distance is free.
+        List<LivingEntity> around = level.getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(DANGER),
+                e -> e instanceof Enemy && e.isAlive() && !e.isSpectator() && e.distanceToSqr(this) < DANGER * DANGER);
+        around.sort(Comparator.comparingDouble(e -> e.distanceToSqr(this)));
         Entity nearest = null;
-        double best = DANGER * DANGER;
-        AABB around = getBoundingBox().inflate(DANGER);
-        for (Entity entity : level.getEntitiesOfClass(LivingEntity.class, around,
-                e -> e instanceof Enemy && e.isAlive() && !e.isSpectator() && seen(level, e.getEyePosition()))) {
+        for (LivingEntity entity : around) {
             double distance = entity.distanceToSqr(this);
-            if (entity instanceof Creeper creeper && creeper.getSwelling(1f) > 0 && !fuses.contains(creeper)
-                    && distance < BLAST * BLAST) {
-                fuses.add(creeper);
-            }
-            if (distance < best) {
-                best = distance;
-                nearest = entity;
-            }
+            if (nearest != null && distance >= BLAST * BLAST) break;
+            boolean fuse = entity instanceof Creeper creeper && creeper.getSwelling(1f) > 0 && !fuses.contains(creeper)
+                    && distance < BLAST * BLAST;
+            if (nearest != null && !fuse || !seen(level, entity.getEyePosition())) continue;
+            if (fuse) fuses.add((Creeper) entity);
+            if (nearest == null) nearest = entity;
         }
         threat = nearest;
         if (nearest != null) {

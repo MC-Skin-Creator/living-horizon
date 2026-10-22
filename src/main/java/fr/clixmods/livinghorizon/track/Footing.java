@@ -12,6 +12,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jspecify.annotations.Nullable;
 
@@ -129,8 +130,19 @@ final class Footing {
                 BlockPos.containing(box.maxX, box.maxY, box.maxZ))) {
             BlockState state = level.state(at);
             if (state.isAir() || passable(state)) continue;
-            for (AABB part : level.collision(state, at).toAabbs()) {
-                if (part.move(at.getX(), at.getY(), at.getZ()).intersects(box)) return false;
+            VoxelShape shape = level.collision(state, at);
+            if (shape.isEmpty()) continue;
+            int bx = at.getX(), by = at.getY(), bz = at.getZ();
+            // Most blocks are whole: no list of boxes to make for them.
+            if (shape == Shapes.block()) {
+                if (box.intersects(bx, by, bz, bx + 1, by + 1, bz + 1)) return false;
+                continue;
+            }
+            for (AABB part : shape.toAabbs()) {
+                if (box.intersects(part.minX + bx, part.minY + by, part.minZ + bz,
+                        part.maxX + bx, part.maxY + by, part.maxZ + bz)) {
+                    return false;
+                }
             }
         }
         return true;
@@ -157,14 +169,26 @@ final class Footing {
                 BlockPos.containing(column.maxX, column.maxY, column.maxZ))) {
             BlockState state = level.state(at);
             if (state.isAir() || passable(state)) continue;
-            for (AABB part : level.collision(state, at).toAabbs()) {
-                AABB placed = part.move(at.getX(), at.getY(), at.getZ());
-                if (!placed.intersects(column)) continue;
-                double max = placed.maxY;
-                if (max <= y + 1e-4 && !(max <= top)) top = max;
+            VoxelShape shape = level.collision(state, at);
+            if (shape.isEmpty()) continue;
+            int bx = at.getX(), by = at.getY(), bz = at.getZ();
+            if (shape == Shapes.block()) {
+                if (column.intersects(bx, by, bz, bx + 1, by + 1, bz + 1)) top = higher(top, by + 1, y);
+                continue;
+            }
+            for (AABB part : shape.toAabbs()) {
+                if (column.intersects(part.minX + bx, part.minY + by, part.minZ + bz,
+                        part.maxX + bx, part.maxY + by, part.maxZ + bz)) {
+                    top = higher(top, part.maxY + by, y);
+                }
             }
         }
         return top;
+    }
+
+    /** The higher of {@code top} and {@code max}, if {@code max} is not above its feet at {@code y}. */
+    private static double higher(double top, double max, double y) {
+        return max <= y + 1e-4 && !(max <= top) ? max : top;
     }
 
     /** The first thing under it to land on, a block or the surface of water; where it is if there is none. */
