@@ -2,6 +2,11 @@
 
 ## Prochaine version
 
+### Client
+
+#### Corrections
+- **Jeu figé par un scan géant** — `/livinghorizon scan` ne fige plus le jeu avec un rayon énorme : il s'arrête à 1 024 chunks, comme le réglage *Rayon du scan*.
+
 ## 0.11.0 — 2026-10-22
 
 ### Serveur
@@ -40,7 +45,6 @@
 - **Mobs lointains qui secouent la tête** — les mobs et les joueurs au loin ne secouent plus la tête à toute vitesse avec Entity Culling, seul ou avec Chloride.
 - **Joueurs affichés dans la mauvaise dimension moddée** — les joueurs connectés ou déconnectés dans une dimension moddée, comme l'Aether, ne sont plus dessinés dans une autre, comme la Twilight Forest (sur un serveur, il lui faut aussi cette version).
 - **Mobs lointains délavés par le brouillard** — les mobs au loin sur le terrain de Voxy ne pâlissent plus jusqu'à se fondre dans la couleur du brouillard passé une certaine distance : ils prennent le même brouillard que le terrain autour d'eux (sans shader pack).
-- **Jeu figé par un scan géant** — `/livinghorizon scan` ne fige plus le jeu avec un rayon énorme : il s'arrête à 1 024 chunks, comme le réglage *Rayon du scan*.
 
 ## 0.10.0 — 2026-10-20
 
