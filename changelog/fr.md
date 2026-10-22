@@ -23,6 +23,9 @@
 
 #### Améliorations
 - **Plus fluide avec beaucoup de joueurs déconnectés** — les joueurs déconnectés coûtent moins cher à afficher au loin, et ceux cachés derrière les collines sont ignorés.
+- **Plus fluide après une téléportation** — se téléporter, changer de dimension ou voler vite en élytres ne fait plus saccader le jeu pendant que les mobs laissés derrière sont mémorisés.
+- **Plus fluide en rejoignant un serveur avec le mod** — les nombreux mobs lointains que partage un serveur avec le mod quand tu le rejoins ne figent plus le jeu un instant.
+- **Plus d'à-coup chaque minute** — la sauvegarde des mobs mémorisés ne fait plus saccader le jeu une fois par minute.
 
 #### Corrections
 - **Joueurs déconnectés au-delà de la Distance d'affichage des joueurs** — les joueurs déconnectés ne s'affichent plus au-delà du réglage *Distance d'affichage des joueurs*.

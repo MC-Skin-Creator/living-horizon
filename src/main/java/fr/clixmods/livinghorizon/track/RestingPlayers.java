@@ -548,6 +548,11 @@ public final class RestingPlayers {
 
     // --- Puppets -----------------------------------------------------------------------
 
+    /** The puppet of one of {@link #spots()}, or null when it was not made yet. */
+    public @Nullable RestingPuppet made(Spot spot) {
+        return puppets.get(spot);
+    }
+
     /** The puppet of one of {@link #spots()}, made the first time it is asked for. */
     public RestingPuppet puppet(ClientLevel level, Spot spot) {
         RestingPuppet puppet = puppets.get(spot);
@@ -624,8 +629,12 @@ public final class RestingPlayers {
         boolean night = !level.isBrightOutside();
         // Spots read per tick by all of them together, looking around and for their way.
         int[] work = {WORK};
+        RestingLoop.nextTick();
         Entity camera = Minecraft.getInstance().getCameraEntity();
-        for (RestingPuppet puppet : puppets.values()) {
+        // The nearest first: they read the ground before those farther off.
+        for (Spot spot : shown()) {
+            RestingPuppet puppet = puppets.get(spot);
+            if (puppet == null) continue;
             // Near the camera they live their life; away from it, they play a loop.
             if (camera != null) puppet.near(camera.getEyePosition());
             puppet.tick(level, config, beds, night, work);
