@@ -87,6 +87,7 @@ import net.minecraft.client.renderer.state.CameraRenderState;
 import com.mojang.blaze3d.vertex.PoseStack;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
+import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
 import fr.clixmods.livinghorizon.track.Puppets;
@@ -184,7 +185,7 @@ public final class ImpostorAtlas {
      * in its tile instead (see {@link Request}). At a hundred blocks a figure is a dozen
      * pixels tall, and larger tiles took four times the memory for nothing to see.
      */
-    private static final int MAX_SCALE = 1;
+    static final int MAX_SCALE = 1;
 
     /** Bytes of video memory a row of scale 1 takes: a strip of 512 by 64 pixels and its mip levels. */
     private static final long ROW_BYTES = rowBytes();
@@ -735,6 +736,15 @@ public final class ImpostorAtlas {
      * from 1.21.6, at the start of the frame before.
      */
     public static void bakePending() {
+        long started = Profile.begin(Profile.Section.BAKE);
+        try {
+            bakeQueued();
+        } finally {
+            Profile.end(Profile.Section.BAKE, started);
+        }
+    }
+
+    private static void bakeQueued() {
         settle();
         if (!usable()) {
             for (Request request : QUEUE) QUEUED.remove(request.key);
@@ -1375,6 +1385,7 @@ public final class ImpostorAtlas {
     /** The views are read back: their pixels go on to {@link #store}. */
     private static void readBack(Request request, int index, double size, GpuBuffer buffer, int generation) {
         int[][] pictures = null;
+        long started = Profile.begin(Profile.Section.BAKE_READ_BACK);
         try {
             if (generation == ImpostorAtlas.generation) {
                 int[][] read = new int[ImpostorViews.VIEWS][];
@@ -1397,6 +1408,7 @@ public final class ImpostorAtlas {
             if (generation == ImpostorAtlas.generation) fail(error);
         } finally {
             buffer.close();
+            Profile.end(Profile.Section.BAKE_READ_BACK, started);
         }
         store(request, index, size, pictures, generation);
     }
@@ -1438,6 +1450,15 @@ public final class ImpostorAtlas {
      * the edge of its tiles is queued again, larger.
      */
     private static void store(Request request, int index, double size, int @Nullable [][] pictures, int generation) {
+        long started = Profile.begin(Profile.Section.BAKE_STORE);
+        try {
+            storeSheet(request, index, size, pictures, generation);
+        } finally {
+            Profile.end(Profile.Section.BAKE_STORE, started);
+        }
+    }
+
+    private static void storeSheet(Request request, int index, double size, int @Nullable [][] pictures, int generation) {
         ImpostorKey key = request.key;
         boolean again = false;
         try {

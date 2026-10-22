@@ -2,6 +2,7 @@ package fr.clixmods.livinghorizon.compat;
 
 import fr.clixmods.livinghorizon.render.DepthFar;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
+import fr.clixmods.livinghorizon.Profile;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11C;
@@ -201,6 +202,15 @@ public final class OcclusionQueries {
      * each in its own query. Called just before the entities are drawn.
      */
     static void run(int depthTexture) {
+        long started = Profile.begin(Profile.Section.OCCLUSION_RUN);
+        try {
+            drawBoxes(depthTexture);
+        } finally {
+            Profile.end(Profile.Section.OCCLUSION_RUN, started);
+        }
+    }
+
+    private static void drawBoxes(int depthTexture) {
         asked = ASKED.size();
         if (broken || ASKED.isEmpty()) return;
         if (!viewNoted) {
@@ -271,6 +281,15 @@ public final class OcclusionQueries {
 
     /** Takes in every batch the GPU has finished, oldest first, without waiting for any. */
     private static void collect() {
+        long started = Profile.begin(Profile.Section.OCCLUSION_COLLECT);
+        try {
+            takeAnswers();
+        } finally {
+            Profile.end(Profile.Section.OCCLUSION_COLLECT, started);
+        }
+    }
+
+    private static void takeAnswers() {
         while (!IN_FLIGHT.isEmpty()) {
             Batch batch = IN_FLIGHT.peek();
             for (int query : batch.queries) {

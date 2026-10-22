@@ -2,9 +2,12 @@ package fr.clixmods.livinghorizon.track;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import fr.clixmods.livinghorizon.FarConfig;
+import fr.clixmods.livinghorizon.JsonStore;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
+import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.platform.Platform;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -36,7 +39,6 @@ import net.minecraft.world.entity.vehicle.boat.AbstractBoat;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
-import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -151,8 +153,8 @@ public final class MobMemory {
     }
 
     private static final Gson GSON = new GsonBuilder().create();
-    private static final List<String> DIMENSIONS =
-            List.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end");
+    /** Layout of the file: 1 is the list under {@code "mobs"}, with its version; 0 the bare list before it. */
+    static final int VERSION = 1;
     /** Bounds the file; the oldest sightings go first. */
     private static final int MAX_REMEMBERED = 2000;
     /** Nanoseconds per tick for building puppets, so that a crowd does not cost one long frame. */
@@ -291,18 +293,44 @@ public final class MobMemory {
         // No file yet: the mod has never been in this world.
         firstVisit = !Files.exists(file);
         if (firstVisit) return;
-        try (Reader reader = Files.newBufferedReader(file)) {
-            List<Remembered> read = GSON.fromJson(reader, new TypeToken<List<Remembered>>() { }.getType());
-            if (read != null) {
-                for (Remembered mob : read) {
-                    // A memory with no world cannot be told from another world's: dropped.
-                    if (mob != null && mob.id != null && mob.type != null && mob.dimension != null
-                            && mob.world != null) mobs.put(mob.id, mob);
-                }
-            }
-        } catch (IOException | RuntimeException e) {
-            LivingHorizonClient.LOGGER.warn("Could not read {}", file, e);
+        for (Remembered mob : read(file)) {
+            // A memory with no world cannot be told from another world's: dropped.
+            if (mob.world != null) mobs.put(mob.id, mob);
         }
+    }
+
+    /**
+     * The mobs saved in a file: none when it does not read, then kept aside ({@link JsonStore}),
+     * so that saving the memory again does not write over what it held.
+     */
+    static List<Remembered> read(Path file) {
+        JsonElement root = JsonStore.read(file);
+        if (root == null) return List.of();
+        try {
+            JsonStore.Versioned saved = JsonStore.unwrap(root, "mobs");
+            if (saved == null) throw new IllegalStateException("not a list of mobs");
+            if (saved.version() > VERSION) JsonStore.keepNewer(file, saved.version());
+            return read(saved.data());
+        } catch (RuntimeException e) {
+            JsonStore.keepBad(file, e);
+            return List.of();
+        }
+    }
+
+    /** The mobs of a list as saved; those missing what they need are left out. */
+    static List<Remembered> read(JsonElement list) {
+        List<Remembered> read = GSON.fromJson(list, new TypeToken<List<Remembered>>() { }.getType());
+        if (read == null) return List.of();
+        List<Remembered> kept = new ArrayList<>(read.size());
+        for (Remembered mob : read) {
+            if (mob != null && mob.id != null && mob.type != null && mob.dimension != null) kept.add(mob);
+        }
+        return kept;
+    }
+
+    /** Writes the mobs as {@link #read(Path)} reads them back. */
+    static void write(Collection<Remembered> mobs, Writer writer) throws IOException {
+        JsonStore.writeVersioned(writer, GSON, VERSION, "mobs", new ArrayList<>(mobs));
     }
 
     /** True once per world the mod has never been in before: the cue for a first scan. */
@@ -608,22 +636,33 @@ public final class MobMemory {
             return;
         }
         String dimension = level.dimension().identifier().toString();
-        followServer(level, dimension);
+        long following = Profile.begin(Profile.Section.TICK_MOBS_FOLLOW);
+        try {
+            followServer(level, dimension);
+        } finally {
+            Profile.end(Profile.Section.TICK_MOBS_FOLLOW, following);
+        }
 
-        if (clock % 20 == 0) {
-            lastPack = pack;
-            if (pack != null) sync(pack);
-            learnReach();
-            reconcile(level, dimension, renderDistanceBlocks);
-            choose(dimension, config);
-        } else if (chooseSoon) {
-            choose(dimension, config);
+        if (clock % 20 == 0 || chooseSoon) {
+            long choosing = Profile.begin(Profile.Section.TICK_MOBS_CHOOSE);
+            try {
+                if (clock % 20 == 0) {
+                    lastPack = pack;
+                    if (pack != null) sync(pack);
+                    learnReach();
+                    reconcile(level, dimension, renderDistanceBlocks);
+                }
+                choose(dimension, config);
+            } finally {
+                Profile.end(Profile.Section.TICK_MOBS_CHOOSE, choosing);
+            }
         }
         if (clock % 1200 == 0 && dirty) save();
 
         Set<String> still = new HashSet<>(config.stillMobTypes);
         double pixelsPerRadian = config.optStillTiny ? pixelsPerRadian() : 0;
 
+        long buildNanos = 0, groundNanos = 0, joiningStarted = System.nanoTime();
         // Copies walking up to their real mob, before anything else.
         if (!joining.isEmpty()) {
             List<Remembered> arrived = new ArrayList<>();
@@ -636,6 +675,7 @@ public final class MobMemory {
             }
             arrived.forEach(this::handOver);
         }
+        long motionNanos = System.nanoTime() - joiningStarted;
 
         boolean background = config.optBackgroundBuild;
         long budget = System.nanoTime() + BUILD_BUDGET;
@@ -652,7 +692,9 @@ public final class MobMemory {
                             : CompletableFuture.completedFuture(parse(nbt));
                 }
                 if (mob.parsed.isDone() && (!background || System.nanoTime() < budget)) {
+                    long building = System.nanoTime();
                     build(mob, level);
+                    buildNanos += System.nanoTime() - building;
                 }
             }
             if (mob.puppet == null) continue;
@@ -665,6 +707,7 @@ public final class MobMemory {
                     continue;
                 }
                 boolean roam = !still.contains(mob.type);
+                long grounding = System.nanoTime();
                 // Moved by the server's word: the blocks are read again around where it is now.
                 MobPaths.Choice choice = mob.choice;
                 if (choice != null && !choice.ground().around(mob.x, mob.z)) mob.choice = choice = null;
@@ -700,15 +743,23 @@ public final class MobMemory {
                     mob.ground = choice.ground().save();
                     dirty = true;
                 }
+                long moving = System.nanoTime();
+                groundNanos += moving - grounding;
                 mob.still = isStill(living, mob, config, pixelsPerRadian);
                 boolean tiny = mob.still;
                 double handover = Math.max(24, Math.min(sent(type(mob)), renderDistanceBlocks));
                 float home = MobMotion.home(Math.hypot(mob.x - selfX, mob.z - selfZ), handover);
                 motion(mob).tick(living, mob, choice, clock, roam, tiny, home);
+                motionNanos += System.nanoTime() - moving;
             } else {
+                long holding = System.nanoTime();
                 hold(mob.puppet, mob);
+                motionNanos += System.nanoTime() - holding;
             }
         }
+        Profile.record(Profile.Section.TICK_MOBS_BUILD, buildNanos);
+        Profile.record(Profile.Section.TICK_MOBS_GROUND, groundNanos);
+        Profile.record(Profile.Section.TICK_MOBS_MOTION, motionNanos);
     }
 
     private static long seed(Remembered mob) {
@@ -751,11 +802,6 @@ public final class MobMemory {
         return Math.max(apparent, config.minApparentPixels);
     }
 
-    private static int dimensionCode(String dimension) {
-        int code = DIMENSIONS.indexOf(dimension);
-        return code < 0 ? 3 : code;
-    }
-
     /**
      * Takes the server's word: where every mob it publishes around this client is now, as last
      * seen by whoever was near it. A mob this client has seen keeps the look it saved; one it
@@ -767,8 +813,7 @@ public final class MobMemory {
         for (UUID id : pack.mobs()) {
             SharedPositions.MobReport report = pack.readMob(id);
             String type = report == null ? null : MobKinds.type(report.kind());
-            String dimension = report == null || report.dimension() >= DIMENSIONS.size()
-                    ? null : DIMENSIONS.get(report.dimension());
+            String dimension = report == null ? null : report.dimension();
             if (type == null || dimension == null) continue;
             published.add(id);
             if (live.containsKey(id)) continue;
@@ -815,7 +860,7 @@ public final class MobMemory {
         for (Remembered mob : mobs.values()) {
             // Only where the server just sent the mobs around: one farther off is out of reach, not gone.
             if (mob.fromPack && isHere(mob) && !published.contains(mob.id) && !live.containsKey(mob.id)
-                    && pack.covers(dimensionCode(mob.dimension), mob.x, mob.z)) dead.add(mob.id);
+                    && pack.covers(mob.dimension, mob.x, mob.z)) dead.add(mob.id);
         }
         dead.forEach(this::forget);
     }
@@ -1096,13 +1141,16 @@ public final class MobMemory {
     private void save() {
         if (file == null) return;
         dirty = false;
+        long started = Profile.begin(Profile.Section.SAVE_MOBS);
+        long bytes = -1;
         try {
-            Files.createDirectories(file.getParent());
-            try (Writer writer = Files.newBufferedWriter(file)) {
-                GSON.toJson(new ArrayList<>(mobs.values()), writer);
-            }
+            Collection<Remembered> kept = new ArrayList<>(mobs.values());
+            JsonStore.write(file, writer -> write(kept, writer));
+            bytes = Files.size(file);
         } catch (IOException e) {
             LivingHorizonClient.LOGGER.warn("Could not write {}", file, e);
+        } finally {
+            Profile.end(Profile.Section.SAVE_MOBS, started, bytes);
         }
     }
 }

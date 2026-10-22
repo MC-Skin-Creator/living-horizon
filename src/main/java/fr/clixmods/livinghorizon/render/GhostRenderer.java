@@ -2,8 +2,10 @@ package fr.clixmods.livinghorizon.render;
 
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
+import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.Stats;
 import fr.clixmods.livinghorizon.ambient.Ambience;
+import fr.clixmods.livinghorizon.compat.EntityCulling;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.OcclusionQueries;
 import fr.clixmods.livinghorizon.debug.DebugMarks;
@@ -16,6 +18,7 @@ import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
 import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobMemory;
+import fr.clixmods.livinghorizon.track.Puppets;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
 import fr.clixmods.livinghorizon.track.RestingPuppet;
 import fr.clixmods.livinghorizon.track.SharedPositions;
@@ -222,6 +225,8 @@ public final class GhostRenderer {
      */
     public static @Nullable EntityRenderState extract(EntityRenderDispatcher dispatcher, Entity entity, float partialTick) {
         if (!drawable(dispatcher, entity)) return null;
+        Puppets.skin(entity);
+        Puppets.cape(entity);
         try {
             //? if >=1.21.9 {
             return dispatcher.extractEntity(entity, partialTick);
@@ -391,6 +396,7 @@ public final class GhostRenderer {
                 // draws, when its render distance is shorter than the server's.
                 if (EXTRACTED.contains(live) || live.isInvisible()) continue;
                 Entity mount = live.getRootVehicle();
+                EntityCulling.drawn(live);
                 if (debug) DebugMarks.mark(live, Mark.PLAYER);
                 if (config.impostorPlayers && (mount == live ? impostor(minecraft, eye, live, partialTick, config)
                         : !EXTRACTED.contains(mount) && impostorRiding(minecraft, eye, live, mount, partialTick, config))) {
@@ -433,6 +439,8 @@ public final class GhostRenderer {
             }
         }
         Stats.extract(System.nanoTime() - started, drawn, skipped);
+        Profile.record(Profile.Section.EXTRACT, System.nanoTime() - started);
+        Profile.frame();
         if (debug) DebugMarks.end();
     }
 
@@ -559,6 +567,7 @@ public final class GhostRenderer {
             if (tooFar(entity, eye, config.mobMaxDistance)) continue;
             if (skipped(entity, true)) continue;
             if (occluded(entity.getUUID(), entity, config)) continue;
+            EntityCulling.drawn(entity);
             if (debug) DebugMarks.mark(entity, Mark.LIVE);
             if (impostor(minecraft, eye, entity, partialTick, config)) continue;
             add(frame, minecraft, eye, extract(dispatcher, entity, partialTick), null, false, Mark.LIVE, config,
@@ -582,19 +591,26 @@ public final class GhostRenderer {
         ClientLevel level = minecraft.level;
         if (level == null) return;
         RestingPlayers resting = FarPlayerTracker.get().resting();
-        int dimension = SharedPositions.dimensionCode(level.dimension());
-        for (RestingPlayers.Spot spot : resting.spots()) {
-            if (spot.dimension() != dimension) continue;
+        String dimension = SharedPositions.dimensionId(level.dimension());
+        // The nearest only, as many as the settings say.
+        for (RestingPlayers.Spot spot : resting.shown()) {
+            if (!spot.dimension().equals(dimension)) continue;
             RestingPuppet puppet = resting.puppet(level, spot);
+            if (!drawable(dispatcher, puppet)) continue;
+            if (tooFar(puppet, eye, config.playerMaxDistance)) continue;
             if (skipped(puppet, true)) continue;
-            if (debug) DebugMarks.mark(puppet, Mark.PLAYER);
-            EntityRenderState body = extract(dispatcher, puppet, partialTick);
-            if (body == null) continue;
             RestingPuppet.Look look = puppet.look();
             // On what they rode when they logged off: the mount drawn under them, they seated on it.
             Entity mount = look == RestingPuppet.Look.RIDE ? puppet.mount() : null;
-            // Far away a picture, as for players online, in whatever posture they are.
+            // Behind terrain, as mobs are. Not on a mount: the rider's box leaves out a tall
+            // mount under it (a happy ghast), which may show while the rider is hidden.
+            if (mount == null && occluded(spot.name(), puppet, config)) continue;
+            if (debug) DebugMarks.mark(puppet, Mark.PLAYER);
+            // Far away a picture, as for players online, in whatever posture they are: drawn
+            // from the puppet and its look, so nothing is extracted for it.
             if (config.impostorPlayers && restingImpostor(minecraft, eye, puppet, mount, look, partialTick, config)) continue;
+            EntityRenderState body = extract(dispatcher, puppet, partialTick);
+            if (body == null) continue;
             EntityRenderState mountState = mount == null ? null : extract(dispatcher, mount, partialTick);
             if (mountState != null && body instanceof HumanoidRenderState humanoid) {
                 humanoid.isPassenger = true;

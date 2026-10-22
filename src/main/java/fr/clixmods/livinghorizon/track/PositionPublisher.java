@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.track;
 
 import com.mojang.authlib.properties.Property;
+import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.platform.Network;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -24,7 +25,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -126,6 +126,16 @@ public final class PositionPublisher {
 
     /** One publication; call it every {@link #PERIOD} ticks. */
     public void run() {
+        long started = Profile.begin(Profile.Section.PUBLISH);
+        long[] sentBytes = {0};
+        try {
+            publish(sentBytes);
+        } finally {
+            Profile.end(Profile.Section.PUBLISH, started, sentBytes[0]);
+        }
+    }
+
+    private void publish(long[] sentBytes) {
         if (!server.isRunning()) return;
         if (!loaded) load();
         tell();
@@ -149,11 +159,19 @@ public final class PositionPublisher {
             sent.add(player.getUUID());
             if (full || !greeted.contains(player.getUUID())) {
                 // Every few seconds, and at once to a player who just joined: everything.
-                Network.send(player, PositionsMessage.players(withLooks(onlinePlayers(), player)));
-                Network.send(player, PositionsMessage.offline(withLooks(offlinePlayers(), player)));
-                Network.send(player, PositionsMessage.mobs(mobsAround(player)));
+                byte[] everyone = PositionsMessage.players(withLooks(onlinePlayers(), player));
+                List<byte[]> offline = PositionsMessage.offline(withLooks(offlinePlayers(), player));
+                byte[] around = PositionsMessage.mobs(mobsAround(player));
+                sentBytes[0] += everyone.length + around.length;
+                Network.send(player, everyone);
+                for (byte[] part : offline) {
+                    sentBytes[0] += part.length;
+                    Network.send(player, part);
+                }
+                Network.send(player, around);
             } else {
                 if (plain == null) plain = PositionsMessage.players(onlinePlayers());
+                sentBytes[0] += plain.length;
                 Network.send(player, plain);
             }
         }
@@ -206,7 +224,7 @@ public final class PositionPublisher {
             UUID published = vehicle != null && KINDS.containsKey(EntityType.getKey(vehicle.getType()).toString())
                     ? vehicle.getUUID() : null;
             players.put(name, new PositionsMessage.Player(name, player.getX(), player.getY(), player.getZ(),
-                    player.getYRot(), SharedPositions.dimensionCode(player.level().dimension()), true,
+                    player.getYRot(), SharedPositions.dimensionId(player.level().dimension()), true,
                     vehicle != null, published));
             dirty = true;
         }
@@ -274,6 +292,7 @@ public final class PositionPublisher {
         return now;
     }
 
+    /** Every player who logged off, and the host's test players. A client chooses how many it shows. */
     private List<PositionsMessage.Player> offlinePlayers() {
         List<PositionsMessage.Player> gone = new ArrayList<>();
         for (PositionsMessage.Player player : players.values()) {
@@ -284,25 +303,22 @@ public final class PositionPublisher {
     }
 
     /**
-     * The players, the {@link #MAX_LOOKS} nearest {@code to} with how they look and what they
-     * ride, the others by their position alone, which keeps the message small on a big server.
+     * The players, the {@link #MAX_LOOKS} nearest {@code to} first, with how they look and what
+     * they ride, then the others by their position alone, which keeps the message small on a big
+     * server. Should the message still be too large, those at the end are by their position
+     * alone (players online) or sent in a message after it (players who logged off).
      */
     private List<PositionsMessage.Player> withLooks(List<PositionsMessage.Player> list, ServerPlayer to) {
-        int dimension = SharedPositions.dimensionCode(to.level().dimension());
-        List<PositionsMessage.Player> nearest = new ArrayList<>(list);
-        nearest.sort(Comparator.comparingDouble(player -> player.dimension() != dimension ? Double.MAX_VALUE
-                : Math.hypot(player.x() - to.getX(), player.z() - to.getZ())));
+        List<PositionsMessage.Player> nearest = PlayerLists.nearest(list,
+                SharedPositions.dimensionId(to.level().dimension()), to.getX(), to.getZ(), MAX_LOOKS);
         Set<String> dressed = new HashSet<>();
-        for (int i = 0; i < Math.min(MAX_LOOKS, nearest.size()); i++) dressed.add(nearest.get(i).name());
         List<PositionsMessage.Player> sent = new ArrayList<>(list.size());
+        for (PositionsMessage.Player player : nearest) {
+            dressed.add(player.name());
+            sent.add(player.online() ? player.full(riding.get(player.name()), looks.get(player.name())) : player);
+        }
         for (PositionsMessage.Player player : list) {
-            if (!dressed.contains(player.name())) {
-                sent.add(player.plain());
-            } else if (player.online()) {
-                sent.add(player.full(riding.get(player.name()), looks.get(player.name())));
-            } else {
-                sent.add(player);
-            }
+            if (!dressed.contains(player.name())) sent.add(player.plain());
         }
         return sent;
     }
@@ -310,7 +326,7 @@ public final class PositionPublisher {
     private void refreshMobs() {
         Set<UUID> seen = new HashSet<>();
         for (ServerLevel level : server.getAllLevels()) {
-            int dimension = SharedPositions.dimensionCode(level.dimension());
+            String dimension = SharedPositions.dimensionId(level.dimension());
             for (Entity entity : level.getAllEntities()) {
                 if (entity.isRemoved()) continue;
                 String type = EntityType.getKey(entity.getType()).toString();
@@ -332,7 +348,7 @@ public final class PositionPublisher {
                 dirty = true;
             }
             // Its chunk is loaded and it is not there: dead, despawned, or gone through a portal.
-            mobs.values().removeIf(mob -> mob.dimension() == dimension && !seen.contains(mob.id())
+            mobs.values().removeIf(mob -> mob.dimension().equals(dimension) && !seen.contains(mob.id())
                     && level.areEntitiesLoaded(chunk(mob.x(), mob.z())));
         }
         while (mobs.size() > MAX_MOBS) mobs.remove(mobs.keySet().iterator().next());
@@ -359,7 +375,7 @@ public final class PositionPublisher {
     }
 
     private PositionsMessage.Mobs mobsAround(ServerPlayer player) {
-        int dimension = SharedPositions.dimensionCode(player.level().dimension());
+        String dimension = SharedPositions.dimensionId(player.level().dimension());
         PositionsMessage.Mobs around = new PositionsMessage.Mobs(new ArrayList<>(), dimension,
                 player.getX(), player.getZ(), MOB_RANGE);
         for (PositionsMessage.Mob mob : mobs.values()) {
@@ -392,8 +408,27 @@ public final class PositionPublisher {
         Path file = file();
         if (!Files.isRegularFile(file)) return;
         try {
-            PositionsMessage.Saved saved = PositionsMessage.readSaved(Files.readAllBytes(file));
-            if (saved == null) return;
+            byte[] data = Files.readAllBytes(file);
+            PositionsMessage.Saved saved = PositionsMessage.readSaved(data);
+            if (saved == null) {
+                // Kept aside, never written over: the next save starts a new file beside it.
+                Path bad = file.resolveSibling(FILE + ".bad");
+                Files.move(file, bad, StandardCopyOption.REPLACE_EXISTING);
+                PositionsMessage.Format format = PositionsMessage.format(data);
+                LOGGER.warn("Living Horizon: could not read the shared positions of this world ({}), kept the file as {}",
+                        format == null || format.readableBy(PositionsMessage.FILE_VERSION) ? "damaged"
+                                : "version " + format.version() + ", this one reads " + PositionsMessage.FILE_VERSION,
+                        bad.getFileName());
+                return;
+            }
+            PositionsMessage.Format format = PositionsMessage.format(data);
+            if (format != null && format.version() > PositionsMessage.FILE_VERSION) {
+                // Saving it again leaves out what this version does not know: a copy first.
+                Path copy = file.resolveSibling(FILE + ".v" + format.version());
+                Files.copy(file, copy, StandardCopyOption.REPLACE_EXISTING);
+                LOGGER.warn("Living Horizon: the shared positions of this world were saved by a newer version of the mod, "
+                        + "kept a copy as {}", copy.getFileName());
+            }
             // Whoever was online when it was saved logged off then.
             for (PositionsMessage.Player player : saved.players()) {
                 players.put(player.name(), new PositionsMessage.Player(player.name(), player.x(), player.y(), player.z(),
@@ -411,6 +446,8 @@ public final class PositionPublisher {
         if (!loaded || !dirty) return;
         dirty = false;
         Path file = file();
+        long started = Profile.begin(Profile.Section.SAVE_POSITIONS);
+        long bytes = -1;
         try {
             Path written = file.resolveSibling(FILE + ".tmp");
             // Those still online when the server stops log off as they are, on what they ride.
@@ -422,10 +459,14 @@ public final class PositionPublisher {
                                 riding.get(player.name()), looks.get(player.name()), System.currentTimeMillis(), false)
                         : player);
             }
-            Files.write(written, PositionsMessage.saved(kept, new ArrayList<>(mobs.values())));
+            byte[] saved = PositionsMessage.saved(kept, new ArrayList<>(mobs.values()));
+            bytes = saved.length;
+            Files.write(written, saved);
             Files.move(written, file, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             LOGGER.warn("Could not save the shared positions of this world", e);
+        } finally {
+            Profile.end(Profile.Section.SAVE_POSITIONS, started, bytes);
         }
     }
 

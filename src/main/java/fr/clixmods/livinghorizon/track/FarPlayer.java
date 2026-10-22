@@ -92,8 +92,8 @@ public final class FarPlayer {
     private @Nullable PlayerInfo shownInfo;
     /** The gear the server last said they wear, as put on the puppet; null when none was put on. */
     private @Nullable List<String> shownGear;
-    /** The code ({@link SharedPositions#dimensionCode}) of the dimension x, y, z belong to; -1 when none. */
-    private int knownDimension = -1;
+    /** The id ({@link SharedPositions#dimensionId}) of the dimension x, y, z belong to; null when none. */
+    private @Nullable String knownDimension;
 
     FarPlayer(UUID id) {
         this.id = id;
@@ -109,7 +109,7 @@ public final class FarPlayer {
     public double z() { return z; }
     public boolean placed() { return placed; }
     public float yaw() { return yaw; }
-    int knownDimension() { return knownDimension; }
+    @Nullable String knownDimension() { return knownDimension; }
 
     /** The mount to draw under the puppet, if any. */
     public @Nullable Entity mountPuppet() {
@@ -169,7 +169,7 @@ public final class FarPlayer {
 
     // --- While the server sends the entity ---------------------------------------
 
-    void observeLive(AbstractClientPlayer player, int dimension) {
+    void observeLive(AbstractClientPlayer player, String dimension) {
         knownDimension = dimension;
         double px = x, pz = z;
         boolean wasPlaced = placed;
@@ -214,7 +214,7 @@ public final class FarPlayer {
 
     void observeRemote(ClientLevel level, Player self, PlayerInfo info, SharedPositions.@Nullable Report shared,
                        @Nullable UUID vehicle, PositionsMessage.@Nullable Mount sharedMount,
-                       PositionsMessage.@Nullable Look look, int dimension, double vanishRadius, FarConfig config,
+                       PositionsMessage.@Nullable Look look, String dimension, double vanishRadius, FarConfig config,
                        MobMemory mobs) {
         if (source == Source.LIVE) leaveLive(level, self, vanishRadius);
         if (puppet == null) freshPuppet(level, info);
@@ -292,9 +292,9 @@ public final class FarPlayer {
     }
 
     /** Takes the shared position's word. Null when they are in another dimension. */
-    private @Nullable Source share(SharedPositions.Report report, int dimension) {
-        if (report.dimension() != dimension) {
-            knownDimension = -1;
+    private @Nullable Source share(SharedPositions.Report report, String dimension) {
+        if (!report.dimension().equals(dimension)) {
+            knownDimension = null;
             vanished = true;
             placed = false;
             targeted = false;

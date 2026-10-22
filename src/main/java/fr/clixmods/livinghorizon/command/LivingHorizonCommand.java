@@ -13,13 +13,17 @@ import fr.clixmods.livinghorizon.ambient.EggLog;
 import fr.clixmods.livinghorizon.ambient.Ufo;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.LodWorld;
+import fr.clixmods.livinghorizon.debug.Benchmark;
+import fr.clixmods.livinghorizon.debug.BenchmarkWorld;
 import fr.clixmods.livinghorizon.debug.DebugHud;
+import fr.clixmods.livinghorizon.debug.ProfileLines;
 import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.LastSeen;
 import fr.clixmods.livinghorizon.track.Profiles;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.Gear;
 import fr.clixmods.livinghorizon.track.MobScan;
+import fr.clixmods.livinghorizon.track.PositionsMessage;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
 import fr.clixmods.livinghorizon.track.SharedPositions;
 import fr.clixmods.livinghorizon.ui.FarConfigScreen;
@@ -152,11 +156,50 @@ public final class LivingHorizonCommand {
                             client.execute(() -> client.setScreen(new FarConfigScreen(null)));
                             return 1;
                         }))
+                        .then(LiteralArgumentBuilder.<S>literal("benchmark")
+                                .executes(c -> benchmark(source.apply(c.getSource()), Benchmark.DEFAULT_SECONDS))
+                                .then(LiteralArgumentBuilder.<S>literal("world")
+                                        // Leaving the world is not done on a typo: said first, done on "confirm".
+                                        .executes(c -> {
+                                            source.apply(c.getSource()).feedback(
+                                                    Component.translatable("livinghorizon.benchmark.world.explain"));
+                                            return 1;
+                                        })
+                                        .then(LiteralArgumentBuilder.<S>literal("confirm").executes(c -> {
+                                            Minecraft client = source.apply(c.getSource()).client();
+                                            client.execute(() -> BenchmarkWorld.start(client));
+                                            return 1;
+                                        })))
+                                .then(LiteralArgumentBuilder.<S>literal("stop").executes(c -> {
+                                    Source from = source.apply(c.getSource());
+                                    from.client().execute(() -> Benchmark.stop(from.client()));
+                                    return 1;
+                                }))
+                                .then(RequiredArgumentBuilder.<S, Integer>argument("seconds",
+                                                IntegerArgumentType.integer(Benchmark.MIN_SECONDS, Benchmark.MAX_SECONDS))
+                                        .executes(c -> benchmark(source.apply(c.getSource()),
+                                                IntegerArgumentType.getInteger(c, "seconds")))))
                         .then(LiteralArgumentBuilder.<S>literal("impostors").executes(c -> {
                             Minecraft client = source.apply(c.getSource()).client();
                             client.execute(() -> client.setScreen(new ImpostorScreen(null)));
                             return 1;
                         }));
+    }
+
+    /**
+     * {@code /livinghorizon benchmark [seconds]}: the frame rate with the mod off, on, and each
+     * part of it on its own, written to a report. The player stands still meanwhile.
+     */
+    private static int benchmark(Source source, int seconds) {
+        if (Benchmark.running()) {
+            source.feedback(Component.translatable("livinghorizon.benchmark.running"));
+            return 0;
+        }
+        source.feedback(Component.translatable("livinghorizon.benchmark.started", Benchmark.duration(seconds)));
+        Minecraft client = source.client();
+        // After the chat screen, which closes once the command has run.
+        client.execute(() -> Benchmark.start(client, seconds));
+        return 1;
     }
 
     /** Test players placed at most at once, and the farthest they are spread. */
@@ -255,7 +298,7 @@ public final class LivingHorizonCommand {
         // On what you ride, if anything: a copy of it, which each of them keeps.
         RestingPlayers.Mount mount = RestingPlayers.Mount.ridden(self);
         boolean flies = mount != null && RestingPlayers.Mount.flies(self.getRootVehicle());
-        int dimension = SharedPositions.dimensionCode(self.level().dimension());
+        String dimension = SharedPositions.dimensionId(self.level().dimension());
         Random random = new Random();
         List<String> skins = RestingPlayers.skinsFor(names.size(), random);
         for (String each : names) {
@@ -298,6 +341,13 @@ public final class LivingHorizonCommand {
         return false;
     }
 
+    /** The game's three dimensions by their name; one of a mod by its id, as the game has no name for it. */
+    private static Component dimensionName(String dimension) {
+        int vanilla = PositionsMessage.LEGACY_DIMENSIONS.indexOf(dimension);
+        return vanilla >= 0 ? Component.translatable("livinghorizon.offline.test.dimension." + vanilla)
+                : Component.literal(dimension);
+    }
+
     /** Everyone resting on this server: where, and since when. */
     private static int listOffline(Source source) {
         RestingPlayers resting = FarPlayerTracker.get().resting();
@@ -312,7 +362,7 @@ public final class LivingHorizonCommand {
             String date = LastSeen.format(spot.lastSeen(), language, ZoneId.systemDefault());
             source.feedback(Component.translatable("livinghorizon.offline.test.line",
                     spot.name(),
-                    Component.translatable("livinghorizon.offline.test.dimension." + Math.clamp(spot.dimension(), 0, 3)),
+                    dimensionName(spot.dimension()),
                     Math.round(spot.x()), Math.round(spot.y()), Math.round(spot.z()),
                     date == null ? Component.translatable("livinghorizon.offline.test.unknown") : Component.literal(date),
                     resting.isFake(spot) ? Component.translatable("livinghorizon.offline.test.mark") : Component.empty()));
@@ -406,6 +456,9 @@ public final class LivingHorizonCommand {
                 FarPlayerTracker.get().mobs().size(), FarPlayerTracker.get().mobs().shown().size()));
         source.feedback(Component.translatable("livinghorizon.status.cost", Stats.tickMillis(), Stats.extractMillis(),
                 Stats.drawn(), Stats.skipped()));
+        // The numbers of each section; the GPU's time is measured from now on, and shows the next time.
+        source.feedback(Component.translatable("livinghorizon.debug.hud.profile"));
+        for (ProfileLines.Line line : ProfileLines.lines()) source.feedback(Component.literal(line.content()));
         Collection<FarPlayer> players = FarPlayerTracker.get().players();
         if (players.isEmpty()) {
             source.feedback(Component.translatable("livinghorizon.status.none"));

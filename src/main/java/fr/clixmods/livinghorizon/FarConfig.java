@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 import fr.clixmods.livinghorizon.track.MobKinds;
 import fr.clixmods.livinghorizon.platform.Platform;
 import net.minecraft.resources.Identifier;
@@ -11,9 +12,6 @@ import net.minecraft.world.entity.MobCategory;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
-import java.io.Reader;
-import java.io.Writer;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -72,6 +70,15 @@ public final class FarConfig {
      * left as it is.
      */
     public boolean offlinePlayers = true;
+
+    /** The value of {@link #maxOfflinePlayers} (and above) that means no limit. */
+    public static final int UNLIMITED_OFFLINE = 1000;
+
+    /**
+     * How many players who logged off are drawn at once: the nearest ones. The others stay
+     * remembered, and show again when they are among the nearest. {@link #UNLIMITED_OFFLINE}: all.
+     */
+    public int maxOfflinePlayers = 256;
 
     /**
      * Players who logged off live their life where they left, as long as the blocks there are
@@ -255,6 +262,12 @@ public final class FarConfig {
      * Voxy's is ever written, and those shadows show on distant mobs.
      */
     public boolean optVoxyShadows = true;
+    /**
+     * Without a shader pack, the world's entities get Voxy's fog, which stops growing past a
+     * limit, in place of the game's (see {@code FarFog}). Off: the game's fog, under which far
+     * mobs turn paler than Voxy's terrain; enchantment glints and lightning then fade as usual.
+     */
+    public boolean optVoxyFog = true;
     /** Saved mobs are read off the game's thread and built within 2 ms per tick. */
     public boolean optBackgroundBuild = true;
     /** A mob only a few pixels high on screen plays no walking or idle animation: it only slides and turns. */
@@ -325,81 +338,92 @@ public final class FarConfig {
 
     public static void load() {
         Path path = path();
-        if (Files.exists(path)) {
-            try (Reader reader = Files.newBufferedReader(path)) {
-                FarConfig read = GSON.fromJson(reader, FarConfig.class);
+        JsonElement root = JsonStore.read(path);
+        if (root != null) {
+            try {
+                FarConfig read = GSON.fromJson(root, FarConfig.class);
                 if (read != null) instance = read;
-            } catch (IOException | RuntimeException e) {
-                LivingHorizonClient.LOGGER.warn("Could not read {}, using defaults", path, e);
+            } catch (RuntimeException e) {
+                // A typo made by hand: the file is kept aside, not written over with the defaults.
+                JsonStore.keepBad(path, e);
             }
-            if (instance.version < 2) {
-                // 0.1.0 kept far players at least 14 pixels tall by default, which made
-                // them giants next to the terrain they stand on.
-                instance.minApparentPixels = 0.0;
-            }
+            if (instance.version > CURRENT) JsonStore.keepNewer(path, instance.version);
         }
-        if (instance.mobTypes == null) instance.mobTypes = defaultMobTypes();
-        if (instance.stillMobTypes == null) instance.stillMobTypes = new ArrayList<>(List.of("minecraft:happy_ghast", MANNEQUIN));
-        if (instance.version < 5) {
+        migrate(instance);
+        save();
+    }
+
+    /**
+     * Brings settings read from an older file up to date, one layout at a time, and fills in
+     * what the file left out. Does nothing to settings already up to date, the defaults included.
+     */
+    static void migrate(FarConfig config) {
+        if (config.version < 2) {
+            // 0.1.0 kept far players at least 14 pixels tall by default, which made
+            // them giants next to the terrain they stand on.
+            config.minApparentPixels = 0.0;
+        }
+        if (config.mobTypes == null) config.mobTypes = defaultMobTypes();
+        if (config.stillMobTypes == null) config.stillMobTypes = new ArrayList<>(List.of("minecraft:happy_ghast", MANNEQUIN));
+        if (config.version < 5) {
             // Mannequins came with Distant Friends' fake players: shown, and still, unless set otherwise.
-            if (!instance.mobTypes.contains(MANNEQUIN)) instance.mobTypes.add(MANNEQUIN);
-            if (!instance.stillMobTypes.contains(MANNEQUIN)) instance.stillMobTypes.add(MANNEQUIN);
+            if (!config.mobTypes.contains(MANNEQUIN)) config.mobTypes.add(MANNEQUIN);
+            if (!config.stillMobTypes.contains(MANNEQUIN)) config.stillMobTypes.add(MANNEQUIN);
         }
-        if (instance.version < 4 && instance.birdSize == 2) {
+        if (config.version < 4 && config.birdSize == 2) {
             // Twice the size suited lone parrots; silhouettes come in their own sizes.
-            instance.birdSize = 1;
+            config.birdSize = 1;
         }
-        if (instance.hiddenBirds == null) instance.hiddenBirds = new ArrayList<>();
-        if (instance.birdStyle == null) instance.birdStyle = "3d";
-        if (instance.knownModdedMobs == null) instance.knownModdedMobs = new ArrayList<>();
-        if (instance.version < 3) {
+        if (config.hiddenBirds == null) config.hiddenBirds = new ArrayList<>();
+        if (config.birdStyle == null) config.birdStyle = "3d";
+        if (config.knownModdedMobs == null) config.knownModdedMobs = new ArrayList<>();
+        if (config.version < 3) {
             // Boats came after the list was first written: shown unless taken out by hand.
             for (String type : MobKinds.TYPES) {
-                if (MobKinds.isBoat(type) && !instance.mobTypes.contains(type)) instance.mobTypes.add(type);
+                if (MobKinds.isBoat(type) && !config.mobTypes.contains(type)) config.mobTypes.add(type);
             }
         }
-        if (instance.version < 6) {
+        if (config.version < 6) {
             // The far terrain's depth on mobs and skipping the mobs it hides left the main
             // settings for the debug screen, on: whoever had turned them off could not tell.
-            instance.depthOcclusion = true;
-            instance.hideOccludedMobs = true;
-            instance.optOcclusionQueries = true;
+            config.depthOcclusion = true;
+            config.hideOccludedMobs = true;
+            config.optOcclusionQueries = true;
         }
-        if (instance.version < 7) {
+        if (config.version < 7) {
             // New defaults: whoever never changed the old ones gets them.
-            if (instance.maxDistantMobs == 200) instance.maxDistantMobs = 512;
-            if (instance.mobMaxDistance == 0) instance.mobMaxDistance = 512;
-            if ("sleep".equals(instance.offlinePose)) instance.offlinePose = "sit";
-            if (instance.impostorDistance == 200) instance.impostorDistance = 128;
-            instance.impostors = true;
+            if (config.maxDistantMobs == 200) config.maxDistantMobs = 512;
+            if (config.mobMaxDistance == 0) config.mobMaxDistance = 512;
+            if ("sleep".equals(config.offlinePose)) config.offlinePose = "sit";
+            if (config.impostorDistance == 200) config.impostorDistance = 128;
+            config.impostors = true;
         }
-        if (instance.version < 8) {
+        if (config.version < 8) {
             // One switch per kind of figure now; the old ones turn on what they covered.
-            if (Boolean.TRUE.equals(instance.glowOutline)) {
-                instance.outlineLiveMobs = instance.outlineCopies = instance.outlinePlayers = true;
-                instance.outlineImpostors = true;
+            if (Boolean.TRUE.equals(config.glowOutline)) {
+                config.outlineLiveMobs = config.outlineCopies = config.outlinePlayers = true;
+                config.outlineImpostors = true;
             }
-            if (Boolean.TRUE.equals(instance.debugOutlines)) {
-                instance.outlineCopies = instance.outlineImpostors = instance.outlineLeftOut = true;
+            if (Boolean.TRUE.equals(config.debugOutlines)) {
+                config.outlineCopies = config.outlineImpostors = config.outlineLeftOut = true;
             }
-            instance.glowOutline = null;
-            instance.debugOutlines = null;
+            config.glowOutline = null;
+            config.debugOutlines = null;
         }
-        if (instance.version < 9) {
+        if (config.version < 9) {
             // Hiding them is a switch of its own now, which also stops remembering them; the
             // poses gave way to a life of their own.
-            if ("hidden".equals(instance.offlinePose)) instance.offlinePlayers = false;
-            instance.offlinePose = null;
+            if ("hidden".equals(config.offlinePose)) config.offlinePlayers = false;
+            config.offlinePose = null;
         }
-        if (instance.version < 10) {
-            if (Boolean.FALSE.equals(instance.ufo)) instance.easterEggs = false;
-            instance.ufo = null;
+        if (config.version < 10) {
+            if (Boolean.FALSE.equals(config.ufo)) config.easterEggs = false;
+            config.ufo = null;
         }
         // Written by hand out of range: the nearest end.
-        instance.impostorMobMemory = Math.clamp(instance.impostorMobMemory, MIN_MOB_MEMORY, MAX_MOB_MEMORY);
-        instance.impostorPlayerMemory = Math.clamp(instance.impostorPlayerMemory, MIN_PLAYER_MEMORY, MAX_PLAYER_MEMORY);
-        instance.version = CURRENT;
-        save();
+        config.impostorMobMemory = Math.clamp(config.impostorMobMemory, MIN_MOB_MEMORY, MAX_MOB_MEMORY);
+        config.impostorPlayerMemory = Math.clamp(config.impostorPlayerMemory, MIN_PLAYER_MEMORY, MAX_PLAYER_MEMORY);
+        config.version = CURRENT;
     }
 
     /**
@@ -430,10 +454,7 @@ public final class FarConfig {
     public static void save() {
         Path path = path();
         try {
-            Files.createDirectories(path.getParent());
-            try (Writer writer = Files.newBufferedWriter(path)) {
-                GSON.toJson(instance, writer);
-            }
+            JsonStore.write(path, writer -> GSON.toJson(instance, writer));
         } catch (IOException e) {
             LivingHorizonClient.LOGGER.warn("Could not write {}", path, e);
         }

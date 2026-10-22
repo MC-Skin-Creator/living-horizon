@@ -2,6 +2,42 @@
 
 ## Prochaine version
 
+### Serveur
+
+#### Améliorations
+- **Plus léger sur les gros serveurs** — le serveur passe moins de temps à choisir à qui envoyer skin et monture, et envoie une longue liste de joueurs déconnectés en plusieurs fois au lieu d'un seul message trop gros pour le jeu.
+- **Les joueurs ont aussi besoin de cette version** — sur un serveur qui a cette version, les joueurs doivent l'avoir aussi pour voir les joueurs lointains.
+
+#### Corrections
+- **Joueurs déconnectés perdus quand le fichier du monde ne se lit pas** — un `livinghorizon-positions.dat` que le serveur ne sait pas lire n'est plus écrasé : il est gardé en `livinghorizon-positions.dat.bad`, et la console le signale.
+
+### Client
+
+#### Nouveautés
+- **Benchmark** — `/livinghorizon benchmark` mesure ce que le mod coûte dans ton monde, partie par partie, et écrit un rapport à joindre à un signalement de bug.
+- **Monde de benchmark** — `/livinghorizon benchmark world` crée un nouveau monde de test, toujours le même, où le benchmark part du même endroit à chaque fois, au milieu de mobs et de joueurs déconnectés ; ton propre monde reste tel quel.
+- **Déconnectés max** — un nouveau réglage choisit combien de joueurs déconnectés sont affichés en même temps, les plus proches d'abord (256 par défaut) ; les autres réapparaissent quand tu t'en approches.
+
+#### Améliorations
+- **Message plus clair quand les versions diffèrent** — quand le mod du serveur est trop ancien ou trop récent pour le tien, le journal dit lequel mettre à jour, au lieu de dire que le serveur n'a pas le mod.
+
+#### Améliorations
+- **Plus fluide avec beaucoup de joueurs déconnectés** — les joueurs déconnectés coûtent moins cher à afficher au loin, et ceux cachés derrière les collines sont ignorés.
+
+#### Corrections
+- **Joueurs déconnectés au-delà de la Distance d'affichage des joueurs** — les joueurs déconnectés ne s'affichent plus au-delà du réglage *Distance d'affichage des joueurs*.
+- **Mannequins lointains avec le skin par défaut** — les mannequins au loin ne perdent plus leur skin pour apparaître en Alex : ils gardent celui qu'ils portent de près, celui d'un joueur ou d'un pack de ressources (Minecraft 1.21.9 et plus).
+- **Eau disparue sous Photon avec Distant Horizons** — avec *Masquer par le relief*, l'eau ne se change plus en son fond nu et ombré dès qu'un mob ou un joueur lointain est en vue (Minecraft 26.3).
+- **Capes dressées des mannequins lointains** — les capes des mannequins au loin ne se dressent plus en l'air : elles pendent comme de près (Minecraft 1.21.9 et plus).
+- **Fichier de réglages perdu après une faute de frappe** — une erreur en modifiant `livinghorizon.json` à la main n'efface plus le fichier : il est gardé en `livinghorizon.json.bad`, et le journal le signale.
+- **Mobs mémorisés et joueurs déconnectés perdus** — un jeu qui se ferme pendant une sauvegarde n'abîme plus les fichiers des mobs mémorisés et des joueurs déconnectés, et un fichier abîmé est gardé en `.bad` au lieu d'être vidé.
+- **Saccades en rejoignant un gros serveur** — rejoindre un serveur avec beaucoup de joueurs déconnectés ne fait plus saccader le jeu.
+- **Manque de mémoire à cause d'une image abîmée** — une image sauvegardée abîmée d'un mob lointain (*Entités simplifiées*) ne peut plus faire manquer de mémoire au jeu : elle est redessinée à la place.
+- **Mobs lointains cachés par le terrain de Distant Horizons sous shaders** — avec Oculus et un shader pack, les mobs lointains ne disparaissent plus derrière le terrain de Distant Horizons, de plus en plus à mesure que la distance de rendu augmente (Forge).
+- **Mobs lointains qui secouent la tête** — les mobs et les joueurs au loin ne secouent plus la tête à toute vitesse avec Entity Culling, seul ou avec Chloride.
+- **Joueurs affichés dans la mauvaise dimension moddée** — les joueurs connectés ou déconnectés dans une dimension moddée, comme l'Aether, ne sont plus dessinés dans une autre, comme la Twilight Forest (sur un serveur, il lui faut aussi cette version).
+- **Mobs lointains délavés par le brouillard** — les mobs au loin sur le terrain de Voxy ne pâlissent plus jusqu'à se fondre dans la couleur du brouillard passé une certaine distance : ils prennent le même brouillard que le terrain autour d'eux (sans shader pack).
+
 ## 0.10.0 — 2026-10-20
 
 ### Serveur
