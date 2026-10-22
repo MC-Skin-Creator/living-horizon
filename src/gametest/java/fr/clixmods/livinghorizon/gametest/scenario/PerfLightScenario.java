@@ -49,6 +49,8 @@ public final class PerfLightScenario implements Scenario {
             config.offlineLife = false;
             config.offlineNames = false;
             config.maxOfflinePlayers = FarConfig.UNLIMITED_OFFLINE;
+            // Models, never pictures, whatever their size on screen.
+            config.impostorPixels = 0;
         });
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
             context.runOnClient(PerfLightScenario::crowd);

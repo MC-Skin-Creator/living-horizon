@@ -46,6 +46,8 @@ public final class PerfMobsScenario implements Scenario {
             config.maxDistantMobs = FarConfig.UNLIMITED_MOBS;
             config.mobMaxDistance = 1000;
             config.impostorDistance = 2000;
+            // Models, never pictures, whatever their size on screen.
+            config.impostorPixels = 0;
             config.animationMinPixels = 0;
             if (!config.mobTypes.contains("minecraft:zombie")) config.mobTypes.add("minecraft:zombie");
         });

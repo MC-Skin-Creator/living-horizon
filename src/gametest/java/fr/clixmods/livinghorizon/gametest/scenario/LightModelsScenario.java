@@ -31,6 +31,8 @@ public final class LightModelsScenario implements Scenario {
         Scene.configure(context, config -> {
             config.offlineLife = false;
             config.offlineNames = false;
+            // Models, never pictures, whatever their size on screen.
+            config.impostorPixels = 0;
         });
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
             for (String slot : new String[]{"armor.head with diamond_helmet", "armor.chest with diamond_chestplate",
