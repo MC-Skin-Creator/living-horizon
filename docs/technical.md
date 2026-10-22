@@ -429,9 +429,13 @@ flat disc at their own height.
   as the game picks its sections, or else a chunk the far world has terrain in, within Voxy's or
   Distant Horizons' own render distance (`LodWorld.drawnDistance`). The far world is asked a
   chunk at a time, every chunk of a frame in one read (`LodWorld.fresh`, which reads a column
-  remembered empty again); until it answers the mob is left out. A chunk found empty is asked
-  again after 1, 2, 4... up to 30 seconds, as the far world fills in after a world is opened; one
-  with terrain stays so until the world changes. The debug marks call such a mob *over the void*.
+  remembered empty again). A chunk found empty is asked again after 1, 2, 4... up to 30 seconds,
+  as the far world fills in after a world is opened; one with terrain stays so until the world
+  changes. Never a blink: only a "no terrain" answer hides a mob; while its chunk has no answer
+  yet (or the far world's reads are paused), it stays as it was the frame before
+  (`DrawnGround.Decisions`, by the mob's id, shared by the real mob and its copy). The game's
+  chunks within three of the edge of its render distance are asked ahead, so the answer is there
+  before a mob or the edge crosses them. The debug marks call a hidden one *over the void*.
 - A mob smaller on screen than `animationMinPixels` (10 pixels; 0 always animates; its height
   or width, whichever is larger, and never under `minApparentPixels`) plays no
   walking or idle animation (`optStillTiny`): it keeps sliding along its animation and turning

@@ -478,7 +478,7 @@ public final class GhostRenderer {
                 if (debug) DebugMarks.mark(puppet, Mark.NEAR);
                 continue;
             }
-            if (overVoid(minecraft, eye, puppet, config)) continue;
+            if (overVoid(minecraft, eye, mob.id(), puppet, config)) continue;
             if (skipped(puppet, true)) continue;
             if (occluded(mob.id(), puppet, config)) continue;
             if (debug) DebugMarks.mark(puppet, Mark.FAKE);
@@ -531,9 +531,9 @@ public final class GhostRenderer {
      * No terrain drawn under it, neither the game's nor the far terrain, so not drawn this frame
      * ({@link FarConfig#onlyOverTerrain}): it would stand in the void.
      */
-    private static boolean overVoid(Minecraft minecraft, Vec3 eye, Entity entity, FarConfig config) {
+    private static boolean overVoid(Minecraft minecraft, Vec3 eye, Object key, Entity entity, FarConfig config) {
         if (!config.onlyOverTerrain || minecraft.level == null
-                || DrawnGround.under(minecraft.level, eye, entity.getX(), entity.getZ())) {
+                || DrawnGround.shown(minecraft.level, eye, key, entity.getX(), entity.getZ())) {
             return false;
         }
         if (debug) DebugMarks.mark(entity, Mark.VOID);
@@ -581,7 +581,7 @@ public final class GhostRenderer {
             // Close by, the game leaves a mob out only when the terrain hides it.
             if (entity.distanceToSqr(eye) < 24 * 24) continue;
             if (tooFar(entity, eye, config.mobMaxDistance)) continue;
-            if (overVoid(minecraft, eye, entity, config)) continue;
+            if (overVoid(minecraft, eye, entity.getUUID(), entity, config)) continue;
             if (skipped(entity, true)) continue;
             if (occluded(entity.getUUID(), entity, config)) continue;
             EntityCulling.drawn(entity);

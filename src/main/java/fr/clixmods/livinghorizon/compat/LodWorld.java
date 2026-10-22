@@ -141,6 +141,14 @@ public final class LodWorld {
         return source == null ? 0 : source.clearDistance();
     }
 
+    /** Whether Voxy or Distant Horizons is installed, answering or not. */
+    public static boolean installed() {
+        for (LodSource source : SOURCES) {
+            if (source.loaded()) return true;
+        }
+        return false;
+    }
+
     /** Whether Voxy or Distant Horizons is installed and answering: there is a far world to read. */
     public static boolean present() {
         return source() != null;

@@ -5,10 +5,13 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -17,15 +20,25 @@ import java.util.concurrent.ConcurrentHashMap;
  * where neither draws anything yet would stand in the void.
  *
  * <p>Chunks the game holds within its render distance are answered at once. The others are
- * asked of the far world a chunk at a time, in one read per frame, off the game's thread:
- * until the answer comes the mob is left out. A chunk found empty is asked again, later and
- * later, since the far world fills in as it loads; one found with terrain stays so until the
- * world changes.
+ * asked of the far world a chunk at a time, in one read per frame, off the game's thread. A
+ * chunk found empty is asked again, later and later, since the far world fills in as it loads;
+ * one found with terrain stays so until the world changes.
+ *
+ * <p>Never a blink: a mob is hidden only on a "no terrain" answer. While its chunk has no
+ * answer yet, it stays as it was the frame before ({@link Decisions}), so a mob walking out of
+ * the game's chunks never drops out while the far world is asked. And the far world is asked
+ * ahead, about the game's chunks along the edge of its render distance, before mobs or the
+ * edge cross them.
  */
 public final class DrawnGround {
     /** The first wait before a chunk found empty is asked again, and the longest. */
     private static final long RETRY_NANOS = 1_000_000_000L, RETRY_MAX_NANOS = 30_000_000_000L;
     private static final int CHUNKS_KEPT = 20_000;
+    /** Chunks from the edge of the game's render distance asked of the far world ahead. */
+    private static final int AHEAD = 3;
+
+    /** What is known of a chunk. */
+    enum Answer { TERRAIN, VOID, UNKNOWN }
 
     /** What is known of one chunk; written by the reader threads, read by the game's. */
     private static final class Chunk {
@@ -33,12 +46,17 @@ public final class DrawnGround {
         volatile boolean asking;
         volatile long next;
         volatile int misses;
+
+        Answer answer() {
+            return ground ? Answer.TERRAIN : misses > 0 ? Answer.VOID : Answer.UNKNOWN;
+        }
     }
 
     private static final ConcurrentHashMap<Long, Chunk> CHUNKS = new ConcurrentHashMap<>();
     /** Asked this frame: the chunk and the column of the mob that asked. */
     private static final List<Chunk> ASKED = new ArrayList<>();
     private static int[] askedX = new int[64], askedZ = new int[64];
+    private static final Decisions DECISIONS = new Decisions();
 
     private static double farDrawn;
     private static long farDrawnAt = Long.MIN_VALUE;
@@ -46,22 +64,58 @@ public final class DrawnGround {
     private DrawnGround() {
     }
 
-    /** Another world, or none: every chunk is asked again. */
+    /** Another world, or none: every chunk is asked again, and every mob starts hidden. */
     static void clear() {
         CHUNKS.clear();
+        DECISIONS.clear();
     }
 
     /**
-     * Whether terrain is drawn under {@code (x, z)}, seen from {@code eye}: false while the far
-     * world has not answered yet. Asks it when needed; {@link #ask()} sends the questions.
+     * Whether the mob {@code key}, standing at {@code (x, z)}, is drawn: terrain is drawn under
+     * it seen from {@code eye}, or its chunk has no answer yet and it was drawn the last time.
+     * Asks the far world when needed; {@link #ask()} sends the questions.
      */
-    public static boolean under(ClientLevel level, Vec3 eye, double x, double z) {
+    public static boolean shown(ClientLevel level, Vec3 eye, Object key, double x, double z) {
+        return DECISIONS.decide(key, answer(level, eye, x, z), System.nanoTime());
+    }
+
+    private static Answer answer(ClientLevel level, Vec3 eye, double x, double z) {
         int bx = Mth.floor(x), bz = Mth.floor(z), cx = bx >> 4, cz = bz >> 4;
-        if (gameDraws(level, eye, cx, cz)) return true;
-        if (!LodWorld.present()) return false;
+        int distance = Minecraft.getInstance().options.getEffectiveRenderDistance();
+        long reach = reach(eye, cx, cz);
+        if (reach < (long) distance * distance && level.hasChunk(cx, cz)) {
+            // Near the edge, the far world is asked ahead: the answer is there when the mob or the edge moves.
+            int inner = Math.max(0, distance - AHEAD);
+            if (reach >= (long) inner * inner && LodWorld.present() && withinFar(eye, x, z)) chunk(cx, cz, bx, bz);
+            return Answer.TERRAIN;
+        }
+        if (!LodWorld.installed()) return Answer.VOID;
+        // Installed but not read now (paused after a failed read): no answer either way.
+        if (!LodWorld.present()) return Answer.UNKNOWN;
+        if (!withinFar(eye, x, z)) return Answer.VOID;
+        return chunk(cx, cz, bx, bz).answer();
+    }
+
+    /**
+     * The chunk's square distance from the camera's, in chunks, the way the game picks the
+     * sections it draws ({@code ChunkTrackingView.isInViewDistance}): within the render
+     * distance when below its square.
+     */
+    private static long reach(Vec3 eye, int cx, int cz) {
+        long dx = Math.max(0, Math.abs(cx - (Mth.floor(eye.x) >> 4)) - 1);
+        long dz = Math.max(0, Math.abs(cz - (Mth.floor(eye.z) >> 4)) - 1);
+        return dx * dx + dz * dz;
+    }
+
+    /** Within the far world's own render distance, when it says. */
+    private static boolean withinFar(Vec3 eye, double x, double z) {
         double far = farDrawn();
         double dx = x - eye.x, dz = z - eye.z;
-        if (far > 0 && dx * dx + dz * dz > far * far) return false;
+        return far <= 0 || dx * dx + dz * dz <= far * far;
+    }
+
+    /** What is known of a chunk, asking the far world about it when it is time. */
+    private static Chunk chunk(int cx, int cz, int bx, int bz) {
         if (CHUNKS.size() > CHUNKS_KEPT) CHUNKS.clear();
         Chunk chunk = CHUNKS.computeIfAbsent((long) cx << 32 | (cz & 0xFFFFFFFFL), key -> new Chunk());
         if (!chunk.ground && !chunk.asking && System.nanoTime() >= chunk.next) {
@@ -75,7 +129,7 @@ public final class DrawnGround {
             askedZ[i] = bz;
             ASKED.add(chunk);
         }
-        return chunk.ground;
+        return chunk;
     }
 
     /** Sends the far world this frame's questions, in one read. */
@@ -100,17 +154,6 @@ public final class DrawnGround {
         });
     }
 
-    /**
-     * The game draws this chunk: it holds it, and it is within the render distance, measured
-     * the way the game picks the sections it draws ({@code ChunkTrackingView.isInViewDistance}).
-     */
-    private static boolean gameDraws(ClientLevel level, Vec3 eye, int cx, int cz) {
-        int distance = Minecraft.getInstance().options.getEffectiveRenderDistance();
-        long dx = Math.max(0, Math.abs(cx - (Mth.floor(eye.x) >> 4)) - 1);
-        long dz = Math.max(0, Math.abs(cz - (Mth.floor(eye.z) >> 4)) - 1);
-        return dx * dx + dz * dz < (long) distance * distance && level.hasChunk(cx, cz);
-    }
-
     /** {@link LodWorld#drawnDistance}, read again once a second: the settings it reads seldom change. */
     private static double farDrawn() {
         long now = System.nanoTime();
@@ -119,5 +162,43 @@ public final class DrawnGround {
             farDrawnAt = now;
         }
         return farDrawn;
+    }
+
+    /**
+     * Whether each mob was drawn the last time it was asked about, so that one without an
+     * answer stays as it was. Mobs not asked about for a while are forgotten: two maps, the
+     * older dropped every {@link #FORGET_NANOS}. On the game's thread only.
+     */
+    static final class Decisions {
+        static final long FORGET_NANOS = 20_000_000_000L;
+
+        private Map<Object, Boolean> recent = new HashMap<>(), older = new HashMap<>();
+        private long turnedAt = Long.MIN_VALUE;
+
+        boolean decide(Object key, Answer answer, long now) {
+            if (turnedAt == Long.MIN_VALUE) turnedAt = now;
+            if (now - turnedAt > FORGET_NANOS) {
+                older = recent;
+                recent = new HashMap<>();
+                turnedAt = now;
+            }
+            boolean shown = switch (answer) {
+                case TERRAIN -> true;
+                case VOID -> false;
+                case UNKNOWN -> {
+                    @Nullable Boolean last = recent.get(key);
+                    if (last == null) last = older.get(key);
+                    yield last != null && last;
+                }
+            };
+            recent.put(key, shown);
+            return shown;
+        }
+
+        void clear() {
+            recent.clear();
+            older.clear();
+            turnedAt = Long.MIN_VALUE;
+        }
     }
 }
