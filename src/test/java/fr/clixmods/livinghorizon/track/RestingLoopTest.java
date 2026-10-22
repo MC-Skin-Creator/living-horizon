@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon.track;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -23,6 +24,7 @@ class RestingLoopTest {
         int ticks = 0, stopped = 0;
         double last = loop.x;
         while (loop.state().startsWith("on its way back") && ticks < 2000) {
+            RestingLoop.nextTick();
             double moved = loop.tick(ticks++, false);
             assertTrue(moved <= MobAnimations.WALK + 1e-9, "walked " + moved + " blocks in a tick");
             if (moved == 0) stopped++;
@@ -43,10 +45,32 @@ class RestingLoopTest {
         loop.from(X, Y, Z, 0f);
         double farthest = 0;
         for (int tick = 0; tick < 2000; tick++) {
+            RestingLoop.nextTick();
             assertTrue(loop.tick(tick, true) <= MobAnimations.WALK + 1e-9);
             farthest = Math.max(farthest, Math.hypot(loop.x - X, loop.z - Z));
         }
         // Around its spot, as far as the animation that fits goes, and no farther.
         assertTrue(farthest > 0.5 && farthest < 3.5, "went " + farthest + " blocks from its spot");
+    }
+
+    @Test
+    void readsAFewGroundsATick() {
+        AtomicInteger reads = new AtomicInteger();
+        RestingLoop[] loops = new RestingLoop[10];
+        for (int i = 0; i < loops.length; i++) {
+            loops[i] = new RestingLoop(i, X, Y, Z, 0f, MobAnimations.WALK, () -> {
+                reads.incrementAndGet();
+                return CompletableFuture.completedFuture(MobPaths.free(X, Y, Z, 42));
+            });
+        }
+        RestingLoop.nextTick();
+        for (RestingLoop loop : loops) loop.tick(0, true);
+        assertEquals(RestingLoop.READS_PER_TICK, reads.get(), "grounds read in the first tick");
+        // The others on the next ticks, each read once.
+        for (int tick = 1; tick < 20; tick++) {
+            RestingLoop.nextTick();
+            for (RestingLoop loop : loops) loop.tick(tick, true);
+        }
+        assertEquals(loops.length, reads.get());
     }
 }

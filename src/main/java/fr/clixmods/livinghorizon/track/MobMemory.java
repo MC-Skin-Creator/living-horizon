@@ -53,9 +53,15 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * The mobs this client has met, left where it last saw them once the server stops
@@ -93,7 +99,12 @@ public final class MobMemory {
         float yaw;
         /** Where its head turned, when it was just seen; NaN when not known, then the body's. */
         transient float head = Float.NaN;
-        String nbt;
+        /**
+         * Its saved data as text, as written in the file. Null while it is only held as a tag
+         * ({@link #parsed}), as for a mob just met or built from the server's word: the text is
+         * made when the file is written, off the game's thread, and kept from then on.
+         */
+        @Nullable String nbt;
         long seenAt;
         /** Published by the server (the field kept its name in saved files): dropped when the server drops it, which means it died. */
         boolean fromPack;
@@ -123,8 +134,13 @@ public final class MobMemory {
         /** The real mob, sent again by the server, that the copy walks up to before it takes over. */
         transient @Nullable Entity handover;
         transient boolean failed;
-        /** Its saved data, being read off the game's thread. */
+        /**
+         * Its saved data, being read off the game's thread, or the tag it was made from. Read by
+         * every copy made of it and written out by the save: nothing may change it.
+         */
         transient @Nullable CompletableFuture<CompoundTag> parsed;
+        /** The server's word its look was last checked against: the same look is not checked again. */
+        transient SharedPositions.@Nullable MobReport looked;
         transient @Nullable EntityType<?> entityType;
         transient int missingChecks;
         transient double distance;
@@ -150,8 +166,45 @@ public final class MobMemory {
         public double z() { return z; }
         public String type() { return type; }
         public boolean fromPack() { return fromPack; }
+
+        /** What the file keeps of it, for the save to write while this one lives on. */
+        Remembered saved() {
+            Remembered copy = new Remembered();
+            copy.id = id;
+            copy.type = type;
+            copy.dimension = dimension;
+            copy.world = world;
+            copy.x = x;
+            copy.y = y;
+            copy.z = z;
+            copy.yaw = yaw;
+            copy.nbt = nbt;
+            copy.seenAt = seenAt;
+            copy.fromPack = fromPack;
+            copy.named = named;
+            copy.packLook = packLook;
+            copy.ground = ground;
+            return copy;
+        }
     }
 
+    /** A mob to write: what the file keeps of it, the mob itself, and the tag its text is made from when it has none. */
+    private record Saving(Remembered copy, Remembered mob, @Nullable CompletableFuture<CompoundTag> from) {
+    }
+
+    /** The text the save made of a mob's tag, handed back to the mob on the game's thread. */
+    private record Told(Remembered mob, CompletableFuture<CompoundTag> from, String nbt) {
+    }
+
+    /** Writes the files, one save after another, off the game's thread. */
+    private static final ExecutorService SAVER = Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "Living Horizon mob memory");
+        thread.setDaemon(true);
+        return thread;
+    });
+
+    /** Seconds the save waits for the mobs' data to be read; closing waits twice that for the save. */
+    private static final long SAVE_WAIT = 10;
     private static final Gson GSON = new GsonBuilder().create();
     /** Layout of the file: 1 is the list under {@code "mobs"}, with its version; 0 the bare list before it. */
     static final int VERSION = 1;
@@ -196,6 +249,12 @@ public final class MobMemory {
     /** What the server shared, as last synced. */
     private @Nullable SharedPositions lastPack;
     private List<Remembered> shown = List.of();
+    /** Mobs that left since {@link #shown} was put together: added to it in one go, when it is next read. */
+    private final List<Remembered> arriving = new ArrayList<>();
+    /** The file being written; null before the first save. */
+    private @Nullable CompletableFuture<Void> saving;
+    /** Texts the save made, for their mobs to keep: not made again at the next save. */
+    private final Queue<Told> told = new ConcurrentLinkedQueue<>();
     private @Nullable Path file;
     private boolean firstVisit;
     /** The level the memory is read for: what unloads from any other one is not remembered. */
@@ -212,7 +271,20 @@ public final class MobMemory {
     private final ServerMobs serverMobs = new ServerMobs();
 
     public List<Remembered> shown() {
+        if (!arriving.isEmpty()) {
+            List<Remembered> next = new ArrayList<>(shown.size() + arriving.size());
+            next.addAll(shown);
+            next.addAll(arriving);
+            arriving.clear();
+            shown = Collections.unmodifiableList(next);
+        }
         return shown;
+    }
+
+    /** Draws nothing until the next choice. */
+    private void showNone() {
+        shown = List.of();
+        arriving.clear();
     }
 
     public int size() {
@@ -255,7 +327,7 @@ public final class MobMemory {
     void carried(Set<UUID> ids) {
         if (ids.equals(carried)) return;
         carried = Set.copyOf(ids);
-        if (shown.stream().anyMatch(mob -> carried.contains(mob.id))) {
+        if (shown().stream().anyMatch(mob -> carried.contains(mob.id))) {
             shown = shown.stream().filter(mob -> !carried.contains(mob.id)).toList();
         }
         chooseSoon = true;
@@ -270,7 +342,7 @@ public final class MobMemory {
     /** A new copy of a remembered mob, for a far player to ride: null when it cannot be made. */
     @Nullable Entity copy(Remembered mob, ClientLevel level) {
         EntityType<?> type = type(mob);
-        CompoundTag tag = parse(mob.nbt);
+        CompoundTag tag = tag(mob);
         Entity entity = type == null || tag == null ? null : Puppets.create(type, level);
         if (entity == null) return null;
         try {
@@ -342,6 +414,17 @@ public final class MobMemory {
 
     void close() {
         save();
+        // Written before the next world reads its file, or the game quits.
+        CompletableFuture<Void> written = saving;
+        saving = null;
+        if (written != null) {
+            try {
+                written.get(SAVE_WAIT * 2, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                LivingHorizonClient.LOGGER.warn("Living Horizon: the remembered mobs were not written in time", e);
+            }
+        }
+        told.clear();
         firstVisit = false;
         mobs.clear();
         live.clear();
@@ -349,7 +432,7 @@ public final class MobMemory {
         reach.clear();
         dismissed.clear();
         takenAway.clear();
-        shown = List.of();
+        showNone();
         chooseSoon = false;
         file = null;
         bound = null;
@@ -367,7 +450,7 @@ public final class MobMemory {
             mob.simulated = false;
         }
         joining.clear();
-        shown = List.of();
+        showNone();
         serverMobs.reset();
     }
 
@@ -394,7 +477,7 @@ public final class MobMemory {
     private boolean joins(Remembered mob, Entity real) {
         return !mob.gone && mob.handover == null && mob.puppet instanceof LivingEntity puppet
                 && real instanceof LivingEntity && !real.isPassenger() && !real.isVehicle()
-                && shown.contains(mob) && puppet.distanceToSqr(real) < 48 * 48;
+                && shown().contains(mob) && puppet.distanceToSqr(real) < 48 * 48;
     }
 
     /** Its copy reached the real mob, or cannot any more: the real one takes over. */
@@ -521,9 +604,8 @@ public final class MobMemory {
             if (mob.puppet == null) return;
         }
         mob.distance = distance(mob.x, mob.y, mob.z);
-        List<Remembered> next = new ArrayList<>(shown);
-        next.add(mob);
-        shown = Collections.unmodifiableList(next);
+        // A crowd that left at once is added to the list in one go, not one copy of it per mob.
+        arriving.add(mob);
     }
 
     /**
@@ -567,8 +649,8 @@ public final class MobMemory {
         memory.y = mob.y();
         memory.z = mob.z();
         memory.yaw = mob.yaw();
-        memory.nbt = mob.nbt().toString();
-        // Already read: the copy takes over on the next tick, where the real one was.
+        // Already read: the copy takes over on the next tick, where the real one was. Its text
+        // is made when the file is written, off the game's thread.
         memory.parsed = CompletableFuture.completedFuture(mob.nbt());
         memory.seenAt = System.currentTimeMillis();
         memory.named = mob.named();
@@ -631,8 +713,12 @@ public final class MobMemory {
         renderBlocks = renderDistanceBlocks;
         builtNow = 0;
         clock++;
+        for (Told text; (text = told.poll()) != null; ) {
+            // Still the data it was made from: changed since, the mob waits for the next save.
+            if (text.mob().parsed == text.from() && text.mob().nbt == null) text.mob().nbt = text.nbt();
+        }
         if (!config.distantMobs) {
-            shown = List.of();
+            showNone();
             return;
         }
         String dimension = level.dimension().identifier().toString();
@@ -648,7 +734,7 @@ public final class MobMemory {
             try {
                 if (clock % 20 == 0) {
                     lastPack = pack;
-                    if (pack != null) sync(pack);
+                    if (pack != null) sync(pack, config.optBackgroundBuild);
                     learnReach();
                     reconcile(level, dimension, renderDistanceBlocks);
                 }
@@ -680,8 +766,9 @@ public final class MobMemory {
         boolean background = config.optBackgroundBuild;
         long budget = System.nanoTime() + BUILD_BUDGET;
         int reads = 0;
-        for (Remembered mob : shown) {
+        for (Remembered mob : shown()) {
             if (mob.gone || mob.handover != null) continue;
+            if (mob.puppet == null && !mob.failed && mob.parsed == null && mob.nbt == null) mob.failed = true;
             if (mob.puppet == null && !mob.failed) {
                 // The saved data is read on a background thread; the puppet is made here,
                 // where the world is, as long as this tick's budget lasts.
@@ -807,8 +894,11 @@ public final class MobMemory {
      * seen by whoever was near it. A mob this client has seen keeps the look it saved; one it
      * never met is built from its kind, variant and age. One the server stopped publishing where
      * it sent the mobs died: the server forgets a mob whose chunk is loaded without it.
+     *
+     * <p>The first message can bring thousands: what each is made of is read off the game's
+     * thread ({@code background}), as saved mobs are, and its copy is made once it is read.
      */
-    private void sync(SharedPositions pack) {
+    private void sync(SharedPositions pack, boolean background) {
         Set<UUID> published = new HashSet<>();
         for (UUID id : pack.mobs()) {
             SharedPositions.MobReport report = pack.readMob(id);
@@ -826,20 +916,22 @@ public final class MobMemory {
             Remembered mob = mobs.get(id);
             // Followed on the single player server, which knows better than the last report.
             if (mob != null && mob.simulated) continue;
-            String look = packLook(report);
             if (mob == null) {
                 mob = new Remembered();
                 mob.id = id;
                 mob.type = type;
-                mob.nbt = packNbt(type, report);
-                mob.packLook = look;
+                mob.parsed = packTag(type, report, background);
+                mob.packLook = packLook(report);
+                mob.looked = report;
                 mob.seenAt = System.currentTimeMillis();
                 mobs.put(id, mob);
-            } else if (builtFromPack(mob, report) && !look.equals(mob.packLook)) {
+            } else if (!sameLook(mob, report) && builtFromPack(mob, report)
+                    && !packLook(report).equals(mob.packLook)) {
                 // Saddled, harnessed, given a chest since: built again.
-                mob.nbt = packNbt(type, report);
-                mob.packLook = look;
-                mob.parsed = null;
+                mob.nbt = null;
+                mob.parsed = packTag(type, report, background);
+                mob.packLook = packLook(report);
+                mob.looked = report;
                 mob.puppet = null;
                 mob.failed = false;
                 dirty = true;
@@ -870,6 +962,24 @@ public final class MobMemory {
         return report.variant() + "|" + report.baby() + "|" + report.extra();
     }
 
+    /**
+     * Whether the server says of a mob built from its word what it said last time: then its look
+     * is not put into text again, every second, for each of thousands of mobs.
+     */
+    private static boolean sameLook(Remembered mob, SharedPositions.MobReport report) {
+        SharedPositions.MobReport looked = mob.looked;
+        if (looked != null && looked.variant() == report.variant() && looked.baby() == report.baby()
+                && Objects.equals(looked.extra(), report.extra())) {
+            return true;
+        }
+        // Only for a mob built from the server's word: whether another is, is worked out each time.
+        if (mob.packLook != null && packLook(report).equals(mob.packLook)) {
+            mob.looked = report;
+            return true;
+        }
+        return false;
+    }
+
     /** Whether a remembered mob was built from what the server said, not seen by this client. */
     private static boolean builtFromPack(Remembered mob, SharedPositions.MobReport report) {
         if (mob.packLook != null) return true;
@@ -877,17 +987,20 @@ public final class MobMemory {
         return mob.fromPack && mob.nbt != null && mob.nbt.equals(MobKinds.nbt(mob.type, report.variant(), report.baby()));
     }
 
-    /** A mob known only from the server: its kind, variant and age, and what it wears. */
-    private static String packNbt(String type, SharedPositions.MobReport report) {
-        String base = MobKinds.nbt(type, report.variant(), report.baby());
-        if (report.extra() == null) return base;
-        try {
-            CompoundTag tag = TagParser.parseCompoundFully(base);
-            tag.merge(TagParser.parseCompoundFully(report.extra()));
-            return tag.toString();
-        } catch (Exception e) {
-            return base;
-        }
+    /** A mob known only from the server, read off the game's thread when {@code background}. */
+    private static CompletableFuture<CompoundTag> packTag(String type, SharedPositions.MobReport report, boolean background) {
+        return background
+                ? CompletableFuture.supplyAsync(() -> packTag(type, report), Util.backgroundExecutor())
+                : CompletableFuture.completedFuture(packTag(type, report));
+    }
+
+    /** Its kind, variant and age, and what it wears; null when even its kind does not read. Any thread. */
+    private static @Nullable CompoundTag packTag(String type, SharedPositions.MobReport report) {
+        CompoundTag tag = parse(MobKinds.nbt(type, report.variant(), report.baby()));
+        if (tag == null || report.extra() == null) return tag;
+        CompoundTag extra = parse(report.extra());
+        if (extra != null) tag.merge(extra);
+        return tag;
     }
 
     /**
@@ -1027,7 +1140,7 @@ public final class MobMemory {
         List<Remembered> chosen = here.subList(0, Math.min(here.size(), most));
         Set<Remembered> kept = Collections.newSetFromMap(new IdentityHashMap<>());
         kept.addAll(chosen);
-        for (Remembered mob : shown) {
+        for (Remembered mob : shown()) {
             if (!kept.contains(mob)) mob.puppet = null;
         }
         shown = Collections.unmodifiableList(new ArrayList<>(chosen));
@@ -1049,6 +1162,20 @@ public final class MobMemory {
     private static @Nullable EntityType<?> type(Remembered mob) {
         if (mob.entityType == null) mob.entityType = BuiltInRegistries.ENTITY_TYPE.getOptional(Identifier.tryParse(mob.type)).orElse(null);
         return mob.entityType;
+    }
+
+    /** Its saved data as a tag, read now if it was not yet; null when it does not read. Game's thread. */
+    private static @Nullable CompoundTag tag(Remembered mob) {
+        CompletableFuture<CompoundTag> parsed = mob.parsed;
+        if (parsed == null) {
+            if (mob.nbt == null) return null;
+            mob.parsed = parsed = CompletableFuture.completedFuture(parse(mob.nbt));
+        }
+        try {
+            return parsed.join();
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     private static @Nullable CompoundTag parse(String nbt) {
@@ -1131,26 +1258,64 @@ public final class MobMemory {
         joining.clear();
         dismissed.clear();
         takenAway.clear();
-        shown = List.of();
+        showNone();
         dirty = true;
         save();
     }
 
     // --- File --------------------------------------------------------------------------
 
+    /**
+     * Writes the file off the game's thread: here, only what the file keeps of each mob is
+     * copied; the text of their saved data is made and the file written on {@link #SAVER}.
+     */
     private void save() {
         if (file == null) return;
         dirty = false;
-        long started = Profile.begin(Profile.Section.SAVE_MOBS);
+        List<Saving> kept = new ArrayList<>(mobs.size());
+        for (Remembered mob : mobs.values()) kept.add(new Saving(mob.saved(), mob, mob.nbt == null ? mob.parsed : null));
+        Path to = file;
+        saving = CompletableFuture.runAsync(() -> writeFile(to, kept), SAVER);
+    }
+
+    /**
+     * The tag a mob's text is made from, once read: null when it does not read, or is not read
+     * by {@code deadline}, in nanoseconds (the game's workers stopped as it quits).
+     */
+    private static @Nullable CompoundTag tagOf(@Nullable CompletableFuture<CompoundTag> from, long deadline) {
+        if (from == null) return null;
+        try {
+            return from.isDone() ? from.join() : from.get(Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** On {@link #SAVER}: the mobs' texts, then the file. A mob whose data does not read is left out. */
+    private void writeFile(Path to, List<Saving> kept) {
+        long started = System.nanoTime();
         long bytes = -1;
         try {
-            Collection<Remembered> kept = new ArrayList<>(mobs.values());
-            JsonStore.write(file, writer -> write(kept, writer));
-            bytes = Files.size(file);
-        } catch (IOException e) {
-            LivingHorizonClient.LOGGER.warn("Could not write {}", file, e);
+            List<Remembered> written = new ArrayList<>(kept.size());
+            for (Saving saving : kept) {
+                Remembered copy = saving.copy();
+                if (copy.nbt == null) {
+                    CompoundTag tag = tagOf(saving.from(), started + TimeUnit.SECONDS.toNanos(SAVE_WAIT));
+                    if (tag == null) continue;
+                    copy.nbt = tag.toString();
+                    told.add(new Told(saving.mob(), saving.from(), copy.nbt));
+                }
+                written.add(copy);
+            }
+            JsonStore.write(to, writer -> write(written, writer));
+            bytes = Files.size(to);
+        } catch (IOException | RuntimeException e) {
+            LivingHorizonClient.LOGGER.warn("Could not write {}", to, e);
         } finally {
-            Profile.end(Profile.Section.SAVE_MOBS, started, bytes);
+            Profile.record(Profile.Section.SAVE_MOBS, System.nanoTime() - started, bytes);
         }
     }
 }

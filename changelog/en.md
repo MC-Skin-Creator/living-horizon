@@ -23,6 +23,9 @@
 
 #### Improved
 - **Smoother with many players who logged off** — players who logged off cost less to show far away, and those hidden behind hills are skipped.
+- **Smoother after a teleport** — teleporting, changing dimension or flying fast with an elytra no longer makes the game hitch while the mobs left behind are remembered.
+- **Smoother when joining a server with the mod** — the many distant mobs a server with the mod shares as you join no longer freeze the game for a moment.
+- **No hitch every minute** — saving the remembered mobs no longer makes the game hitch once a minute.
 
 #### Fixed
 - **Players who logged off past the Player Render Distance** — players who logged off no longer show farther than the *Player Render Distance* setting.

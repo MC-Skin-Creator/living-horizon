@@ -103,6 +103,9 @@ public final class GhostRenderer {
 
     // --- What is worth drawing ----------------------------------------------------------
 
+    /** Nanoseconds a frame may spend making the puppets of players who logged off; one is made at least. */
+    private static final long MAKE_BUDGET = 1_000_000L;
+
     /** The view this frame: where the camera looks, how wide, how many pixels a radian is. */
     private static double eyeX, eyeY, eyeZ, lookX, lookY, lookZ, viewAngle, pixelsPerRadian, drawnRange;
     private static int drawn, skipped;
@@ -142,10 +145,7 @@ public final class GhostRenderer {
         double dx = entity.getX() - eyeX, dy = entity.getY() + size * 0.5 - eyeY, dz = entity.getZ() - eyeZ;
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (distance < size * 2 + 4) return count(null);
-        if (config.optViewCulling) {
-            double angle = Math.acos(Mth.clamp((dx * lookX + dy * lookY + dz * lookZ) / distance, -1, 1));
-            if (angle > viewAngle + Math.asin(Math.min(1, size / distance))) return count(Mark.OUTSIDE);
-        }
+        if (config.optViewCulling && !inView(entity.getX(), entity.getY(), entity.getZ(), size)) return count(Mark.OUTSIDE);
         if (mayVanish && config.optTinyCulling && config.minApparentPixels <= 0
                 && size / distance * pixelsPerRadian < 0.6) {
             return count(Mark.TINY);
@@ -157,6 +157,15 @@ public final class GhostRenderer {
         if (why == null) drawn++;
         else skipped++;
         return why;
+    }
+
+    /** Whether something {@code size} blocks tall standing at {@code x, y, z} is in the view this frame, or right by the camera. */
+    private static boolean inView(double x, double y, double z, double size) {
+        double dx = x - eyeX, dy = y + size * 0.5 - eyeY, dz = z - eyeZ;
+        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (distance < size * 2 + 4) return true;
+        double angle = Math.acos(Mth.clamp((dx * lookX + dy * lookY + dz * lookZ) / distance, -1, 1));
+        return angle <= viewAngle + Math.asin(Math.min(1, size / distance));
     }
 
     /** Not drawn this frame; the debug view is told why. */
@@ -592,10 +601,19 @@ public final class GhostRenderer {
         if (level == null) return;
         RestingPlayers resting = FarPlayerTracker.get().resting();
         String dimension = SharedPositions.dimensionId(level.dimension());
+        // Made a few a frame, each dressed and given its mount: joining a server where many
+        // logged off would make them all in one frame. The nearest in view first.
+        long makeUntil = System.nanoTime() + MAKE_BUDGET;
+        boolean made = false;
         // The nearest only, as many as the settings say.
         for (RestingPlayers.Spot spot : resting.shown()) {
             if (!spot.dimension().equals(dimension)) continue;
-            RestingPuppet puppet = resting.puppet(level, spot);
+            RestingPuppet puppet = resting.made(spot);
+            if (puppet == null) {
+                if (!inView(spot.x(), spot.y(), spot.z(), 2) || (made && System.nanoTime() > makeUntil)) continue;
+                puppet = resting.puppet(level, spot);
+                made = true;
+            }
             if (!drawable(dispatcher, puppet)) continue;
             if (tooFar(puppet, eye, config.playerMaxDistance)) continue;
             if (skipped(puppet, true)) continue;
@@ -647,6 +665,13 @@ public final class GhostRenderer {
             //?}
             add(frame, minecraft, eye, body, mountState, true, Mark.PLAYER, config, spot.name());
             body.nameTag = name;
+        }
+        // Then those out of view, with what is left: there when the camera turns to them.
+        for (RestingPlayers.Spot spot : resting.shown()) {
+            if (made && System.nanoTime() > makeUntil) break;
+            if (!spot.dimension().equals(dimension) || resting.made(spot) != null) continue;
+            resting.puppet(level, spot);
+            made = true;
         }
     }
 

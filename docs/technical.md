@@ -201,6 +201,9 @@ on this client: nothing is sent to the server, they block nobody, and nothing ca
 - `maxOfflinePlayers` of them are drawn at once (256; 1000 is no limit): the nearest the
   camera in its dimension, chosen again every tick (`RestingPlayers.shown`). The others stay
   remembered and lose their puppet until they are among the nearest again.
+- Each puppet is dressed and given its mount from saved data, so they are made a few a frame
+  (a millisecond, one at least; `GhostRenderer.rest`), the nearest in view first, then those
+  out of view: joining a server where many logged off spreads them over a few frames.
 
 ### Their life, near the camera
 
@@ -240,6 +243,8 @@ but once a second they are still kept out of water (below). They play one of the
 distant mobs play (`track/MobAnimations`) in a loop around their spot, on the ground read
 around it (`track/MobPaths`, read again every 30 seconds while some of it is missing),
 sitting in some of its pauses and lying down at night, in their bed if they are in one.
+All the loops together, riders' mounts included, start at most two such reads a tick
+(`RestingLoop.READS_PER_TICK`), the nearest players first.
 
 - From wherever their life left them, they stroll back to the loop, stopping now and then to
   look around, and start it once there.
@@ -326,7 +331,14 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
 - **Otherwise**, each client remembers the mobs it met itself (the types in `mobTypes`), in
   `config/livinghorizon/mobs/<server>.json`.
 - **Look.** A mob met up close keeps its exact look (the game's own save of it); one known
-  only from the server is built from kind, variant and age.
+  only from the server is built from kind, variant and age, read off the game's thread
+  (with `optBackgroundBuild`), since the server's first message can bring thousands. Its
+  look is put into text only when the server says something new of it.
+- **Saved data.** Kept as the game's tag, as it was saved or read, and never changed after:
+  every copy is loaded from it. It becomes text only when the file is written, every minute
+  and when the world closes, on a thread of its own (`MobMemory.SAVER`): the game's thread
+  only copies what the file keeps of each mob. A mob that leaves joins the list drawn at
+  once, all those that left in one go added together.
 - **Forgetting.** Coming back within range of a remembered mob that is not there forgets it.
 - **Other mods' mobs** are shown from the start (monsters excepted), then left as the player
   sets them (`knownModdedMobs`). Each client remembers them itself: the server only shares
