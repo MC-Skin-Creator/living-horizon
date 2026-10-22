@@ -20,6 +20,7 @@
 
 #### Améliorations
 - **Message plus clair quand les versions diffèrent** — quand le mod du serveur est trop ancien ou trop récent pour le tien, le journal dit lequel mettre à jour, au lieu de dire que le serveur n'a pas le mod.
+- **Minecraft 1.21.1 plus facile à trouver** — les builds Fabric, Quilt et NeoForge pour Minecraft 1.21 et 1.21.1 sont maintenant publiés en bêta : ils apparaissent sur CurseForge et dans les launchers qui masquent les versions alpha.
 
 #### Améliorations
 - **Plus fluide avec beaucoup de joueurs déconnectés** — les joueurs déconnectés coûtent moins cher à afficher au loin, et ceux cachés derrière les collines sont ignorés.
