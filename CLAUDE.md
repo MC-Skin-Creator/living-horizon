@@ -494,6 +494,11 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Depth arithmetic** (a distance to a depth and back, in any layout, a matrix stored either
   way, its inverse, the rectangles written into Voxy's depth) lives in `render/DepthMath`, which
   asks the game nothing. A fix to the depth code adds a case to `DepthMathTest`.
+- **Distant mobs paler than the far terrain, or a flat patch of fog colour** (without a shader
+  pack, with Voxy's fog on): Voxy stops its terrain's fog growing past a limit of its own, which
+  the game's fog on entities does not know. `FarFog` gives the world's entities Voxy's curve, from
+  a second fog `FogRendererMixin` writes next to the game's; a new Voxy that computes its limit
+  otherwise (`NormalRenderPipeline.finish`, `javap`) needs `FarFog.voxyLimit` to follow.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

@@ -262,6 +262,12 @@ public final class FarConfig {
      * Voxy's is ever written, and those shadows show on distant mobs.
      */
     public boolean optVoxyShadows = true;
+    /**
+     * Without a shader pack, the world's entities get Voxy's fog, which stops growing past a
+     * limit, in place of the game's (see {@code FarFog}). Off: the game's fog, under which far
+     * mobs turn paler than Voxy's terrain; enchantment glints and lightning then fade as usual.
+     */
+    public boolean optVoxyFog = true;
     /** Saved mobs are read off the game's thread and built within 2 ms per tick. */
     public boolean optBackgroundBuild = true;
     /** A mob only a few pixels high on screen plays no walking or idle animation: it only slides and turns. */

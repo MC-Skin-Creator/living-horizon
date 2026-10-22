@@ -35,6 +35,7 @@
 - **Distant mobs hidden by Distant Horizons' terrain under shaders** — with Oculus and a shader pack, distant mobs no longer vanish behind Distant Horizons' terrain, more and more as the render distance grows (Forge).
 - **Distant mobs shaking their heads** — mobs and players far away no longer shake their heads very fast with Entity Culling, alone or with Chloride.
 - **Players drawn in the wrong modded dimension** — players online or logged off in one modded dimension, such as the Aether, are no longer drawn in another, such as the Twilight Forest (on a server, it needs this version too).
+- **Distant mobs washed out by fog** — far mobs on Voxy's terrain no longer turn pale and fade into the fog colour past a certain distance: they take the same fog as the land around them (without a shader pack).
 
 ## 0.10.0 — 2026-10-20
 

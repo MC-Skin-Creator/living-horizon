@@ -17,6 +17,7 @@ the *Debugging checklist* of [CLAUDE.md](../CLAUDE.md).
 - [Birds](#birds)
 - [Impostors](#impostors)
 - [Far terrain depth](#far-terrain-depth)
+- [Fog on distant figures](#fog-on-distant-figures)
 - [Skipping hidden mobs](#skipping-hidden-mobs)
 - [Debug tools](#debug-tools)
 - [Commands](#commands)
@@ -71,7 +72,8 @@ client class.
   extracted like a real player's and added to the same list, so skins, capes, elytras,
   armour, mounts and shader packs all work.
 - **Drawn where they really are, at their true size**, so terrain in front of them hides
-  them. Voxy writes its terrain into the game's depth buffer and removes the distance fog;
+  them. Voxy writes its terrain into the game's depth buffer and removes the render distance
+  fog (its own fog on the figures: see [Fog on distant figures](#fog-on-distant-figures));
   for Distant Horizons and shader packs, see [Far terrain depth](#far-terrain-depth).
 - **The far clipping plane** (four times the render distance) is pushed out past the farthest
   figure drawn the frame before, players, mobs and birds alike (`extendFarPlane`): a tenth
@@ -711,6 +713,33 @@ Voxy's depth textures, and nothing else:
 Anywhere else, what Voxy draws is left exactly as it is. *Voxy Shadow Fix* (`optVoxyShadows`)
 turns it off.
 
+## Fog on distant figures
+
+From 1.21.6 the game fogs the world twice: a render distance fog at the edge of the loaded
+chunks, and an environmental fog, linear from its start to its end (0 to 1024 blocks in a
+clear overworld, nearer in rain). Voxy removes the first while it draws, and fogs its own
+terrain with the second, which it stops growing past a limit: the render distance, at least
+320 blocks, times the square root of 3 (1.5 render distances before Voxy 0.2.6). The game's
+fog on entities has no such limit: past it, a far mob was paler than the land under it, down
+to a flat patch of fog colour near the fog's end.
+
+The game's shaders mix an entity's colour with the fog colour by the fog times that colour's
+alpha. `compat/FarFog` ends the fog at Voxy's limit and multiplies the alpha by the fog Voxy
+reaches there: the same fog up to the limit, Voxy's from there on.
+
+- `FogRendererMixin` writes that fog into the game's fog buffer, after the game's own (256
+  bytes in, room made for it), whenever the game writes its own.
+- It is bound while the world's entities are drawn, solid and translucent steps, and the
+  game's is bound again before anything else draws: the batch left in the buffers is drawn
+  first.
+- The terrain, the sky and the clouds keep the game's fog. Only the enchantment glint and
+  lightning, which read the fog without its alpha, fade a little sooner.
+- Without Voxy, with its fog off, with a shader pack (which fogs everything its own way), or
+  with the game's render distance fog on, the game's fog stays. *Voxy Fog Fix* (`optVoxyFog`,
+  debug screen, on by default) turns it off, glint and lightning included.
+
+The `farfog` scenario checks it, with a limit standing in for Voxy's.
+
 ## Skipping hidden mobs
 
 *Skip Hidden Mobs* (`hideOccludedMobs`) does not draw a distant mob the terrain hides
@@ -1015,6 +1044,7 @@ Every one is on by default except `optFreezeHidden`. Switch one off to see what 
 | `optOcclusionQueries` | Hide Mobs by Depth | How `hideOccludedMobs` decides: occlusion queries on the GPU; off, lines of sight in the far terrain's world |
 | `optDhFade` | DH Fade | Distant Horizons' fade leaves the entities alone, without a shader pack; off, it paints its terrain over distant mobs |
 | `optVoxyShadows` | Voxy Shadow Fix | Our far figures are written into Voxy's depth, on their own pixels only, so that Photon's terrain shadows do not fall across them |
+| `optVoxyFog` | Voxy Fog Fix | Without a shader pack, the world's entities get Voxy's fog, which stops growing past a limit (see [Fog on distant figures](#fog-on-distant-figures)); off, the game's fog |
 | `optBackgroundBuild` | Background Build | Saved mobs are read off the game's thread and built within 2 ms per tick |
 | `optStillTiny` | Still Tiny Mobs | Mobs under `animationMinPixels` play no walking or idle animation |
 | `optFreezeHidden` | Freeze Undrawn Mobs | A copy not drawn for half a second is not animated, only moved where the server says |

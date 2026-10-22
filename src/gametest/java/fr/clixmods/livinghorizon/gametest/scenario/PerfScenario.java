@@ -43,7 +43,7 @@ public final class PerfScenario implements Scenario {
     private static final int SETTLE = 60, FRAMES = 200;
     /** Settings that only act on Voxy's or Distant Horizons' terrain, neither of which runs here. */
     private static final java.util.Set<String> FAR_WORLD =
-            java.util.Set.of("optLazyDepth", "optParallelRead", "optColumnCache", "optDhFade", "optVoxyShadows");
+            java.util.Set.of("optLazyDepth", "optParallelRead", "optColumnCache", "optDhFade", "optVoxyShadows", "optVoxyFog");
 
     @Override
     public String name() {
