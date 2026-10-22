@@ -218,6 +218,14 @@ public final class FarConfig {
     public boolean impostorPlayers = true;
 
     /**
+     * Pixels: a figure drawn as a model, yet smaller than this on screen, is drawn without what
+     * cannot be seen at that size (held items, armour, cape, elytra, the outer skin layer; see
+     * {@code render/LightModels}). 0 keeps every model whole. From Minecraft 1.21.2.
+     */
+    public int lightModelPixels = 32;
+    public static final int MAX_LIGHT_MODEL_PIXELS = 200;
+
+    /**
      * Megabytes of video memory the mobs' impostor pictures may take, apart from the players':
      * taken only as looks are met, the picture used longest ago making room when full.
      */
@@ -432,6 +440,7 @@ public final class FarConfig {
         }
         // Written by hand out of range: the nearest end.
         config.impostorMobMemory = Math.clamp(config.impostorMobMemory, MIN_MOB_MEMORY, MAX_MOB_MEMORY);
+        config.lightModelPixels = Math.clamp(config.lightModelPixels, 0, MAX_LIGHT_MODEL_PIXELS);
         config.impostorPlayerMemory = Math.clamp(config.impostorPlayerMemory, MIN_PLAYER_MEMORY, MAX_PLAYER_MEMORY);
         config.impostorPixels = Math.clamp(config.impostorPixels, 0, MAX_IMPOSTOR_PIXELS);
         config.version = CURRENT;

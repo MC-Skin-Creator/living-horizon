@@ -182,6 +182,7 @@ public final class GhostRenderer {
         /*RENDERERS.clear();*/
         ImpostorRenderer.beginFrame();
         PolygonStats.beginFrame();
+        LightModels.beginFrame();
         forgetShown();
         neededFar = farthest > 0 ? (float) Math.min(MAX_FAR, farthest * 1.1 + 64) : 0f;
         farthest = 0;
@@ -679,12 +680,13 @@ public final class GhostRenderer {
         double pull = distance > reach ? reach / distance : 1.0;
 
         double boost = 1.0;
-        if (config.minApparentPixels > 0) {
-            double pixelsPerRadian = DepthFar.pixelsPerRadian(minecraft);
-            // The longest side: a sleeper is 1.8 blocks long and 0.2 high.
-            double extent = Math.max(1.8, Math.max(body.boundingBoxHeight, body.boundingBoxWidth)) * size;
-            double apparent = extent / distance * pixelsPerRadian;
-            boost = Math.clamp(config.minApparentPixels / apparent, 1.0, 400.0);
+        // The longest side: a sleeper is 1.8 blocks long and 0.2 high.
+        double apparent = Math.max(1.8, Math.max(body.boundingBoxHeight, body.boundingBoxWidth)) * size / distance * pixelsPerRadian;
+        if (config.minApparentPixels > 0) boost = Math.clamp(config.minApparentPixels / apparent, 1.0, 400.0);
+        // Small on screen, as drawn: its gear would not show, and costs as much as the figure.
+        if (LightModels.wanted(config, apparent * boost)) {
+            LightModels.lighten(body);
+            if (mount != null) LightModels.lighten(mount);
         }
 
         Transform transform = new Transform(ax, ay, az, pull, pull * boost * size);

@@ -66,6 +66,8 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addBig(blocks("impostorDistance", 32, 2000, c.impostorDistance, v -> c.impostorDistance = v));
         list.addBig(unit("impostorPixels", "pixels", 0, FarConfig.MAX_IMPOSTOR_PIXELS, c.impostorPixels,
                 v -> c.impostorPixels = v));
+        //? if >=1.21.2
+        list.addBig(unit("lightModelPixels", "pixels", 0, FarConfig.MAX_LIGHT_MODEL_PIXELS, c.lightModelPixels, v -> c.lightModelPixels = v));
         list.addBig(unit("impostorMobMemory", "megabytes", FarConfig.MIN_MOB_MEMORY, FarConfig.MAX_MOB_MEMORY,
                 c.impostorMobMemory, v -> c.impostorMobMemory = v));
         list.addBig(unit("impostorPlayerMemory", "megabytes", FarConfig.MIN_PLAYER_MEMORY, FarConfig.MAX_PLAYER_MEMORY,

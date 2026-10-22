@@ -93,6 +93,11 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 v -> FarConfig.get().impostorPixels = v, () -> FarConfig.get().impostorPixels,
                                 unit("impostorPixels", "pixels", 0))
                                 .setEnabledProvider(on("impostors"), id("impostors")))
+                        //? if >=1.21.2 {
+                        .addOption(integer(b, "lightModelPixels", 0, FarConfig.MAX_LIGHT_MODEL_PIXELS, d.lightModelPixels,
+                                v -> FarConfig.get().lightModelPixels = v, () -> FarConfig.get().lightModelPixels,
+                                unit("lightModelPixels", "pixels", 0)))
+                        //?}
                         .addOption(integer(b, "impostorMobMemory", FarConfig.MIN_MOB_MEMORY, FarConfig.MAX_MOB_MEMORY,
                                 d.impostorMobMemory, v -> FarConfig.get().impostorMobMemory = v,
                                 () -> FarConfig.get().impostorMobMemory,
