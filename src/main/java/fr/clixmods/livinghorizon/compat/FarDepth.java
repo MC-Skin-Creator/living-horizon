@@ -1339,11 +1339,21 @@ public final class FarDepth {
         return shader;
     }
 
-    /** Every piece of GL state touched here, as it was, so that the game, Iris and Voxy find it again. */
+    /**
+     * Every piece of GL state touched here, as it was, so that the game, Iris and Voxy find it
+     * again. Blending and the colour mask are kept per draw buffer: from 26.3 the game caches
+     * them per buffer and skips the call when its cache says the value is already set, so a
+     * state put back for every buffer at once, from the first one's value, leaves its cache
+     * wrong for the others. A shader pack draws into several at a time: the water's data was
+     * written with the wrong blending, and Photon no longer took it for water.
+     */
     record GlState(int program, int vertexArray, int drawFramebuffer, int readFramebuffer, int activeTexture, int[] textures,
                            int[] samplers, boolean depthTest, boolean stencilTest, boolean scissor, boolean cull,
-                           boolean blend, int depthFunc, boolean depthMask, boolean[] colorMask, int[] viewport,
+                           boolean[] blend, int depthFunc, boolean depthMask, boolean[][] colorMask, int[] viewport,
                            int[] scissorBox) {
+        /** Draw buffers whose blending and colour mask are kept: the GPU's, 16 at most. */
+        private static int drawBuffers;
+
         static GlState save() {
             int active = GL11C.glGetInteger(GL13C.GL_ACTIVE_TEXTURE);
             int[] textures = new int[3], samplers = new int[3];
@@ -1353,10 +1363,17 @@ public final class FarDepth {
                 samplers[unit] = GL11C.glGetInteger(GL33C.GL_SAMPLER_BINDING);
             }
             GL13C.glActiveTexture(active);
-            byte[] mask = new byte[4];
+            if (drawBuffers == 0) drawBuffers = Math.max(1, Math.min(16, GL11C.glGetInteger(GL20C.GL_MAX_DRAW_BUFFERS)));
+            boolean[] blend = new boolean[drawBuffers];
+            boolean[][] colorMask = new boolean[drawBuffers][];
             java.nio.ByteBuffer maskBuffer = org.lwjgl.BufferUtils.createByteBuffer(4);
-            GL11C.glGetBooleanv(GL11C.GL_COLOR_WRITEMASK, maskBuffer);
-            maskBuffer.get(mask);
+            for (int buffer = 0; buffer < drawBuffers; buffer++) {
+                blend[buffer] = GL30C.glIsEnabledi(GL11C.GL_BLEND, buffer);
+                maskBuffer.clear();
+                GL30C.glGetBooleani_v(GL11C.GL_COLOR_WRITEMASK, buffer, maskBuffer);
+                colorMask[buffer] = new boolean[]{maskBuffer.get(0) != 0, maskBuffer.get(1) != 0,
+                        maskBuffer.get(2) != 0, maskBuffer.get(3) != 0};
+            }
             int[] viewport = new int[4];
             GL11C.glGetIntegerv(GL11C.GL_VIEWPORT, viewport);
             int[] scissorBox = new int[4];
@@ -1367,9 +1384,8 @@ public final class FarDepth {
                     GL11C.glGetInteger(GL30C.GL_READ_FRAMEBUFFER_BINDING), active, textures, samplers,
                     GL11C.glIsEnabled(GL11C.GL_DEPTH_TEST), GL11C.glIsEnabled(GL11C.GL_STENCIL_TEST),
                     GL11C.glIsEnabled(GL11C.GL_SCISSOR_TEST), GL11C.glIsEnabled(GL11C.GL_CULL_FACE),
-                    GL11C.glIsEnabled(GL11C.GL_BLEND), GL11C.glGetInteger(GL11C.GL_DEPTH_FUNC),
-                    GL11C.glGetBoolean(GL11C.GL_DEPTH_WRITEMASK),
-                    new boolean[]{mask[0] != 0, mask[1] != 0, mask[2] != 0, mask[3] != 0}, viewport, scissorBox);
+                    blend, GL11C.glGetInteger(GL11C.GL_DEPTH_FUNC), GL11C.glGetBoolean(GL11C.GL_DEPTH_WRITEMASK),
+                    colorMask, viewport, scissorBox);
         }
 
         void restore() {
@@ -1387,10 +1403,14 @@ public final class FarDepth {
             toggle(GL11C.GL_STENCIL_TEST, stencilTest);
             toggle(GL11C.GL_SCISSOR_TEST, scissor);
             toggle(GL11C.GL_CULL_FACE, cull);
-            toggle(GL11C.GL_BLEND, blend);
+            for (int buffer = 0; buffer < blend.length; buffer++) {
+                if (blend[buffer]) GL30C.glEnablei(GL11C.GL_BLEND, buffer);
+                else GL30C.glDisablei(GL11C.GL_BLEND, buffer);
+                boolean[] mask = colorMask[buffer];
+                GL30C.glColorMaski(buffer, mask[0], mask[1], mask[2], mask[3]);
+            }
             GL11C.glDepthFunc(depthFunc);
             GL11C.glDepthMask(depthMask);
-            GL11C.glColorMask(colorMask[0], colorMask[1], colorMask[2], colorMask[3]);
             GL11C.glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
             GL11C.glScissor(scissorBox[0], scissorBox[1], scissorBox[2], scissorBox[3]);
         }

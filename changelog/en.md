@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.0 — 2026-10-22
+
 ### Server
 
 #### Improved
@@ -17,6 +19,7 @@
 - **Benchmark** — `/livinghorizon benchmark` measures what the mod costs in your world, part by part, and writes a report you can send with a bug report.
 - **Benchmark world** — `/livinghorizon benchmark world` makes a new test world, always the same, where the benchmark runs from the same spot every time, among mobs and players who logged off; your own world is kept as it is.
 - **Max Offline** — a new setting chooses how many players who logged off are shown at once, the nearest first (256 by default); the others show again as you come near.
+- **Simplification Size** — a new setting also turns far mobs, players and birds into *Simplified Entities* (flat pictures of them) when they look smaller on screen than a number of pixels, even before the *Simplification Distance* (10 pixels by default).
 
 #### Improved
 - **Clearer message when versions differ** — when the mod on the server is too old or too new for yours, the log says which one to update, instead of saying the server does not have the mod.
@@ -28,6 +31,7 @@
 #### Fixed
 - **Players who logged off past the Player Render Distance** — players who logged off no longer show farther than the *Player Render Distance* setting.
 - **Distant mannequins wearing the default skin** — mannequins far away no longer lose their skin and show as Alex: they keep the one they wear up close, a player's or a resource pack's (Minecraft 1.21.9 and later).
+- **Water vanishing under Photon with Distant Horizons** — with *Hide Behind Far Terrain* on, the water no longer turns into its bare, shadowed bed whenever a distant mob or player is in view (Minecraft 26.3).
 - **Distant mannequins' capes sticking up** — capes of mannequins far away no longer stick up in the air: they hang down as they do up close (Minecraft 1.21.9 and later).
 - **Settings file lost after a typo** — a mistake made editing `livinghorizon.json` by hand no longer wipes the file: it is kept as `livinghorizon.json.bad`, and the log says so.
 - **Remembered mobs and offline players lost** — a game that closes while saving no longer damages the files of remembered mobs and players who logged off, and a damaged one is kept as a `.bad` file instead of being emptied.
