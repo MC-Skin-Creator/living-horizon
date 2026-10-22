@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon.compat;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11C;
 import org.lwjgl.opengl.GL13C;
 import org.lwjgl.opengl.GL15C;
@@ -13,6 +14,7 @@ import org.lwjgl.opengl.GL31C;
 import org.lwjgl.opengl.GL32C;
 import org.lwjgl.opengl.GL33C;
 import org.lwjgl.opengl.GL45C;
+import org.lwjgl.opengl.GLCapabilities;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -40,16 +42,24 @@ final class VisibilityPass {
     private static boolean broken;
     private static String reason = "";
 
-    private static int program, vertexArray, target, framebuffer, boxBuffer, boxTexture;
-    private static int matrixLocation, pictureLocation, reversedLocation, zeroToOneLocation;
+    private static int program, vertexArray, target, framebuffer;
+    private static int matrixLocation, pictureLocation, reversedLocation, zeroToOneLocation, depthRangeLocation;
+    /** Whether the log already says that OpenGL's depth layout is not the one the game's device reports. */
+    private static boolean layoutLogged;
 
-    /** One read-back per frame in flight: the pixel buffer, its fence, the keys it answers for and their frame. */
+    /**
+     * One slot per frame in flight: the boxes (a buffer of fixed size, never given a new store,
+     * written only once the GPU is done with it, and the buffer texture over it), the pixel
+     * buffer read into, its fence, the keys it answers for and their frame.
+     */
+    private static final int[] BOX_BUFFERS = new int[SLOTS], BOX_TEXTURES = new int[SLOTS];
     private static final int[] PIXELS = new int[SLOTS];
     private static final long[] FENCES = new long[SLOTS];
     private static final Object[][] SLOT_KEYS = new Object[SLOTS][];
     private static final long[] SLOT_FRAMES = new long[SLOTS];
 
     private static final Object[] KEYS = new Object[MAX];
+    private static final float[] RANGE = new float[2];
     private static final float[] BOXES = new float[MAX * 6];
     private static final FloatBuffer UPLOAD = BufferUtils.createFloatBuffer(MAX * 8);
     private static final ByteBuffer READ = BufferUtils.createByteBuffer(MAX * 4);
@@ -103,9 +113,8 @@ final class VisibilityPass {
                 UPLOAD.put(BOXES, 6 * i, 3).put(0f).put(BOXES, 6 * i + 3, 3).put(0f);
             }
             UPLOAD.flip();
-            // A new store each frame: the GPU may still read last frame's.
-            GL45C.glNamedBufferData(boxBuffer, (long) MAX * 32, GL15C.GL_STREAM_DRAW);
-            GL45C.glNamedBufferSubData(boxBuffer, 0, UPLOAD);
+            // This slot's fence has been passed: the GPU no longer reads its boxes.
+            GL45C.glNamedBufferSubData(BOX_BUFFERS[slot], 0, UPLOAD);
             draw(slot, n, depthTexture, pictureWidth, pictureHeight, viewProjection);
             Object[] keys = new Object[n];
             System.arraycopy(KEYS, 0, keys, 0, n);
@@ -138,12 +147,22 @@ final class VisibilityPass {
             GL20C.glUniformMatrix4fv(matrixLocation, false, viewProjection);
             GL20C.glUniform2i(pictureLocation, pictureWidth, pictureHeight);
             GL20C.glUniform1i(reversedLocation, DepthFar.reversed() ? 1 : 0);
-            GL20C.glUniform1i(zeroToOneLocation, DepthFar.zeroToOne() ? 1 : 0);
+            // The depth layout OpenGL draws with right now, which the queries' boxes get as they are
+            // drawn: a shader pack may set it apart from what the game's device reports.
+            boolean zeroToOne = clipZeroToOne();
+            GL11C.glGetFloatv(GL11C.GL_DEPTH_RANGE, RANGE);
+            if (zeroToOne != DepthFar.zeroToOne() && !layoutLogged) {
+                layoutLogged = true;
+                LivingHorizonClient.LOGGER.info("OpenGL draws the depth {} while the game's device reports {}: distant mobs are tested in OpenGL's",
+                        zeroToOne ? "from 0 to 1" : "from -1 to 1", DepthFar.zeroToOne() ? "0 to 1" : "-1 to 1");
+            }
+            GL20C.glUniform1i(zeroToOneLocation, zeroToOne ? 1 : 0);
+            GL20C.glUniform2f(depthRangeLocation, RANGE[0], RANGE[1]);
             GL13C.glActiveTexture(GL13C.GL_TEXTURE0);
             GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, depthTexture);
             GL33C.glBindSampler(0, 0);
             GL13C.glActiveTexture(GL13C.GL_TEXTURE1);
-            GL11C.glBindTexture(GL31C.GL_TEXTURE_BUFFER, boxTexture);
+            GL11C.glBindTexture(GL31C.GL_TEXTURE_BUFFER, BOX_TEXTURES[slot]);
             GL33C.glBindSampler(1, 0);
             GL30C.glBindVertexArray(vertexArray);
             GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3);
@@ -162,6 +181,13 @@ final class VisibilityPass {
             GL11C.glBindTexture(GL31C.GL_TEXTURE_BUFFER, bufferTexture);
             gl.restore();
         }
+    }
+
+    /** Whether OpenGL maps the clip space's depth from 0 to 1 right now ({@code glClipControl}). */
+    private static boolean clipZeroToOne() {
+        GLCapabilities caps = GL.getCapabilities();
+        if (!caps.OpenGL45 && !caps.GL_ARB_clip_control) return false;
+        return GL11C.glGetInteger(GL45C.GL_CLIP_DEPTH_MODE) == GL45C.GL_ZERO_TO_ONE;
     }
 
     /** Takes in every read-back the GPU has finished, without waiting for any. */
@@ -212,17 +238,13 @@ final class VisibilityPass {
         pictureLocation = GL20C.glGetUniformLocation(program, "picture");
         reversedLocation = GL20C.glGetUniformLocation(program, "reversed");
         zeroToOneLocation = GL20C.glGetUniformLocation(program, "zeroToOne");
+        depthRangeLocation = GL20C.glGetUniformLocation(program, "depthRange");
         int previous = GL11C.glGetInteger(GL20C.GL_CURRENT_PROGRAM);
         GL20C.glUseProgram(program);
         GL20C.glUniform1i(GL20C.glGetUniformLocation(program, "depth"), 0);
         GL20C.glUniform1i(GL20C.glGetUniformLocation(program, "boxes"), 1);
         GL20C.glUseProgram(previous);
         vertexArray = GL45C.glCreateVertexArrays();
-
-        boxBuffer = GL45C.glCreateBuffers();
-        GL45C.glNamedBufferData(boxBuffer, (long) MAX * 32, GL15C.GL_STREAM_DRAW);
-        boxTexture = GL45C.glCreateTextures(GL31C.GL_TEXTURE_BUFFER);
-        GL45C.glTextureBuffer(boxTexture, GL30C.GL_RGBA32F, boxBuffer);
 
         target = GL45C.glCreateTextures(GL11C.GL_TEXTURE_2D);
         GL45C.glTextureStorage2D(target, 1, GL11C.GL_RGBA8, MAX, 1);
@@ -234,6 +256,11 @@ final class VisibilityPass {
             throw new IllegalStateException("the visibility framebuffer is incomplete");
         }
         for (int slot = 0; slot < SLOTS; slot++) {
+            // Immutable storage: a buffer texture keeps reading the store it was made over.
+            BOX_BUFFERS[slot] = GL45C.glCreateBuffers();
+            GL45C.glNamedBufferStorage(BOX_BUFFERS[slot], (long) MAX * 32, GL45C.GL_DYNAMIC_STORAGE_BIT);
+            BOX_TEXTURES[slot] = GL45C.glCreateTextures(GL31C.GL_TEXTURE_BUFFER);
+            GL45C.glTextureBuffer(BOX_TEXTURES[slot], GL30C.GL_RGBA32F, BOX_BUFFERS[slot]);
             PIXELS[slot] = GL45C.glCreateBuffers();
             GL45C.glNamedBufferData(PIXELS[slot], (long) MAX * 4, GL15C.GL_STREAM_READ);
         }
@@ -263,6 +290,8 @@ final class VisibilityPass {
                 uniform ivec2 picture;
                 uniform int reversed;
                 uniform int zeroToOne;
+                // glDepthRange: where the clip space's depth lands in the depth buffer.
+                uniform vec2 depthRange;
                 layout(location = 0) out vec4 color;
                 const int STEPS = 16;
 
@@ -285,7 +314,8 @@ final class VisibilityPass {
                         lowest = min(lowest, at);
                         highest = max(highest, at);
                         // Clamped as the depth clamp of the queries did: past the far plane is at the far plane.
-                        float d = clamp(zeroToOne != 0 ? ndc.z : ndc.z * 0.5 + 0.5, 0.0, 1.0);
+                        float d = mix(depthRange.x, depthRange.y, zeroToOne != 0 ? ndc.z : ndc.z * 0.5 + 0.5);
+                        d = clamp(d, min(depthRange.x, depthRange.y), max(depthRange.x, depthRange.y));
                         nearest = reversed != 0 ? max(nearest, d) : min(nearest, d);
                     }
                     lowest = clamp(lowest, vec2(0.0), vec2(picture));
