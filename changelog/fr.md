@@ -2,6 +2,8 @@
 
 ## Prochaine version
 
+## 0.11.0 — 2026-10-22
+
 ### Serveur
 
 #### Améliorations
@@ -18,6 +20,7 @@
 - **Benchmark** — `/livinghorizon benchmark` mesure ce que le mod coûte dans ton monde, partie par partie, et écrit un rapport à joindre à un signalement de bug.
 - **Monde de benchmark** — `/livinghorizon benchmark world` crée un nouveau monde de test, toujours le même, où le benchmark part du même endroit à chaque fois, au milieu de mobs et de joueurs déconnectés ; ton propre monde reste tel quel.
 - **Déconnectés max** — un nouveau réglage choisit combien de joueurs déconnectés sont affichés en même temps, les plus proches d'abord (256 par défaut) ; les autres réapparaissent quand tu t'en approches.
+- **Taille de simplification** — un nouveau réglage transforme aussi les mobs, joueurs et oiseaux lointains en *Entités simplifiées* (des images plates d'eux) quand ils paraissent plus petits à l'écran qu'un nombre de pixels, même avant la *Distance de simplification* (10 pixels par défaut).
 
 #### Améliorations
 - **Message plus clair quand les versions diffèrent** — quand le mod du serveur est trop ancien ou trop récent pour le tien, le journal dit lequel mettre à jour, au lieu de dire que le serveur n'a pas le mod.
@@ -28,6 +31,7 @@
 #### Corrections
 - **Joueurs déconnectés au-delà de la Distance d'affichage des joueurs** — les joueurs déconnectés ne s'affichent plus au-delà du réglage *Distance d'affichage des joueurs*.
 - **Mannequins lointains avec le skin par défaut** — les mannequins au loin ne perdent plus leur skin pour apparaître en Alex : ils gardent celui qu'ils portent de près, celui d'un joueur ou d'un pack de ressources (Minecraft 1.21.9 et plus).
+- **Eau disparue sous Photon avec Distant Horizons** — avec *Masquer par le relief*, l'eau ne se change plus en son fond nu et ombré dès qu'un mob ou un joueur lointain est en vue (Minecraft 26.3).
 - **Capes dressées des mannequins lointains** — les capes des mannequins au loin ne se dressent plus en l'air : elles pendent comme de près (Minecraft 1.21.9 et plus).
 - **Fichier de réglages perdu après une faute de frappe** — une erreur en modifiant `livinghorizon.json` à la main n'efface plus le fichier : il est gardé en `livinghorizon.json.bad`, et le journal le signale.
 - **Mobs mémorisés et joueurs déconnectés perdus** — un jeu qui se ferme pendant une sauvegarde n'abîme plus les fichiers des mobs mémorisés et des joueurs déconnectés, et un fichier abîmé est gardé en `.bad` au lieu d'être vidé.
