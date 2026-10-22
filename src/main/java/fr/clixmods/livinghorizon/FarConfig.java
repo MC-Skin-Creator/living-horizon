@@ -209,7 +209,7 @@ public final class FarConfig {
      * Pixels: a figure shorter than this on screen is an impostor too, even closer than
      * {@link #impostorDistance} (its model back only a little above). 0 goes by the distance alone.
      */
-    public int impostorPixels = 0;
+    public int impostorPixels = 10;
 
     /** Range of {@link #impostorPixels}. */
     public static final int MAX_IMPOSTOR_PIXELS = 64;
