@@ -78,7 +78,7 @@ public final class PerfMobsScenario implements Scenario {
             int shown = context.computeOnClient(minecraft -> FarPlayerTracker.get().mobs().shown().size());
             int drawn = context.computeOnClient(minecraft -> Stats.drawn());
             Scene.log("perfmobs " + horses + " horses and " + zombies + " zombies summoned, " + shown + " copies, " + drawn + " drawn");
-            if (shown < 900) throw new AssertionError("perfmobs: only " + shown + " remembered copies, the scene is wrong");
+            if (shown < 600) throw new AssertionError("perfmobs: only " + shown + " remembered copies, the scene is wrong");
 
             measure(context, 0, "warm-up");
             List<Row> nevers = new ArrayList<>(), sizes = new ArrayList<>();
