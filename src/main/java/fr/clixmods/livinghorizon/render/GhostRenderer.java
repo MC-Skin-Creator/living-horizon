@@ -177,20 +177,32 @@ public final class GhostRenderer {
      * behind the camera or specks. Each test can be switched off to measure it.
      */
     static @Nullable Mark skip(Entity entity, boolean mayVanish) {
-        FarConfig config = FarConfig.get();
         double size = Math.max(0.5, Math.max(entity.getBbHeight(), entity.getBbWidth()));
-        double dx = entity.getX() - eyeX, dy = entity.getY() + size * 0.5 - eyeY, dz = entity.getZ() - eyeZ;
+        return count(why(entity.getX() - eyeX, entity.getY() + size * 0.5 - eyeY, entity.getZ() - eyeZ, size, mayVanish));
+    }
+
+    /**
+     * Whether something of the mod's own, {@code size} blocks across around a point this far
+     * from the camera, is outside the view or smaller than about half a pixel: the tests
+     * {@link #skip} makes for a puppet. For the birds, not counted among the puppets.
+     */
+    public static boolean outOfSight(double dx, double dy, double dz, double size) {
+        return why(dx, dy, dz, Math.max(0.5, size), true) != null;
+    }
+
+    private static @Nullable Mark why(double dx, double dy, double dz, double size, boolean mayVanish) {
+        FarConfig config = FarConfig.get();
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if (distance < size * 2 + 4) return count(null);
+        if (distance < size * 2 + 4) return null;
         if (config.optViewCulling) {
             double angle = Math.acos(Mth.clamp((dx * lookX + dy * lookY + dz * lookZ) / distance, -1, 1));
-            if (angle > viewAngle + Math.asin(Math.min(1, size / distance))) return count(Mark.OUTSIDE);
+            if (angle > viewAngle + Math.asin(Math.min(1, size / distance))) return Mark.OUTSIDE;
         }
         if (mayVanish && config.optTinyCulling && config.minApparentPixels <= 0
                 && size / distance * pixelsPerRadian < 0.6) {
-            return count(Mark.TINY);
+            return Mark.TINY;
         }
-        return count(null);
+        return null;
     }
 
     private static @Nullable Mark count(@Nullable Mark why) {
