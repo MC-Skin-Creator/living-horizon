@@ -7,6 +7,7 @@
 #### Improved
 - **Lighter on big servers** — the server spends less time choosing whose skin and mount to send each player, and sends a long list of players who logged off in several parts instead of one message too large for the game.
 - **Players need this version too** — on a server with this version, players need it as well to see distant players.
+- **Server lag spikes** — a server with the mod no longer stalls for a moment every few seconds when it has many mobs, nor every minute while saving what it shares, and it starts faster: the players a world had before the mod are read only the first time.
 
 #### Fixed
 - **Offline players lost when the world file cannot be read** — a `livinghorizon-positions.dat` the server cannot read is no longer written over: it is kept as `livinghorizon-positions.dat.bad`, and the console says so.

@@ -8,6 +8,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Util;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -27,12 +28,16 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.WeakHashMap;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 /**
  * What a server with the mod tells the clients with the mod, so that they draw every player
@@ -49,7 +54,8 @@ import java.util.WeakHashMap;
  * world ({@link #FILE}), so that a player who joins later sees them too. A mob is forgotten when
  * its chunk is loaded and it is not there any more.
  *
- * <p>Everything here runs on the server's thread.
+ * <p>Everything here runs on the server's thread, but writing the file every minute and reading
+ * the world's {@code playerdata} the first time, which run on the game's IO pool.
  */
 public final class PositionPublisher {
     /** Ticks between two publications of the players. */
@@ -66,6 +72,8 @@ public final class PositionPublisher {
     private static final int MAX_LOOKS = 64;
     /** Publications between two reads of a mob's saved data: thirty seconds. */
     private static final int MOB_READ_EVERY = 150;
+    /** Mobs whose saved data is read per publication, those never read first: 80 a second, never all at once. */
+    private static final int READS_PER_RUN = 16;
     /** Past this, what a mob wears is left out. */
     private static final int MAX_EXTRA = 4000;
     /** What a mob's look takes from its saved data besides its kind and variant: what it wears. */
@@ -106,6 +114,16 @@ public final class PositionPublisher {
     private final LinkedHashMap<UUID, PositionsMessage.Mob> mobs = new LinkedHashMap<>();
     /** What was last read of each mob's saved data. */
     private final Map<UUID, Read> reads = new HashMap<>();
+    /** Each kind of entity's number, 0 for those not shared: worked out once, not at every entity of every refresh. */
+    private final Map<EntityType<?>, Integer> kinds = new IdentityHashMap<>();
+    /** Mobs never read: shared once their saved data is, a few at each publication. */
+    private final LinkedHashMap<UUID, Entity> unread = new LinkedHashMap<>();
+    /** Mobs whose saved data is due to be read again, after those never read. */
+    private final LinkedHashMap<UUID, Entity> due = new LinkedHashMap<>();
+    /** The players the world saved before the mod, read on the IO pool, taken in once read. */
+    private @Nullable CompletableFuture<List<PositionsMessage.Player>> imported;
+    /** The last file handed to the IO pool: the next one is written after it, and so is the one at the stop. */
+    private CompletableFuture<Void> saving = CompletableFuture.completedFuture(null);
     /** Test players the host placed with the debug command: shared, never saved. */
     private Map<String, PositionsMessage.Player> tests = Map.of();
     /** Test players handed over by the host's game, not taken yet. */
@@ -138,6 +156,7 @@ public final class PositionPublisher {
     private void publish(long[] sentBytes) {
         if (!server.isRunning()) return;
         if (!loaded) load();
+        takeImported(false);
         tell();
         List<PositionsMessage.Player> placed = offered;
         if (placed != null) {
@@ -151,6 +170,7 @@ public final class PositionPublisher {
         boolean joined = false;
         for (ServerPlayer player : online) joined |= !greeted.contains(player.getUUID()) && Network.canSend(player);
         if (full || joined) refreshMobs();
+        readSome();
 
         Set<UUID> sent = new HashSet<>();
         byte[] plain = null;
@@ -176,7 +196,7 @@ public final class PositionPublisher {
             }
         }
         greeted = sent;
-        if (++runs % SAVE_EVERY == 0 && dirty) save();
+        if (++runs % SAVE_EVERY == 0 && dirty) saveLater();
     }
 
     /**
@@ -221,8 +241,7 @@ public final class PositionPublisher {
                 ridden.remove(name);
             }
             if (runs % LOOK_EVERY == 0 || !looks.containsKey(name)) looks.put(name, lookOf(player));
-            UUID published = vehicle != null && KINDS.containsKey(EntityType.getKey(vehicle.getType()).toString())
-                    ? vehicle.getUUID() : null;
+            UUID published = vehicle != null && kindOf(vehicle.getType()) != 0 ? vehicle.getUUID() : null;
             players.put(name, new PositionsMessage.Player(name, player.getX(), player.getY(), player.getZ(),
                     player.getYRot(), SharedPositions.dimensionId(player.level().dimension()), true,
                     vehicle != null, published));
@@ -323,36 +342,85 @@ public final class PositionPublisher {
         return sent;
     }
 
+    /**
+     * Where every mob is now. Its saved data is not read here but a few mobs at a time
+     * ({@link #readSome}): a mob never read waits for it, one read before keeps what was read
+     * (or what the file kept) until it is read again.
+     */
     private void refreshMobs() {
         Set<UUID> seen = new HashSet<>();
         for (ServerLevel level : server.getAllLevels()) {
             String dimension = SharedPositions.dimensionId(level.dimension());
             for (Entity entity : level.getAllEntities()) {
                 if (entity.isRemoved()) continue;
-                String type = EntityType.getKey(entity.getType()).toString();
-                Integer kind = KINDS.get(type);
-                if (kind == null) continue;
+                int kind = kindOf(entity.getType());
+                if (kind == 0) continue;
                 UUID id = entity.getUUID();
-                Read read = reads.get(id);
-                // Its saved data now and then only, each mob at its own time: what it wears seldom changes.
-                if (read == null || runs - read.at() >= MOB_READ_EVERY + (id.hashCode() & 63)) {
-                    read = read(entity, level, type);
-                    reads.put(id, read);
-                }
-                boolean baby = entity instanceof LivingEntity living && living.isBaby();
                 seen.add(id);
+                Read read = reads.get(id);
+                PositionsMessage.Mob known = mobs.get(id);
+                if (read == null && known == null) {
+                    unread.putIfAbsent(id, entity);
+                    continue;
+                }
+                // Its saved data now and then only, each mob at its own time: what it wears seldom changes.
+                if (read == null || runs - read.at() >= MOB_READ_EVERY + (id.hashCode() & 63)) due.putIfAbsent(id, entity);
                 // Moved to the end: the mob seen longest ago comes first, and goes first.
                 mobs.remove(id);
-                mobs.put(id, new PositionsMessage.Mob(id, entity.getX(), entity.getY(), entity.getZ(), kind, dimension,
-                        baby, read.variant(), read.extra()));
+                mobs.put(id, read != null ? mob(entity, kind, dimension, read.variant(), read.extra())
+                        : mob(entity, kind, dimension, known.variant(), known.extra()));
                 dirty = true;
             }
             // Its chunk is loaded and it is not there: dead, despawned, or gone through a portal.
             mobs.values().removeIf(mob -> mob.dimension().equals(dimension) && !seen.contains(mob.id())
                     && level.areEntitiesLoaded(chunk(mob.x(), mob.z())));
         }
+        trimMobs();
+        unread.keySet().retainAll(seen);
+        due.keySet().retainAll(mobs.keySet());
+    }
+
+    /** Reads the saved data of a few mobs, at every publication: those never read first, then those due again. */
+    private void readSome() {
+        int left = readFrom(unread, READS_PER_RUN, true);
+        if (left > 0) readFrom(due, left, false);
+        if (left < READS_PER_RUN) trimMobs();
+    }
+
+    /** Reads up to {@code budget} mobs of {@code queue}; what is left of the budget. */
+    private int readFrom(LinkedHashMap<UUID, Entity> queue, int budget, boolean fresh) {
+        Iterator<Entity> waiting = queue.values().iterator();
+        while (budget > 0 && waiting.hasNext()) {
+            Entity entity = waiting.next();
+            waiting.remove();
+            UUID id = entity.getUUID();
+            // Gone since, or forgotten since (a mount taken away by a player who logged off).
+            if (entity.isRemoved() || !(entity.level() instanceof ServerLevel level) || (!fresh && !mobs.containsKey(id))) continue;
+            budget--;
+            Read read = read(entity, level, EntityType.getKey(entity.getType()).toString());
+            reads.put(id, read);
+            // A mob read again keeps its place; one read for the first time comes last, as just seen.
+            mobs.put(id, mob(entity, kindOf(entity.getType()), SharedPositions.dimensionId(level.dimension()),
+                    read.variant(), read.extra()));
+            dirty = true;
+        }
+        return budget;
+    }
+
+    private void trimMobs() {
         while (mobs.size() > MAX_MOBS) mobs.remove(mobs.keySet().iterator().next());
         reads.keySet().retainAll(mobs.keySet());
+    }
+
+    private static PositionsMessage.Mob mob(Entity entity, int kind, String dimension, int variant, @Nullable String extra) {
+        boolean baby = entity instanceof LivingEntity living && living.isBaby();
+        return new PositionsMessage.Mob(entity.getUUID(), entity.getX(), entity.getY(), entity.getZ(), kind, dimension,
+                baby, variant, extra);
+    }
+
+    /** The number {@link PositionsMessage} gives this kind of entity, 0 when it is not shared. */
+    private int kindOf(EntityType<?> type) {
+        return kinds.computeIfAbsent(type, t -> KINDS.getOrDefault(EntityType.getKey(t).toString(), 0));
     }
 
     /** A mob's variant, and what it wears, from its saved data. */
@@ -392,21 +460,43 @@ public final class PositionPublisher {
 
     private void load() {
         loaded = true;
-        readFile();
-        // Those the world saved before the mod saw them log off: logged off where they were.
+        if (readFile()) return;
+        // The first share in this world, or a file that did not read or is older: the players the
+        // world saved before the mod saw them log off, read off the server's thread.
+        Path folder = server.getWorldPath(LevelResource.PLAYER_DATA_DIR);
+        Path world = server.getWorldPath(LevelResource.ROOT);
+        imported = CompletableFuture.supplyAsync(() -> WorldPlayers.read(folder, world), Util.ioPool());
+    }
+
+    /** Adds the players {@link WorldPlayers} read, logged off where they were, once read; {@code wait} for them at the stop. */
+    private void takeImported(boolean wait) {
+        CompletableFuture<List<PositionsMessage.Player>> pending = imported;
+        if (pending == null || !wait && !pending.isDone()) return;
+        imported = null;
+        List<PositionsMessage.Player> read;
+        try {
+            read = pending.join();
+        } catch (CompletionException e) {
+            LOGGER.warn("Could not read the players of this world", e);
+            return;
+        }
         int found = 0;
-        for (PositionsMessage.Player player : WorldPlayers.read(server)) {
+        // One who came online since is known better already.
+        for (PositionsMessage.Player player : read) {
             if (players.putIfAbsent(player.name(), player) == null) found++;
         }
         if (found > 0) {
             dirty = true;
+            // Sent to everyone at the next publication, not at the next round a few seconds later.
+            greeted = new HashSet<>();
             LOGGER.info("Living Horizon: {} players of this world shown where they logged off", found);
         }
     }
 
-    private void readFile() {
+    /** Reads the file; whether it was there and read, at this file version or a newer one. */
+    private boolean readFile() {
         Path file = file();
-        if (!Files.isRegularFile(file)) return;
+        if (!Files.isRegularFile(file)) return false;
         try {
             byte[] data = Files.readAllBytes(file);
             PositionsMessage.Saved saved = PositionsMessage.readSaved(data);
@@ -419,7 +509,7 @@ public final class PositionPublisher {
                         format == null || format.readableBy(PositionsMessage.FILE_VERSION) ? "damaged"
                                 : "version " + format.version() + ", this one reads " + PositionsMessage.FILE_VERSION,
                         bad.getFileName());
-                return;
+                return false;
             }
             PositionsMessage.Format format = PositionsMessage.format(data);
             if (format != null && format.version() > PositionsMessage.FILE_VERSION) {
@@ -436,34 +526,61 @@ public final class PositionPublisher {
                         player.look(), player.lastSeen(), false));
             }
             for (PositionsMessage.Mob mob : saved.mobs()) mobs.put(mob.id(), mob);
+            // An older file may have left players out (version 2 those in a dimension of a mod): playerdata names them.
+            return format == null || format.version() >= PositionsMessage.FILE_VERSION;
         } catch (IOException e) {
             LOGGER.warn("Could not read the shared positions of this world", e);
+            return false;
         }
     }
 
-    /** Writes the file, when something changed; also when the server stops. */
-    public void save() {
-        if (!loaded || !dirty) return;
+    /**
+     * Every minute, when something changed: the server's thread only copies the records, which
+     * never change, and the IO pool encodes and writes them, one file after the other.
+     */
+    private void saveLater() {
         dirty = false;
+        List<PositionsMessage.Player> kept = kept();
+        List<PositionsMessage.Mob> keptMobs = new ArrayList<>(mobs.values());
         Path file = file();
+        // After the last one, even should it have failed: a save refused once must not stop the next ones.
+        saving = saving.exceptionally(error -> null).thenRunAsync(() -> write(file, kept, keptMobs), Util.ioPool());
+    }
+
+    /** Writes the file at once when the server stops, after the one the IO pool may be writing. */
+    public void save() {
+        if (!loaded) return;
+        takeImported(true);
+        saving.exceptionally(error -> null).join();
+        if (!dirty) return;
+        dirty = false;
+        write(file(), kept(), new ArrayList<>(mobs.values()));
+    }
+
+    /** The players to save: those still online log off as they are now, on what they ride. */
+    private List<PositionsMessage.Player> kept() {
+        List<PositionsMessage.Player> kept = new ArrayList<>(players.size());
+        for (PositionsMessage.Player player : players.values()) {
+            kept.add(player.online()
+                    ? new PositionsMessage.Player(player.name(), player.x(), player.y(), player.z(), player.yaw(),
+                            player.dimension(), true, riding.containsKey(player.name()), null,
+                            riding.get(player.name()), looks.get(player.name()), System.currentTimeMillis(), false)
+                    : player);
+        }
+        return kept;
+    }
+
+    /** Into a temporary file moved over the file: a stop halfway leaves the last one whole. Never throws. */
+    private static void write(Path file, List<PositionsMessage.Player> kept, List<PositionsMessage.Mob> keptMobs) {
         long started = Profile.begin(Profile.Section.SAVE_POSITIONS);
         long bytes = -1;
         try {
             Path written = file.resolveSibling(FILE + ".tmp");
-            // Those still online when the server stops log off as they are, on what they ride.
-            List<PositionsMessage.Player> kept = new ArrayList<>();
-            for (PositionsMessage.Player player : players.values()) {
-                kept.add(player.online()
-                        ? new PositionsMessage.Player(player.name(), player.x(), player.y(), player.z(), player.yaw(),
-                                player.dimension(), true, riding.containsKey(player.name()), null,
-                                riding.get(player.name()), looks.get(player.name()), System.currentTimeMillis(), false)
-                        : player);
-            }
-            byte[] saved = PositionsMessage.saved(kept, new ArrayList<>(mobs.values()));
+            byte[] saved = PositionsMessage.saved(kept, keptMobs);
             bytes = saved.length;
             Files.write(written, saved);
             Files.move(written, file, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             LOGGER.warn("Could not save the shared positions of this world", e);
         } finally {
             Profile.end(Profile.Section.SAVE_POSITIONS, started, bytes);

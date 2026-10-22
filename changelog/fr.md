@@ -7,6 +7,7 @@
 #### Améliorations
 - **Plus léger sur les gros serveurs** — le serveur passe moins de temps à choisir à qui envoyer skin et monture, et envoie une longue liste de joueurs déconnectés en plusieurs fois au lieu d'un seul message trop gros pour le jeu.
 - **Les joueurs ont aussi besoin de cette version** — sur un serveur qui a cette version, les joueurs doivent l'avoir aussi pour voir les joueurs lointains.
+- **Pics de lag du serveur** — un serveur avec le mod ne se fige plus un instant toutes les quelques secondes quand il a beaucoup de mobs, ni chaque minute en sauvegardant ce qu'il partage, et il démarre plus vite : les joueurs que le monde avait avant le mod ne sont lus que la première fois.
 
 #### Corrections
 - **Joueurs déconnectés perdus quand le fichier du monde ne se lit pas** — un `livinghorizon-positions.dat` que le serveur ne sait pas lire n'est plus écrasé : il est gardé en `livinghorizon-positions.dat.bad`, et la console le signale.
