@@ -1,0 +1,38 @@
+package fr.clixmods.livinghorizon.render.impostor;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class ImpostorThresholdTest {
+    @Test
+    void distanceAloneWhenNoSize() {
+        assertFalse(ImpostorThreshold.pictured(100, 2, false, 128, 0));
+        assertTrue(ImpostorThreshold.pictured(130, 200, false, 128, 0));
+    }
+
+    @Test
+    void smallOnScreenIsPicturedBeforeTheDistance() {
+        assertTrue(ImpostorThreshold.pictured(60, 15, false, 128, 20));
+        assertFalse(ImpostorThreshold.pictured(60, 25, false, 128, 20));
+        // Past the distance, a big figure is a picture all the same.
+        assertTrue(ImpostorThreshold.pictured(200, 500, false, 128, 20));
+    }
+
+    @Test
+    void aPictureComesBackOnlyALittleInsideBoth() {
+        // Just over the size: still a picture once it is one, a model otherwise.
+        assertTrue(ImpostorThreshold.pictured(60, 20.5, true, 128, 20));
+        assertFalse(ImpostorThreshold.pictured(60, 20.5, false, 128, 20));
+        assertFalse(ImpostorThreshold.pictured(60, 22, true, 128, 20));
+        // Just inside the distance, same.
+        assertTrue(ImpostorThreshold.pictured(125, 500, true, 128, 20));
+        assertFalse(ImpostorThreshold.pictured(120, 500, true, 128, 20));
+    }
+
+    @Test
+    void neverAtTheEye() {
+        assertFalse(ImpostorThreshold.pictured(0, 0, true, 128, 20));
+    }
+}
