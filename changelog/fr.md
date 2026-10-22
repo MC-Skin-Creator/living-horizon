@@ -27,6 +27,7 @@
 #### Corrections
 - **Joueurs déconnectés au-delà de la Distance d'affichage des joueurs** — les joueurs déconnectés ne s'affichent plus au-delà du réglage *Distance d'affichage des joueurs*.
 - **Mannequins lointains avec le skin par défaut** — les mannequins au loin ne perdent plus leur skin pour apparaître en Alex : ils gardent celui qu'ils portent de près, celui d'un joueur ou d'un pack de ressources (Minecraft 1.21.9 et plus).
+- **Eau disparue sous Photon avec Distant Horizons** — avec *Masquer par le relief*, l'eau ne se change plus en son fond nu et ombré dès qu'un mob ou un joueur lointain est en vue (Minecraft 26.3).
 - **Capes dressées des mannequins lointains** — les capes des mannequins au loin ne se dressent plus en l'air : elles pendent comme de près (Minecraft 1.21.9 et plus).
 - **Fichier de réglages perdu après une faute de frappe** — une erreur en modifiant `livinghorizon.json` à la main n'efface plus le fichier : il est gardé en `livinghorizon.json.bad`, et le journal le signale.
 - **Mobs mémorisés et joueurs déconnectés perdus** — un jeu qui se ferme pendant une sauvegarde n'abîme plus les fichiers des mobs mémorisés et des joueurs déconnectés, et un fichier abîmé est gardé en `.bad` au lieu d'être vidé.

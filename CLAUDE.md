@@ -499,6 +499,13 @@ come back, add it here in the same pull request: this file is what the next sess
   the game's fog on entities does not know. `FarFog` gives the world's entities Voxy's curve, from
   a second fog `FogRendererMixin` writes next to the game's; a new Voxy that computes its limit
   otherwise (`NormalRenderPipeline.finish`, `javap`) needs `FarFog.voxyLimit` to follow.
+- **Water gone under a shader pack whenever a distant figure is in view** (Photon with Distant
+  Horizons on 26.3: the lake shows its bare, shadowed bed, with *Hide Behind Far Terrain* on; the
+  depth view looks right): from 26.3 the game caches blending and the colour mask per draw
+  buffer and skips the call when its cache already says so. Anything that toggles `GL_BLEND` or
+  `glColorMask` for all buffers at once and puts back the first buffer's value desynchronises
+  that cache for the pack's other buffers. `FarDepth.GlState` saves and restores both per draw
+  buffer (`glEnablei`, `glColorMaski`); every raw GL draw of the mod goes through it.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
