@@ -126,7 +126,7 @@ public final class LivingHorizonCommand {
                         .then(LiteralArgumentBuilder.<S>literal("scan")
                                 .executes(c -> scan(source.apply(c.getSource()), FarConfig.get().scanRadius))
                                 .then(RequiredArgumentBuilder.<S, Integer>argument("radius",
-                                                IntegerArgumentType.integer(MobScan.MIN_RADIUS))
+                                                IntegerArgumentType.integer(MobScan.MIN_RADIUS, MobScan.MAX_RADIUS))
                                         .executes(c -> scan(source.apply(c.getSource()), IntegerArgumentType.getInteger(c, "radius")))))
                         // The easter eggs, numbered, and only for whoever works on them (EGGS).
                         .then(LiteralArgumentBuilder.<S>literal("ee1").requires(c -> EGGS).executes(c -> {
