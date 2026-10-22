@@ -62,6 +62,14 @@ interface LodSource {
         return 0;
     }
 
+    /**
+     * Blocks across to which the mod draws its terrain at all, fog or not, read from its
+     * settings on the game's thread; 0 when it draws nothing or cannot say.
+     */
+    default double drawnDistance() {
+        return 0;
+    }
+
     /** What the reads found so far, for {@code /livinghorizon lod}; empty when there is nothing to say. */
     default String details() {
         return "";
