@@ -238,7 +238,7 @@
   "livinghorizon.options.impostorPlayers": "Uproszczeni gracze",
   "livinghorizon.options.impostorPlayers.tooltip": "Odlegli gracze też są upraszczani, jak stworzenia. Wyłączone: zachowują pełny model w każdej odległości, więc ich skórka i zbroja pozostają w pełni szczegółowe. Wymaga włączonych „Uproszczonych bytów”.",
   "livinghorizon.options.lightModelPixels": "Lekkie modele poniżej",
-  "livinghorizon.options.lightModelPixels.tooltip": "Byty mniejsze na ekranie, ale wciąż rysowane jako pełny model, tracą to, czego przy tej wielkości nie widać: trzymane przedmioty, zbroję, pelerynę, elytrę i zewnętrzną warstwę skórki. Wyżej poprawia wydajność (Minecraft 1.21.2 i nowsze).",
+  "livinghorizon.options.lightModelPixels.tooltip": "Byty mniejsze na ekranie, ale wciąż rysowane jako pełny model, są odciążane bez zmiany wyglądu: bez poświaty zaklęć i zdobień na wyposażeniu, bez wbitych strzał, bez warstwy skórki ukrytej pod zbroją. Poniżej połowy tej wielkości tracą też trzymane przedmioty, papugi i zewnętrzną warstwę skórki. Zbroja, peleryna i elytra zawsze zostają. Wyżej poprawia wydajność (Minecraft 1.21.2 i nowsze).",
   "livinghorizon.options.lightModelPixels.zero": "Nigdy",
   "livinghorizon.options.impostorMobMemory": "Pamięć obrazów stworzeń",
   "livinghorizon.options.impostorMobMemory.tooltip": "Pamięć wideo, jaką mogą zająć obrazy uproszczonych stworzeń, oddzielnie od pamięci graczy. Zajmowana stopniowo, w miarę pojawiania się nowych wyglądów; gdy się zapełni, najdłużej nieużywany obraz zwalnia miejsce.",

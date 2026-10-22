@@ -236,7 +236,7 @@
   "livinghorizon.options.impostorPlayers": "Joueurs simplifiés",
   "livinghorizon.options.impostorPlayers.tooltip": "Les joueurs lointains sont simplifiés eux aussi, comme les créatures. Non : ils gardent leur modèle complet à toute distance, avec leur skin et leur armure en détail. Nécessite Entités simplifiées sur Oui.",
   "livinghorizon.options.lightModelPixels": "Modèles allégés sous",
-  "livinghorizon.options.lightModelPixels.tooltip": "Les entités plus petites que ça à l'écran, mais encore dessinées en modèle complet, perdent ce qui ne se voit pas à cette taille : objets tenus, armure, cape, élytres et couche extérieure du skin. Plus haut améliore les performances (Minecraft 1.21.2 et plus).",
+  "livinghorizon.options.lightModelPixels.tooltip": "Les entités plus petites que ça à l'écran, mais encore dessinées en modèle complet, sont allégées sans changer d'aspect : plus de scintillement ni d'ornement sur leur équipement, plus de flèches plantées, plus de couche de skin cachée sous l'armure. Sous la moitié de cette taille, elles perdent aussi leurs objets tenus, leurs perroquets et la couche extérieure du skin. Armure, cape et élytres restent toujours. Plus haut améliore les performances (Minecraft 1.21.2 et plus).",
   "livinghorizon.options.lightModelPixels.zero": "Jamais",
   "livinghorizon.options.impostorMobMemory": "Mémoire des images de créatures",
   "livinghorizon.options.impostorMobMemory.tooltip": "Mémoire vidéo que peuvent prendre les images des créatures simplifiées, à part de celle des joueurs. Prise seulement au fil des nouvelles apparences ; une fois pleine, l'image inutilisée depuis le plus longtemps laisse sa place.",

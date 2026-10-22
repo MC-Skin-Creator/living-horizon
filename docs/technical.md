@@ -959,7 +959,7 @@ cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 |---|---|---|---|---|
 | `impostors` | Simplified Entities | `true` | | Far players and mobs drawn as a flat picture of themselves (see [Impostors](#impostors)) |
 | `impostorPlayers` | Simplified Players | `true` | | Distant players become impostors too; off, they keep their whole model at any distance |
-| `lightModelPixels` | Light Models Below | `32` pixels | 0 to 200 | A figure drawn as a model, yet smaller than this on screen, loses what cannot be seen at that size: held items, armour, cape, elytra, parrots, a horse's saddle and armour, a llama's carpet, a wolf's armour, the outer skin layer (`render/LightModels`, from 1.21.2). 0 is never |
+| `lightModelPixels` | Light Models Below | `64` pixels | 0 to 200 | A figure drawn as a model, yet smaller than this on screen, keeps its look but loses the shimmer and trims of its gear, the arrows stuck in it and the skin layer under its armour; below half this size its held and head items, parrots and outer skin layer too. Armour, capes, elytra, saddles and carpets always stay (`render/LightModels`, from 1.21.2). 0 is never |
 | `impostorDistance` | Simplification Distance | `128` blocks | 32 to 2000 | Past this distance an impostor stands in for the model |
 | `impostorPixels` | Simplification Size | `10` pixels | 0 to 64 | A figure shorter than this on screen is an impostor too, even closer than `impostorDistance` (`0`: the distance alone) |
 | `impostorMobMemory` | Mob Picture Memory | `1024` MB | 64 to 4096 | Video memory the mobs' pictures may take, apart from the players' |

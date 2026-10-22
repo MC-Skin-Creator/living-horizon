@@ -238,7 +238,7 @@
   "livinghorizon.options.impostorPlayers": "Basit Oyuncular",
   "livinghorizon.options.impostorPlayers.tooltip": "Uzaktaki oyuncular da canlılar gibi basitleştirilir. KAPALI: her mesafede tam modellerini korurlar, böylece görünümleri ve zırhları tüm ayrıntısıyla kalır. Basit Varlıklar'ın AÇIK olmasını gerektirir.",
   "livinghorizon.options.lightModelPixels": "Hafif modeller altında",
-  "livinghorizon.options.lightModelPixels.tooltip": "Ekranda bundan küçük ama hâlâ tam model olarak çizilen varlıklar, o boyutta görünmeyenleri kaybeder: tutulan eşyalar, zırh, pelerin, elitra ve dış görünüm katmanı. Yüksek değer performansı artırır (Minecraft 1.21.2 ve sonrası).",
+  "livinghorizon.options.lightModelPixels.tooltip": "Ekranda bundan küçük ama hâlâ tam model olarak çizilen varlıklar, görünüşü değişmeden hafifler: ekipmanda büyü parıltısı ve süsleme, saplanmış oklar ve zırhın altında kalan görünüm katmanı çizilmez. Bu boyutun yarısının altında tutulan eşyalar, papağanlar ve dış görünüm katmanı da kaldırılır. Zırh, pelerin ve elitra her zaman kalır. Yüksek değer performansı artırır (Minecraft 1.21.2 ve sonrası).",
   "livinghorizon.options.lightModelPixels.zero": "Asla",
   "livinghorizon.options.impostorMobMemory": "Canlı Resimleri Belleği",
   "livinghorizon.options.impostorMobMemory.tooltip": "Basit canlıların resimlerinin kullanabileceği video belleği, oyuncularınkinden ayrı. Yalnızca yeni görünümler çıktıkça kullanılır; dolduğunda en uzun süredir kullanılmayan resim yer açar.",

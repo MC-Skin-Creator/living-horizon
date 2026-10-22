@@ -2,36 +2,42 @@ package fr.clixmods.livinghorizon.render;
 
 import fr.clixmods.livinghorizon.FarConfig;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.world.entity.Entity;
+import org.jspecify.annotations.Nullable;
 //? if >=1.21.2 {
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.state.ArmedEntityRenderState;
 import net.minecraft.client.renderer.entity.state.HumanoidRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
-import net.minecraft.client.renderer.entity.state.LlamaRenderState;
-import net.minecraft.client.renderer.entity.state.WolfRenderState;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.equipment.Equippable;
 //? if >=1.21.9 {
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 //?} else {
 /*import net.minecraft.client.renderer.entity.state.PlayerRenderState;
 *///?}
-//? if >=1.21.5 {
-import net.minecraft.client.renderer.entity.state.EquineRenderState;
-//?} else {
-/*import net.minecraft.client.renderer.entity.state.HorseRenderState;
-*///?}
+import java.util.IdentityHashMap;
+import java.util.Map;
 //?}
 
 /**
- * The level between a whole model and its flat picture: a figure drawn as a model, yet smaller
- * on screen than {@link FarConfig#lightModelPixels}, loses what cannot be seen at that size
- * before it is submitted - the items in its hands and on its head, its armour, cape, elytra,
- * parrots, a horse's saddle and armour, a llama's carpet and chest, a wolf's armour, and a
- * player's outer skin layer. Each of those is a model or a layer of its own, often as big as
- * the figure itself: without them a player is a third of the geometry. The state is the
- * mod's own copy, made for this frame: nothing of the game's is changed.
+ * The level between a whole model and its flat picture: a figure drawn as a model, yet small
+ * on screen, keeps its look and loses what costs without showing. Below
+ * {@link FarConfig#lightModelPixels}, its gear stays but is drawn plain: no enchantment
+ * shimmer (a second pass over every piece), no armour trim (another), no arrows or stingers
+ * stuck in it, and no skin layer under a piece of armour that covers it. Below half that size
+ * the items in its hands and on its head, its parrots and its outer skin layer go too: a sword
+ * is a hundred faces for two pixels there. Armour, capes, elytra, saddles and carpets always
+ * stay: they are what a figure looks like from afar.
  *
- * <p>Before 1.21.2 the figures are drawn through their entity's renderer, with what the
- * entity holds: nothing can be left out there, and the setting does nothing.
+ * <p>The state is the mod's own copy, made for this frame: nothing of the game's, nor of the
+ * puppet's own items, is changed. Before 1.21.2 the figures are drawn through their entity's
+ * renderer, with what the entity holds: nothing can be left out there, and the setting does nothing.
  */
 public final class LightModels {
     private static int lightened, lastLightened;
@@ -43,6 +49,8 @@ public final class LightModels {
     public static void beginFrame() {
         lastLightened = lightened;
         lightened = 0;
+        //? if >=1.21.2
+        if (++frame % 600 == 0 || PLAIN.size() > 1024) PLAIN.clear();
     }
 
     /** Figures drawn as light models last frame. */
@@ -62,78 +70,129 @@ public final class LightModels {
     /*public static final boolean SUPPORTED = false;
     *///?}
 
-    /** Takes out of {@code state} what a light model leaves out. */
-    public static void lighten(EntityRenderState state) {
+    /**
+     * Lightens {@code state}, the copy of {@code entity} for this frame, drawn {@code pixels}
+     * tall under the setting's size; {@code entity} may be null, and the hand items then keep
+     * their shimmer.
+     */
+    public static void lighten(EntityRenderState state, @Nullable Entity entity, FarConfig config, double pixels) {
         lightened++;
         //? if >=1.21.2 {
-        if (state instanceof LivingEntityRenderState living) {
+        boolean tiny = pixels < config.lightModelPixels * 0.5;
+        LivingEntity living = entity instanceof LivingEntity alive ? alive : null;
+        if (state instanceof LivingEntityRenderState livingState) {
             //? if >=1.21.4 {
-            living.headItem.clear();
+            if (tiny) livingState.headItem.clear();
+            else if (living != null && !livingState.headItem.isEmpty()) {
+                resolve(livingState.headItem, living.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD),
+                        ItemDisplayContext.HEAD, false, living);
+            }
             //?} else {
-            /*living.headItem = ItemStack.EMPTY;
+            /*livingState.headItem = tiny ? ItemStack.EMPTY : plain(livingState.headItem);
             *///?}
-            living.wornHeadType = null;
-            living.wornHeadProfile = null;
         }
         if (state instanceof ArmedEntityRenderState armed) {
             //? if >=1.21.9 {
-            armed.rightHandItemState.clear();
-            armed.leftHandItemState.clear();
-            armed.rightHandItemStack = ItemStack.EMPTY;
-            armed.leftHandItemStack = ItemStack.EMPTY;
+            if (tiny) {
+                armed.rightHandItemState.clear();
+                armed.leftHandItemState.clear();
+                armed.rightHandItemStack = ItemStack.EMPTY;
+                armed.leftHandItemStack = ItemStack.EMPTY;
+            } else if (living != null) {
+                resolve(armed.rightHandItemState, armed.rightHandItemStack, ItemDisplayContext.THIRD_PERSON_RIGHT_HAND, false, living);
+                resolve(armed.leftHandItemState, armed.leftHandItemStack, ItemDisplayContext.THIRD_PERSON_LEFT_HAND, true, living);
+            }
             //?} elif >=1.21.4 {
-            /*armed.rightHandItem.clear();
-            armed.leftHandItem.clear();
+            /*if (tiny) {
+                armed.rightHandItem.clear();
+                armed.leftHandItem.clear();
+            } else if (living != null) {
+                boolean rightMain = armed.mainArm == net.minecraft.world.entity.HumanoidArm.RIGHT;
+                resolve(armed.rightHandItem, rightMain ? living.getMainHandItem() : living.getOffhandItem(),
+                        ItemDisplayContext.THIRD_PERSON_RIGHT_HAND, false, living);
+                resolve(armed.leftHandItem, rightMain ? living.getOffhandItem() : living.getMainHandItem(),
+                        ItemDisplayContext.THIRD_PERSON_LEFT_HAND, true, living);
+            }
             *///?} else {
-            /*armed.rightHandItem = ItemStack.EMPTY;
-            armed.leftHandItem = ItemStack.EMPTY;
+            /*armed.rightHandItem = tiny ? ItemStack.EMPTY : plain(armed.rightHandItem);
+            armed.leftHandItem = tiny ? ItemStack.EMPTY : plain(armed.leftHandItem);
             *///?}
         }
         if (state instanceof HumanoidRenderState humanoid) {
-            humanoid.headEquipment = ItemStack.EMPTY;
-            humanoid.chestEquipment = ItemStack.EMPTY;
-            humanoid.legsEquipment = ItemStack.EMPTY;
-            humanoid.feetEquipment = ItemStack.EMPTY;
+            humanoid.headEquipment = plain(humanoid.headEquipment);
+            humanoid.chestEquipment = plain(humanoid.chestEquipment);
+            humanoid.legsEquipment = plain(humanoid.legsEquipment);
+            humanoid.feetEquipment = plain(humanoid.feetEquipment);
         }
         //? if >=1.21.9 {
         if (state instanceof AvatarRenderState player) {
         //?} else {
         /*if (state instanceof PlayerRenderState player) {
         *///?}
-            player.showHat = false;
-            player.showJacket = false;
-            player.showLeftPants = false;
-            player.showRightPants = false;
-            player.showLeftSleeve = false;
-            player.showRightSleeve = false;
-            player.showCape = false;
-            player.parrotOnLeftShoulder = null;
-            player.parrotOnRightShoulder = null;
             player.arrowCount = 0;
             player.stingerCount = 0;
-            //? if >=1.21.4 {
-            player.heldOnHead.clear();
-            //?} else {
-            /*player.heldOnHead = ItemStack.EMPTY;
-            *///?}
+            // The skin layer under a piece of armour never shows: the armour is drawn over it, bigger.
+            if (tiny || covers(player.headEquipment)) player.showHat = false;
+            if (tiny || covers(player.chestEquipment)) {
+                player.showJacket = false;
+                player.showLeftSleeve = false;
+                player.showRightSleeve = false;
+            }
+            if (tiny || covers(player.legsEquipment)) {
+                player.showLeftPants = false;
+                player.showRightPants = false;
+            }
+            if (tiny) {
+                player.parrotOnLeftShoulder = null;
+                player.parrotOnRightShoulder = null;
+                //? if >=1.21.4 {
+                player.heldOnHead.clear();
+                //?} else {
+                /*player.heldOnHead = ItemStack.EMPTY;
+                *///?}
+            }
         }
-        //? if >=1.21.5 {
-        if (state instanceof EquineRenderState horse) {
-            horse.saddle = ItemStack.EMPTY;
-            horse.bodyArmorItem = ItemStack.EMPTY;
-        }
-        if (state instanceof LlamaRenderState llama) {
-            llama.bodyItem = ItemStack.EMPTY;
-            llama.hasChest = false;
-        }
-        //?} else {
-        /*if (state instanceof HorseRenderState horse) horse.bodyArmorItem = ItemStack.EMPTY;
-        if (state instanceof LlamaRenderState llama) {
-            llama.swag = null;
-            llama.hasChest = false;
-        }
-        *///?}
-        if (state instanceof WolfRenderState wolf) wolf.bodyArmorItem = ItemStack.EMPTY;
         //?}
     }
+
+    //? if >=1.21.2 {
+    /** The plain copies of the items seen lately, by the item itself: a puppet keeps its own. */
+    private static final Map<ItemStack, ItemStack> PLAIN = new IdentityHashMap<>();
+    private static long frame;
+
+    /** The same item without its enchantment shimmer and its trim; the item itself when it has neither. */
+    private static ItemStack plain(ItemStack stack) {
+        if (stack.isEmpty() || !stack.hasFoil() && !stack.has(DataComponents.TRIM)) return stack;
+        ItemStack kept = PLAIN.get(stack);
+        if (kept == null) {
+            kept = stack.copy();
+            kept.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, false);
+            kept.remove(DataComponents.TRIM);
+            PLAIN.put(stack, kept);
+        }
+        return kept;
+    }
+
+    /** Resolves {@code into} again from the plain {@code stack}, where it had a shimmer; left as it is otherwise. */
+    private static void resolve(net.minecraft.client.renderer.item.ItemStackRenderState into, ItemStack stack,
+                                ItemDisplayContext context, boolean leftHand, LivingEntity living) {
+        ItemStack kept = plain(stack);
+        if (kept == stack) return;
+        //? if >=1.21.9 {
+        Minecraft.getInstance().getItemModelResolver().updateForLiving(into, kept, context, living);
+        //?} else {
+        /*Minecraft.getInstance().getItemModelResolver().updateForLiving(into, kept, context, leftHand, living);
+        *///?}
+    }
+
+    /**
+     * Whether a piece of armour hides the skin layer under it: a worn item with an equipment
+     * model of its own, not an elytra (wings) nor a block (a pumpkin, a head).
+     */
+    private static boolean covers(ItemStack stack) {
+        if (stack.isEmpty() || stack.is(Items.ELYTRA) || stack.getItem() instanceof BlockItem) return false;
+        Equippable equippable = stack.get(DataComponents.EQUIPPABLE);
+        return equippable != null && equippable.assetId().isPresent();
+    }
+    //?}
 }

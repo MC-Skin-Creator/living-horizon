@@ -238,7 +238,7 @@
   "livinghorizon.options.impostorPlayers": "Simplified Players",
   "livinghorizon.options.impostorPlayers.tooltip": "Distant players are simplified too, like mobs. OFF: they keep their full model at any distance, so their skin and armor stay in full detail. Needs Simplified Entities ON.",
   "livinghorizon.options.lightModelPixels": "Light Models Below",
-  "livinghorizon.options.lightModelPixels.tooltip": "Entities smaller than this on screen, yet still drawn as full models, lose what cannot be seen at that size: held items, armor, capes, elytra and the outer skin layer. Higher improves performance (Minecraft 1.21.2 and later).",
+  "livinghorizon.options.lightModelPixels.tooltip": "Entities smaller than this on screen, yet still drawn as full models, are lightened without changing their look: no enchantment shimmer or trim on their gear, no arrows stuck in them, no skin layer hidden under armor. Below half this size they also lose their held items, parrots and outer skin layer. Armor, capes and elytra always stay. Higher improves performance (Minecraft 1.21.2 and later).",
   "livinghorizon.options.lightModelPixels.zero": "Never",
   "livinghorizon.options.impostorMobMemory": "Mob Picture Memory",
   "livinghorizon.options.impostorMobMemory.tooltip": "Video memory the pictures of simplified mobs may take, apart from the players'. Taken only as new looks are met; when it is full, the picture unused for longest makes room.",

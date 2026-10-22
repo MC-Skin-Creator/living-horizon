@@ -238,7 +238,7 @@
   "livinghorizon.options.impostorPlayers": "简化玩家",
   "livinghorizon.options.impostorPlayers.tooltip": "远处玩家也会像生物一样被简化。关：他们在任何距离都保持完整模型，皮肤和盔甲保留全部细节。需要开启“简化实体”。",
   "livinghorizon.options.lightModelPixels": "小于此尺寸时简化模型",
-  "livinghorizon.options.lightModelPixels.tooltip": "屏幕上小于此尺寸、但仍以完整模型绘制的实体，会去掉在该尺寸下看不见的部分：手持物品、盔甲、披风、鞘翅和皮肤外层。数值越高性能越好（Minecraft 1.21.2 及以上）。",
+  "livinghorizon.options.lightModelPixels.tooltip": "屏幕上小于此尺寸、但仍以完整模型绘制的实体会在外观不变的前提下简化：装备不再有附魔光效和纹饰，不再有插着的箭，盔甲下被遮住的皮肤层也不再绘制。小于此尺寸的一半时，手持物品、鹦鹉和皮肤外层也会去掉。盔甲、披风和鞘翅始终保留。数值越高性能越好（Minecraft 1.21.2 及以上）。",
   "livinghorizon.options.lightModelPixels.zero": "从不",
   "livinghorizon.options.impostorMobMemory": "生物图片显存",
   "livinghorizon.options.impostorMobMemory.tooltip": "简化生物的图片可占用的显存，与玩家的分开。只在遇到新外观时逐步占用；占满后，最久未使用的图片会让出位置。",

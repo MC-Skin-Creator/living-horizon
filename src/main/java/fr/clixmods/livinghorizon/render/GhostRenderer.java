@@ -85,6 +85,8 @@ public final class GhostRenderer {
     }
 
     private static final Map<EntityRenderState, Transform> TRANSFORMS = new IdentityHashMap<>();
+    /** The entity each state of this frame was extracted from: the light models read its items. */
+    private static final Map<EntityRenderState, Entity> EXTRACTED_FROM = new IdentityHashMap<>();
     private static final Set<Entity> EXTRACTED = Collections.newSetFromMap(new IdentityHashMap<>());
 
     private GhostRenderer() {
@@ -173,6 +175,7 @@ public final class GhostRenderer {
         FarDepth.beginFigures();
         EXTRACTED.clear();
         TRANSFORMS.clear();
+        EXTRACTED_FROM.clear();
         glowing = false;
         //? if <1.21.9 {
         /*LIGHTS.clear();
@@ -230,13 +233,16 @@ public final class GhostRenderer {
         Puppets.skin(entity);
         Puppets.cape(entity);
         try {
+            EntityRenderState state;
             //? if >=1.21.9 {
-            return dispatcher.extractEntity(entity, partialTick);
+            state = dispatcher.extractEntity(entity, partialTick);
             //?} elif >=1.21.2 {
-            /*return state(renderer(dispatcher, entity), entity, partialTick);
+            /*state = state(renderer(dispatcher, entity), entity, partialTick);
             *///?} else {
-            /*return EntityRenderState.of(entity, partialTick);
+            /*state = EntityRenderState.of(entity, partialTick);
             *///?}
+            if (state != null) EXTRACTED_FROM.put(state, entity);
+            return state;
         } catch (RuntimeException | LinkageError error) {
             // Another mod's renderer, called for an entity in no world: never worth a crash.
             leaveOut(entity.getType(), error);
@@ -685,8 +691,8 @@ public final class GhostRenderer {
         if (config.minApparentPixels > 0) boost = Math.clamp(config.minApparentPixels / apparent, 1.0, 400.0);
         // Small on screen, as drawn: its gear would not show, and costs as much as the figure.
         if (LightModels.wanted(config, apparent * boost)) {
-            LightModels.lighten(body);
-            if (mount != null) LightModels.lighten(mount);
+            LightModels.lighten(body, EXTRACTED_FROM.get(body), config, apparent * boost);
+            if (mount != null) LightModels.lighten(mount, EXTRACTED_FROM.get(mount), config, apparent * boost);
         }
 
         Transform transform = new Transform(ax, ay, az, pull, pull * boost * size);

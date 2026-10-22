@@ -238,7 +238,7 @@
   "livinghorizon.options.impostorPlayers": "Jugadores simplificados",
   "livinghorizon.options.impostorPlayers.tooltip": "Los jugadores lejanos también se simplifican, como las criaturas. NO: mantienen su modelo completo a cualquier distancia, así que su aspecto y su armadura se ven con todo detalle. Requiere Entidades simplificadas en SÍ.",
   "livinghorizon.options.lightModelPixels": "Modelos ligeros bajo",
-  "livinghorizon.options.lightModelPixels.tooltip": "Las entidades más pequeñas que esto en pantalla, pero aún dibujadas como modelo completo, pierden lo que no se ve a ese tamaño: objetos en mano, armadura, capa, élitros y la capa exterior del aspecto. Más alto mejora el rendimiento (Minecraft 1.21.2 y posteriores).",
+  "livinghorizon.options.lightModelPixels.tooltip": "Las entidades más pequeñas que esto en pantalla, pero aún dibujadas como modelo completo, se aligeran sin cambiar de aspecto: sin brillo de encantamiento ni adornos en su equipo, sin flechas clavadas, sin capa de aspecto oculta bajo la armadura. Por debajo de la mitad de este tamaño pierden también los objetos en mano, los loros y la capa exterior del aspecto. Armadura, capa y élitros siempre se mantienen. Más alto mejora el rendimiento (Minecraft 1.21.2 y posteriores).",
   "livinghorizon.options.lightModelPixels.zero": "Nunca",
   "livinghorizon.options.impostorMobMemory": "Memoria de imágenes de criaturas",
   "livinghorizon.options.impostorMobMemory.tooltip": "Memoria de vídeo que pueden ocupar las imágenes de las criaturas simplificadas, aparte de la de los jugadores. Solo se ocupa a medida que aparecen aspectos nuevos; cuando se llena, la imagen sin usar desde hace más tiempo deja su sitio.",

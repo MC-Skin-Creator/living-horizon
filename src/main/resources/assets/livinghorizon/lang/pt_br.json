@@ -238,7 +238,7 @@
   "livinghorizon.options.impostorPlayers": "Jogadores simplificados",
   "livinghorizon.options.impostorPlayers.tooltip": "Os jogadores distantes também são simplificados, como as criaturas. Não: mantêm o modelo completo a qualquer distância, com a skin e a armadura em todos os detalhes. Requer Entidades simplificadas em Sim.",
   "livinghorizon.options.lightModelPixels": "Modelos leves abaixo de",
-  "livinghorizon.options.lightModelPixels.tooltip": "Entidades menores que isso na tela, mas ainda desenhadas como modelo completo, perdem o que não se vê nesse tamanho: itens na mão, armadura, capa, élitros e a camada externa da skin. Mais alto melhora o desempenho (Minecraft 1.21.2 e posteriores).",
+  "livinghorizon.options.lightModelPixels.tooltip": "Entidades menores que isso na tela, mas ainda desenhadas como modelo completo, ficam mais leves sem mudar de aparência: sem brilho de encantamento nem acabamento no equipamento, sem flechas cravadas, sem camada da skin escondida sob a armadura. Abaixo da metade desse tamanho perdem também os itens na mão, os papagaios e a camada externa da skin. Armadura, capa e élitros sempre ficam. Mais alto melhora o desempenho (Minecraft 1.21.2 e posteriores).",
   "livinghorizon.options.lightModelPixels.zero": "Nunca",
   "livinghorizon.options.impostorMobMemory": "Memória de imagens de criaturas",
   "livinghorizon.options.impostorMobMemory.tooltip": "Memória de vídeo que as imagens das criaturas simplificadas podem ocupar, separada da dos jogadores. Só é ocupada conforme aparecem novas aparências; quando cheia, a imagem sem uso há mais tempo cede o lugar.",

@@ -238,7 +238,7 @@
   "livinghorizon.options.impostorPlayers": "간소화된 플레이어",
   "livinghorizon.options.impostorPlayers.tooltip": "멀리 있는 플레이어도 몹처럼 간소화됩니다. 꺼짐: 어떤 거리에서도 완전한 모델을 유지해 스킨과 갑옷이 세밀하게 보입니다. 간소화된 개체가 켜져 있어야 합니다.",
   "livinghorizon.options.lightModelPixels": "경량 모델 기준 크기",
-  "livinghorizon.options.lightModelPixels.tooltip": "화면에서 이보다 작지만 아직 전체 모델로 그려지는 엔티티는 그 크기에서 보이지 않는 것을 생략합니다: 손에 든 아이템, 갑옷, 망토, 겉날개, 스킨 바깥 레이어. 높을수록 성능이 좋아집니다 (Minecraft 1.21.2 이상).",
+  "livinghorizon.options.lightModelPixels.tooltip": "화면에서 이보다 작지만 아직 전체 모델로 그려지는 엔티티는 겉모습을 바꾸지 않고 가볍게 그립니다: 장비의 마법 부여 광택과 장식, 박힌 화살, 갑옷 아래 가려진 스킨 레이어를 생략합니다. 이 크기의 절반 미만에서는 손에 든 아이템, 앵무새, 스킨 바깥 레이어도 생략합니다. 갑옷, 망토, 겉날개는 항상 남습니다. 높을수록 성능이 좋아집니다 (Minecraft 1.21.2 이상).",
   "livinghorizon.options.lightModelPixels.zero": "안 함",
   "livinghorizon.options.impostorMobMemory": "몹 그림 메모리",
   "livinghorizon.options.impostorMobMemory.tooltip": "간소화된 몹의 그림이 차지할 수 있는 비디오 메모리로, 플레이어의 것과 따로입니다. 새로운 모습을 만날 때마다 조금씩 쓰이며, 가득 차면 가장 오래 쓰이지 않은 그림이 자리를 비웁니다.",

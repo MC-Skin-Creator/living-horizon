@@ -218,11 +218,12 @@ public final class FarConfig {
     public boolean impostorPlayers = true;
 
     /**
-     * Pixels: a figure drawn as a model, yet smaller than this on screen, is drawn without what
-     * cannot be seen at that size (held items, armour, cape, elytra, the outer skin layer; see
-     * {@code render/LightModels}). 0 keeps every model whole. From Minecraft 1.21.2.
+     * Pixels: a figure drawn as a model, yet smaller than this on screen, keeps its look but
+     * loses what costs without showing: the shimmer and trims of its gear, arrows stuck in it,
+     * the skin layer under its armour; below half this size its held items, parrots and outer
+     * skin layer too (see {@code render/LightModels}). 0 keeps every model whole. From 1.21.2.
      */
-    public int lightModelPixels = 32;
+    public int lightModelPixels = 64;
     public static final int MAX_LIGHT_MODEL_PIXELS = 200;
 
     /**

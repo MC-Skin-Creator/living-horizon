@@ -238,7 +238,7 @@
   "livinghorizon.options.impostorPlayers": "簡略化プレイヤー",
   "livinghorizon.options.impostorPlayers.tooltip": "遠くのプレイヤーもMobと同じように簡略化されます。オフ：どの距離でも完全なモデルのままで、スキンや防具が細部まで保たれます。「簡略化エンティティ」がオンである必要があります。",
   "livinghorizon.options.lightModelPixels": "軽量モデルの上限",
-  "livinghorizon.options.lightModelPixels.tooltip": "画面上でこれより小さいが、まだ完全なモデルで描かれるエンティティは、その大きさでは見えないものを省きます：手持ちアイテム、防具、マント、エリトラ、スキンの外側レイヤー。高いほどパフォーマンスが向上します（Minecraft 1.21.2以降）。",
+  "livinghorizon.options.lightModelPixels.tooltip": "画面上でこれより小さいが、まだ完全なモデルで描かれるエンティティは、見た目を変えずに軽量化されます：装備のエンチャントの輝きや装飾、刺さった矢、防具の下に隠れたスキンのレイヤーを省きます。この大きさの半分未満では、手持ちアイテム、オウム、スキンの外側レイヤーも省きます。防具、マント、エリトラは常に残ります。高いほどパフォーマンスが向上します（Minecraft 1.21.2以降）。",
   "livinghorizon.options.lightModelPixels.zero": "しない",
   "livinghorizon.options.impostorMobMemory": "Mob画像のメモリ",
   "livinghorizon.options.impostorMobMemory.tooltip": "簡略化したMobの画像が使えるビデオメモリ（プレイヤーとは別枠）。新しい見た目に出会うたびに少しずつ使われ、いっぱいになると最も長く使われていない画像が場所を空けます。",
