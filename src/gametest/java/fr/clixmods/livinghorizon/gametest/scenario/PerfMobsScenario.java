@@ -62,7 +62,10 @@ public final class PerfMobsScenario implements Scenario {
                     else zombies++;
                 }
             }
-            context.waitTicks(100);
+            // Scanned from the middle of the wedge: the server only sends the mobs within their
+            // tracking range (8 chunks for a zombie), and the scan reads what the client has.
+            Scene.command(world, "tp @a 0.5 " + GROUND + " 124.5 0 0");
+            context.waitTicks(200);
             context.runOnClient(minecraft -> MobScan.start(minecraft, 16));
             context.waitTicks(100);
             // The server stops sending them past three chunks: their copies take over, as models.
@@ -75,7 +78,7 @@ public final class PerfMobsScenario implements Scenario {
             int shown = context.computeOnClient(minecraft -> FarPlayerTracker.get().mobs().shown().size());
             int drawn = context.computeOnClient(minecraft -> Stats.drawn());
             Scene.log("perfmobs " + horses + " horses and " + zombies + " zombies summoned, " + shown + " copies, " + drawn + " drawn");
-            if (shown < 800) throw new AssertionError("perfmobs: only " + shown + " remembered copies, the scene is wrong");
+            if (shown < 900) throw new AssertionError("perfmobs: only " + shown + " remembered copies, the scene is wrong");
 
             measure(context, 0, "warm-up");
             List<Row> nevers = new ArrayList<>(), sizes = new ArrayList<>();
