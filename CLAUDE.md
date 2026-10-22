@@ -471,6 +471,11 @@ come back, add it here in the same pull request: this file is what the next sess
   The Fabric API's client networking stays in `ClientNetwork`, which a server never loads.
   Check a server by installing the loader's server from its installer, the jar in `mods/`,
   and reading the console for "sharing the positions of this server".
+- **Disconnected on Forge with "mismatched mod channel list"** (a single player world closing as
+  it opens, players with the mod kicked from a Forge server with it; Forge 1.20.2 and later):
+  Forge's `ChannelBuilder.optional()` freezes the versions each side accepts to the protocol
+  version set so far, so `Network.register` sets `networkProtocolVersion` before it; the other
+  way round, both sides accept 0 and announce 1. Check it by opening a world on a Forge node.
 - **Settings, remembered mobs or players who logged off gone after a restart**: a file that
   did not read is kept beside it as `<name>.bad` (`JsonStore`; the server's
   `livinghorizon-positions.dat.bad`), with a line in the log saying why. The server's file has a
