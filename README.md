@@ -82,6 +82,27 @@ Everything works in single player. On a server, some features need the mod on th
 - Players without the mod can still join.
 - The server shares every player's position with the players who have the mod. Tell your
   players.
+- Players in spectator mode or invisible are never shared.
+
+### Server settings
+
+The server writes `config/livinghorizon-server.json` the first time it starts. Edit it to
+choose what it shares. Changes apply after a few seconds, without a restart.
+
+| Setting | Default | What it does |
+|---|---|---|
+| `sharePlayers` | `true` | Shares players online past the view distance |
+| `playerRange` | `0` | How far a player is shared, in blocks. `0` is any distance |
+| `teamsOnly` | `false` | Shares players with their own team only (`/team`) |
+| `hideSpectators` | `true` | Never shares players in spectator mode |
+| `hideInvisible` | `true` | Never shares invisible players |
+| `hiddenPlayers` | `[]` | Names never shared, such as `["Steve"]` |
+| `hiddenDimensions` | `[]` | Dimensions where nothing is shared, such as `["minecraft:the_nether"]` |
+| `shareOfflinePlayers` | `true` | Shares players who logged off where they left |
+| `shareMobs` | `true` | Shares the remembered mobs past the view distance |
+
+These settings only change what the server sends. Within the view distance, players see
+each other as usual. What a player's game saw on its own stays in its memory.
 
 ## Getting started
 
