@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Client
+
+#### Improved
+- **Minecraft 1.21.1 easier to find** — the Fabric, Quilt and NeoForge builds for Minecraft 1.21 and 1.21.1 are now published as beta, so they show on CurseForge and in launchers that hide alpha builds.
+
 ## 0.11.0 — 2026-10-22
 
 ### Server
@@ -23,7 +28,6 @@
 
 #### Improved
 - **Clearer message when versions differ** — when the mod on the server is too old or too new for yours, the log says which one to update, instead of saying the server does not have the mod.
-- **Minecraft 1.21.1 easier to find** — the Fabric, Quilt and NeoForge builds for Minecraft 1.21 and 1.21.1 are now published as beta, so they show on CurseForge and in launchers that hide alpha builds.
 
 #### Improved
 - **Smoother with many players who logged off** — players who logged off cost less to show far away, and those hidden behind hills are skipped.
