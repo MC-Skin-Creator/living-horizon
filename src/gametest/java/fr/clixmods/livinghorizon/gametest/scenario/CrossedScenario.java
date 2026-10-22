@@ -12,7 +12,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 
 /**
  * What the crossed-planes prototype looks like: a zombie, a horse, a villager and a cow, as
- * remembered copies 52 blocks off (and a second row at 100), drawn whole and then with every
+ * remembered copies 80 blocks off (and a second row at 140), drawn whole and then with every
  * cube as two crossed planes, from the front, from a corner and from the side. Screenshots
  * only, with the polygon count of each.
  */
@@ -33,19 +33,22 @@ public final class CrossedScenario implements Scenario {
             if (!config.mobTypes.contains("minecraft:zombie")) config.mobTypes.add("minecraft:zombie");
         });
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
-            for (int z : new int[]{52, 100}) {
+            for (int z : new int[]{80, 140}) {
                 Scene.command(world, "summon zombie -4.5 " + GROUND + " " + z + ".5 {NoAI:1b,PersistenceRequired:1b,Rotation:[180f,0f],"
                         + "equipment:{head:{id:\"minecraft:iron_helmet\",count:1}}}");
                 Scene.command(world, "summon horse -1.5 " + GROUND + " " + z + ".5 {NoAI:1b,PersistenceRequired:1b,Rotation:[180f,0f]}");
                 Scene.command(world, "summon villager 1.5 " + GROUND + " " + z + ".5 {NoAI:1b,PersistenceRequired:1b,Rotation:[180f,0f]}");
                 Scene.command(world, "summon cow 4.5 " + GROUND + " " + z + ".5 {NoAI:1b,PersistenceRequired:1b,Rotation:[180f,0f]}");
             }
+            // Scanned from among them: the server only sends a mob within its tracking range.
+            Scene.command(world, "tp @a 0.5 " + GROUND + " 110.5 0 0");
             context.waitTicks(100);
             context.runOnClient(minecraft -> MobScan.start(minecraft, 8));
             context.waitTicks(60);
-            // Past the server's two chunks, the copies take over, drawn by the mod from 24 blocks on.
+            // At half the entity distance the server stops sending a zombie past 64 blocks and a
+            // horse past 80: their copies take over there, well inside the fog's 192 blocks.
             context.runOnClient(minecraft -> {
-                minecraft.options.renderDistance().set(2);
+                minecraft.options.entityDistanceScaling().set(0.5);
                 minecraft.options.fov().set(30);
             });
             Scene.command(world, "tp @a 0.5 " + GROUND + " 0.5 0 0");
@@ -54,8 +57,8 @@ public final class CrossedScenario implements Scenario {
             Scene.log("crossed " + shown + " copies");
 
             view(context, world, "front", 0.5, 0.5, 0f);
-            view(context, world, "corner", -29.5, 22.5, -45f);
-            view(context, world, "side", -39.5, 52.5, -90f);
+            view(context, world, "corner", -49.5, 30.5, -45f);
+            view(context, world, "side", -69.5, 80.5, -90f);
             context.runOnClient(minecraft -> {
                 LightModels.crossedPlanes = false;
                 FarPlayerTracker.get().mobs().forgetAll();
