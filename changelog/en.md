@@ -17,6 +17,7 @@
 - **Benchmark** — `/livinghorizon benchmark` measures what the mod costs in your world, part by part, and writes a report you can send with a bug report.
 - **Benchmark world** — `/livinghorizon benchmark world` makes a new test world, always the same, where the benchmark runs from the same spot every time, among mobs and players who logged off; your own world is kept as it is.
 - **Max Offline** — a new setting chooses how many players who logged off are shown at once, the nearest first (256 by default); the others show again as you come near.
+- **Simplification Size** — a new setting also turns far mobs, players and birds into *Simplified Entities* (flat pictures of them) when they look smaller on screen than a number of pixels, even before the *Simplification Distance* (10 pixels by default).
 
 #### Improved
 - **Clearer message when versions differ** — when the mod on the server is too old or too new for yours, the log says which one to update, instead of saying the server does not have the mod.
