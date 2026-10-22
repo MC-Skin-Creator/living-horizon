@@ -13,6 +13,7 @@ import fr.clixmods.livinghorizon.debug.DebugMarks.Mark;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorKey;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
+import fr.clixmods.livinghorizon.render.impostor.ImpostorThreshold;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorViews;
 import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
 import fr.clixmods.livinghorizon.track.FarPlayer;
@@ -792,17 +793,15 @@ public final class GhostRenderer {
     private static final Map<Entity, Shown> SHOWN = new IdentityHashMap<>();
     private static long frame;
 
-    /** A figure must come this much inside the impostor distance to get its model back. */
-    private static final double IMPOSTOR_RETURN = 0.95;
-
     /**
      * Draws a flat picture of a figure in place of its model, when it is past the impostor
-     * distance and its pictures are baked (they are asked for otherwise, and the model is
-     * drawn meanwhile). Nothing is extracted: that is what is saved.
+     * distance or smaller on screen than the impostor size ({@link ImpostorThreshold}), and its
+     * pictures are baked (they are asked for otherwise, and the model is drawn meanwhile).
+     * Nothing is extracted: that is what is saved.
      *
-     * <p>Once a figure is an impostor it stays one until it is a little closer than the
-     * distance, it keeps its picture until it has clearly turned to the next, and when its
-     * look changes (a sheep sheared, a player's armour) it keeps its old picture until the
+     * <p>Once a figure is an impostor it stays one until it is a little inside both the
+     * distance and the size, it keeps its picture until it has clearly turned to the next, and
+     * when its look changes (a sheep sheared, a player's armour) it keeps its old picture until the
      * new one is baked: none of it blinks between a model and a picture.
      */
     private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config) {
@@ -868,8 +867,8 @@ public final class GhostRenderer {
         double ax = x - eye.x, ay = y - eye.y, az = z - eye.z;
         double distance = Math.sqrt(ax * ax + ay * ay + az * az);
         Shown last = SHOWN.get(shown);
-        double from = last == null ? config.impostorDistance : config.impostorDistance * IMPOSTOR_RETURN;
-        if (distance <= from || distance < 1e-3) {
+        double apparent = distance < 1e-3 ? Double.MAX_VALUE : size / distance * pixelsPerRadian;
+        if (!ImpostorThreshold.pictured(distance, apparent, last != null, config.impostorDistance, config.impostorPixels)) {
             if (last != null) SHOWN.remove(shown);
             return false;
         }
@@ -890,7 +889,7 @@ public final class GhostRenderer {
         double pull = distance > reach ? reach / distance : 1.0;
         double boost = 1.0;
         if (config.minApparentPixels > 0) {
-            boost = Math.clamp(config.minApparentPixels / (size / distance * pixelsPerRadian), 1.0, 400.0);
+            boost = Math.clamp(config.minApparentPixels / apparent, 1.0, 400.0);
         }
         int view = ImpostorViews.view(yaw, -ax, -az, last == null ? -1 : last.view);
         SHOWN.put(shown, new Shown(key, view, frame, ridden));

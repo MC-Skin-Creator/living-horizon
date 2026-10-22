@@ -10,6 +10,7 @@ import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
+import fr.clixmods.livinghorizon.render.impostor.ImpostorThreshold;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorViews;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import net.minecraft.client.Minecraft;
@@ -68,6 +69,7 @@ public final class AmbientRenderer {
         Minecraft minecraft = Minecraft.getInstance();
         float partial = minecraft.getDeltaTracker().getGameTimeDeltaPartialTick(true);
         double reach = DepthFar.of(minecraft) * 0.95;
+        double pixelsPerRadian = DepthFar.pixelsPerRadian(minecraft);
 
         if (config.easterEggs) {
             Ambience ambience = FarPlayerTracker.get().ambience();
@@ -93,7 +95,7 @@ public final class AmbientRenderer {
             float wingDegrees = Mth.lerp(partial, bird.wingO, bird.wing);
             int tint = bird.shade;
             int species = bird.species.ordinal();
-            if (models && impostor(bird, x, y, z, distance, pull, yaw, wingDegrees, config)) continue;
+            if (models && impostor(bird, x, y, z, distance, pull, yaw, wingDegrees, config, pixelsPerRadian)) continue;
             if (models) bird.view = -1;
 
             pose.pushPose();
@@ -124,21 +126,20 @@ public final class AmbientRenderer {
         }
     }
 
-    /** A bird must come this much inside the impostor distance to get its model back. */
-    private static final double IMPOSTOR_RETURN = 0.95;
-
     /**
      * Draws a 3D bird as a picture of itself ({@link BirdFigure}) when it is past the impostor
-     * distance and its pictures are baked; they are asked for otherwise, every height and
-     * beat of its pose at once, and the model is drawn meanwhile. Like a mob, a bird keeps its
-     * picture until it is a little inside the distance, and until it has clearly turned to the
-     * next view.
+     * distance or smaller on screen than the impostor size ({@link ImpostorThreshold}), and its
+     * pictures are baked; they are asked for otherwise, every height and beat of its pose at
+     * once, and the model is drawn meanwhile. Like a mob, a bird keeps its picture until it is
+     * a little inside both, and until it has clearly turned to the next view.
      */
     private static boolean impostor(Ambience.Flyer bird, double x, double y, double z, double distance, double pull,
-                                    float yaw, float wingDegrees, FarConfig config) {
+                                    float yaw, float wingDegrees, FarConfig config, double pixelsPerRadian) {
         if (!ImpostorAtlas.usable()) return false;
-        double from = bird.view < 0 ? config.impostorDistance : config.impostorDistance * IMPOSTOR_RETURN;
-        if (distance <= from) return false;
+        double apparent = distance < 1e-3 ? Double.MAX_VALUE : bird.span * bird.scale / distance * pixelsPerRadian;
+        if (!ImpostorThreshold.pictured(distance, apparent, bird.view >= 0, config.impostorDistance, config.impostorPixels)) {
+            return false;
+        }
         // Degrees the camera looks down on the bird from.
         double elevation = Math.toDegrees(Math.atan2(-y, Math.sqrt(x * x + z * z)));
         BirdFigure figure = BirdFigure.of(bird.species, bird.perched, wingDegrees, elevation);
