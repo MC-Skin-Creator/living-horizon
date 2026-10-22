@@ -52,8 +52,9 @@ public final class OcclusionQueries {
     private static int program, vertexArray, framebuffer, framebufferDepth;
     private static int lowLocation, highLocation, matrixLocation;
 
-    /** This frame's view-projection, noted when the level starts to render. */
-    private static final float[] VIEW_PROJECTION = new float[16];
+    /** Room to hand {@link FarDepth#viewProjection()} to OpenGL: the frame's matrix is kept there only. */
+    private static final float[] MATRIX = new float[16];
+    /** {@link FarDepth#viewProjection()} holds this frame's: the level has started to render. */
     private static boolean viewNoted;
 
     /** A box to ask about this frame, relative to the camera. */
@@ -80,9 +81,8 @@ public final class OcclusionQueries {
 
     // --- The frame ----------------------------------------------------------------------------
 
-    /** The matrices of this frame, as the level starts to render. */
-    static void noteView(Matrix4f modelView, Matrix4f projection) {
-        new Matrix4f(projection).mul(modelView).get(VIEW_PROJECTION);
+    /** The level starts to render: {@link FarDepth#viewProjection()} holds this frame's matrices. */
+    static void viewNoted() {
         viewNoted = true;
     }
 
@@ -153,11 +153,6 @@ public final class OcclusionQueries {
     public static void answer(Object key, boolean visible, long askedIn) {
         Answer old = ANSWERS.get(key);
         if (old == null || old.frame <= askedIn) ANSWERS.put(key, new Answer(visible, askedIn));
-    }
-
-    /** This frame's view-projection, relative to the camera, as the queries use it. */
-    public static float[] viewProjection() {
-        return VIEW_PROJECTION;
     }
 
     /** Another world: what was seen is of no use. */
@@ -254,7 +249,7 @@ public final class OcclusionQueries {
                 GL11C.glViewport(0, 0, pictureWidth > 0 ? Math.min(pictureWidth, width) : width,
                         pictureHeight > 0 ? Math.min(pictureHeight, height) : height);
                 GL20C.glUseProgram(program);
-                GL20C.glUniformMatrix4fv(matrixLocation, false, VIEW_PROJECTION);
+                GL20C.glUniformMatrix4fv(matrixLocation, false, FarDepth.viewProjection().get(MATRIX));
                 GL30C.glBindVertexArray(vertexArray);
                 for (int i = 0; i < keys.length; i++) {
                     Box box = ASKED.get(i);
@@ -362,16 +357,6 @@ public final class OcclusionQueries {
                 void main() {
                 }
                 """;
-        int vs = FarDepth.shader(GL20C.GL_VERTEX_SHADER, vertex), fs = FarDepth.shader(GL20C.GL_FRAGMENT_SHADER, fragment);
-        int linked = GL20C.glCreateProgram();
-        GL20C.glAttachShader(linked, vs);
-        GL20C.glAttachShader(linked, fs);
-        GL20C.glLinkProgram(linked);
-        GL20C.glDeleteShader(vs);
-        GL20C.glDeleteShader(fs);
-        if (GL20C.glGetProgrami(linked, GL20C.GL_LINK_STATUS) == GL11C.GL_FALSE) {
-            throw new IllegalStateException("Occlusion query program: " + GL20C.glGetProgramInfoLog(linked));
-        }
-        return linked;
+        return GlPrograms.program("Occlusion query", vertex, fragment);
     }
 }

@@ -91,6 +91,7 @@
   "livinghorizon.lod.source": "Lendo o terreno distante de %s.",
   "livinghorizon.lod.failed": "Verificação de %s desativada: %s",
   "livinghorizon.lod.depth": "Profundidade do terreno distante nas criaturas distantes: %s.",
+  "livinghorizon.lod.link": "Ligação com %s: %s.",
   "livinghorizon.lod.probe.hit": "Olhando à frente, o primeiro bloco que %s conhece está a %s blocos.",
   "livinghorizon.lod.probe.none": "Olhando à frente, %s não conhece nenhum bloco num raio de 4096 blocos.",
   "livinghorizon.lod.probe.error": "Não foi possível consultar %s: %s",

@@ -91,6 +91,7 @@
   "livinghorizon.lod.source": "%s에서 원거리 지형을 읽는 중입니다.",
   "livinghorizon.lod.failed": "%s 검사를 껐습니다: %s",
   "livinghorizon.lod.depth": "멀리 있는 몹에 대한 원거리 지형 깊이: %s.",
+  "livinghorizon.lod.link": "%s 연동: %s.",
   "livinghorizon.lod.probe.hit": "앞쪽에서 %s이(가) 아는 첫 블록은 %s블록 떨어져 있습니다.",
   "livinghorizon.lod.probe.none": "앞쪽 4096블록 안에서 %s이(가) 아는 블록이 없습니다.",
   "livinghorizon.lod.probe.error": "%s에 질의할 수 없습니다: %s",

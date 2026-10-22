@@ -12,6 +12,7 @@ import fr.clixmods.livinghorizon.ambient.Ambience;
 import fr.clixmods.livinghorizon.ambient.EggLog;
 import fr.clixmods.livinghorizon.ambient.Ufo;
 import fr.clixmods.livinghorizon.compat.FarDepth;
+import fr.clixmods.livinghorizon.compat.Links;
 import fr.clixmods.livinghorizon.compat.LodWorld;
 import fr.clixmods.livinghorizon.debug.Benchmark;
 import fr.clixmods.livinghorizon.debug.BenchmarkWorld;
@@ -433,6 +434,9 @@ public final class LivingHorizonCommand {
         }
         source.feedback(Component.translatable("livinghorizon.lod.source", status.name()));
         source.feedback(Component.translatable("livinghorizon.lod.depth", FarDepth.state()));
+        for (Links.Report link : Links.report()) {
+            source.feedback(Component.translatable("livinghorizon.lod.link", link.mod(), link.status()));
+        }
         Player self = source.player();
         Minecraft client = source.client();
         LodWorld.probe(self.getEyePosition(), self.getLookAngle(), 4096).whenComplete((hit, error) ->

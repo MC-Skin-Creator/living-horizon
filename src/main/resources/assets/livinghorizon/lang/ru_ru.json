@@ -91,6 +91,7 @@
   "livinghorizon.lod.source": "Дальний ландшафт читается из %s.",
   "livinghorizon.lod.failed": "Проверка %s отключена: %s",
   "livinghorizon.lod.depth": "Глубина дальнего ландшафта на далёких мобах: %s.",
+  "livinghorizon.lod.link": "Связь с %s: %s.",
   "livinghorizon.lod.probe.hit": "Впереди первый блок, известный %s, находится в %s блоках.",
   "livinghorizon.lod.probe.none": "Впереди %s не знает ни одного блока в пределах 4096 блоков.",
   "livinghorizon.lod.probe.error": "Не удалось опросить %s: %s",

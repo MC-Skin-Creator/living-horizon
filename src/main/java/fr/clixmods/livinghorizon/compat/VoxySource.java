@@ -168,22 +168,11 @@ final class VoxySource implements LodSource {
         LivingHorizonClient.LOGGER.warn("Reading Voxy's world paused for 20 seconds: it did not answer as expected", e);
     }
 
-    /**
-     * The class whose static {@code getNullable()} gives Voxy's render system: renamed
-     * {@code IVoxyRenderSystemHolder} in 0.2.18, {@code IGetVoxyRenderSystem} before.
-     */
-    static Class<?> renderSystemGetter() throws ClassNotFoundException {
-        try {
-            return Class.forName("me.cortex.voxy.client.core.IVoxyRenderSystemHolder");
-        } catch (ClassNotFoundException e) {
-            return Class.forName("me.cortex.voxy.client.core.IGetVoxyRenderSystem");
-        }
-    }
-
     private void link() throws ReflectiveOperationException {
         MethodHandles.Lookup lookup = MethodHandles.publicLookup();
-        Class<?> getter = renderSystemGetter();
-        Class<?> system = Class.forName("me.cortex.voxy.client.core.VoxyRenderSystem");
+        // Found the way VoxyLink finds it for the depth: one place to follow Voxy's renames.
+        Class<?> getter = VoxyLink.renderSystemGetter();
+        Class<?> system = Class.forName(VoxyLink.RENDER_SYSTEM);
         Class<?> worldEngine = Class.forName("me.cortex.voxy.common.world.WorldEngine");
         Class<?> section = Class.forName("me.cortex.voxy.common.world.WorldSection");
         Class<?> mapperClass = Class.forName("me.cortex.voxy.common.world.other.Mapper");

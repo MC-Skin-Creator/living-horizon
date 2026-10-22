@@ -91,6 +91,7 @@
   "livinghorizon.lod.source": "Fernes Gelände wird aus %s gelesen.",
   "livinghorizon.lod.failed": "Prüfung von %s ausgeschaltet: %s",
   "livinghorizon.lod.depth": "Tiefe des fernen Geländes auf fernen Kreaturen: %s.",
+  "livinghorizon.lod.link": "Verbindung zu %s: %s.",
   "livinghorizon.lod.probe.hit": "Geradeaus ist der erste Block, den %s kennt, %s Blöcke entfernt.",
   "livinghorizon.lod.probe.none": "Geradeaus kennt %s keinen Block innerhalb von 4096 Blöcken.",
   "livinghorizon.lod.probe.error": "%s konnte nicht abgefragt werden: %s",

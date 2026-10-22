@@ -32,7 +32,6 @@ final class DhSource implements LodSource {
 
     private MethodHandle terrainRepo, worldProxy;
     private MethodHandle worldLoaded, levels, wrapped, columnAt;
-    private MethodHandle success, payload, messageOf;
     private MethodHandle top, blockOf, biomeOf;
     private MethodHandle isAir, isLiquid, isSolid, biomeName;
     /** Before Distant Horizons 3.0 there is no opacity, and before 2.4 no cache: null then. */
@@ -61,12 +60,12 @@ final class DhSource implements LodSource {
             lastAnswer = "null";
             return null;
         }
-        Object message = messageOf.invoke(result);
-        if (!(boolean) success.invoke(result)) {
+        Object message = DhLink.message(result);
+        if (!DhLink.success(result)) {
             lastAnswer = "failed: " + message;
             return null;
         }
-        Object[] points = (Object[]) payload.invoke(result);
+        Object[] points = (Object[]) DhLink.payload(result);
         if (points == null || points.length == 0) {
             lastAnswer = "empty: " + message;
             return null;
@@ -136,6 +135,7 @@ final class DhSource implements LodSource {
                 return false;
             }
             try {
+                if (!DhLink.linked()) throw new IllegalStateException("its API is not the one this mod knows");
                 link();
             } catch (Throwable e) {
                 broken = true;
@@ -154,7 +154,7 @@ final class DhSource implements LodSource {
      */
     @Override
     public double clearDistance() {
-        String api = "com.seibel.distanthorizons.api.", config = api + "interfaces.config.";
+        String api = DhLink.API, config = api + "interfaces.config.";
         try {
             Object configs = Class.forName(api + "DhApi$Delayed").getField("configs").get(null);
             if (configs == null) return 0;
@@ -186,7 +186,7 @@ final class DhSource implements LodSource {
 
     /** What one of its settings is set to. */
     private static Object value(Object setting) throws ReflectiveOperationException {
-        return call("com.seibel.distanthorizons.api.interfaces.config.IDhApiConfigValue", setting, "getValue");
+        return call(DhLink.API + "interfaces.config.IDhApiConfigValue", setting, "getValue");
     }
 
     @Override
@@ -199,48 +199,36 @@ final class DhSource implements LodSource {
     }
 
     private void link() throws ReflectiveOperationException {
-        String api = "com.seibel.distanthorizons.api.";
+        String api = DhLink.API;
         MethodHandles.Lookup lookup = MethodHandles.publicLookup();
-        Class<?> delayed = Class.forName(api + "DhApi$Delayed");
         Class<?> repo = Class.forName(api + "interfaces.data.IDhApiTerrainDataRepo");
         Class<?> proxy = Class.forName(api + "interfaces.world.IDhApiWorldProxy");
         Class<?> level = Class.forName(api + "interfaces.world.IDhApiLevelWrapper");
         Class<?> cache = Class.forName(api + "interfaces.data.IDhApiTerrainDataCache");
         Class<?> unsafe = Class.forName(api + "interfaces.IDhApiUnsafeWrapper");
-        Class<?> result = Class.forName(api + "objects.DhApiResult");
+        Class<?> result = DhLink.resultType();
         Class<?> point = Class.forName(api + "objects.data.DhApiTerrainDataPoint");
         Class<?> block = Class.forName(api + "interfaces.block.IDhApiBlockStateWrapper");
         Class<?> biome = Class.forName(api + "interfaces.block.IDhApiBiomeWrapper");
         // Filled in by Distant Horizons once it has started: read at every use.
-        terrainRepo = lookup.findStaticGetter(delayed, "terrainRepo", repo);
-        worldProxy = lookup.findStaticGetter(delayed, "worldProxy", proxy);
+        terrainRepo = DhLink.delayed("terrainRepo", repo);
+        worldProxy = DhLink.delayed("worldProxy", proxy);
         worldLoaded = lookup.findVirtual(proxy, "worldLoaded", MethodType.methodType(boolean.class));
         levels = lookup.findVirtual(proxy, "getAllLoadedLevelWrappers", MethodType.methodType(Iterable.class));
         wrapped = lookup.findVirtual(unsafe, "getWrappedMcObject", MethodType.methodType(Object.class));
         columnAt = lookup.findVirtual(repo, "getColumnDataAtBlockPos",
                 MethodType.methodType(result, level, int.class, int.class, cache));
-        softCache = optional(lookup, repo, "createSoftCache", MethodType.methodType(cache));
-        success = lookup.findGetter(result, "success", boolean.class);
-        payload = lookup.findGetter(result, "payload", Object.class);
-        messageOf = lookup.findGetter(result, "message", String.class);
+        softCache = Links.optional(lookup, repo, "createSoftCache", MethodType.methodType(cache));
+        if (softCache == null) DhLink.fallback("no cache for its world (before 2.4)");
         top = lookup.findGetter(point, "topYBlockPos", int.class);
         blockOf = lookup.findGetter(point, "blockStateWrapper", block);
         biomeOf = lookup.findGetter(point, "biomeWrapper", biome);
         isAir = lookup.findVirtual(block, "isAir", MethodType.methodType(boolean.class));
         isLiquid = lookup.findVirtual(block, "isLiquid", MethodType.methodType(boolean.class));
         isSolid = lookup.findVirtual(block, "isSolid", MethodType.methodType(boolean.class));
-        opacity = optional(lookup, block, "getOpacity", MethodType.methodType(int.class));
+        opacity = Links.optional(lookup, block, "getOpacity", MethodType.methodType(int.class));
+        if (opacity == null) DhLink.fallback("no opacity, solid blocks and liquids stop the eye (before 3.0)");
         biomeName = lookup.findVirtual(biome, "getName", MethodType.methodType(String.class));
-    }
-
-    /** A method older versions of Distant Horizons do not have: null there. */
-    private static @Nullable MethodHandle optional(MethodHandles.Lookup lookup, Class<?> owner, String name, MethodType type)
-            throws IllegalAccessException {
-        try {
-            return lookup.findVirtual(owner, name, type);
-        } catch (NoSuchMethodException e) {
-            return null;
-        }
     }
 
     /** Whether a block stops the eye; without opacity (before 3.0), solid blocks and liquids do. */

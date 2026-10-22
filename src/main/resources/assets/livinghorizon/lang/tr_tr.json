@@ -91,6 +91,7 @@
   "livinghorizon.lod.source": "Uzak arazi %s üzerinden okunuyor.",
   "livinghorizon.lod.failed": "%s denetimi kapatıldı: %s",
   "livinghorizon.lod.depth": "Uzak canlılarda uzak arazi derinliği: %s.",
+  "livinghorizon.lod.link": "%s bağlantısı: %s.",
   "livinghorizon.lod.probe.hit": "İleriye bakıldığında %s tarafından bilinen ilk blok %s blok uzakta.",
   "livinghorizon.lod.probe.none": "İleriye bakıldığında %s, 4096 blok içinde hiçbir blok bilmiyor.",
   "livinghorizon.lod.probe.error": "%s sorgulanamadı: %s",
