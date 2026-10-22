@@ -2,6 +2,7 @@ package fr.clixmods.livinghorizon.mixin;
 
 // The feature renderers came in 1.21.9; before, GhostRenderer counts what it draws itself.
 //? if >=1.21.9 {
+import fr.clixmods.livinghorizon.render.LightModels;
 import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import org.spongepowered.asm.mixin.Mixin;
@@ -24,23 +25,27 @@ abstract class ModelFeatureRendererMixin {
     @Inject(method = "prepareModel", at = @At("HEAD"))
     private void livinghorizon$enter(ModelFeatureRenderer.Submit<?> submit, CallbackInfo ci) {
         PolygonStats.enter(submit.state());
+        LightModels.drawing(submit.state());
     }
 
     @Inject(method = "prepareModel", at = @At("TAIL"))
     private void livinghorizon$leave(ModelFeatureRenderer.Submit<?> submit, CallbackInfo ci) {
         PolygonStats.leave();
+        LightModels.drawn();
     }
     *///?} else {
     @Inject(method = "renderModel", at = @At("HEAD"))
     private void livinghorizon$enter(SubmitNodeStorage.ModelSubmit<?> submit, RenderType type, VertexConsumer consumer,
                                      OutlineBufferSource outline, MultiBufferSource.BufferSource buffers, CallbackInfo ci) {
         PolygonStats.enter(submit.state());
+        LightModels.drawing(submit.state());
     }
 
     @Inject(method = "renderModel", at = @At("TAIL"))
     private void livinghorizon$leave(SubmitNodeStorage.ModelSubmit<?> submit, RenderType type, VertexConsumer consumer,
                                      OutlineBufferSource outline, MultiBufferSource.BufferSource buffers, CallbackInfo ci) {
         PolygonStats.leave();
+        LightModels.drawn();
     }
     //?}
 }

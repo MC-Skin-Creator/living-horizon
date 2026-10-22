@@ -1,5 +1,6 @@
 package fr.clixmods.livinghorizon.mixin;
 
+import fr.clixmods.livinghorizon.render.LightModels;
 import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
 import net.minecraft.client.model.geom.ModelPart;
 import org.spongepowered.asm.mixin.Final;
@@ -23,7 +24,7 @@ abstract class ModelPartMixin {
     private void livinghorizon$count(CallbackInfo ci) {
         if (!PolygonStats.counting()) return;
         int polygons = 0;
-        for (ModelPart.Cube cube : cubes) polygons += cube.polygons.length;
+        for (ModelPart.Cube cube : cubes) polygons += LightModels.crossing() ? LightModels.crossedFaces(cube.polygons) : cube.polygons.length;
         PolygonStats.model(polygons);
     }
 }

@@ -42,6 +42,72 @@ import java.util.Map;
 public final class LightModels {
     private static int lightened, lastLightened;
 
+    // --- Crossed planes (a prototype, off unless a scenario turns it on) ---------------------
+
+    /**
+     * Whether the lightest figures' cubes are drawn as crossed planes: each cube's four side
+     * faces moved to its middle, two planes crossing at right angles, the top and bottom left
+     * out. Four faces instead of six, the same texture, the same animation; seen from a corner
+     * the box shows as a cross. Set by the {@code crossed} scenario to look at it.
+     */
+    public static boolean crossedPlanes;
+    /** The states of this frame drawn as crossed planes. */
+    private static final java.util.Set<EntityRenderState> CROSSED =
+            java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+    private static boolean crossing;
+
+    /** The model of this state (any object the game hands the draw) is about to be turned into faces. */
+    public static void drawing(Object state) {
+        crossing = crossedPlanes && CROSSED.contains(state);
+    }
+
+    public static void drawn() {
+        crossing = false;
+    }
+
+    /** Whether the cubes being drawn right now go as crossed planes. */
+    public static boolean crossing() {
+        return crossing;
+    }
+
+    /** How many faces a cube keeps as crossed planes: its sides, never its top or bottom. */
+    public static int crossedFaces(Object[] polygons) {
+        int faces = 0;
+        //? if >=1.21.9 {
+        for (Object polygon : polygons) {
+            if (Math.abs(((net.minecraft.client.model.geom.ModelPart.Polygon) polygon).normal().y()) < 0.5f) faces++;
+        }
+        //?}
+        return faces;
+    }
+
+    //? if >=1.21.9 {
+    /**
+     * Writes a cube's side faces as two planes crossing at its middle ({@code cx}, {@code cz}
+     * in model units): the faces along Z keep their X and Y and move to {@code cz}, those
+     * along X move to {@code cx}. Each keeps its texture, its normal and its winding, so the
+     * one facing the camera is drawn and the one behind is culled, as on the box.
+     */
+    public static void crossed(net.minecraft.client.model.geom.ModelPart.Polygon[] polygons, float cx, float cz,
+                               com.mojang.blaze3d.vertex.PoseStack.Pose pose, com.mojang.blaze3d.vertex.VertexConsumer out,
+                               int light, int overlay, int color) {
+        for (net.minecraft.client.model.geom.ModelPart.Polygon polygon : polygons) {
+            org.joml.Vector3fc normal = polygon.normal();
+            if (Math.abs(normal.y()) > 0.5f) continue;
+            boolean alongZ = Math.abs(normal.z()) > 0.5f;
+            for (net.minecraft.client.model.geom.ModelPart.Vertex vertex : polygon.vertices()) {
+                float x = alongZ ? vertex.x() : cx, z = alongZ ? cz : vertex.z();
+                out.addVertex(pose, x / 16f, vertex.y() / 16f, z / 16f)
+                        .setColor(color)
+                        .setUv(vertex.u(), vertex.v())
+                        .setOverlay(overlay)
+                        .setLight(light)
+                        .setNormal(pose, normal.x(), normal.y(), normal.z());
+            }
+        }
+    }
+    //?}
+
     private LightModels() {
     }
 
@@ -49,6 +115,7 @@ public final class LightModels {
     public static void beginFrame() {
         lastLightened = lightened;
         lightened = 0;
+        CROSSED.clear();
         //? if >=1.21.2
         if (++frame % 600 == 0 || PLAIN.size() > 1024) PLAIN.clear();
     }
@@ -79,6 +146,7 @@ public final class LightModels {
         lightened++;
         //? if >=1.21.2 {
         boolean tiny = pixels < config.lightModelPixels * 0.5;
+        if (tiny && crossedPlanes) CROSSED.add(state);
         LivingEntity living = entity instanceof LivingEntity alive ? alive : null;
         if (state instanceof LivingEntityRenderState livingState) {
             //? if >=1.21.4 {

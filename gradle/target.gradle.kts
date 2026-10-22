@@ -112,6 +112,8 @@ extra["lhMixins"] = buildList {
     if (atLeast("1.21.9")) {
         add("FeatureRenderDispatcherMixin")
         add("ModelFeatureRendererMixin")
+        // The lightest figures' cubes drawn as crossed planes, at the same draw.
+        add("ModelCubeMixin")
     }
     // The GUI pass the impostors are baked in came in 1.21.6. Before, they are baked into a
     // target of our own that stands in for the game's main one and its item target.
