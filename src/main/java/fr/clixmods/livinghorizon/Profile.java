@@ -41,6 +41,7 @@ public final class Profile {
         PUBLISH("publish");
 
         private final String id;
+        private final String profilerName;
         private final boolean gpu;
         private final Stat cpuStat = new Stat();
         private final Stat gpuStat = new Stat();
@@ -51,6 +52,7 @@ public final class Profile {
 
         Section(String id, boolean gpu) {
             this.id = id;
+            this.profilerName = "livinghorizon:" + id;
             this.gpu = gpu;
         }
 
@@ -65,7 +67,7 @@ public final class Profile {
 
         /** The name that the game's profiler shows (F3 pie chart, spark). */
         public String profilerName() {
-            return "livinghorizon:" + id;
+            return profilerName;
         }
 
         public Stat cpu() {

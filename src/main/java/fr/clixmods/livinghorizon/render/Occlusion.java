@@ -31,8 +31,13 @@ public final class Occlusion {
     private static final int EVERY = 10;
 
     private static final Map<Object, Boolean> HIDDEN = new ConcurrentHashMap<>();
-    /** Asked about since the last test: where, and how tall. */
+    /**
+     * Asked about: where, how tall, and the round of tests it was last asked in. An entry is
+     * written over while its mob is asked about, and dropped at the first test it misses.
+     */
     private static final Map<Object, double[]> ASKED = new HashMap<>();
+    /** The round of tests the frames ask for now. */
+    private static int round;
     private static volatile boolean busy;
     private static int clock;
 
@@ -70,7 +75,13 @@ public final class Occlusion {
                     Math.max(entity.getBbWidth() * 0.5, entity.getBbHeight() * 0.35) * scale,
                     entity.getBbHeight() * scale);
         }
-        ASKED.put(key, new double[]{entity.getX(), entity.getY(), entity.getZ(), entity.getBbHeight()});
+        double[] at = ASKED.get(key);
+        if (at == null) ASKED.put(key, at = new double[5]);
+        at[0] = entity.getX();
+        at[1] = entity.getY();
+        at[2] = entity.getZ();
+        at[3] = entity.getBbHeight();
+        at[4] = round;
         return HIDDEN.getOrDefault(key, false);
     }
 
@@ -82,6 +93,10 @@ public final class Occlusion {
             return;
         }
         if (++clock % EVERY != 0 || busy || ASKED.isEmpty()) return;
+        // Only the mobs asked about since the last test; the others are forgotten.
+        ASKED.values().removeIf(at -> at[4] != round);
+        if (ASKED.isEmpty()) return;
+        round++;
         List<Object> keys = new ArrayList<>(ASKED.keySet());
         int n = keys.size();
         double[] xs = new double[n * 2], ys = new double[n * 2], zs = new double[n * 2];
@@ -92,7 +107,6 @@ public final class Occlusion {
             ys[2 * i] = at[1] + at[3] * 0.5;
             ys[2 * i + 1] = at[1] + at[3] * 0.95;
         }
-        ASKED.clear();
         busy = true;
         LodWorld.blocked(eye, xs, ys, zs, 1.0).whenComplete((blocked, error) -> {
             try {
