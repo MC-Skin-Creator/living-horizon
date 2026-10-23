@@ -6,6 +6,7 @@
 
 #### Improved
 - **Smoother game among distant mobs and offline players** — working out where distant mobs and players who logged off can walk no longer takes time from the game: it is done in the background.
+- **Smoother frames with distant mobs** — the game waits less on the graphics driver each frame with distant mobs over Voxy or Distant Horizons, most of all on NVIDIA cards with *Threaded optimization* on.
 
 ## 0.12.0 — 2026-10-23
 

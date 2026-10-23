@@ -446,6 +446,15 @@ come back, add it here in the same pull request: this file is what the next sess
   often under the same names, and a framebuffer not bound at that moment keeps the deleted one. Our
   framebuffers attach their texture again every frame (`FarDepth.attachDepth`), never by name only;
   the `resize` scenario checks it.
+- **Depth copies or the occlusion test wrong for a second, then fine** (a garbled depth view,
+  mobs through the far terrain, after a shader pack changed or a texture was made again):
+  `GlCache` keeps what OpenGL said of a texture's size and format and a framebuffer's
+  attachment, asked again on a resize and once a second. A texture this mod makes or deletes
+  is told to it (`GlCache.made`, `deleted`); one made elsewhere under an old name at the same
+  size is only seen at the next refresh. A step drawing inside a `FarDepth.GlState` bracket
+  that changes more than the bracket saved throws: widen the bracket's `save`. A step that
+  starts drawing into a framebuffer with colour must save `GlState.COLOUR` and set blending
+  and the colour mask itself.
 - **A far player's mount drawn twice, or a rider sitting on air** (a happy ghast beside its
   rider, a player met already riding floating far away): a mount is drawn under its rider
   (`FarPlayer.mountPuppet`), and the remembered mobs leave out every id `FarPlayer.carriedMount`
