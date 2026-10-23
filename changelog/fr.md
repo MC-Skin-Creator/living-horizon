@@ -2,6 +2,11 @@
 
 ## Prochaine version
 
+### Client
+
+#### Améliorations
+- **Plus fluide avec des centaines de mobs lointains** — *Ignorer cachés* coûte bien moins cher avec beaucoup de mobs et de joueurs lointains à l'écran, le terrain lointain est copié moins souvent en coulisses, et la lumière sur les silhouettes est lue moins souvent.
+
 ## 0.11.0 — 2026-10-22
 
 ### Serveur

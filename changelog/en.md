@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Client
+
+#### Improved
+- **Smoother with hundreds of distant mobs** — *Skip Hidden Mobs* costs much less with many distant mobs and players in view, the far terrain is copied less often behind the scenes, and the light on the figures is read less often.
+
 ## 0.11.0 — 2026-10-22
 
 ### Server

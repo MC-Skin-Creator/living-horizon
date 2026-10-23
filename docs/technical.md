@@ -750,11 +750,16 @@ the depth of the picture, where Voxy's or Distant Horizons' terrain already is (
 `FarDepth`):
 
 1. Just before the entities are drawn, the box around each distant mob is drawn against that
-   depth, writing nothing, inside an occlusion query (`GL_ANY_SAMPLES_PASSED_CONSERVATIVE`, or
-   `GL_ANY_SAMPLES_PASSED` without OpenGL 4.3 or `GL_ARB_ES3_compatibility`), with the
-   matrices of the frame (`LevelRendererMixin`, `renderLevel`; `render` from 26.2).
-2. The answers are read once the GPU has them, up to 4 frames of them waiting, never waited
-   for.
+   depth, writing nothing, with the matrices of the frame (`LevelRendererMixin`, `renderLevel`;
+   `render` from 26.2). From OpenGL 4.3 every box of the frame goes in one instanced draw: the
+   fragment shader runs after the depth test (`early_fragment_tests`) and writes a word for its
+   box into a shader storage buffer, which is copied to a buffer of that batch behind a fence
+   (`drawWords`): a dozen GL calls a frame, however many mobs. Without it, each box is drawn
+   inside an occlusion query of its own (`GL_ANY_SAMPLES_PASSED_CONSERVATIVE`, or
+   `GL_ANY_SAMPLES_PASSED` without `GL_ARB_ES3_compatibility`), five calls per box
+   (`drawQueries`); a failure of the one draw falls back to it for the session.
+2. The answers are read once the GPU has them (the fence passed, or the last query of the
+   batch done), up to 4 frames of them waiting, never waited for.
 3. A mob whose last answer is "no pixel passed" is not drawn. It is asked about again on the
    next frame that has room for a batch, so it comes back as soon as one pixel of it would
    show.
