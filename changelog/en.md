@@ -20,6 +20,7 @@
 #### Fixed
 - **Distant mobs floating in the void** — distant mobs are no longer drawn where no terrain is drawn under them yet, neither the game's nor Voxy's or Distant Horizons'.
 - **Single player worlds closing at once on Forge** — a single player world no longer closes as soon as it opens, with "mismatched mod channel list" (Forge 1.20.2 and later).
+- **Game freezing on a huge scan** — `/livinghorizon scan` no longer freezes the game when given a huge radius: it stops at 1,024 chunks, as the *Scan Radius* setting does.
 
 ## 0.11.0 — 2026-10-22
 

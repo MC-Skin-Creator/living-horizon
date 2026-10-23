@@ -51,7 +51,7 @@ public final class MobScan {
     }
 
     public static final int MIN_RADIUS = 4;
-    /** The top of the settings slider; the command takes any radius. */
+    /** The top of the settings slider and of the command: a scan goes through (2r+1)² chunks on the server's thread. */
     public static final int MAX_RADIUS = 1024;
 
     private static boolean running;
@@ -74,7 +74,7 @@ public final class MobScan {
             return;
         }
         running = true;
-        tell(client, Component.translatable("livinghorizon.scan.started", Math.max(radius, MIN_RADIUS)));
+        tell(client, Component.translatable("livinghorizon.scan.started", bounded(radius)));
         scan.whenComplete((result, error) -> client.execute(() -> {
             running = false;
             if (error != null || result == null) {
@@ -87,6 +87,11 @@ public final class MobScan {
             int found = FarPlayerTracker.get().mobs().adopt(result);
             tell(client, Component.translatable("livinghorizon.scan.done", found, result.radius()));
         }));
+    }
+
+    /** The radius a scan reads, kept to the settings' range whoever asks (a config file edited by hand too). */
+    static int bounded(int radius) {
+        return Math.min(Math.max(radius, MIN_RADIUS), MAX_RADIUS);
     }
 
     private static void tell(Minecraft client, Component message) {
@@ -112,7 +117,7 @@ public final class MobScan {
         if (server == null || client.level == null || client.player == null) return null;
         ResourceKey<Level> key = client.level.dimension();
         ChunkPos center = client.player.chunkPosition();
-        int r = Math.max(radius, MIN_RADIUS);
+        int r = bounded(radius);
         FarConfig config = FarConfig.get();
         Filter filter = new Filter(Set.copyOf(config.mobTypes), config.rememberNamedMobs);
         String dimension = key.identifier().toString();
