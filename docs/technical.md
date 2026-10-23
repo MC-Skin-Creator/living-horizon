@@ -789,6 +789,27 @@ Voxy's depth textures, and nothing else:
 Anywhere else, what Voxy draws is left exactly as it is. *Voxy Shadow Fix* (`optVoxyShadows`)
 turns it off.
 
+### Asking OpenGL as little as possible
+
+With the driver on a thread of its own (NVIDIA's *Threaded optimization*, Mesa's glthread),
+every `glGet*`, `glIsEnabled` or `glGetQueryObject` stops the game until the driver has caught
+up. The depth steps and the occlusion test keep those few:
+
+- **Uniform locations** are looked up once, when each program is made (`GlPrograms.uniforms`).
+- **Texture sizes and formats, framebuffer attachments** come from `compat/GlCache`. It asks
+  again once the main render target changes size, and once a second whatever happens. The
+  copies `FarDepth` makes are noted as they are made (`GlCache.made`, `deleted`), never asked
+  about.
+- **`FarDepth.GlState`** reads only what a step changes: the texture units it binds, and only
+  for the steps that move them the scissor box (`intoVoxy`, Voxy's blit), the read framebuffer
+  (Voxy's blit) and blending and the colour mask of every draw buffer (Voxy's blit, the
+  restore into Voxy's framebuffer, the depth view). Our own framebuffers have no colour: the
+  steps drawing there (the occlusion test, Distant Horizons' merge, the fade mask, `intoVoxy`)
+  leave blending and the colour masks alone. Where a bracket runs two steps (the merge and the
+  occlusion test, the restore and `intoVoxy`), one save covers both. One object, reused.
+- **Voxy's framebuffer** (`noteTarget`) is asked for only under a pack that keeps Voxy's depth
+  apart, the one case the merge reads it.
+
 ## Fog on distant figures
 
 From 1.21.6 the game fogs the world twice: a render distance fog at the edge of the loaded
@@ -847,6 +868,9 @@ Why the answer can be trusted:
 - Depth clamping keeps a box past the far plane at the far plane: the sky never hides a mob,
   terrain in front does.
 - A mob never asked about, or whose answer is more than six frames old, is drawn.
+
+The `occlusion` scenario checks the answers: a row of remembered cows 200 blocks away, half
+of them hidden behind a wall, none once it is gone.
 
 With `optOcclusionQueries` off, or once the queries have failed, the mobs are tested in the
 far terrain's world instead (`render/Occlusion`). The two answers are never mixed. With

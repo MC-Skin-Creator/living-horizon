@@ -253,16 +253,17 @@ public final class OcclusionQueries {
      * Draws this frame's boxes against a depth texture holding the terrain and no entity yet,
      * and arranges for the answers to come back. Called just before the entities are drawn.
      */
-    static void run(int depthTexture) {
+    static void run(int depthTexture, int width, int height) {
         long started = Profile.begin(Profile.Section.OCCLUSION_RUN);
         try {
-            drawBoxes(depthTexture);
+            drawBoxes(depthTexture, width, height);
         } finally {
             Profile.end(Profile.Section.OCCLUSION_RUN, started);
         }
     }
 
-    private static void drawBoxes(int depthTexture) {
+    /** {@code width} by {@code height}: the depth texture's size, known to whoever made it. */
+    private static void drawBoxes(int depthTexture, int width, int height) {
         asked = askedSize;
         if (broken || askedSize == 0) return;
         if (!viewNoted) {
@@ -276,8 +277,6 @@ public final class OcclusionQueries {
         reason = "";
         FarDepth.viewProjection().get(MATRIX);
         try {
-            int width = GL45C.glGetTextureLevelParameteri(depthTexture, 0, GL11C.GL_TEXTURE_WIDTH);
-            int height = GL45C.glGetTextureLevelParameteri(depthTexture, 0, GL11C.GL_TEXTURE_HEIGHT);
             if (width <= 0 || height <= 0) {
                 reason = "the depth texture has no size";
                 return;
@@ -288,19 +287,19 @@ public final class OcclusionQueries {
             int pictureWidth = FarDepth.pictureWidth(), pictureHeight = FarDepth.pictureHeight();
             int viewWidth = pictureWidth > 0 ? Math.min(pictureWidth, width) : width;
             int viewHeight = pictureHeight > 0 ? Math.min(pictureHeight, height) : height;
-            FarDepth.GlState gl = FarDepth.GlState.save();
+            // Our framebuffer has no colour, and no texture is bound: blending, the colour masks,
+            // the texture units and the scissor box are left alone, and not read.
+            FarDepth.GlState gl = FarDepth.GlState.save(0, 0);
             boolean clamp = GL11C.glIsEnabled(GL32C.GL_DEPTH_CLAMP);
             try {
                 GL30C.glBindFramebuffer(GL30C.GL_DRAW_FRAMEBUFFER, framebuffer);
                 GL11C.glDisable(GL11C.GL_SCISSOR_TEST);
                 GL11C.glDisable(GL11C.GL_CULL_FACE);
                 GL11C.glDisable(GL11C.GL_STENCIL_TEST);
-                GL11C.glDisable(GL11C.GL_BLEND);
                 GL11C.glEnable(GL11C.GL_DEPTH_TEST);
                 GL11C.glEnable(GL32C.GL_DEPTH_CLAMP);
                 GL11C.glDepthFunc(DepthFar.reversed() ? GL11C.GL_GEQUAL : GL11C.GL_LEQUAL);
                 GL11C.glDepthMask(false);
-                GL11C.glColorMask(false, false, false, false);
                 GL11C.glViewport(0, 0, viewWidth, viewHeight);
                 if (wordsUsable()) {
                     try {
