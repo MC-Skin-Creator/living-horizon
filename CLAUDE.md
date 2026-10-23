@@ -188,8 +188,9 @@ when everything on `develop` has shipped, merges `main` into it otherwise, and o
 ## CI and releases
 
 `.github/workflows/build.yml` builds and tests every Stonecutter target on each pull
-request, and attaches the jar as a 14-day workflow artifact. CI is
-what checks a change; a pull request is not done until it is green.
+request, and attaches the jar as a 14-day workflow artifact. A pull request that only
+changes Markdown files and the LICENSE skips the targets (the changelog is still checked).
+CI is what checks a change; a pull request is not done until it is green.
 
 The release does not build again what a pull request built. A pull request into `develop`
 or `main` stamps the version its merge will release (`.github/scripts/release-version.sh`,
@@ -486,6 +487,13 @@ come back, add it here in the same pull request: this file is what the next sess
   added at the end of a record, or after the records, raises `VERSION` only; anything else
   raises `READABLE_FROM` too, and older clients stop reading. `PositionsMessageTest` holds the
   exact bytes: a layout change that fails it needs one of the two.
+- **Skip Hidden Mobs costing a lot with many mobs** (the debug panel's occlusion line says "one
+  query each"): the one-draw path of `OcclusionQueries` (OpenGL 4.3, a word per box in a shader
+  storage buffer, read back behind a fence) failed and the per-box queries took over, five GL
+  calls per mob per frame; the log says why. The depth copies that only the debug view reads
+  (`saved`, `drawn` when nothing was merged) are made only with *Depth View* on. **Never remove
+  either**: the author measured 70 to 100 FPS from the two together; the per-box queries are the
+  fallback for OpenGL older than 4.3 and nothing else.
 - **Frame rate lost to the mod** (with Voxy or not): measure before guessing. On the player's
   machine, ask for the report of `/livinghorizon benchmark` (`debug/Benchmark`): frame times with
   the mod off, each preset and each part on its own, on their GPU and mods. Run in the world
