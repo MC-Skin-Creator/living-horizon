@@ -246,11 +246,14 @@ under 48.
   too, and always in the Nether and the End.
 - **Walking** (`track/Walkway`) only where a player could: one block up, two down, no corner
   cut, nothing walked through but doors and fence gates, which they cannot open. It is worked
-  out on the client from the blocks it has. The area around is read a little every tick (600
-  spots per tick for all of them and their mounts together, 250 at most for one), and again
-  every 30 seconds or when they find themselves off it. Each way is searched towards where
-  they go. Looking for beds and chests, dodging and walking back after a blast have budgets
-  of their own.
+  out on the client from the blocks it has, off the game's thread: the chunk sections around
+  their spot (`roam` + 4 blocks across, 32 below and 48 above) are copied a few at a time (96
+  sections per tick for all of them and their mounts together, `track/BlockCopy`), then
+  searched on threads of their own (`track/GroundWork`), beds and chests looked for in the
+  same go. The area is read again every 30 seconds, when they find themselves off it, or when
+  a step of their way can no longer be stood on. Each way is searched towards where they go,
+  in the copy the area was read from. Dodging and walking back after a blast are small
+  searches made on the spot.
 - **Monsters** within 10 blocks and in plain sight put them on guard: an iron sword drawn,
   the shield up, eyes on the nearest, a step away when it comes closer than 3.5 blocks. They
   never fight. Safe indoors, behind walls, shut doors or windows, they ignore them.
@@ -398,7 +401,9 @@ off, then run or jump to it once it was sent again.
 
 Once its copy is drawn, the blocks within 8 blocks of a mob (a square of 17 by 17 columns,
 `track/MobPaths`) are read, a few mobs per tick, from loaded chunks or from the far world
-(Voxy or Distant Horizons). They are read again when the mob moves, and later and later while
+(Voxy or Distant Horizons): the loaded sections are copied on the game's thread
+(`track/BlockCopy`) and the ground and animation worked out on `track/GroundWork`'s threads,
+so the answer comes a tick or so later. They are read again when the mob moves, and later and later while
 columns are missing; a ground read whole is saved with the mob and used at once next time.
 Mobs that stand still and mobs the server moves read nothing, phantoms and ghasts fly (see
 below), and other flyers and swimmers get a flat disc at their own height.
@@ -795,6 +800,27 @@ Voxy's depth textures, and nothing else:
 Anywhere else, what Voxy draws is left exactly as it is. *Voxy Shadow Fix* (`optVoxyShadows`)
 turns it off.
 
+### Asking OpenGL as little as possible
+
+With the driver on a thread of its own (NVIDIA's *Threaded optimization*, Mesa's glthread),
+every `glGet*`, `glIsEnabled` or `glGetQueryObject` stops the game until the driver has caught
+up. The depth steps and the occlusion test keep those few:
+
+- **Uniform locations** are looked up once, when each program is made (`GlPrograms.uniforms`).
+- **Texture sizes and formats, framebuffer attachments** come from `compat/GlCache`. It asks
+  again once the main render target changes size, and once a second whatever happens. The
+  copies `FarDepth` makes are noted as they are made (`GlCache.made`, `deleted`), never asked
+  about.
+- **`FarDepth.GlState`** reads only what a step changes: the texture units it binds, and only
+  for the steps that move them the scissor box (`intoVoxy`, Voxy's blit), the read framebuffer
+  (Voxy's blit) and blending and the colour mask of every draw buffer (Voxy's blit, the
+  restore into Voxy's framebuffer, the depth view). Our own framebuffers have no colour: the
+  steps drawing there (the occlusion test, Distant Horizons' merge, the fade mask, `intoVoxy`)
+  leave blending and the colour masks alone. Where a bracket runs two steps (the merge and the
+  occlusion test, the restore and `intoVoxy`), one save covers both. One object, reused.
+- **Voxy's framebuffer** (`noteTarget`) is asked for only under a pack that keeps Voxy's depth
+  apart, the one case the merge reads it.
+
 ## Fog on distant figures
 
 From 1.21.6 the game fogs the world twice: a render distance fog at the edge of the loaded
@@ -853,6 +879,9 @@ Why the answer can be trusted:
 - Depth clamping keeps a box past the far plane at the far plane: the sky never hides a mob,
   terrain in front does.
 - A mob never asked about, or whose answer is more than six frames old, is drawn.
+
+The `occlusion` scenario checks the answers: a row of remembered cows 200 blocks away, half
+of them hidden behind a wall, none once it is gone.
 
 With `optOcclusionQueries` off, or once the queries have failed, the mobs are tested in the
 far terrain's world instead (`render/Occlusion`). The two answers are never mixed. With
