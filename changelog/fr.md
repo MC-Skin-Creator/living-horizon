@@ -7,6 +7,9 @@
 #### Améliorations
 - **Plus fluide avec des centaines de mobs lointains** — *Ignorer cachés* coûte bien moins cher avec beaucoup de mobs et de joueurs lointains à l'écran, le terrain lointain est copié moins souvent en coulisses, et la lumière sur les silhouettes est lue moins souvent.
 
+#### Corrections
+- **Mobs lointains qui flottent dans le vide** — les mobs lointains ne sont plus dessinés là où aucun terrain n'est encore dessiné sous eux, ni celui du jeu, ni celui de Voxy ou de Distant Horizons.
+
 ## 0.11.0 — 2026-10-22
 
 ### Serveur
@@ -49,7 +52,6 @@
 - **Mobs lointains qui secouent la tête** — les mobs et les joueurs au loin ne secouent plus la tête à toute vitesse avec Entity Culling, seul ou avec Chloride.
 - **Joueurs affichés dans la mauvaise dimension moddée** — les joueurs connectés ou déconnectés dans une dimension moddée, comme l'Aether, ne sont plus dessinés dans une autre, comme la Twilight Forest (sur un serveur, il lui faut aussi cette version).
 - **Mobs lointains délavés par le brouillard** — les mobs au loin sur le terrain de Voxy ne pâlissent plus jusqu'à se fondre dans la couleur du brouillard passé une certaine distance : ils prennent le même brouillard que le terrain autour d'eux (sans shader pack).
-- **Mobs lointains qui flottent dans le vide** — les mobs lointains ne sont plus dessinés là où aucun terrain n'est encore dessiné sous eux, ni celui du jeu, ni celui de Voxy ou de Distant Horizons.
 
 ## 0.10.0 — 2026-10-20
 
