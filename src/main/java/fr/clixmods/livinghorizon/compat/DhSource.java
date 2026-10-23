@@ -154,6 +154,16 @@ final class DhSource implements LodSource {
      */
     @Override
     public double clearDistance() {
+        return distance(true);
+    }
+
+    /** Distant Horizons' render distance, {@link #clearDistance} without its fog. */
+    @Override
+    public double drawnDistance() {
+        return distance(false);
+    }
+
+    private static double distance(boolean clear) {
         String api = "com.seibel.distanthorizons.api.", config = api + "interfaces.config.";
         try {
             Object configs = Class.forName(api + "DhApi$Delayed").getField("configs").get(null);
@@ -162,6 +172,7 @@ final class DhSource implements LodSource {
             String graphicsType = config + "client.IDhApiGraphicsConfig";
             if (!(Boolean) value(call(graphicsType, graphics, "renderingEnabled"))) return 0;
             double drawn = ((Number) value(call(graphicsType, graphics, "chunkRenderDistance"))).doubleValue() * 16;
+            if (!clear) return drawn;
             try {
                 Object fog = call(graphicsType, graphics, "fog");
                 if (!(Boolean) value(call(config + "client.IDhApiFogConfig", fog, "enableDhFog"))) return drawn * 0.9;

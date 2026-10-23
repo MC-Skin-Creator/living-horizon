@@ -22,8 +22,10 @@ import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LanShareScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.MannequinsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.DiscordScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.OverVoidScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PerchersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PerfScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RememberedMobsScenario;
@@ -66,6 +68,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new LightingScenario(),
             new FarFogScenario(),
             new RememberedMobsScenario(),
+            new OverVoidScenario(),
             new MannequinsScenario(),
             new OutlinesScenario(),
             new RestingScenario(),
@@ -75,6 +78,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new RestingCrowdScenario(),
             new ShoreScenario(),
             new OptionsScreenScenario(),
+            new DiscordScenario(),
             new SodiumPagesScenario(),
             new SodiumControlsScenario(),
             new DepthViewScenario(),

@@ -4,18 +4,30 @@
 
 ### Client
 
+#### New
+- **Discord button** — the mod's settings now have a Discord logo beside the title, to join the server and ask a question or report a problem (a *Join the Discord* button on Sodium's page).
+- **Mod version shown** — the settings screens and the debug panel now show the version of Living Horizon, handy to give with a bug report.
+
+#### Improved
+- **Smoother with hundreds of distant mobs** — *Skip Hidden Mobs* costs much less with many distant mobs and players in view, the far terrain is copied less often behind the scenes, and the light on the figures is read less often.
+
 #### Fixed
+- **Distant mobs floating in the void** — distant mobs are no longer drawn where no terrain is drawn under them yet, neither the game's nor Voxy's or Distant Horizons'.
 - **Game freezing on a huge scan** — `/livinghorizon scan` no longer freezes the game when given a huge radius: it stops at 1,024 chunks, as the *Scan Radius* setting does.
 
 ## 0.11.0 — 2026-10-22
 
 ### Server
 
+#### New
+- **Server settings** — `config/livinghorizon-server.json`, written the first time the server starts, chooses what the server shares: players online, players who logged off and mobs, how far, with teammates only, and which players and dimensions are never shared; changes apply within seconds, without a restart.
+
 #### Improved
 - **Lighter on big servers** — the server spends less time choosing whose skin and mount to send each player, and sends a long list of players who logged off in several parts instead of one message too large for the game.
 - **Players need this version too** — on a server with this version, players need it as well to see distant players.
 
 #### Fixed
+- **Spectators and invisible players seen from afar** — players in spectator mode or invisible are no longer shown to other players far away, nor where they logged off.
 - **Offline players lost when the world file cannot be read** — a `livinghorizon-positions.dat` the server cannot read is no longer written over: it is kept as `livinghorizon-positions.dat.bad`, and the console says so.
 
 ### Client

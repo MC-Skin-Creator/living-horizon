@@ -115,6 +115,13 @@ public final class FarConfig {
     /** Blocks: past this, distant mobs are not drawn. 0 is no limit. */
     public int mobMaxDistance = 512;
 
+    /**
+     * Distant mobs are drawn only where terrain is drawn under them: a chunk the game draws, or
+     * the far terrain of Voxy or Distant Horizons. Off, a mob remembered where neither has drawn
+     * anything yet stands in the void.
+     */
+    public boolean onlyOverTerrain = true;
+
     /** Blocks: past this, distant players are not drawn. 0, the default, is no limit. */
     public int playerMaxDistance = 0;
 
