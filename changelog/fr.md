@@ -2,6 +2,8 @@
 
 ## Prochaine version
 
+## 0.12.0 — 2026-10-23
+
 ### Serveur
 
 #### Nouveautés
