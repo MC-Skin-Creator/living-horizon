@@ -5,6 +5,7 @@ import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.Stats;
 import fr.clixmods.livinghorizon.ambient.Ambience;
+import fr.clixmods.livinghorizon.compat.DrawnGround;
 import fr.clixmods.livinghorizon.compat.EntityCulling;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.OcclusionQueries;
@@ -23,6 +24,7 @@ import fr.clixmods.livinghorizon.track.Puppets;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
 import fr.clixmods.livinghorizon.track.RestingPuppet;
 import fr.clixmods.livinghorizon.track.SharedPositions;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.client.Camera;
@@ -478,6 +480,7 @@ public final class GhostRenderer {
                 if (debug) DebugMarks.mark(puppet, Mark.NEAR);
                 continue;
             }
+            if (overVoid(minecraft, eye, mob.id(), puppet, config)) continue;
             if (skipped(puppet, true)) continue;
             if (occluded(mob.id(), puppet, config)) continue;
             if (debug) DebugMarks.mark(puppet, Mark.FAKE);
@@ -489,6 +492,7 @@ public final class GhostRenderer {
             if (body instanceof LivingEntityRenderState living && livesInWater(puppet)) living.isInWater = true;
             add(frame, minecraft, eye, body, null, true, Mark.FAKE, config, mob.id());
         }
+        DrawnGround.ask();
         if (debug && DebugMarks.drawing() && minecraft.level != null) {
             // The ones remembered but past the most shown at once.
             Set<MobMemory.Remembered> listed = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -522,6 +526,19 @@ public final class GhostRenderer {
         drawn--;
         skipped++;
         if (debug) DebugMarks.mark(entity, Mark.HIDDEN);
+        return true;
+    }
+
+    /**
+     * No terrain drawn under it, neither the game's nor the far terrain, so not drawn this frame
+     * ({@link FarConfig#onlyOverTerrain}): it would stand in the void.
+     */
+    private static boolean overVoid(Minecraft minecraft, Vec3 eye, Object key, Entity entity, FarConfig config) {
+        if (!config.onlyOverTerrain || minecraft.level == null
+                || DrawnGround.shown(minecraft.level, eye, key, entity.getX(), entity.getZ())) {
+            return false;
+        }
+        if (debug) DebugMarks.mark(entity, Mark.VOID);
         return true;
     }
 
@@ -566,6 +583,7 @@ public final class GhostRenderer {
             // Close by, the game leaves a mob out only when the terrain hides it.
             if (entity.distanceToSqr(eye) < 24 * 24) continue;
             if (tooFar(entity, eye, config.mobMaxDistance)) continue;
+            if (overVoid(minecraft, eye, entity.getUUID(), entity, config)) continue;
             if (skipped(entity, true)) continue;
             if (occluded(entity.getUUID(), entity, config)) continue;
             EntityCulling.drawn(entity);
@@ -574,6 +592,7 @@ public final class GhostRenderer {
             add(frame, minecraft, eye, extract(dispatcher, entity, partialTick), null, false, Mark.LIVE, config,
                     entity.getUUID());
         }
+        DrawnGround.ask();
     }
 
     public static boolean livesInWater(Entity entity) {
@@ -735,8 +754,31 @@ public final class GhostRenderer {
         return light(level, state.x, state.y, state.z);
     }
 
+    /**
+     * The light read at each block this half second, by the block's position: hundreds of
+     * figures ask every frame, six light lookups each, for a value that changes slowly. Where
+     * the client has no light yet, nothing is kept: it comes a few frames later.
+     */
+    private static final Long2IntOpenHashMap LIGHT = new Long2IntOpenHashMap();
+    private static final long LIGHT_KEPT_NANOS = 500_000_000L;
+    private static @Nullable ClientLevel lightLevel;
+    private static long lightSince;
+
+    static {
+        LIGHT.defaultReturnValue(-1);
+    }
+
     private static int light(@Nullable ClientLevel level, double x, double y, double z) {
         BlockPos feet = BlockPos.containing(x, y + 0.1, z);
+        long now = System.nanoTime();
+        if (level != lightLevel || now - lightSince > LIGHT_KEPT_NANOS) {
+            LIGHT.clear();
+            lightLevel = level;
+            lightSince = now;
+        }
+        long key = feet.asLong();
+        int kept = LIGHT.get(key);
+        if (kept >= 0) return kept;
         if (!lit(level, feet)) return OPEN_SKY;
         int block = 0, sky = 0;
         for (int up = 0; up < 3; up++) {
@@ -744,7 +786,9 @@ public final class GhostRenderer {
             block = Math.max(block, level.getBrightness(LightLayer.BLOCK, at));
             sky = Math.max(sky, level.getBrightness(LightLayer.SKY, at));
         }
-        return LightTexture.pack(block, sky);
+        int packed = LightTexture.pack(block, sky);
+        LIGHT.put(key, packed);
+        return packed;
     }
 
     /**

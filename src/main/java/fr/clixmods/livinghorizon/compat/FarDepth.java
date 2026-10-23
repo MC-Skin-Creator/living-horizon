@@ -385,7 +385,9 @@ public final class FarDepth {
         lateMerge = lateCopy = lateMerged = lateFade = false;
         try {
             if (merged) restore(false);
-            else if (captured) copy(depthTexture, drawn);
+            // Captured only: the copy after the entities is read by the debug view, Distant
+            // Horizons' fade and our figures into Voxy's depth, and made for nothing otherwise.
+            else if (captured && (intoVoxy || fadeMask || FarConfig.get().debugDepthView != 0)) copy(depthTexture, drawn);
             if (intoVoxy) intoVoxy();
             lateOwner = owner;
             lateMerge = owner != null && merged;
@@ -494,7 +496,14 @@ public final class FarDepth {
         return mergedLastFrame;
     }
 
-    /** The game's depth as it is, for the debug view: no Voxy, or nothing to merge. */
+    /**
+     * The game's depth as it is, when there was nothing to merge (no Voxy, or Voxy writing into
+     * it already): one copy, {@code written}, for the occlusion boxes, Distant Horizons' fade and
+     * our figures into Voxy's depth. The copy before anything, {@code saved}, only the debug view
+     * reads here: a full-screen copy is not made for nobody. Keep it that way: with the one-draw
+     * occlusion ({@code OcclusionQueries}) this is part of the frame-rate gain the author measured
+     * (70 to 100 FPS); a full-screen depth copy per frame for nothing is never to come back.
+     */
     private static boolean capture() throws ReflectiveOperationException {
         target = ownTarget();
         if (target == 0) return false;
@@ -505,7 +514,7 @@ public final class FarDepth {
         if (w <= 0 || h <= 0) return false;
         prepare(w, h, f);
         notePicture(w, h);
-        copy(depthTexture, saved);
+        if (FarConfig.get().debugDepthView != 0) copy(depthTexture, saved);
         copy(depthTexture, written);
         return true;
     }

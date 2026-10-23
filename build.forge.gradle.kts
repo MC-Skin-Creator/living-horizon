@@ -183,7 +183,7 @@ tasks {
         inputs.property("java", mixinJava)
         inputs.property("mixins", project.extra["lhMixins"] as String)
         inputs.property("obfuscatedRuntime", obfuscatedRuntime)
-        filesMatching(listOf("META-INF/mods.toml", "livinghorizon.mixins.json")) { expand(props) }
+        filesMatching(listOf("META-INF/mods.toml", "livinghorizon.mixins.json", "assets/livinghorizon/version.txt")) { expand(props) }
         // The other loaders' metadata has nothing to say to Forge, and it reads its
         // access transformer, not an access widener.
         exclude("fabric.mod.json", "META-INF/neoforge.mods.toml", "quilt.mod.json",

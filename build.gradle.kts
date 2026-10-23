@@ -133,7 +133,7 @@ tasks {
         inputs.property("sodium", props.getValue("sodium"))
         inputs.property("java", requiredJava.majorVersion)
         inputs.property("mixins", project.extra["lhMixins"] as String)
-        filesMatching(listOf("fabric.mod.json", "livinghorizon.mixins.json")) { expand(props) }
+        filesMatching(listOf("fabric.mod.json", "livinghorizon.mixins.json", "assets/livinghorizon/version.txt")) { expand(props) }
         // The other loaders' metadata has nothing to say to Fabric.
         exclude("quilt.mod.json", "META-INF/neoforge.mods.toml", "META-INF/mods.toml")
         // The access widener is the generated copy, not the source file.
