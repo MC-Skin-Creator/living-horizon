@@ -4,6 +4,10 @@
 
 ### Client
 
+#### Nouveautés
+- **Bouton Discord** — les réglages du mod ont maintenant un logo Discord à côté du titre, pour rejoindre le serveur, poser une question ou signaler un problème (un bouton *Rejoindre le Discord* sur la page de Sodium).
+- **Version du mod affichée** — les écrans de réglages et le panneau de debug affichent maintenant la version de Living Horizon, pratique à donner avec un signalement de bug.
+
 #### Améliorations
 - **Plus fluide avec des centaines de mobs lointains** — *Ignorer cachés* coûte bien moins cher avec beaucoup de mobs et de joueurs lointains à l'écran, le terrain lointain est copié moins souvent en coulisses, et la lumière sur les silhouettes est lue moins souvent.
 

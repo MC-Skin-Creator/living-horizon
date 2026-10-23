@@ -4,6 +4,10 @@
 
 ### Client
 
+#### New
+- **Discord button** — the mod's settings now have a Discord logo beside the title, to join the server and ask a question or report a problem (a *Join the Discord* button on Sodium's page).
+- **Mod version shown** — the settings screens and the debug panel now show the version of Living Horizon, handy to give with a bug report.
+
 #### Improved
 - **Smoother with hundreds of distant mobs** — *Skip Hidden Mobs* costs much less with many distant mobs and players in view, the far terrain is copied less often behind the scenes, and the light on the figures is read less often.
 

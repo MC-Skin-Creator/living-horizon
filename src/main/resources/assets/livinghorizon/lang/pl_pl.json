@@ -231,6 +231,8 @@
   "livinghorizon.options.debug": "Opcje debugowania…",
   "livinghorizon.options.debug.tooltip": "Narzędzia pokazujące, co robi mod, oraz ustawienia dla Distant Horizons, Voxy i paczek shaderów. Najlepiej zostawić bez zmian, chyba że coś wygląda źle.",
   "livinghorizon.options.debug.title": "Opcje debugowania",
+  "livinghorizon.options.discord": "Dołącz do Discorda…",
+  "livinghorizon.options.discord.tooltip": "Otwiera serwer Discord moda, aby zadać pytanie lub zgłosić problem.",
   "livinghorizon.options.impostorPreview": "Uproszczone byty…",
   "livinghorizon.options.impostorPreview.tooltip": "Pokazuje obrazy używane dla uproszczonych bytów i odtwarza je, jeśli któryś wygląda źle.",
   "livinghorizon.options.debug.rendering": "Wyświetlanie",

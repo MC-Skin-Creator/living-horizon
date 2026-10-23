@@ -231,6 +231,8 @@
   "livinghorizon.options.debug": "Opzioni diagnostiche...",
   "livinghorizon.options.debug.tooltip": "Strumenti per vedere cosa fa la mod, e impostazioni per Distant Horizons, Voxy e i pacchetti di shader. Meglio lasciarle come sono, a meno che qualcosa non sembri sbagliato.",
   "livinghorizon.options.debug.title": "Opzioni diagnostiche",
+  "livinghorizon.options.discord": "Unisciti al Discord...",
+  "livinghorizon.options.discord.tooltip": "Apre il server Discord della mod, per fare una domanda o segnalare un problema.",
   "livinghorizon.options.impostorPreview": "Entità semplificate...",
   "livinghorizon.options.impostorPreview.tooltip": "Mostra le immagini usate per le entità semplificate e le ricrea se una sembra sbagliata.",
   "livinghorizon.options.debug.rendering": "Visualizzazione",

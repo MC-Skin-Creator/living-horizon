@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.ui;
 
 import fr.clixmods.livinghorizon.FarConfig;
+import fr.clixmods.livinghorizon.ModVersion;
 import fr.clixmods.livinghorizon.ambient.BirdFigure;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorViews;
@@ -168,6 +169,7 @@ public final class ImpostorScreen extends Screen {
         /*renderBackground(graphics);*/
         super.render(graphics, mouseX, mouseY, partialTick);
         graphics.drawCenteredString(font, title, width / 2, 8, NAME_COLOR);
+        graphics.drawCenteredString(font, ModVersion.label(), width / 2, 20, 0xFFAAAAAA);
 
         // A copy to sort: before 1.21.9 the atlas hands out List.of(), which refuses sort.
         rows = new ArrayList<>(ImpostorAtlas.baked());
