@@ -5,6 +5,8 @@ import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.Stats;
 import fr.clixmods.livinghorizon.ambient.Ambience;
+import fr.clixmods.livinghorizon.compat.DrawnGround;
+import fr.clixmods.livinghorizon.compat.EntityCulling;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.OcclusionQueries;
 import fr.clixmods.livinghorizon.debug.DebugMarks;
@@ -12,6 +14,7 @@ import fr.clixmods.livinghorizon.debug.DebugMarks.Mark;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorKey;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
+import fr.clixmods.livinghorizon.render.impostor.ImpostorThreshold;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorViews;
 import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
 import fr.clixmods.livinghorizon.track.FarPlayer;
@@ -21,6 +24,7 @@ import fr.clixmods.livinghorizon.track.Puppets;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
 import fr.clixmods.livinghorizon.track.RestingPuppet;
 import fr.clixmods.livinghorizon.track.SharedPositions;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.client.Camera;
@@ -225,6 +229,7 @@ public final class GhostRenderer {
     public static @Nullable EntityRenderState extract(EntityRenderDispatcher dispatcher, Entity entity, float partialTick) {
         if (!drawable(dispatcher, entity)) return null;
         Puppets.skin(entity);
+        Puppets.cape(entity);
         try {
             //? if >=1.21.9 {
             return dispatcher.extractEntity(entity, partialTick);
@@ -394,6 +399,7 @@ public final class GhostRenderer {
                 // draws, when its render distance is shorter than the server's.
                 if (EXTRACTED.contains(live) || live.isInvisible()) continue;
                 Entity mount = live.getRootVehicle();
+                EntityCulling.drawn(live);
                 if (debug) DebugMarks.mark(live, Mark.PLAYER);
                 if (config.impostorPlayers && (mount == live ? impostor(minecraft, eye, live, partialTick, config)
                         : !EXTRACTED.contains(mount) && impostorRiding(minecraft, eye, live, mount, partialTick, config))) {
@@ -474,6 +480,7 @@ public final class GhostRenderer {
                 if (debug) DebugMarks.mark(puppet, Mark.NEAR);
                 continue;
             }
+            if (overVoid(minecraft, eye, mob.id(), puppet, config)) continue;
             if (skipped(puppet, true)) continue;
             if (occluded(mob.id(), puppet, config)) continue;
             if (debug) DebugMarks.mark(puppet, Mark.FAKE);
@@ -485,6 +492,7 @@ public final class GhostRenderer {
             if (body instanceof LivingEntityRenderState living && livesInWater(puppet)) living.isInWater = true;
             add(frame, minecraft, eye, body, null, true, Mark.FAKE, config, mob.id());
         }
+        DrawnGround.ask();
         if (debug && DebugMarks.drawing() && minecraft.level != null) {
             // The ones remembered but past the most shown at once.
             Set<MobMemory.Remembered> listed = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -518,6 +526,19 @@ public final class GhostRenderer {
         drawn--;
         skipped++;
         if (debug) DebugMarks.mark(entity, Mark.HIDDEN);
+        return true;
+    }
+
+    /**
+     * No terrain drawn under it, neither the game's nor the far terrain, so not drawn this frame
+     * ({@link FarConfig#onlyOverTerrain}): it would stand in the void.
+     */
+    private static boolean overVoid(Minecraft minecraft, Vec3 eye, Object key, Entity entity, FarConfig config) {
+        if (!config.onlyOverTerrain || minecraft.level == null
+                || DrawnGround.shown(minecraft.level, eye, key, entity.getX(), entity.getZ())) {
+            return false;
+        }
+        if (debug) DebugMarks.mark(entity, Mark.VOID);
         return true;
     }
 
@@ -562,13 +583,16 @@ public final class GhostRenderer {
             // Close by, the game leaves a mob out only when the terrain hides it.
             if (entity.distanceToSqr(eye) < 24 * 24) continue;
             if (tooFar(entity, eye, config.mobMaxDistance)) continue;
+            if (overVoid(minecraft, eye, entity.getUUID(), entity, config)) continue;
             if (skipped(entity, true)) continue;
             if (occluded(entity.getUUID(), entity, config)) continue;
+            EntityCulling.drawn(entity);
             if (debug) DebugMarks.mark(entity, Mark.LIVE);
             if (impostor(minecraft, eye, entity, partialTick, config)) continue;
             add(frame, minecraft, eye, extract(dispatcher, entity, partialTick), null, false, Mark.LIVE, config,
                     entity.getUUID());
         }
+        DrawnGround.ask();
     }
 
     public static boolean livesInWater(Entity entity) {
@@ -587,19 +611,26 @@ public final class GhostRenderer {
         ClientLevel level = minecraft.level;
         if (level == null) return;
         RestingPlayers resting = FarPlayerTracker.get().resting();
-        int dimension = SharedPositions.dimensionCode(level.dimension());
-        for (RestingPlayers.Spot spot : resting.spots()) {
-            if (spot.dimension() != dimension) continue;
+        String dimension = SharedPositions.dimensionId(level.dimension());
+        // The nearest only, as many as the settings say.
+        for (RestingPlayers.Spot spot : resting.shown()) {
+            if (!spot.dimension().equals(dimension)) continue;
             RestingPuppet puppet = resting.puppet(level, spot);
+            if (!drawable(dispatcher, puppet)) continue;
+            if (tooFar(puppet, eye, config.playerMaxDistance)) continue;
             if (skipped(puppet, true)) continue;
-            if (debug) DebugMarks.mark(puppet, Mark.PLAYER);
-            EntityRenderState body = extract(dispatcher, puppet, partialTick);
-            if (body == null) continue;
             RestingPuppet.Look look = puppet.look();
             // On what they rode when they logged off: the mount drawn under them, they seated on it.
             Entity mount = look == RestingPuppet.Look.RIDE ? puppet.mount() : null;
-            // Far away a picture, as for players online, in whatever posture they are.
+            // Behind terrain, as mobs are. Not on a mount: the rider's box leaves out a tall
+            // mount under it (a happy ghast), which may show while the rider is hidden.
+            if (mount == null && occluded(spot.name(), puppet, config)) continue;
+            if (debug) DebugMarks.mark(puppet, Mark.PLAYER);
+            // Far away a picture, as for players online, in whatever posture they are: drawn
+            // from the puppet and its look, so nothing is extracted for it.
             if (config.impostorPlayers && restingImpostor(minecraft, eye, puppet, mount, look, partialTick, config)) continue;
+            EntityRenderState body = extract(dispatcher, puppet, partialTick);
+            if (body == null) continue;
             EntityRenderState mountState = mount == null ? null : extract(dispatcher, mount, partialTick);
             if (mountState != null && body instanceof HumanoidRenderState humanoid) {
                 humanoid.isPassenger = true;
@@ -723,8 +754,31 @@ public final class GhostRenderer {
         return light(level, state.x, state.y, state.z);
     }
 
+    /**
+     * The light read at each block this half second, by the block's position: hundreds of
+     * figures ask every frame, six light lookups each, for a value that changes slowly. Where
+     * the client has no light yet, nothing is kept: it comes a few frames later.
+     */
+    private static final Long2IntOpenHashMap LIGHT = new Long2IntOpenHashMap();
+    private static final long LIGHT_KEPT_NANOS = 500_000_000L;
+    private static @Nullable ClientLevel lightLevel;
+    private static long lightSince;
+
+    static {
+        LIGHT.defaultReturnValue(-1);
+    }
+
     private static int light(@Nullable ClientLevel level, double x, double y, double z) {
         BlockPos feet = BlockPos.containing(x, y + 0.1, z);
+        long now = System.nanoTime();
+        if (level != lightLevel || now - lightSince > LIGHT_KEPT_NANOS) {
+            LIGHT.clear();
+            lightLevel = level;
+            lightSince = now;
+        }
+        long key = feet.asLong();
+        int kept = LIGHT.get(key);
+        if (kept >= 0) return kept;
         if (!lit(level, feet)) return OPEN_SKY;
         int block = 0, sky = 0;
         for (int up = 0; up < 3; up++) {
@@ -732,7 +786,9 @@ public final class GhostRenderer {
             block = Math.max(block, level.getBrightness(LightLayer.BLOCK, at));
             sky = Math.max(sky, level.getBrightness(LightLayer.SKY, at));
         }
-        return LightTexture.pack(block, sky);
+        int packed = LightTexture.pack(block, sky);
+        LIGHT.put(key, packed);
+        return packed;
     }
 
     /**
@@ -781,17 +837,15 @@ public final class GhostRenderer {
     private static final Map<Entity, Shown> SHOWN = new IdentityHashMap<>();
     private static long frame;
 
-    /** A figure must come this much inside the impostor distance to get its model back. */
-    private static final double IMPOSTOR_RETURN = 0.95;
-
     /**
      * Draws a flat picture of a figure in place of its model, when it is past the impostor
-     * distance and its pictures are baked (they are asked for otherwise, and the model is
-     * drawn meanwhile). Nothing is extracted: that is what is saved.
+     * distance or smaller on screen than the impostor size ({@link ImpostorThreshold}), and its
+     * pictures are baked (they are asked for otherwise, and the model is drawn meanwhile).
+     * Nothing is extracted: that is what is saved.
      *
-     * <p>Once a figure is an impostor it stays one until it is a little closer than the
-     * distance, it keeps its picture until it has clearly turned to the next, and when its
-     * look changes (a sheep sheared, a player's armour) it keeps its old picture until the
+     * <p>Once a figure is an impostor it stays one until it is a little inside both the
+     * distance and the size, it keeps its picture until it has clearly turned to the next, and
+     * when its look changes (a sheep sheared, a player's armour) it keeps its old picture until the
      * new one is baked: none of it blinks between a model and a picture.
      */
     private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config) {
@@ -857,8 +911,8 @@ public final class GhostRenderer {
         double ax = x - eye.x, ay = y - eye.y, az = z - eye.z;
         double distance = Math.sqrt(ax * ax + ay * ay + az * az);
         Shown last = SHOWN.get(shown);
-        double from = last == null ? config.impostorDistance : config.impostorDistance * IMPOSTOR_RETURN;
-        if (distance <= from || distance < 1e-3) {
+        double apparent = distance < 1e-3 ? Double.MAX_VALUE : size / distance * pixelsPerRadian;
+        if (!ImpostorThreshold.pictured(distance, apparent, last != null, config.impostorDistance, config.impostorPixels)) {
             if (last != null) SHOWN.remove(shown);
             return false;
         }
@@ -879,7 +933,7 @@ public final class GhostRenderer {
         double pull = distance > reach ? reach / distance : 1.0;
         double boost = 1.0;
         if (config.minApparentPixels > 0) {
-            boost = Math.clamp(config.minApparentPixels / (size / distance * pixelsPerRadian), 1.0, 400.0);
+            boost = Math.clamp(config.minApparentPixels / apparent, 1.0, 400.0);
         }
         int view = ImpostorViews.view(yaw, -ax, -az, last == null ? -1 : last.view);
         SHOWN.put(shown, new Shown(key, view, frame, ridden));

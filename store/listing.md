@@ -164,7 +164,11 @@ Everything works in single player. On a server, some features need the mod on th
 
 To set up a server, put the same file in its `mods` folder. Nothing else to set up. Players
 without the mod can still join. The server shares every player's position with the players
-who have the mod: tell your players.
+who have the mod: tell your players. Players in spectator mode or invisible are never shared.
+
+The server writes `config/livinghorizon-server.json` the first time it starts. Edit it to
+choose what it shares: players online, players who logged off, mobs, how far, with teammates
+only, and which players and dimensions are never shared. Changes apply after a few seconds.
 
 ## Getting started
 
@@ -180,6 +184,10 @@ Open the settings from the Options screen, Mod Menu, Sodium's *Video Settings* o
 - Fabric or Quilt (with [Fabric API](https://modrinth.com/mod/fabric-api)), NeoForge or Forge.
 - [Voxy](https://modrinth.com/mod/voxy) or [Distant Horizons](https://modrinth.com/mod/distanthorizons): optional.
 - [Mod Menu](https://modrinth.com/mod/modmenu): optional, on Fabric and Quilt.
+
+## Made with AI
+
+AI is part of this project's workflow: Living Horizon is made with [Claude](https://claude.ai).
 
 ## Links
 

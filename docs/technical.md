@@ -17,6 +17,7 @@ the *Debugging checklist* of [CLAUDE.md](../CLAUDE.md).
 - [Birds](#birds)
 - [Impostors](#impostors)
 - [Far terrain depth](#far-terrain-depth)
+- [Fog on distant figures](#fog-on-distant-figures)
 - [Skipping hidden mobs](#skipping-hidden-mobs)
 - [Debug tools](#debug-tools)
 - [Commands](#commands)
@@ -46,8 +47,8 @@ never added to a level (`track/Puppets`).
 |---|---|
 | root | `LivingHorizonCommon` (entry point on both sides, opens the network channel), `LivingHorizonClient` (client entry point), `FarConfig` (the settings file), `QualityPreset`, `Stats` |
 | `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
-| `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`), `Occlusion`; `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
-| `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`) |
+| `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`; `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
+| `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
 | `ambient/` | The birds (`Ambience`, `BirdModels`, `BirdFigure`, `AmbientRenderer`) and the easter eggs |
 | `platform/` | What differs between loaders: events, network, config folder |
 | `ui/` | The settings screens (`FarConfigScreen` and its sub-screens, `SodiumOptions`), the impostor screen, the text under the crosshair (`OfflineHud`) |
@@ -71,7 +72,8 @@ client class.
   extracted like a real player's and added to the same list, so skins, capes, elytras,
   armour, mounts and shader packs all work.
 - **Drawn where they really are, at their true size**, so terrain in front of them hides
-  them. Voxy writes its terrain into the game's depth buffer and removes the distance fog;
+  them. Voxy writes its terrain into the game's depth buffer and removes the render distance
+  fog (its own fog on the figures: see [Fog on distant figures](#fog-on-distant-figures));
   for Distant Horizons and shader packs, see [Far terrain depth](#far-terrain-depth).
 - **The far clipping plane** (four times the render distance) is pushed out past the farthest
   figure drawn the frame before, players, mobs and birds alike (`extendFarPlane`): a tenth
@@ -105,14 +107,38 @@ world, and a player without the mod is sent nothing.
 - **Every five seconds**, to every player online:
   - how the 64 players nearest them look, online or logged off (skin, armour and what they
     hold, read every second), and what they ride, as the server saves it;
-  - the players who logged off: where they were last and when they left, with how they
-    looked and the mount they took away for those among the 64;
+  - every player who logged off, and the host's test players: where they were last and when
+    they left, with how they looked and the mount they took away for those among the 64. The
+    server sends them all; each client chooses how many it draws (`maxOfflinePlayers`);
   - the remembered mobs within 2048 blocks of them, with what they wear (saddle, harness,
     armour, carpet, chest; see [Distant mobs](#distant-mobs)).
 - **At once, to a player who joins**: all of it, without waiting for the next five seconds.
 
 The messages (`track/PositionsMessage`) are written with plain Java streams, the same on
 every loader and version. The client keeps what it receives in `track/SharedPositions`.
+
+Their layout, from version 3:
+
+- two numbers first: the version written (`VERSION`) and the oldest version that reads it
+  (`READABLE_FROM`). A version that only adds fields at the end of a record, or after the
+  records, keeps `READABLE_FROM` and older clients skip what they do not know; one that
+  changes what is there raises it. A client that cannot read the server's messages says so in
+  its log, with both versions, ten seconds after joining;
+- the kind of message, then the table of the dimensions it names, by id
+  (`minecraft:overworld`, `aether:the_aether`): a record names its dimension by its place in
+  the table. Version 2 numbered them 0 to 2 and gave 3 to every other one, so players in two
+  dimensions of mods were drawn in each other's; it is still read, those in 3 left out;
+- the records, each after its length (a varint). The players who logged off come after which
+  part of their list the message is and how many parts there are.
+
+A message stays under 1 MiB, past which the game refuses it (`MAX_BYTES`). The players who
+logged off go in as many messages as it takes, none left out; the client takes the list once
+its last part has come, and drops a list whose parts come out of order. Players online that do
+not fit are sent by their position alone, then left out, the first in the list kept, so the
+nearest come first. Mobs that do not fit leave out the farthest, and the circle they were
+chosen in shrinks so that the client does not take those left out for gone.
+`PositionsMessageTest` holds the exact bytes of two messages: a change to the layout fails
+it, and is a new version.
 
 ### Where it runs
 
@@ -125,20 +151,60 @@ every loader and version. The client keeps what it receives in `track/SharedPosi
 `mixin/MinecraftServerMixin` drives it from the start of the server's tick, so that what it
 sends goes out when that tick flushes the connections.
 
+### What the owner chooses
+
+`ServerConfig` reads `config/livinghorizon-server.json` (the host's config folder in a world
+played alone or opened to LAN). It is written with every setting the first time the server
+shares, filled in with those a newer version adds, and read again at the next full share
+(five seconds at most) after its modification time changes; everyone is then sent everything
+again. A file that does not read at start is kept as `.bad` and the defaults are written; one
+that does not read later, while being edited, keeps the settings as they were and the file
+alone. An unknown key is said in the console and dropped.
+
+`track/ShareRules` decides, for each player sent the lists, who is left out, with no type of
+the game's but a team's name:
+
+- `sharePlayers`, `shareOfflinePlayers`, `shareMobs` switch each list off. The players
+  message is still sent, empty but for the player themselves, so the client knows the
+  server has the mod. Mobs switched off, or a player in a hidden dimension, get an empty
+  list in a circle that covers nothing (radius -1): the client keeps what it remembers.
+- `hiddenPlayers` (names, any case) and `hiddenDimensions` (ids) leave records out of both
+  lists of players, whoever looks.
+- `playerRange` (blocks across the ground, 0 for any) and `teamsOnly` (the scoreboard's
+  teams, the same team on both sides) depend on who looks: with either on, the five times a
+  second message is made for each player instead of once for all (`sameForAll`).
+- `hideSpectators` and `hideInvisible` are applied by the publisher itself, as it reads the
+  players online: such a player's record is not updated and not sent, online or logged off.
+  They log off from where they were last seen, with the mount they had then. A player seen
+  only hidden has no record; `WorldPlayers` also leaves out those saved in spectator mode.
+
+These only change what the server sends. What a client already received is kept in its own
+memory of players who logged off.
+
 ### The server's file
 
 The server keeps the players and the mobs in `livinghorizon-positions.dat`, at the root of
 its world folder, so that a player who joins later sees them too.
 
-- It is saved every minute and when the server stops.
+- It is saved every minute and when the server stops, into a temporary file moved over it.
+- It starts with a version of its own (`PositionsMessage.FILE_VERSION`, 3, and
+  `FILE_READABLE_FROM`), apart from the messages' `VERSION`: a new message layout must not make
+  servers drop their file. Its layout is the messages', without the kind: the table of
+  dimensions, the players, the mobs. A file of version 2 is read, those it put in a dimension
+  of a mod left out, then read again from `playerdata`, which names it. A file that does not
+  read (another version, damaged) is kept as `livinghorizon-positions.dat.bad`, with a line in
+  the console, and a new one is started; one from a newer version that still reads is copied to
+  `livinghorizon-positions.dat.v<version>` first.
 - Players still online when the server stops are kept as they were, as if they logged off
   then.
 - A mob is forgotten when its chunk is loaded and it is not there any more, and the oldest
-  go past 4000 mobs.
+  go past 4000 mobs. Every player who logged off is kept, however many.
 - Each time the server starts, its first share also adds the players the world saved that
-  the file does not have yet (`track/WorldPlayers`: the 1000 most recent in `playerdata`,
+  the file does not have yet (`track/WorldPlayers`: every one in `playerdata`, however many,
   with their position and gear, named from `usercache.json`, last seen when their file was
-  written, no skin), so players from before the mod show as logged off at once.
+  written, no skin), so players from before the mod show as logged off at once. A player the
+  cache does not name is left out, and the game keeps only the 1000 profiles used last in it
+  (`CachedUserNameToIdResolver`), so that is the bound on a server without a mod that keeps more.
 - Test players placed by the host with `/livinghorizon debug offline test` are shared too,
   marked as tests: the other clients show them while the host keeps them, and nobody saves
   them.
@@ -151,14 +217,20 @@ on this client: nothing is sent to the server, they block nobody, and nothing ca
 ### Where they come from
 
 - Remembered per server, across sessions, in `config/livinghorizon/resting/<server>.json`
-  (`track/RestingPlayers`).
+  (`track/RestingPlayers`), written every five seconds when something changed, not at each
+  player the server reports. Each spot names its dimension by id (layout 2); a file of layout
+  1 numbered them, and its spots in 3, a dimension of a mod, are left out.
 - On a server with the mod, even players who logged off before you joined are there: the
   server keeps everyone's last position, skin and gear. Without the server's word, their skin
-  is fetched from Mojang by name (from 1.21.9; before, the default skin).
+  is fetched from Mojang by name (from 1.21.9; before, the default skin), one at a time,
+  1.5 seconds apart at least, each name once.
 - When the world or the server closes, or you leave it, everyone you saw stays where they
   were last, as they looked, on what they rode: as far as this client knows, they logged off
   then.
 - `offlinePlayers` off turns all of it off: nobody is shown or remembered.
+- `maxOfflinePlayers` of them are drawn at once (256; 1000 is no limit): the nearest the
+  camera in its dimension, chosen again every tick (`RestingPlayers.shown`). The others stay
+  remembered and lose their puppet until they are among the nearest again.
 
 ### Their life, near the camera
 
@@ -293,7 +365,9 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
   players. Mobs in `stillMobTypes` (happy ghast, mannequin) stand still instead of walking
   their loop. A copy wears its mannequin's skin, from a player's name or a texture of a
   resource pack: the game looks it up when the copy is loaded, and `Puppets.skin` hands it
-  over, since the game only does it in a tick a copy never runs.
+  over, since the game only does it in a tick a copy never runs. Its cape is hung from where it
+  stands (`Puppets.cape`), where the tick would move it over time, or it would reach out
+  towards 0, 0, 0.
 
 ### Scanning nearby mobs
 
@@ -380,6 +454,18 @@ flat disc at their own height.
 - `maxDistantMobs` of them are drawn at once (512; 1000 is no limit): the nearest remembered
   ones. Past `mobMaxDistance` (512 blocks) none are drawn. Both that distance and the near zone
   are applied after the choice, so copies there still take places and fewer may show.
+- With `onlyOverTerrain` (*Only Over Terrain*, in *Debug Options...*, on), a mob is drawn only where terrain is drawn
+  under it (`compat/DrawnGround`): a chunk the game holds within its render distance, measured
+  as the game picks its sections, or else a chunk the far world has terrain in, within Voxy's or
+  Distant Horizons' own render distance (`LodWorld.drawnDistance`). The far world is asked a
+  chunk at a time, every chunk of a frame in one read (`LodWorld.fresh`, which reads a column
+  remembered empty again). A chunk found empty is asked again after 1, 2, 4... up to 30 seconds,
+  as the far world fills in after a world is opened; one with terrain stays so until the world
+  changes. Never a blink: only a "no terrain" answer hides a mob; while its chunk has no answer
+  yet (or the far world's reads are paused), it stays as it was the frame before
+  (`DrawnGround.Decisions`, by the mob's id, shared by the real mob and its copy). The game's
+  chunks within three of the edge of its render distance are asked ahead, so the answer is there
+  before a mob or the edge crosses them. The debug marks call a hidden one *over the void*.
 - A mob smaller on screen than `animationMinPixels` (10 pixels; 0 always animates; its height
   or width, whichever is larger, and never under `minApparentPixels`) plays no
   walking or idle animation (`optStillTiny`): it keeps sliding along its animation and turning
@@ -527,7 +613,9 @@ keep their whole model at any distance.
 
 ### No blinking
 
-- A figure becomes an impostor past `impostorDistance`, and a model again only 5% inside it.
+- A figure becomes an impostor past `impostorDistance`, or shorter on screen than `impostorPixels`
+  (its height or width, the larger, in the window's pixels), and a model again only 5% inside both
+  (`ImpostorThreshold`). Birds too.
 - It keeps a picture until it has turned 8 degrees past the edge between it and the next one.
 - When its look changes, a player or a mob keeps its old picture until the new one is baked;
   a 3D bird is drawn as a model meanwhile.
@@ -555,6 +643,8 @@ that a mob met in an earlier game is read back rather than baked.
 
 - The fingerprint is the game version, the resource packs chosen and their files, the jars in
   `mods/` and the sheet format. When one of them changes, the folder is thrown away.
+- A sheet read back is checked against the size of a sheet (`ImpostorDisk.decode`) before
+  anything is allocated: a damaged file is baked again, it never asks for more memory.
 - 4096 sheets are kept, some 35 KB each once compressed (about 140 MB), counted when the
   folder is opened, at the start and after a reload: a game may write more until then. The
   ones met longest ago go first.
@@ -667,6 +757,33 @@ Voxy's depth textures, and nothing else:
 Anywhere else, what Voxy draws is left exactly as it is. *Voxy Shadow Fix* (`optVoxyShadows`)
 turns it off.
 
+## Fog on distant figures
+
+From 1.21.6 the game fogs the world twice: a render distance fog at the edge of the loaded
+chunks, and an environmental fog, linear from its start to its end (0 to 1024 blocks in a
+clear overworld, nearer in rain). Voxy removes the first while it draws, and fogs its own
+terrain with the second, which it stops growing past a limit: the render distance, at least
+320 blocks, times the square root of 3 (1.5 render distances before Voxy 0.2.6). The game's
+fog on entities has no such limit: past it, a far mob was paler than the land under it, down
+to a flat patch of fog colour near the fog's end.
+
+The game's shaders mix an entity's colour with the fog colour by the fog times that colour's
+alpha. `compat/FarFog` ends the fog at Voxy's limit and multiplies the alpha by the fog Voxy
+reaches there: the same fog up to the limit, Voxy's from there on.
+
+- `FogRendererMixin` writes that fog into the game's fog buffer, after the game's own (256
+  bytes in, room made for it), whenever the game writes its own.
+- It is bound while the world's entities are drawn, solid and translucent steps, and the
+  game's is bound again before anything else draws: the batch left in the buffers is drawn
+  first.
+- The terrain, the sky and the clouds keep the game's fog. Only the enchantment glint and
+  lightning, which read the fog without its alpha, fade a little sooner.
+- Without Voxy, with its fog off, with a shader pack (which fogs everything its own way), or
+  with the game's render distance fog on, the game's fog stays. *Voxy Fog Fix* (`optVoxyFog`,
+  debug screen, on by default) turns it off, glint and lightning included.
+
+The `farfog` scenario checks it, with a limit standing in for Voxy's.
+
 ## Skipping hidden mobs
 
 *Skip Hidden Mobs* (`hideOccludedMobs`) does not draw a distant mob the terrain hides
@@ -675,11 +792,16 @@ the depth of the picture, where Voxy's or Distant Horizons' terrain already is (
 `FarDepth`):
 
 1. Just before the entities are drawn, the box around each distant mob is drawn against that
-   depth, writing nothing, inside an occlusion query (`GL_ANY_SAMPLES_PASSED_CONSERVATIVE`, or
-   `GL_ANY_SAMPLES_PASSED` without OpenGL 4.3 or `GL_ARB_ES3_compatibility`), with the
-   matrices of the frame (`LevelRendererMixin`, `renderLevel`; `render` from 26.2).
-2. The answers are read once the GPU has them, up to 4 frames of them waiting, never waited
-   for.
+   depth, writing nothing, with the matrices of the frame (`LevelRendererMixin`, `renderLevel`;
+   `render` from 26.2). From OpenGL 4.3 every box of the frame goes in one instanced draw: the
+   fragment shader runs after the depth test (`early_fragment_tests`) and writes a word for its
+   box into a shader storage buffer, which is copied to a buffer of that batch behind a fence
+   (`drawWords`): a dozen GL calls a frame, however many mobs. Without it, each box is drawn
+   inside an occlusion query of its own (`GL_ANY_SAMPLES_PASSED_CONSERVATIVE`, or
+   `GL_ANY_SAMPLES_PASSED` without `GL_ARB_ES3_compatibility`), five calls per box
+   (`drawQueries`); a failure of the one draw falls back to it for the session.
+2. The answers are read once the GPU has them (the fence passed, or the last query of the
+   batch done), up to 4 frames of them waiting, never waited for.
 3. A mob whose last answer is "no pixel passed" is not drawn. It is asked about again on the
    next frame that has room for a batch, so it comes back as soon as one pixel of it would
    show.
@@ -845,7 +967,21 @@ Living Horizon Settings*.
 Every setting is in `config/livinghorizon.json` (`FarConfig`). The file is read at start and
 written back with every setting in it, including the ones a newer version adds. Its
 `version` field is the file's layout, not a setting: an older file is brought up to date on
-load.
+load, one step per version (`FarConfig.migrate`, each step tested in `FarConfigTest`).
+
+### The client's files
+
+The settings, the remembered mobs and the players who logged off are written through
+`JsonStore`:
+
+- into a temporary file beside the real one, then moved over it: a game that stops while
+  saving leaves the old file whole;
+- a file that does not read (a typo made by hand, a file cut short) is moved aside as
+  `<name>.bad`, said in the log, and the mod starts from the defaults or an empty list;
+- the lists keep the version of their layout, `{"version": 1, "mobs": [...]}` and
+  `{"version": 1, "players": [...]}`; a bare list, as files were before, reads as version 0.
+  A file of a newer version is read as well as this one can, after a copy is kept as
+  `<name>.v<version>`.
 
 In game, the settings are in the mod's screen: the *Living Horizon...* button of the Options
 screen, Mod Menu (Fabric, Quilt) or the mods list (NeoForge, Forge), the settings key, or
@@ -871,6 +1007,7 @@ cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 | `impostors` | Simplified Entities | `true` | | Far players and mobs drawn as a flat picture of themselves (see [Impostors](#impostors)) |
 | `impostorPlayers` | Simplified Players | `true` | | Distant players become impostors too; off, they keep their whole model at any distance |
 | `impostorDistance` | Simplification Distance | `128` blocks | 32 to 2000 | Past this distance an impostor stands in for the model |
+| `impostorPixels` | Simplification Size | `10` pixels | 0 to 64 | A figure shorter than this on screen is an impostor too, even closer than `impostorDistance` (`0`: the distance alone) |
 | `impostorMobMemory` | Mob Picture Memory | `1024` MB | 64 to 4096 | Video memory the mobs' pictures may take, apart from the players' |
 | `impostorPlayerMemory` | Player Picture Memory | `512` MB | 32 to 2048 | Video memory the players' pictures may take (riders with what they ride), apart from the mobs' |
 
@@ -882,6 +1019,7 @@ cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 | `showVehicles` | Mounts & Vehicles | `true` | | Draw the mount they were last seen on |
 | `playerMaxDistance` | Player Render Distance | `0` blocks | 0 to 4000 | Past this, distant players are not drawn (`0`: no limit) |
 | `offlinePlayers` | Offline Players | `true` | | Players who logged off are shown and remembered; off, neither |
+| `maxOfflinePlayers` | Max Offline | `256` | 0 to 1000 | How many players who logged off are drawn at once, nearest first (`0`: none, `1000`: no limit) |
 | `offlineLife` | Offline Player Activity | `true` | | They live their life around their spot; off, they sit on it |
 | `offlineRoam` | Roaming Radius | `50` blocks | 8 to 128 | How far from their spot they walk around and look for a bed or a chest (50 is about a village) |
 | `offlineNames` | Offline Player Names | `true` | | Their name above them, marked offline, and when they were last seen, under the crosshair |
@@ -956,6 +1094,7 @@ Every one is on by default except `optFreezeHidden`. Switch one off to see what 
 | `optOcclusionQueries` | Hide Mobs by Depth | How `hideOccludedMobs` decides: occlusion queries on the GPU; off, lines of sight in the far terrain's world |
 | `optDhFade` | DH Fade | Distant Horizons' fade leaves the entities alone, without a shader pack; off, it paints its terrain over distant mobs |
 | `optVoxyShadows` | Voxy Shadow Fix | Our far figures are written into Voxy's depth, on their own pixels only, so that Photon's terrain shadows do not fall across them |
+| `optVoxyFog` | Voxy Fog Fix | Without a shader pack, the world's entities get Voxy's fog, which stops growing past a limit (see [Fog on distant figures](#fog-on-distant-figures)); off, the game's fog |
 | `optBackgroundBuild` | Background Build | Saved mobs are read off the game's thread and built within 2 ms per tick |
 | `optStillTiny` | Still Tiny Mobs | Mobs under `animationMinPixels` play no walking or idle animation |
 | `optFreezeHidden` | Freeze Undrawn Mobs | A copy not drawn for half a second is not animated, only moved where the server says |

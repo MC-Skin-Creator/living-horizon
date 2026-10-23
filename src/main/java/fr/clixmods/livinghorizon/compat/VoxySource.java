@@ -133,6 +133,16 @@ final class VoxySource implements LodSource {
      */
     @Override
     public double clearDistance() {
+        return distance(true);
+    }
+
+    /** Voxy's render distance, {@link #clearDistance} without its fog. */
+    @Override
+    public double drawnDistance() {
+        return distance(false);
+    }
+
+    private static double distance(boolean clear) {
         try {
             Class<?> type = Class.forName("me.cortex.voxy.client.config.VoxyConfig");
             Object config = type.getField("CONFIG").get(null);
@@ -143,6 +153,7 @@ final class VoxySource implements LodSource {
                 // A version without it: drawing, as far as this can tell.
             }
             double drawn = type.getField("sectionRenderDistance").getFloat(config) * 512.0;
+            if (!clear) return drawn;
             return drawn * (fogged(type, config) ? 0.5 : 0.9);
         } catch (ReflectiveOperationException | RuntimeException e) {
             return 0;

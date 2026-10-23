@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.compat;
 
 import fr.clixmods.livinghorizon.render.DepthFar;
+import fr.clixmods.livinghorizon.render.DepthMath;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
@@ -384,7 +385,9 @@ public final class FarDepth {
         lateMerge = lateCopy = lateMerged = lateFade = false;
         try {
             if (merged) restore(false);
-            else if (captured) copy(depthTexture, drawn);
+            // Captured only: the copy after the entities is read by the debug view, Distant
+            // Horizons' fade and our figures into Voxy's depth, and made for nothing otherwise.
+            else if (captured && (intoVoxy || fadeMask || FarConfig.get().debugDepthView != 0)) copy(depthTexture, drawn);
             if (intoVoxy) intoVoxy();
             lateOwner = owner;
             lateMerge = owner != null && merged;
@@ -493,7 +496,14 @@ public final class FarDepth {
         return mergedLastFrame;
     }
 
-    /** The game's depth as it is, for the debug view: no Voxy, or nothing to merge. */
+    /**
+     * The game's depth as it is, when there was nothing to merge (no Voxy, or Voxy writing into
+     * it already): one copy, {@code written}, for the occlusion boxes, Distant Horizons' fade and
+     * our figures into Voxy's depth. The copy before anything, {@code saved}, only the debug view
+     * reads here: a full-screen copy is not made for nobody. Keep it that way: with the one-draw
+     * occlusion ({@code OcclusionQueries}) this is part of the frame-rate gain the author measured
+     * (70 to 100 FPS); a full-screen depth copy per frame for nothing is never to come back.
+     */
     private static boolean capture() throws ReflectiveOperationException {
         target = ownTarget();
         if (target == 0) return false;
@@ -504,7 +514,7 @@ public final class FarDepth {
         if (w <= 0 || h <= 0) return false;
         prepare(w, h, f);
         notePicture(w, h);
-        copy(depthTexture, saved);
+        if (FarConfig.get().debugDepthView != 0) copy(depthTexture, saved);
         copy(depthTexture, written);
         return true;
     }
@@ -546,9 +556,8 @@ public final class FarDepth {
                 GL20C.glUniform4f(GL20C.glGetUniformLocation(viewProgram, "area"), x, y, w, h);
                 // The part the world is drawn to, so that the view matches the screen under a render scale.
                 GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "size"), pictureWidth, pictureHeight);
-                float far = DepthFar.of(minecraft);
-                float[] terms = DepthFar.terms(0.05f, far);
-                GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "planes"), 0.05f, far);
+                float[] terms = DepthFar.terms(minecraft), planes = DepthFar.planes(minecraft);
+                GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "planes"), planes[0], planes[1]);
                 GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "terms"), terms[0], terms[1]);
                 GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "depthLayout"),
                         DepthFar.reversed() ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f);
@@ -819,8 +828,7 @@ public final class FarDepth {
             GL20C.glUniform2f(GL20C.glGetUniformLocation(dhProgram, "dhSize"), dhWidth, dhHeight);
             GL20C.glUniform4f(GL20C.glGetUniformLocation(dhProgram, "dh"), dh[1], dh[2], dh[3], dh[4]);
             Minecraft minecraft = Minecraft.getInstance();
-            float near = 0.05f, far = DepthFar.of(minecraft);
-            float[] terms = DepthFar.terms(near, far);
+            float[] terms = DepthFar.terms(minecraft);
             GL20C.glUniform2f(GL20C.glGetUniformLocation(dhProgram, "game"), terms[0], terms[1]);
             GL20C.glUniform2f(GL20C.glGetUniformLocation(dhProgram, "depthLayout"),
                     DepthFar.reversed() ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f);
@@ -955,43 +963,7 @@ public final class FarDepth {
         FIGURES[i + 3] = (float) radius;
     }
 
-    /**
-     * The rectangles of Voxy's picture our figures cover this frame, {@code x, y, w, h} each,
-     * in {@code out}; how many.
-     */
-    private static int rectangles(int[] out, int vw, int vh) {
-        int count = 0;
-        org.joml.Vector4f corner = new org.joml.Vector4f();
-        for (int f = 0; f < figures; f++) {
-            float x = FIGURES[f * 4], y = FIGURES[f * 4 + 1], z = FIGURES[f * 4 + 2], r = FIGURES[f * 4 + 3];
-            float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE, maxX = -Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
-            boolean behind = false;
-            for (int c = 0; c < 8 && !behind; c++) {
-                VIEW_PROJECTION.transform(corner.set(x + ((c & 1) == 0 ? -r : r), y + ((c & 2) == 0 ? -r : r),
-                        z + ((c & 4) == 0 ? -r : r), 1f));
-                if (corner.w <= 0.05f) behind = true;
-                float sx = corner.x / corner.w, sy = corner.y / corner.w;
-                minX = Math.min(minX, sx);
-                minY = Math.min(minY, sy);
-                maxX = Math.max(maxX, sx);
-                maxY = Math.max(maxY, sy);
-            }
-            // Around the camera, not past the render distance: none of ours.
-            if (behind) continue;
-            int x0 = Math.max(0, (int) Math.floor((minX * 0.5f + 0.5f) * vw) - 2);
-            int y0 = Math.max(0, (int) Math.floor((minY * 0.5f + 0.5f) * vh) - 2);
-            int x1 = Math.min(vw, (int) Math.ceil((maxX * 0.5f + 0.5f) * vw) + 2);
-            int y1 = Math.min(vh, (int) Math.ceil((maxY * 0.5f + 0.5f) * vh) + 2);
-            if (x1 <= x0 || y1 <= y0) continue;
-            out[count * 4] = x0;
-            out[count * 4 + 1] = y0;
-            out[count * 4 + 2] = x1 - x0;
-            out[count * 4 + 3] = y1 - y0;
-            count++;
-        }
-        return count;
-    }
-
+    /** The rectangles of Voxy's picture our figures cover this frame: see {@link DepthMath#rectangles}. */
     private static final int[] RECTANGLES = new int[4 * 512];
 
     /** Our framebuffers around Voxy's opaque and translucent depth textures. */
@@ -1027,7 +999,7 @@ public final class FarDepth {
         Object translucent = getDepthTex.invoke(fbTranslucentField.get(pipeline));
         int vw = viewportWidthField.getInt(viewport), vh = viewportHeightField.getInt(viewport);
         if (opaque == null || translucent == null || vw <= 0 || vh <= 0) return;
-        int count = rectangles(RECTANGLES, vw, vh);
+        int count = DepthMath.rectangles(VIEW_PROJECTION, FIGURES, figures, RECTANGLES, vw, vh);
         if (count <= 0) return;
         boolean zeroToOne = false, reversed = false;
         Object properties = propertiesField == null ? null : propertiesField.get(pipeline);
@@ -1376,11 +1348,21 @@ public final class FarDepth {
         return shader;
     }
 
-    /** Every piece of GL state touched here, as it was, so that the game, Iris and Voxy find it again. */
+    /**
+     * Every piece of GL state touched here, as it was, so that the game, Iris and Voxy find it
+     * again. Blending and the colour mask are kept per draw buffer: from 26.3 the game caches
+     * them per buffer and skips the call when its cache says the value is already set, so a
+     * state put back for every buffer at once, from the first one's value, leaves its cache
+     * wrong for the others. A shader pack draws into several at a time: the water's data was
+     * written with the wrong blending, and Photon no longer took it for water.
+     */
     record GlState(int program, int vertexArray, int drawFramebuffer, int readFramebuffer, int activeTexture, int[] textures,
                            int[] samplers, boolean depthTest, boolean stencilTest, boolean scissor, boolean cull,
-                           boolean blend, int depthFunc, boolean depthMask, boolean[] colorMask, int[] viewport,
+                           boolean[] blend, int depthFunc, boolean depthMask, boolean[][] colorMask, int[] viewport,
                            int[] scissorBox) {
+        /** Draw buffers whose blending and colour mask are kept: the GPU's, 16 at most. */
+        private static int drawBuffers;
+
         static GlState save() {
             int active = GL11C.glGetInteger(GL13C.GL_ACTIVE_TEXTURE);
             int[] textures = new int[3], samplers = new int[3];
@@ -1390,10 +1372,17 @@ public final class FarDepth {
                 samplers[unit] = GL11C.glGetInteger(GL33C.GL_SAMPLER_BINDING);
             }
             GL13C.glActiveTexture(active);
-            byte[] mask = new byte[4];
+            if (drawBuffers == 0) drawBuffers = Math.max(1, Math.min(16, GL11C.glGetInteger(GL20C.GL_MAX_DRAW_BUFFERS)));
+            boolean[] blend = new boolean[drawBuffers];
+            boolean[][] colorMask = new boolean[drawBuffers][];
             java.nio.ByteBuffer maskBuffer = org.lwjgl.BufferUtils.createByteBuffer(4);
-            GL11C.glGetBooleanv(GL11C.GL_COLOR_WRITEMASK, maskBuffer);
-            maskBuffer.get(mask);
+            for (int buffer = 0; buffer < drawBuffers; buffer++) {
+                blend[buffer] = GL30C.glIsEnabledi(GL11C.GL_BLEND, buffer);
+                maskBuffer.clear();
+                GL30C.glGetBooleani_v(GL11C.GL_COLOR_WRITEMASK, buffer, maskBuffer);
+                colorMask[buffer] = new boolean[]{maskBuffer.get(0) != 0, maskBuffer.get(1) != 0,
+                        maskBuffer.get(2) != 0, maskBuffer.get(3) != 0};
+            }
             int[] viewport = new int[4];
             GL11C.glGetIntegerv(GL11C.GL_VIEWPORT, viewport);
             int[] scissorBox = new int[4];
@@ -1404,9 +1393,8 @@ public final class FarDepth {
                     GL11C.glGetInteger(GL30C.GL_READ_FRAMEBUFFER_BINDING), active, textures, samplers,
                     GL11C.glIsEnabled(GL11C.GL_DEPTH_TEST), GL11C.glIsEnabled(GL11C.GL_STENCIL_TEST),
                     GL11C.glIsEnabled(GL11C.GL_SCISSOR_TEST), GL11C.glIsEnabled(GL11C.GL_CULL_FACE),
-                    GL11C.glIsEnabled(GL11C.GL_BLEND), GL11C.glGetInteger(GL11C.GL_DEPTH_FUNC),
-                    GL11C.glGetBoolean(GL11C.GL_DEPTH_WRITEMASK),
-                    new boolean[]{mask[0] != 0, mask[1] != 0, mask[2] != 0, mask[3] != 0}, viewport, scissorBox);
+                    blend, GL11C.glGetInteger(GL11C.GL_DEPTH_FUNC), GL11C.glGetBoolean(GL11C.GL_DEPTH_WRITEMASK),
+                    colorMask, viewport, scissorBox);
         }
 
         void restore() {
@@ -1424,10 +1412,14 @@ public final class FarDepth {
             toggle(GL11C.GL_STENCIL_TEST, stencilTest);
             toggle(GL11C.GL_SCISSOR_TEST, scissor);
             toggle(GL11C.GL_CULL_FACE, cull);
-            toggle(GL11C.GL_BLEND, blend);
+            for (int buffer = 0; buffer < blend.length; buffer++) {
+                if (blend[buffer]) GL30C.glEnablei(GL11C.GL_BLEND, buffer);
+                else GL30C.glDisablei(GL11C.GL_BLEND, buffer);
+                boolean[] mask = colorMask[buffer];
+                GL30C.glColorMaski(buffer, mask[0], mask[1], mask[2], mask[3]);
+            }
             GL11C.glDepthFunc(depthFunc);
             GL11C.glDepthMask(depthMask);
-            GL11C.glColorMask(colorMask[0], colorMask[1], colorMask[2], colorMask[3]);
             GL11C.glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
             GL11C.glScissor(scissorBox[0], scissorBox[1], scissorBox[2], scissorBox[3]);
         }

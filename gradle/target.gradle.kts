@@ -116,6 +116,8 @@ extra["lhMixins"] = buildList {
     // The GUI pass the impostors are baked in came in 1.21.6. Before, they are baked into a
     // target of our own that stands in for the game's main one and its item target.
     if (atLeast("1.21.6")) {
+        // Voxy's fog on the entities: the overworld's own fog past the render distance came in 1.21.6.
+        add("FogRendererMixin")
         add("GuiRendererMixin")
     } else {
         add("LevelRendererTargetMixin")

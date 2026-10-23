@@ -8,13 +8,16 @@ import fr.clixmods.livinghorizon.gametest.scenario.DedicatedServerScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EasterEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.FarFogScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FollowedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.GaitsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.HeadTurnScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorCrowdScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorEdgesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorLongMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorSharingScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.ImpostorSizeScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LanShareScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.MannequinsScenario;
@@ -22,6 +25,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DiscordScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.OverVoidScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PerchersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PerfScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RememberedMobsScenario;
@@ -55,13 +59,16 @@ import java.util.stream.Collectors;
 public final class LivingHorizonGameTests implements FabricClientGameTest {
     private static final List<Scenario> SCENARIOS = List.of(
             new ImpostorsScenario(),
+            new ImpostorSizeScenario(),
             new ImpostorSharingScenario(),
             new ImpostorCrowdScenario(),
             new ImpostorEdgesScenario(),
             new ImpostorLongMobsScenario(),
             new ImpostorScreenScenario(),
             new LightingScenario(),
+            new FarFogScenario(),
             new RememberedMobsScenario(),
+            new OverVoidScenario(),
             new MannequinsScenario(),
             new OutlinesScenario(),
             new RestingScenario(),
@@ -79,6 +86,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new ResizeScenario(),
             new UnloadScenario(),
             new FollowedMobsScenario(),
+            new HeadTurnScenario(),
             new GaitsScenario(),
             new EasterEggsScenario(),
             new BirdsScenario(),

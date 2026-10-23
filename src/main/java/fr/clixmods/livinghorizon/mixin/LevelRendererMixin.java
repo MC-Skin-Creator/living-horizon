@@ -8,6 +8,7 @@ import com.mojang.blaze3d.resource.GraphicsResourceAllocator;
 import com.mojang.blaze3d.vertex.PoseStack;
 import fr.clixmods.livinghorizon.ambient.AmbientRenderer;
 import fr.clixmods.livinghorizon.compat.FarDepth;
+import fr.clixmods.livinghorizon.compat.FarFog;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
@@ -119,6 +120,7 @@ abstract class LevelRendererMixin {
     @Inject(method = "submitBlockEntities", at = @At("TAIL"))
     private void livinghorizon$armFarDepth(CallbackInfo ci) {
         FarDepth.arm();
+        FarFog.arm();
     }
 
     /** The silhouette birds and the impostors, with the entities so that shader packs treat them alike. */
@@ -158,6 +160,7 @@ abstract class LevelRendererMixin {
 import com.mojang.blaze3d.vertex.PoseStack;
 import fr.clixmods.livinghorizon.ambient.AmbientRenderer;
 import fr.clixmods.livinghorizon.compat.FarDepth;
+import fr.clixmods.livinghorizon.compat.FarFog;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
@@ -211,6 +214,8 @@ abstract class LevelRendererMixin {
                                           DeltaTracker deltaTracker, List<Entity> entities, CallbackInfo ci) {
         FarDepth.arm();
         FarDepth.before();
+        FarFog.arm();
+        FarFog.begin(null);
     }
 
     /^* The figures, the silhouette birds and the impostors, with the entities; then all of them drawn. ^/
@@ -223,6 +228,7 @@ abstract class LevelRendererMixin {
         ImpostorRenderer.submit(pose, sink);
         buffers.endBatch();
         FarDepth.after();
+        FarFog.end();
     }
 }
 *///?} else {

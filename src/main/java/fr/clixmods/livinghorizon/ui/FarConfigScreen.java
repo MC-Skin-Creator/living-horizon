@@ -69,6 +69,8 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 bool("impostors", c.impostors, v -> c.impostors = v),
                 bool("impostorPlayers", c.impostorPlayers, v -> c.impostorPlayers = v));
         list.addBig(blocks("impostorDistance", 32, 2000, c.impostorDistance, v -> c.impostorDistance = v));
+        list.addBig(unit("impostorPixels", "pixels", 0, FarConfig.MAX_IMPOSTOR_PIXELS, c.impostorPixels,
+                v -> c.impostorPixels = v));
         list.addBig(unit("impostorMobMemory", "megabytes", FarConfig.MIN_MOB_MEMORY, FarConfig.MAX_MOB_MEMORY,
                 c.impostorMobMemory, v -> c.impostorMobMemory = v));
         list.addBig(unit("impostorPlayerMemory", "megabytes", FarConfig.MIN_PLAYER_MEMORY, FarConfig.MAX_PLAYER_MEMORY,
@@ -85,6 +87,8 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addBig(blocks("playerMaxDistance", 0, 4000, c.playerMaxDistance, v -> c.playerMaxDistance = v));
         list.addSmall(
                 bool("offlinePlayers", c.offlinePlayers, v -> c.offlinePlayers = v),
+                integer("maxOfflinePlayers", 0, FarConfig.UNLIMITED_OFFLINE, c.maxOfflinePlayers,
+                        v -> c.maxOfflinePlayers = v, true),
                 bool("offlineLife", c.offlineLife, v -> c.offlineLife = v),
                 blocks("offlineRoam", 8, 128, c.offlineRoam, v -> c.offlineRoam = v));
         list.addSmall(

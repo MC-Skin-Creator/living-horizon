@@ -185,7 +185,7 @@ public final class ImpostorAtlas {
      * in its tile instead (see {@link Request}). At a hundred blocks a figure is a dozen
      * pixels tall, and larger tiles took four times the memory for nothing to see.
      */
-    private static final int MAX_SCALE = 1;
+    static final int MAX_SCALE = 1;
 
     /** Bytes of video memory a row of scale 1 takes: a strip of 512 by 64 pixels and its mip levels. */
     private static final long ROW_BYTES = rowBytes();

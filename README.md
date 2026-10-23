@@ -82,6 +82,27 @@ Everything works in single player. On a server, some features need the mod on th
 - Players without the mod can still join.
 - The server shares every player's position with the players who have the mod. Tell your
   players.
+- Players in spectator mode or invisible are never shared.
+
+### Server settings
+
+The server writes `config/livinghorizon-server.json` the first time it starts. Edit it to
+choose what it shares. Changes apply after a few seconds, without a restart.
+
+| Setting | Default | What it does |
+|---|---|---|
+| `sharePlayers` | `true` | Shares players online past the view distance |
+| `playerRange` | `0` | How far a player is shared, in blocks. `0` is any distance |
+| `teamsOnly` | `false` | Shares players with their own team only (`/team`) |
+| `hideSpectators` | `true` | Never shares players in spectator mode |
+| `hideInvisible` | `true` | Never shares invisible players |
+| `hiddenPlayers` | `[]` | Names never shared, such as `["Steve"]` |
+| `hiddenDimensions` | `[]` | Dimensions where nothing is shared, such as `["minecraft:the_nether"]` |
+| `shareOfflinePlayers` | `true` | Shares players who logged off where they left |
+| `shareMobs` | `true` | Shares the remembered mobs past the view distance |
+
+These settings only change what the server sends. Within the view distance, players see
+each other as usual. What a player's game saw on its own stays in its memory.
 
 ## Getting started
 
@@ -138,6 +159,14 @@ Mobs from other mods should work. Mods not tested yet are listed under the
 [`mod compatibility`](https://github.com/MC-Skin-Creator/living-horizon/labels/mod%20compatibility)
 label.
 
+## Made with AI
+
+AI is part of this project's workflow: Living Horizon is made with [Claude](https://claude.ai).
+
+You can use AI to contribute too, no problem. Just keep thinking about what it writes.
+Claude works best here: it reads `CLAUDE.md` and the skills in `.claude/skills/`, which
+describe how the project works.
+
 ## More
 
 - Something wrong? Open an [issue](https://github.com/MC-Skin-Creator/living-horizon/issues)
@@ -148,7 +177,7 @@ label.
 - Build: `./gradlew :1.21.11:build` for one target, `./gradlew buildAndCollect` for every jar.
 - License: source-available under the [Living Horizon License](LICENSE), copyright 2026
   clixmods. The unchanged jar may be redistributed with credit; forks are not allowed.
-- Credits: made by clixmods. Collaborators and testers: ISessen. Full list in [CREDITS.md](CREDITS.md).
+- Credits: made by clixmods. Contributors: JonesJugHead. Testers: ISessen, largitalian. Full list in [CREDITS.md](CREDITS.md).
 - Contributing: pull requests to this repository only, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Minecraft is a trademark of Mojang Studios. This project is not affiliated with or
