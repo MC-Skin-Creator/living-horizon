@@ -24,7 +24,7 @@ import com.mojang.renderpearl.api.textures.GpuSampler;
 import com.mojang.renderpearl.api.textures.GpuTexture;
 import com.mojang.renderpearl.api.textures.GpuTextureView;
 import fr.clixmods.livinghorizon.FarConfig;
-import fr.clixmods.livinghorizon.LivingHorizonClient;
+import fr.clixmods.livinghorizon.Retry;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MappableRingBuffer;
@@ -142,7 +142,12 @@ public final class FarDepthGpu {
     /^* The game's depth as it was before the fade, to give back after it. ^/
     private static @Nullable GpuTexture saved;
     private static @Nullable GpuTextureView savedView;
-    private static boolean fading, broken;
+    private static boolean fading;
+    /^* The game's depth was copied to {@code saved} and is about to be masked: a failure gives it back. ^/
+    private static boolean dirty;
+    /^* A failure stops all of this for a while: see {@link Retry}. ^/
+    private static final Retry GPU = new Retry("Using Distant Horizons' depth with the game's GPU device",
+            "distant mobs show through its terrain");
 
     private static @Nullable MappableRingBuffer visibilityUniforms;
     private static @Nullable GpuTexture visibility;
@@ -167,7 +172,7 @@ public final class FarDepthGpu {
         preparedUniforms = null;
         preparedDepth = null;
         FarDepth.gpuAvailable();
-        if (broken || !FarDepth.gpuPath() || !DhDepth.available() || DhDepth.shaderPackOn()) return;
+        if (GPU.blocked() || !FarDepth.gpuPath() || !DhDepth.available() || DhDepth.shaderPackOn()) return;
         try {
             DhFrame dh = DhDepth.readView();
             if (dh == null || !(dh.view() instanceof GpuTextureView dhView)) {
@@ -205,7 +210,7 @@ public final class FarDepthGpu {
 
     /^* In the world's pass, before the entities are drawn: Distant Horizons' terrain into the depth. ^/
     public static void merge(RenderPass pass) {
-        if (broken || !FarDepth.gpuMerge()) return;
+        if (GPU.blocked() || !FarDepth.gpuMerge()) return;
         try {
             if (preparedUniforms == null || preparedDepth == null) {
                 FarDepth.gpuResult(false, preparedReason, 0, 0);
@@ -229,7 +234,7 @@ public final class FarDepthGpu {
 
     /^* Distant Horizons is about to fade the game's picture into its terrain. ^/
     public static void beforeFade() {
-        if (broken || fading || !FarDepth.gpuFade()) return;
+        if (GPU.blocked() || fading || !FarDepth.gpuFade()) return;
         try {
             Minecraft minecraft = Minecraft.getInstance();
             RenderTarget main = minecraft.gameRenderer.mainRenderTarget();
@@ -262,6 +267,7 @@ public final class FarDepthGpu {
 
             CommandEncoder encoder = RenderSystem.getDevice().createCommandEncoder();
             blitDepth(encoder, blit, depthView, copy, "Living Horizon: depth before the fade");
+            dirty = true;
             try (RenderPass pass = encoder.createRenderPass(RenderPassDescriptor.builder(() -> "Living Horizon: fade mask")
                     .withDepthAttachment(depthView).build())) {
                 RenderSystem.bindDefaultUniforms(pass);
@@ -283,14 +289,20 @@ public final class FarDepthGpu {
         if (!fading) return;
         fading = false;
         try {
-            RenderTarget main = Minecraft.getInstance().gameRenderer.mainRenderTarget();
-            CompiledRenderPipeline blit = RenderSystem.getCompiledPipelineNullable(RenderPipelines.BLIT_DEPTH);
-            if (blit == null || savedView == null || main.getDepthTextureView() == null) return;
-            blitDepth(RenderSystem.getDevice().createCommandEncoder(), blit, savedView, main.getDepthTextureView(),
-                    "Living Horizon: depth after the fade");
+            giveBack();
         } catch (Throwable e) {
             fail(e);
         }
+    }
+
+    /^* The game's depth as it was before the fade mask. ^/
+    private static void giveBack() {
+        dirty = false;
+        RenderTarget main = Minecraft.getInstance().gameRenderer.mainRenderTarget();
+        CompiledRenderPipeline blit = RenderSystem.getCompiledPipelineNullable(RenderPipelines.BLIT_DEPTH);
+        if (blit == null || savedView == null || main.getDepthTextureView() == null) return;
+        blitDepth(RenderSystem.getDevice().createCommandEncoder(), blit, savedView, main.getDepthTextureView(),
+                "Living Horizon: depth after the fade");
     }
 
     // --- Once the world is drawn -------------------------------------------------------------
@@ -302,7 +314,7 @@ public final class FarDepthGpu {
     }
 
     private static void testVisibility() {
-        if (broken || !FarDepth.gpuPath()) {
+        if (GPU.blocked() || !FarDepth.gpuPath()) {
             OcclusionQueries.gpuReady(false);
             return;
         }
@@ -401,7 +413,7 @@ public final class FarDepthGpu {
      * nothing can be copied before that in the middle of the world's pass.
      ^/
     private static void captureView() {
-        if (broken || !FarDepth.gpuPath() || FarConfig.get().debugDepthView == 0) return;
+        if (GPU.blocked() || !FarDepth.gpuPath() || FarConfig.get().debugDepthView == 0) return;
         try {
             RenderTarget main = Minecraft.getInstance().gameRenderer.mainRenderTarget();
             GpuTexture depth = main.getDepthTexture();
@@ -426,7 +438,7 @@ public final class FarDepthGpu {
 
     /^* Draws the kept depth in the bottom right corner, near white to far black, the sky in dark blue. ^/
     public static void drawView(int mode) {
-        if (broken || mode == 0 || !FarDepth.gpuPath() || viewDepthView == null) return;
+        if (GPU.blocked() || mode == 0 || !FarDepth.gpuPath() || viewDepthView == null) return;
         try {
             Minecraft minecraft = Minecraft.getInstance();
             RenderTarget main = minecraft.gameRenderer.mainRenderTarget();
@@ -506,11 +518,18 @@ public final class FarDepthGpu {
     }
 
     private static void fail(Throwable e) {
-        broken = true;
+        GPU.fail(e);
         OcclusionQueries.gpuReady(false);
         fading = false;
-        FarDepth.gpuResult(false, "off: " + e, 0, 0);
-        LivingHorizonClient.LOGGER.warn("Using Distant Horizons' depth with the game's GPU device failed: distant mobs show through its terrain", e);
+        FarDepth.gpuResult(false, GPU.state(), 0, 0);
+        // The fade mask may be in the game's depth: never left there.
+        if (dirty) {
+            try {
+                giveBack();
+            } catch (Throwable again) {
+                GPU.fail(again);
+            }
+        }
     }
 }
 *///?}

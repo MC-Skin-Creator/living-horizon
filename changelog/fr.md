@@ -2,11 +2,20 @@
 
 ## Prochaine version
 
+### Serveur
+
+#### Corrections
+- **Joueurs lointains disparus jusqu'au redémarrage du serveur** — une erreur en partageant les positions n'empêche plus un serveur de les partager jusqu'à son redémarrage : il réessaie 20 secondes plus tard.
+
 ### Client
 
 #### Améliorations
 - **Jeu plus fluide parmi les mobs lointains et les joueurs déconnectés** — chercher où les mobs lointains et les joueurs déconnectés peuvent marcher ne prend plus de temps au jeu : c'est fait en arrière-plan.
 - **Images plus fluides avec les mobs lointains** — le jeu attend moins le pilote graphique à chaque image avec des mobs lointains sur Voxy ou Distant Horizons, surtout sur les cartes NVIDIA avec l'*Optimisation threadée* activée.
+
+#### Corrections
+- **Mobs lointains visibles à travers le terrain lointain jusqu'au redémarrage** — une seule erreur avec le terrain de Voxy ou de Distant Horizons ne laisse plus les mobs lointains apparaître à travers pour le reste de la partie : le mod réessaie 20 secondes plus tard.
+- **Entités simplifiées coupées jusqu'au redémarrage** — un mob qui ne peut pas être dessiné en image plate ne coupe plus les *Entités simplifiées* pour tous les mobs : seul ce mob-là est dessiné en entier.
 
 ## 0.12.0 — 2026-10-23
 

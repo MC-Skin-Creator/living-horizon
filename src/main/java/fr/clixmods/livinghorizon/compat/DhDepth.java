@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.compat;
 
 import fr.clixmods.livinghorizon.LivingHorizonClient;
+import fr.clixmods.livinghorizon.Retry;
 import fr.clixmods.livinghorizon.platform.Platform;
 import fr.clixmods.livinghorizon.render.DepthMath;
 import org.joml.Matrix4f;
@@ -16,11 +17,13 @@ import java.lang.reflect.Method;
  * The texture and the depth range come from its public API; the projection from the
  * parameters of its last render, which only its internals keep. All reached by reflection:
  * anything missing turns this off for the session, and the mobs show through the terrain
- * as they did before.
+ * as they did before. A read that fails otherwise pauses it for a while ({@link Retry}).
  */
 final class DhDepth {
     private static boolean ready, broken, started, linked;
     private static String reason = "not started";
+    /** A read that failed: paused, or off for good when what it calls is missing. */
+    private static final Retry READS = new Retry("Reading Distant Horizons' depth", "distant mobs show through its terrain");
 
     private static MethodHandle renderProxy;
     private static Field projection, m22, m23, m32;
@@ -53,7 +56,7 @@ final class DhDepth {
     }
 
     static synchronized boolean available() {
-        if (broken) return false;
+        if (broken || READS.blocked()) return false;
         if (!ready) {
             ready = true;
             if (!Platform.isModLoaded("distanthorizons")) {
@@ -117,9 +120,8 @@ final class DhDepth {
     }
 
     private static @Nullable DhFrame failed(Throwable e) {
-        broken = true;
-        reason = "Distant Horizons did not answer as expected: " + e;
-        LivingHorizonClient.LOGGER.warn("Using Distant Horizons' depth turned off: it did not answer as expected", e);
+        READS.fail(e);
+        reason = "Distant Horizons did not answer as expected: " + READS.failure();
         return null;
     }
 
@@ -234,7 +236,7 @@ final class DhDepth {
      * is installed. Its depth is then an OpenGL texture, and no texture of the game's.
      */
     static boolean drawsWithOpenGl() {
-        if (broken || !linked) return false;
+        if (broken || !linked || READS.blocked()) return false;
         try {
             Object proxy = (Object) renderProxy.invokeExact();
             if (proxy == null) return false;

@@ -715,6 +715,27 @@ one line per link: linked, not installed or off and why, the fallbacks in use, a
 mixins into Voxy (`renderOpaque`) and Distant Horizons (its fades) ran. Those two may find nothing
 to hook (`require = 0`): a count that stays at 0 while the mod draws is a renamed method.
 
+### When something fails
+
+Every part that can fail at run time follows one policy, `Retry`: the log gets the failure once
+with its stack trace (later ones only when they are of another kind), the part stops for 20
+seconds and tries again. Only a class, method or field missing or changed (a `LinkageError`, a
+reflective lookup that fails) turns it off for the session. That covers the far terrain's depth
+(`FarDepth`, with Voxy's and Distant Horizons' parts stopped apart from the rest, and
+`FarDepthGpu`), Distant Horizons' depth (`DhDepth`), the far worlds' reads (`VoxySource`,
+`DhSource`), the occlusion test and its one draw (`OcclusionQueries`), impostor baking
+(`ImpostorAtlas`) and the server's sharing (`MinecraftServerMixin`). `/livinghorizon lod` and the
+debug panel say "paused" or "off", and why.
+
+What is a single figure's fault stays with that figure: a renderer that throws while a figure
+is extracted (`GhostRenderer.leaveOut`) or baked (`ImpostorAtlas.leftOut`) leaves that kind of
+figure, or that one figure, out, and a mob whose copy cannot be made or saved (`MobMemory`) is
+not drawn far away; each says so once per kind of mob.
+
+A step of `FarDepth` that fails after writing into the game's depth gives it back before
+anything else reads it: `Frame.dirty` names the copy to restore from (`saved`, `lateSaved` or
+`faded`) from just before the first write until the depth is given back.
+
 ### One frame
 
 `FarDepth`'s steps run in this order, each frame: `noteView` (the matrices; everything kept for
@@ -852,7 +873,7 @@ the depth of the picture, where Voxy's or Distant Horizons' terrain already is (
    (`drawWords`): a dozen GL calls a frame, however many mobs. Without it, each box is drawn
    inside an occlusion query of its own (`GL_ANY_SAMPLES_PASSED_CONSERVATIVE`, or
    `GL_ANY_SAMPLES_PASSED` without `GL_ARB_ES3_compatibility`), five calls per box
-   (`drawQueries`); a failure of the one draw falls back to it for the session.
+   (`drawQueries`); a failure of the one draw falls back to it for 20 seconds.
 2. The answers are read once the GPU has them (the fence passed, or the last query of the
    batch done), up to 4 frames of them waiting, never waited for.
 3. A mob whose last answer is "no pixel passed" is not drawn. It is asked about again on the

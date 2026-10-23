@@ -88,6 +88,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
+import fr.clixmods.livinghorizon.Retry;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
 import fr.clixmods.livinghorizon.track.Puppets;
@@ -102,6 +103,7 @@ import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -554,7 +556,9 @@ public final class ImpostorAtlas {
     private static long lastSweep;
     /** Bumped by every reset, so that a read back for pages thrown away is dropped. */
     private static int generation;
-    private static boolean dirty, failed;
+    private static boolean dirty;
+    /** Baking failed in a way no one figure explains (the GPU, our pages): stopped for a while, the figures drawn as models. */
+    private static final Retry BAKE = new Retry("Baking impostors", "distant mobs are drawn as full models");
 
     private ImpostorAtlas() {
     }
@@ -569,7 +573,7 @@ public final class ImpostorAtlas {
      * hand are baked anew within the next seconds. From the impostor screen.
      */
     public static void regenerate() {
-        failed = false;
+        BAKE.reset();
         dirty = true;
         settle();
         ImpostorDisk.clear();
@@ -590,7 +594,7 @@ public final class ImpostorAtlas {
     /** Whether impostors can be used at all: switched on, and the bake has not failed. */
     public static boolean usable() {
         FarConfig config = FarConfig.get();
-        return config.anyDistant() && config.impostors && !failed;
+        return config.anyDistant() && config.impostors && !BAKE.blocked();
     }
 
     /** The pictures of a figure, if baked. Counts as a use, so the sheets in use are kept. */
@@ -607,7 +611,7 @@ public final class ImpostorAtlas {
      * it counts as a use: the figures on hand keep their sheets.
      */
     public static void request(ImpostorKey key, Entity puppet) {
-        if (failed || sheet(key) != null || UNDRAWABLE.contains(key) || refused(key) || !QUEUED.add(key)) return;
+        if (BAKE.blocked() || sheet(key) != null || UNDRAWABLE.contains(key) || refused(key) || !QUEUED.add(key)) return;
         // A mob met in an earlier game: read back rather than baked.
         if (!PLAYER.equals(key.type()) && ImpostorDisk.has(key)) {
             int asked = generation;
@@ -623,13 +627,13 @@ public final class ImpostorAtlas {
      * kept on disk: a rider is a player, whose skin may change.
      */
     public static void request(ImpostorKey key, Entity mount, Rider rider) {
-        if (failed || sheet(key) != null || UNDRAWABLE.contains(key) || refused(key) || !QUEUED.add(key)) return;
+        if (BAKE.blocked() || sheet(key) != null || UNDRAWABLE.contains(key) || refused(key) || !QUEUED.add(key)) return;
         QUEUE.add(Request.of(key, mount, GROWN.getOrDefault(key, 1.0), rider));
     }
 
     /** Asks for one of the mod's own figures to be baked, within the next few frames. */
     public static void request(ImpostorKey key, ImpostorFigure figure) {
-        if (failed || sheet(key) != null || refused(key) || !QUEUED.add(key)) return;
+        if (BAKE.blocked() || sheet(key) != null || refused(key) || !QUEUED.add(key)) return;
         QUEUE.add(Request.of(key, figure));
     }
 
@@ -687,8 +691,9 @@ public final class ImpostorAtlas {
         return QUEUED.size();
     }
 
+    /** Stopped after a failure, for a while or for good. */
     public static boolean failed() {
-        return failed;
+        return BAKE.blocked();
     }
 
     //? if <1.21.6 {
@@ -836,10 +841,9 @@ public final class ImpostorAtlas {
     }
 
     private static void fail(Throwable error) {
-        failed = true;
         QUEUE.clear();
         QUEUED.clear();
-        LivingHorizonClient.LOGGER.error("Impostors could not be baked, falling back to full models", error);
+        BAKE.fail(error);
     }
 
     /**
@@ -1062,12 +1066,16 @@ public final class ImpostorAtlas {
     /**
      * One view of a figure, handed to the game to draw: an entity through its own renderer,
      * a figure of the mod's drawn by itself, turned the same way an entity is by {@link #stage}.
+     * An entity its renderer cannot draw comes back as a {@link LeftOut}, not thrown: what it
+     * handed the game before failing is drawn into our target all the same, then it is thrown.
      */
     //? if >=1.21.9 {
-    private static void draw(Minecraft minecraft, Request request, int view, PoseStack pose, SubmitNodeStorage storage) {
+    private static @Nullable LeftOut draw(Minecraft minecraft, Request request, int view, PoseStack pose, SubmitNodeStorage storage) {
         if (request.figure != null) {
             request.figure.draw(pose, new Sink(storage), 180f - view * (360f / ImpostorViews.VIEWS));
-        } else {
+            return null;
+        }
+        try {
             minecraft.getEntityRenderDispatcher().submit(staged(minecraft, request, view), new CameraRenderState(),
                     0.0, lift(request), 0.0, pose, storage);
             if (request.rider != null) {
@@ -1075,22 +1083,50 @@ public final class ImpostorAtlas {
                 minecraft.getEntityRenderDispatcher().submit(stagedRider(minecraft, request.rider, view),
                         new CameraRenderState(), seat.x, seat.y, seat.z, pose, storage);
             }
+            return null;
+        } catch (LeftOut leftOut) {
+            return leftOut;
+        } catch (RuntimeException | LinkageError error) {
+            return leftOut(request, error);
         }
     }
     //?} else {
-    /*private static void draw(Minecraft minecraft, Request request, int view, PoseStack pose, MultiBufferSource buffers) {
+    /*private static @Nullable LeftOut draw(Minecraft minecraft, Request request, int view, PoseStack pose, MultiBufferSource buffers) {
         if (request.figure != null) {
             request.figure.draw(pose, new Sink(buffers), 180f - view * (360f / ImpostorViews.VIEWS));
-        } else {
+            return null;
+        }
+        try {
             GhostRenderer.drawState(staged(minecraft, request, view), 0.0, lift(request), 0.0, pose, buffers, FULL_BRIGHT);
             if (request.rider != null) {
                 Vec3 seat = seat(request.rider, view);
                 GhostRenderer.drawState(stagedRider(minecraft, request.rider, view), seat.x, seat.y, seat.z, pose, buffers,
                         FULL_BRIGHT);
             }
+            return null;
+        } catch (LeftOut leftOut) {
+            return leftOut;
+        } catch (RuntimeException | LinkageError error) {
+            return leftOut(request, error);
         }
     }
     *///?}
+
+    /** Kinds of figure whose renderer failed while baked, said once each. */
+    private static final Set<String> FAILED_KINDS = new HashSet<>();
+
+    /**
+     * A figure whose renderer failed while it was handed over: that figure only is left out
+     * ({@code UNDRAWABLE}) and drawn as a model, and the log says so once per kind, as
+     * {@code GhostRenderer} does for a renderer that fails to give a state.
+     */
+    private static LeftOut leftOut(Request request, Throwable error) {
+        String kind = request.puppet != null ? EntityType.getKey(request.puppet.getType()).toString() : request.key.type();
+        if (FAILED_KINDS.add(kind)) {
+            LivingHorizonClient.LOGGER.warn("{} has no impostor: its renderer failed while it was baked, it is drawn as a model", kind, error);
+        }
+        return new LeftOut();
+    }
 
     //? if <1.21.6 {
     /*/^* The projection a view is drawn with: pixels, y down, as the GUI's. ^/
@@ -1175,7 +1211,7 @@ public final class ImpostorAtlas {
                 PoseStack pose = pose(request, size, render);
                 lighting().setupFor(Lighting.Entry.LEVEL);
                 //? if >=26.3 {
-                /*draw(minecraft, request, view, pose, target.storage);
+                /*LeftOut left = draw(minecraft, request, view, pose, target.storage);
                 try (FeatureRenderDispatcher.PreparedFrame frame = features.prepareFrame(target.storage);
                      RenderPass pass = encoder.createRenderPass(() -> "living horizon impostor", target.colorView,
                              Optional.empty(), target.depthView, OptionalDouble.empty())) {
@@ -1183,16 +1219,18 @@ public final class ImpostorAtlas {
                     FeatureRenderDispatcher.renderAllFeatures(pass, frame);
                 }
                 *///?} elif >=26.2 {
-                /*draw(minecraft, request, view, pose, target.storage);
+                /*LeftOut left = draw(minecraft, request, view, pose, target.storage);
                 features.renderAllFeatures(target.storage);
                 *///?} elif >=1.21.9 {
-                draw(minecraft, request, view, pose, features.getSubmitNodeStorage());
+                LeftOut left = draw(minecraft, request, view, pose, features.getSubmitNodeStorage());
                 features.renderAllFeatures();
                 minecraft.renderBuffers().bufferSource().endBatch();
                 //?} else {
-                /*draw(minecraft, request, view, pose, buffers);
+                /*LeftOut left = draw(minecraft, request, view, pose, buffers);
                 buffers.endBatch();
                 *///?}
+                // Drawn first, into our target: what it submitted before failing never waits for the world's frame.
+                if (left != null) throw left;
                 boolean last = view == ImpostorViews.VIEWS - 1;
                 encoder.copyTextureToBuffer(target.color, buffer, /*? if >=1.21.11 {*/ (long) /*?} else {*/ /*(int) *//*?}*/ bytes * view,
                         last ? () -> readBack(request, index, size, buffer, generation) : () -> {
@@ -1252,8 +1290,9 @@ public final class ImpostorAtlas {
             int generation = ImpostorAtlas.generation;
             for (int view = 0; view < ImpostorViews.VIEWS; view++) {
                 encoder.clearColorAndDepthTextures(target.getColorTexture(), 0, target.getDepthTexture(), 1.0);
-                draw(minecraft, request, view, pose(request, size, render), buffers);
+                LeftOut left = draw(minecraft, request, view, pose(request, size, render), buffers);
                 buffers.endBatch();
+                if (left != null) throw left;
                 boolean last = view == ImpostorViews.VIEWS - 1;
                 encoder.copyTextureToBuffer(target.getColorTexture(), buffer, bytes * view,
                         last ? () -> readBack(request, index, size, buffer, generation) : () -> {
@@ -1338,8 +1377,9 @@ public final class ImpostorAtlas {
             target.bindWrite(true);
             for (int view = 0; view < ImpostorViews.VIEWS; view++) {
                 RenderSystem.viewport(view * render, 0, render, render);
-                draw(minecraft, request, view, pose(request, size, render), buffers);
+                LeftOut left = draw(minecraft, request, view, pose(request, size, render), buffers);
                 buffers.endBatch();
+                if (left != null) throw left;
             }
             download(target, pictures, render);
             drawn = true;
