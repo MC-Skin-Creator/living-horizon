@@ -48,7 +48,7 @@ never added to a level (`track/Puppets`).
 | root | `LivingHorizonCommon` (entry point on both sides, opens the network channel), `LivingHorizonClient` (client entry point), `FarConfig` (the settings file), `QualityPreset`, `Stats` |
 | `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
 | `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`; `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
-| `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
+| `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
 | `ambient/` | The birds (`Ambience`, `BirdModels`, `BirdFigure`, `AmbientRenderer`) and the easter eggs |
 | `platform/` | What differs between loaders: events, network, config folder |
 | `ui/` | The settings screens (`FarConfigScreen` and its sub-screens, `SodiumOptions`), the impostor screen, the text under the crosshair (`OfflineHud`) |
@@ -454,6 +454,18 @@ flat disc at their own height.
 - `maxDistantMobs` of them are drawn at once (512; 1000 is no limit): the nearest remembered
   ones. Past `mobMaxDistance` (512 blocks) none are drawn. Both that distance and the near zone
   are applied after the choice, so copies there still take places and fewer may show.
+- With `onlyOverTerrain` (*Only Over Terrain*, in *Debug Options...*, on), a mob is drawn only where terrain is drawn
+  under it (`compat/DrawnGround`): a chunk the game holds within its render distance, measured
+  as the game picks its sections, or else a chunk the far world has terrain in, within Voxy's or
+  Distant Horizons' own render distance (`LodWorld.drawnDistance`). The far world is asked a
+  chunk at a time, every chunk of a frame in one read (`LodWorld.fresh`, which reads a column
+  remembered empty again). A chunk found empty is asked again after 1, 2, 4... up to 30 seconds,
+  as the far world fills in after a world is opened; one with terrain stays so until the world
+  changes. Never a blink: only a "no terrain" answer hides a mob; while its chunk has no answer
+  yet (or the far world's reads are paused), it stays as it was the frame before
+  (`DrawnGround.Decisions`, by the mob's id, shared by the real mob and its copy). The game's
+  chunks within three of the edge of its render distance are asked ahead, so the answer is there
+  before a mob or the edge crosses them. The debug marks call a hidden one *over the void*.
 - A mob smaller on screen than `animationMinPixels` (10 pixels; 0 always animates; its height
   or width, whichever is larger, and never under `minApparentPixels`) plays no
   walking or idle animation (`optStillTiny`): it keeps sliding along its animation and turning

@@ -99,6 +99,7 @@ public final class LodWorld {
     /** Another world: every section held is let go, every column read forgotten. */
     public static void clear() {
         OcclusionQueries.clear();
+        DrawnGround.clear();
         release();
         suspended = false;
     }
@@ -109,6 +110,7 @@ public final class LodWorld {
      */
     public static void suspend() {
         suspended = true;
+        DrawnGround.clear();
         release();
     }
 
@@ -137,6 +139,28 @@ public final class LodWorld {
     public static double clearDistance() {
         LodSource source = source();
         return source == null ? 0 : source.clearDistance();
+    }
+
+    /** Whether Voxy or Distant Horizons is installed, answering or not. */
+    public static boolean installed() {
+        for (LodSource source : SOURCES) {
+            if (source.loaded()) return true;
+        }
+        return false;
+    }
+
+    /** Whether Voxy or Distant Horizons is installed and answering: there is a far world to read. */
+    public static boolean present() {
+        return source() != null;
+    }
+
+    /**
+     * Blocks across to which the far world's terrain is drawn at all, fog or not, on the game's
+     * thread; 0 without Voxy or Distant Horizons, or when it cannot say.
+     */
+    public static double drawnDistance() {
+        LodSource source = source();
+        return source == null ? 0 : source.drawnDistance();
     }
 
     /** For {@code /livinghorizon lod}. */
@@ -206,6 +230,18 @@ public final class LodWorld {
      * from memory without waiting.
      */
     public static CompletableFuture<@Nullable Surface[]> surfaces(int[] xs, int[] zs) {
+        return surfaces(xs, zs, true);
+    }
+
+    /**
+     * {@link #surfaces(int[], int[])}, but a column remembered empty is read again: for whoever
+     * waits for the far world to fill in, as it does after a world is opened.
+     */
+    public static CompletableFuture<@Nullable Surface[]> fresh(int[] xs, int[] zs) {
+        return surfaces(xs, zs, false);
+    }
+
+    private static CompletableFuture<@Nullable Surface[]> surfaces(int[] xs, int[] zs, boolean trustNothing) {
         Surface[] found = new Surface[xs.length];
         LodSource source = source();
         if (source == null) return CompletableFuture.completedFuture(found);
@@ -214,7 +250,7 @@ public final class LodWorld {
         boolean missing = false;
         for (int i = 0; i < xs.length; i++) {
             Known known = cache ? COLUMNS.get(key(xs[i], zs[i])) : null;
-            if (known != null && now - known.at < COLUMN_NANOS) {
+            if (known != null && now - known.at < COLUMN_NANOS && (trustNothing || known.surface != NOTHING)) {
                 found[i] = known.surface == NOTHING ? null : known.surface;
             } else {
                 missing = true;
@@ -231,7 +267,7 @@ public final class LodWorld {
                     for (int i = 0; i < xs.length; i++) {
                         long key = key(xs[i], zs[i]);
                         Known known = cache ? COLUMNS.get(key) : null;
-                        if (known != null && at - known.at < COLUMN_NANOS) {
+                        if (known != null && at - known.at < COLUMN_NANOS && (trustNothing || known.surface != NOTHING)) {
                             found[i] = known.surface == NOTHING ? null : known.surface;
                             continue;
                         }

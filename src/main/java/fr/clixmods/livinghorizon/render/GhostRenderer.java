@@ -5,6 +5,7 @@ import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.Stats;
 import fr.clixmods.livinghorizon.ambient.Ambience;
+import fr.clixmods.livinghorizon.compat.DrawnGround;
 import fr.clixmods.livinghorizon.compat.EntityCulling;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.OcclusionQueries;
@@ -479,6 +480,7 @@ public final class GhostRenderer {
                 if (debug) DebugMarks.mark(puppet, Mark.NEAR);
                 continue;
             }
+            if (overVoid(minecraft, eye, mob.id(), puppet, config)) continue;
             if (skipped(puppet, true)) continue;
             if (occluded(mob.id(), puppet, config)) continue;
             if (debug) DebugMarks.mark(puppet, Mark.FAKE);
@@ -490,6 +492,7 @@ public final class GhostRenderer {
             if (body instanceof LivingEntityRenderState living && livesInWater(puppet)) living.isInWater = true;
             add(frame, minecraft, eye, body, null, true, Mark.FAKE, config, mob.id());
         }
+        DrawnGround.ask();
         if (debug && DebugMarks.drawing() && minecraft.level != null) {
             // The ones remembered but past the most shown at once.
             Set<MobMemory.Remembered> listed = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -523,6 +526,19 @@ public final class GhostRenderer {
         drawn--;
         skipped++;
         if (debug) DebugMarks.mark(entity, Mark.HIDDEN);
+        return true;
+    }
+
+    /**
+     * No terrain drawn under it, neither the game's nor the far terrain, so not drawn this frame
+     * ({@link FarConfig#onlyOverTerrain}): it would stand in the void.
+     */
+    private static boolean overVoid(Minecraft minecraft, Vec3 eye, Object key, Entity entity, FarConfig config) {
+        if (!config.onlyOverTerrain || minecraft.level == null
+                || DrawnGround.shown(minecraft.level, eye, key, entity.getX(), entity.getZ())) {
+            return false;
+        }
+        if (debug) DebugMarks.mark(entity, Mark.VOID);
         return true;
     }
 
@@ -567,6 +583,7 @@ public final class GhostRenderer {
             // Close by, the game leaves a mob out only when the terrain hides it.
             if (entity.distanceToSqr(eye) < 24 * 24) continue;
             if (tooFar(entity, eye, config.mobMaxDistance)) continue;
+            if (overVoid(minecraft, eye, entity.getUUID(), entity, config)) continue;
             if (skipped(entity, true)) continue;
             if (occluded(entity.getUUID(), entity, config)) continue;
             EntityCulling.drawn(entity);
@@ -575,6 +592,7 @@ public final class GhostRenderer {
             add(frame, minecraft, eye, extract(dispatcher, entity, partialTick), null, false, Mark.LIVE, config,
                     entity.getUUID());
         }
+        DrawnGround.ask();
     }
 
     public static boolean livesInWater(Entity entity) {
