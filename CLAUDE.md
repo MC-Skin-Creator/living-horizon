@@ -490,7 +490,9 @@ come back, add it here in the same pull request: this file is what the next sess
   query each"): the one-draw path of `OcclusionQueries` (OpenGL 4.3, a word per box in a shader
   storage buffer, read back behind a fence) failed and the per-box queries took over, five GL
   calls per mob per frame; the log says why. The depth copies that only the debug view reads
-  (`saved`, `drawn` when nothing was merged) are made only with *Depth View* on.
+  (`saved`, `drawn` when nothing was merged) are made only with *Depth View* on. **Never remove
+  either**: the author measured 70 to 100 FPS from the two together; the per-box queries are the
+  fallback for OpenGL older than 4.3 and nothing else.
 - **Frame rate lost to the mod** (with Voxy or not): measure before guessing. On the player's
   machine, ask for the report of `/livinghorizon benchmark` (`debug/Benchmark`): frame times with
   the mod off, each preset and each part on its own, on their GPU and mods. Run in the world

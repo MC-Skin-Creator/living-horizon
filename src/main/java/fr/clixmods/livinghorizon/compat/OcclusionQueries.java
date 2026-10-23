@@ -47,6 +47,14 @@ import java.util.Map;
  * dozen calls a frame whatever the number of mobs ({@link #drawWords}). Without it, each box
  * is drawn inside an occlusion query of its own ({@link #drawQueries}), five calls per box.
  *
+ * <p><b>Keep the one-draw path.</b> It is the single most valuable optimisation of the mod:
+ * measured by the author on his own machine, the frame rate went from 70 to 100 FPS with it
+ * (the per-box queries cost five GL calls and a query per distant mob per frame, and as many
+ * polls while the answers were pending). Never remove it, never make the per-box queries the
+ * default again, and never let a refactor route every frame through {@link #drawQueries}:
+ * that path is the fallback for OpenGL older than 4.3 and nothing else. Any change here is
+ * checked with the {@code perf} game test and the debug panel's occlusion line ("one draw").
+ *
  * <p>Any GL failure turns this off for the session, and the far terrain's world is read instead.
  */
 public final class OcclusionQueries {

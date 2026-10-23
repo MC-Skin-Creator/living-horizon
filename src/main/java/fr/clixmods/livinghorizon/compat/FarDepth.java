@@ -500,7 +500,9 @@ public final class FarDepth {
      * The game's depth as it is, when there was nothing to merge (no Voxy, or Voxy writing into
      * it already): one copy, {@code written}, for the occlusion boxes, Distant Horizons' fade and
      * our figures into Voxy's depth. The copy before anything, {@code saved}, only the debug view
-     * reads here: a full-screen copy is not made for nobody.
+     * reads here: a full-screen copy is not made for nobody. Keep it that way: with the one-draw
+     * occlusion ({@code OcclusionQueries}) this is part of the frame-rate gain the author measured
+     * (70 to 100 FPS); a full-screen depth copy per frame for nothing is never to come back.
      */
     private static boolean capture() throws ReflectiveOperationException {
         target = ownTarget();
