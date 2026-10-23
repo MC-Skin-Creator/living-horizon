@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Client
+
+#### Improved
+- **Smoother game among distant mobs and offline players** — working out where distant mobs and players who logged off can walk no longer takes time from the game: it is done in the background.
+
 ## 0.12.0 — 2026-10-23
 
 ### Server

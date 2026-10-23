@@ -2,6 +2,11 @@
 
 ## Prochaine version
 
+### Client
+
+#### Améliorations
+- **Jeu plus fluide parmi les mobs lointains et les joueurs déconnectés** — chercher où les mobs lointains et les joueurs déconnectés peuvent marcher ne prend plus de temps au jeu : c'est fait en arrière-plan.
+
 ## 0.12.0 — 2026-10-23
 
 ### Serveur
