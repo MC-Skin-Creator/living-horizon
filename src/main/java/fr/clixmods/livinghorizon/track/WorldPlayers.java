@@ -9,8 +9,6 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.Tag;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.level.storage.LevelResource;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,8 +29,9 @@ import java.util.stream.Stream;
 /**
  * The players a world saved before the mod was there to see them log off: where each one
  * was, the way they faced and what they wore, from the world's {@code playerdata} folder, and
- * their names from the server's {@code usercache.json}. Read once, when the server first
- * shares, so that a server that had players before the mod shows them as logged off at once.
+ * their names from the server's {@code usercache.json}. Read once, on the game's IO pool, when
+ * the server first shares (no file of its own yet, or one that did not read or is older), so
+ * that a server that had players before the mod shows them as logged off at once.
  *
  * <p>Loaded on a dedicated server: nothing here may reach a class of the client's.
  */
@@ -44,36 +43,30 @@ final class WorldPlayers {
     private WorldPlayers() {
     }
 
-    /**
-     * Every player the world saved whose name is known, as logged off; those saved in spectator
-     * mode left out when {@code leaveOutSpectators}, since the server hides them.
-     */
-    static List<PositionsMessage.Player> read(MinecraftServer server, boolean leaveOutSpectators) {
-        return read(server.getWorldPath(LevelResource.PLAYER_DATA_DIR), server.getWorldPath(LevelResource.ROOT),
-                leaveOutSpectators);
-    }
-
-    /** The same, from a world's folder and its players' folder, spectators kept. */
+    /** Every player the world saved whose name is known, as logged off, from its players' folder and its own. */
     static List<PositionsMessage.Player> read(Path folder, Path world) {
         return read(folder, world, false);
     }
 
-    /** The same, from a world's folder and its players' folder. */
+    /** The same; those saved in spectator mode left out when {@code leaveOutSpectators}, since the server hides them. */
     static List<PositionsMessage.Player> read(Path folder, Path world, boolean leaveOutSpectators) {
         if (!Files.isDirectory(folder)) return List.of();
         Map<UUID, String> names = names(world);
         if (names.isEmpty()) return List.of();
-        List<Path> files;
+        List<Dated> files;
         try (Stream<Path> listed = Files.list(folder)) {
-            files = new ArrayList<>(listed.filter(path -> path.getFileName().toString().endsWith(".dat")).toList());
+            // Each file's date read once, not at every comparison of the sort.
+            files = new ArrayList<>(listed.filter(path -> path.getFileName().toString().endsWith(".dat"))
+                    .map(path -> new Dated(path, modified(path))).toList());
         } catch (IOException e) {
             LOGGER.warn("Could not list the players of this world", e);
             return List.of();
         }
         // Every one of them, those who played last first.
-        files.sort(Comparator.comparingLong(WorldPlayers::modified).reversed());
+        files.sort(Comparator.comparingLong(Dated::modified).reversed());
         List<PositionsMessage.Player> players = new ArrayList<>();
-        for (Path file : files) {
+        for (Dated dated : files) {
+            Path file = dated.file();
             String id = file.getFileName().toString();
             String name;
             try {
@@ -85,13 +78,17 @@ final class WorldPlayers {
             try {
                 CompoundTag tag = readTag(file);
                 if (leaveOutSpectators && number(tag, "playerGameType") == SPECTATOR) continue;
-                PositionsMessage.Player player = player(name, tag, modified(file));
+                PositionsMessage.Player player = player(name, tag, dated.modified());
                 if (player != null) players.add(player);
             } catch (IOException | RuntimeException e) {
                 LOGGER.debug("Could not read the saved player {}", file, e);
             }
         }
         return players;
+    }
+
+    /** A player's file, and when it was last written: when they last played. */
+    private record Dated(Path file, long modified) {
     }
 
     /** A saved player: where they were, the way they faced, what they wore. */

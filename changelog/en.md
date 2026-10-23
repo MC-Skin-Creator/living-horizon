@@ -4,6 +4,9 @@
 
 ### Server
 
+#### Improved
+- **Server lag spikes** — a server with the mod no longer stalls for a moment every few seconds when it has many mobs, nor every minute while saving what it shares, and it starts faster: the players a world had before the mod are read only the first time.
+
 #### Fixed
 - **Players kicked from Forge servers** — a Forge server with the mod no longer drops the players who have it too as they join, with "mismatched mod channel list" (Forge 1.20.2 and later).
 

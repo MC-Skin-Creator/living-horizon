@@ -111,7 +111,10 @@ world, and a player without the mod is sent nothing.
     they left, with how they looked and the mount they took away for those among the 64. The
     server sends them all; each client chooses how many it draws (`maxOfflinePlayers`);
   - the remembered mobs within 2048 blocks of them, with what they wear (saddle, harness,
-    armour, carpet, chest; see [Distant mobs](#distant-mobs)).
+    armour, carpet, chest; see [Distant mobs](#distant-mobs)). What a mob wears and its
+    variant come from its saved data, read 16 mobs per publication (80 a second), those never
+    read first, then each one again after thirty seconds or more: never all at once. A mob never
+    read is shared once it is; one the file kept keeps what the file says until then.
 - **At once, to a player who joins**: all of it, without waiting for the next five seconds.
 
 The messages (`track/PositionsMessage`) are written with plain Java streams, the same on
@@ -187,6 +190,8 @@ The server keeps the players and the mobs in `livinghorizon-positions.dat`, at t
 its world folder, so that a player who joins later sees them too.
 
 - It is saved every minute and when the server stops, into a temporary file moved over it.
+  The minute's save is written on the game's IO pool, one after the other: the server's thread
+  only copies the records. The one at the stop waits for it, then writes at once.
 - It starts with a version of its own (`PositionsMessage.FILE_VERSION`, 3, and
   `FILE_READABLE_FROM`), apart from the messages' `VERSION`: a new message layout must not make
   servers drop their file. Its layout is the messages', without the kind: the table of
@@ -199,10 +204,12 @@ its world folder, so that a player who joins later sees them too.
   then.
 - A mob is forgotten when its chunk is loaded and it is not there any more, and the oldest
   go past 4000 mobs. Every player who logged off is kept, however many.
-- Each time the server starts, its first share also adds the players the world saved that
-  the file does not have yet (`track/WorldPlayers`: every one in `playerdata`, however many,
-  with their position and gear, named from `usercache.json`, last seen when their file was
-  written, no skin), so players from before the mod show as logged off at once. A player the
+- The first time the server shares in a world (no file yet, or one that did not read or is
+  of an older version), it also adds the players the world saved that the file does not have
+  (`track/WorldPlayers`: every one in `playerdata`, however many, with their position and
+  gear, named from `usercache.json`, last seen when their file was written, no skin), so
+  players from before the mod show as logged off at once. They are read on the IO pool and
+  sent to everyone as soon as they are; a server stopping first waits for them. A player the
   cache does not name is left out, and the game keeps only the 1000 profiles used last in it
   (`CachedUserNameToIdResolver`), so that is the bound on a server without a mod that keeps more.
 - Test players placed by the host with `/livinghorizon debug offline test` are shared too,

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -21,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class WorldPlayersTest {
     private static final String STEVE = "8667ba71-b85a-4004-af54-457a9734eed7";
     private static final String NOBODY = "0f8fad5b-d9cb-469f-a165-70867728950e";
+    private static final String ALEX = "ec561538-f3fd-461d-aff5-086b22154bce";
 
     @BeforeAll
     static void boot() {
@@ -59,6 +61,25 @@ class WorldPlayersTest {
         assertTrue(gear.get(0).contains("iron_sword"), gear.toString());
         assertTrue(gear.get(5).contains("diamond_helmet"), gear.toString());
         assertFalse(gear.get(5).contains("Slot"), gear.toString());
+    }
+
+    @Test
+    void thoseWhoPlayedLastFirst(@TempDir Path server) throws Exception {
+        Path world = server.resolve("world");
+        Path folder = world.resolve("playerdata");
+        Files.createDirectories(folder);
+        Files.writeString(server.resolve("usercache.json"),
+                "[{\"name\":\"Steve\",\"uuid\":\"" + STEVE + "\",\"expiresOn\":\"2030-01-01 00:00:00 +0000\"},"
+                        + "{\"name\":\"Alex\",\"uuid\":\"" + ALEX + "\",\"expiresOn\":\"2030-01-01 00:00:00 +0000\"}]");
+        write(folder.resolve(STEVE + ".dat"), "{Pos:[0.0d,64.0d,0.0d]}");
+        write(folder.resolve(ALEX + ".dat"), "{Pos:[5.0d,64.0d,5.0d]}");
+        Files.setLastModifiedTime(folder.resolve(STEVE + ".dat"), FileTime.fromMillis(1_000_000_000_000L));
+        Files.setLastModifiedTime(folder.resolve(ALEX + ".dat"), FileTime.fromMillis(1_700_000_000_000L));
+
+        List<PositionsMessage.Player> players = WorldPlayers.read(folder, world);
+        assertEquals(List.of("Alex", "Steve"), players.stream().map(PositionsMessage.Player::name).toList());
+        assertEquals(1_700_000_000_000L, players.get(0).lastSeen());
+        assertEquals(1_000_000_000_000L, players.get(1).lastSeen());
     }
 
     @Test

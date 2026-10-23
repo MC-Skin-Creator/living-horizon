@@ -4,6 +4,9 @@
 
 ### Serveur
 
+#### Améliorations
+- **Pics de lag du serveur** — un serveur avec le mod ne se fige plus un instant toutes les quelques secondes quand il a beaucoup de mobs, ni chaque minute en sauvegardant ce qu'il partage, et il démarre plus vite : les joueurs que le monde avait avant le mod ne sont lus que la première fois.
+
 #### Corrections
 - **Joueurs éjectés des serveurs Forge** — un serveur Forge avec le mod n'éjecte plus les joueurs qui l'ont aussi dès qu'ils se connectent, avec « mismatched mod channel list » (Forge 1.20.2 et plus).
 
