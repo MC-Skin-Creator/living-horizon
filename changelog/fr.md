@@ -2,6 +2,11 @@
 
 ## Prochaine version
 
+### Serveur
+
+#### Corrections
+- **Joueurs éjectés des serveurs Forge** — un serveur Forge avec le mod n'éjecte plus les joueurs qui l'ont aussi dès qu'ils se connectent, avec « mismatched mod channel list » (Forge 1.20.2 et plus).
+
 ### Client
 
 #### Nouveautés
@@ -13,6 +18,7 @@
 
 #### Corrections
 - **Mobs lointains qui flottent dans le vide** — les mobs lointains ne sont plus dessinés là où aucun terrain n'est encore dessiné sous eux, ni celui du jeu, ni celui de Voxy ou de Distant Horizons.
+- **Mondes solo qui se ferment aussitôt sur Forge** — un monde solo ne se ferme plus dès qu'il s'ouvre, avec « mismatched mod channel list » (Forge 1.20.2 et plus).
 - **Jeu figé par un scan géant** — `/livinghorizon scan` ne fige plus le jeu avec un rayon énorme : il s'arrête à 1 024 chunks, comme le réglage *Rayon du scan*.
 
 ## 0.11.0 — 2026-10-22

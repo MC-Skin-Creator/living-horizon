@@ -502,8 +502,6 @@ deps.forge_compat = "[50.2.0,)"
 ["1.21.1-forge"]
 mod.mc_compat = "[1.21.1]"
 mod.mc_releases = ["1.21.1"]
-# Starts in the game, but not yet seen drawing in a world.
-mod.release_type = "alpha"
 
 deps.forge = "52.1.0"
 deps.forge_compat = "[52.1.0,)"
