@@ -1,5 +1,6 @@
 package fr.clixmods.livinghorizon.ui;
 
+import fr.clixmods.livinghorizon.ModVersion;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.StringWidget;
@@ -133,14 +134,26 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
         // On the title screen the panorama is the background; in a world, nothing.
         if (minecraft.level == null) super.renderBackground(graphics, mouseX, mouseY, partialTick);
     }
+
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.render(graphics, mouseX, mouseY, partialTick);
+        drawVersion(graphics);
+    }
     //?} else {
     /*// Before 1.20.2 a screen draws its own background, in render.
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (minecraft.level == null) renderBackground(graphics);
         super.render(graphics, mouseX, mouseY, partialTick);
+        drawVersion(graphics);
     }
     *///?}
+
+    /** The mod's version in grey, centred under the title of every screen of the mod's settings. */
+    private void drawVersion(GuiGraphics graphics) {
+        graphics.drawCenteredString(font, ModVersion.label(), columnWidth() / 2, 23, 0xFFAAAAAA);
+    }
 
     @Override
     protected void repositionElements() {
