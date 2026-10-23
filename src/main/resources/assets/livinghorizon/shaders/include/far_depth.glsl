@@ -29,12 +29,12 @@ float lhDhViewZ(float d, vec4 dh, bool exact, mat4 dhInverse, vec2 at) {
     return -dh.y / (ndc + dh.x);
 }
 
-// The depth view's colour for a stored depth: near white to far black, logarithmic so that a
-// block away and the horizon are both readable; the sky in dark blue.
+// The depth view's colour for a stored depth: near white to black at planes.y, logarithmic so
+// that a block away and the horizon are both readable; the sky in dark blue.
 vec4 lhDepthShade(float d, vec2 terms, vec2 planes, bool reversed, bool zeroToOne) {
     if (reversed ? d <= 0.0 : d >= 1.0) return vec4(0.08, 0.12, 0.32, 1.0);
     float near = planes.x, far = planes.y;
     float linear = lhDistance(d, terms, zeroToOne);
     float shade = 1.0 - log(max(linear, near) / near) / log(far / near);
-    return vec4(vec3(shade), 1.0);
+    return vec4(vec3(clamp(shade, 0.0, 1.0)), 1.0);
 }

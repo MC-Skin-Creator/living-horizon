@@ -312,6 +312,14 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Steps out of order** (`/livinghorizon lod` or the log says so; the `depthview` game test
   fails): a hook before that step no longer runs, renamed by the game or another mod. The order
   is in `FarDepth.Frame` and `docs/technical.md` ("One frame").
+- **Distant mobs hidden or standing still over Distant Horizons' terrain in single player**
+  (*Only Over Terrain* hiding them on its hills; depth view fine): in single player Distant
+  Horizons' levels wrap the server's, one per dimension in no order, never the client's level.
+  `DhSource.open` takes the one of the player's dimension; taking the first read another
+  dimension's ground. And Distant Horizons' read cache keeps an area as first read, empty if it
+  was not built yet: `DhSource.cache` empties it every 30 s, and 2 s after a column came back empty.
+- **Depth view lighter or darker as far mobs show or hide**: the game's far plane follows the
+  farthest figure drawn (`GhostRenderer.farPlane`); the view shades against `FarDepth.VIEW_FAR`.
 - **Distant Horizons' rendering engine** (from 3.3: Blaze3D or OpenGL). With Iris installed,
   pack on or off, it switches itself to OpenGL and fills only `getDhDepthTextureGlId`; the
   Blaze3D wrapper the game's GPU device path reads stays empty ("has no depth texture").

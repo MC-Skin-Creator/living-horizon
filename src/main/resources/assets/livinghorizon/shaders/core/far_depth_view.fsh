@@ -12,7 +12,7 @@ uniform sampler2D InSampler;
 layout(std140) uniform LhDepthView {
     // The corner it is drawn in, in screen fractions: x, y, width, height.
     vec4 Area;
-    // The game's projection terms a and b, then its near and far planes.
+    // The game's projection terms a and b, its near plane, and the distance shaded black.
     vec4 Terms;
     // 1 when the depth is reversed, 1 when it is 0..1.
     vec4 Layout;

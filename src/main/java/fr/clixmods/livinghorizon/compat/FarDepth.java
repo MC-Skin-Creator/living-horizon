@@ -538,7 +538,7 @@ public final class FarDepth {
                 // The part the world is drawn to, so that the view matches the screen under a render scale.
                 GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "size"), pictureWidth, pictureHeight);
                 float[] terms = DepthFar.terms(minecraft), planes = DepthFar.planes(minecraft);
-                GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "planes"), planes[0], planes[1]);
+                GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "planes"), planes[0], VIEW_FAR);
                 GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "terms"), terms[0], terms[1]);
                 GL20C.glUniform2f(GL20C.glGetUniformLocation(viewProgram, "depthLayout"),
                         DepthFar.reversed() ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f);
@@ -554,6 +554,13 @@ public final class FarDepth {
             FarConfig.get().debugDepthView = 0;
         }
     }
+
+    /**
+     * The distance the depth view shades black, the same every frame. The game's far plane moves
+     * out to the farthest distant figure drawn ({@code GhostRenderer.farPlane}): shaded against
+     * it, the view grew darker or lighter as far mobs were hidden or shown, its terrain unchanged.
+     */
+    static final float VIEW_FAR = 4096f;
 
     /** The depth view: the same as {@code far_depth_view.fsh} on 26.3, both from {@code far_depth.glsl}. */
     private static final String VIEW = """
