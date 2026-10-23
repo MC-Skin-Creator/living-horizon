@@ -4,6 +4,7 @@ import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.platform.Platform;
 import net.minecraft.client.Minecraft;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
 
@@ -32,14 +33,36 @@ final class DhSource implements LodSource {
 
     private MethodHandle terrainRepo, worldProxy;
     private MethodHandle worldLoaded, levels, wrapped, columnAt;
-    private MethodHandle top, blockOf, biomeOf;
+    private MethodHandle top, blockOf, biomeOf, clearCache;
     private MethodHandle isAir, isLiquid, isSolid, biomeName;
     /** Before Distant Horizons 3.0 there is no opacity, and before 2.4 no cache: null then. */
     private @Nullable MethodHandle opacity, softCache;
 
-    /** One reader's cache of Distant Horizons' data, for the level it was made for. */
-    private record Cached(Object level, @Nullable Object cache) {
+    /**
+     * One reader's cache of Distant Horizons' data, for the level it was made for. Distant
+     * Horizons' cache keeps an area as it was first read for as long as memory allows: read
+     * before Distant Horizons had filled it in (it builds its terrain over minutes in a new
+     * world), the area stayed empty, and a mob standing there stayed hidden over terrain in
+     * plain view. So the cache is emptied every {@link #RENEW_NANOS}, and soon after a column
+     * comes back empty ({@link #MISSED_NANOS}).
+     */
+    private static final class Cached {
+        final Object level;
+        final @Nullable Object cache;
+        final int generation;
+        long emptied = System.nanoTime();
+        boolean missed;
+
+        Cached(Object level, @Nullable Object cache, int generation) {
+            this.level = level;
+            this.cache = cache;
+            this.generation = generation;
+        }
     }
+
+    private static final long RENEW_NANOS = 30_000_000_000L, MISSED_NANOS = 2_000_000_000L;
+    /** Raised by {@link #clear()}: every reader's cache is made again. */
+    private volatile int generation;
 
     private final ThreadLocal<Cached> caches = new ThreadLocal<>();
 
@@ -58,17 +81,17 @@ final class DhSource implements LodSource {
         reads.incrementAndGet();
         if (result == null) {
             lastAnswer = "null";
-            return null;
+            return missed();
         }
         Object message = DhLink.message(result);
         if (!DhLink.success(result)) {
             lastAnswer = "failed: " + message;
-            return null;
+            return missed();
         }
         Object[] points = (Object[]) DhLink.payload(result);
         if (points == null || points.length == 0) {
             lastAnswer = "empty: " + message;
-            return null;
+            return missed();
         }
         found.incrementAndGet();
         lastAnswer = "ok: " + message;
@@ -90,9 +113,17 @@ final class DhSource implements LodSource {
         return failure;
     }
 
+    /** A column without data: this reader's cache may hold its area as it was before Distant Horizons filled it in. */
+    private Object @Nullable [] missed() {
+        Cached cached = caches.get();
+        if (cached != null) cached.missed = true;
+        return null;
+    }
+
     @Override
     public void clear() {
         tops.clear();
+        generation++;
     }
 
     /** The height of the highest block of each column read, and until when it is trusted. */
@@ -230,6 +261,7 @@ final class DhSource implements LodSource {
         columnAt = lookup.findVirtual(repo, "getColumnDataAtBlockPos",
                 MethodType.methodType(result, level, int.class, int.class, cache));
         softCache = Links.optional(lookup, repo, "createSoftCache", MethodType.methodType(cache));
+        clearCache = lookup.findVirtual(cache, "clear", MethodType.methodType(void.class));
         if (softCache == null) DhLink.fallback("no cache for its world (before 2.4)");
         top = lookup.findGetter(point, "topYBlockPos", int.class);
         blockOf = lookup.findGetter(point, "blockStateWrapper", block);
@@ -254,13 +286,20 @@ final class DhSource implements LodSource {
         // Both are filled in by Distant Horizons once it has started: until then, nothing to read.
         Object proxy = worldProxy.invoke();
         if (proxy == null || terrainRepo.invoke() == null || !(boolean) worldLoaded.invoke(proxy)) return null;
-        Object current = Minecraft.getInstance().level;
-        Object first = null;
+        Level current = Minecraft.getInstance().level;
+        if (current == null) return null;
+        // In single player Distant Horizons' levels wrap the server's, one per dimension, in no
+        // order: never the client's own level. The one of the player's dimension, then; the first
+        // one, as before, read another dimension's terrain (the End's void, the Nether's roof).
+        Object sameDimension = null;
         for (Object level : (Iterable<?>) levels.invoke(proxy)) {
-            if (first == null) first = level;
-            if (current != null && wrapped.invoke(level) == current) return level;
+            Object game = wrapped.invoke(level);
+            if (game == current) return level;
+            if (sameDimension == null && game instanceof Level other && other.dimension().equals(current.dimension())) {
+                sameDimension = level;
+            }
         }
-        return first;
+        return sameDimension;
     }
 
     @Override
@@ -294,12 +333,20 @@ final class DhSource implements LodSource {
      */
     private Object cache(Object world) throws Throwable {
         Cached cached = caches.get();
-        if (cached == null || cached.level() != world) {
+        if (cached == null || cached.level != world || cached.generation != generation) {
+            if (cached != null && cached.cache != null) clearCache.invoke(cached.cache);
             // Without a cache (before 2.4), Distant Horizons reads without one.
-            cached = new Cached(world, softCache == null ? null : softCache.invoke(terrainRepo.invoke()));
+            cached = new Cached(world, softCache == null ? null : softCache.invoke(terrainRepo.invoke()), generation);
             caches.set(cached);
+        } else if (cached.cache != null) {
+            long now = System.nanoTime();
+            if (now - cached.emptied > RENEW_NANOS || cached.missed && now - cached.emptied > MISSED_NANOS) {
+                clearCache.invoke(cached.cache);
+                cached.emptied = now;
+                cached.missed = false;
+            }
         }
-        return cached.cache();
+        return cached.cache;
     }
 
     /**

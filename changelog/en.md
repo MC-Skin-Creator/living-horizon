@@ -22,6 +22,7 @@
 #### Fixed
 - **Distant mobs floating in the void** — distant mobs are no longer drawn where no terrain is drawn under them yet, neither the game's nor Voxy's or Distant Horizons'.
 - **Single player worlds closing at once on Forge** — a single player world no longer closes as soon as it opens, with "mismatched mod channel list" (Forge 1.20.2 and later).
+- **Distant mobs vanishing over Distant Horizons' terrain** — in single player, distant mobs no longer vanish or stop walking on Distant Horizons' hills and mountains.
 
 ## 0.11.0 — 2026-10-22
 
