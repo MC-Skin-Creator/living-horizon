@@ -456,7 +456,11 @@ come back, add it here in the same pull request: this file is what the next sess
   hangs from 0, 0, 0. The tick snaps it only when more than ten blocks off along an axis and
   otherwise moves it a quarter of the way: `Puppets.cape` sets it outright in
   `GhostRenderer.extract`, since each impostor view is baked from one call (`ImpostorAtlas.staged`).
-  The `mannequins` scenario checks it. Far, resting and logged-off player puppets are not ticked
+  The `mannequins` scenario checks it, and counts the cape's pixels (a gold block stands in for
+  one) in the copy's baked picture, since the data can be right while the picture is not. When
+  reading its atlas screenshot, know the game's default skins: kai is blond in dark clothes, Alex
+  has orange hair and a green shirt, and a player's name shows its default skin until Mojang
+  answers. Far, resting and logged-off player puppets are not ticked
   either, on every version (`Player.xCloak` before 1.21.9): not covered yet, and `cape` cannot
   just take any `ClientAvatarEntity`, since live players go through the same `extract` and tick.
 - **A rider turned sideways** (a player resting in a boat facing left or right of it): the seat's
