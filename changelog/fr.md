@@ -7,6 +7,8 @@
 #### Améliorations
 - **Jeu plus fluide parmi les mobs lointains et les joueurs déconnectés** — chercher où les mobs lointains et les joueurs déconnectés peuvent marcher ne prend plus de temps au jeu : c'est fait en arrière-plan.
 - **Images plus fluides avec les mobs lointains** — le jeu attend moins le pilote graphique à chaque image avec des mobs lointains sur Voxy ou Distant Horizons, surtout sur les cartes NVIDIA avec l'*Optimisation threadée* activée.
+- **Phantoms et ghasts lointains qui volent** — les phantoms lointains tournent maintenant en rond dans le ciel et les ghasts lointains dérivent lentement, au lieu de rester figés en l'air.
+- **Phantoms et ghasts vus d'en dessous** — en *Entités simplifiées* (des images plates des mobs lointains), les phantoms et les ghasts sont maintenant dessinés vus d'en dessous et d'au-dessus aussi, comme les oiseaux, et plus seulement de côté.
 
 ## 0.12.0 — 2026-10-23
 

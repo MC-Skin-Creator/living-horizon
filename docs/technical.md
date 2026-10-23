@@ -405,8 +405,8 @@ Once its copy is drawn, the blocks within 8 blocks of a mob (a square of 17 by 1
 (`track/BlockCopy`) and the ground and animation worked out on `track/GroundWork`'s threads,
 so the answer comes a tick or so later. They are read again when the mob moves, and later and later while
 columns are missing; a ground read whole is saved with the mob and used at once next time.
-Mobs that stand still and mobs the server moves read nothing, and flyers and swimmers get a
-flat disc at their own height.
+Mobs that stand still and mobs the server moves read nothing, phantoms and ghasts fly (see
+below), and other flyers and swimmers get a flat disc at their own height.
 
 - **The ground**: in each column, the floor nearest the mob's height with room above it.
   Grass, flowers, crops and snow layers count as air; a path dug with a shovel counts as
@@ -424,6 +424,11 @@ flat disc at their own height.
   in the air, a slime stretching as it leaves the ground and squashing as it lands, a
   rabbit's legs kicking. A chicken flaps while it steps up or down a block. Impostors are
   baked with all of it at rest.
+- **Flying** (`track/MobFlight`): a phantom circles 5 blocks above where it was last seen, 7 to
+  13 blocks out, either way round, now wider, now tighter, rising and dipping; a ghast drifts
+  in slow loops within 10 blocks of its spot, 3 up or down. Like an animation, where it is
+  comes from its UUID and the clock alone, and no ground is read. It faces where it flies and
+  tilts as it climbs or dives, and flies back to its spot as the player comes near.
 - **No teleporting**: when the server reports a drawn mob somewhere else, its copy walks to
   the new spot in a straight line (the ground there is read again meanwhile), then plays the
   animation chosen there.
@@ -667,6 +672,12 @@ that a mob met in an earlier game is read back rather than baked.
     that height, and the wing beat goes on from one sheet to the next;
   - they are baked again each game, never kept on disk, and named after the species in the
     impostor screen.
+- **Phantoms and ghasts** (happy ghasts included, `MobFlight.pictured`) are mostly seen from
+  below: like a bird, one sheet per height they are seen from (well below, below, level,
+  above: `ImpostorViews.HEIGHTS`, part of the key through `ImpostorKey.seenFrom`), baked
+  turned round their middle (`ImpostorAtlas.MIDDLE`), facing the camera entirely when drawn.
+  All four are asked for together; kept on disk like any mob's. A happy ghast carrying a
+  player is pictured with its rider, upright, as before.
 - **Players who logged off** are impostors in every posture: standing, seated on the ground,
   lying down or in a bed. A posture other than standing is part of the key
   (`ImpostorKey.posture`), and the picture is baked in it:

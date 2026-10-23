@@ -19,6 +19,7 @@ import fr.clixmods.livinghorizon.render.impostor.ImpostorViews;
 import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
 import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
+import fr.clixmods.livinghorizon.track.MobFlight;
 import fr.clixmods.livinghorizon.track.MobMemory;
 import fr.clixmods.livinghorizon.track.Puppets;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
@@ -897,7 +898,16 @@ public final class GhostRenderer {
         if (!config.distantMobs) return;
         for (MobMemory.Remembered mob : FarPlayerTracker.get().mobs().shown()) {
             Entity puppet = mob.puppet();
-            if (puppet instanceof LivingEntity) ImpostorAtlas.request(ImpostorKey.of(puppet), puppet);
+            if (!(puppet instanceof LivingEntity)) continue;
+            ImpostorKey key = ImpostorKey.of(puppet);
+            if (!MobFlight.pictured(puppet)) {
+                ImpostorAtlas.request(key, puppet);
+                continue;
+            }
+            // A phantom or a ghast: seen from every height, as it flies about.
+            for (int height = 0; height < ImpostorViews.HEIGHTS.length; height++) {
+                ImpostorAtlas.request(ImpostorKey.seenFrom(key, height), puppet);
+            }
         }
     }
 
@@ -944,8 +954,19 @@ public final class GhostRenderer {
         }
         ImpostorKey key = ImpostorKey.of(entity);
         float yaw = Float.isNaN(facing) ? Mth.rotLerp(partialTick, living.yBodyRotO, living.yBodyRot) : facing;
+        boolean aloft = MobFlight.pictured(entity);
+        if (aloft) {
+            // A phantom or a ghast, often seen from below: the picture baked from the nearest
+            // height, round its middle, turned to the camera up and down as a bird's is.
+            dy += ImpostorAtlas.middle(entity);
+            double ax = Mth.lerp(partialTick, entity.xOld, entity.getX()) + dx - eye.x;
+            double ay = Mth.lerp(partialTick, entity.yOld, entity.getY()) + dy - eye.y;
+            double az = Mth.lerp(partialTick, entity.zOld, entity.getZ()) + dz - eye.z;
+            double elevation = Math.toDegrees(Math.atan2(-ay, Math.sqrt(ax * ax + az * az)));
+            key = ImpostorKey.seenFrom(key, ImpostorViews.height(elevation));
+        }
         return picture(minecraft, eye, entity, entity, key, null, 0, partialTick, config,
-                dx, dy, dz, yaw, Math.max(entity.getBbHeight(), entity.getBbWidth()));
+                dx, dy, dz, yaw, Math.max(entity.getBbHeight(), entity.getBbWidth()), aloft);
     }
 
     /**
@@ -969,7 +990,7 @@ public final class GhostRenderer {
         ImpostorKey key = ImpostorKey.riding(rider, mount, seat, turned);
         float yaw = Mth.rotLerp(partialTick, facingO, facing);
         double extent = Math.max(Math.max(mount.getBbHeight(), seat.y + rider.getBbHeight()), mount.getBbWidth());
-        return picture(minecraft, eye, rider, mount, key, seat, turned, partialTick, config, 0, 0, 0, yaw, extent);
+        return picture(minecraft, eye, rider, mount, key, seat, turned, partialTick, config, 0, 0, 0, yaw, extent, false);
     }
 
     /**
@@ -977,11 +998,12 @@ public final class GhostRenderer {
      * {@code dz}), its view chosen for a body facing {@code yaw}; asked for while it is not
      * baked. {@code shown} is the figure the picture stands for, which keeps its last picture
      * until the new one is baked. A rider ({@code shown}) is pictured on its mount ({@code at}),
-     * sitting at {@code seat} on it, turned {@code turned} degrees from it.
+     * sitting at {@code seat} on it, turned {@code turned} degrees from it. {@code facing}: a
+     * picture baked from a height, round the figure's middle, turned to the camera up and down too.
      */
     private static boolean picture(Minecraft minecraft, Vec3 eye, Entity shown, Entity at, ImpostorKey key,
                                    @Nullable Vec3 seat, float turned, float partialTick, FarConfig config,
-                                   double dx, double dy, double dz, float yaw, double size) {
+                                   double dx, double dy, double dz, float yaw, double size, boolean facing) {
         double x = Mth.lerp(partialTick, at.xOld, at.getX()) + dx;
         double y = Mth.lerp(partialTick, at.yOld, at.getY()) + dy;
         double z = Mth.lerp(partialTick, at.zOld, at.getZ()) + dz;
@@ -1023,10 +1045,11 @@ public final class GhostRenderer {
         int outline = minecraft.player == null ? 0 : DebugMarks.impostorOutline(config);
         if (outline != 0 && ImpostorRenderer.OUTLINES) glowing = true;
         ImpostorRenderer.add(ax * pull, ay * pull, az * pull, sheet.worldSize() * pull * boost, sheet, view, light,
-                outline, false);
+                outline, facing);
         if (distance > drawnRange) {
             double extent = sheet.worldSize() * boost;
-            FarDepth.figure(ax, ay + extent * 0.5, az, extent * 0.75);
+            // Round its feet, or round its middle for a picture seen from a height.
+            FarDepth.figure(ax, facing ? ay : ay + extent * 0.5, az, extent * 0.75);
         }
         return true;
     }

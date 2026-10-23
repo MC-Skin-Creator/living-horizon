@@ -118,6 +118,34 @@ public record ImpostorKey(String type, long appearance) {
     private static final long POSTURE_SALT = 0x5EA7EDL;
 
     /**
+     * The height each key of a flying figure ({@link #seenFrom}) is pictured from, as an index
+     * of {@link ImpostorViews#HEIGHTS}. A few per look of a phantom or a ghast: never trimmed.
+     */
+    private static final Map<ImpostorKey, Integer> HEIGHTS = new HashMap<>();
+    /** Mixed into the key of a figure pictured from a height, so that it never meets the same figure standing. */
+    private static final long HEIGHT_SALT = 0x5EE7F20L;
+
+    /**
+     * The key of a flying figure's pictures seen from one of {@link ImpostorViews#HEIGHTS}
+     * (its index): the figure's own key, at that height. The same in every game, as the
+     * figure's own is.
+     */
+    public static ImpostorKey seenFrom(ImpostorKey key, int height) {
+        ImpostorKey seen = new ImpostorKey(key.type, key.appearance * 31 + HEIGHT_SALT * (height + 1));
+        HEIGHTS.putIfAbsent(seen, height);
+        return seen;
+    }
+
+    /**
+     * Degrees the camera looks down on this key's figure from, as it is baked: NaN for a
+     * figure pictured standing, the way most are, level with it and from its feet.
+     */
+    public static float elevation(ImpostorKey key) {
+        Integer height = HEIGHTS.get(key);
+        return height == null ? Float.NaN : ImpostorViews.HEIGHTS[height];
+    }
+
+    /**
      * The key of a figure: its look, worked out at most every few seconds, since figures
      * hardly ever change; and its posture, which changes often, every time.
      */
@@ -180,6 +208,7 @@ public record ImpostorKey(String type, long appearance) {
     public static void forgetAll() {
         KNOWN.clear();
         POSTURES.clear();
+        HEIGHTS.clear();
     }
 
     /** What has been learnt to leave out, a copy: by kind of mob, then by synched value. */
