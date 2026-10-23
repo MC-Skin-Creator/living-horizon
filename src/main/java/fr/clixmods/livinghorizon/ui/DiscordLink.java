@@ -19,16 +19,34 @@ public final class DiscordLink extends ConfirmLinkScreen {
 
     private final @Nullable Screen parent;
 
+    /** The link as the game's screen takes it: from 26.3, a URI. */
+    //? if >=26.3 {
+    /*private static final java.net.URI LINK = java.net.URI.create(URL);
+    *///?} else {
+    private static final String LINK = URL;
+    //?}
+
     private DiscordLink(@Nullable Screen parent) {
         super(yes -> {
-            if (yes) Util.getPlatform().openUri(URL);
-            Minecraft.getInstance().setScreen(parent);
-        }, URL, true);
+            if (yes) browse();
+            Minecraft minecraft = Minecraft.getInstance();
+            minecraft.setScreen(parent);
+        }, LINK, true);
         this.parent = parent;
     }
 
     public static void open(@Nullable Screen from) {
-        Minecraft.getInstance().setScreen(new DiscordLink(from));
+        Minecraft minecraft = Minecraft.getInstance();
+        minecraft.setScreen(new DiscordLink(from));
+    }
+
+    /** Opens the link in the browser: from 26.3, through the GPU library's window code. */
+    private static void browse() {
+        //? if >=26.3 {
+        /*com.mojang.blaze3d.Blaze3D.openUri(LINK);
+        *///?} else {
+        Util.getPlatform().openUri(LINK);
+        //?}
     }
 
     private boolean overSodium() {

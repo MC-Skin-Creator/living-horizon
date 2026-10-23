@@ -28,7 +28,7 @@ public final class DiscordScenario implements Scenario {
         });
         context.getInput().setCursorPos(at[0], at[1]);
         context.waitTicks(2);
-        context.getInput().pressMouse(org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT);
+        context.getInput().pressMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
     }
 
     private static AbstractWidget find(ContainerEventHandler parent, String key) {
