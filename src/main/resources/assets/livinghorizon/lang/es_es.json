@@ -223,6 +223,8 @@
   "livinghorizon.options.debug": "Opciones de depuración...",
   "livinghorizon.options.debug.tooltip": "Herramientas para ver lo que hace el mod, y ajustes para Distant Horizons, Voxy y los paquetes de shaders. Mejor dejarlos como están salvo que algo se vea mal.",
   "livinghorizon.options.debug.title": "Opciones de depuración",
+  "livinghorizon.options.discord": "Unirse al Discord...",
+  "livinghorizon.options.discord.tooltip": "Abre el servidor de Discord del mod, para hacer una pregunta o informar de un problema.",
   "livinghorizon.options.impostorPreview": "Entidades simplificadas...",
   "livinghorizon.options.impostorPreview.tooltip": "Muestra las imágenes usadas para las entidades simplificadas y las rehace si alguna se ve mal.",
   "livinghorizon.options.debug.rendering": "Visualización",

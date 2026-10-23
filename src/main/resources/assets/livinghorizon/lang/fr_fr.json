@@ -223,6 +223,8 @@
   "livinghorizon.options.debug": "Paramètres de débogage...",
   "livinghorizon.options.debug.tooltip": "Outils pour voir ce que fait le mod, et paramètres pour Distant Horizons, Voxy et les shaders. À laisser tels quels sauf si quelque chose cloche.",
   "livinghorizon.options.debug.title": "Paramètres de débogage",
+  "livinghorizon.options.discord": "Rejoindre le Discord...",
+  "livinghorizon.options.discord.tooltip": "Ouvre le serveur Discord du mod, pour poser une question ou signaler un problème.",
   "livinghorizon.options.impostorPreview": "Entités simplifiées...",
   "livinghorizon.options.impostorPreview.tooltip": "Montre les images utilisées pour les entités simplifiées, et les refait si l'une semble fausse.",
   "livinghorizon.options.debug.rendering": "Affichage",

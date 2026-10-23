@@ -223,6 +223,8 @@
   "livinghorizon.options.debug": "Debug Options...",
   "livinghorizon.options.debug.tooltip": "Tools to see what the mod does, and settings for Distant Horizons, Voxy and shader packs. Best left as they are unless something looks wrong.",
   "livinghorizon.options.debug.title": "Debug Options",
+  "livinghorizon.options.discord": "Join the Discord...",
+  "livinghorizon.options.discord.tooltip": "Opens the mod's Discord server, to ask a question or report a problem.",
   "livinghorizon.options.impostorPreview": "Simplified Entities...",
   "livinghorizon.options.impostorPreview.tooltip": "Shows the pictures used for simplified entities, and rebuilds them if one looks wrong.",
   "livinghorizon.options.debug.rendering": "Display",

@@ -223,6 +223,8 @@
   "livinghorizon.options.debug": "Параметры отладки...",
   "livinghorizon.options.debug.tooltip": "Инструменты, чтобы видеть, что делает мод, и настройки для Distant Horizons, Voxy и наборов шейдеров. Лучше не трогать, если всё выглядит нормально.",
   "livinghorizon.options.debug.title": "Параметры отладки",
+  "livinghorizon.options.discord": "Войти в Discord...",
+  "livinghorizon.options.discord.tooltip": "Открывает сервер Discord мода, чтобы задать вопрос или сообщить о проблеме.",
   "livinghorizon.options.impostorPreview": "Упрощённые сущности...",
   "livinghorizon.options.impostorPreview.tooltip": "Показывает картинки упрощённых сущностей и пересоздаёт их, если какая-то выглядит неправильно.",
   "livinghorizon.options.debug.rendering": "Экран",

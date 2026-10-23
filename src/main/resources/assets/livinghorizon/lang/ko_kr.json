@@ -223,6 +223,8 @@
   "livinghorizon.options.debug": "디버그 설정...",
   "livinghorizon.options.debug.tooltip": "모드가 하는 일을 확인하는 도구와 Distant Horizons, Voxy, 셰이더 팩을 위한 설정입니다. 뭔가 이상해 보이지 않는 한 그대로 두는 것이 좋습니다.",
   "livinghorizon.options.debug.title": "디버그 설정",
+  "livinghorizon.options.discord": "Discord 참가...",
+  "livinghorizon.options.discord.tooltip": "모드의 Discord 서버를 엽니다. 질문하거나 문제를 제보할 수 있습니다.",
   "livinghorizon.options.impostorPreview": "간소화된 개체...",
   "livinghorizon.options.impostorPreview.tooltip": "간소화된 개체에 쓰이는 그림을 보여주고, 이상해 보이는 그림이 있으면 다시 만듭니다.",
   "livinghorizon.options.debug.rendering": "표시",

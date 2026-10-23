@@ -223,6 +223,8 @@
   "livinghorizon.options.debug": "调试选项…",
   "livinghorizon.options.debug.tooltip": "用于查看模组运作情况的工具，以及针对Distant Horizons、Voxy和光影包的设置。除非有东西看起来不对，否则最好保持不变。",
   "livinghorizon.options.debug.title": "调试选项",
+  "livinghorizon.options.discord": "加入 Discord…",
+  "livinghorizon.options.discord.tooltip": "打开模组的 Discord 服务器，以提问或反馈问题。",
   "livinghorizon.options.impostorPreview": "简化实体…",
   "livinghorizon.options.impostorPreview.tooltip": "显示简化实体所用的图片，若某张看起来不对可重新生成。",
   "livinghorizon.options.debug.rendering": "显示",

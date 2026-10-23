@@ -56,7 +56,8 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "debug"), b -> minecraft.setScreen(new DebugScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "debug.tooltip"))).build(),
-                null);
+                Button.builder(Component.translatable(KEY + "discord"), b -> DiscordLink.open(this))
+                        .tooltip(Tooltip.create(Component.translatable(KEY + "discord.tooltip"))).build());
 
         // Distances take a whole row: their names are long, as the game's own are.
         header(Component.translatable(KEY + "impostorsSection"));
