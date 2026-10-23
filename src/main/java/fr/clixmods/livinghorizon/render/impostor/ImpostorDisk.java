@@ -39,18 +39,23 @@ import java.util.zip.GZIPOutputStream;
  *
  * <p>The fingerprint is everything that changes how a figure is drawn: the game version, the
  * resource packs chosen and their files, the mods' files, and how a sheet is baked. When any
- * of them changes, the folder of the old fingerprint is thrown away and the mobs are baked
- * again. The players' sheets are never kept: they come and go.
+ * of them changes, the mobs are baked again into the folder of the new fingerprint. The folders
+ * of the last {@link #FOLDERS} fingerprints are kept, so that switching a resource pack off and
+ * on again reads the sheets back. The players' sheets are never kept: they come and go.
  *
- * <p>Files are read and written on a thread of their own; the render thread only asks and,
- * frames later, uploads what was read ({@link ImpostorAtlas}).
+ * <p>Files are read and written on a thread of their own, and the fingerprint is worked out
+ * there too (it reads every mod's jar): the render thread only asks and, frames later, uploads
+ * what was read ({@link ImpostorAtlas}). Until the sheets of a new fingerprint are listed
+ * ({@link #ready()}), the mobs wait rather than being baked again.
  */
 public final class ImpostorDisk {
     /** Bumped whenever a sheet is baked differently, or the file holds something else. */
     private static final int FORMAT = 2;
     private static final int MAGIC = 0x4C484953;
-    /** Sheet files kept in all: the ones read or written longest ago go first. */
+    /** Sheet files kept per fingerprint: the ones read or written longest ago go first. */
     private static final int KEEP = 4096;
+    /** Fingerprint folders kept, the current one included: the ones chosen longest ago go first. */
+    static final int FOLDERS = 3;
 
     /**
      * How many times larger than {@link ImpostorViews#TILE} the tiles of a sheet on disk are:
@@ -68,9 +73,25 @@ public final class ImpostorDisk {
         return thread;
     });
 
-    /** The folder of the current fingerprint; null until worked out again after a reload. */
+    /**
+     * The folder of the current fingerprint, read and written on the disk's thread only: every
+     * task queued after the one that works it out sees it, the thread running them in order.
+     */
     private static @Nullable Path folder;
-    /** The sheets in {@link #folder}, listed when it is worked out. */
+
+    /** What the disk's thread found in a fingerprint's folder: its sheets, and what was learnt to leave out of keys. */
+    private record Found(Set<ImpostorKey> saved, Map<String, Map<Integer, Long>> restless) {
+    }
+
+    /** What the render thread knows of the game to work the fingerprint out from. */
+    private record Inputs(Path base, File gameDirectory, String game, List<String> packs) {
+    }
+
+    /** The disk's thread working out the current fingerprint; null until asked for after a reload. */
+    private static @Nullable CompletableFuture<Found> finding;
+    /** Whether {@link #SAVED} lists the current fingerprint's sheets. */
+    private static boolean ready;
+    /** The sheets of the current fingerprint, listed when it is worked out. Render thread only. */
     private static final Set<ImpostorKey> SAVED = new HashSet<>();
     /** What {@link ImpostorKey#learnt()} was when last saved. */
     private static int savedLearnt;
@@ -80,28 +101,46 @@ public final class ImpostorDisk {
 
     /** The packs or the mods may have changed: the fingerprint is worked out again. */
     public static void reset() {
-        folder = null;
+        finding = null;
+        ready = false;
         SAVED.clear();
     }
 
-    /** Throws every saved sheet away: they are all baked again. */
+    /** Throws every saved sheet of the current fingerprint away: they are all baked again. */
     public static void clear() {
-        Path old = folder();
         SAVED.clear();
-        savedLearnt = ImpostorKey.learnt() - 1;
-        IO.execute(() -> delete(old));
+        IO.execute(() -> {
+            if (folder != null) deleteSheets(folder);
+        });
     }
 
-    /** Whether a sheet is on disk, never for a player. */
+    /**
+     * Whether the sheets on disk are known. Starts working the fingerprint out after a reload,
+     * on the disk's thread: false until it is, a moment later.
+     */
+    public static boolean ready() {
+        if (ready) return true;
+        if (finding == null) finding = start();
+        Found found = finding.getNow(null);
+        if (found == null) return false;
+        SAVED.clear();
+        SAVED.addAll(found.saved);
+        ImpostorKey.restore(found.restless);
+        savedLearnt = ImpostorKey.learnt();
+        ready = true;
+        return true;
+    }
+
+    /** Whether a sheet is on disk, never for a player. False until {@link #ready()}. */
     public static boolean has(ImpostorKey key) {
-        folder();
-        return SAVED.contains(key);
+        return ready() && SAVED.contains(key);
     }
 
     /** Reads a sheet, on the disk's thread: null when it cannot be read, and then forgotten. */
     public static CompletableFuture<@Nullable Stored> read(ImpostorKey key) {
-        Path file = file(folder(), key);
         return CompletableFuture.supplyAsync(() -> {
+            if (folder == null) return null;
+            Path file = file(folder, key);
             try (DataInputStream in = new DataInputStream(new BufferedInputStream(new GZIPInputStream(Files.newInputStream(file))))) {
                 Stored stored = decode(in);
                 // Read again: kept over the ones not met for longer.
@@ -117,10 +156,10 @@ public final class ImpostorDisk {
     /** A sheet that could not be read: dropped, and baked again. */
     public static void forget(ImpostorKey key) {
         SAVED.remove(key);
-        Path file = file(folder(), key);
         IO.execute(() -> {
+            if (folder == null) return;
             try {
-                Files.deleteIfExists(file);
+                Files.deleteIfExists(file(folder, key));
             } catch (IOException ignored) {
                 // Written over by the next bake.
             }
@@ -129,8 +168,6 @@ public final class ImpostorDisk {
 
     /** Saves a mob's sheet just baked, and what has been learnt to leave out of keys. */
     public static void write(ImpostorKey key, double worldSize, int[][] levels) {
-        Path root = folder();
-        Path file = file(root, key);
         SAVED.add(key);
         Map<String, Map<Integer, Long>> restless = null;
         if (ImpostorKey.learnt() != savedLearnt) {
@@ -139,6 +176,9 @@ public final class ImpostorDisk {
         }
         Map<String, Map<Integer, Long>> learnt = restless;
         IO.execute(() -> {
+            Path root = folder;
+            if (root == null) return;
+            Path file = file(root, key);
             try {
                 Files.createDirectories(file.getParent());
                 Path part = file.resolveSibling(file.getFileName() + ".part");
@@ -191,16 +231,36 @@ public final class ImpostorDisk {
     }
 
     /**
-     * The folder of the current fingerprint, worked out once after each reload: the folders
-     * of other fingerprints are thrown away, the sheets of this one listed, and what an
-     * earlier game learnt to leave out of keys taken back.
+     * Hands the disk's thread what it needs to work the fingerprint out: what only the render
+     * thread may read of the game, taken now, the files read there.
      */
-    private static Path folder() {
-        if (folder != null) return folder;
-        Path base = Platform.configDir().resolve("livinghorizon").resolve("impostors");
-        Path current = base.resolve(fingerprint());
+    private static CompletableFuture<Found> start() {
+        Minecraft minecraft = Minecraft.getInstance();
+        Inputs inputs = new Inputs(Platform.configDir().resolve("livinghorizon").resolve("impostors"),
+                minecraft.gameDirectory, minecraft.getLaunchedVersion(),
+                List.copyOf(minecraft.getResourcePackRepository().getSelectedIds()));
+        return CompletableFuture.supplyAsync(() -> find(inputs), IO).exceptionally(error -> {
+            LivingHorizonClient.LOGGER.warn("Could not look for the saved impostors", error);
+            return new Found(Set.of(), Map.of());
+        });
+    }
+
+    /**
+     * On the disk's thread: the folder of the current fingerprint, its sheets listed and what an
+     * earlier game learnt to leave out of keys read; the folders of fingerprints chosen longest
+     * ago thrown away. Nothing listed when the folder cannot be read: its mobs are baked again.
+     */
+    private static Found find(Inputs inputs) {
+        Path current = inputs.base.resolve(fingerprint(inputs));
         folder = current;
-        SAVED.clear();
+        Set<ImpostorKey> saved = new HashSet<>();
+        try {
+            Files.createDirectories(current);
+            // Chosen now: kept over the folders chosen longer ago.
+            current.toFile().setLastModified(System.currentTimeMillis());
+        } catch (IOException e) {
+            LivingHorizonClient.LOGGER.warn("Could not make the folder of the saved impostors {}", current, e);
+        }
         try (Stream<Path> kinds = Files.isDirectory(current) ? Files.list(current) : Stream.empty()) {
             for (Path kind : kinds.filter(Files::isDirectory).toList()) {
                 String type = kind.getFileName().toString().replace('+', ':').replace('~', '/');
@@ -209,20 +269,19 @@ public final class ImpostorDisk {
                         String name = sheet.getFileName().toString();
                         if (!name.endsWith(".bin")) continue;
                         try {
-                            SAVED.add(new ImpostorKey(type, Long.parseUnsignedLong(name.substring(0, name.length() - 4), 16)));
+                            saved.add(new ImpostorKey(type, Long.parseUnsignedLong(name.substring(0, name.length() - 4), 16)));
                         } catch (NumberFormatException ignored) {
                             // Not one of ours.
                         }
                     }
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             LivingHorizonClient.LOGGER.warn("Could not list the saved impostors in {}", current, e);
         }
-        ImpostorKey.restore(readRestless(current));
-        savedLearnt = ImpostorKey.learnt();
-        IO.execute(() -> tidy(base, current));
-        return current;
+        Map<String, Map<Integer, Long>> restless = readRestless(current);
+        tidy(inputs.base, current, FOLDERS, KEEP);
+        return new Found(saved, restless);
     }
 
     private static Path file(Path root, ImpostorKey key) {
@@ -234,19 +293,18 @@ public final class ImpostorDisk {
      * Everything that changes how a figure is drawn, as a short name: the game, the resource
      * packs chosen and their files, the mods' files, and the format of the sheets.
      */
-    private static String fingerprint() {
-        Minecraft minecraft = Minecraft.getInstance();
+    private static String fingerprint(Inputs inputs) {
         StringBuilder text = new StringBuilder();
         text.append("format ").append(FORMAT).append(" tile ").append(ImpostorViews.TILE).append(" views ")
                 .append(ImpostorViews.VIEWS).append(" mips ").append(ImpostorAtlas.MIPS).append('\n');
-        text.append("game ").append(minecraft.getLaunchedVersion()).append('\n');
-        File packs = new File(minecraft.gameDirectory, "resourcepacks");
-        for (String pack : minecraft.getResourcePackRepository().getSelectedIds()) {
+        text.append("game ").append(inputs.game).append('\n');
+        File packs = new File(inputs.gameDirectory, "resourcepacks");
+        for (String pack : inputs.packs) {
             text.append("pack ").append(pack);
             if (pack.startsWith("file/")) stamp(text, new File(packs, pack.substring("file/".length())));
             text.append('\n');
         }
-        File[] mods = new File(minecraft.gameDirectory, "mods").listFiles();
+        File[] mods = new File(inputs.gameDirectory, "mods").listFiles();
         if (mods != null) {
             List<File> sorted = new ArrayList<>(List.of(mods));
             sorted.sort(Comparator.comparing(File::getName));
@@ -270,23 +328,37 @@ public final class ImpostorDisk {
         text.append(' ').append(file.length()).append(' ').append(file.lastModified());
     }
 
-    /** Throws away the folders of other fingerprints, and the sheets met longest ago past {@link #KEEP}. */
-    private static void tidy(Path base, Path current) {
-        try (Stream<Path> folders = Files.isDirectory(base) ? Files.list(base) : Stream.empty()) {
-            for (Path other : folders.toList()) {
-                if (!other.equals(current) && Files.isDirectory(other)) delete(other);
-            }
+    /**
+     * Keeps the current fingerprint's folder and the {@code folders - 1} others chosen last,
+     * throwing the rest away, and in the current one the {@code sheets} sheets met last.
+     */
+    static void tidy(Path base, Path current, int folders, int sheets) {
+        try (Stream<Path> all = Files.isDirectory(base) ? Files.list(base) : Stream.empty()) {
+            List<Path> others = new ArrayList<>(all.filter(path -> !path.equals(current) && Files.isDirectory(path)).toList());
+            // Chosen last first.
+            others.sort(Comparator.comparingLong((Path path) -> path.toFile().lastModified()).reversed());
+            for (Path old : others.subList(Math.min(others.size(), Math.max(0, folders - 1)), others.size())) delete(old);
         } catch (IOException e) {
             LivingHorizonClient.LOGGER.warn("Could not tidy the saved impostors in {}", base, e);
         }
         if (!Files.isDirectory(current)) return;
         try (Stream<Path> files = Files.walk(current)) {
-            List<Path> sheets = new ArrayList<>(files.filter(path -> path.toString().endsWith(".bin")).toList());
-            if (sheets.size() <= KEEP) return;
-            sheets.sort(Comparator.comparingLong(path -> path.toFile().lastModified()));
-            for (Path old : sheets.subList(0, sheets.size() - KEEP)) Files.deleteIfExists(old);
+            List<Path> kept = new ArrayList<>(files.filter(path -> path.toString().endsWith(".bin")).toList());
+            if (kept.size() <= sheets) return;
+            kept.sort(Comparator.comparingLong(path -> path.toFile().lastModified()));
+            for (Path old : kept.subList(0, kept.size() - sheets)) Files.deleteIfExists(old);
         } catch (IOException e) {
             LivingHorizonClient.LOGGER.warn("Could not tidy the saved impostors in {}", current, e);
+        }
+    }
+
+    /** Throws away every sheet of a folder, keeping what was learnt to leave out of keys. */
+    private static void deleteSheets(Path root) {
+        if (!Files.isDirectory(root)) return;
+        try (Stream<Path> files = Files.walk(root)) {
+            for (Path sheet : files.filter(path -> path.toString().endsWith(".bin")).toList()) Files.deleteIfExists(sheet);
+        } catch (IOException e) {
+            LivingHorizonClient.LOGGER.warn("Could not delete the saved impostors in {}", root, e);
         }
     }
 

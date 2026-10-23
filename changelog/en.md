@@ -10,6 +10,7 @@
 - **Distant phantoms and ghasts flying** — distant phantoms now circle in the sky and distant ghasts drift about, instead of hanging still in the air.
 - **Phantoms and ghasts seen from below** — as *Simplified Entities* (flat pictures of far mobs), phantoms and ghasts are now pictured from below and from above too, like birds, not only from the side.
 - **Smoother with many distant mobs on Vulkan** — the game no longer loses time on every distant mob, every frame, when it draws with Vulkan (Minecraft 26.2 and later) or over Distant Horizons (Minecraft 26.3).
+- **Resource packs switched back and forth** — far mobs' *Simplified Entities* (flat pictures of them) are no longer all drawn again when a resource pack is turned off and back on, and loading resources no longer pauses the game while they are looked for.
 
 ## 0.12.0 — 2026-10-23
 
