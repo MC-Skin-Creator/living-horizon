@@ -97,8 +97,7 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addBig(blocks("mobMaxDistance", 0, 4000, c.mobMaxDistance, v -> c.mobMaxDistance = v));
         list.addSmall(
                 bool("rememberNamedMobs", c.rememberNamedMobs, v -> c.rememberNamedMobs = v),
-                bool("onlyOverTerrain", c.onlyOverTerrain, v -> c.onlyOverTerrain = v));
-        list.addBig(unit("animationMinPixels", "pixels", 0, 40, c.animationMinPixels, v -> c.animationMinPixels = v));
+                unit("animationMinPixels", "pixels", 0, 40, c.animationMinPixels, v -> c.animationMinPixels = v));
         list.addBig(blocks("animationMaxDistance", 0, 4000, c.animationMaxDistance, v -> c.animationMaxDistance = v));
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "chooseMobs"), b -> minecraft.setScreen(new MobTypesScreen(this)))

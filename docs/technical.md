@@ -424,7 +424,7 @@ flat disc at their own height.
 - `maxDistantMobs` of them are drawn at once (512; 1000 is no limit): the nearest remembered
   ones. Past `mobMaxDistance` (512 blocks) none are drawn. Both that distance and the near zone
   are applied after the choice, so copies there still take places and fewer may show.
-- With `onlyOverTerrain` (*Only Over Terrain*, on), a mob is drawn only where terrain is drawn
+- With `onlyOverTerrain` (*Only Over Terrain*, in *Debug Options...*, on), a mob is drawn only where terrain is drawn
   under it (`compat/DrawnGround`): a chunk the game holds within its render distance, measured
   as the game picks its sections, or else a chunk the far world has terrain in, within Voxy's or
   Distant Horizons' own render distance (`LodWorld.drawnDistance`). The far world is asked a
