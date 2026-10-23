@@ -169,6 +169,22 @@ public final class ImpostorAtlas {
      */
     public static final float FEET = 0.9f;
 
+    /**
+     * A flying mob pictured from a height ({@link ImpostorKey#seenFrom}) is turned round its
+     * middle, which stands in the middle of its tiles: half its height above its feet.
+     */
+    public static final float MIDDLE = 0.5f;
+
+    /** Blocks from a flying mob's feet to the middle it is pictured round, from a height. */
+    public static double middle(Entity entity) {
+        return entity.getBbHeight() / 2;
+    }
+
+    /** How far down a tile the origin of an entity's pictures is: its feet, or its middle when seen from a height. */
+    private static float feet(ImpostorKey key) {
+        return Float.isNaN(ImpostorKey.elevation(key)) ? FEET : MIDDLE;
+    }
+
     /** Each view is drawn this many times larger than a tile, then averaged down. */
     private static final int SUPERSAMPLE = 2;
     private static final int RENDER = ImpostorViews.TILE * SUPERSAMPLE;
@@ -388,7 +404,14 @@ public final class ImpostorAtlas {
 
         /** How far down a tile its origin is. */
         float feet() {
-            return figure != null ? figure.feet() : FEET;
+            return figure != null ? figure.feet() : ImpostorAtlas.feet(key);
+        }
+
+        /** Degrees the camera looks down on it from: 0 for a figure pictured level with it. */
+        float elevation() {
+            if (figure != null) return figure.elevation();
+            float elevation = ImpostorKey.elevation(key);
+            return Float.isNaN(elevation) ? 0f : elevation;
         }
 
         /** Pixels along a side of the target a view is drawn in. */
@@ -789,7 +812,7 @@ public final class ImpostorAtlas {
                 continue;
             }
             try {
-                place(loaded.key, index, loaded.stored.worldSize(), FEET, loaded.stored.levels());
+                place(loaded.key, index, loaded.stored.worldSize(), feet(loaded.key), loaded.stored.levels());
                 loads++;
             } catch (RuntimeException | LinkageError error) {
                 free(index);
@@ -999,6 +1022,8 @@ public final class ImpostorAtlas {
     public static final double LYING_LIFT = 0.3;
 
     private static double lift(Request request) {
+        // A flyer seen from a height: its middle where the tile turns.
+        if (request.puppet != null && !Float.isNaN(ImpostorKey.elevation(request.key))) return -middle(request.puppet);
         return request.rider == null && ImpostorKey.posture(request.key) == ImpostorKey.LYING ? LYING_LIFT : 0;
     }
 
@@ -1053,8 +1078,8 @@ public final class ImpostorAtlas {
         pose.translate(render / 2f, render * request.feet(), 0f);
         pose.scale(scale, scale, -scale);
         pose.mulPose(new Quaternionf().rotateZ((float) Math.PI));
-        if (request.figure != null && request.figure.elevation() != 0f) {
-            pose.mulPose(new Quaternionf().rotateX((float) Math.toRadians(-request.figure.elevation())));
+        if (request.elevation() != 0f) {
+            pose.mulPose(new Quaternionf().rotateX((float) Math.toRadians(-request.elevation())));
         }
         return pose;
     }
@@ -1479,7 +1504,7 @@ public final class ImpostorAtlas {
         boolean again = false;
         try {
             if (generation != ImpostorAtlas.generation || pictures == null) return;
-            double growth = request.figure != null ? 1 : growth(pictures, request.render());
+            double growth = request.figure != null ? 1 : growth(pictures, request.render(), request.feet());
             if (growth > 1.01 && request.grow < MAX_GROW) {
                 double grow = Math.min(MAX_GROW, request.grow * growth);
                 GROWN.put(key, grow);
@@ -1566,11 +1591,11 @@ public final class ImpostorAtlas {
     }
 
     /** How much larger the views must be drawn to stay within what their tiles show. */
-    private static double growth(int[][] pictures, int render) {
+    private static double growth(int[][] pictures, int render, float feet) {
         int hidden = (int) Math.ceil(ImpostorRenderer.INSET * render);
         double growth = 1;
         for (int[] picture : pictures) {
-            growth = Math.max(growth, ImpostorPixels.growth(picture, render, hidden, render * (1 - FEET), GROW));
+            growth = Math.max(growth, ImpostorPixels.growth(picture, render, hidden, render * (1 - feet), GROW));
         }
         return growth;
     }

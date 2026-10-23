@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Client
+
+#### Improved
+- **Distant phantoms and ghasts flying** — distant phantoms now circle in the sky and distant ghasts drift about, instead of hanging still in the air.
+- **Phantoms and ghasts seen from below** — as *Simplified Entities* (flat pictures of far mobs), phantoms and ghasts are now pictured from below and from above too, like birds, not only from the side.
+
 ## 0.12.0 — 2026-10-23
 
 ### Server

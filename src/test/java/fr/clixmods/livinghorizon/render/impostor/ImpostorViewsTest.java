@@ -65,4 +65,16 @@ class ImpostorViewsTest {
     void aLongBodyGetsAWiderTile() {
         assertTrue(ImpostorViews.worldSize(1.0, 0.9) > ImpostorViews.worldSize(1.0, 0.5));
     }
+
+    @Test
+    void aFlyerIsPicturedFromTheNearestHeight() {
+        assertEquals(0, ImpostorViews.height(-89));
+        assertEquals(0, ImpostorViews.height(-50));
+        assertEquals(1, ImpostorViews.height(-40));
+        assertEquals(1, ImpostorViews.height(-20));
+        assertEquals(2, ImpostorViews.height(-5));
+        assertEquals(2, ImpostorViews.height(10));
+        assertEquals(3, ImpostorViews.height(20));
+        assertEquals(3, ImpostorViews.height(89));
+    }
 }
