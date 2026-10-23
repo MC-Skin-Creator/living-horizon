@@ -23,6 +23,8 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.Arrays;
+
 /**
  * Draws the pixel birds, from {@code textures/misc/birds.png}: a 64 by 32 sheet.
  *
@@ -82,11 +84,14 @@ public final class AmbientRenderer {
             ambience.ghostBoat().submit(pose, camera, collector, partial);
         }
         boolean models = config.birdModels();
+        Arrays.fill(ASKED, false);
         for (Ambience.Flyer bird : FarPlayerTracker.get().ambience().flyers()) {
             if (!config.skyBirds || bird.kind != Ambience.Kind.SILHOUETTE) continue;
             double x = Mth.lerp(partial, bird.xo, bird.x) - camera.x;
             double y = Mth.lerp(partial, bird.yo, bird.y) - camera.y;
             double z = Mth.lerp(partial, bird.zo, bird.z) - camera.z;
+            // Behind the camera, or less than a pixel: the mobs' own tests.
+            if (GhostRenderer.outOfSight(x, y, z, bird.span * bird.scale)) continue;
             double distance = Math.sqrt(x * x + y * y + z * z);
             GhostRenderer.noteDistance(distance);
             // Past the far plane: closer and smaller in proportion, the same on screen.
@@ -126,6 +131,9 @@ public final class AmbientRenderer {
         }
     }
 
+    /** The species and poses whose pictures were asked for this frame: two per species, flying then perched. */
+    private static final boolean[] ASKED = new boolean[Ambience.Species.values().length * 2];
+
     /**
      * Draws a 3D bird as a picture of itself ({@link BirdFigure}) when it is past the impostor
      * distance or smaller on screen than the impostor size ({@link ImpostorThreshold}), and its
@@ -144,7 +152,11 @@ public final class AmbientRenderer {
         double elevation = Math.toDegrees(Math.atan2(-y, Math.sqrt(x * x + z * z)));
         ImpostorAtlas.Sheet sheet = ImpostorAtlas.sheet(BirdFigure.keyOf(bird.species, bird.perched, wingDegrees, elevation));
         if (sheet == null) {
-            for (BirdFigure each : BirdFigure.all(bird.species, bird.perched)) ImpostorAtlas.request(each.key(), each);
+            int pose = bird.species.ordinal() * 2 + (bird.perched ? 1 : 0);
+            if (!ASKED[pose]) {
+                ASKED[pose] = true;
+                for (BirdFigure each : BirdFigure.all(bird.species, bird.perched)) ImpostorAtlas.request(each.key(), each);
+            }
             return false;
         }
         bird.view = ImpostorViews.view(yaw, -x, -z, bird.view);
