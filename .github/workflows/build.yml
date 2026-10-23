@@ -180,6 +180,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Restore the Gradle cache
+        # Read only: the cache workflow writes it on develop, where every pull request
+        # into develop can read it.
+        uses: ./.github/actions/gradle-cache
+        with:
+          node: ${{ matrix.minecraft }}
+
       - name: Stamp the version
         # The number the release will give these jars, so it can publish them as they are.
         if: needs.version.outputs.version != ''
@@ -205,10 +212,9 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          # Read-only is the default off the default branch, which would mean the
-          # cache is never written on a pull request.
-          cache-read-only: false
-          cache-cleanup: always
+          # Its cache saved some 4 GB per job, which only that pull request could read
+          # again: the step above replaces it.
+          cache-disabled: true
 
       - name: Build
         # build compiles and runs the tests; buildAndCollect copies the jar into
