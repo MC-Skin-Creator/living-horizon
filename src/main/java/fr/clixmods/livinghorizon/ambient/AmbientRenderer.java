@@ -142,15 +142,14 @@ public final class AmbientRenderer {
         }
         // Degrees the camera looks down on the bird from.
         double elevation = Math.toDegrees(Math.atan2(-y, Math.sqrt(x * x + z * z)));
-        BirdFigure figure = BirdFigure.of(bird.species, bird.perched, wingDegrees, elevation);
-        ImpostorAtlas.Sheet sheet = ImpostorAtlas.sheet(figure.key());
+        ImpostorAtlas.Sheet sheet = ImpostorAtlas.sheet(BirdFigure.keyOf(bird.species, bird.perched, wingDegrees, elevation));
         if (sheet == null) {
             for (BirdFigure each : BirdFigure.all(bird.species, bird.perched)) ImpostorAtlas.request(each.key(), each);
             return false;
         }
         bird.view = ImpostorViews.view(yaw, -x, -z, bird.view);
-        ImpostorRenderer.add(new ImpostorRenderer.Billboard(x * pull, y * pull, z * pull,
-                sheet.worldSize() * bird.span * bird.scale * pull, sheet, bird.view, LIGHT, 0, true));
+        ImpostorRenderer.add(x * pull, y * pull, z * pull,
+                sheet.worldSize() * bird.span * bird.scale * pull, sheet, bird.view, LIGHT, 0, true);
         return true;
     }
 

@@ -111,6 +111,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -502,8 +503,15 @@ public final class ImpostorAtlas {
     *///?}
 
     private static final Map<ImpostorKey, Sheet> SHEETS = new LinkedHashMap<>(64, 0.75f, true);
-    /** When each sheet was last drawn or asked for. */
-    private static final Map<ImpostorKey, Long> USED = new HashMap<>();
+    /** When each sheet was last drawn or asked for, in milliseconds: written over in place. */
+    private static final Map<ImpostorKey, long[]> USED = new HashMap<>();
+
+    /** The sheet of {@code key} is drawn or asked for now. */
+    private static void touch(ImpostorKey key) {
+        long[] used = USED.get(key);
+        if (used == null) USED.put(key, used = new long[1]);
+        used[0] = System.currentTimeMillis();
+    }
     private static final Deque<Request> QUEUE = new ArrayDeque<>();
     /** Queued, or drawn and waiting for the read back. */
     private static final Set<ImpostorKey> QUEUED = new HashSet<>();
@@ -588,8 +596,9 @@ public final class ImpostorAtlas {
     /** The pictures of a figure, if baked. Counts as a use, so the sheets in use are kept. */
     public static @Nullable Sheet sheet(ImpostorKey key) {
         settle();
-        Sheet sheet = SHEETS.get(ALIASES.getOrDefault(key, key));
-        if (sheet != null) USED.put(ALIASES.getOrDefault(key, key), System.currentTimeMillis());
+        ImpostorKey own = ALIASES.getOrDefault(key, key);
+        Sheet sheet = SHEETS.get(own);
+        if (sheet != null) touch(own);
         return sheet;
     }
 
@@ -692,12 +701,19 @@ public final class ImpostorAtlas {
     }
     *///?}
 
+    /** The render type of each page, made once: the game hands back the same one every time. */
+    private static RenderType[] types = new RenderType[16];
+
     public static RenderType type(int page) {
+        if (page >= types.length) types = Arrays.copyOf(types, Math.max(page + 1, types.length * 2));
+        RenderType type = types[page];
+        if (type != null) return type;
         //? if >=26.1 {
-        /*return RenderTypes.entityCutout(id(page));
+        /*type = RenderTypes.entityCutout(id(page));
         *///?} else {
-        return RenderTypes.entityCutoutNoCull(id(page));
+        type = RenderTypes.entityCutoutNoCull(id(page));
         //?}
+        return types[page] = type;
     }
 
     /** The texture of one atlas page. */
@@ -861,8 +877,8 @@ public final class ImpostorAtlas {
     }
 
     private static boolean inUse(ImpostorKey key, long within) {
-        Long used = USED.get(key);
-        return used != null && System.currentTimeMillis() - used < within;
+        long[] used = USED.get(key);
+        return used != null && System.currentTimeMillis() - used[0] < within;
     }
 
     /**
@@ -1527,7 +1543,7 @@ public final class ImpostorAtlas {
         ImpostorKey same = LOOKS.get(look);
         if (same != null && !same.equals(key) && SHEETS.containsKey(same)) {
             ALIASES.put(key, same);
-            USED.put(same, System.currentTimeMillis());
+            touch(same);
             free(index);
             return true;
         }
@@ -1538,7 +1554,7 @@ public final class ImpostorAtlas {
             write(owner.texture, level, 0, sheet.row() * tile, tile * ImpostorViews.VIEWS, tile, levels[level]);
         }
         SHEETS.put(key, sheet);
-        USED.put(key, System.currentTimeMillis());
+        touch(key);
         return true;
     }
 

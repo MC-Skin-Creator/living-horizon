@@ -21,10 +21,9 @@ import org.lwjgl.opengl.GLCapabilities;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -75,22 +74,41 @@ public final class OcclusionQueries {
     private static final float[] VIEW_PROJECTION = new float[16];
     private static boolean viewNoted;
 
-    /** A box to ask about this frame, relative to the camera. */
-    private record Box(Object key, float lowX, float lowY, float lowZ, float highX, float highY, float highZ) {
+    /**
+     * Queries sent in one frame, the first {@link #size}, in the order of their keys. Kept and
+     * filled again: a frame allocates nothing once the arrays are large enough.
+     */
+    private static final class Batch {
+        Object[] keys = new Object[64];
+        int[] queries = new int[64];
+        int size;
+        long frame;
+
+        void fit(int n) {
+            if (keys.length >= n) return;
+            int length = Math.max(n, keys.length * 2);
+            keys = new Object[length];
+            queries = new int[length];
+        }
     }
 
-    /** Queries sent in one frame, in the order of their keys. */
-    private record Batch(Object[] keys, int[] queries, long frame) {
+    /** The last answer for a mob, and the frame it was asked in: written over in place. */
+    private static final class Answer {
+        boolean visible;
+        long frame;
     }
 
-    /** The last answer for a mob, and the frame it was asked in. */
-    private record Answer(boolean visible, long frame) {
-    }
-
-    private static final List<Box> ASKED = new ArrayList<>();
+    /** This frame's boxes, relative to the camera: their keys, and two corners each, six floats. */
+    private static Object[] askedKeys = new Object[64];
+    private static float[] askedBoxes = new float[6 * 64];
+    private static int askedSize;
     private static final ArrayDeque<Batch> IN_FLIGHT = new ArrayDeque<>();
-    private static final ArrayDeque<Integer> POOL = new ArrayDeque<>();
+    private static final ArrayDeque<Batch> SPARE = new ArrayDeque<>();
+    /** Query names given back by the GPU, to use again. */
+    private static int[] pool = new int[64];
+    private static int pooled;
     private static final Map<Object, Answer> ANSWERS = new HashMap<>();
+    private static final Matrix4f SCRATCH = new Matrix4f();
     private static long frame;
     private static int culled, asked;
 
@@ -101,14 +119,14 @@ public final class OcclusionQueries {
 
     /** The matrices of this frame, as the level starts to render. */
     static void noteView(Matrix4f modelView, Matrix4f projection) {
-        new Matrix4f(projection).mul(modelView).get(VIEW_PROJECTION);
+        SCRATCH.set(projection).mul(modelView).get(VIEW_PROJECTION);
         viewNoted = true;
     }
 
     /** Before the distant mobs are looked at: what the GPU answered since comes in. */
     public static void beginFrame() {
         frame++;
-        ASKED.clear();
+        clearAsked();
         culled = 0;
         // With Vulkan (26.2 on), there is no OpenGL to ask.
         if (broken || !DepthFar.openGl()) return;
@@ -143,23 +161,18 @@ public final class OcclusionQueries {
      * their two corners in {@code boxes}, six floats each. The others are asked again next frame.
      */
     public static int takeAsked(Object[] keys, float[] boxes) {
-        int size = ASKED.size();
+        int size = askedSize;
         asked = size;
         int n = Math.min(keys.length, size);
         // More than fit in one frame: each frame starts where the last one stopped.
         int start = size > n ? (int) (takeCursor % size) : 0;
         takeCursor += n;
         for (int i = 0; i < n; i++) {
-            Box box = ASKED.get((start + i) % size);
-            keys[i] = box.key;
-            boxes[6 * i] = box.lowX;
-            boxes[6 * i + 1] = box.lowY;
-            boxes[6 * i + 2] = box.lowZ;
-            boxes[6 * i + 3] = box.highX;
-            boxes[6 * i + 4] = box.highY;
-            boxes[6 * i + 5] = box.highZ;
+            int from = (start + i) % size;
+            keys[i] = askedKeys[from];
+            System.arraycopy(askedBoxes, 6 * from, boxes, 6 * i, 6);
         }
-        ASKED.clear();
+        clearAsked();
         return n;
     }
 
@@ -171,7 +184,21 @@ public final class OcclusionQueries {
     /** An answer from the game's device about a box asked in {@code askedIn}. */
     public static void answer(Object key, boolean visible, long askedIn) {
         Answer old = ANSWERS.get(key);
-        if (old == null || old.frame <= askedIn) ANSWERS.put(key, new Answer(visible, askedIn));
+        if (old == null || old.frame <= askedIn) remember(key, visible, askedIn);
+    }
+
+    /** Remembers an answer, in the place of the last one about the same mob. */
+    private static void remember(Object key, boolean visible, long askedIn) {
+        Answer answer = ANSWERS.get(key);
+        if (answer == null) ANSWERS.put(key, answer = new Answer());
+        answer.visible = visible;
+        answer.frame = askedIn;
+    }
+
+    /** Forgets this frame's boxes, and lets go of their keys. */
+    private static void clearAsked() {
+        Arrays.fill(askedKeys, 0, askedSize, null);
+        askedSize = 0;
     }
 
     /** This frame's view-projection, relative to the camera, as the queries use it. */
@@ -194,8 +221,18 @@ public final class OcclusionQueries {
     public static boolean hidden(Object key, double x, double y, double z, double half, double height) {
         if (broken) return false;
         half += MARGIN;
-        ASKED.add(new Box(key, (float) (x - half), (float) (y - MARGIN), (float) (z - half),
-                (float) (x + half), (float) (y + height + MARGIN), (float) (z + half)));
+        if (askedSize == askedKeys.length) {
+            askedKeys = Arrays.copyOf(askedKeys, askedSize * 2);
+            askedBoxes = Arrays.copyOf(askedBoxes, 6 * askedSize * 2);
+        }
+        int at = 6 * askedSize;
+        askedKeys[askedSize++] = key;
+        askedBoxes[at] = (float) (x - half);
+        askedBoxes[at + 1] = (float) (y - MARGIN);
+        askedBoxes[at + 2] = (float) (z - half);
+        askedBoxes[at + 3] = (float) (x + half);
+        askedBoxes[at + 4] = (float) (y + height + MARGIN);
+        askedBoxes[at + 5] = (float) (z + half);
         Answer answer = ANSWERS.get(key);
         if (answer == null || answer.visible || frame - answer.frame > MAX_AGE) return false;
         culled++;
@@ -232,8 +269,8 @@ public final class OcclusionQueries {
     }
 
     private static void drawBoxes(int depthTexture) {
-        asked = ASKED.size();
-        if (broken || ASKED.isEmpty()) return;
+        asked = askedSize;
+        if (broken || askedSize == 0) return;
         if (!viewNoted) {
             reason = "no view this frame";
             return;
@@ -287,7 +324,7 @@ public final class OcclusionQueries {
         } catch (Throwable e) {
             fail(e);
         } finally {
-            ASKED.clear();
+            clearAsked();
             viewNoted = false;
         }
     }
@@ -347,37 +384,49 @@ public final class OcclusionQueries {
         GLCapabilities caps = GL.getCapabilities();
         int target = caps.OpenGL43 || caps.GL_ARB_ES3_compatibility
                 ? GL43C.GL_ANY_SAMPLES_PASSED_CONSERVATIVE : GL33C.GL_ANY_SAMPLES_PASSED;
-        Object[] keys = new Object[ASKED.size()];
-        int[] queries = new int[ASKED.size()];
+        Batch batch = SPARE.isEmpty() ? new Batch() : SPARE.pop();
+        batch.fit(askedSize);
+        batch.frame = frame;
+        Object[] keys = batch.keys;
+        int[] queries = batch.queries;
         GL20C.glUseProgram(program);
         GL20C.glUniformMatrix4fv(matrixLocation, false, VIEW_PROJECTION);
         GL30C.glBindVertexArray(vertexArray);
-        for (int i = 0; i < keys.length; i++) {
-            Box box = ASKED.get(i);
-            keys[i] = box.key;
-            queries[i] = POOL.isEmpty() ? GL15C.glGenQueries() : POOL.pop();
-            GL20C.glUniform3f(lowLocation, box.lowX, box.lowY, box.lowZ);
-            GL20C.glUniform3f(highLocation, box.highX, box.highY, box.highZ);
+        for (int i = 0; i < askedSize; i++) {
+            int at = 6 * i;
+            keys[i] = askedKeys[i];
+            queries[i] = pooled > 0 ? pool[--pooled] : GL15C.glGenQueries();
+            GL20C.glUniform3f(lowLocation, askedBoxes[at], askedBoxes[at + 1], askedBoxes[at + 2]);
+            GL20C.glUniform3f(highLocation, askedBoxes[at + 3], askedBoxes[at + 4], askedBoxes[at + 5]);
             GL15C.glBeginQuery(target, queries[i]);
             GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 36);
             GL15C.glEndQuery(target);
         }
-        IN_FLIGHT.add(new Batch(keys, queries, frame));
+        batch.size = askedSize;
+        IN_FLIGHT.add(batch);
     }
 
     private static void takeAnswers() {
         while (!IN_FLIGHT.isEmpty()) {
             Batch batch = IN_FLIGHT.peek();
             // Queries finish in the order they were sent: the last one done, the batch is done.
-            int last = batch.queries[batch.queries.length - 1];
+            int last = batch.queries[batch.size - 1];
             if (GL15C.glGetQueryObjecti(last, GL15C.GL_QUERY_RESULT_AVAILABLE) == GL11C.GL_FALSE) return;
             IN_FLIGHT.poll();
-            for (int i = 0; i < batch.queries.length; i++) {
+            for (int i = 0; i < batch.size; i++) {
                 boolean visible = GL15C.glGetQueryObjecti(batch.queries[i], GL15C.GL_QUERY_RESULT) != 0;
-                ANSWERS.put(batch.keys[i], new Answer(visible, batch.frame));
-                POOL.push(batch.queries[i]);
+                remember(batch.keys[i], visible, batch.frame);
+                giveBack(batch.queries[i]);
             }
+            Arrays.fill(batch.keys, 0, batch.size, null);
+            batch.size = 0;
+            SPARE.push(batch);
         }
+    }
+
+    private static void giveBack(int query) {
+        if (pooled == pool.length) pool = Arrays.copyOf(pool, pooled * 2);
+        pool[pooled++] = query;
     }
 
     /** A box from two corners, as twelve triangles; nothing is written but the query's count. */
@@ -417,7 +466,9 @@ public final class OcclusionQueries {
         /** Bytes the buffer holds. */
         long capacity;
         long sync;
-        Object[] keys;
+        /** The keys of its boxes, the first {@link #size}: kept and filled again. */
+        Object[] keys = new Object[64];
+        int size;
         long frame;
     }
 
@@ -433,6 +484,9 @@ public final class OcclusionQueries {
     private static IntBuffer words = BufferUtils.createIntBuffer(64);
     private static final ArrayDeque<Words> WORDS_IN_FLIGHT = new ArrayDeque<>();
     private static final ArrayDeque<Words> WORDS_FREE = new ArrayDeque<>();
+    /** The storage buffer bindings put back after the draw, read again each frame. */
+    private static final int[] BOUND = new int[2];
+    private static final long[] STARTS = new long[2], SIZES = new long[2];
 
     /** Shader storage buffers and early fragment tests, both in OpenGL 4.3. */
     private static boolean wordsUsable() {
@@ -445,7 +499,7 @@ public final class OcclusionQueries {
      * Every binding touched is put back: the game, Sodium and the shader packs keep buffers there.
      */
     private static void drawWords() {
-        int n = ASKED.size();
+        int n = askedSize;
         if (wordsProgram == 0) {
             wordsProgram = compileWords();
             wordsMatrixLocation = GL20C.glGetUniformLocation(wordsProgram, "viewProjection");
@@ -454,12 +508,11 @@ public final class OcclusionQueries {
         }
         if (corners.capacity() < 8 * n) corners = BufferUtils.createFloatBuffer(8 * Math.max(n, 2 * corners.capacity() / 8));
         if (words.capacity() < n) words = BufferUtils.createIntBuffer(Math.max(n, 2 * words.capacity()));
-        Object[] keys = new Object[n];
         corners.clear();
         for (int i = 0; i < n; i++) {
-            Box box = ASKED.get(i);
-            keys[i] = box.key;
-            corners.put(box.lowX).put(box.lowY).put(box.lowZ).put(0f).put(box.highX).put(box.highY).put(box.highZ).put(0f);
+            int at = 6 * i;
+            corners.put(askedBoxes[at]).put(askedBoxes[at + 1]).put(askedBoxes[at + 2]).put(0f)
+                    .put(askedBoxes[at + 3]).put(askedBoxes[at + 4]).put(askedBoxes[at + 5]).put(0f);
         }
         corners.flip();
         // Streamed: a new store each frame, so the GPU never waits for the last frame's draw.
@@ -477,8 +530,8 @@ public final class OcclusionQueries {
         }
 
         int storage = GL11C.glGetInteger(GL43C.GL_SHADER_STORAGE_BUFFER_BINDING);
-        int[] bound = new int[2];
-        long[] starts = new long[2], sizes = new long[2];
+        int[] bound = BOUND;
+        long[] starts = STARTS, sizes = SIZES;
         for (int i = 0; i < 2; i++) {
             bound[i] = GL30C.glGetIntegeri(GL43C.GL_SHADER_STORAGE_BUFFER_BINDING, i);
             starts[i] = GL32C.glGetInteger64i(GL43C.GL_SHADER_STORAGE_BUFFER_START, i);
@@ -505,7 +558,9 @@ public final class OcclusionQueries {
             GL15C.glBindBuffer(GL43C.GL_SHADER_STORAGE_BUFFER, storage);
         }
         batch.sync = GL32C.glFenceSync(GL32C.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-        batch.keys = keys;
+        if (batch.keys.length < n) batch.keys = new Object[Math.max(n, batch.keys.length * 2)];
+        System.arraycopy(askedKeys, 0, batch.keys, 0, n);
+        batch.size = n;
         batch.frame = frame;
         WORDS_IN_FLIGHT.add(batch);
     }
@@ -518,15 +573,14 @@ public final class OcclusionQueries {
             WORDS_IN_FLIGHT.poll();
             GL32C.glDeleteSync(batch.sync);
             batch.sync = 0;
-            int n = batch.keys.length;
+            int n = batch.size;
             if (words.capacity() < n) words = BufferUtils.createIntBuffer(n);
             words.clear();
             words.limit(n);
             GL45C.glGetNamedBufferSubData(batch.buffer, 0, words);
-            for (int i = 0; i < n; i++) {
-                ANSWERS.put(batch.keys[i], new Answer(words.get(i) != 0, batch.frame));
-            }
-            batch.keys = null;
+            for (int i = 0; i < n; i++) remember(batch.keys[i], words.get(i) != 0, batch.frame);
+            Arrays.fill(batch.keys, 0, n, null);
+            batch.size = 0;
             WORDS_FREE.push(batch);
         }
     }

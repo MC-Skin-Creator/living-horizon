@@ -430,7 +430,7 @@ public final class RestingPuppet extends RemotePlayer {
             playing.from(getX(), getY(), getZ(), yBodyRot);
         }
         double moved = playing.tick((int) level.getGameTime(), false);
-        setPos(playing.x, playing.y, playing.z);
+        if (getX() != playing.x || getY() != playing.y || getZ() != playing.z) setPos(playing.x, playing.y, playing.z);
         yBodyRot = playing.body;
         activity = playing.pausing ? Activity.SIT : Activity.IDLE;
         glance(false);
