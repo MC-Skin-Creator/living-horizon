@@ -36,6 +36,7 @@ public final class ImpostorSharingScenario implements Scenario {
         Scene.configure(context, config -> {
             config.impostors = true;
             config.impostorDistance = 32;
+            config.impostorPixels = 0;
         });
         ImpostorKey pig;
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {

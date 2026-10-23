@@ -188,12 +188,20 @@ jobs:
             17
             21
 
+      - name: Restore the Gradle cache
+        # Read only, as on a pull request: develop reads what the cache workflow saved
+        # there, main finds nothing of it and builds without.
+        if: steps.reuse.outputs.taken != 'true'
+        uses: ./.github/actions/gradle-cache
+        with:
+          node: ${{ matrix.target.node }}
+
       - name: Set up Gradle
         if: steps.reuse.outputs.taken != 'true'
         uses: gradle/actions/setup-gradle@v4
         with:
-          cache-read-only: false
-          cache-cleanup: always
+          # Writing here would evict what the cache workflow keeps for the pull requests.
+          cache-disabled: true
 
       - name: Stamp the version
         if: steps.reuse.outputs.taken != 'true'

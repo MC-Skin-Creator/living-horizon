@@ -72,6 +72,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 () -> FarConfig.get().easterEggs)))
                 .addOptionGroup(b.createOptionGroup()
                         .addOption(opens(b, "debug", DebugScreen::new))
+                        .addOption(button(b, "discord", DiscordLink::open))
                         .addOption(button(b, "restoreDefaults", parent -> confirm(parent, "restoreDefaults", () -> {
                             FarConfig.reset();
                             reload();
@@ -88,6 +89,10 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 .setEnabledProvider(on("impostors"), id("impostors")))
                         .addOption(blocks(b, "impostorDistance", 32, 2000, d.impostorDistance,
                                 v -> FarConfig.get().impostorDistance = v, () -> FarConfig.get().impostorDistance)
+                                .setEnabledProvider(on("impostors"), id("impostors")))
+                        .addOption(integer(b, "impostorPixels", 0, FarConfig.MAX_IMPOSTOR_PIXELS, d.impostorPixels,
+                                v -> FarConfig.get().impostorPixels = v, () -> FarConfig.get().impostorPixels,
+                                unit("impostorPixels", "pixels", 0))
                                 .setEnabledProvider(on("impostors"), id("impostors")))
                         .addOption(integer(b, "impostorMobMemory", FarConfig.MIN_MOB_MEMORY, FarConfig.MAX_MOB_MEMORY,
                                 d.impostorMobMemory, v -> FarConfig.get().impostorMobMemory = v,

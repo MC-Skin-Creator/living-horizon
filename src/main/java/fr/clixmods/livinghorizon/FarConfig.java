@@ -115,6 +115,13 @@ public final class FarConfig {
     /** Blocks: past this, distant mobs are not drawn. 0 is no limit. */
     public int mobMaxDistance = 512;
 
+    /**
+     * Distant mobs are drawn only where terrain is drawn under them: a chunk the game draws, or
+     * the far terrain of Voxy or Distant Horizons. Off, a mob remembered where neither has drawn
+     * anything yet stands in the void.
+     */
+    public boolean onlyOverTerrain = true;
+
     /** Blocks: past this, distant players are not drawn. 0, the default, is no limit. */
     public int playerMaxDistance = 0;
 
@@ -194,7 +201,8 @@ public final class FarConfig {
     public boolean hideOccludedMobs = true;
 
     /**
-     * Distant players and mobs past {@link #impostorDistance} are drawn as a flat picture of
+     * Distant players and mobs past {@link #impostorDistance}, or smaller on screen than
+     * {@link #impostorPixels}, are drawn as a flat picture of
      * themselves, turned to the camera, instead of their whole model. The pictures are
      * baked from the game's own renderers when a world is joined and again whenever the
      * resource packs change, so skins, mobs and packs are all followed.
@@ -203,6 +211,15 @@ public final class FarConfig {
 
     /** Blocks: past this distance an impostor stands in for the model. */
     public int impostorDistance = 128;
+
+    /**
+     * Pixels: a figure shorter than this on screen is an impostor too, even closer than
+     * {@link #impostorDistance} (its model back only a little above). 0 goes by the distance alone.
+     */
+    public int impostorPixels = 10;
+
+    /** Range of {@link #impostorPixels}. */
+    public static final int MAX_IMPOSTOR_PIXELS = 64;
 
     /** Distant players become impostors too; off, they keep their whole model at any distance. */
     public boolean impostorPlayers = true;
@@ -423,6 +440,7 @@ public final class FarConfig {
         // Written by hand out of range: the nearest end.
         config.impostorMobMemory = Math.clamp(config.impostorMobMemory, MIN_MOB_MEMORY, MAX_MOB_MEMORY);
         config.impostorPlayerMemory = Math.clamp(config.impostorPlayerMemory, MIN_PLAYER_MEMORY, MAX_PLAYER_MEMORY);
+        config.impostorPixels = Math.clamp(config.impostorPixels, 0, MAX_IMPOSTOR_PIXELS);
         config.version = CURRENT;
     }
 

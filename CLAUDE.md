@@ -188,8 +188,17 @@ when everything on `develop` has shipped, merges `main` into it otherwise, and o
 ## CI and releases
 
 `.github/workflows/build.yml` builds and tests every Stonecutter target on each pull
-request, and attaches the jar as a 14-day workflow artifact. CI is
-what checks a change; a pull request is not done until it is green.
+request, and attaches the jar as a 14-day workflow artifact. A pull request that only
+changes Markdown files and the LICENSE skips the targets (the changelog is still checked).
+CI is what checks a change; a pull request is not done until it is green.
+
+The Gradle cache is written by `.github/workflows/cache.yml` on `develop` only, and read by
+the pull request builds and the release (`.github/actions/gradle-cache`): one entry of
+downloads shared by every job, and one per Forge and NeoForge node with its prepared
+Minecraft (three minutes per node without it). `.github/scripts/gradle-cache.py` holds the
+keys and paths. A pull request never writes it: only that pull request could read it again,
+and 56 entries of 4 GB evicted each other from the repository's 10 GB. An entry nobody read
+for seven days is dropped; running the workflow by hand from `develop` fills it again.
 
 The release does not build again what a pull request built. A pull request into `develop`
 or `main` stamps the version its merge will release (`.github/scripts/release-version.sh`,
@@ -476,6 +485,11 @@ come back, add it here in the same pull request: this file is what the next sess
   The Fabric API's client networking stays in `ClientNetwork`, which a server never loads.
   Check a server by installing the loader's server from its installer, the jar in `mods/`,
   and reading the console for "sharing the positions of this server".
+- **Disconnected on Forge with "mismatched mod channel list"** (a single player world closing as
+  it opens, players with the mod kicked from a Forge server with it; Forge 1.20.2 and later):
+  Forge's `ChannelBuilder.optional()` freezes the versions each side accepts to the protocol
+  version set so far, so `Network.register` sets `networkProtocolVersion` before it; the other
+  way round, both sides accept 0 and announce 1. Check it by opening a world on a Forge node.
 - **Settings, remembered mobs or players who logged off gone after a restart**: a file that
   did not read is kept beside it as `<name>.bad` (`JsonStore`; the server's
   `livinghorizon-positions.dat.bad`), with a line in the log saying why. The server's file has a
@@ -491,6 +505,13 @@ come back, add it here in the same pull request: this file is what the next sess
   added at the end of a record, or after the records, raises `VERSION` only; anything else
   raises `READABLE_FROM` too, and older clients stop reading. `PositionsMessageTest` holds the
   exact bytes: a layout change that fails it needs one of the two.
+- **Skip Hidden Mobs costing a lot with many mobs** (the debug panel's occlusion line says "one
+  query each"): the one-draw path of `OcclusionQueries` (OpenGL 4.3, a word per box in a shader
+  storage buffer, read back behind a fence) failed and the per-box queries took over, five GL
+  calls per mob per frame; the log says why. The depth copies that only the debug view reads
+  (`saved`, `drawn` when nothing was merged) are made only with *Depth View* on. **Never remove
+  either**: the author measured 70 to 100 FPS from the two together; the per-box queries are the
+  fallback for OpenGL older than 4.3 and nothing else.
 - **Frame rate lost to the mod** (with Voxy or not): measure before guessing. On the player's
   machine, ask for the report of `/livinghorizon benchmark` (`debug/Benchmark`): frame times with
   the mod off, each preset and each part on its own, on their GPU and mods. Run in the world
@@ -504,6 +525,13 @@ come back, add it here in the same pull request: this file is what the next sess
   the game's fog on entities does not know. `FarFog` gives the world's entities Voxy's curve, from
   a second fog `FogRendererMixin` writes next to the game's; a new Voxy that computes its limit
   otherwise (`NormalRenderPipeline.finish`, `javap`) needs `FarFog.voxyLimit` to follow.
+- **Water gone under a shader pack whenever a distant figure is in view** (Photon with Distant
+  Horizons on 26.3: the lake shows its bare, shadowed bed, with *Hide Behind Far Terrain* on; the
+  depth view looks right): from 26.3 the game caches blending and the colour mask per draw
+  buffer and skips the call when its cache already says so. Anything that toggles `GL_BLEND` or
+  `glColorMask` for all buffers at once and puts back the first buffer's value desynchronises
+  that cache for the pack's other buffers. `FarDepth.GlState` saves and restores both per draw
+  buffer (`glEnablei`, `glColorMaski`); every raw GL draw of the mod goes through it.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
