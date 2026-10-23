@@ -11,11 +11,15 @@
 
 ### Serveur
 
+#### Nouveautés
+- **Réglages du serveur** — `config/livinghorizon-server.json`, écrit au premier démarrage du serveur, choisit ce que le serveur partage : joueurs connectés, joueurs déconnectés et mobs, jusqu'à quelle distance, avec les coéquipiers seulement, et quels joueurs et quelles dimensions ne sont jamais partagés ; les changements s'appliquent en quelques secondes, sans redémarrer.
+
 #### Améliorations
 - **Plus léger sur les gros serveurs** — le serveur passe moins de temps à choisir à qui envoyer skin et monture, et envoie une longue liste de joueurs déconnectés en plusieurs fois au lieu d'un seul message trop gros pour le jeu.
 - **Les joueurs ont aussi besoin de cette version** — sur un serveur qui a cette version, les joueurs doivent l'avoir aussi pour voir les joueurs lointains.
 
 #### Corrections
+- **Spectateurs et joueurs invisibles visibles de loin** — les joueurs en mode spectateur ou invisibles ne sont plus montrés aux autres joueurs au loin, ni là où ils se sont déconnectés.
 - **Joueurs déconnectés perdus quand le fichier du monde ne se lit pas** — un `livinghorizon-positions.dat` que le serveur ne sait pas lire n'est plus écrasé : il est gardé en `livinghorizon-positions.dat.bad`, et la console le signale.
 
 ### Client

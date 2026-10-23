@@ -11,11 +11,15 @@
 
 ### Server
 
+#### New
+- **Server settings** — `config/livinghorizon-server.json`, written the first time the server starts, chooses what the server shares: players online, players who logged off and mobs, how far, with teammates only, and which players and dimensions are never shared; changes apply within seconds, without a restart.
+
 #### Improved
 - **Lighter on big servers** — the server spends less time choosing whose skin and mount to send each player, and sends a long list of players who logged off in several parts instead of one message too large for the game.
 - **Players need this version too** — on a server with this version, players need it as well to see distant players.
 
 #### Fixed
+- **Spectators and invisible players seen from afar** — players in spectator mode or invisible are no longer shown to other players far away, nor where they logged off.
 - **Offline players lost when the world file cannot be read** — a `livinghorizon-positions.dat` the server cannot read is no longer written over: it is kept as `livinghorizon-positions.dat.bad`, and the console says so.
 
 ### Client
