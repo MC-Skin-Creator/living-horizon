@@ -4,14 +4,19 @@
 
 ### Serveur
 
+#### Nouveautés
+- **Réglages du serveur** — `config/livinghorizon-server.json`, écrit au premier démarrage du serveur, choisit ce que le serveur partage : joueurs connectés, joueurs déconnectés et mobs, jusqu'à quelle distance, avec les coéquipiers seulement, et quels joueurs et quelles dimensions ne sont jamais partagés ; les changements s'appliquent en quelques secondes, sans redémarrer.
+
 #### Corrections
 - **Joueurs éjectés des serveurs Forge** — un serveur Forge avec le mod n'éjecte plus les joueurs qui l'ont aussi dès qu'ils se connectent, avec « mismatched mod channel list » (Forge 1.20.2 et plus).
+- **Spectateurs et joueurs invisibles visibles de loin** — les joueurs en mode spectateur ou invisibles ne sont plus montrés aux autres joueurs au loin, ni là où ils se sont déconnectés.
 
 ### Client
 
 #### Nouveautés
 - **Bouton Discord** — les réglages du mod ont maintenant un logo Discord à côté du titre, pour rejoindre le serveur, poser une question ou signaler un problème (un bouton *Rejoindre le Discord* sur la page de Sodium).
 - **Version du mod affichée** — les écrans de réglages et le panneau de debug affichent maintenant la version de Living Horizon, pratique à donner avec un signalement de bug.
+- **Taille de simplification** — un nouveau réglage transforme aussi les mobs, joueurs et oiseaux lointains en *Entités simplifiées* (des images plates d'eux) quand ils paraissent plus petits à l'écran qu'un nombre de pixels, même avant la *Distance de simplification* (10 pixels par défaut).
 
 #### Améliorations
 - **Plus fluide avec des centaines de mobs lointains** — *Ignorer cachés* coûte bien moins cher avec beaucoup de mobs et de joueurs lointains à l'écran, le terrain lointain est copié moins souvent en coulisses, et la lumière sur les silhouettes est lue moins souvent.
@@ -28,15 +33,11 @@
 
 ### Serveur
 
-#### Nouveautés
-- **Réglages du serveur** — `config/livinghorizon-server.json`, écrit au premier démarrage du serveur, choisit ce que le serveur partage : joueurs connectés, joueurs déconnectés et mobs, jusqu'à quelle distance, avec les coéquipiers seulement, et quels joueurs et quelles dimensions ne sont jamais partagés ; les changements s'appliquent en quelques secondes, sans redémarrer.
-
 #### Améliorations
 - **Plus léger sur les gros serveurs** — le serveur passe moins de temps à choisir à qui envoyer skin et monture, et envoie une longue liste de joueurs déconnectés en plusieurs fois au lieu d'un seul message trop gros pour le jeu.
 - **Les joueurs ont aussi besoin de cette version** — sur un serveur qui a cette version, les joueurs doivent l'avoir aussi pour voir les joueurs lointains.
 
 #### Corrections
-- **Spectateurs et joueurs invisibles visibles de loin** — les joueurs en mode spectateur ou invisibles ne sont plus montrés aux autres joueurs au loin, ni là où ils se sont déconnectés.
 - **Joueurs déconnectés perdus quand le fichier du monde ne se lit pas** — un `livinghorizon-positions.dat` que le serveur ne sait pas lire n'est plus écrasé : il est gardé en `livinghorizon-positions.dat.bad`, et la console le signale.
 
 ### Client
@@ -45,7 +46,6 @@
 - **Benchmark** — `/livinghorizon benchmark` mesure ce que le mod coûte dans ton monde, partie par partie, et écrit un rapport à joindre à un signalement de bug.
 - **Monde de benchmark** — `/livinghorizon benchmark world` crée un nouveau monde de test, toujours le même, où le benchmark part du même endroit à chaque fois, au milieu de mobs et de joueurs déconnectés ; ton propre monde reste tel quel.
 - **Déconnectés max** — un nouveau réglage choisit combien de joueurs déconnectés sont affichés en même temps, les plus proches d'abord (256 par défaut) ; les autres réapparaissent quand tu t'en approches.
-- **Taille de simplification** — un nouveau réglage transforme aussi les mobs, joueurs et oiseaux lointains en *Entités simplifiées* (des images plates d'eux) quand ils paraissent plus petits à l'écran qu'un nombre de pixels, même avant la *Distance de simplification* (10 pixels par défaut).
 
 #### Améliorations
 - **Message plus clair quand les versions diffèrent** — quand le mod du serveur est trop ancien ou trop récent pour le tien, le journal dit lequel mettre à jour, au lieu de dire que le serveur n'a pas le mod.

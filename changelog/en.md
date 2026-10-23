@@ -4,14 +4,19 @@
 
 ### Server
 
+#### New
+- **Server settings** — `config/livinghorizon-server.json`, written the first time the server starts, chooses what the server shares: players online, players who logged off and mobs, how far, with teammates only, and which players and dimensions are never shared; changes apply within seconds, without a restart.
+
 #### Fixed
 - **Players kicked from Forge servers** — a Forge server with the mod no longer drops the players who have it too as they join, with "mismatched mod channel list" (Forge 1.20.2 and later).
+- **Spectators and invisible players seen from afar** — players in spectator mode or invisible are no longer shown to other players far away, nor where they logged off.
 
 ### Client
 
 #### New
 - **Discord button** — the mod's settings now have a Discord logo beside the title, to join the server and ask a question or report a problem (a *Join the Discord* button on Sodium's page).
 - **Mod version shown** — the settings screens and the debug panel now show the version of Living Horizon, handy to give with a bug report.
+- **Simplification Size** — a new setting also turns far mobs, players and birds into *Simplified Entities* (flat pictures of them) when they look smaller on screen than a number of pixels, even before the *Simplification Distance* (10 pixels by default).
 
 #### Improved
 - **Smoother with hundreds of distant mobs** — *Skip Hidden Mobs* costs much less with many distant mobs and players in view, the far terrain is copied less often behind the scenes, and the light on the figures is read less often.
@@ -28,15 +33,11 @@
 
 ### Server
 
-#### New
-- **Server settings** — `config/livinghorizon-server.json`, written the first time the server starts, chooses what the server shares: players online, players who logged off and mobs, how far, with teammates only, and which players and dimensions are never shared; changes apply within seconds, without a restart.
-
 #### Improved
 - **Lighter on big servers** — the server spends less time choosing whose skin and mount to send each player, and sends a long list of players who logged off in several parts instead of one message too large for the game.
 - **Players need this version too** — on a server with this version, players need it as well to see distant players.
 
 #### Fixed
-- **Spectators and invisible players seen from afar** — players in spectator mode or invisible are no longer shown to other players far away, nor where they logged off.
 - **Offline players lost when the world file cannot be read** — a `livinghorizon-positions.dat` the server cannot read is no longer written over: it is kept as `livinghorizon-positions.dat.bad`, and the console says so.
 
 ### Client
@@ -45,7 +46,6 @@
 - **Benchmark** — `/livinghorizon benchmark` measures what the mod costs in your world, part by part, and writes a report you can send with a bug report.
 - **Benchmark world** — `/livinghorizon benchmark world` makes a new test world, always the same, where the benchmark runs from the same spot every time, among mobs and players who logged off; your own world is kept as it is.
 - **Max Offline** — a new setting chooses how many players who logged off are shown at once, the nearest first (256 by default); the others show again as you come near.
-- **Simplification Size** — a new setting also turns far mobs, players and birds into *Simplified Entities* (flat pictures of them) when they look smaller on screen than a number of pixels, even before the *Simplification Distance* (10 pixels by default).
 
 #### Improved
 - **Clearer message when versions differ** — when the mod on the server is too old or too new for yours, the log says which one to update, instead of saying the server does not have the mod.
