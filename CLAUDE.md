@@ -192,6 +192,14 @@ request, and attaches the jar as a 14-day workflow artifact. A pull request that
 changes Markdown files and the LICENSE skips the targets (the changelog is still checked).
 CI is what checks a change; a pull request is not done until it is green.
 
+The Gradle cache is written by `.github/workflows/cache.yml` on `develop` only, and read by
+the pull request builds and the release (`.github/actions/gradle-cache`): one entry of
+downloads shared by every job, and one per Forge and NeoForge node with its prepared
+Minecraft (three minutes per node without it). `.github/scripts/gradle-cache.py` holds the
+keys and paths. A pull request never writes it: only that pull request could read it again,
+and 56 entries of 4 GB evicted each other from the repository's 10 GB. An entry nobody read
+for seven days is dropped; running the workflow by hand from `develop` fills it again.
+
 The release does not build again what a pull request built. A pull request into `develop`
 or `main` stamps the version its merge will release (`.github/scripts/release-version.sh`,
 shared by both workflows) and, once every target is built, leaves a `prebuilt-<tree>-<version>`
