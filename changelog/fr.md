@@ -15,6 +15,7 @@
 
 #### Améliorations
 - **Plus fluide avec des centaines de mobs lointains** — *Ignorer cachés* coûte bien moins cher avec beaucoup de mobs et de joueurs lointains à l'écran, le terrain lointain est copié moins souvent en coulisses, et la lumière sur les silhouettes est lue moins souvent.
+- **Minecraft 1.21.1 plus facile à trouver** — les builds Fabric, Quilt et NeoForge pour Minecraft 1.21 et 1.21.1 sont maintenant publiés en bêta : ils apparaissent sur CurseForge et dans les launchers qui masquent les versions alpha.
 
 #### Corrections
 - **Mobs lointains qui flottent dans le vide** — les mobs lointains ne sont plus dessinés là où aucun terrain n'est encore dessiné sous eux, ni celui du jeu, ni celui de Voxy ou de Distant Horizons.

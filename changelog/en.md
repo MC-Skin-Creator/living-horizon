@@ -15,6 +15,7 @@
 
 #### Improved
 - **Smoother with hundreds of distant mobs** — *Skip Hidden Mobs* costs much less with many distant mobs and players in view, the far terrain is copied less often behind the scenes, and the light on the figures is read less often.
+- **Minecraft 1.21.1 easier to find** — the Fabric, Quilt and NeoForge builds for Minecraft 1.21 and 1.21.1 are now published as beta, so they show on CurseForge and in launchers that hide alpha builds.
 
 #### Fixed
 - **Distant mobs floating in the void** — distant mobs are no longer drawn where no terrain is drawn under them yet, neither the game's nor Voxy's or Distant Horizons'.
