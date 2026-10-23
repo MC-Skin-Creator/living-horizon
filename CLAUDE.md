@@ -188,8 +188,9 @@ when everything on `develop` has shipped, merges `main` into it otherwise, and o
 ## CI and releases
 
 `.github/workflows/build.yml` builds and tests every Stonecutter target on each pull
-request, and attaches the jar as a 14-day workflow artifact. CI is
-what checks a change; a pull request is not done until it is green.
+request, and attaches the jar as a 14-day workflow artifact. A pull request that only
+changes Markdown files and the LICENSE skips the targets (the changelog is still checked).
+CI is what checks a change; a pull request is not done until it is green.
 
 The release does not build again what a pull request built. A pull request into `develop`
 or `main` stamps the version its merge will release (`.github/scripts/release-version.sh`,
