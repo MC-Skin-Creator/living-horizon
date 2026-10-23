@@ -7,6 +7,9 @@
 #### Improved
 - **Server lag spikes** — a server with the mod no longer stalls for a moment every few seconds when it has many mobs, nor every minute while saving what it shares, and it starts faster: the players a world had before the mod are read only the first time.
 
+#### Fixed
+- **Players kicked from Forge servers** — a Forge server with the mod no longer drops the players who have it too as they join, with "mismatched mod channel list" (Forge 1.20.2 and later).
+
 ### Client
 
 #### New
@@ -18,6 +21,7 @@
 
 #### Fixed
 - **Distant mobs floating in the void** — distant mobs are no longer drawn where no terrain is drawn under them yet, neither the game's nor Voxy's or Distant Horizons'.
+- **Single player worlds closing at once on Forge** — a single player world no longer closes as soon as it opens, with "mismatched mod channel list" (Forge 1.20.2 and later).
 
 ## 0.11.0 — 2026-10-22
 
