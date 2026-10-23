@@ -30,8 +30,8 @@ public final class ModVersion {
         return version;
     }
 
-    /** "Living Horizon v0.10.0", shown on the mod's screens. */
+    /** "v0.10.0", shown under the title of the mod's screens, which already name the mod. */
     public static Component label() {
-        return Component.literal("Living Horizon v" + get());
+        return Component.literal("v" + get());
     }
 }

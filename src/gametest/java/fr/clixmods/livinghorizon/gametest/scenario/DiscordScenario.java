@@ -14,7 +14,7 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 
 /**
  * The Discord button of the settings: it opens the game's question about the link, and
- * cancelling it comes back to the settings. The version sits under the title of both screens.
+ * cancelling it comes back to the settings, from the logo beside its title. The version sits under the title of both screens.
  */
 public final class DiscordScenario implements Scenario {
     /** Presses the button with the real mouse: the settings keep theirs in a list, which the helper does not search. */
@@ -33,14 +33,19 @@ public final class DiscordScenario implements Scenario {
 
     private static AbstractWidget find(ContainerEventHandler parent, String key) {
         for (GuiEventListener child : parent.children()) {
-            if (child instanceof AbstractWidget widget && widget.getMessage().getContents() instanceof TranslatableContents t
-                    && t.getKey().equals(key)) return widget;
+            if (child instanceof AbstractWidget widget && matches(widget, key)) return widget;
             if (child instanceof ContainerEventHandler container) {
                 AbstractWidget found = find(container, key);
                 if (found != null) return found;
             }
         }
         return null;
+    }
+
+    /** The logo button has no text: "" names it; any other key is a button's translation key. */
+    private static boolean matches(AbstractWidget widget, String key) {
+        if (key.isEmpty()) return widget instanceof net.minecraft.client.gui.components.Button && widget.getMessage().getString().isEmpty();
+        return widget.getMessage().getContents() instanceof TranslatableContents t && t.getKey().equals(key);
     }
 
     @Override
@@ -55,7 +60,7 @@ public final class DiscordScenario implements Scenario {
             context.waitTicks(5);
             Scene.screenshot(context, this, "settings");
 
-            click(context, "livinghorizon.options.discord");
+            click(context, "");
             context.waitTicks(5);
             if (!context.computeOnClient(minecraft -> minecraft.screen instanceof DiscordLink)) {
                 throw new AssertionError("the Discord button did not open the link question");

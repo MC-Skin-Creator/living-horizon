@@ -7,7 +7,7 @@
 #### New
 - **Benchmark** — `/livinghorizon benchmark` measures what the mod costs in your world, part by part, and writes a report you can send with a bug report.
 - **Benchmark world** — `/livinghorizon benchmark world` makes a new test world, always the same, where the benchmark runs from the same spot every time, among mobs and players who logged off; your own world is kept as it is.
-- **Discord button** — the mod's settings now have a *Join the Discord* button, to ask a question or report a problem (also on Sodium's page).
+- **Discord button** — the mod's settings now have a Discord logo beside the title, to join the server and ask a question or report a problem (a *Join the Discord* button on Sodium's page).
 - **Mod version shown** — the settings screens and the debug panel now show the version of Living Horizon, handy to give with a bug report.
 
 #### Fixed
