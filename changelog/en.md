@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Client
+
+#### Improved
+- **Smoother with hundreds of distant mobs** — *Skip Hidden Mobs* costs much less with many distant mobs and players in view, the far terrain is copied less often behind the scenes, and the light on the figures is read less often.
+
 ## 0.11.0 — 2026-10-22
 
 ### Server
@@ -26,7 +31,6 @@
 
 #### Improved
 - **Smoother with many players who logged off** — players who logged off cost less to show far away, and those hidden behind hills are skipped.
-- **Smoother with hundreds of distant mobs** — *Skip Hidden Mobs* costs much less with many distant mobs and players in view, the far terrain is copied less often behind the scenes, and the light on the figures is read less often.
 
 #### Fixed
 - **Players who logged off past the Player Render Distance** — players who logged off no longer show farther than the *Player Render Distance* setting.

@@ -2,6 +2,11 @@
 
 ## Prochaine version
 
+### Client
+
+#### Améliorations
+- **Plus fluide avec des centaines de mobs lointains** — *Ignorer cachés* coûte bien moins cher avec beaucoup de mobs et de joueurs lointains à l'écran, le terrain lointain est copié moins souvent en coulisses, et la lumière sur les silhouettes est lue moins souvent.
+
 ## 0.11.0 — 2026-10-22
 
 ### Serveur
@@ -26,7 +31,6 @@
 
 #### Améliorations
 - **Plus fluide avec beaucoup de joueurs déconnectés** — les joueurs déconnectés coûtent moins cher à afficher au loin, et ceux cachés derrière les collines sont ignorés.
-- **Plus fluide avec des centaines de mobs lointains** — *Ignorer cachés* coûte bien moins cher avec beaucoup de mobs et de joueurs lointains à l'écran, le terrain lointain est copié moins souvent en coulisses, et la lumière sur les silhouettes est lue moins souvent.
 
 #### Corrections
 - **Joueurs déconnectés au-delà de la Distance d'affichage des joueurs** — les joueurs déconnectés ne s'affichent plus au-delà du réglage *Distance d'affichage des joueurs*.
