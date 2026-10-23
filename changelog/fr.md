@@ -2,6 +2,33 @@
 
 ## Prochaine version
 
+### Serveur
+
+#### Nouveautés
+- **Réglages du serveur** — `config/livinghorizon-server.json`, écrit au premier démarrage du serveur, choisit ce que le serveur partage : joueurs connectés, joueurs déconnectés et mobs, jusqu'à quelle distance, avec les coéquipiers seulement, et quels joueurs et quelles dimensions ne sont jamais partagés ; les changements s'appliquent en quelques secondes, sans redémarrer.
+
+#### Corrections
+- **Joueurs éjectés des serveurs Forge** — un serveur Forge avec le mod n'éjecte plus les joueurs qui l'ont aussi dès qu'ils se connectent, avec « mismatched mod channel list » (Forge 1.20.2 et plus).
+- **Spectateurs et joueurs invisibles visibles de loin** — les joueurs en mode spectateur ou invisibles ne sont plus montrés aux autres joueurs au loin, ni là où ils se sont déconnectés.
+
+### Client
+
+#### Nouveautés
+- **Bouton Discord** — les réglages du mod ont maintenant un logo Discord à côté du titre, pour rejoindre le serveur, poser une question ou signaler un problème (un bouton *Rejoindre le Discord* sur la page de Sodium).
+- **Version du mod affichée** — les écrans de réglages et le panneau de debug affichent maintenant la version de Living Horizon, pratique à donner avec un signalement de bug.
+- **Taille de simplification** — un nouveau réglage transforme aussi les mobs, joueurs et oiseaux lointains en *Entités simplifiées* (des images plates d'eux) quand ils paraissent plus petits à l'écran qu'un nombre de pixels, même avant la *Distance de simplification* (10 pixels par défaut).
+
+#### Améliorations
+- **Plus fluide avec des centaines de mobs lointains** — *Ignorer cachés* coûte bien moins cher avec beaucoup de mobs et de joueurs lointains à l'écran, le terrain lointain est copié moins souvent en coulisses, et la lumière sur les silhouettes est lue moins souvent.
+- **Minecraft 1.21.1 plus facile à trouver** — les builds Fabric, Quilt et NeoForge pour Minecraft 1.21 et 1.21.1 sont maintenant publiés en bêta : ils apparaissent sur CurseForge et dans les launchers qui masquent les versions alpha.
+- **Moins de saccades avec beaucoup de silhouettes lointaines** — les mobs, joueurs et oiseaux au loin demandent beaucoup moins de mémoire au jeu à chaque image, qui saccade donc moins.
+- **Plus fluide avec beaucoup d'oiseaux** — les oiseaux derrière toi ou trop petits pour être vus ne sont plus dessinés.
+
+#### Corrections
+- **Mobs lointains qui flottent dans le vide** — les mobs lointains ne sont plus dessinés là où aucun terrain n'est encore dessiné sous eux, ni celui du jeu, ni celui de Voxy ou de Distant Horizons.
+- **Mondes solo qui se ferment aussitôt sur Forge** — un monde solo ne se ferme plus dès qu'il s'ouvre, avec « mismatched mod channel list » (Forge 1.20.2 et plus).
+- **Mobs lointains disparus sur le terrain de Distant Horizons** — en solo, les mobs lointains ne disparaissent plus et ne s'arrêtent plus de marcher sur les collines et montagnes de Distant Horizons.
+
 ## 0.11.0 — 2026-10-22
 
 ### Serveur

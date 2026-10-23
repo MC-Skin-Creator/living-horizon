@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### Server
+
+#### New
+- **Server settings** — `config/livinghorizon-server.json`, written the first time the server starts, chooses what the server shares: players online, players who logged off and mobs, how far, with teammates only, and which players and dimensions are never shared; changes apply within seconds, without a restart.
+
+#### Fixed
+- **Players kicked from Forge servers** — a Forge server with the mod no longer drops the players who have it too as they join, with "mismatched mod channel list" (Forge 1.20.2 and later).
+- **Spectators and invisible players seen from afar** — players in spectator mode or invisible are no longer shown to other players far away, nor where they logged off.
+
+### Client
+
+#### New
+- **Discord button** — the mod's settings now have a Discord logo beside the title, to join the server and ask a question or report a problem (a *Join the Discord* button on Sodium's page).
+- **Mod version shown** — the settings screens and the debug panel now show the version of Living Horizon, handy to give with a bug report.
+- **Simplification Size** — a new setting also turns far mobs, players and birds into *Simplified Entities* (flat pictures of them) when they look smaller on screen than a number of pixels, even before the *Simplification Distance* (10 pixels by default).
+
+#### Improved
+- **Smoother with hundreds of distant mobs** — *Skip Hidden Mobs* costs much less with many distant mobs and players in view, the far terrain is copied less often behind the scenes, and the light on the figures is read less often.
+- **Minecraft 1.21.1 easier to find** — the Fabric, Quilt and NeoForge builds for Minecraft 1.21 and 1.21.1 are now published as beta, so they show on CurseForge and in launchers that hide alpha builds.
+- **Fewer stutters with many distant figures** — far mobs, players and birds ask the game for much less memory each frame, so it stutters less.
+- **Smoother with many birds** — birds behind you or too small to see are no longer drawn.
+
+#### Fixed
+- **Distant mobs floating in the void** — distant mobs are no longer drawn where no terrain is drawn under them yet, neither the game's nor Voxy's or Distant Horizons'.
+- **Single player worlds closing at once on Forge** — a single player world no longer closes as soon as it opens, with "mismatched mod channel list" (Forge 1.20.2 and later).
+- **Distant mobs vanishing over Distant Horizons' terrain** — in single player, distant mobs no longer vanish or stop walking on Distant Horizons' hills and mountains.
+
 ## 0.11.0 — 2026-10-22
 
 ### Server

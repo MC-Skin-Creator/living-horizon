@@ -188,8 +188,17 @@ when everything on `develop` has shipped, merges `main` into it otherwise, and o
 ## CI and releases
 
 `.github/workflows/build.yml` builds and tests every Stonecutter target on each pull
-request, and attaches the jar as a 14-day workflow artifact. CI is
-what checks a change; a pull request is not done until it is green.
+request, and attaches the jar as a 14-day workflow artifact. A pull request that only
+changes Markdown files and the LICENSE skips the targets (the changelog is still checked).
+CI is what checks a change; a pull request is not done until it is green.
+
+The Gradle cache is written by `.github/workflows/cache.yml` on `develop` only, and read by
+the pull request builds and the release (`.github/actions/gradle-cache`): one entry of
+downloads shared by every job, and one per Forge and NeoForge node with its prepared
+Minecraft (three minutes per node without it). `.github/scripts/gradle-cache.py` holds the
+keys and paths. A pull request never writes it: only that pull request could read it again,
+and 56 entries of 4 GB evicted each other from the repository's 10 GB. An entry nobody read
+for seven days is dropped; running the workflow by hand from `develop` fills it again.
 
 The release does not build again what a pull request built. A pull request into `develop`
 or `main` stamps the version its merge will release (`.github/scripts/release-version.sh`,
@@ -293,11 +302,24 @@ come back, add it here in the same pull request: this file is what the next sess
   projection times the bobbing, which from 26.1 only the GPU gets (`GameRendererProjectionMixin`
   reads it for `FarDepth.noteView`). Distant Horizons takes that bobbed projection and replaces
   its two depth terms only, so its depth is converted through its whole matrix
-  (`DhDepth.inverse`), never through the two terms alone.
-- **Voxy version.** `FarDepth` and `VoxySource` reach Voxy by reflection; a renamed class turns
-  both off ("Voxy found, but not the version this mod knows"). 0.2.18 renamed
-  `IGetVoxyRenderSystem` to `IVoxyRenderSystemHolder` (`VoxySource.renderSystemGetter` tries
-  both). Check a new version with `javap` on its jar from Modrinth, as for Distant Horizons.
+  (`DhFrame.inverse`), never through the two terms alone.
+- **Voxy version.** `VoxyLink` reaches Voxy's renderer by reflection, `VoxySource` its world;
+  a renamed class turns them off ("Voxy found, but not the version this mod knows"). 0.2.18
+  renamed `IGetVoxyRenderSystem` to `IVoxyRenderSystemHolder` (`VoxyLink.renderSystemGetter`
+  tries both). Check a new version with `javap` on its jar from Modrinth, as for Distant
+  Horizons, and read the links' lines in `/livinghorizon lod`: each says what it runs without,
+  and how often the mixins into Voxy and Distant Horizons ran (0 while they draw: renamed).
+- **Steps out of order** (`/livinghorizon lod` or the log says so; the `depthview` game test
+  fails): a hook before that step no longer runs, renamed by the game or another mod. The order
+  is in `FarDepth.Frame` and `docs/technical.md` ("One frame").
+- **Distant mobs hidden or standing still over Distant Horizons' terrain in single player**
+  (*Only Over Terrain* hiding them on its hills; depth view fine): in single player Distant
+  Horizons' levels wrap the server's, one per dimension in no order, never the client's level.
+  `DhSource.open` takes the one of the player's dimension; taking the first read another
+  dimension's ground. And Distant Horizons' read cache keeps an area as first read, empty if it
+  was not built yet: `DhSource.cache` empties it every 30 s, and 2 s after a column came back empty.
+- **Depth view lighter or darker as far mobs show or hide**: the game's far plane follows the
+  farthest figure drawn (`GhostRenderer.farPlane`); the view shades against `FarDepth.VIEW_FAR`.
 - **Distant Horizons' rendering engine** (from 3.3: Blaze3D or OpenGL). With Iris installed,
   pack on or off, it switches itself to OpenGL and fills only `getDhDepthTextureGlId`; the
   Blaze3D wrapper the game's GPU device path reads stays empty ("has no depth texture").
@@ -306,11 +328,11 @@ come back, add it here in the same pull request: this file is what the next sess
   render distance grows, depth view wrong; Oculus): Oculus is Iris under the mod id `oculus`, with
   Iris's classes. Missed, a pack read as none, and Distant Horizons' depth, which Oculus draws with
   Iris's near plane (it follows the render distance), was converted with Distant Horizons' own.
-  Anything that asks whether Iris is loaded asks for both ids.
+  Anything that asks Iris goes through `IrisLink`, which looks for its classes, never a mod id.
 - **Distant Horizons under a shader pack from 26.2** (depth view flat grey, or a grey veil, under
   shaders only): Iris draws its terrain with Iris's near and far planes, but in the depth layout
   Distant Horizons reports (`getDepthRange`, `getDepthDirection`: reversed and 0..1 on 26.2,
-  empty at 0). Measured: sky 0, ground at 53 blocks 0.067, horizon 0.005. `DhDepth.terms`
+  empty at 0). Measured: sky 0, ground at 53 blocks 0.067, horizon 0.005. `DhDepth.frame`
   combines the two from 26.2 only; older versions keep OpenGL's -1..1.
 - **Before 1.21.5** the game's depth texture has an unsized format (`GL_DEPTH_COMPONENT`):
   `glTextureStorage2D` refuses it, so anything copied from it is allocated the way the game
@@ -321,7 +343,7 @@ come back, add it here in the same pull request: this file is what the next sess
   left corner of the depth texture and tells Voxy so with `useViewportDims` and `renderScale`
   in its `voxy.json`; Voxy's viewport `width`/`height` is that corner. `FarDepth.notePicture`
   reads it, and anything drawn into or read from the game's depth must stay inside it.
-  Distant Horizons is not told: `FarDepth.packScale` reads Photon's own options
+  Distant Horizons is not told: `IrisLink.packScale` reads Photon's own options
   (`TAAU`, `TAAU_RENDER_SCALE`) from Iris, the value its `voxy.json` gives Voxy.
 - **Terrain shadows across distant mobs** (Photon with Voxy, the edge of a ledge's shadow on a
   mob standing in front of it): the pack shades fragments past the render distance plus 64
@@ -336,7 +358,7 @@ come back, add it here in the same pull request: this file is what the next sess
   hidden behind the far terrain, only with a pack on): Iris's shadow pass draws its entities
   through the same `PreparedFrame.executeSolid` / `executeTranslucent` steps as the world,
   after the world's are submitted. `FarDepth.before` / `after` skip it
-  (`IrisApi.isRenderingShadowPass`), or it takes the bracket meant for the world's entities.
+  (`IrisLink.shadowPass`), or it takes the bracket meant for the world's entities.
 - **Depth view all white under shaders on 26.2** (Iris 1.11.2 or older): those versions
   register their `UndoReverseZ` mixins and draw the world in OpenGL's usual depth while a
   pack is on (1.11.4 and later keep 26.2's reversed one). Whatever reads the game's depth
@@ -447,7 +469,11 @@ come back, add it here in the same pull request: this file is what the next sess
   hangs from 0, 0, 0. The tick snaps it only when more than ten blocks off along an axis and
   otherwise moves it a quarter of the way: `Puppets.cape` sets it outright in
   `GhostRenderer.extract`, since each impostor view is baked from one call (`ImpostorAtlas.staged`).
-  The `mannequins` scenario checks it. Far, resting and logged-off player puppets are not ticked
+  The `mannequins` scenario checks it, and counts the cape's pixels (a gold block stands in for
+  one) in the copy's baked picture, since the data can be right while the picture is not. When
+  reading its atlas screenshot, know the game's default skins: kai is blond in dark clothes, Alex
+  has orange hair and a green shirt, and a player's name shows its default skin until Mojang
+  answers. Far, resting and logged-off player puppets are not ticked
   either, on every version (`Player.xCloak` before 1.21.9): not covered yet, and `cape` cannot
   just take any `ClientAvatarEntity`, since live players go through the same `extract` and tick.
 - **A rider turned sideways** (a player resting in a boat facing left or right of it): the seat's
@@ -471,6 +497,11 @@ come back, add it here in the same pull request: this file is what the next sess
   The Fabric API's client networking stays in `ClientNetwork`, which a server never loads.
   Check a server by installing the loader's server from its installer, the jar in `mods/`,
   and reading the console for "sharing the positions of this server".
+- **Disconnected on Forge with "mismatched mod channel list"** (a single player world closing as
+  it opens, players with the mod kicked from a Forge server with it; Forge 1.20.2 and later):
+  Forge's `ChannelBuilder.optional()` freezes the versions each side accepts to the protocol
+  version set so far, so `Network.register` sets `networkProtocolVersion` before it; the other
+  way round, both sides accept 0 and announce 1. Check it by opening a world on a Forge node.
 - **Settings, remembered mobs or players who logged off gone after a restart**: a file that
   did not read is kept beside it as `<name>.bad` (`JsonStore`; the server's
   `livinghorizon-positions.dat.bad`), with a line in the log saying why. The server's file has a
@@ -486,6 +517,13 @@ come back, add it here in the same pull request: this file is what the next sess
   added at the end of a record, or after the records, raises `VERSION` only; anything else
   raises `READABLE_FROM` too, and older clients stop reading. `PositionsMessageTest` holds the
   exact bytes: a layout change that fails it needs one of the two.
+- **Skip Hidden Mobs costing a lot with many mobs** (the debug panel's occlusion line says "one
+  query each"): the one-draw path of `OcclusionQueries` (OpenGL 4.3, a word per box in a shader
+  storage buffer, read back behind a fence) failed and the per-box queries took over, five GL
+  calls per mob per frame; the log says why. The depth copies that only the debug view reads
+  (`saved`, `drawn` when nothing was merged) are made only with *Depth View* on. **Never remove
+  either**: the author measured 70 to 100 FPS from the two together; the per-box queries are the
+  fallback for OpenGL older than 4.3 and nothing else.
 - **Frame rate lost to the mod** (with Voxy or not): measure before guessing. On the player's
   machine, ask for the report of `/livinghorizon benchmark` (`debug/Benchmark`): frame times with
   the mod off, each preset and each part on its own, on their GPU and mods. Run in the world

@@ -164,7 +164,11 @@ Everything works in single player. On a server, some features need the mod on th
 
 To set up a server, put the same file in its `mods` folder. Nothing else to set up. Players
 without the mod can still join. The server shares every player's position with the players
-who have the mod: tell your players.
+who have the mod: tell your players. Players in spectator mode or invisible are never shared.
+
+The server writes `config/livinghorizon-server.json` the first time it starts. Edit it to
+choose what it shares: players online, players who logged off, mobs, how far, with teammates
+only, and which players and dimensions are never shared. Changes apply after a few seconds.
 
 ## Getting started
 

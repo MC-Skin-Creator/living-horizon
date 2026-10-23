@@ -5,6 +5,7 @@ import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.Stats;
 import fr.clixmods.livinghorizon.ambient.Ambience;
+import fr.clixmods.livinghorizon.compat.DrawnGround;
 import fr.clixmods.livinghorizon.compat.EntityCulling;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.OcclusionQueries;
@@ -13,6 +14,7 @@ import fr.clixmods.livinghorizon.debug.DebugMarks.Mark;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorKey;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
+import fr.clixmods.livinghorizon.render.impostor.ImpostorThreshold;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorViews;
 import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
 import fr.clixmods.livinghorizon.track.FarPlayer;
@@ -22,6 +24,7 @@ import fr.clixmods.livinghorizon.track.Puppets;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
 import fr.clixmods.livinghorizon.track.RestingPuppet;
 import fr.clixmods.livinghorizon.track.SharedPositions;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.client.Camera;
@@ -56,6 +59,7 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3fc;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -79,12 +83,48 @@ import java.util.Set;
  * picture, but in front of the terrain between.
  */
 public final class GhostRenderer {
-    /** How one state is moved and scaled at submission. Positions relative to the camera. */
-    public record Transform(double anchorX, double anchorY, double anchorZ, double pull, double scale) {
+    /**
+     * How one state is moved and scaled at submission. Positions relative to the camera.
+     * Kept and filled again from one frame to the next: read it during the frame it is given.
+     */
+    public static final class Transform {
+        private double anchorX, anchorY, anchorZ, pull, scale;
+
+        public double anchorX() {
+            return anchorX;
+        }
+
+        public double anchorY() {
+            return anchorY;
+        }
+
+        public double anchorZ() {
+            return anchorZ;
+        }
+
+        public double pull() {
+            return pull;
+        }
+
+        public double scale() {
+            return scale;
+        }
     }
 
     private static final Map<EntityRenderState, Transform> TRANSFORMS = new IdentityHashMap<>();
     private static final Set<Entity> EXTRACTED = Collections.newSetFromMap(new IdentityHashMap<>());
+    /** The transforms handed out, the first {@link #transforms} of them this frame. */
+    private static Transform[] transformPool = new Transform[64];
+    private static int transforms;
+
+    /** A transform for this frame, one of last frame's written over. */
+    private static Transform nextTransform() {
+        if (transforms == transformPool.length) transformPool = Arrays.copyOf(transformPool, transforms * 2);
+        Transform transform = transformPool[transforms];
+        if (transform == null) transformPool[transforms] = transform = new Transform();
+        transforms++;
+        return transform;
+    }
 
     private GhostRenderer() {
     }
@@ -137,20 +177,32 @@ public final class GhostRenderer {
      * behind the camera or specks. Each test can be switched off to measure it.
      */
     static @Nullable Mark skip(Entity entity, boolean mayVanish) {
-        FarConfig config = FarConfig.get();
         double size = Math.max(0.5, Math.max(entity.getBbHeight(), entity.getBbWidth()));
-        double dx = entity.getX() - eyeX, dy = entity.getY() + size * 0.5 - eyeY, dz = entity.getZ() - eyeZ;
+        return count(why(entity.getX() - eyeX, entity.getY() + size * 0.5 - eyeY, entity.getZ() - eyeZ, size, mayVanish));
+    }
+
+    /**
+     * Whether something of the mod's own, {@code size} blocks across around a point this far
+     * from the camera, is outside the view or smaller than about half a pixel: the tests
+     * {@link #skip} makes for a puppet. For the birds, not counted among the puppets.
+     */
+    public static boolean outOfSight(double dx, double dy, double dz, double size) {
+        return why(dx, dy, dz, Math.max(0.5, size), true) != null;
+    }
+
+    private static @Nullable Mark why(double dx, double dy, double dz, double size, boolean mayVanish) {
+        FarConfig config = FarConfig.get();
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if (distance < size * 2 + 4) return count(null);
+        if (distance < size * 2 + 4) return null;
         if (config.optViewCulling) {
             double angle = Math.acos(Mth.clamp((dx * lookX + dy * lookY + dz * lookZ) / distance, -1, 1));
-            if (angle > viewAngle + Math.asin(Math.min(1, size / distance))) return count(Mark.OUTSIDE);
+            if (angle > viewAngle + Math.asin(Math.min(1, size / distance))) return Mark.OUTSIDE;
         }
         if (mayVanish && config.optTinyCulling && config.minApparentPixels <= 0
                 && size / distance * pixelsPerRadian < 0.6) {
-            return count(Mark.TINY);
+            return Mark.TINY;
         }
-        return count(null);
+        return null;
     }
 
     private static @Nullable Mark count(@Nullable Mark why) {
@@ -172,6 +224,7 @@ public final class GhostRenderer {
         FarDepth.beginFigures();
         EXTRACTED.clear();
         TRANSFORMS.clear();
+        transforms = 0;
         glowing = false;
         //? if <1.21.9 {
         /*LIGHTS.clear();
@@ -477,6 +530,7 @@ public final class GhostRenderer {
                 if (debug) DebugMarks.mark(puppet, Mark.NEAR);
                 continue;
             }
+            if (overVoid(minecraft, eye, mob.id(), puppet, config)) continue;
             if (skipped(puppet, true)) continue;
             if (occluded(mob.id(), puppet, config)) continue;
             if (debug) DebugMarks.mark(puppet, Mark.FAKE);
@@ -488,6 +542,7 @@ public final class GhostRenderer {
             if (body instanceof LivingEntityRenderState living && livesInWater(puppet)) living.isInWater = true;
             add(frame, minecraft, eye, body, null, true, Mark.FAKE, config, mob.id());
         }
+        DrawnGround.ask();
         if (debug && DebugMarks.drawing() && minecraft.level != null) {
             // The ones remembered but past the most shown at once.
             Set<MobMemory.Remembered> listed = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -525,6 +580,19 @@ public final class GhostRenderer {
     }
 
     /**
+     * No terrain drawn under it, neither the game's nor the far terrain, so not drawn this frame
+     * ({@link FarConfig#onlyOverTerrain}): it would stand in the void.
+     */
+    private static boolean overVoid(Minecraft minecraft, Vec3 eye, Object key, Entity entity, FarConfig config) {
+        if (!config.onlyOverTerrain || minecraft.level == null
+                || DrawnGround.shown(minecraft.level, eye, key, entity.getX(), entity.getZ())) {
+            return false;
+        }
+        if (debug) DebugMarks.mark(entity, Mark.VOID);
+        return true;
+    }
+
+    /**
      * Within where the real mob would be sent, a copy is not where the mob is, and could be
      * walked up to: it is not drawn. See {@link MobMemory#nearRange}.
      */
@@ -549,7 +617,8 @@ public final class GhostRenderer {
                                Vec3 eye, float partialTick, FarConfig config) {
         if (!config.distantMobs) return;
         boolean game = debug && DebugMarks.gameMobs();
-        Map<EntityType<?>, Boolean> wanted = new IdentityHashMap<>();
+        Map<EntityType<?>, Boolean> wanted = WANTED;
+        wanted.clear();
         MobMemory memory = FarPlayerTracker.get().mobs();
         for (Entity entity : memory.live()) {
             if (EXTRACTED.contains(entity)) {
@@ -559,12 +628,17 @@ public final class GhostRenderer {
             if (entity.isRemoved() || entity.isInvisible() || entity.isPassenger() || entity.isVehicle()) continue;
             // Its copy is still walking up to it, and drawn in its place.
             if (memory.hides(entity)) continue;
-            boolean shown = wanted.computeIfAbsent(entity.getType(),
-                    type -> config.mobTypes.contains(EntityType.getKey(type).toString()));
+            EntityType<?> type = entity.getType();
+            Boolean shown = wanted.get(type);
+            if (shown == null) {
+                shown = config.mobTypes.contains(EntityType.getKey(type).toString());
+                wanted.put(type, shown);
+            }
             if (!shown && !(config.rememberNamedMobs && entity.hasCustomName())) continue;
             // Close by, the game leaves a mob out only when the terrain hides it.
             if (entity.distanceToSqr(eye) < 24 * 24) continue;
             if (tooFar(entity, eye, config.mobMaxDistance)) continue;
+            if (overVoid(minecraft, eye, entity.getUUID(), entity, config)) continue;
             if (skipped(entity, true)) continue;
             if (occluded(entity.getUUID(), entity, config)) continue;
             EntityCulling.drawn(entity);
@@ -573,7 +647,11 @@ public final class GhostRenderer {
             add(frame, minecraft, eye, extract(dispatcher, entity, partialTick), null, false, Mark.LIVE, config,
                     entity.getUUID());
         }
+        DrawnGround.ask();
     }
+
+    /** Whether each kind of mob met this frame is one shown far away. */
+    private static final Map<EntityType<?>, Boolean> WANTED = new IdentityHashMap<>();
 
     public static boolean livesInWater(Entity entity) {
         MobCategory category = entity.getType().getCategory();
@@ -686,7 +764,12 @@ public final class GhostRenderer {
             boost = Math.clamp(config.minApparentPixels / apparent, 1.0, 400.0);
         }
 
-        Transform transform = new Transform(ax, ay, az, pull, pull * boost * size);
+        Transform transform = nextTransform();
+        transform.anchorX = ax;
+        transform.anchorY = ay;
+        transform.anchorZ = az;
+        transform.pull = pull;
+        transform.scale = pull * boost * size;
         if (distance > drawnRange) {
             // Where it shows on screen: as big as drawn, around its middle, a mount included.
             double extent = Math.max(1.8, Math.max(body.boundingBoxHeight, body.boundingBoxWidth)) * size * boost;
@@ -694,31 +777,36 @@ public final class GhostRenderer {
         }
         LocalPlayer self = minecraft.player;
         ClientLevel level = minecraft.level;
-        for (EntityRenderState state : mount == null ? new EntityRenderState[]{body} : new EntityRenderState[]{mount, body}) {
-            TRANSFORMS.put(state, transform);
-            // A boat hides the water inside its hull with a patch that the water then fails to
-            // draw over. Drawn bigger or nearer than it is, that patch hides the water around
-            // it; under a shader pack (Photon), drawn with our figures, it turns the game's
-            // water clear far around. Taken for under water, a boat has none.
-            if (state instanceof BoatRenderState boat) boat.isUnderWater = true;
-            state.nameTag = null;
-            //? if >=1.21.9 {
-            state.shadowPieces.clear();
-            state.shadowRadius = 0;
-            if (puppet) state.lightCoords = light(level, state);
-            else if (!lit(level, BlockPos.containing(state.x, state.y, state.z))) state.lightCoords = OPEN_SKY;
-            int outline = self == null ? 0 : DebugMarks.outline(config, kind);
-            if (outline != 0) {
-                state.outlineColor = outline;
-                glowing = true;
-            }
-            //?} else {
-            /*// Before 1.21.9 the light is handed over when the state is drawn, and outlines
-            // need the entity: neither is in the state.
-            LIGHTS.put(state, light(level, state));
-            *///?}
-            frame.add(state);
+        if (mount != null) place(frame, mount, transform, puppet, kind, config, self, level);
+        place(frame, body, transform, puppet, kind, config, self, level);
+    }
+
+    /** One state of a figure, its body or its mount, into the frame, moved as {@code transform} says. */
+    private static void place(List<EntityRenderState> frame, EntityRenderState state, Transform transform, boolean puppet,
+                              Mark kind, FarConfig config, @Nullable LocalPlayer self, @Nullable ClientLevel level) {
+        TRANSFORMS.put(state, transform);
+        // A boat hides the water inside its hull with a patch that the water then fails to
+        // draw over. Drawn bigger or nearer than it is, that patch hides the water around
+        // it; under a shader pack (Photon), drawn with our figures, it turns the game's
+        // water clear far around. Taken for under water, a boat has none.
+        if (state instanceof BoatRenderState boat) boat.isUnderWater = true;
+        state.nameTag = null;
+        //? if >=1.21.9 {
+        state.shadowPieces.clear();
+        state.shadowRadius = 0;
+        if (puppet) state.lightCoords = light(level, state);
+        else if (!lit(level, AT.set(state.x, state.y, state.z))) state.lightCoords = OPEN_SKY;
+        int outline = self == null ? 0 : DebugMarks.outline(config, kind);
+        if (outline != 0) {
+            state.outlineColor = outline;
+            glowing = true;
         }
+        //?} else {
+        /*// Before 1.21.9 the light is handed over when the state is drawn, and outlines
+        // need the entity: neither is in the state.
+        LIGHTS.put(state, light(level, state));
+        *///?}
+        frame.add(state);
     }
 
     private static final int OPEN_SKY = LightTexture.pack(0, 15);
@@ -734,17 +822,45 @@ public final class GhostRenderer {
         return light(level, state.x, state.y, state.z);
     }
 
+    /**
+     * The light read at each block this half second, by the block's position: hundreds of
+     * figures ask every frame, six light lookups each, for a value that changes slowly. Where
+     * the client has no light yet, nothing is kept: it comes a few frames later.
+     */
+    private static final Long2IntOpenHashMap LIGHT = new Long2IntOpenHashMap();
+    private static final long LIGHT_KEPT_NANOS = 500_000_000L;
+    private static @Nullable ClientLevel lightLevel;
+    private static long lightSince;
+
+    static {
+        LIGHT.defaultReturnValue(-1);
+    }
+
     private static int light(@Nullable ClientLevel level, double x, double y, double z) {
-        BlockPos feet = BlockPos.containing(x, y + 0.1, z);
-        if (!lit(level, feet)) return OPEN_SKY;
+        long now = System.nanoTime();
+        if (level != lightLevel || now - lightSince > LIGHT_KEPT_NANOS) {
+            LIGHT.clear();
+            lightLevel = level;
+            lightSince = now;
+        }
+        BlockPos.MutableBlockPos at = AT.set(x, y + 0.1, z);
+        long key = at.asLong();
+        int kept = LIGHT.get(key);
+        if (kept >= 0) return kept;
+        if (!lit(level, at)) return OPEN_SKY;
         int block = 0, sky = 0;
         for (int up = 0; up < 3; up++) {
-            BlockPos at = feet.above(up);
+            if (up > 0) at.move(Direction.UP);
             block = Math.max(block, level.getBrightness(LightLayer.BLOCK, at));
             sky = Math.max(sky, level.getBrightness(LightLayer.SKY, at));
         }
-        return LightTexture.pack(block, sky);
+        int packed = LightTexture.pack(block, sky);
+        LIGHT.put(key, packed);
+        return packed;
     }
+
+    /** The block being looked at for light: one at a time, on the render thread. */
+    private static final BlockPos.MutableBlockPos AT = new BlockPos.MutableBlockPos();
 
     /**
      * Whether the client has the light of this spot. A chunk that arrives gets its light only
@@ -785,24 +901,29 @@ public final class GhostRenderer {
         }
     }
 
-    /** What a figure showed last as an impostor, so that neither its sheet nor its picture flickers. */
-    private record Shown(ImpostorKey key, int view, long frame, boolean ridden) {
+    /**
+     * What a figure showed last as an impostor, so that neither its sheet nor its picture
+     * flickers. Written over in place each frame the figure is a picture.
+     */
+    private static final class Shown {
+        ImpostorKey key;
+        int view;
+        long frame;
+        boolean ridden;
     }
 
     private static final Map<Entity, Shown> SHOWN = new IdentityHashMap<>();
     private static long frame;
 
-    /** A figure must come this much inside the impostor distance to get its model back. */
-    private static final double IMPOSTOR_RETURN = 0.95;
-
     /**
      * Draws a flat picture of a figure in place of its model, when it is past the impostor
-     * distance and its pictures are baked (they are asked for otherwise, and the model is
-     * drawn meanwhile). Nothing is extracted: that is what is saved.
+     * distance or smaller on screen than the impostor size ({@link ImpostorThreshold}), and its
+     * pictures are baked (they are asked for otherwise, and the model is drawn meanwhile).
+     * Nothing is extracted: that is what is saved.
      *
-     * <p>Once a figure is an impostor it stays one until it is a little closer than the
-     * distance, it keeps its picture until it has clearly turned to the next, and when its
-     * look changes (a sheep sheared, a player's armour) it keeps its old picture until the
+     * <p>Once a figure is an impostor it stays one until it is a little inside both the
+     * distance and the size, it keeps its picture until it has clearly turned to the next, and
+     * when its look changes (a sheep sheared, a player's armour) it keeps its old picture until the
      * new one is baked: none of it blinks between a model and a picture.
      */
     private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config) {
@@ -823,7 +944,7 @@ public final class GhostRenderer {
         }
         ImpostorKey key = ImpostorKey.of(entity);
         float yaw = Float.isNaN(facing) ? Mth.rotLerp(partialTick, living.yBodyRotO, living.yBodyRot) : facing;
-        return picture(minecraft, eye, entity, entity, key, () -> ImpostorAtlas.request(key, entity), partialTick, config,
+        return picture(minecraft, eye, entity, entity, key, null, 0, partialTick, config,
                 dx, dy, dz, yaw, Math.max(entity.getBbHeight(), entity.getBbWidth()));
     }
 
@@ -848,28 +969,27 @@ public final class GhostRenderer {
         ImpostorKey key = ImpostorKey.riding(rider, mount, seat, turned);
         float yaw = Mth.rotLerp(partialTick, facingO, facing);
         double extent = Math.max(Math.max(mount.getBbHeight(), seat.y + rider.getBbHeight()), mount.getBbWidth());
-        return picture(minecraft, eye, rider, mount, key,
-                () -> ImpostorAtlas.request(key, mount, new ImpostorAtlas.Rider(rider, seat, turned)), partialTick, config,
-                0, 0, 0, yaw, extent);
+        return picture(minecraft, eye, rider, mount, key, seat, turned, partialTick, config, 0, 0, 0, yaw, extent);
     }
 
     /**
      * The picture of {@code key} where {@code at} stands, moved by ({@code dx}, {@code dy},
-     * {@code dz}), its view chosen for a body facing {@code yaw}; asked for with
-     * {@code request} while it is not baked. {@code shown} is the figure the picture stands
-     * for, which keeps its last picture until the new one is baked.
+     * {@code dz}), its view chosen for a body facing {@code yaw}; asked for while it is not
+     * baked. {@code shown} is the figure the picture stands for, which keeps its last picture
+     * until the new one is baked. A rider ({@code shown}) is pictured on its mount ({@code at}),
+     * sitting at {@code seat} on it, turned {@code turned} degrees from it.
      */
-    private static boolean picture(Minecraft minecraft, Vec3 eye, Entity shown, Entity at, ImpostorKey key, Runnable request,
-                                   float partialTick, FarConfig config, double dx, double dy, double dz, float yaw,
-                                   double size) {
+    private static boolean picture(Minecraft minecraft, Vec3 eye, Entity shown, Entity at, ImpostorKey key,
+                                   @Nullable Vec3 seat, float turned, float partialTick, FarConfig config,
+                                   double dx, double dy, double dz, float yaw, double size) {
         double x = Mth.lerp(partialTick, at.xOld, at.getX()) + dx;
         double y = Mth.lerp(partialTick, at.yOld, at.getY()) + dy;
         double z = Mth.lerp(partialTick, at.zOld, at.getZ()) + dz;
         double ax = x - eye.x, ay = y - eye.y, az = z - eye.z;
         double distance = Math.sqrt(ax * ax + ay * ay + az * az);
         Shown last = SHOWN.get(shown);
-        double from = last == null ? config.impostorDistance : config.impostorDistance * IMPOSTOR_RETURN;
-        if (distance <= from || distance < 1e-3) {
+        double apparent = distance < 1e-3 ? Double.MAX_VALUE : size / distance * pixelsPerRadian;
+        if (!ImpostorThreshold.pictured(distance, apparent, last != null, config.impostorDistance, config.impostorPixels)) {
             if (last != null) SHOWN.remove(shown);
             return false;
         }
@@ -877,7 +997,8 @@ public final class GhostRenderer {
         boolean ridden = at != shown;
         ImpostorAtlas.Sheet sheet = ImpostorAtlas.sheet(key);
         if (sheet == null) {
-            request.run();
+            if (seat == null) ImpostorAtlas.request(key, at);
+            else ImpostorAtlas.request(key, at, new ImpostorAtlas.Rider(shown, seat, turned));
             // The last picture stands in while this one is baked, or refused for want of room,
             // only if it shows the same: never a player on foot for one in a boat, nor the reverse.
             sheet = last == null || last.ridden != ridden ? null : ImpostorAtlas.sheet(last.key);
@@ -890,15 +1011,19 @@ public final class GhostRenderer {
         double pull = distance > reach ? reach / distance : 1.0;
         double boost = 1.0;
         if (config.minApparentPixels > 0) {
-            boost = Math.clamp(config.minApparentPixels / (size / distance * pixelsPerRadian), 1.0, 400.0);
+            boost = Math.clamp(config.minApparentPixels / apparent, 1.0, 400.0);
         }
         int view = ImpostorViews.view(yaw, -ax, -az, last == null ? -1 : last.view);
-        SHOWN.put(shown, new Shown(key, view, frame, ridden));
+        if (last == null) SHOWN.put(shown, last = new Shown());
+        last.key = key;
+        last.view = view;
+        last.frame = frame;
+        last.ridden = ridden;
         int light = light(minecraft.level, x, y, z);
         int outline = minecraft.player == null ? 0 : DebugMarks.impostorOutline(config);
         if (outline != 0 && ImpostorRenderer.OUTLINES) glowing = true;
-        ImpostorRenderer.add(new ImpostorRenderer.Billboard(ax * pull, ay * pull, az * pull,
-                sheet.worldSize() * pull * boost, sheet, view, light, outline, false));
+        ImpostorRenderer.add(ax * pull, ay * pull, az * pull, sheet.worldSize() * pull * boost, sheet, view, light,
+                outline, false);
         if (distance > drawnRange) {
             double extent = sheet.worldSize() * boost;
             FarDepth.figure(ax, ay + extent * 0.5, az, extent * 0.75);

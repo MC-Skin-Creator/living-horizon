@@ -8,6 +8,7 @@ import fr.clixmods.livinghorizon.track.MobScan;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.OptionInstance;
 import net.minecraft.client.Options;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.layouts.LinearLayout;
@@ -30,7 +31,11 @@ import java.util.function.Consumer;
 public final class FarConfigScreen extends SideOptionsScreen {
     private static final String KEY = "livinghorizon.options.";
 
+    /** Beside the title: only the Discord logo, drawn over it, which says what it is. */
+    private static final int LOGO_BUTTON = 20;
+
     private final @Nullable Screen parent;
+    private @Nullable Button discord;
 
     public FarConfigScreen(@Nullable Screen parent) {
         super(parent, Minecraft.getInstance().options, Component.translatable(KEY + "title"));
@@ -64,6 +69,8 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 bool("impostors", c.impostors, v -> c.impostors = v),
                 bool("impostorPlayers", c.impostorPlayers, v -> c.impostorPlayers = v));
         list.addBig(blocks("impostorDistance", 32, 2000, c.impostorDistance, v -> c.impostorDistance = v));
+        list.addBig(unit("impostorPixels", "pixels", 0, FarConfig.MAX_IMPOSTOR_PIXELS, c.impostorPixels,
+                v -> c.impostorPixels = v));
         list.addBig(unit("impostorMobMemory", "megabytes", FarConfig.MIN_MOB_MEMORY, FarConfig.MAX_MOB_MEMORY,
                 c.impostorMobMemory, v -> c.impostorMobMemory = v));
         list.addBig(unit("impostorPlayerMemory", "megabytes", FarConfig.MIN_PLAYER_MEMORY, FarConfig.MAX_PLAYER_MEMORY,
@@ -120,6 +127,29 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 choice("birdStyle", List.of("3d", "2d"), c.birdStyle, v -> c.birdStyle = v).createButton(minecraft.options, 0, 0, 150),
                 Button.builder(Component.translatable(KEY + "chooseBirds"), b -> minecraft.setScreen(new BirdTypesScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "chooseBirds.tooltip"))).build());
+    }
+
+    @Override
+    protected void addTitle() {
+        super.addTitle();
+        discord = addRenderableWidget(Button.builder(Component.empty(), b -> DiscordLink.open(this))
+                .size(LOGO_BUTTON, LOGO_BUTTON)
+                .tooltip(Tooltip.create(Component.translatable(KEY + "discord.tooltip"))).build());
+    }
+
+    /** The logo goes where the title ends, in the middle of the header. */
+    @Override
+    protected void repositionElements() {
+        super.repositionElements();
+        if (discord == null) return;
+        discord.setX(columnWidth() / 2 + font.width(title) / 2 + 6);
+        discord.setY((layout.getHeaderHeight() - LOGO_BUTTON) / 2);
+    }
+
+    @Override
+    protected void drawOver(GuiGraphics graphics) {
+        if (discord == null) return;
+        Icons.discord(graphics, discord.getX() + (LOGO_BUTTON - Icons.SIZE) / 2, discord.getY() + (LOGO_BUTTON - Icons.SIZE) / 2);
     }
 
     /** Restore defaults sits beside Done: it is about every setting of the screen, not the birds. */

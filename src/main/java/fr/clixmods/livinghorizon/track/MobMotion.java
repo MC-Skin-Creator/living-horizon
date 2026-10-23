@@ -255,7 +255,8 @@ final class MobMotion {
         puppet.setOldPosAndRot();
         puppet.yBodyRotO = puppet.yBodyRot;
         puppet.yHeadRotO = puppet.yHeadRot;
-        puppet.setPos(x, y + lift, z);
+        // Where it already stands, the game would only make it the same box again.
+        if (puppet.getX() != x || puppet.getY() != y + lift || puppet.getZ() != z) puppet.setPos(x, y + lift, z);
         puppet.setYRot(body);
         puppet.setXRot(pitch);
         puppet.yBodyRot = body;
