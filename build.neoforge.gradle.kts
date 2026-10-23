@@ -122,7 +122,7 @@ tasks {
         inputs.property("java", requiredJava.majorVersion)
         inputs.property("sodium", props.getValue("sodium"))
         inputs.property("mixins", project.extra["lhMixins"] as String)
-        filesMatching(listOf("META-INF/neoforge.mods.toml", "livinghorizon.mixins.json")) { expand(props) }
+        filesMatching(listOf("META-INF/neoforge.mods.toml", "livinghorizon.mixins.json", "assets/livinghorizon/version.txt")) { expand(props) }
         // The other loaders' metadata has nothing to say to NeoForge, and it reads its
         // access transformer, not an access widener.
         exclude("fabric.mod.json", "META-INF/mods.toml", "quilt.mod.json",

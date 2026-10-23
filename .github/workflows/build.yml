@@ -13,6 +13,10 @@ on:
 # short-lived workflow artifact, so a PR can be test-installed before it merges.
 # These are not releases: no tag, no GitHub release, no version bump.
 #
+# A pull request that changes only Markdown files and the LICENSE builds nothing: the
+# targets are skipped, and the changelog is still checked. These are the files the
+# release ignores too (its paths-ignore); a trigger filter would skip the changelog check.
+#
 # A pull request into develop or main stamps the version its merge will release, and
 # once every target is built leaves a marker naming the merged files and that version.
 # The release workflow finds it and publishes these jars rather than building again,
@@ -57,6 +61,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       tree: ${{ steps.version.outputs.tree }}
+      code: ${{ steps.changes.outputs.code }}
 
     steps:
       - name: Checkout
@@ -81,9 +86,32 @@ jobs:
             echo "tree=$(git rev-parse 'HEAD^{tree}')"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Look for anything but documentation
+        # What the merge GitHub prepared changes on the base: HEAD^1 is the base, HEAD^2
+        # the pull request. Anything this cannot read builds, as an odd path does
+        # (git quotes it, so it no longer ends in .md).
+        id: changes
+        run: |
+          set -euo pipefail
+          code=true
+          if git rev-parse -q --verify 'HEAD^2' >/dev/null && files=$(git diff --name-only 'HEAD^1' HEAD); then
+            code=false
+            while IFS= read -r file; do
+              case "$file" in
+                '' | *.md | LICENSE) ;;
+                *) code=true; break ;;
+              esac
+            done <<< "$files"
+          fi
+          echo "Code changed: ${code}"
+          if [ "$code" = false ]; then
+            echo 'Only documentation changed: no target is built.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "code=${code}" >> "$GITHUB_OUTPUT"
+
   build:
     needs: version
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && needs.version.outputs.code == 'true'
     # One job per Stonecutter target, so a version that stops compiling fails on its
     # own line. A target added to stonecutter.properties.toml is added here too.
     strategy:
@@ -212,7 +240,8 @@ jobs:
           retention-days: 14
 
   # Only once every target built: the marker tells the release that this run holds the
-  # jars of every target for these files (the merge's tree) at this version.
+  # jars of every target for these files (the merge's tree) at this version. Skipped with
+  # the build when only documentation changed: the release skips such a push as well.
   prebuilt:
     needs: [version, build]
     if: needs.version.outputs.version != ''

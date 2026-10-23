@@ -58,6 +58,7 @@ public final class DebugScreen extends SideOptionsScreen {
                 bool("optParallelRead", c.optParallelRead, v -> c.optParallelRead = v),
                 bool("optColumnCache", c.optColumnCache, v -> c.optColumnCache = v),
                 bool("hideOccludedMobs", c.hideOccludedMobs, v -> c.hideOccludedMobs = v),
+                bool("onlyOverTerrain", c.onlyOverTerrain, v -> c.onlyOverTerrain = v),
                 bool("optOcclusionQueries", c.optOcclusionQueries, v -> c.optOcclusionQueries = v),
                 bool("optDhFade", c.optDhFade, v -> c.optDhFade = v),
                 bool("optVoxyShadows", c.optVoxyShadows, v -> c.optVoxyShadows = v),

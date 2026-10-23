@@ -45,6 +45,8 @@ public final class DebugMarks {
         HIDDEN(0xFFFFAA00, true),
         /** Not drawn: a copy this close to the player is gone from view, so it cannot be walked up to. */
         NEAR(0xFFAA7744),
+        /** Not drawn: no terrain is drawn under it, neither the game's nor the far terrain. */
+        VOID(0xFF5522AA, true),
         /** Not drawn: outside the view. */
         OUTSIDE(0xFFFF5555, true),
         /** Not drawn yet: its copy is being built. */

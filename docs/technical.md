@@ -48,7 +48,7 @@ never added to a level (`track/Puppets`).
 | root | `LivingHorizonCommon` (entry point on both sides, opens the network channel), `LivingHorizonClient` (client entry point), `FarConfig` (the settings file), `QualityPreset`, `Stats` |
 | `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
 | `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`; `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
-| `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
+| `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
 | `ambient/` | The birds (`Ambience`, `BirdModels`, `BirdFigure`, `AmbientRenderer`) and the easter eggs |
 | `platform/` | What differs between loaders: events, network, config folder |
 | `ui/` | The settings screens (`FarConfigScreen` and its sub-screens, `SodiumOptions`), the impostor screen, the text under the crosshair (`OfflineHud`) |
@@ -150,6 +150,36 @@ it, and is a new version.
 
 `mixin/MinecraftServerMixin` drives it from the start of the server's tick, so that what it
 sends goes out when that tick flushes the connections.
+
+### What the owner chooses
+
+`ServerConfig` reads `config/livinghorizon-server.json` (the host's config folder in a world
+played alone or opened to LAN). It is written with every setting the first time the server
+shares, filled in with those a newer version adds, and read again at the next full share
+(five seconds at most) after its modification time changes; everyone is then sent everything
+again. A file that does not read at start is kept as `.bad` and the defaults are written; one
+that does not read later, while being edited, keeps the settings as they were and the file
+alone. An unknown key is said in the console and dropped.
+
+`track/ShareRules` decides, for each player sent the lists, who is left out, with no type of
+the game's but a team's name:
+
+- `sharePlayers`, `shareOfflinePlayers`, `shareMobs` switch each list off. The players
+  message is still sent, empty but for the player themselves, so the client knows the
+  server has the mod. Mobs switched off, or a player in a hidden dimension, get an empty
+  list in a circle that covers nothing (radius -1): the client keeps what it remembers.
+- `hiddenPlayers` (names, any case) and `hiddenDimensions` (ids) leave records out of both
+  lists of players, whoever looks.
+- `playerRange` (blocks across the ground, 0 for any) and `teamsOnly` (the scoreboard's
+  teams, the same team on both sides) depend on who looks: with either on, the five times a
+  second message is made for each player instead of once for all (`sameForAll`).
+- `hideSpectators` and `hideInvisible` are applied by the publisher itself, as it reads the
+  players online: such a player's record is not updated and not sent, online or logged off.
+  They log off from where they were last seen, with the mount they had then. A player seen
+  only hidden has no record; `WorldPlayers` also leaves out those saved in spectator mode.
+
+These only change what the server sends. What a client already received is kept in its own
+memory of players who logged off.
 
 ### The server's file
 
@@ -424,6 +454,18 @@ flat disc at their own height.
 - `maxDistantMobs` of them are drawn at once (512; 1000 is no limit): the nearest remembered
   ones. Past `mobMaxDistance` (512 blocks) none are drawn. Both that distance and the near zone
   are applied after the choice, so copies there still take places and fewer may show.
+- With `onlyOverTerrain` (*Only Over Terrain*, in *Debug Options...*, on), a mob is drawn only where terrain is drawn
+  under it (`compat/DrawnGround`): a chunk the game holds within its render distance, measured
+  as the game picks its sections, or else a chunk the far world has terrain in, within Voxy's or
+  Distant Horizons' own render distance (`LodWorld.drawnDistance`). The far world is asked a
+  chunk at a time, every chunk of a frame in one read (`LodWorld.fresh`, which reads a column
+  remembered empty again). A chunk found empty is asked again after 1, 2, 4... up to 30 seconds,
+  as the far world fills in after a world is opened; one with terrain stays so until the world
+  changes. Never a blink: only a "no terrain" answer hides a mob; while its chunk has no answer
+  yet (or the far world's reads are paused), it stays as it was the frame before
+  (`DrawnGround.Decisions`, by the mob's id, shared by the real mob and its copy). The game's
+  chunks within three of the edge of its render distance are asked ahead, so the answer is there
+  before a mob or the edge crosses them. The debug marks call a hidden one *over the void*.
 - A mob smaller on screen than `animationMinPixels` (10 pixels; 0 always animates; its height
   or width, whichever is larger, and never under `minApparentPixels`) plays no
   walking or idle animation (`optStillTiny`): it keeps sliding along its animation and turning
@@ -750,11 +792,16 @@ the depth of the picture, where Voxy's or Distant Horizons' terrain already is (
 `FarDepth`):
 
 1. Just before the entities are drawn, the box around each distant mob is drawn against that
-   depth, writing nothing, inside an occlusion query (`GL_ANY_SAMPLES_PASSED_CONSERVATIVE`, or
-   `GL_ANY_SAMPLES_PASSED` without OpenGL 4.3 or `GL_ARB_ES3_compatibility`), with the
-   matrices of the frame (`LevelRendererMixin`, `renderLevel`; `render` from 26.2).
-2. The answers are read once the GPU has them, up to 4 frames of them waiting, never waited
-   for.
+   depth, writing nothing, with the matrices of the frame (`LevelRendererMixin`, `renderLevel`;
+   `render` from 26.2). From OpenGL 4.3 every box of the frame goes in one instanced draw: the
+   fragment shader runs after the depth test (`early_fragment_tests`) and writes a word for its
+   box into a shader storage buffer, which is copied to a buffer of that batch behind a fence
+   (`drawWords`): a dozen GL calls a frame, however many mobs. Without it, each box is drawn
+   inside an occlusion query of its own (`GL_ANY_SAMPLES_PASSED_CONSERVATIVE`, or
+   `GL_ANY_SAMPLES_PASSED` without `GL_ARB_ES3_compatibility`), five calls per box
+   (`drawQueries`); a failure of the one draw falls back to it for the session.
+2. The answers are read once the GPU has them (the fence passed, or the last query of the
+   batch done), up to 4 frames of them waiting, never waited for.
 3. A mob whose last answer is "no pixel passed" is not drawn. It is asked about again on the
    next frame that has room for a batch, so it comes back as soon as one pixel of it would
    show.
