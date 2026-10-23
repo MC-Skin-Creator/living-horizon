@@ -91,6 +91,7 @@
   "livinghorizon.lod.source": "Odczyt dalekiego terenu z: %s.",
   "livinghorizon.lod.failed": "Sprawdzanie %s wyłączone: %s",
   "livinghorizon.lod.depth": "Głębia dalekiego terenu na odległych stworzeniach: %s.",
+  "livinghorizon.lod.link": "Połączenie z %s: %s.",
   "livinghorizon.lod.probe.hit": "Na wprost: pierwszy blok, który zna %s, jest %s bloków dalej.",
   "livinghorizon.lod.probe.none": "Na wprost %s nie zna żadnego bloku w promieniu 4096 bloków.",
   "livinghorizon.lod.probe.error": "Nie udało się odpytać %s: %s",

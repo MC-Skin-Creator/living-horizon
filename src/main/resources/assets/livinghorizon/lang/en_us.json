@@ -91,6 +91,7 @@
   "livinghorizon.lod.source": "Reading the far terrain from %s.",
   "livinghorizon.lod.failed": "%s check turned off: %s",
   "livinghorizon.lod.depth": "Far terrain depth on distant mobs: %s.",
+  "livinghorizon.lod.link": "Link to %s: %s.",
   "livinghorizon.lod.probe.hit": "Looking ahead, the first block %s knows is %s blocks away.",
   "livinghorizon.lod.probe.none": "Looking ahead, %s knows no block within 4096 blocks.",
   "livinghorizon.lod.probe.error": "Could not ask %s: %s",

@@ -4,6 +4,7 @@ import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.platform.Platform;
 import net.minecraft.client.Minecraft;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
 
@@ -32,15 +33,36 @@ final class DhSource implements LodSource {
 
     private MethodHandle terrainRepo, worldProxy;
     private MethodHandle worldLoaded, levels, wrapped, columnAt;
-    private MethodHandle success, payload, messageOf;
-    private MethodHandle top, blockOf, biomeOf;
+    private MethodHandle top, blockOf, biomeOf, clearCache;
     private MethodHandle isAir, isLiquid, isSolid, biomeName;
     /** Before Distant Horizons 3.0 there is no opacity, and before 2.4 no cache: null then. */
     private @Nullable MethodHandle opacity, softCache;
 
-    /** One reader's cache of Distant Horizons' data, for the level it was made for. */
-    private record Cached(Object level, @Nullable Object cache) {
+    /**
+     * One reader's cache of Distant Horizons' data, for the level it was made for. Distant
+     * Horizons' cache keeps an area as it was first read for as long as memory allows: read
+     * before Distant Horizons had filled it in (it builds its terrain over minutes in a new
+     * world), the area stayed empty, and a mob standing there stayed hidden over terrain in
+     * plain view. So the cache is emptied every {@link #RENEW_NANOS}, and soon after a column
+     * comes back empty ({@link #MISSED_NANOS}).
+     */
+    private static final class Cached {
+        final Object level;
+        final @Nullable Object cache;
+        final int generation;
+        long emptied = System.nanoTime();
+        boolean missed;
+
+        Cached(Object level, @Nullable Object cache, int generation) {
+            this.level = level;
+            this.cache = cache;
+            this.generation = generation;
+        }
     }
+
+    private static final long RENEW_NANOS = 30_000_000_000L, MISSED_NANOS = 2_000_000_000L;
+    /** Raised by {@link #clear()}: every reader's cache is made again. */
+    private volatile int generation;
 
     private final ThreadLocal<Cached> caches = new ThreadLocal<>();
 
@@ -59,17 +81,17 @@ final class DhSource implements LodSource {
         reads.incrementAndGet();
         if (result == null) {
             lastAnswer = "null";
-            return null;
+            return missed();
         }
-        Object message = messageOf.invoke(result);
-        if (!(boolean) success.invoke(result)) {
+        Object message = DhLink.message(result);
+        if (!DhLink.success(result)) {
             lastAnswer = "failed: " + message;
-            return null;
+            return missed();
         }
-        Object[] points = (Object[]) payload.invoke(result);
+        Object[] points = (Object[]) DhLink.payload(result);
         if (points == null || points.length == 0) {
             lastAnswer = "empty: " + message;
-            return null;
+            return missed();
         }
         found.incrementAndGet();
         lastAnswer = "ok: " + message;
@@ -91,9 +113,17 @@ final class DhSource implements LodSource {
         return failure;
     }
 
+    /** A column without data: this reader's cache may hold its area as it was before Distant Horizons filled it in. */
+    private Object @Nullable [] missed() {
+        Cached cached = caches.get();
+        if (cached != null) cached.missed = true;
+        return null;
+    }
+
     @Override
     public void clear() {
         tops.clear();
+        generation++;
     }
 
     /** The height of the highest block of each column read, and until when it is trusted. */
@@ -136,6 +166,7 @@ final class DhSource implements LodSource {
                 return false;
             }
             try {
+                if (!DhLink.linked()) throw new IllegalStateException("its API is not the one this mod knows");
                 link();
             } catch (Throwable e) {
                 broken = true;
@@ -164,7 +195,7 @@ final class DhSource implements LodSource {
     }
 
     private static double distance(boolean clear) {
-        String api = "com.seibel.distanthorizons.api.", config = api + "interfaces.config.";
+        String api = DhLink.API, config = api + "interfaces.config.";
         try {
             Object configs = Class.forName(api + "DhApi$Delayed").getField("configs").get(null);
             if (configs == null) return 0;
@@ -197,7 +228,7 @@ final class DhSource implements LodSource {
 
     /** What one of its settings is set to. */
     private static Object value(Object setting) throws ReflectiveOperationException {
-        return call("com.seibel.distanthorizons.api.interfaces.config.IDhApiConfigValue", setting, "getValue");
+        return call(DhLink.API + "interfaces.config.IDhApiConfigValue", setting, "getValue");
     }
 
     @Override
@@ -210,48 +241,37 @@ final class DhSource implements LodSource {
     }
 
     private void link() throws ReflectiveOperationException {
-        String api = "com.seibel.distanthorizons.api.";
+        String api = DhLink.API;
         MethodHandles.Lookup lookup = MethodHandles.publicLookup();
-        Class<?> delayed = Class.forName(api + "DhApi$Delayed");
         Class<?> repo = Class.forName(api + "interfaces.data.IDhApiTerrainDataRepo");
         Class<?> proxy = Class.forName(api + "interfaces.world.IDhApiWorldProxy");
         Class<?> level = Class.forName(api + "interfaces.world.IDhApiLevelWrapper");
         Class<?> cache = Class.forName(api + "interfaces.data.IDhApiTerrainDataCache");
         Class<?> unsafe = Class.forName(api + "interfaces.IDhApiUnsafeWrapper");
-        Class<?> result = Class.forName(api + "objects.DhApiResult");
+        Class<?> result = DhLink.resultType();
         Class<?> point = Class.forName(api + "objects.data.DhApiTerrainDataPoint");
         Class<?> block = Class.forName(api + "interfaces.block.IDhApiBlockStateWrapper");
         Class<?> biome = Class.forName(api + "interfaces.block.IDhApiBiomeWrapper");
         // Filled in by Distant Horizons once it has started: read at every use.
-        terrainRepo = lookup.findStaticGetter(delayed, "terrainRepo", repo);
-        worldProxy = lookup.findStaticGetter(delayed, "worldProxy", proxy);
+        terrainRepo = DhLink.delayed("terrainRepo", repo);
+        worldProxy = DhLink.delayed("worldProxy", proxy);
         worldLoaded = lookup.findVirtual(proxy, "worldLoaded", MethodType.methodType(boolean.class));
         levels = lookup.findVirtual(proxy, "getAllLoadedLevelWrappers", MethodType.methodType(Iterable.class));
         wrapped = lookup.findVirtual(unsafe, "getWrappedMcObject", MethodType.methodType(Object.class));
         columnAt = lookup.findVirtual(repo, "getColumnDataAtBlockPos",
                 MethodType.methodType(result, level, int.class, int.class, cache));
-        softCache = optional(lookup, repo, "createSoftCache", MethodType.methodType(cache));
-        success = lookup.findGetter(result, "success", boolean.class);
-        payload = lookup.findGetter(result, "payload", Object.class);
-        messageOf = lookup.findGetter(result, "message", String.class);
+        softCache = Links.optional(lookup, repo, "createSoftCache", MethodType.methodType(cache));
+        clearCache = lookup.findVirtual(cache, "clear", MethodType.methodType(void.class));
+        if (softCache == null) DhLink.fallback("no cache for its world (before 2.4)");
         top = lookup.findGetter(point, "topYBlockPos", int.class);
         blockOf = lookup.findGetter(point, "blockStateWrapper", block);
         biomeOf = lookup.findGetter(point, "biomeWrapper", biome);
         isAir = lookup.findVirtual(block, "isAir", MethodType.methodType(boolean.class));
         isLiquid = lookup.findVirtual(block, "isLiquid", MethodType.methodType(boolean.class));
         isSolid = lookup.findVirtual(block, "isSolid", MethodType.methodType(boolean.class));
-        opacity = optional(lookup, block, "getOpacity", MethodType.methodType(int.class));
+        opacity = Links.optional(lookup, block, "getOpacity", MethodType.methodType(int.class));
+        if (opacity == null) DhLink.fallback("no opacity, solid blocks and liquids stop the eye (before 3.0)");
         biomeName = lookup.findVirtual(biome, "getName", MethodType.methodType(String.class));
-    }
-
-    /** A method older versions of Distant Horizons do not have: null there. */
-    private static @Nullable MethodHandle optional(MethodHandles.Lookup lookup, Class<?> owner, String name, MethodType type)
-            throws IllegalAccessException {
-        try {
-            return lookup.findVirtual(owner, name, type);
-        } catch (NoSuchMethodException e) {
-            return null;
-        }
     }
 
     /** Whether a block stops the eye; without opacity (before 3.0), solid blocks and liquids do. */
@@ -266,13 +286,20 @@ final class DhSource implements LodSource {
         // Both are filled in by Distant Horizons once it has started: until then, nothing to read.
         Object proxy = worldProxy.invoke();
         if (proxy == null || terrainRepo.invoke() == null || !(boolean) worldLoaded.invoke(proxy)) return null;
-        Object current = Minecraft.getInstance().level;
-        Object first = null;
+        Level current = Minecraft.getInstance().level;
+        if (current == null) return null;
+        // In single player Distant Horizons' levels wrap the server's, one per dimension, in no
+        // order: never the client's own level. The one of the player's dimension, then; the first
+        // one, as before, read another dimension's terrain (the End's void, the Nether's roof).
+        Object sameDimension = null;
         for (Object level : (Iterable<?>) levels.invoke(proxy)) {
-            if (first == null) first = level;
-            if (current != null && wrapped.invoke(level) == current) return level;
+            Object game = wrapped.invoke(level);
+            if (game == current) return level;
+            if (sameDimension == null && game instanceof Level other && other.dimension().equals(current.dimension())) {
+                sameDimension = level;
+            }
         }
-        return first;
+        return sameDimension;
     }
 
     @Override
@@ -306,12 +333,20 @@ final class DhSource implements LodSource {
      */
     private Object cache(Object world) throws Throwable {
         Cached cached = caches.get();
-        if (cached == null || cached.level() != world) {
+        if (cached == null || cached.level != world || cached.generation != generation) {
+            if (cached != null && cached.cache != null) clearCache.invoke(cached.cache);
             // Without a cache (before 2.4), Distant Horizons reads without one.
-            cached = new Cached(world, softCache == null ? null : softCache.invoke(terrainRepo.invoke()));
+            cached = new Cached(world, softCache == null ? null : softCache.invoke(terrainRepo.invoke()), generation);
             caches.set(cached);
+        } else if (cached.cache != null) {
+            long now = System.nanoTime();
+            if (now - cached.emptied > RENEW_NANOS || cached.missed && now - cached.emptied > MISSED_NANOS) {
+                clearCache.invoke(cached.cache);
+                cached.emptied = now;
+                cached.missed = false;
+            }
         }
-        return cached.cache();
+        return cached.cache;
     }
 
     /**

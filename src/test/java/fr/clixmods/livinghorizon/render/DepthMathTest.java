@@ -155,6 +155,44 @@ class DepthMathTest {
         assertTrue(offByTerms, "the bobbing moves Distant Horizons' depth");
     }
 
+    /**
+     * What the merge shaders do, one pixel at a time (far_depth.glsl, mirrored by dhViewZ and
+     * depth): Distant Horizons' stored depth, in either of its layouts, through its terms or its
+     * whole matrix, into the game's in each of its layouts lands where the game draws the point.
+     */
+    @Test
+    void distantHorizonsDepthIntoTheGamesAsTheShadersDo() {
+        Matrix4f bob = bobbing();
+        for (boolean signed : BOTH) {
+            float[] dhTerms = DepthMath.terms(7.5f, 8000f, false, !signed);
+            for (boolean exact : BOTH) {
+                Matrix4f dh = new Matrix4f(perspective(NEAR, FAR, false, !signed)).mul(bob).m22(dhTerms[0]).m32(dhTerms[1]);
+                if (!exact) dh = perspective(7.5f, 8000f, false, !signed);
+                Matrix4f inverse = new Matrix4f();
+                assertTrue(DepthMath.invert(dh.get(new float[16]), false, inverse));
+                for (boolean reversed : BOTH) {
+                    for (boolean zeroToOne : BOTH) {
+                        Matrix4f game = perspective(NEAR, FAR, reversed, zeroToOne);
+                        if (exact) game.mul(bob);
+                        float[] gameTerms = DepthMath.fromProjection(game);
+                        assertNotNull(gameTerms);
+                        for (float[] v : new float[][]{{0, 0, -40}, {25, 9, -120}, {-80, -20, -400}, {150, 40, -900}}) {
+                            Vector4f clip = dh.transform(new Vector4f(v[0], v[1], v[2], 1f));
+                            float x = (clip.x / clip.w) * 0.5f + 0.5f, y = (clip.y / clip.w) * 0.5f + 0.5f;
+                            float stored = stored(dh, v[0], v[1], v[2], !signed);
+                            float z = DepthMath.dhViewZ(stored, dhTerms[0], dhTerms[1], signed, exact ? inverse : null, x, y);
+                            String at = "signed " + signed + ", exact " + exact + ", reversed " + reversed
+                                    + ", 0..1 " + zeroToOne + ", z " + v[2];
+                            assertTrue(z < 0f, at);
+                            assertEquals(stored(game, v[0], v[1], v[2], zeroToOne),
+                                    DepthMath.depth(gameTerms[0], gameTerms[1], zeroToOne, -z), 2e-4f, at);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     @Test
     void aFlatMatrixDoesNotInvert() {
         Matrix4f out = new Matrix4f();

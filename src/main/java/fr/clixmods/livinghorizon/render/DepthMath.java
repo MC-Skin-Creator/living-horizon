@@ -15,6 +15,10 @@ import org.jspecify.annotations.Nullable;
  * {@code z} (negative in front of the camera), {@code ndc = (a * z + b) / -z}, and back,
  * {@code distance = -z = b / (ndc + a)}. In a 0..1 layout the stored depth is the {@code ndc};
  * in OpenGL's -1..1 it is {@code ndc * 0.5 + 0.5}.
+ *
+ * <p>The shaders do the same in GLSL, in {@code shaders/include/far_depth.glsl}: {@link #distance}
+ * is its {@code lhDistance}, {@link #depth} its {@code lhGameDepth}, {@link #dhViewZ} its
+ * {@code lhDhViewZ}. A change to one is made to the other, and tested here.
  */
 public final class DepthMath {
     private DepthMath() {
@@ -105,6 +109,19 @@ public final class DepthMath {
     public static float viewZ(Matrix4fc inverse, float x, float y, float ndc) {
         Vector4f p = inverse.transform(new Vector4f(x, y, ndc, 1.0f));
         return -1.0f / p.w;
+    }
+
+    /**
+     * Distant Horizons' stored {@code depth} back to view-space {@code z} (negative in front of
+     * the camera), at {@code (x, y)} on the screen, 0..1 from its bottom left corner: through
+     * the inverse of its whole projection when known, else through its two terms. The shaders'
+     * {@code lhDhViewZ}; the game's depth is then {@link #depth} at {@code -z}.
+     */
+    public static float dhViewZ(float depth, float a, float b, boolean signed, @Nullable Matrix4fc inverse,
+                                float x, float y) {
+        float ndc = signed ? depth * 2.0f - 1.0f : depth;
+        if (inverse != null) return viewZ(inverse, x * 2.0f - 1.0f, y * 2.0f - 1.0f, ndc);
+        return -b / (ndc + a);
     }
 
     /**

@@ -91,6 +91,7 @@
   "livinghorizon.lod.source": "Далекий рельєф читається з %s.",
   "livinghorizon.lod.failed": "Перевірку %s вимкнено: %s",
   "livinghorizon.lod.depth": "Глибина далекого рельєфу на далеких мобах: %s.",
+  "livinghorizon.lod.link": "Зв’язок із %s: %s.",
   "livinghorizon.lod.probe.hit": "Попереду перший блок, відомий %s, розташований за %s блоків.",
   "livinghorizon.lod.probe.none": "Попереду %s не знає жодного блока в межах 4096 блоків.",
   "livinghorizon.lod.probe.error": "Не вдалося запитати %s: %s",

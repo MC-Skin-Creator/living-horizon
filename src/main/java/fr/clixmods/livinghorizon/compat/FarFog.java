@@ -53,7 +53,7 @@ public final class FarFog {
         // A fog that ends close (water, lava, blindness) is left alone, as Voxy leaves it.
         if (renderDistanceStart < NO_RENDER_DISTANCE_FOG || environmentalEnd < 10
                 || environmentalEnd - environmentalStart <= 1) return null;
-        if (!FarConfig.get().anyDistant() || shaderPack()) return null;
+        if (!FarConfig.get().anyDistant() || IrisLink.shaderPackOn()) return null;
         return limited(environmentalStart, environmentalEnd, voxyLimit());
     }
 
@@ -136,30 +136,6 @@ public final class FarFog {
         } catch (ReflectiveOperationException | LinkageError e) {
             broken = true;
             LivingHorizonClient.LOGGER.warn("Voxy found, but not its fog settings: distant mobs keep the game's fog", e);
-        }
-    }
-
-    private static boolean irisLinked;
-    private static @Nullable Object iris;
-    private static @Nullable Method packInUse;
-
-    /** Whether Iris draws with a shader pack, which fogs everything its own way. */
-    private static boolean shaderPack() {
-        if (!irisLinked) {
-            irisLinked = true;
-            try {
-                Class<?> api = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
-                iris = api.getMethod("getInstance").invoke(null);
-                packInUse = api.getMethod("isShaderPackInUse");
-            } catch (ReflectiveOperationException | LinkageError e) {
-                packInUse = null; // no Iris
-            }
-        }
-        if (packInUse == null) return false;
-        try {
-            return (boolean) packInUse.invoke(iris);
-        } catch (ReflectiveOperationException | RuntimeException e) {
-            return false;
         }
     }
 

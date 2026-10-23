@@ -91,6 +91,7 @@
   "livinghorizon.lod.source": "Terrain lointain lu depuis %s.",
   "livinghorizon.lod.failed": "Vérification %s désactivée : %s",
   "livinghorizon.lod.depth": "Profondeur du terrain lointain sur les mobs lointains : %s.",
+  "livinghorizon.lod.link": "Lien avec %s : %s.",
   "livinghorizon.lod.probe.hit": "Droit devant, le premier bloc connu de %s est à %s blocs.",
   "livinghorizon.lod.probe.none": "Droit devant, %s ne connaît aucun bloc à moins de 4096 blocs.",
   "livinghorizon.lod.probe.error": "Impossible d'interroger %s : %s",

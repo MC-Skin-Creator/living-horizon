@@ -91,6 +91,7 @@
   "livinghorizon.lod.source": "%sから遠方の地形を読み取っています。",
   "livinghorizon.lod.failed": "%sのチェックをオフにしました：%s",
   "livinghorizon.lod.depth": "遠くのMobへの遠方の地形の深度：%s。",
+  "livinghorizon.lod.link": "%s との連携：%s。",
   "livinghorizon.lod.probe.hit": "前方で%sが把握している最初のブロックは%sブロック先です。",
   "livinghorizon.lod.probe.none": "前方4096ブロック以内に、%sが把握しているブロックはありません。",
   "livinghorizon.lod.probe.error": "%sに問い合わせできませんでした：%s",

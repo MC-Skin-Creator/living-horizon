@@ -91,6 +91,7 @@
   "livinghorizon.lod.source": "正在从%s读取远景地形。",
   "livinghorizon.lod.failed": "%s检查已关闭：%s",
   "livinghorizon.lod.depth": "远处生物上的远景地形深度：%s。",
+  "livinghorizon.lod.link": "与 %s 的连接：%s。",
   "livinghorizon.lod.probe.hit": "向前看，%s已知的第一个方块在%s个方块外。",
   "livinghorizon.lod.probe.none": "向前看，%s在4096个方块内没有已知方块。",
   "livinghorizon.lod.probe.error": "无法查询%s：%s",

@@ -48,7 +48,7 @@ never added to a level (`track/Puppets`).
 | root | `LivingHorizonCommon` (entry point on both sides, opens the network channel), `LivingHorizonClient` (client entry point), `FarConfig` (the settings file), `QualityPreset`, `Stats` |
 | `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
 | `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`; `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
-| `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
+| `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
 | `ambient/` | The birds (`Ambience`, `BirdModels`, `BirdFigure`, `AmbientRenderer`) and the easter eggs |
 | `platform/` | What differs between loaders: events, network, config folder |
 | `ui/` | The settings screens (`FarConfigScreen` and its sub-screens, `SodiumOptions`), the impostor screen, the text under the crosshair (`OfflineHud`) |
@@ -698,6 +698,33 @@ Horizon (on 26.3 the game's GPU device path works otherwise, see
 | Voxy, no shader pack | Voxy itself, for good: nothing to do |
 | Voxy, under a pack that keeps it out of the game's depth (Photon sets `excludeLodsFromVanillaDepth`) | `FarDepth`, around the entities only |
 | Distant Horizons | `FarDepth`, from Distant Horizons' own depth texture (`compat/DhDepth`) |
+
+### Links to Voxy, Distant Horizons and Iris
+
+None of the three has an API for what the mod needs, or not all of it: they are reached by
+reflection, each through one class, `VoxyLink`, `DhLink` (what `DhDepth` and `DhSource` share)
+and `IrisLink`. A rename on their side is followed there and nowhere else. What an older or
+newer version lacks and the mod can do without is a fallback (`Links.optional…`), noted by the
+link; what it cannot do without turns that part off for the session. `/livinghorizon lod` has
+one line per link: linked, not installed or off and why, the fallbacks in use, and how often the
+mixins into Voxy (`renderOpaque`) and Distant Horizons (its fades) ran. Those two may find nothing
+to hook (`require = 0`): a count that stays at 0 while the mod draws is a renamed method.
+
+### One frame
+
+`FarDepth`'s steps run in this order, each frame: `noteView` (the matrices; everything kept for
+the frame, `FarDepth.Frame`, is forgotten here), `noteTarget` (Voxy draws its terrain), `arm`
+(the entities are submitted), `before` and `after` around the solid step, from 26.1
+`beforeTranslucent` and `afterTranslucent` around the translucent one, `beforeFade` and
+`afterFade` around each of Distant Horizons' fades, then `drawDebugView` with the HUD. A step
+that finds the one before it missing (a hook lost to a rename, another mod changing the order)
+says so once in the log and in `/livinghorizon lod` ("steps out of order"); the `depthview`
+game test fails on it.
+
+The shaders' depth arithmetic is written once, `shaders/include/far_depth.glsl`: the OpenGL
+programs splice it in (`GlPrograms`), 26.3's take it with `#include`, and `DepthMath` mirrors it
+in Java for `DepthMathTest`. The `depthview` game test compiles every program, those only Voxy
+or Distant Horizons would use included.
 
 ### Voxy under a shader pack
 
