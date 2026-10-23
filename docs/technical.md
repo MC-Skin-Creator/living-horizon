@@ -875,7 +875,9 @@ in `compat/FarDepthGpu` and the answers read back from there, a capped number pe
 
 Why the answer can be trusted:
 
-- The GPU projects the box exactly as the mob is drawn, so the answer is the picture's.
+- The GPU projects the box exactly as the mob is drawn, so the answer is the picture's. With a
+  *Minimum Size*, the box is as large as the mob is drawn: model, picture and box take their
+  size from the same arithmetic (`render/Apparent`), never under a player's height.
 - Depth clamping keeps a box past the far plane at the far plane: the sky never hides a mob,
   terrain in front does.
 - A mob never asked about, or whose answer is more than six frames old, is drawn.
@@ -886,7 +888,9 @@ of them hidden behind a wall, none once it is gone.
 With `optOcclusionQueries` off, or once the queries have failed, the mobs are tested in the
 far terrain's world instead (`render/Occlusion`). The two answers are never mixed. With
 Vulkan, once Distant Horizons' depth is merged, no mob is skipped: the depth test hides them
-pixel by pixel.
+pixel by pixel. Which way the frame goes (`DepthFar.openGl`, `FarDepth.gpuPath`) is worked out
+once, as the level starts to render (`FarDepth.noteView`): with Vulkan, asking OpenGL throws, and
+the GPU path asks Distant Horizons and Iris through reflection, too much for every mob.
 
 ## Debug tools
 

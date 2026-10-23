@@ -78,13 +78,11 @@ public final class ImpostorViews {
         return best;
     }
 
-    /** Left edge of a picture in its sheet, as a fraction of the sheet's width. */
-    public static float u0(int view) {
-        return view / (float) VIEWS;
-    }
-
-    /** Right edge of a picture in its sheet. */
-    public static float u1(int view) {
-        return (view + 1) / (float) VIEWS;
+    /**
+     * The yaw a figure's body is turned to for picture {@code view}, in the game's degrees: 180
+     * for picture 0, seen from in front by a camera looking along +z, then a step less for each.
+     */
+    public static float facing(int view) {
+        return 180f - view * (360f / VIEWS);
     }
 }

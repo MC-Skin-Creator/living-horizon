@@ -9,6 +9,7 @@
 - **Smoother frames with distant mobs** — the game waits less on the graphics driver each frame with distant mobs over Voxy or Distant Horizons, most of all on NVIDIA cards with *Threaded optimization* on.
 - **Distant phantoms and ghasts flying** — distant phantoms now circle in the sky and distant ghasts drift about, instead of hanging still in the air.
 - **Phantoms and ghasts seen from below** — as *Simplified Entities* (flat pictures of far mobs), phantoms and ghasts are now pictured from below and from above too, like birds, not only from the side.
+- **Smoother with many distant mobs on Vulkan** — the game no longer loses time on every distant mob, every frame, when it draws with Vulkan (Minecraft 26.2 and later) or over Distant Horizons (Minecraft 26.3).
 
 ## 0.12.0 — 2026-10-23
 

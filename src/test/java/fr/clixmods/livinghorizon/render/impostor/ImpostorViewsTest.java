@@ -55,10 +55,17 @@ class ImpostorViewsTest {
     }
 
     @Test
-    void sheetEdgesTileTheRow() {
-        assertEquals(0f, ImpostorViews.u0(0));
-        assertEquals(1f, ImpostorViews.u1(ImpostorViews.VIEWS - 1));
-        for (int v = 0; v < ImpostorViews.VIEWS - 1; v++) assertEquals(ImpostorViews.u1(v), ImpostorViews.u0(v + 1));
+    void eachPictureIsBakedTurnedAStepFurther() {
+        assertEquals(180f, ImpostorViews.facing(0));
+        for (int v = 1; v < ImpostorViews.VIEWS; v++) {
+            assertEquals(360f / ImpostorViews.VIEWS, ImpostorViews.facing(v - 1) - ImpostorViews.facing(v), 1e-4f);
+        }
+    }
+
+    @Test
+    void aFigureTurnedAsAPictureWasBakedShowsThatPicture() {
+        // The bake's camera stands north of the figure, looking along +z.
+        for (int v = 0; v < ImpostorViews.VIEWS; v++) assertEquals(v, ImpostorViews.view(ImpostorViews.facing(v), 0, -10));
     }
 
     @Test

@@ -45,24 +45,23 @@ class ImpostorDiskTest {
     @Test
     void roundTrips() throws IOException {
         int[][] levels = sheet();
-        ImpostorDisk.Stored stored = decoded(encoded(2.5, 1, levels));
+        ImpostorDisk.Stored stored = decoded(encoded(2.5, ImpostorDisk.SCALE, levels));
         assertNotNull(stored);
         assertEquals(2.5, stored.worldSize());
-        assertEquals(1, stored.scale());
         assertEquals(levels.length, stored.levels().length);
         for (int level = 0; level < levels.length; level++) assertArrayEquals(levels[level], stored.levels()[level]);
     }
 
     @Test
     void ignoresAnotherFormat() throws IOException {
-        byte[] data = encoded(2.5, 1, sheet());
+        byte[] data = encoded(2.5, ImpostorDisk.SCALE, sheet());
         data[7]++;
         assertNull(decoded(data));
     }
 
     @Test
     void refusesALengthItCannotHave() throws IOException {
-        byte[] data = encoded(2.5, 1, sheet());
+        byte[] data = encoded(2.5, ImpostorDisk.SCALE, sheet());
         // The first level's length, after the magic, the format, the size, the scale and the count.
         int at = 4 + 4 + 8 + 4 + 4;
         data[at] = 0x7F;
@@ -71,14 +70,14 @@ class ImpostorDiskTest {
 
     @Test
     void refusesAScaleOrCountItCannotHave() throws IOException {
-        assertThrows(IOException.class, () -> decoded(encoded(2.5, 0, sheet())));
-        assertThrows(IOException.class, () -> decoded(encoded(2.5, ImpostorAtlas.MAX_SCALE + 1, sheet())));
-        assertThrows(IOException.class, () -> decoded(encoded(2.5, 1, Arrays.copyOf(sheet(), ImpostorAtlas.MIPS - 1))));
+        assertThrows(IOException.class, () -> decoded(encoded(2.5, ImpostorDisk.SCALE - 1, sheet())));
+        assertThrows(IOException.class, () -> decoded(encoded(2.5, ImpostorDisk.SCALE + 1, sheet())));
+        assertThrows(IOException.class, () -> decoded(encoded(2.5, ImpostorDisk.SCALE, Arrays.copyOf(sheet(), ImpostorAtlas.MIPS - 1))));
     }
 
     @Test
     void stopsAtTheEndOfACutFile() throws IOException {
-        byte[] data = encoded(2.5, 1, sheet());
+        byte[] data = encoded(2.5, ImpostorDisk.SCALE, sheet());
         assertThrows(EOFException.class, () -> decoded(Arrays.copyOf(data, data.length / 2)));
     }
 }

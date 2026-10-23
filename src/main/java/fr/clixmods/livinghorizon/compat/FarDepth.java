@@ -201,17 +201,29 @@ public final class FarDepth {
     private static boolean gpuAvailable;
 
     public static void gpuAvailable() {
+        if (gpuAvailable) return;
         gpuAvailable = true;
+        gpuPath = workOutGpuPath() ? 1 : 0;
     }
+
+    /** {@link #gpuPath()} as worked out at the start of this frame: 1 yes, 0 no, -1 before the first frame. */
+    private static int gpuPath = -1;
 
     /**
      * Whether the far terrain's depth goes through the game's own GPU device this frame rather
      * than straight OpenGL: always with Vulkan; with OpenGL too over Distant Horizons without a
      * shader pack, where OpenGL calls in the middle of the world's pass left smears at the edge
      * of the game's chunks - unless Distant Horizons draws with OpenGL itself, as it does when
-     * Iris is installed, and has no depth the game's device can read.
+     * Iris is installed, and has no depth the game's device can read. Worked out once a frame
+     * ({@link #noteView}): it asks Distant Horizons and Iris through reflection, and every
+     * distant mob asks it.
      */
     public static boolean gpuPath() {
+        int known = gpuPath;
+        return known >= 0 ? known == 1 : workOutGpuPath();
+    }
+
+    private static boolean workOutGpuPath() {
         if (!DepthFar.openGl()) return true;
         return gpuAvailable && !available() && DhDepth.available() && !DhDepth.shaderPackOn()
                 && !DhDepth.drawsWithOpenGl();
@@ -348,6 +360,8 @@ public final class FarDepth {
         else if (FRAME.lateMerged || FRAME.lateBegan) outOfOrder("the translucent step's depth was not given back after it");
         else if (FRAME.fading) outOfOrder("Distant Horizons' fade did not end");
         FRAME.reset();
+        DepthFar.noteFrame();
+        gpuPath = workOutGpuPath() ? 1 : 0;
         // Its field of view and depth layout come from the camera's own: the bobbing would sway them.
         DepthFar.noteProjection(projection);
         // Whatever is tested against the world's depth is projected the way the world was drawn.
