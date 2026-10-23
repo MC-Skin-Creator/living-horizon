@@ -5,6 +5,7 @@ import fr.clixmods.livinghorizon.render.DepthMath;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
+import fr.clixmods.livinghorizon.Retry;
 import fr.clixmods.livinghorizon.platform.Platform;
 //? if >=1.21.5
 import com.mojang.blaze3d.opengl.GlTexture;
@@ -18,6 +19,7 @@ import org.lwjgl.opengl.GL13C;
 import org.lwjgl.opengl.GL14C;
 import org.lwjgl.opengl.GL20C;
 import org.lwjgl.opengl.GL30C;
+import org.lwjgl.opengl.GL32C;
 import org.lwjgl.opengl.GL33C;
 import org.lwjgl.opengl.GL43C;
 import org.lwjgl.opengl.GL45C;
@@ -53,11 +55,23 @@ import java.nio.charset.StandardCharsets;
  *
  * <p>Voxy's and Distant Horizons' own textures are read, never written, but for our own
  * figures' pixels: see {@link #intoVoxy()}. Voxy has no API for this: its classes are reached
- * by reflection, every GL state touched is put back, and any failure turns this off for the
- * session.
+ * by reflection, and every GL state touched is put back.
+ *
+ * <p>A failure gives the game's depth back at once if it was already written into (see
+ * {@link Frame#dirty}), says so in the log once, and stops what failed for a while
+ * ({@link Retry}): Voxy's part or Distant Horizons' part alone when it was theirs, all of this
+ * otherwise. While stopped, every step that starts something does nothing ({@link #off()}),
+ * and the steps that end one find nothing to end. Only a class or method of Voxy's or Distant
+ * Horizons' missing turns a part off for the session.
  */
 public final class FarDepth {
-    private static boolean ready, broken;
+    private static boolean ready;
+    /** Everything here: a failure that is neither Voxy's nor Distant Horizons' (a copy, a restore, the fade mask). */
+    private static final Retry DEPTH = new Retry("Using the far terrain's depth", "distant mobs show through the far terrain");
+    /** Voxy's part: its depth merged into the game's, our figures written into its own. */
+    private static final Retry VOXY = new Retry("Using Voxy's depth", "distant mobs show through Voxy's terrain");
+    /** Distant Horizons' part: its depth merged into the game's. */
+    private static final Retry DH = new Retry("Using Distant Horizons' depth", "distant mobs show through Distant Horizons' terrain");
 
     /**
      * What this frame has done so far, step by step: everything here is forgotten as the level
@@ -100,11 +114,25 @@ public final class FarDepth {
          * terrain over the translucent figures (players, slimes) the solid step's copies miss.
          */
         boolean lateFade;
+        /**
+         * The copy that holds the game's depth as it was, while the game's own is written into
+         * ({@code saved}, {@code lateSaved} or {@code faded}): set before the first write, and back
+         * to 0 once the depth is given back. A step that fails in between puts it back from there
+         * ({@link #undo()}), so that a failure never leaves the far terrain in the game's depth.
+         */
+        int dirty;
 
         void reset() {
             armed = began = merged = captured = intoVoxy = gpuMerge = gpuFade = fadeMask = fading = false;
             lateOwner = null;
             lateMerge = lateCopy = lateMerged = lateBegan = lateShown = lateFade = false;
+            dirty = 0;
+        }
+
+        /** Nothing more this frame: no step after this one writes into the game's depth or gives it back. */
+        void stop() {
+            merged = captured = intoVoxy = fadeMask = fading = false;
+            lateMerge = lateCopy = lateMerged = lateBegan = lateFade = false;
         }
     }
 
@@ -156,13 +184,14 @@ public final class FarDepth {
      */
     public static void noteTarget() {
         VoxyLink.targetHooked();
-        if (!DepthFar.openGl()) return;
+        if (off() || !DepthFar.openGl()) return;
         // Only read by the merge, which runs under a pack that keeps Voxy's depth apart: asking
         // OpenGL costs a wait for the driver, so not on the frames that cannot use the answer.
         FarConfig config = FarConfig.get();
         try {
             if (!config.anyDistant() || !config.depthOcclusion || !keepsOwnDepth()) return;
-        } catch (ReflectiveOperationException e) {
+        } catch (Throwable e) {
+            failVoxy(e);
             return;
         }
         voxyTarget = GL11C.glGetInteger(GL30C.GL_DRAW_FRAMEBUFFER_BINDING);
@@ -268,6 +297,12 @@ public final class FarDepth {
 
     private static void beforeEntities() {
         if (!FRAME.armed || irisShadowPass()) return;
+        if (off()) {
+            // Not armed: the steps after this one find nothing to end.
+            FRAME.armed = false;
+            mergedLastFrame = false;
+            return;
+        }
         FRAME.began = true;
         FRAME.merged = false;
         FRAME.captured = false;
@@ -294,14 +329,14 @@ public final class FarDepth {
             // The merge and the test both draw: the GL state is saved once around the two.
             // What the merge touches: Voxy's blit everything, Distant Horizons' one texture unit.
             GlState gl = !merging || !queries ? null
-                    : available() ? GlState.save(3, GlState.COLOUR | GlState.SCISSOR_BOX | GlState.READ_FRAMEBUFFER)
-                    : GlState.save(1, 0);
+                    : available() ? GlState.save(3, GlState.FOREIGN | GlState.DEPTH_CLAMP)
+                    : GlState.save(1, GlState.DEPTH_CLAMP);
             try {
                 if (!wanted) {
                     reason = "nothing far to hide this frame";
                 } else if (merging) {
-                    if (available()) FRAME.merged = merge(false);
-                    else if (!broken && DhDepth.available()) FRAME.merged = mergeDh(false);
+                    if (available()) FRAME.merged = mergeVoxy(false);
+                    else if (dhUsable()) FRAME.merged = mergeDh(false);
                     // Why Distant Horizons is of no use (too old, most often), not what an earlier frame said.
                     else reason = Platform.isModLoaded("distanthorizons") ? DhDepth.reason() : "neither Voxy nor Distant Horizons is usable";
                 }
@@ -401,7 +436,13 @@ public final class FarDepth {
                 else if (FRAME.captured && (FRAME.intoVoxy || FRAME.fadeMask || FarConfig.get().debugDepthView != 0)) {
                     copy(depthTexture, drawn);
                 }
-                if (FRAME.intoVoxy) intoVoxy();
+                if (FRAME.intoVoxy) {
+                    try {
+                        intoVoxy();
+                    } catch (Throwable e) {
+                        failVoxy(e);
+                    }
+                }
             } finally {
                 if (gl != null) gl.restore();
             }
@@ -445,17 +486,16 @@ public final class FarDepth {
     }
 
     private static void beforeLate(Object owner) {
-        if (!late(owner)) return;
+        if (off() || !late(owner)) return;
         FRAME.lateBegan = true;
         try {
-            if (FRAME.lateMerge) FRAME.lateMerged = available() ? merge(true) : mergeDh(true);
+            if (FRAME.lateMerge) FRAME.lateMerged = available() ? mergeVoxy(true) : mergeDh(true);
             else {
                 prepareLate();
                 copy(depthTexture, lateWritten);
             }
         } catch (Throwable e) {
             fail(e);
-            FRAME.lateMerge = FRAME.lateCopy = FRAME.lateMerged = FRAME.lateBegan = false;
         }
     }
 
@@ -538,7 +578,7 @@ public final class FarDepth {
      * Called with the HUD, after the world, before the HUD itself is drawn over it.
      */
     public static void drawDebugView(int mode) {
-        if (mode < 1 || mode > 3 || saved == 0 || !DepthFar.openGl() || gpuPath()) return;
+        if (mode < 1 || mode > 3 || saved == 0 || off() || !DepthFar.openGl() || gpuPath()) return;
         try {
             Minecraft minecraft = Minecraft.getInstance();
             int colorId = mainTexture(false);
@@ -623,13 +663,18 @@ public final class FarDepth {
 
     private static String currentState() {
         if (!ready && !DhDepth.started()) return "not started";
-        if (broken) return "off";
-        return switch (state) {
+        String stopped = DEPTH.state();
+        if (stopped != null) return stopped;
+        String current = switch (state) {
             // On in an earlier frame says nothing of this one: why this one did nothing, then.
             case 1 -> mergedLastFrame ? "on, " + width + "x" + height : "waiting: " + reason;
             case 2 -> "not needed (Voxy writes its own depth)";
             default -> "waiting: " + reason;
         };
+        String voxy = VOXY.state(), dh = DH.state();
+        if (voxy != null) current += " (Voxy's part " + voxy + ")";
+        if (dh != null) current += " (Distant Horizons' part " + dh + ")";
+        return current;
     }
 
     // --- Before -------------------------------------------------------------------------
@@ -700,6 +745,16 @@ public final class FarDepth {
         return false;
     }
 
+    /** {@link #merge}, a failure stopping Voxy's part only: false then. */
+    private static boolean mergeVoxy(boolean late) {
+        try {
+            return merge(late);
+        } catch (Throwable e) {
+            failVoxy(e);
+            return false;
+        }
+    }
+
     /**
      * Writes Voxy's depth into the game's: {@code saved} before, {@code written} after, or the
      * late copies for the translucent step ({@code late}), in the framebuffer the solid step used.
@@ -739,8 +794,9 @@ public final class FarDepth {
         if (late) prepareLate();
 
         copy(depthTexture, late ? lateSaved : saved);
+        FRAME.dirty = late ? lateSaved : saved;
         // Voxy's blit is not ours, and draws into a framebuffer with colour: all it might touch is put back.
-        GlState gl = GlState.save(3, GlState.COLOUR | GlState.SCISSOR_BOX | GlState.READ_FRAMEBUFFER);
+        GlState gl = GlState.save(3, GlState.FOREIGN);
         try {
             GL11C.glDisable(GL11C.GL_SCISSOR_TEST);
             GL11C.glColorMask(false, false, false, false);
@@ -769,7 +825,21 @@ public final class FarDepth {
      * converted from its projection to the game's, and written wherever it is nearer than
      * what is there: the same merge as Voxy's, undone by {@link #restore} the same way.
      */
-    private static boolean mergeDh(boolean late) throws ReflectiveOperationException {
+    private static boolean mergeDh(boolean late) {
+        // A failure stops Distant Horizons' part only: false then.
+        try {
+            return mergeDistantHorizons(late);
+        } catch (Throwable e) {
+            failDh(e);
+            return false;
+        }
+    }
+
+    private static boolean dhUsable() {
+        return !DH.blocked() && DhDepth.available();
+    }
+
+    private static boolean mergeDistantHorizons(boolean late) throws ReflectiveOperationException {
         DhFrame dh = DhDepth.read();
         if (dh == null) return skip(DhDepth.reason());
         // Our own framebuffer, the main depth texture attached to it just now, and no colour.
@@ -793,6 +863,7 @@ public final class FarDepth {
         }
 
         copy(depthTexture, late ? lateSaved : saved);
+        FRAME.dirty = late ? lateSaved : saved;
         // No colour attached: blending and the colour masks are left alone.
         GlState gl = GlState.save(1, 0);
         try {
@@ -893,6 +964,7 @@ public final class FarDepth {
         } finally {
             gl.restore();
         }
+        FRAME.dirty = 0;
     }
 
     // --- Into Voxy's depth -------------------------------------------------------------------
@@ -1072,9 +1144,10 @@ public final class FarDepth {
 
     private static void beforeUnmask() {
         if (FRAME.armed && (FRAME.merged || FRAME.captured)) outOfOrder("Distant Horizons' fade ran while the entities were drawn");
-        if (!FRAME.fadeMask || FRAME.fading || !DepthFar.openGl()) return;
+        if (off() || !FRAME.fadeMask || FRAME.fading || !DepthFar.openGl()) return;
         try {
             copy(depthTexture, faded);
+            FRAME.dirty = faded;
             // Our own framebuffer (the mask is only made there), depth only: blending and the
             // colour masks are left alone.
             GlState gl = GlState.save(3, 0);
@@ -1110,7 +1183,6 @@ public final class FarDepth {
             }
             FRAME.fading = true;
         } catch (Throwable e) {
-            FRAME.fadeMask = false;
             fail(e);
         }
     }
@@ -1130,8 +1202,8 @@ public final class FarDepth {
         FRAME.fading = false;
         try {
             copy(faded, depthTexture);
+            FRAME.dirty = 0;
         } catch (Throwable e) {
-            FRAME.fadeMask = false;
             fail(e);
         }
     }
@@ -1233,15 +1305,20 @@ public final class FarDepth {
      *       water's data was written with the wrong blending, and Photon no longer took it for
      *       water. A step drawing into a framebuffer of ours, with no colour, never touches them;</li>
      *   <li>{@link #SCISSOR_BOX}, for a step that moves it, not just the scissor test;</li>
-     *   <li>{@link #READ_FRAMEBUFFER}: ours never bind one, Voxy's blit might.</li>
+     *   <li>{@link #READ_FRAMEBUFFER}: ours never bind one, Voxy's blit might;</li>
+     *   <li>{@link #STENCIL_MASK}: ours never write the stencil, Voxy's blit might;</li>
+     *   <li>{@link #DEPTH_CLAMP}, which the occlusion boxes turn on.</li>
      * </ul>
+     *
+     * <p>{@link #FOREIGN} is everything another mod's drawing, called from here, might change.
      *
      * <p>A bracket that runs several steps opens one save around them all: a step's own save while
      * it is open reads and puts back nothing, and throws if it would change more than the bracket
      * saved. One object, reused: the render thread only.
      */
     static final class GlState {
-        static final int COLOUR = 1, SCISSOR_BOX = 2, READ_FRAMEBUFFER = 4;
+        static final int COLOUR = 1, SCISSOR_BOX = 2, READ_FRAMEBUFFER = 4, STENCIL_MASK = 8, DEPTH_CLAMP = 16;
+        static final int FOREIGN = COLOUR | SCISSOR_BOX | READ_FRAMEBUFFER | STENCIL_MASK;
         /** Draw buffers whose blending and colour mask are kept: the GPU's, 16 at most. */
         private static int drawBuffers;
 
@@ -1251,7 +1328,8 @@ public final class FarDepth {
         private boolean open;
         private int units, extras;
         private int program, vertexArray, drawFramebuffer, readFramebuffer, activeTexture, depthFunc;
-        private boolean depthTest, stencilTest, scissor, cull, depthMask;
+        private int stencilFront, stencilBack;
+        private boolean depthTest, stencilTest, scissor, cull, depthMask, depthClamp;
         private final int[] textures = new int[3], samplers = new int[3], viewport = new int[4], scissorBox = new int[4];
         private final boolean[] blend = new boolean[16];
         private final boolean[][] colorMask = new boolean[16][4];
@@ -1305,6 +1383,11 @@ public final class FarDepth {
             cull = GL11C.glIsEnabled(GL11C.GL_CULL_FACE);
             depthFunc = GL11C.glGetInteger(GL11C.GL_DEPTH_FUNC);
             depthMask = GL11C.glGetBoolean(GL11C.GL_DEPTH_WRITEMASK);
+            if ((extras & STENCIL_MASK) != 0) {
+                stencilFront = GL11C.glGetInteger(GL11C.GL_STENCIL_WRITEMASK);
+                stencilBack = GL11C.glGetInteger(GL20C.GL_STENCIL_BACK_WRITEMASK);
+            }
+            if ((extras & DEPTH_CLAMP) != 0) depthClamp = GL11C.glIsEnabled(GL32C.GL_DEPTH_CLAMP);
         }
 
         void restore() {
@@ -1338,6 +1421,11 @@ public final class FarDepth {
             GL11C.glDepthMask(depthMask);
             GL11C.glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
             if ((extras & SCISSOR_BOX) != 0) GL11C.glScissor(scissorBox[0], scissorBox[1], scissorBox[2], scissorBox[3]);
+            if ((extras & STENCIL_MASK) != 0) {
+                GL20C.glStencilMaskSeparate(GL11C.GL_FRONT, stencilFront);
+                GL20C.glStencilMaskSeparate(GL11C.GL_BACK, stencilBack);
+            }
+            if ((extras & DEPTH_CLAMP) != 0) toggle(GL32C.GL_DEPTH_CLAMP, depthClamp);
         }
 
         private static void toggle(int capability, boolean on) {
@@ -1349,15 +1437,51 @@ public final class FarDepth {
     // --- Voxy ---------------------------------------------------------------------------
 
     private static boolean available() {
-        if (broken) return false;
+        if (VOXY.blocked()) return false;
         ready = true;
         return VoxyLink.linked();
     }
 
+    // --- Failures -------------------------------------------------------------------------------
+
+    /** Stopped after a failure: every step that starts something checks this first. */
+    private static boolean off() {
+        return DEPTH.blocked();
+    }
+
+    /** Something here failed that is neither Voxy's nor Distant Horizons': all of it stops for a while. */
     private static void fail(Throwable e) {
-        broken = true;
-        FRAME.merged = false;
-        LivingHorizonClient.LOGGER.warn("Using the far terrain's depth failed: distant mobs show through it", e);
+        undo();
+        DEPTH.fail(e);
+    }
+
+    /** Voxy's part failed: it stops for a while, Distant Horizons' part and the rest go on. */
+    private static void failVoxy(Throwable e) {
+        undo();
+        VOXY.fail(e);
+    }
+
+    /** Distant Horizons' part failed: it stops for a while, Voxy's part and the rest go on. */
+    private static void failDh(Throwable e) {
+        undo();
+        DH.fail(e);
+    }
+
+    /**
+     * The game's depth as it was before this frame wrote into it, if it did: whatever failed may
+     * have left the far terrain in it, which Iris, a shader pack and Distant Horizons would read
+     * for the rest of the frame. And nothing more this frame.
+     */
+    private static void undo() {
+        int from = FRAME.dirty;
+        FRAME.dirty = 0;
+        FRAME.stop();
+        if (from == 0 || depthTexture == 0) return;
+        try {
+            copy(from, depthTexture);
+        } catch (Throwable e) {
+            LivingHorizonClient.LOGGER.warn("The game's depth could not be given back after a failure", e);
+        }
     }
 
     // --- For the game tests -------------------------------------------------------------------

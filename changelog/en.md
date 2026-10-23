@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Server
+
+#### Fixed
+- **Distant players gone until the server restarts** — one error while sharing positions no longer stops a server from sharing them until it restarts: it tries again 20 seconds later.
+
 ### Client
 
 #### Improved
@@ -9,6 +14,10 @@
 - **Smoother frames with distant mobs** — the game waits less on the graphics driver each frame with distant mobs over Voxy or Distant Horizons, most of all on NVIDIA cards with *Threaded optimization* on.
 - **Distant phantoms and ghasts flying** — distant phantoms now circle in the sky and distant ghasts drift about, instead of hanging still in the air.
 - **Phantoms and ghasts seen from below** — as *Simplified Entities* (flat pictures of far mobs), phantoms and ghasts are now pictured from below and from above too, like birds, not only from the side.
+
+#### Fixed
+- **Distant mobs showing through the far terrain until a restart** — one error with Voxy's or Distant Horizons' terrain no longer lets distant mobs show through it for the rest of the game: the mod tries again 20 seconds later.
+- **Simplified Entities gone until a restart** — one mob that cannot be drawn as a flat picture no longer turns *Simplified Entities* off for every mob: that mob alone is drawn in full.
 
 ## 0.12.0 — 2026-10-23
 

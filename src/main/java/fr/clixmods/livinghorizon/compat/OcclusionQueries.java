@@ -1,8 +1,8 @@
 package fr.clixmods.livinghorizon.compat;
 
 import fr.clixmods.livinghorizon.render.DepthFar;
-import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
+import fr.clixmods.livinghorizon.Retry;
 import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL;
@@ -54,7 +54,8 @@ import java.util.Map;
  * that path is the fallback for OpenGL older than 4.3 and nothing else. Any change here is
  * checked with the {@code perf} game test and the debug panel's occlusion line ("one draw").
  *
- * <p>Any GL failure turns this off for the session, and the far terrain's world is read instead.
+ * <p>A GL failure stops this for a while ({@link Retry}), and the far terrain's world is read
+ * instead meanwhile.
  */
 public final class OcclusionQueries {
     /** An answer older than this many frames is not trusted: the mob is drawn. */
@@ -64,7 +65,8 @@ public final class OcclusionQueries {
     /** Blocks added around a box: the model outgrows its box a little, and answers come late. */
     private static final double MARGIN = 0.25;
 
-    private static boolean broken;
+    private static final Retry QUERIES = new Retry("Testing distant mobs against the far terrain's depth",
+            "distant mobs are tested in the far terrain's world instead");
     private static String reason = "no frame yet";
 
     private static int program, vertexArray, framebuffer, framebufferDepth;
@@ -128,7 +130,7 @@ public final class OcclusionQueries {
         clearAsked();
         culled = 0;
         // With Vulkan (26.2 on), there is no OpenGL to ask.
-        if (broken || !DepthFar.openGl()) return;
+        if (QUERIES.blocked() || !DepthFar.openGl()) return;
         try {
             collect();
         } catch (Throwable e) {
@@ -136,9 +138,9 @@ public final class OcclusionQueries {
         }
     }
 
-    /** Not turned off by a GL failure. */
+    /** Not stopped by a GL failure. */
     public static boolean usable() {
-        return !broken;
+        return !QUERIES.blocked();
     }
 
     // --- Through the game's GPU device ---------------------------------------------------------
@@ -152,7 +154,7 @@ public final class OcclusionQueries {
     }
 
     public static boolean gpuReady() {
-        return gpuReady && !broken;
+        return gpuReady && !QUERIES.blocked();
     }
 
     /**
@@ -213,7 +215,7 @@ public final class OcclusionQueries {
      * above, {@code half} to each side.
      */
     public static boolean hidden(Object key, double x, double y, double z, double half, double height) {
-        if (broken) return false;
+        if (QUERIES.blocked()) return false;
         half += MARGIN;
         if (askedSize == askedKeys.length) {
             askedKeys = Arrays.copyOf(askedKeys, askedSize * 2);
@@ -235,7 +237,8 @@ public final class OcclusionQueries {
 
     /** For the debug panel. */
     public static String state() {
-        if (broken) return "off: " + reason;
+        String stopped = QUERIES.state();
+        if (stopped != null) return stopped;
         int inFlight = IN_FLIGHT.size() + WORDS_IN_FLIGHT.size();
         return asked + " asked, " + culled + " hidden, " + inFlight + " frames in flight, "
                 + (wordsUsable() ? "one draw" : "one query each")
@@ -265,7 +268,7 @@ public final class OcclusionQueries {
     /** {@code width} by {@code height}: the depth texture's size, known to whoever made it. */
     private static void drawBoxes(int depthTexture, int width, int height) {
         asked = askedSize;
-        if (broken || askedSize == 0) return;
+        if (QUERIES.blocked() || askedSize == 0) return;
         if (!viewNoted) {
             reason = "no view this frame";
             return;
@@ -289,8 +292,7 @@ public final class OcclusionQueries {
             int viewHeight = pictureHeight > 0 ? Math.min(pictureHeight, height) : height;
             // Our framebuffer has no colour, and no texture is bound: blending, the colour masks,
             // the texture units and the scissor box are left alone, and not read.
-            FarDepth.GlState gl = FarDepth.GlState.save(0, 0);
-            boolean clamp = GL11C.glIsEnabled(GL32C.GL_DEPTH_CLAMP);
+            FarDepth.GlState gl = FarDepth.GlState.save(0, FarDepth.GlState.DEPTH_CLAMP);
             try {
                 GL30C.glBindFramebuffer(GL30C.GL_DRAW_FRAMEBUFFER, framebuffer);
                 GL11C.glDisable(GL11C.GL_SCISSOR_TEST);
@@ -305,14 +307,12 @@ public final class OcclusionQueries {
                     try {
                         drawWords();
                     } catch (Throwable e) {
-                        // The queries still work: one per box, as before OpenGL 4.3.
-                        wordsBroken = true;
-                        LivingHorizonClient.LOGGER.warn("Occlusion boxes cannot be drawn in one go: one query per box instead", e);
+                        // The queries still work meanwhile: one per box, as before OpenGL 4.3.
+                        WORDS.fail(e);
                     }
                 }
                 if (!wordsUsable()) drawQueries();
             } finally {
-                if (!clamp) GL11C.glDisable(GL32C.GL_DEPTH_CLAMP);
                 gl.restore();
             }
         } catch (Throwable e) {
@@ -340,10 +340,8 @@ public final class OcclusionQueries {
     }
 
     private static void fail(Throwable e) {
-        broken = true;
-        reason = String.valueOf(e);
         ANSWERS.clear();
-        LivingHorizonClient.LOGGER.warn("Occlusion queries turned off: distant mobs are tested in the far terrain's world instead", e);
+        QUERIES.fail(e);
     }
 
     /** The program, and a framebuffer of our own around the depth texture, with no colour. */
@@ -466,8 +464,8 @@ public final class OcclusionQueries {
         long frame;
     }
 
-    /** The draw in one go failed, or OpenGL is older than 4.3: one query per box instead. */
-    private static boolean wordsBroken;
+    /** The draw in one go failed: one query per box instead, for a while. */
+    private static final Retry WORDS = new Retry("Drawing the occlusion boxes in one go", "one query per box, which costs more");
     /** Whether the context offers OpenGL 4.3, asked once on the GL thread: 0 not yet, 1 yes, -1 no. */
     private static int wordsSupport;
     private static int wordsProgram, wordsMatrixLocation;
@@ -484,7 +482,7 @@ public final class OcclusionQueries {
 
     /** Shader storage buffers and early fragment tests, both in OpenGL 4.3. */
     private static boolean wordsUsable() {
-        return !wordsBroken && wordsSupport == 1;
+        return wordsSupport == 1 && !WORDS.blocked();
     }
 
     /**

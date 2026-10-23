@@ -529,7 +529,7 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Skip Hidden Mobs costing a lot with many mobs** (the debug panel's occlusion line says "one
   query each"): the one-draw path of `OcclusionQueries` (OpenGL 4.3, a word per box in a shader
   storage buffer, read back behind a fence) failed and the per-box queries took over, five GL
-  calls per mob per frame; the log says why. The depth copies that only the debug view reads
+  calls per mob per frame, for 20 s at a time; the log says why. The depth copies that only the debug view reads
   (`saved`, `drawn` when nothing was merged) are made only with *Depth View* on. **Never remove
   either**: the author measured 70 to 100 FPS from the two together; the per-box queries are the
   fallback for OpenGL older than 4.3 and nothing else.
@@ -553,6 +553,13 @@ come back, add it here in the same pull request: this file is what the next sess
   `glColorMask` for all buffers at once and puts back the first buffer's value desynchronises
   that cache for the pack's other buffers. `FarDepth.GlState` saves and restores both per draw
   buffer (`glEnablei`, `glColorMaski`); every raw GL draw of the mod goes through it.
+- **A part "paused" or "off"** (`/livinghorizon lod`, the debug panel): it failed, and the log
+  has the stack trace once. Every part follows `Retry`: paused 20 s and tried again, off for the
+  session only on a `LinkageError` or a failed reflective lookup (a renamed class or method).
+  Never turn a part off for good on one exception: a world closing or one bad frame left distant
+  mobs showing through the far terrain until a restart. `FarDepth` stops Voxy's and Distant
+  Horizons' parts apart from the rest, and gives the game's depth back on a failure
+  (`Frame.dirty`). What one figure's renderer throws leaves that figure out, never the feature.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

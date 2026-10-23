@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.compat;
 
 import fr.clixmods.livinghorizon.LivingHorizonClient;
+import fr.clixmods.livinghorizon.Retry;
 import fr.clixmods.livinghorizon.platform.Platform;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.block.Blocks;
@@ -19,7 +20,8 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Voxy's world, one block per voxel, in sections of 32 blocks a side at level 0. Voxy has
  * no API for this: its classes are reached by reflection so that the mod still loads
- * without it, and any failure turns this source off for the session.
+ * without it. A version it does not know turns this source off for the session; a read that
+ * fails otherwise pauses it for a while ({@link Retry}).
  */
 final class VoxySource implements LodSource {
     private static final double STEP = 0.75;
@@ -34,8 +36,8 @@ final class VoxySource implements LodSource {
 
     private volatile boolean ready;
     private volatile boolean broken;
-    /** After a failed read, nothing is read until then: Voxy's world may only have been closing or opening. */
-    private volatile long pausedUntil;
+    /** After a failed read, nothing is read for a while: Voxy's world may only have been closing or opening. */
+    private final Retry readFailures = new Retry("Reading Voxy's world", "distant mobs find no ground in it");
     private volatile @Nullable String failure;
     private MethodHandle renderSystem, engine, acquire, data, release, mapper, opacity, isAir, isLive;
     private MethodHandle biomeId, biomeEntries, biomeName, blockState, blockId;
@@ -107,7 +109,7 @@ final class VoxySource implements LodSource {
 
     @Override
     public synchronized boolean available() {
-        if (broken || System.nanoTime() < pausedUntil) return false;
+        if (broken || readFailures.blocked()) return false;
         if (!ready) {
             ready = true;
             if (!Platform.isModLoaded("voxy")) {
@@ -174,9 +176,8 @@ final class VoxySource implements LodSource {
     public void fail(Throwable e) {
         // Not for good: a world closing or opening as the player joins fails one read ("World
         // is not live"), and the mobs would then find no ground until the game restarted.
-        pausedUntil = System.nanoTime() + 20_000_000_000L;
-        failure = "Voxy did not answer as expected: " + e;
-        LivingHorizonClient.LOGGER.warn("Reading Voxy's world paused for 20 seconds: it did not answer as expected", e);
+        readFailures.fail(e);
+        failure = "Voxy did not answer as expected: " + readFailures.failure();
     }
 
     private void link() throws ReflectiveOperationException {

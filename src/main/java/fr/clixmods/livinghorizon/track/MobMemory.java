@@ -56,6 +56,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The mobs this client has met, left where it last saw them once the server stops
@@ -271,12 +272,13 @@ public final class MobMemory {
     /** A new copy of a remembered mob, for a far player to ride: null when it cannot be made. */
     @Nullable Entity copy(Remembered mob, ClientLevel level) {
         EntityType<?> type = type(mob);
-        CompoundTag tag = parse(mob.nbt);
+        CompoundTag tag = parse(mob.type, mob.nbt);
         Entity entity = type == null || tag == null ? null : Puppets.create(type, level);
         if (entity == null) return null;
         try {
             EntityNbt.load(entity, level, tag);
         } catch (RuntimeException e) {
+            couldNot("made", mob.type, e);
             return null;
         }
         entity.setPos(mob.x, mob.y, mob.z);
@@ -615,6 +617,7 @@ public final class MobMemory {
         try {
             return EntityNbt.save(mob, level);
         } catch (RuntimeException e) {
+            couldNot("remembered", EntityType.getKey(mob.getType()).toString(), e);
             return null;
         }
     }
@@ -687,10 +690,10 @@ public final class MobMemory {
                 // The saved data is read on a background thread; the puppet is made here,
                 // where the world is, as long as this tick's budget lasts.
                 if (mob.parsed == null) {
-                    String nbt = mob.nbt;
+                    String type = mob.type, nbt = mob.nbt;
                     mob.parsed = background
-                            ? CompletableFuture.supplyAsync(() -> parse(nbt), Util.backgroundExecutor())
-                            : CompletableFuture.completedFuture(parse(nbt));
+                            ? CompletableFuture.supplyAsync(() -> parse(type, nbt), Util.backgroundExecutor())
+                            : CompletableFuture.completedFuture(parse(type, nbt));
                 }
                 if (mob.parsed.isDone() && (!background || System.nanoTime() < budget)) {
                     long building = System.nanoTime();
@@ -889,6 +892,7 @@ public final class MobMemory {
             tag.merge(TagParser.parseCompoundFully(report.extra()));
             return tag.toString();
         } catch (Exception e) {
+            couldNot("dressed as the server says", type, e);
             return base;
         }
     }
@@ -1054,11 +1058,26 @@ public final class MobMemory {
         return mob.entityType;
     }
 
-    private static @Nullable CompoundTag parse(String nbt) {
+    private static @Nullable CompoundTag parse(String type, String nbt) {
         try {
             return TagParser.parseCompoundFully(nbt);
         } catch (Exception e) {
+            couldNot("read back", type, e);
             return null;
+        }
+    }
+
+    /** What could not be done for each kind of mob, said once each: {@code "made minecraft:pig"}. */
+    private static final Set<String> COULD_NOT = ConcurrentHashMap.newKeySet();
+
+    /**
+     * A distant copy of a mob could not be {@code done}: the log says so once per kind of mob,
+     * with why. Without it a game version that changed how a mob is saved meant no distant
+     * mobs, and nothing in the log.
+     */
+    private static void couldNot(String done, @Nullable String type, Throwable e) {
+        if (COULD_NOT.size() < 256 && COULD_NOT.add(done + " " + type)) {
+            LivingHorizonClient.LOGGER.warn("A distant {} could not be {}: it is not drawn far away", type, done, e);
         }
     }
 
@@ -1095,6 +1114,7 @@ public final class MobMemory {
             mob.puppet = entity;
         } catch (Exception e) {
             mob.failed = true;
+            couldNot("made", mob.type, e);
         }
     }
 
@@ -1118,6 +1138,7 @@ public final class MobMemory {
             twin.deathTime = 0;
             return twin;
         } catch (Exception e) {
+            couldNot("doubled", mob.type, e);
             return null;
         }
     }

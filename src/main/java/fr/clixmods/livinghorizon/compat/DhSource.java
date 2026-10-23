@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.compat;
 
 import fr.clixmods.livinghorizon.LivingHorizonClient;
+import fr.clixmods.livinghorizon.Retry;
 import fr.clixmods.livinghorizon.platform.Platform;
 import net.minecraft.client.Minecraft;
 import net.minecraft.tags.FluidTags;
@@ -28,8 +29,8 @@ final class DhSource implements LodSource {
     private boolean ready;
     private volatile boolean broken;
     private volatile @Nullable String failure;
-    /** After a failed read, nothing is read until then: Distant Horizons may only have been busy. */
-    private volatile long pausedUntil;
+    /** After a failed read, nothing is read for a while: Distant Horizons may only have been busy. */
+    private final Retry readFailures = new Retry("Reading Distant Horizons' world", "distant mobs find no ground in it");
 
     private MethodHandle terrainRepo, worldProxy;
     private MethodHandle worldLoaded, levels, wrapped, columnAt;
@@ -158,7 +159,7 @@ final class DhSource implements LodSource {
 
     @Override
     public synchronized boolean available() {
-        if (broken || System.nanoTime() < pausedUntil) return false;
+        if (broken || readFailures.blocked()) return false;
         if (!ready) {
             ready = true;
             if (!loaded()) {
@@ -235,9 +236,8 @@ final class DhSource implements LodSource {
     public void fail(Throwable e) {
         // Not for good: a level change or a section being rewritten can fail one read, and
         // nothing would then hide a mob behind a hill until the game restarted.
-        pausedUntil = System.nanoTime() + 20_000_000_000L;
-        failure = "Distant Horizons did not answer as expected: " + e;
-        LivingHorizonClient.LOGGER.warn("Reading Distant Horizons' world paused for 20 seconds: it did not answer as expected", e);
+        readFailures.fail(e);
+        failure = "Distant Horizons did not answer as expected: " + readFailures.failure();
     }
 
     private void link() throws ReflectiveOperationException {
