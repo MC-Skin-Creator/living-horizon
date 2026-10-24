@@ -605,6 +605,12 @@ keep their whole model at any distance.
   (`render/state/`), which set the entity's body, head, stride and age for the time it is
   drawn.
 
+Each range has a backend of its own (`BakeBackend`: `OverrideBake` from 1.21.6, `DeviceBake` on
+1.21.5, `GlBake` before), in a file wrapped whole in a Stonecutter guard: it makes the page
+textures, draws and reads back the views, and writes a sheet into its page. Everything else
+(the queue, the rows, staging a figure, what is done with the pictures) is shared in
+`ImpostorAtlas`.
+
 ### Same look, same picture
 
 `ImpostorKey` decides which picture a figure gets. Figures with the same key share one sheet.
@@ -646,17 +652,23 @@ keep their whole model at any distance.
   the mobs' room, nor the mobs theirs.
 - A sheet drawn or asked for in the last 10 seconds is never replaced.
 
+`SheetAllocator` holds the pages, their rows and the budgets. It asks the game nothing (the
+clock and the page textures are handed in), so `SheetAllocatorTest` checks it on its own.
+
 ### On disk
 
 `ImpostorDisk` keeps the mobs' sheets in `config/livinghorizon/impostors/<fingerprint>/`, so
 that a mob met in an earlier game is read back rather than baked.
 
 - The fingerprint is the game version, the resource packs chosen and their files, the jars in
-  `mods/` and the sheet format. When one of them changes, the folder is thrown away.
+  `mods/` and the sheet format. It is worked out on the disk's thread, at the start and after
+  each reload; the mobs wait the moment it takes, so they are read back rather than baked. The
+  folders of the last three fingerprints are kept: a resource pack switched off and on again
+  finds its sheets.
 - A sheet read back is checked against the size of a sheet (`ImpostorDisk.decode`) before
   anything is allocated: a damaged file is baked again, it never asks for more memory.
-- 4096 sheets are kept, some 35 KB each once compressed (about 140 MB), counted when the
-  folder is opened, at the start and after a reload: a game may write more until then. The
+- 4096 sheets are kept per fingerprint, some 35 KB each once compressed (about 140 MB), counted
+  when the folder is opened, at the start and after a reload: a game may write more until then. The
   ones met longest ago go first.
 
 ### Special figures
@@ -682,8 +694,10 @@ that a mob met in an earlier game is read back rather than baked.
   lying down or in a bed. A posture other than standing is part of the key
   (`ImpostorKey.posture`), and the picture is baked in it:
   - seated: in the riding pose, drawn lowered to the ground as the model is;
-  - lying: along its body, baked raised (`ImpostorAtlas.LYING_LIFT`) so that none of it
+  - lying: along its body, baked raised (`Posture.BAKED_LIFT`) so that none of it
     falls below the tile, and laid along its bed when it is in one.
+
+  `render/Posture` seats or lays a figure down the same way for the model and for the picture.
 - **Riders** (players online or not, on a horse, a camel, a happy ghast, in a boat, a raft, a
   minecart...) are baked in one picture with what carries them (`ImpostorKey.riding`,
   `ImpostorAtlas.Rider`): the rider seated where it sits, turned as it is turned. A vehicle has
