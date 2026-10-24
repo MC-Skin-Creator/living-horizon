@@ -476,6 +476,15 @@ come back, add it here in the same pull request: this file is what the next sess
   answers. Far, resting and logged-off player puppets are not ticked
   either, on every version (`Player.xCloak` before 1.21.9): not covered yet, and `cape` cannot
   just take any `ClientAvatarEntity`, since live players go through the same `extract` and tick.
+- **Players who logged off losing their boat, or back up in the air, once the camera moves away**
+  (in a boat or on the ground up close): the client's level answers yes to `hasChunk` and
+  `hasChunkAt` for every chunk (`ClientLevel.hasChunk` returns true), and a chunk it dropped reads
+  as air: no water, no ground. Ask `level.getChunkSource().hasChunk` (`Footing.loaded`). And a
+  `RestingPuppet` is made again whenever they leave the nearest drawn, the world opens again or
+  the server's word on them changes: where they rest (`RestingPlayers.Rest`: the ground under a
+  spot in the air, the shore, the boat) is kept with the spot and saved, and a new puppet starts
+  there; before the blocks are ever loaded, the far world is asked (`guess`). The `restkept`
+  scenario checks it.
 - **A rider turned sideways** (a player resting in a boat facing left or right of it): the seat's
   yaw is the rider's body (`yBodyRot`), which the boat keeps in line with itself, never the head
   (`getYRot`), which looks wherever the player looked as they left.

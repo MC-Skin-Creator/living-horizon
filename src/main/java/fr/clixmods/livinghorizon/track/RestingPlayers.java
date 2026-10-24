@@ -45,6 +45,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
@@ -71,31 +72,46 @@ public final class RestingPlayers {
      *                 by the server alone, or saved by a version that did not keep it)
      * @param mount    what they rode when they logged off, or null
      * @param gear     what they wore and held ({@link Gear}), or null when not known
+     * @param rest     where they really rest when it is not their spot (in the air, in water), or
+     *                 null when it is, or not known yet
      */
     public record Spot(String name, @Nullable UUID id, @Nullable String textures, @Nullable String signature,
                        String dimension, double x, double y, double z, float yaw, long lastSeen,
-                       @Nullable Mount mount, @Nullable List<String> gear) {
+                       @Nullable Mount mount, @Nullable List<String> gear, @Nullable Rest rest) {
 
+        public Spot(String name, @Nullable UUID id, @Nullable String textures, @Nullable String signature,
+                    String dimension, double x, double y, double z, float yaw, long lastSeen,
+                    @Nullable Mount mount, @Nullable List<String> gear) {
+            this(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen, mount, gear, null);
+        }
+
+        /** Somewhere else: where they rest there is found again. */
         Spot moved(String dimension, double x, double y, double z, float yaw, @Nullable Mount mount) {
-            return new Spot(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen, mount, gear);
+            return new Spot(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen, mount, gear, null);
         }
 
         /** The same player, wearing this skin. */
         Spot skinned(Property skin) {
             return new Spot(name, id, Profiles.value(skin), Profiles.signature(skin), dimension, x, y, z, yaw, lastSeen,
-                    mount, gear);
+                    mount, gear, rest);
         }
 
         /** The same player, in this skin and this gear, logged off at {@code lastSeen} when it is known. */
         Spot looking(@Nullable String textures, @Nullable String signature, @Nullable List<String> gear, long lastSeen) {
             return new Spot(name, id, textures, signature, dimension, x, y, z, yaw,
-                    lastSeen != 0 ? lastSeen : this.lastSeen, mount, gear);
+                    lastSeen != 0 ? lastSeen : this.lastSeen, mount, gear, rest);
         }
 
         Spot dressed(GameProfile profile) {
             Property skin = skinOf(profile);
             return new Spot(name, Profiles.id(profile), skin == null ? textures : Profiles.value(skin),
-                    skin == null ? signature : Profiles.signature(skin), dimension, x, y, z, yaw, lastSeen, mount, gear);
+                    skin == null ? signature : Profiles.signature(skin), dimension, x, y, z, yaw, lastSeen, mount, gear,
+                    rest);
+        }
+
+        /** The same player, resting there. */
+        Spot resting(@Nullable Rest rest) {
+            return new Spot(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen, mount, gear, rest);
         }
 
         GameProfile profile() {
@@ -164,6 +180,21 @@ public final class RestingPlayers {
             Vec3 seat = rider.position().subtract(vehicle.position()).yRot((float) Math.toRadians(vehicle.getYRot()));
             float body = rider instanceof LivingEntity living ? living.yBodyRot : rider.getYRot();
             return of(vehicle, seat, vehicle.getYRot(), body - vehicle.getYRot());
+        }
+    }
+
+    /**
+     * Where a player who logged off in the air or in water really rests: the ground under them
+     * (they logged off flying, with an elytra or not), the nearest shore, or a boat on the water
+     * when there is none. Found once the blocks around are loaded, or guessed from the far world
+     * before; kept with the spot, so that it holds far away, when the figure is made again,
+     * and in the next game.
+     *
+     * @param boat in a boat, {@code y} being the water's surface
+     */
+    public record Rest(double x, double y, double z, boolean boat) {
+        Vec3 at() {
+            return new Vec3(x, y, z);
         }
     }
 
@@ -315,13 +346,13 @@ public final class RestingPlayers {
             Mount seen = known != null ? known.mount() : null;
             mount = seen != null && (shared == null || seen.type().equals(shared.type())) ? seen : Mount.of(shared);
         }
-        if (known != null && known.dimension().equals(report.dimension())
+        boolean there = known != null && known.dimension().equals(report.dimension())
                 && Math.abs(known.x() - report.x()) < 0.05 && Math.abs(known.y() - report.y()) < 0.05
-                && Math.abs(known.z() - report.z()) < 0.05 && (known.mount() == null) == (mount == null)
-                && (look == null || looksLike(known, look))) {
-            return;
-        }
-        Spot spot = known != null
+                && Math.abs(known.z() - report.z()) < 0.05 && (known.mount() == null) == (mount == null);
+        if (there && (look == null || looksLike(known, look))) return;
+        // Where they rest is kept while they stay put: only how they look changed.
+        Spot spot = there ? known
+                : known != null
                 ? known.moved(report.dimension(), report.x(), report.y(), report.z(), report.yaw(), mount)
                 : new Spot(name, null, null, null, report.dimension(), report.x(), report.y(), report.z(), report.yaw(),
                         report.lastSeen(), mount, null);
@@ -625,11 +656,31 @@ public final class RestingPlayers {
         // Spots read per tick by all of them together, looking around and for their way.
         int[] work = {WORK};
         Entity camera = Minecraft.getInstance().getCameraEntity();
-        for (RestingPuppet puppet : puppets.values()) {
+        List<Spot> rested = new ArrayList<>();
+        for (Map.Entry<Spot, RestingPuppet> each : puppets.entrySet()) {
+            RestingPuppet puppet = each.getValue();
             // Near the camera they live their life; away from it, they play a loop.
             if (camera != null) puppet.near(camera.getEyePosition());
             puppet.tick(level, config, beds, night, work);
+            if (puppet.restFound()) rested.add(each.getKey());
         }
+        for (Spot spot : rested) keepRest(spot, puppets.get(spot).rest());
+    }
+
+    /**
+     * Keeps where a player really rests with their spot, found by its puppet: the puppet made
+     * again, far away or in the next game, starts there. The puppet stays the same.
+     */
+    private void keepRest(Spot spot, @Nullable Rest rest) {
+        String key = key(spot.name());
+        if (spots.get(key) != spot || Objects.equals(spot.rest(), rest)) return;
+        Spot kept = spot.resting(rest);
+        spots.put(key, kept);
+        RestingPuppet puppet = puppets.remove(spot);
+        if (puppet != null) puppets.put(kept, puppet);
+        if (lookedAt == spot) lookedAt = kept;
+        shownStale = true;
+        if (!fakes.contains(key)) dirty = true;
     }
 
     // --- File --------------------------------------------------------------------------

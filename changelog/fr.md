@@ -2,6 +2,12 @@
 
 ## Prochaine version
 
+### Client
+
+#### Corrections
+- **Joueurs déconnectés qui perdent leur bateau** — un joueur déconnecté au milieu de l'eau ne perd plus le bateau où il se repose quand tu t'éloignes : il le garde, de près comme de loin, et la prochaine fois que tu joues.
+- **Joueurs déconnectés qui flottent dans les airs** — un joueur déconnecté en l'air, en vol plané avec des élytres ou en pleine chute, n'y remonte plus quand tu t'éloignes : il se repose sur le sol sous lui, et avec Voxy ou Distant Horizons avant même que tu t'approches.
+
 ## 0.12.0 — 2026-10-23
 
 ### Serveur

@@ -30,6 +30,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.PerchersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PerfScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RememberedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ResizeScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.RestKeptScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingCrowdScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingLoopScenario;
@@ -77,6 +78,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new RestingLoopScenario(),
             new RestingCrowdScenario(),
             new ShoreScenario(),
+            new RestKeptScenario(),
             new OptionsScreenScenario(),
             new DiscordScenario(),
             new SodiumPagesScenario(),

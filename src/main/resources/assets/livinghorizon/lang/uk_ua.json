@@ -37,6 +37,7 @@
   "livinghorizon.offline.unknown": "%s — не в мережі",
   "livinghorizon.offline.test.spawned": "Тестового гравця %s поставлено на ваше місце, поза мережею. Відійдіть, щоб побачити його; /livinghorizon debug offline test clear прибирає його.",
   "livinghorizon.offline.test.spawnedMany": "Тестових гравців (%s) поставлено в радіусі %s блоків від вас, поза мережею. /livinghorizon debug offline test clear прибирає їх.",
+  "livinghorizon.offline.test.gliding": "Тестових гравців (%s) поставлено на %s блоків над землею в радіусі %s блоків від вас, з елітрами, поза мережею, ніби в польоті. /livinghorizon debug offline test clear прибирає їх.",
   "livinghorizon.offline.test.switchedOff": "Гравців поза мережею вимкнено в налаштуваннях: увімкніть їх, щоб побачити %s.",
   "livinghorizon.offline.test.online": "%s у мережі: виберіть інше ім’я.",
   "livinghorizon.offline.test.long": "%s — задовге: ім’я гравця має щонайбільше 16 символів.",

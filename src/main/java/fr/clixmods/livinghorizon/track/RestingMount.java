@@ -299,7 +299,7 @@ final class RestingMount {
             stop();
             timer = 40 + random.nextInt(100);
         }
-        if (!level.hasChunkAt(entity.blockPosition())) {
+        if (!Footing.loaded(level, entity.blockPosition())) {
             // Nothing known of the blocks here: it waits where it is.
             placed = false;
             stop();
@@ -371,7 +371,7 @@ final class RestingMount {
             for (int j = 0; j < MobPaths.SIZE; j++) {
                 int cx = bx + i - MobPaths.RADIUS, cz = bz + j - MobPaths.RADIUS;
                 ground[i][j] = Double.NaN;
-                if (!level.hasChunk(cx >> 4, cz >> 4)) {
+                if (!Footing.loaded(level, cx, cz)) {
                     complete = false;
                     continue;
                 }
@@ -532,7 +532,7 @@ final class RestingMount {
 
     /** Room there for it and its rider, in blocks this client has. */
     private boolean open(ClientLevel level, Vec3 at) {
-        return level.hasChunkAt(BlockPos.containing(at)) && Footing.fits(level, at.x, at.y, at.z, half, height);
+        return Footing.loaded(level, at.x, at.z) && Footing.fits(level, at.x, at.y, at.z, half, height);
     }
 
     // --- Its place --------------------------------------------------------------------------

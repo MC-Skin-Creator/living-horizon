@@ -4,6 +4,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CampfireBlock;
 import net.minecraft.world.level.block.DoorBlock;
@@ -24,6 +25,19 @@ final class Footing {
     static final double STANDING = 1.8;
 
     private Footing() {
+    }
+
+    /**
+     * Whether the client holds the blocks of this column. Never {@code level.hasChunk}: the
+     * client's level answers yes for every chunk, loaded or not, and an unloaded one reads as air.
+     */
+    static boolean loaded(ClientLevel level, double x, double z) {
+        return level.getChunkSource().hasChunk(Mth.floor(x) >> 4, Mth.floor(z) >> 4);
+    }
+
+    /** {@link #loaded(ClientLevel, double, double)} for the column of a block. */
+    static boolean loaded(ClientLevel level, BlockPos at) {
+        return level.getChunkSource().hasChunk(at.getX() >> 4, at.getZ() >> 4);
     }
 
     /** Half a player's width. */
@@ -155,7 +169,7 @@ final class Footing {
     /** {@link #stand(ClientLevel, int, int, int)} for a body this wide and tall: a mount and its rider. */
     static double stand(ClientLevel level, int x, int y, int z, double half, double height) {
         BlockPos feet = new BlockPos(x, y, z);
-        if (!level.hasChunkAt(feet) || !level.getFluidState(feet).isEmpty() || burns(level.getBlockState(feet))) {
+        if (!loaded(level, feet) || !level.getFluidState(feet).isEmpty() || burns(level.getBlockState(feet))) {
             return Double.NaN;
         }
         double cx = x + 0.5, cz = z + 0.5;
@@ -171,7 +185,7 @@ final class Footing {
      */
     static double afloat(ClientLevel level, int x, int y, int z, double half, double height) {
         BlockPos at = new BlockPos(x, y, z);
-        if (!level.hasChunkAt(at)) return Double.NaN;
+        if (!loaded(level, at)) return Double.NaN;
         FluidState fluid = level.getFluidState(at);
         if (!fluid.is(FluidTags.WATER) || !level.getFluidState(at.above()).isEmpty()) return Double.NaN;
         double surface = y + fluid.getHeight(level, at);
@@ -223,7 +237,7 @@ final class Footing {
         int bx = (int) Math.floor(x), bz = (int) Math.floor(z);
         for (int dx = -radius; dx <= radius; dx += radius) {
             for (int dz = -radius; dz <= radius; dz += radius) {
-                if (!level.hasChunkAt(new BlockPos(bx + dx, 0, bz + dz))) return false;
+                if (!loaded(level, new BlockPos(bx + dx, 0, bz + dz))) return false;
             }
         }
         return true;

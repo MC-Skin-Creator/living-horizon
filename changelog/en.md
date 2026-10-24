@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Client
+
+#### Fixed
+- **Players who logged off losing their boat** — a player who logged off in the middle of the water no longer loses the boat they rest in once you move away: they keep it, near or far, and the next time you play.
+- **Players who logged off floating in the air** — a player who logged off in the air, gliding with an elytra or falling, no longer goes back up there once you move away: they rest on the ground under them, and with Voxy or Distant Horizons even before you come near.
+
 ## 0.12.0 — 2026-10-23
 
 ### Server

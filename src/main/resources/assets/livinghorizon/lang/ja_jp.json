@@ -37,6 +37,7 @@
   "livinghorizon.offline.unknown": "%s — オフライン",
   "livinghorizon.offline.test.spawned": "テストプレイヤー%sを、ログアウトした状態で現在地に配置しました。離れると見えます。/livinghorizon debug offline test clear で削除できます。",
   "livinghorizon.offline.test.spawnedMany": "%s人のテストプレイヤーを、ログアウトした状態で周囲%sブロック以内に配置しました。/livinghorizon debug offline test clear で削除できます。",
+  "livinghorizon.offline.test.gliding": "%s人のテストプレイヤーを、地面から%sブロック上、周囲%sブロック以内に、エリトラで滑空中にログアウトしたように配置しました。/livinghorizon debug offline test clear で削除できます。",
   "livinghorizon.offline.test.switchedOff": "ログアウトしたプレイヤーは設定でオフになっています：%sを見るにはオンにしてください。",
   "livinghorizon.offline.test.online": "%sはオンラインです：別の名前を選んでください。",
   "livinghorizon.offline.test.long": "%sは長すぎます：プレイヤー名は16文字までです。",

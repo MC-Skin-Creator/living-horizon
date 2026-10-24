@@ -297,6 +297,17 @@ They are kept out of the water, `offlineLife` on or off:
 - One thrown into the water while their own spot is dry, with no shore within 10 blocks,
   stays in it.
 
+Someone who logged off in the air (flying with an elytra, jumping, falling) rests on the
+ground under their spot, or on the water under it as above.
+
+Where they rest, when it is not their spot (`RestingPlayers.Rest`: the ground under it, the
+shore, or the boat and the water's surface), is kept with the spot and saved in the file: the
+figure is made again whenever they leave the nearest drawn and come back, or the world is
+opened again, and starts there at once, near or far, its blocks loaded or not. Until the
+blocks around the spot have been loaded once, the far world (Voxy or Distant Horizons) is
+asked what is under it: a spot well above its ground rests on it, one on or over water in a
+boat. That guess is not kept; the blocks decide again once they are there.
+
 ### Mounts
 
 A player who logs off riding something keeps it when `showVehicles` is on
@@ -907,6 +918,7 @@ To try that feature alone in single player:
 | `/livinghorizon debug offline test spawn [name] [minutes]` | Places one where you stand, wearing your skin, logged off that many minutes ago (default: `Sleeper1`, `Sleeper2`..., just now), on a copy of what you ride if you ride something |
 | `... test spawn <name> <minutes> <count> [radius]` | Places that many (`name1`, `name2`...), up to 100, each on the ground somewhere within the radius around you (16 blocks by default, up to 256), facing a way of its own, on your mount at your height if it flies. Each wears the skin of a different real player (50 of them, then again from the first), fetched from Mojang (from 1.21.9; before, the default skin of its name) |
 | `... test crowd <count> [radius] [minutes]` | The same, with names of their own (`Sleeper1`...) |
+| `... test glide <count> [radius] [height]` | The same, `height` blocks above the ground (30 by default, up to 256), wearing an elytra: as if they logged off gliding. They come to rest on the ground, or the water, under them |
 | `... test clear` | Removes them |
 | `... test list` | Shows everyone resting on this server, where and since when |
 
