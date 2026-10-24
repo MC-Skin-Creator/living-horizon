@@ -53,10 +53,13 @@ public final class ImpostorDisk {
     private static final int KEEP = 4096;
 
     /**
-     * A sheet as read from disk: its size in blocks, how many times larger than a tile its
-     * tiles are, and the rows of each mip level.
+     * How many times larger than {@link ImpostorViews#TILE} the tiles of a sheet on disk are:
+     * always 1 now, still written so that the format stays the same.
      */
-    public record Stored(double worldSize, int scale, int[][] levels) {
+    static final int SCALE = 1;
+
+    /** A sheet as read from disk: its size in blocks, and the rows of each mip level. */
+    public record Stored(double worldSize, int[][] levels) {
     }
 
     private static final ExecutorService IO = Executors.newSingleThreadExecutor(task -> {
@@ -125,7 +128,7 @@ public final class ImpostorDisk {
     }
 
     /** Saves a mob's sheet just baked, and what has been learnt to leave out of keys. */
-    public static void write(ImpostorKey key, double worldSize, int scale, int[][] levels) {
+    public static void write(ImpostorKey key, double worldSize, int[][] levels) {
         Path root = folder();
         Path file = file(root, key);
         SAVED.add(key);
@@ -140,7 +143,7 @@ public final class ImpostorDisk {
                 Files.createDirectories(file.getParent());
                 Path part = file.resolveSibling(file.getFileName() + ".part");
                 try (DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new GZIPOutputStream(Files.newOutputStream(part))))) {
-                    encode(out, worldSize, scale, levels);
+                    encode(out, worldSize, SCALE, levels);
                 }
                 Files.move(part, file, StandardCopyOption.REPLACE_EXISTING);
                 if (learnt != null) writeRestless(root, learnt);
@@ -150,7 +153,7 @@ public final class ImpostorDisk {
         });
     }
 
-    /** A sheet as {@link #decode} reads it back. */
+    /** A sheet as {@link #decode} reads it back, its tiles {@code scale} times larger: {@link #SCALE}. */
     static void encode(DataOutputStream out, double worldSize, int scale, int[][] levels) throws IOException {
         out.writeInt(MAGIC);
         out.writeInt(FORMAT);
@@ -172,19 +175,19 @@ public final class ImpostorDisk {
         if (in.readInt() != MAGIC || in.readInt() != FORMAT) return null;
         double worldSize = in.readDouble();
         int scale = in.readInt();
-        if (scale < 1 || scale > ImpostorAtlas.MAX_SCALE) throw new IOException("tiles " + scale + " times larger");
+        if (scale != SCALE) throw new IOException("tiles " + scale + " times larger");
         int count = in.readInt();
         if (count != ImpostorAtlas.MIPS) throw new IOException(count + " levels, not " + ImpostorAtlas.MIPS);
         int[][] levels = new int[count][];
         for (int level = 0; level < count; level++) {
-            int tile = ImpostorViews.TILE * scale >> level;
+            int tile = ImpostorViews.TILE >> level;
             int expected = tile * ImpostorViews.VIEWS * tile;
             int length = in.readInt();
             if (length != expected) throw new IOException("level " + level + " of " + length + " pixels, not " + expected);
             levels[level] = new int[length];
             for (int i = 0; i < length; i++) levels[level][i] = in.readInt();
         }
-        return new Stored(worldSize, scale, levels);
+        return new Stored(worldSize, levels);
     }
 
     /**

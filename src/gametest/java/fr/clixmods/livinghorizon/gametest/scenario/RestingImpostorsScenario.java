@@ -133,7 +133,7 @@ public final class RestingImpostorsScenario implements Scenario {
                 RestingPuppet puppet = puppet(minecraft, name);
                 if (puppet.look() != look) return "look " + puppet.look();
                 ImpostorKey key = ImpostorKey.of(puppet);
-                if (ImpostorKey.posture(key) != posture) return "posture " + ImpostorKey.posture(key);
+                if (key.posture() != posture) return "posture " + key.posture();
                 return ImpostorAtlas.sheet(key) != null ? null : "no picture yet (waiting " + ImpostorAtlas.waiting() + ")";
             });
             if (why == null) break;

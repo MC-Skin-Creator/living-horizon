@@ -146,6 +146,7 @@ public final class GhostRenderer {
 
     /** The view this frame: where the camera looks, how wide, how many pixels a radian is. */
     private static double eyeX, eyeY, eyeZ, lookX, lookY, lookZ, viewAngle, pixelsPerRadian, drawnRange;
+    /** Figures drawn this frame, models or pictures, and those left out: for the debug panel. */
     private static int drawn, skipped;
 
     private static void view(Camera camera, Minecraft minecraft) {
@@ -207,8 +208,7 @@ public final class GhostRenderer {
     }
 
     private static @Nullable Mark count(@Nullable Mark why) {
-        if (why == null) drawn++;
-        else skipped++;
+        if (why != null) skipped++;
         return why;
     }
 
@@ -563,18 +563,13 @@ public final class GhostRenderer {
         if (!config.hideOccludedMobs) return false;
         double dx = entity.getX() - eyeX, dy = entity.getY() - eyeY, dz = entity.getZ() - eyeZ;
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        // Drawn bigger than it is with a minimum size: the bigger box is what must be hidden.
-        double boost = 1.0;
-        if (config.minApparentPixels > 0 && distance > 1e-3) {
-            double extent = Math.max(0.5, Math.max(entity.getBbHeight(), entity.getBbWidth()));
-            boost = Math.clamp(config.minApparentPixels / (extent / distance * pixelsPerRadian), 1.0, 400.0);
-        }
+        // Drawn bigger than it is with a minimum size: the bigger box, as drawn, is what must be hidden.
+        double boost = Apparent.boost(Apparent.extent(entity.getBbHeight(), entity.getBbWidth()), distance,
+                pixelsPerRadian, config.minApparentPixels);
         if (!Occlusion.hidden(key, entity, dx, dy, dz, boost)) {
             return false;
         }
         noteDistance(distance);
-        // Counted as drawn when it passed the view tests: it is not drawn after all.
-        drawn--;
         skipped++;
         if (debug) DebugMarks.mark(entity, Mark.HIDDEN);
         return true;
@@ -753,17 +748,10 @@ public final class GhostRenderer {
         // closer and smaller in proportion, which looks the same but shows through whatever
         // stands between.
         farthest = Math.max(farthest, distance);
-        double reach = DepthFar.of(minecraft) * 0.95;
-        double pull = distance > reach ? reach / distance : 1.0;
-
-        double boost = 1.0;
-        if (config.minApparentPixels > 0) {
-            double pixelsPerRadian = DepthFar.pixelsPerRadian(minecraft);
-            // The longest side: a sleeper is 1.8 blocks long and 0.2 high.
-            double extent = Math.max(1.8, Math.max(body.boundingBoxHeight, body.boundingBoxWidth)) * size;
-            double apparent = extent / distance * pixelsPerRadian;
-            boost = Math.clamp(config.minApparentPixels / apparent, 1.0, 400.0);
-        }
+        drawn++;
+        double pull = Apparent.pull(distance, DepthFar.of(minecraft));
+        double extent = Apparent.extent(body.boundingBoxHeight, body.boundingBoxWidth) * size;
+        double boost = Apparent.boost(extent, distance, pixelsPerRadian, config.minApparentPixels);
 
         Transform transform = nextTransform();
         transform.anchorX = ax;
@@ -773,8 +761,8 @@ public final class GhostRenderer {
         transform.scale = pull * boost * size;
         if (distance > drawnRange) {
             // Where it shows on screen: as big as drawn, around its middle, a mount included.
-            double extent = Math.max(1.8, Math.max(body.boundingBoxHeight, body.boundingBoxWidth)) * size * boost;
-            FarDepth.figure(ax, ay + extent * 0.5, az, extent * (mount == null ? 0.75 : 1.5));
+            double shown = extent * boost;
+            FarDepth.figure(ax, ay + shown * 0.5, az, shown * (mount == null ? 0.75 : 1.5));
         }
         LocalPlayer self = minecraft.player;
         ClientLevel level = minecraft.level;
@@ -1029,12 +1017,10 @@ public final class GhostRenderer {
         }
         if (distance > drawnRange) FarDepth.needed();
         farthest = Math.max(farthest, distance);
-        double reach = DepthFar.of(minecraft) * 0.95;
-        double pull = distance > reach ? reach / distance : 1.0;
-        double boost = 1.0;
-        if (config.minApparentPixels > 0) {
-            boost = Math.clamp(config.minApparentPixels / apparent, 1.0, 400.0);
-        }
+        drawn++;
+        double pull = Apparent.pull(distance, DepthFar.of(minecraft));
+        // As large as its model would be drawn: a figure turning into its picture keeps its size.
+        double boost = Apparent.boost(Apparent.extent(size), distance, pixelsPerRadian, config.minApparentPixels);
         int view = ImpostorViews.view(yaw, -ax, -az, last == null ? -1 : last.view);
         if (last == null) SHOWN.put(shown, last = new Shown());
         last.key = key;

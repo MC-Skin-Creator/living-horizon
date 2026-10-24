@@ -397,10 +397,10 @@ come back, add it here in the same pull request: this file is what the next sess
   not (a helmet worn by the sun changed its item, and the key, every few seconds; a pig's
   random sound variant), or a kind of figure has more looks than its pages may hold. With the
   pages full, "waiting" going round and round with the baked count stuck: a figure baked
-  small, grown, refused for lack of room and asked for again the next second. `room` squeezes
-  it into smaller tiles, or `REFUSED` keeps it a model for a while; `crowd` checks it. The same
-  figure twice in the impostor screen: two keys for one look (a value the picture does not show);
-  `ImpostorAtlas.place` compares the pixels and makes the second an alias of the first.
+  small, grown, refused for lack of room and asked for again the next second. `REFUSED` keeps
+  it a model for a while; `crowd` checks it. The same figure twice in the impostor screen: two
+  keys for one look (a value the picture does not show); `ImpostorAtlas.place` compares a 64-bit
+  hash of the pixels (`Look`) and makes the second an alias of the first.
   `ImpostorKey` leaves out what never shows (positions, times, owners, names, sound variants,
   an item's damage), names variants by their registry key so that a sheet is found again in
   the next world, and learns per kind of mob the values seen changing again and again
