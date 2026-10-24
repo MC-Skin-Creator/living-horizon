@@ -43,6 +43,7 @@
   "livinghorizon.offline.unknown": "%s — non in linea",
   "livinghorizon.offline.test.spawned": "Giocatore di prova %s posizionato dove ti trovi, disconnesso. Allontanati per vederlo; /livinghorizon debug offline test clear lo rimuove.",
   "livinghorizon.offline.test.spawnedMany": "%s giocatori di prova posizionati entro %s blocchi da te, disconnessi. /livinghorizon debug offline test clear li rimuove.",
+  "livinghorizon.offline.test.gliding": "%s giocatori di prova posizionati %s blocchi sopra il terreno, entro %s blocchi da te, con le elitre, disconnessi come in pieno volo planato. /livinghorizon debug offline test clear li rimuove.",
   "livinghorizon.offline.test.switchedOff": "I giocatori disconnessi sono disattivati nelle impostazioni: attivali per vedere %s.",
   "livinghorizon.offline.test.online": "%s è in linea: scegli un altro nome.",
   "livinghorizon.offline.test.long": "%s è troppo lungo: il nome di un giocatore ha al massimo 16 caratteri.",

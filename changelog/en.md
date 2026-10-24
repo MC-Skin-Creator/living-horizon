@@ -40,6 +40,8 @@
 
 #### Fixed
 - **Ice and Fire mobs correctly simplified** — Distant Ice and Fire dragons now have whole simplified images at their real size, instead of a close-up of their legs or a wing. Dragons of different ages no longer share one image, and sea serpents keep their 3D model instead of a cut-off image.
+- **Players who logged off keep their boat** — A player who logged off in the middle of the water no longer loses the boat they rest in once you move away: they keep it near or far, and the next time you play.
+- **Players who logged off no longer float in the air** — A player who logged off in the air, gliding with an elytra or falling, no longer goes back up there once you move away: they rest on the ground under them. With Voxy or Distant Horizons, they are on the ground even before you come near.
 
 ## 0.14.0 — 2026-10-29
 
