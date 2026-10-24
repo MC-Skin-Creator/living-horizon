@@ -316,6 +316,8 @@ public final class FarConfig {
     public boolean debugLabels = false;
     /** Boxes around the mobs the game draws itself, too. */
     public boolean debugGameMobs = false;
+    /** Each of the mod's figures tinted by its level of detail; the game's own mobs never. */
+    public boolean debugLodColors = false;
     // Outlines, seen through terrain, in the colours of the debug boxes: what draws each figure.
     /** Around the mobs the game draws itself: white. */
     public boolean outlineGameMobs = false;

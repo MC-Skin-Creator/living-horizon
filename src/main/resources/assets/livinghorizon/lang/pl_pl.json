@@ -253,6 +253,8 @@
   "livinghorizon.options.debugLabels.tooltip": "Nad każdą ramką: co się stało ze stworzeniem, jego rodzaj, odległość i rozmiar na ekranie w pikselach.",
   "livinghorizon.options.debugGameMobs": "Także stworzenia gry",
   "livinghorizon.options.debugGameMobs.tooltip": "Białe ramki wokół stworzeń, które gra rysuje sama, by zobaczyć, gdzie przejmuje mod.",
+  "livinghorizon.options.debugLodColors": "Kolory LOD",
+  "livinghorizon.options.debugLodColors.tooltip": "Barwi każdą odległą postać według jej poziomu szczegółów: bez barwy dla pełnego modelu, zielony, żółty i pomarańczowy dla prostszych, czerwony dla płaskich obrazków. Stworzenia rysowane przez samą grę nigdy nie są barwione.",
   "livinghorizon.options.outlines": "Kontury",
   "livinghorizon.options.outlines.open": "Kontury…",
   "livinghorizon.options.outlines.open.tooltip": "Kontur widoczny przez teren wokół każdego rodzaju figury, w kolorach ramek, każdy z osobnym przełącznikiem: aby porównać zrzuty ekranu z optymalizacją i bez niej.",

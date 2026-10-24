@@ -253,6 +253,8 @@
   "livinghorizon.options.debugLabels.tooltip": "Над кожною рамкою: що з ним сталося, його вид, відстань і розмір на екрані в пікселях.",
   "livinghorizon.options.debugGameMobs": "Моби гри теж",
   "livinghorizon.options.debugGameMobs.tooltip": "Білі рамки навколо мобів, яких малює сама гра, щоб бачити, де за справу береться мод.",
+  "livinghorizon.options.debugLodColors": "Кольори LOD",
+  "livinghorizon.options.debugLodColors.tooltip": "Забарвлює кожну далеку фігуру за її рівнем деталізації: без кольору для повної моделі, зелений, жовтий і помаранчевий для простіших, червоний для пласких зображень. Моби, яких малює сама гра, ніколи не забарвлюються.",
   "livinghorizon.options.outlines": "Контури",
   "livinghorizon.options.outlines.open": "Контури…",
   "livinghorizon.options.outlines.open.tooltip": "Контур, видимий крізь рельєф, навколо кожного виду фігур, у кольорах рамок, кожен зі своїм перемикачем: щоб порівнювати знімки екрана з оптимізацією та без неї.",

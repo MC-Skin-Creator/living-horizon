@@ -253,6 +253,8 @@
   "livinghorizon.options.debugLabels.tooltip": "Sobre cada caja: qué fue de él, su tipo, su distancia y su tamaño en pantalla en píxeles.",
   "livinghorizon.options.debugGameMobs": "También mobs del juego",
   "livinghorizon.options.debugGameMobs.tooltip": "Cajas blancas alrededor de los mobs que dibuja el propio juego, para ver dónde toma el relevo el mod.",
+  "livinghorizon.options.debugLodColors": "Colores de LOD",
+  "livinghorizon.options.debugLodColors.tooltip": "Tiñe cada figura lejana según su nivel de detalle: ninguno para el modelo completo, verde, amarillo y naranja para los más simples, rojo para las imágenes planas. Los mobs que dibuja el propio juego nunca se tiñen.",
   "livinghorizon.options.outlines": "Contornos",
   "livinghorizon.options.outlines.open": "Contornos...",
   "livinghorizon.options.outlines.open.tooltip": "Un contorno visible a través del terreno alrededor de cada tipo de figura, en los colores de las cajas, cada uno con su interruptor: para comparar capturas de pantalla con y sin una optimización.",

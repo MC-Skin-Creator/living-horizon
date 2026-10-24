@@ -253,6 +253,8 @@
   "livinghorizon.options.debugLabels.tooltip": "在每个方框上方显示：其结果、种类、距离，以及在屏幕上的像素大小。",
   "livinghorizon.options.debugGameMobs": "也显示游戏的生物",
   "livinghorizon.options.debugGameMobs.tooltip": "在游戏自己绘制的生物周围显示白色方框，以查看模组从哪里开始接管。",
+  "livinghorizon.options.debugLodColors": "LOD颜色",
+  "livinghorizon.options.debugLodColors.tooltip": "按细节级别为每个远处图形着色：完整模型不着色，较简单的为绿色、黄色和橙色，简化图片为红色。游戏自己绘制的生物永远不会着色。",
   "livinghorizon.options.outlines": "轮廓",
   "livinghorizon.options.outlines.open": "轮廓…",
   "livinghorizon.options.outlines.open.tooltip": "在每类图形周围显示可透过地形看到的轮廓，颜色与方框相同，各有独立开关：用于对比开启和关闭某项优化时的截图。",

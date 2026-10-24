@@ -253,6 +253,8 @@
   "livinghorizon.options.debugLabels.tooltip": "Over each box: what became of it, its kind, its distance and its size on screen in pixels.",
   "livinghorizon.options.debugGameMobs": "Game's Mobs Too",
   "livinghorizon.options.debugGameMobs.tooltip": "White boxes around the mobs the game draws itself, to see where the mod takes over.",
+  "livinghorizon.options.debugLodColors": "LOD Colours",
+  "livinghorizon.options.debugLodColors.tooltip": "Tints each distant figure by its level of detail: none for the full model, green, yellow and orange for the simpler ones, red for flat pictures. The mobs the game draws itself are never tinted.",
   "livinghorizon.options.outlines": "Outlines",
   "livinghorizon.options.outlines.open": "Outlines...",
   "livinghorizon.options.outlines.open.tooltip": "An outline seen through terrain around each kind of figure, in the colours of the boxes, each on its own switch: to compare screenshots with and without an optimisation.",

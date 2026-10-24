@@ -253,6 +253,8 @@
   "livinghorizon.options.debugLabels.tooltip": "Sopra ogni riquadro: che fine ha fatto, il tipo, la distanza e la dimensione sullo schermo in pixel.",
   "livinghorizon.options.debugGameMobs": "Anche mob del gioco",
   "livinghorizon.options.debugGameMobs.tooltip": "Riquadri bianchi attorno ai mob che il gioco disegna da sé, per vedere dove subentra la mod.",
+  "livinghorizon.options.debugLodColors": "Colori LOD",
+  "livinghorizon.options.debugLodColors.tooltip": "Colora ogni figura lontana secondo il suo livello di dettaglio: nessun colore per il modello completo, verde, giallo e arancione per quelli più semplici, rosso per le immagini piatte. I mob disegnati dal gioco non vengono mai colorati.",
   "livinghorizon.options.outlines": "Contorni",
   "livinghorizon.options.outlines.open": "Contorni...",
   "livinghorizon.options.outlines.open.tooltip": "Un contorno visibile attraverso il terreno attorno a ogni tipo di figura, nei colori dei riquadri, ciascuno con il suo interruttore: per confrontare schermate con e senza un'ottimizzazione.",

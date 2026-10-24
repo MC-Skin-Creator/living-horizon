@@ -253,6 +253,8 @@
   "livinghorizon.options.debugLabels.tooltip": "各枠の上に：どうなったか、種類、距離、画面上のサイズ（ピクセル）。",
   "livinghorizon.options.debugGameMobs": "ゲームのMobも",
   "livinghorizon.options.debugGameMobs.tooltip": "ゲーム自体が描画するMobの周りに白い枠を表示し、Modが引き継ぐ場所を確認できます。",
+  "livinghorizon.options.debugLodColors": "LODの色",
+  "livinghorizon.options.debugLodColors.tooltip": "遠くの図形を詳細レベルごとに色付けします：完全なモデルは色なし、簡単なものは緑・黄・オレンジ、平らな画像は赤。ゲーム自体が描くMobは色付けされません。",
   "livinghorizon.options.outlines": "輪郭",
   "livinghorizon.options.outlines.open": "輪郭…",
   "livinghorizon.options.outlines.open.tooltip": "描画物の種類ごとに、地形越しに見える輪郭を枠と同じ色で表示し、それぞれ個別に切り替えられます：最適化のありとなしでスクリーンショットを比較するためのものです。",

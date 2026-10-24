@@ -253,6 +253,8 @@
   "livinghorizon.options.debugLabels.tooltip": "각 박스 위에: 어떻게 되었는지, 종류, 거리, 화면상의 크기(픽셀).",
   "livinghorizon.options.debugGameMobs": "게임의 몹도",
   "livinghorizon.options.debugGameMobs.tooltip": "게임이 직접 그리는 몹 주위에 흰 박스를 표시해, 모드가 이어받는 지점을 확인할 수 있습니다.",
+  "livinghorizon.options.debugLodColors": "LOD 색상",
+  "livinghorizon.options.debugLodColors.tooltip": "멀리 있는 도형을 세부 수준에 따라 색칠합니다: 완전한 모델은 색 없음, 더 단순한 것은 초록, 노랑, 주황, 평면 그림은 빨강. 게임이 직접 그리는 몹은 색칠되지 않습니다.",
   "livinghorizon.options.outlines": "윤곽선",
   "livinghorizon.options.outlines.open": "윤곽선...",
   "livinghorizon.options.outlines.open.tooltip": "각 종류의 모습 주위에 지형 너머로 보이는 윤곽선을 박스와 같은 색으로 표시하며, 각각 따로 켜고 끌 수 있습니다: 최적화를 켜고 끈 스크린샷을 비교하기 위한 것입니다.",

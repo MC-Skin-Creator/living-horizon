@@ -253,6 +253,8 @@
   "livinghorizon.options.debugLabels.tooltip": "Her kutunun üstünde: ona ne olduğu, türü, uzaklığı ve ekrandaki piksel cinsinden boyutu.",
   "livinghorizon.options.debugGameMobs": "Oyunun Canlıları da",
   "livinghorizon.options.debugGameMobs.tooltip": "Oyunun kendi çizdiği canlıların çevresinde beyaz kutular, modun nerede devraldığını görmek için.",
+  "livinghorizon.options.debugLodColors": "LOD Renkleri",
+  "livinghorizon.options.debugLodColors.tooltip": "Her uzak figürü ayrıntı seviyesine göre renklendirir: tam model için renk yok, daha basit olanlar için yeşil, sarı ve turuncu, düz resimler için kırmızı. Oyunun kendi çizdiği canlılar asla renklendirilmez.",
   "livinghorizon.options.outlines": "Dış Hatlar",
   "livinghorizon.options.outlines.open": "Dış Hatlar...",
   "livinghorizon.options.outlines.open.tooltip": "Her figür türünün çevresinde, araziden görünen, kutuların renklerinde ve her biri kendi düğmesiyle bir dış hat: ekran görüntülerini bir optimizasyonla ve onsuz karşılaştırmak için.",

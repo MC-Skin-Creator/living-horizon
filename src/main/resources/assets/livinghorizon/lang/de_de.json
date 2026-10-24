@@ -253,6 +253,8 @@
   "livinghorizon.options.debugLabels.tooltip": "Über jeder Box: was aus der Kreatur wurde, ihre Art, ihre Entfernung und ihre Bildschirmgröße in Pixeln.",
   "livinghorizon.options.debugGameMobs": "Auch Spiel‐Kreaturen",
   "livinghorizon.options.debugGameMobs.tooltip": "Weiße Boxen um die Kreaturen, die das Spiel selbst zeichnet, um zu sehen, wo die Mod übernimmt.",
+  "livinghorizon.options.debugLodColors": "LOD‐Farben",
+  "livinghorizon.options.debugLodColors.tooltip": "Färbt jede ferne Figur nach ihrer Detailstufe: keine Farbe für das volle Modell, grün, gelb und orange für die einfacheren, rot für flache Bilder. Kreaturen, die das Spiel selbst zeichnet, werden nie gefärbt.",
   "livinghorizon.options.outlines": "Umrisse",
   "livinghorizon.options.outlines.open": "Umrisse …",
   "livinghorizon.options.outlines.open.tooltip": "Ein durch Gelände sichtbarer Umriss um jede Art von Figur, in den Farben der Boxen, jeweils einzeln schaltbar: um Screenshots mit und ohne eine Optimierung zu vergleichen.",

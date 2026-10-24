@@ -906,6 +906,7 @@ debug options. `/livinghorizon debug` turns the panel and the boxes on or off to
 | Polygons in F3 | `fake_entities` in the game's debug options (F3 + F6, from 1.21.9) | The polygons of the mod's own entities (distant players and mobs, never the game's), split into full models and impostors (one quad each), the triangles they cost (below), and a line of impostor sheets baked and waiting |
 | Boxes (from 1.21.11) | `debugBoxes` | A box around every distant mob and player, seen through terrain, coloured by what became of it (below). A dot in the middle keeps it visible when the box is smaller than its lines |
 | Game's mobs | `debugGameMobs` | Boxes around the mobs the game draws itself too |
+| LOD colours | `debugLodColors` | Each of the mod's figures tinted by its level of detail: none for `LOD 0` (the full model), green `#7dff6a` for `LOD 1`, yellow `#ffe14a` for `LOD 2`, orange `#ff9c3a` for `LOD 3`, red `#ff4a4a` for impostors. The game's own mobs are never tinted |
 | Labels (from 1.21.11) | `debugLabels` | State, kind, distance and size on screen above each box, at a constant size |
 | Outlines | `outline*`, in *Outlines...* | An outline around each kind of figure, and a cross where a mob is not drawn (below) |
 | Depth view | `debugDepthView` | Bottom right: the game's depth alone, with the far terrain merged in, or after the entities. Near is white, far black, sky blue |
@@ -1152,6 +1153,7 @@ come back by themselves. *Scan Nearby Mobs* runs a scan.
 | `debugBoxes` | Boxes on Mobs | `false` | A coloured box around every distant mob and player, seen through terrain |
 | `debugLabels` | Labels on Mobs | `false` | State, kind, distance and size on screen above each box |
 | `debugGameMobs` | Game's Mobs Too | `false` | Boxes around the mobs the game draws itself too |
+| `debugLodColors` | LOD Colours | `false` | Each of the mod's figures tinted by its level of detail |
 | `debugDepthView` | Depth View | `0` | `0` off; `1` the game's depth; `2` with the far terrain merged in; `3` after the entities |
 | `outline*` | Outlines... | `false` | See [Outlines](#outlines) |
 

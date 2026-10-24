@@ -253,6 +253,8 @@
   "livinghorizon.options.debugLabels.tooltip": "Sobre cada caixa: o que aconteceu com ela, o tipo, a distância e o tamanho na tela em pixels.",
   "livinghorizon.options.debugGameMobs": "Criaturas do jogo",
   "livinghorizon.options.debugGameMobs.tooltip": "Caixas brancas ao redor das criaturas que o próprio jogo desenha, para ver onde o mod assume.",
+  "livinghorizon.options.debugLodColors": "Cores de LOD",
+  "livinghorizon.options.debugLodColors.tooltip": "Tinge cada figura distante conforme seu nível de detalhe: nenhuma cor para o modelo completo, verde, amarelo e laranja para os mais simples, vermelho para as imagens planas. As criaturas que o próprio jogo desenha nunca são tingidas.",
   "livinghorizon.options.outlines": "Contornos",
   "livinghorizon.options.outlines.open": "Contornos...",
   "livinghorizon.options.outlines.open.tooltip": "Um contorno visível através do terreno ao redor de cada tipo de figura, nas cores das caixas, cada um com sua opção: para comparar capturas de tela com e sem uma otimização.",

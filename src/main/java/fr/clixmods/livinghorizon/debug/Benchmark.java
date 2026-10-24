@@ -370,6 +370,7 @@ public final class Benchmark {
         config.debugBoxes = false;
         config.debugLabels = false;
         config.debugGameMobs = false;
+        config.debugLodColors = false;
         config.outlineGameMobs = false;
         config.outlineLiveMobs = false;
         config.outlineCopies = false;
