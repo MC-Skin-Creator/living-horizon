@@ -652,7 +652,13 @@ keep their whole model at any distance.
 that a mob met in an earlier game is read back rather than baked.
 
 - The fingerprint is the game version, the resource packs chosen and their files, the jars in
-  `mods/` and the sheet format. When one of them changes, the folder is thrown away.
+  `mods/` and how a sheet is baked (`BAKE`). When one of them changes, the folder is thrown
+  away. Its text is kept beside the sheets (`fingerprint.txt`), and the log says which lines
+  changed when a folder is thrown away ("the saved mob pictures of ... are thrown away").
+- Each file holds when and in which world or server its sheet was baked (file `FORMAT` 3; a
+  file of 2 still reads, its date unknown). The impostor screen shows it under each name, with
+  where the pictures come from (`ImpostorAtlas.Origin`): *Shared*, read back from disk; *New*,
+  baked in this game and saved; *Not saved* (players, riders, birds).
 - A sheet read back is checked against the size of a sheet (`ImpostorDisk.decode`) before
   anything is allocated: a damaged file is baked again, it never asks for more memory.
 - 4096 sheets are kept, some 35 KB each once compressed (about 140 MB), counted when the
