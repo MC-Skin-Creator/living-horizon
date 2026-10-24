@@ -17,7 +17,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The F3 screen's line for the mod's own entities: how many polygons the distant players
- * and mobs cost, and how many of them are impostors. The game's own entities are not in it.
+ * and mobs cost, what they would cost drawn in full, how many are drawn at each level of
+ * detail, impostors included. The game's own entities are not in it.
  */
 public final class FakeEntitiesDebugEntry implements DebugScreenEntry {
     public static final Identifier ID = Identifier.fromNamespaceAndPath(LivingHorizonClient.MOD_ID, "fake_entities");
@@ -29,6 +30,9 @@ public final class FakeEntitiesDebugEntry implements DebugScreenEntry {
         if (!config.anyDistant()) return;
         displayer.addLine(I18n.get("livinghorizon.debug.f3.polygons", PolygonStats.polygons(), PolygonStats.triangles(),
                 PolygonStats.models(), PolygonStats.modelPolygons(), PolygonStats.impostors()));
+        displayer.addLine(I18n.get("livinghorizon.debug.f3.lod", PolygonStats.triangles(), PolygonStats.fullTriangles(),
+                PolygonStats.gain(), PolygonStats.polygons()));
+        displayer.addLine(I18n.get("livinghorizon.debug.f3.levels", DebugHud.levels()));
         if (config.impostors) {
             displayer.addLine(I18n.get(ImpostorAtlas.failed() ? "livinghorizon.debug.f3.impostorsFailed"
                     : "livinghorizon.debug.f3.impostors", ImpostorAtlas.sheets(), ImpostorAtlas.waiting()));

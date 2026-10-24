@@ -283,12 +283,14 @@ public final class GhostRenderer {
         Puppets.cape(entity);
         try {
             //? if >=1.21.9 {
-            return dispatcher.extractEntity(entity, partialTick);
+            EntityRenderState state = dispatcher.extractEntity(entity, partialTick);
             //?} elif >=1.21.2 {
-            /*return state(renderer(dispatcher, entity), entity, partialTick);
+            /*EntityRenderState state = state(renderer(dispatcher, entity), entity, partialTick);
             *///?} else {
-            /*return EntityRenderState.of(entity, partialTick);
+            /*EntityRenderState state = EntityRenderState.of(entity, partialTick);
             *///?}
+            if (state != null) PolygonStats.owner(state, entity);
+            return state;
         } catch (RuntimeException | LinkageError error) {
             // Another mod's renderer, called for an entity in no world: never worth a crash.
             leaveOut(entity.getType(), error);
@@ -1030,8 +1032,10 @@ public final class GhostRenderer {
         int light = light(minecraft.level, x, y, z);
         int outline = minecraft.player == null ? 0 : DebugMarks.impostorOutline(config);
         if (outline != 0 && ImpostorRenderer.OUTLINES) glowing = true;
+        // What the picture saves: the model of the figure, and of its mount when it rides.
+        int full = PolygonStats.fullQuads(shown) + (ridden ? PolygonStats.fullQuads(at) : 0);
         ImpostorRenderer.add(ax * pull, ay * pull, az * pull, sheet.worldSize() * pull * boost, sheet, view, light,
-                outline, facing);
+                outline, facing, full);
         if (distance > drawnRange) {
             double extent = sheet.worldSize() * boost;
             // Round its feet, or round its middle for a picture seen from a height.

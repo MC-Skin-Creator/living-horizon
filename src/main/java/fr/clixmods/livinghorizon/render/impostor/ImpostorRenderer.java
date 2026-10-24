@@ -36,6 +36,8 @@ public final class ImpostorRenderer {
         int outline;
         /** Turned to the camera up and down too, not only round: for a picture baked as seen from that height. */
         boolean facing;
+        /** Quads of the model the picture stands for, for {@link PolygonStats}. */
+        int full;
         /** The camera's right along the ground, and the picture's up, as it is submitted. */
         float rightX, rightZ;
         final float[] up = new float[3];
@@ -111,9 +113,10 @@ public final class ImpostorRenderer {
      * @param outline the colour of its outline, 0 for none
      * @param facing  turned to the camera up and down too, not only round: for a picture baked
      *                as seen from that height
+     * @param full    quads of the model the picture stands for
      */
     public static void add(double x, double y, double z, double size, ImpostorAtlas.Sheet sheet, int view, int light,
-                           int outline, boolean facing) {
+                           int outline, boolean facing, int full) {
         if (count == FRAME.size()) FRAME.add(new Billboard());
         Billboard board = FRAME.get(count++);
         board.x = x;
@@ -125,6 +128,7 @@ public final class ImpostorRenderer {
         board.light = light;
         board.outline = outline;
         board.facing = facing;
+        board.full = full;
     }
 
     /** From the entity submission, with the pose at the camera. */
@@ -162,7 +166,7 @@ public final class ImpostorRenderer {
                 OUTLINED.add(new Outlined(outlinePose, board));
             }
             //?}
-            PolygonStats.impostor();
+            PolygonStats.impostor(board.full);
         }
         for (int i = first; i < batches; i++) {
             PageBatch batch = BATCHES.get(i);

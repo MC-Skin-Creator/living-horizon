@@ -900,10 +900,10 @@ debug options. `/livinghorizon debug` turns the panel and the boxes on or off to
 
 | Tool | Switch | What it shows |
 |---|---|---|
-| Panel | `debugHud` | Top left: cost per tick and frame, what became of every distant mob in the last frame, far terrain reads and depth, how far this server sends mobs, which optimisations are on |
+| Panel | `debugHud` | Top left: cost per tick and frame, the triangles of the mod's figures (below), what became of every distant mob in the last frame, far terrain reads and depth, how far this server sends mobs, which optimisations are on |
 | Cost per section | `debugHud` | A second column of the panel, and `/livinghorizon`: for each part of the mod the last time, a smoothed average and the worst of the last 5 seconds, which an average alone hides (a save of 100 ms once a minute). Sections: the client tick (following the server's mobs, choosing, building copies, reading the ground, motion, resting players, birds, hidden mobs), the frame (extraction, each step of the far terrain's depth, the occlusion queries, baking and storing the flat pictures, submitting birds and flat pictures), the saves with their size in bytes, and the server's publication. Over 2 ms shows yellow, over 8 ms red. With OpenGL the GPU's time is shown too for the depth steps, the occlusion boxes and the baking (`GL_TIME_ELAPSED` queries read a few frames later, never waited for), and so is what the game's thread allocates per tick; both are measured only while the panel or the command was asked for in the last 10 seconds. Each section is named `livinghorizon:<section>` in the game's profiler (F3 pie chart, spark). Code: `Profile`, `debug/ProfileHook`, `debug/GpuTimer` |
 | Panel in F3 | `living_horizon` in the game's debug options (F3 + F6, from 1.21.9) | The panel's lines in the F3 screen. `/livinghorizon debug` turns it on too |
-| Polygons in F3 | `fake_entities` in the game's debug options (F3 + F6, from 1.21.9) | The polygons of the mod's own entities (distant players and mobs, never the game's), split into full models and impostors (one quad each), and a line of impostor sheets baked and waiting |
+| Polygons in F3 | `fake_entities` in the game's debug options (F3 + F6, from 1.21.9) | The polygons of the mod's own entities (distant players and mobs, never the game's), split into full models and impostors (one quad each), the triangles they cost (below), and a line of impostor sheets baked and waiting |
 | Boxes (from 1.21.11) | `debugBoxes` | A box around every distant mob and player, seen through terrain, coloured by what became of it (below). A dot in the middle keeps it visible when the box is smaller than its lines |
 | Game's mobs | `debugGameMobs` | Boxes around the mobs the game draws itself too |
 | Labels (from 1.21.11) | `debugLabels` | State, kind, distance and size on screen above each box, at a constant size |
@@ -911,6 +911,17 @@ debug options. `/livinghorizon debug` turns the panel and the boxes on or off to
 | Depth view | `debugDepthView` | Bottom right: the game's depth alone, with the far terrain merged in, or after the entities. Near is white, far black, sky blue |
 | Far terrain | `/livinghorizon lod` (or `voxy`) | Which far terrain mod is read (Voxy or Distant Horizons), whether reading it failed, and the state of its depth |
 | Optimisations | `opt*`, `depthOcclusion`, `hideOccludedMobs` | Every optimisation has its own switch, to compare the cost (see [Optimizations](#optimizations)) |
+
+### Triangles and levels of detail
+
+The panel and the `fake_entities` line count what the mod's own figures cost last frame
+(`render/impostor/PolygonStats`): the triangles drawn, the triangles *without LOD* (the same
+figures, each drawn as its full model), the share saved, the quads drawn, and how many figures
+were drawn at each level, `LOD 0` (the full model) to the impostors. An impostor counts as the
+model it stands for: what that figure cost when last drawn as a model, or one of its kind (adult
+or baby), or before either the visible cubes of its renderer's model, without its layers; a
+bird's picture counts as one quad, since the birds' own models are not counted. A figure's cost
+is all its layers together (armour, saddle, a villager's clothes).
 
 ### Box colours
 
