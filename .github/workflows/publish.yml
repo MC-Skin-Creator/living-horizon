@@ -209,12 +209,14 @@ jobs:
           loaders: ${{ matrix.target.loader }}
           game-versions: ${{ matrix.target.releases }}
           # Fabric and Quilt ask for the Fabric API, which Quilt runs as it runs any Fabric
-          # mod; Voxy and Distant Horizons are both optional, alike. NeoForge and
-          # Forge ask for nothing. Mod Menu is not asked for: the mod only uses its API
-          # for the settings button.
+          # mod; Voxy and Distant Horizons are both optional, alike, and so is Ambient
+          # Birds, a Fabric mod whose birds keep flying far away. NeoForge and Forge ask for
+          # nothing. Mod Menu is not asked for: the mod only uses its API for the settings
+          # button.
           dependencies: |
             ${{ (matrix.target.loader == 'fabric' || matrix.target.loader == 'quilt') && 'fabric-api(required){modrinth:P7dR8mSH}' || '' }}
             ${{ (matrix.target.loader == 'fabric' || matrix.target.loader == 'quilt') && 'voxy(optional){modrinth:fxxUqruK}' || '' }}
+            ${{ (matrix.target.loader == 'fabric' || matrix.target.loader == 'quilt') && 'ambientbirds(optional){modrinth:N45gZWZl}' || '' }}
             distanthorizons(optional){modrinth:uCdwusMi}
           # The player changelog of this version, in the Changelog tab.
           changelog: ${{ needs.prepare.outputs.changelog }}

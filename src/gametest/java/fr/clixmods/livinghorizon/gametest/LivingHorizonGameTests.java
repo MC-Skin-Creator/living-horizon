@@ -40,6 +40,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.RestingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ShoreScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.SodiumControlsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.SodiumPagesScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.StrandedScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.UnloadScenario;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -92,6 +93,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new HeadTurnScenario(),
             new GaitsScenario(),
             new FlyersScenario(),
+            new StrandedScenario(),
             new EasterEggsScenario(),
             new BirdsScenario(),
             new PerchersScenario(),
