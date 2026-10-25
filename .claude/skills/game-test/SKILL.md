@@ -18,7 +18,14 @@ into a virtual display (Xvfb).
 .claude/skills/game-test/run.sh impostors        # one, or several: a,b
 .claude/skills/game-test/run.sh all --sodium     # with Sodium loaded too
 .claude/skills/game-test/run.sh impostors --shaders <pack folder>   # Sodium, Iris and a shader pack
+LH_NODE=26.3.x .claude/skills/game-test/run.sh herd --vulkan          # the game drawing with Vulkan
 ```
+
+`--vulkan` (26.2 and later) starts the game with `--graphicsBackend vulkan`, on Mesa's
+software Vulkan (`apt-get install mesa-vulkan-drivers` when the log says no Vulkan device):
+the far depth and Skip Hidden Mobs then go through the game's own GPU device
+(`compat/FarDepthGpu`), as they do over Distant Horizons on 26.3. Scenarios that call OpenGL
+themselves (`depthview`) abort the game there.
 
 It takes 1 to 3 minutes per scenario. The script:
 
@@ -127,8 +134,15 @@ thread), `setScreen`, `clickScreenButton(translation key)`, `takeScreenshot`. Th
 ## Limits
 
 - No real graphics card: a bug of one driver (NVIDIA, AMD) does not show here.
-- **Voxy and Distant Horizons cannot run** (Voxy needs GLSL 4.60, llvmpipe has 4.50).
-  Say so when a check depended on them.
+- **Voxy cannot run** (it needs GLSL 4.60, llvmpipe has 4.50). Say so when a check depended
+  on it.
+- **Distant Horizons runs on 26.3** (it draws through the game's device there): put its jar
+  from Modrinth in a folder of its own and run Gradle as `run.sh` does, with
+  `-Plh.mods=<folder>`. Distant Horizons 3.3.4 asks for Fabric Loader 0.19.5: raise
+  `deps.fabric_loader` for the run when the node's is older, and never commit it. With it
+  the game does not quit once the scenarios are done: stop it (`pkill -f 'devlaunchinjecto[r]'`)
+  once the log has the scenario's last line. Its terrain takes a few hundred ticks to appear.
+  Not tried on older versions.
 - **Shader packs** run through Iris on llvmpipe, slowly: `--shaders` takes an unpacked
   pack folder, downloads Iris next to Sodium for the node's game version (`LH_NODE`), and
   `Scene.shaderPack` copies the pack into Iris's folder and turns it on before the first

@@ -94,6 +94,9 @@ loom {
         findProperty("lh.mods")?.let { property("fabric.addMods", it.toString()) }
         // A shader pack folder to turn on through Iris, which -Plh.mods must hold: -Plh.shaderpack=<folder>.
         findProperty("lh.shaderpack")?.let { property("livinghorizon.shaderpack", it.toString()) }
+        // The graphics backend, from 26.2: -Plh.backend=vulkan draws through the game's own GPU
+        // device, the way Distant Horizons' depth goes on 26.3.
+        findProperty("lh.backend")?.let { programArgs("--graphicsBackend", it.toString()) }
     }
 }
 
