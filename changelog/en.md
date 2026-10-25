@@ -11,6 +11,11 @@
 - **Phantoms and ghasts seen from below** — as *Simplified Entities* (flat pictures of far mobs), phantoms and ghasts are now pictured from below and from above too, like birds, not only from the side.
 - **Smoother with many distant mobs on Vulkan** — the game no longer loses time on every distant mob, every frame, when it draws with Vulkan (Minecraft 26.2 and later) or over Distant Horizons (Minecraft 26.3).
 
+#### Fixed
+- **Distant mobs all in one texture** — with Entity Texture Features and a resource pack of random mob textures, far mobs drawn as *Simplified Entities* (flat pictures of far mobs) no longer all wear the texture of the first one pictured: each keeps its own.
+- **Distant mobs without their pack's textures** — with Entity Texture Features and Entity Model Features, as Fresh Animations needs them, distant mobs no longer lose the pack's textures, nor all take the texture and pose of one other mob (Minecraft 1.21.8 and older).
+- **Distant axolotls and fish flapping as if on land** — with Entity Model Features and Fresh Animations, distant axolotls, squid and fish no longer lie on their side, flapping, as if out of the water.
+
 ## 0.12.0 — 2026-10-23
 
 ### Server

@@ -90,10 +90,12 @@ loom {
         property("fabric.client.gametest.testModResourcesPath", rootProject.file("src/gametest/resources").absolutePath)
         // Which scenarios to run: -Plh.scenario=impostors,... (all of them by default).
         property("livinghorizon.scenario", (findProperty("lh.scenario") ?: "all").toString())
-        // Other mods to load with it (Sodium...): -Plh.mods=<folder of jars>.
+        // Other mods to load with it (Sodium...): -Plh.mods=<folder of jars, or jars separated by ':'>.
         findProperty("lh.mods")?.let { property("fabric.addMods", it.toString()) }
         // A shader pack folder to turn on through Iris, which -Plh.mods must hold: -Plh.shaderpack=<folder>.
         findProperty("lh.shaderpack")?.let { property("livinghorizon.shaderpack", it.toString()) }
+        // Resource packs to turn on, every zip in a folder: -Plh.resourcepacks=<folder>.
+        findProperty("lh.resourcepacks")?.let { property("livinghorizon.resourcepacks", it.toString()) }
     }
 }
 

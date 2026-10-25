@@ -8,6 +8,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.DedicatedServerScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EasterEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.EntityFeaturesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FarFogScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FollowedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FlyersScenario;
@@ -90,6 +91,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new UnloadScenario(),
             new FollowedMobsScenario(),
             new HeadTurnScenario(),
+            new EntityFeaturesScenario(),
             new GaitsScenario(),
             new FlyersScenario(),
             new EasterEggsScenario(),
@@ -114,6 +116,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             }
         }
         Scene.shaderPack(context);
+        Scene.resourcePacks(context);
         for (Scenario scenario : SCENARIOS) {
             if (!all && !names.contains(scenario.name())) continue;
             Scene.log("scenario " + scenario.name() + " starts");

@@ -7,6 +7,8 @@ import fr.clixmods.livinghorizon.Stats;
 import fr.clixmods.livinghorizon.ambient.Ambience;
 import fr.clixmods.livinghorizon.compat.DrawnGround;
 import fr.clixmods.livinghorizon.compat.EntityCulling;
+//? if <1.21.9
+/*import fr.clixmods.livinghorizon.compat.EtfLink;*/
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.OcclusionQueries;
 import fr.clixmods.livinghorizon.debug.DebugMarks;
@@ -359,8 +361,13 @@ public final class GhostRenderer {
         Vec3 offset = renderer.getRenderOffset(state);
         pose.pushPose();
         pose.translate(x + offset.x, y + offset.y, z + offset.z);
-        renderer.render(state, pose, buffers, light);
-        pose.popPose();
+        Runnable told = EtfLink.drawing(state);
+        try {
+            renderer.render(state, pose, buffers, light);
+        } finally {
+            told.run();
+            pose.popPose();
+        }
     }
     *///?} elif <1.21.2 {
     /*/^*
@@ -378,9 +385,11 @@ public final class GhostRenderer {
         pose.pushPose();
         pose.translate(x + offset.x, y + offset.y, z + offset.z);
         state.apply();
+        Runnable told = EtfLink.drawing(state);
         try {
             renderer.render(entity, Mth.lerp(tick, entity.yRotO, entity.getYRot()), tick, pose, buffers, light);
         } finally {
+            told.run();
             state.restore();
             pose.popPose();
         }
@@ -537,11 +546,8 @@ public final class GhostRenderer {
             if (debug) DebugMarks.mark(puppet, Mark.FAKE);
             mob.drawn();
             if (impostor(minecraft, eye, puppet, partialTick, config)) continue;
-            EntityRenderState body = extract(dispatcher, puppet, partialTick);
-            // A puppet is in no world, so never in water: fish would be drawn flopping on
-            // their side, as on land. Water mobs were in water when last seen.
-            if (body instanceof LivingEntityRenderState living && livesInWater(puppet)) living.isInWater = true;
-            add(frame, minecraft, eye, body, null, true, Mark.FAKE, config, mob.id());
+            // Water mobs are in water, as when last seen: see Puppets.inWater.
+            add(frame, minecraft, eye, extract(dispatcher, puppet, partialTick), null, true, Mark.FAKE, config, mob.id());
         }
         DrawnGround.ask();
         if (debug && DebugMarks.drawing() && minecraft.level != null) {

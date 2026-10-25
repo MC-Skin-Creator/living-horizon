@@ -279,6 +279,7 @@ public final class MobMemory {
         } catch (RuntimeException e) {
             return null;
         }
+        Puppets.inWater(entity);
         entity.setPos(mob.x, mob.y, mob.z);
         entity.setYRot(mob.yaw);
         entity.setOldPosAndRot();
@@ -1072,6 +1073,7 @@ public final class MobMemory {
                 return;
             }
             EntityNbt.load(entity, level, tag);
+            Puppets.inWater(entity);
             if (entity instanceof LivingEntity living) {
                 // A puppet never ticks, so a hit taken just before it was remembered would
                 // leave it flashing red for good.
@@ -1111,6 +1113,7 @@ public final class MobMemory {
             CompoundTag tag = parsed.join();
             if (tag == null || !(Puppets.create(type, level) instanceof LivingEntity twin)) return null;
             EntityNbt.load(twin, level, tag);
+            Puppets.inWater(twin);
             twin.setUUID(UUID.randomUUID());
             twin.setCustomName(null);
             twin.hurtTime = 0;
