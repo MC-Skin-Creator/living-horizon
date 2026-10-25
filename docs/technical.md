@@ -704,6 +704,9 @@ that a mob met in an earlier game is read back rather than baked.
   `ImpostorAtlas.Rider`): the rider seated where it sits, turned as it is turned. A vehicle has
   no body to turn in its state, so the entity itself is turned for each view and put back
   after the bake. Filed as a player's sheet, never kept on disk.
+- **Mobs drawn by another mod's own renderer** whose state is not a living one (Ambient Birds'
+  birds) read their body from the mob itself: the mob is turned for each view the same way,
+  or all eight pictures would show the side it faced.
 - **Never impostors**: a vehicle carrying more than one passenger (drawn as models, all of
   them), a mob carrying another that is not a player, the 2D birds, parrots and bats, and the
   types `GhostRenderer.drawable` leaves out (GeckoLib 4).
