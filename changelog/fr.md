@@ -11,6 +11,9 @@
 - **Phantoms et ghasts vus d'en dessous** — en *Entités simplifiées* (des images plates des mobs lointains), les phantoms et les ghasts sont maintenant dessinés vus d'en dessous et d'au-dessus aussi, comme les oiseaux, et plus seulement de côté.
 - **Plus fluide avec beaucoup de mobs lointains sous Vulkan** — le jeu ne perd plus de temps sur chaque mob lointain, à chaque image, quand il dessine avec Vulkan (Minecraft 26.2 et plus) ou sur Distant Horizons (Minecraft 26.3).
 
+#### Corrections
+- **Volées d'Ambient Birds figées dans le ciel** — les oiseaux du mod Ambient Birds ne restent plus immobiles dans le ciel au loin : ils continuent de voler, ailes déployées.
+
 ## 0.12.0 — 2026-10-23
 
 ### Serveur

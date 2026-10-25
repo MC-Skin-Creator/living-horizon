@@ -385,6 +385,14 @@ come back, add it here in the same pull request: this file is what the next sess
   mob got no animation. A ground read whole is saved with the mob (`Remembered.ground`,
   `MobPaths.Ground.save`) and walked on at once in the next session; a choice read with
   columns missing is not `complete()` and is read again, later and later.
+- **Another mod's mobs hanging still far away** (Ambient Birds' flocks frozen in the sky past
+  the render distance): a mod that makes mobs on the client alone (no server knows them) lets
+  them go where this client holds no chunk, and the game stops moving an entity there.
+  `MobMemory.strand` hands such a mob to its copy until its chunk is back. Another mod's mob
+  drawn perched, invisible or walking far away when it should fly: it is not in
+  `track/ModdedMobs` yet, or what `compat/` reaches in its mod by reflection was renamed (the
+  log says "found, but not the version this mod knows"). Supporting one is an entry there:
+  its flight, and what its copy needs to be drawn as its mod draws it.
 - **Impostors before 1.21.6** (empty or missing pictures, or a figure flashing over the screen
   at the start of a frame): the game has no output override there, so `ImpostorAtlas` bakes
   at the start of the frame (`GameRendererMixin`) into a target of its own, which
