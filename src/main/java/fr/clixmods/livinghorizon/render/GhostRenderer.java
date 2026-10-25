@@ -34,6 +34,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.player.RemotePlayer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.renderer.entity.state.BoatRenderState;
@@ -933,7 +934,9 @@ public final class GhostRenderer {
         if (now - lastPrewarm < 1000) return;
         lastPrewarm = now;
         for (FarPlayer player : config.impostorPlayers ? FarPlayerTracker.get().players() : List.<FarPlayer>of()) {
-            if (player.puppet() != null) ImpostorAtlas.request(ImpostorKey.of(player.puppet()), player.puppet());
+            RemotePlayer puppet = player.puppet();
+            // Baked once they land: gliding, the picture would show them lying in the air.
+            if (puppet != null && !puppet.isFallFlying()) ImpostorAtlas.request(ImpostorKey.of(puppet), puppet);
         }
         if (!config.distantMobs && !config.distantEntities) return;
         for (MobMemory.Remembered mob : FarPlayerTracker.get().mobs().shown()) {
@@ -988,7 +991,9 @@ public final class GhostRenderer {
      */
     private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config,
                                     double dx, double dy, double dz, float facing) {
+        // A glider is tilted along its flight, which no picture baked standing shows.
         if (!ImpostorAtlas.usable() || entity.isPassenger() || entity.isVehicle()
+                || entity instanceof LivingEntity glider && glider.isFallFlying()
                 || !drawable(minecraft.getEntityRenderDispatcher(), entity)) {
             return false;
         }

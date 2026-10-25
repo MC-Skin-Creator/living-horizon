@@ -850,7 +850,9 @@ public final class ImpostorAtlas {
         }
         while (!QUEUE.isEmpty()) {
             Request request = QUEUE.poll();
-            if (request.puppet != null && request.puppet.level() != minecraft.level || baked(request.key)) {
+            // Gliding since it was asked for: lying in the air, it is asked for again once it lands.
+            if (request.puppet != null && request.puppet.level() != minecraft.level || baked(request.key)
+                    || request.puppet instanceof LivingEntity glider && glider.isFallFlying()) {
                 QUEUED.remove(request.key);
                 continue;
             }

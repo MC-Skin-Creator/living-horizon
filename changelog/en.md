@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Server
+
+#### Improved
+- **Gliding players shared** — the server now tells players who is gliding with an elytra, so that they see them fly from afar; players with an older version still see them as before.
+
 ### Client
 
 #### New
@@ -9,6 +14,7 @@
 
 #### Improved
 - **Simplification Distance can be turned off** — *Simplification Distance* now goes down to OFF, so far mobs, entities, players and birds become flat pictures only when they look smaller on screen than the *Simplification Size*.
+- **Distant players gliding** — distant players flying with an elytra now glide through the sky, wings spread, instead of running upright in the air (with the mod on the server).
 
 ## 0.14.0 — 2026-10-29
 
