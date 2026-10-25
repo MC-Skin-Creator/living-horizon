@@ -48,7 +48,7 @@ never added to a level (`track/Puppets`).
 | root | `LivingHorizonCommon` (entry point on both sides, opens the network channel), `LivingHorizonClient` (client entry point), `FarConfig` (the settings file), `QualityPreset`, `Stats` |
 | `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
 | `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`; `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
-| `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
+| `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`); Entity Texture Features, asked which texture a mob wears and told which entity the mod draws (`EtfLink`) |
 | `ambient/` | The birds (`Ambience`, `BirdModels`, `BirdFigure`, `AmbientRenderer`) and the easter eggs |
 | `platform/` | What differs between loaders: events, network, config folder |
 | `ui/` | The settings screens (`FarConfigScreen` and its sub-screens, `SodiumOptions`), the impostor screen, the text under the crosshair (`OfflineHud`) |
@@ -488,6 +488,27 @@ below), and other flyers and swimmers get a flat disc at their own height.
   second (out of view, hidden, too small) is not ticked at all until it is drawn again: no
   animation, no ground read, only moved where the server says it is.
 
+### Entity Model Features, Entity Texture Features and Fresh Animations
+
+The figures are drawn by the game's own renderers, so a mod that changes those changes the
+figures too: EMF's models and its animations (Fresh Animations), ETF's random and emissive
+textures. The `entityfeatures` game test runs with them (`--with
+entitytexturefeatures,entity-model-features --pack fresh-animations`). What they need of a copy:
+
+- **Its id**: ETF picks a mob's texture from its UUID, which a remembered copy keeps (it is read
+  from the mob's saved data), so a copy wears the texture its mob wore.
+- **In water**: EMF's animations ask the entity, not the render state, whether it is in water.
+  A copy is in no world and never ticks, so a fish's copy is put in water once, when it is made
+  (`Puppets.inWater`), or Fresh Animations lays it on its side, flapping.
+- **Before 1.21.9**, ETF and EMF only act inside the game's own draw of an entity, which tells
+  ETF which entity it draws; the mod draws through the renderer, and tells ETF itself
+  (`EtfLink.drawing`), as that draw does.
+- **Impostors**: the texture ETF picks is in the impostor key (see
+  [Same look, same picture](#same-look-same-picture)). A model EMF changes on a resource reload
+  is baked again: the fingerprint on disk holds the packs.
+- EMF slows the animations of far entities on its own (*Animation LOD distance*, in its
+  settings): far copies animate at its pace, as far entities of the game do.
+
 ## Birds
 
 Purely a picture, on this client (`ambient/Ambience`): nothing is spawned and no AI runs.
@@ -612,6 +633,11 @@ keep their whole model at any distance.
 - **In the key**: the type, the player's skin, the synched data that changes the look
   (variant, colour, profession, baby, pose; not health, air, score or being on fire), and
   what it wears, however worn.
+- **Random textures**: with Entity Texture Features, the texture a pack dresses the mob in, by
+  name, when it is not the game's own (`compat/EtfLink`); never a blink. It comes from the mob's
+  UUID, which is in none of its synched data: without it, every far cow of a pack of random cows
+  wore the first one baked. The game's texture it stands in for is asked of the renderer once per
+  look.
 - **Left out**: what never shows (positions, times, owners, sound variants, names but the four
   the game draws differently: Dinnerbone, Grumm, jeb_ and Toast) and,
   learnt per kind of mob, what keeps changing on one (a dolphin drying, a zombie raising its

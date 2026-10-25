@@ -1,11 +1,19 @@
 package fr.clixmods.livinghorizon.render.impostor;
 
+import fr.clixmods.livinghorizon.compat.EtfLink;
+import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.track.Puppets;
 import fr.clixmods.livinghorizon.track.RestingPuppet;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 //? if >=1.21.9
 import net.minecraft.client.entity.ClientAvatarEntity;
 import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
+//? if >=1.21.2 {
+import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+//?}
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -14,6 +22,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -197,6 +206,7 @@ public record ImpostorKey(String type, long appearance, int posture) {
     public static void forgetAll() {
         KNOWN.clear();
         HEIGHTS.clear();
+        TEXTURES.clear();
     }
 
     /** What has been learnt to leave out, a copy: by kind of mob, then by synched value. */
@@ -323,7 +333,48 @@ public record ImpostorKey(String type, long appearance, int posture) {
         if (entity instanceof LivingEntity living) {
             for (EquipmentSlot slot : EquipmentSlot.values()) hash = hash * 31 + item(living.getItemBySlot(slot));
         }
-        return new ImpostorKey(type, hash);
+        long worn = worn(entity, type, hash);
+        return new ImpostorKey(type, worn == 0 ? hash : hash * 31 + worn);
+    }
+
+    /**
+     * The texture the game's renderer draws each look with, by the look's key: the texture that
+     * Entity Texture Features' variants stand in for. Empty for a figure drawn otherwise.
+     */
+    private static final Map<ImpostorKey, Optional<Identifier>> TEXTURES = new HashMap<>();
+
+    /**
+     * A hash of the texture Entity Texture Features dresses a mob in, when a pack gives its kind
+     * more than one and it wears another than the game's; 0 otherwise, and without ETF. Picked
+     * from the mob's id, it shows nowhere in its synched values: left out, every far cow of a pack
+     * of random cows was pictured in the texture of the first one baked. By the texture's name,
+     * the same in every game, so that the sheet is found again on disk.
+     */
+    private static long worn(Entity entity, String type, long look) {
+        if (!(entity instanceof LivingEntity) || !EtfLink.present()) return 0;
+        if (TEXTURES.size() > 4096) TEXTURES.clear();
+        Identifier texture = TEXTURES.computeIfAbsent(new ImpostorKey(type, look), ignored -> Optional.ofNullable(texture(entity)))
+                .orElse(null);
+        if (texture == null) return 0;
+        Identifier worn = EtfLink.worn(entity, texture);
+        return worn.equals(texture) ? 0 : worn.toString().hashCode();
+    }
+
+    /** The texture a mob's renderer draws it with; null for one that is not drawn that way. */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static @Nullable Identifier texture(Entity entity) {
+        EntityRenderDispatcher dispatcher = Minecraft.getInstance().getEntityRenderDispatcher();
+        try {
+            //? if >=1.21.2 {
+            if (!(dispatcher.getRenderer(entity) instanceof LivingEntityRenderer renderer)) return null;
+            return GhostRenderer.extract(dispatcher, entity, 1f) instanceof LivingEntityRenderState state
+                    ? renderer.getTextureLocation(state) : null;
+            //?} else
+            /*return ((net.minecraft.client.renderer.entity.EntityRenderer) dispatcher.getRenderer(entity)).getTextureLocation(entity);*/
+        } catch (RuntimeException | LinkageError error) {
+            // Another mod's renderer, asked for an entity in no world: its texture is not known.
+            return null;
+        }
     }
 
     /**

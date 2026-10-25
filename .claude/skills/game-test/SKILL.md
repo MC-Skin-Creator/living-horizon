@@ -18,7 +18,14 @@ into a virtual display (Xvfb).
 .claude/skills/game-test/run.sh impostors        # one, or several: a,b
 .claude/skills/game-test/run.sh all --sodium     # with Sodium loaded too
 .claude/skills/game-test/run.sh impostors --shaders <pack folder>   # Sodium, Iris and a shader pack
+.claude/skills/game-test/run.sh entityfeatures --with entitytexturefeatures,entity-model-features --pack fresh-animations
 ```
+
+`--with` loads other mods and `--pack` turns resource packs on, by their Modrinth project name:
+the latest release of each for the node's game version, downloaded once into
+`build/game-test-mods/` and `build/game-test-packs/`. A pack is copied into the game's
+`resourcepacks/` folder and turned on, on top, before the first scenario (`Scene.resourcePacks`);
+`Scene.packs` turns one on or off from a scenario.
 
 It takes 1 to 3 minutes per scenario. The script:
 
@@ -109,7 +116,8 @@ thread), `setScreen`, `clickScreenButton(translation key)`, `takeScreenshot`. Th
 - **Who draws a mob.** The game draws a mob within its entity distance; past it, while
   the server still sends it, the mod draws the real mob; once the server stops sending
   it, the mod draws its remembered copy. `entityDistanceScaling` at 0.5 makes the game
-  stop early (about 35 blocks for a cow), so mobs at 50 blocks are the mod's.
+  stop early, but its entity distance grows with the render distance: at the default 12
+  chunks it still draws a cow 51 blocks away, so mobs at 60 blocks or more are the mod's.
 - **Remembered mobs.** The server still sends mobs 150 blocks away: go 200 blocks away
   (`tp`) and wait about 300 ticks. A mob that vanishes within 32 blocks of where the
   player was is taken as killed and forgotten, so the mobs must stand farther than that
@@ -134,7 +142,8 @@ thread), `setScreen`, `clickScreenButton(translation key)`, `takeScreenshot`. Th
   `Scene.shaderPack` copies the pack into Iris's folder and turns it on before the first
   scenario. Photon does not load on llvmpipe (too much shared memory): use Complementary,
   its zip from Modrinth unpacked into the scratchpad. The run folder is emptied at start, so a pack copied there by hand is lost.
-- Sodium can be added (`--sodium`, downloaded from Modrinth into `build/game-test-mods`). The
+- Sodium can be added (`--sodium`, downloaded from Modrinth into `build/game-test-mods`), and
+  other mods with `--with` (Entity Culling for `headturn`, ETF and EMF for `entityfeatures`). The
   `sodium` scenario shows the mod's pages in Sodium's video settings; without Sodium it does nothing.
 
 ## Never

@@ -11,6 +11,11 @@
 - **Phantoms et ghasts vus d'en dessous** — en *Entités simplifiées* (des images plates des mobs lointains), les phantoms et les ghasts sont maintenant dessinés vus d'en dessous et d'au-dessus aussi, comme les oiseaux, et plus seulement de côté.
 - **Plus fluide avec beaucoup de mobs lointains sous Vulkan** — le jeu ne perd plus de temps sur chaque mob lointain, à chaque image, quand il dessine avec Vulkan (Minecraft 26.2 et plus) ou sur Distant Horizons (Minecraft 26.3).
 
+#### Corrections
+- **Mobs lointains tous dans la même texture** — avec Entity Texture Features et un pack de ressources aux textures de mobs aléatoires, les mobs lointains dessinés en *Entités simplifiées* (des images plates des mobs lointains) ne portent plus tous la texture du premier dessiné : chacun garde la sienne.
+- **Mobs lointains sans les textures de leur pack** — avec Entity Texture Features et Entity Model Features, comme Fresh Animations en a besoin, les mobs lointains ne perdent plus les textures du pack et ne prennent plus tous la texture et la pose d'un même autre mob (Minecraft 1.21.8 et avant).
+- **Axolotls et poissons lointains qui se débattent comme sur la terre ferme** — avec Entity Model Features et Fresh Animations, les axolotls, poulpes et poissons lointains ne sont plus couchés sur le flanc à se débattre, comme hors de l'eau.
+
 ## 0.12.0 — 2026-10-23
 
 ### Serveur

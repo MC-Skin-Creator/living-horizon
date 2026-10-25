@@ -424,6 +424,16 @@ come back, add it here in the same pull request: this file is what the next sess
   that turns the head without `yHeadRotO`. A mob the mod draws in the game's place is told seen
   (`compat/EntityCulling.drawn`, from `GhostRenderer`); the `headturn` scenario checks it with
   Entity Culling in `-Plh.mods`.
+- **Distant mobs wrong with Entity Texture Features, Entity Model Features or Fresh Animations**
+  (every far cow of a pack of random textures in one texture as an impostor; Fresh Animations'
+  fish lying on their side far away; before 1.21.9, far mobs in the game's textures, or all in
+  the texture and pose of one other mob):
+  ETF picks a texture from the mob's UUID, which no synched value shows, so `ImpostorKey` asks
+  `EtfLink.worn`. EMF asks the entity, not the render state, whether it is in water, and a copy
+  never ticks: `Puppets.inWater` puts a fish's copy in water when it is made. Before 1.21.9 ETF
+  and EMF act only inside the game's draw of an entity, which tells ETF which one; the mod draws
+  through the renderer and tells it itself (`EtfLink.drawing`). The `entityfeatures` scenario
+  checks it: `run.sh entityfeatures --with entitytexturefeatures,entity-model-features --pack fresh-animations`.
 - **Crash extracting a distant mob on 1.21.2 to 1.21.8** (`NullPointerException` under
   `GhostRenderer.state`, often blamed on another mod's mixin into `extractRenderState`):
   GeckoLib 4's `createRenderState()` returns null and its `render` draws the entity it was

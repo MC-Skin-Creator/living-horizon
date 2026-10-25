@@ -26,10 +26,13 @@ accessible field net/minecraft/client/entity/ClientAvatarState xCloakO D
 accessible field net/minecraft/client/entity/ClientAvatarState yCloakO D
 accessible field net/minecraft/client/entity/ClientAvatarState zCloakO D
 
+# A fish's copy, which never ticks, is put in water (Puppets.inWater); before 1.21.2, with no
+# render states, any figure is told it swims while it is drawn.
+accessible field net/minecraft/world/entity/Entity wasTouchingWater Z
+
 # Before 1.21.2, with no render states: a figure is told it swims, stands still or walks
 # while it is drawn, and the faces of each cube of a model are counted as it is drawn.
 # @until 1.21.1
-accessible field net/minecraft/world/entity/Entity wasTouchingWater Z
 accessible field net/minecraft/world/entity/Entity wasEyeInWater Z
 accessible field net/minecraft/world/entity/WalkAnimationState position F
 accessible field net/minecraft/world/entity/WalkAnimationState speed F
