@@ -10,6 +10,10 @@
 - **Distant phantoms and ghasts flying** — distant phantoms now circle in the sky and distant ghasts drift about, instead of hanging still in the air.
 - **Phantoms and ghasts seen from below** — as *Simplified Entities* (flat pictures of far mobs), phantoms and ghasts are now pictured from below and from above too, like birds, not only from the side.
 - **Smoother with many distant mobs on Vulkan** — the game no longer loses time on every distant mob, every frame, when it draws with Vulkan (Minecraft 26.2 and later) or over Distant Horizons (Minecraft 26.3).
+- **Smoother over Distant Horizons with Improved Transparency** — the game no longer waits for the graphics card in the middle of every frame with distant mobs over Distant Horizons and *Improved Transparency* on (Minecraft 26.3).
+
+#### Fixed
+- **Distant mobs blinking in crowds** — distant mobs standing close together no longer vanish for a moment now and then with *Skip Hidden Mobs* on (Minecraft 26.3 over Distant Horizons, or with Vulkan).
 
 ## 0.12.0 — 2026-10-23
 

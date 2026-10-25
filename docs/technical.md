@@ -871,7 +871,20 @@ the depth of the picture, where Voxy's or Distant Horizons' terrain already is (
    show.
 
 On 26.3's GPU device path (see [Distant Horizons](#distant-horizons)), the boxes are tested
-in `compat/FarDepthGpu` and the answers read back from there, a capped number per frame.
+in `compat/FarDepthGpu` and the answers read back from there, a capped number per frame. Nothing
+can be copied in the middle of the world's pass there, so the test reads the depth once the world
+is drawn, the figures in it. Two things keep it to what the queries would answer:
+
+- each box's rectangle on the screen is read pixel by pixel (up to 32 points a side), so a mob
+  showing a sliver is seen;
+- only what stands clearly in front of a box hides it (8% of its distance, 2 blocks at least):
+  the neighbours of a mob in a herd never do, as the queries see the terrain alone. Hidden by
+  them while a few pixels of it showed, it blinked as they moved.
+
+The `herd` scenario checks it: 80 remembered cows packed together, the camera sliding past them,
+none skipped. With Distant Horizons in `-Plh.mods`, the copies standing on its terrain, the
+earlier test skipped up to 3 of them on a quarter of the ticks; with `--vulkan` alone it never
+caught it.
 
 Why the answer can be trusted:
 
