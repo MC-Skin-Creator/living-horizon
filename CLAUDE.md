@@ -248,8 +248,9 @@ distant mobs or players, birds, impostors or a screen is checked in the real cli
 `.claude/skills/game-test/` runs it headless (Xvfb, software OpenGL), drives it with the
 scenarios in `src/gametest/java` and takes screenshots to look at. Run
 `.claude/skills/game-test/run.sh [scenario]`, read `SKILL.md` there first, add a scenario
-for what the change touches, and show the user the screenshots. Voxy and Distant Horizons
-cannot run there: say so when a check depends on them.
+for what the change touches, and show the user the screenshots. Voxy cannot run there: say so
+when a check depends on it. Distant Horizons runs on 26.3, and `--vulkan` takes the game's GPU
+device path (`SKILL.md` says how).
 
 ## Debugging checklist
 
@@ -526,6 +527,15 @@ come back, add it here in the same pull request: this file is what the next sess
   added at the end of a record, or after the records, raises `VERSION` only; anything else
   raises `READABLE_FROM` too, and older clients stop reading. `PositionsMessageTest` holds the
   exact bytes: a layout change that fails it needs one of the two.
+- **Distant mobs blinking in a crowd on 26.3** (with Distant Horizons and no shader pack, or with
+  Vulkan; gone with *Skip Hidden Mobs* off): there `FarDepthGpu` tests the boxes against the depth
+  once the world is drawn, the other figures in it. A mob showing a sliver between its neighbours
+  was hidden whenever a sparse grid of points missed the sliver. The box is read pixel by pixel
+  and only what stands clearly in front of it hides it; the `herd` scenario, with Distant
+  Horizons in `-Plh.mods` (`--vulkan` alone never caught it), counts the cows skipped.
+- **A mid-frame wait for the GPU on 26.3's GPU path**: the game's `MappableRingBuffer` holds
+  three buffers and waits for the GPU on the next one; rotated more than once a frame it waits
+  for the frame before. `FarDepthGpu.Uniforms` keeps eight of each kind and never waits.
 - **Skip Hidden Mobs costing a lot with many mobs** (the debug panel's occlusion line says "one
   query each"): the one-draw path of `OcclusionQueries` (OpenGL 4.3, a word per box in a shader
   storage buffer, read back behind a fence) failed and the per-box queries took over, five GL

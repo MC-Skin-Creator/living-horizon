@@ -8,6 +8,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.renderpearl.api.buffers.GpuBuffer;
 import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
 import com.mojang.renderpearl.api.commands.CommandEncoder;
+import com.mojang.renderpearl.api.commands.GpuFence;
 import com.mojang.renderpearl.api.commands.RenderPass;
 import com.mojang.renderpearl.api.commands.RenderPassDescriptor;
 import com.mojang.renderpearl.api.GpuFormat;
@@ -27,7 +28,6 @@ import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MappableRingBuffer;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
@@ -99,8 +99,10 @@ public final class FarDepthGpu {
 
     /^*
      * Which distant mobs the depth hides, in place of OpenGL's occlusion queries, which the
-     * game's device does not have: one pixel per mob, its box projected on the screen and a grid
-     * of the depth inside it tested against the box's nearest point. Read back a frame or two later.
+     * game's device does not have: one pixel per mob, its box projected on the screen and the
+     * depth inside it read pixel by pixel against the box's nearest point. That depth holds the
+     * figures too, drawn by then: only what stands clearly in front of a box hides it, never its
+     * neighbours in a herd. Read back a frame or two later.
      ^/
     private static final RenderPipeline VISIBILITY = RenderPipeline.builder(RenderPipelines.GLOBALS_SNIPPET)
             .withLocation(Identifier.fromNamespaceAndPath(NAMESPACE, "pipeline/far_visibility"))
@@ -115,7 +117,7 @@ public final class FarDepthGpu {
             .build();
     /^* Mobs tested per frame: the boxes fit the 16 KiB every device gives a uniform buffer. The others wait a frame. ^/
     private static final int VISIBILITY_MAX = 480;
-    private static final int VISIBILITY_SIZE = new Std140SizeCalculator().putMat4f().putVec4().get() + VISIBILITY_MAX * 32;
+    private static final int VISIBILITY_SIZE = new Std140SizeCalculator().putMat4f().putVec4().putVec4().get() + VISIBILITY_MAX * 32;
     /^* Read-backs waiting for the GPU: past this, a frame asks nothing. ^/
     private static final int READBACKS = 4;
 
@@ -123,10 +125,12 @@ public final class FarDepthGpu {
     private static final int MERGE_SIZE = new Std140SizeCalculator().putVec4().putVec4().putMat4f().putVec4().get();
     private static final int FADE_SIZE = new Std140SizeCalculator().putMat4f().putVec4().putVec4().putVec4().putVec4()
             .putMat4f().putVec4().get();
-    /^* Frames a uniform buffer is kept before it is written again: the GPU may still be reading it. ^/
+    /^* Uniform buffers of each kind used in turn: one is written again only once the GPU is long done with it. ^/
     private static final int RING = 8;
 
-    private static @Nullable MappableRingBuffer mergeUniforms, fadeUniforms, viewUniforms;
+    private static final Uniforms MERGE_UNIFORMS = new Uniforms("Living Horizon far depth", MERGE_SIZE),
+            FADE_UNIFORMS = new Uniforms("Living Horizon fade mask", FADE_SIZE),
+            VIEW_UNIFORMS = new Uniforms("Living Horizon depth view", VIEW_SIZE);
     /^* The depth of the last frame once the world is drawn, for the depth view. ^/
     private static @Nullable GpuTexture viewDepth;
     private static @Nullable GpuTextureView viewDepthView;
@@ -144,7 +148,7 @@ public final class FarDepthGpu {
     private static @Nullable GpuTextureView savedView;
     private static boolean fading, broken;
 
-    private static @Nullable MappableRingBuffer visibilityUniforms;
+    private static final Uniforms VISIBILITY_UNIFORMS = new Uniforms("Living Horizon visibility", VISIBILITY_SIZE);
     private static @Nullable GpuTexture visibility;
     private static @Nullable GpuTextureView visibilityView;
     /^* One read-back per frame in flight: the buffer, the keys it answers for, and their frame. ^/
@@ -179,10 +183,7 @@ public final class FarDepthGpu {
             preparedExact = inverse != null;
             if (inverse != null) PREPARED_INVERSE.set(inverse);
             else PREPARED_INVERSE.identity();
-            if (mergeUniforms == null) {
-                mergeUniforms = new MappableRingBuffer(() -> "Living Horizon far depth", GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_MAP_WRITE, MERGE_SIZE);
-            }
-            GpuBuffer uniforms = next(mergeUniforms);
+            GpuBuffer uniforms = MERGE_UNIFORMS.next();
             try (GpuBufferSlice.MappedView view = uniforms.map(false, true)) {
                 Std140Builder.intoBuffer(view.data())
                         .putVec4(dh.a(), dh.b(), dh.signedFlag(), dh.nothing())
@@ -241,10 +242,7 @@ public final class FarDepthGpu {
             if (mask == null || blit == null) return;
             GpuTextureView copy = savedView(depth);
 
-            if (fadeUniforms == null) {
-                fadeUniforms = new MappableRingBuffer(() -> "Living Horizon fade mask", GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_MAP_WRITE, FADE_SIZE);
-            }
-            GpuBuffer uniforms = next(fadeUniforms);
+            GpuBuffer uniforms = FADE_UNIFORMS.next();
             Vec3 camera = minecraft.gameRenderer.mainCamera().position();
             int chunks = minecraft.options.getEffectiveRenderDistance();
             int chunkX = Math.floorDiv((int) Math.floor(camera.x), 16), chunkZ = Math.floorDiv((int) Math.floor(camera.z), 16);
@@ -323,9 +321,13 @@ public final class FarDepthGpu {
             if (n == 0) return;
             Minecraft minecraft = Minecraft.getInstance();
             RenderTarget main = minecraft.gameRenderer.mainRenderTarget();
+            GpuTexture depthTexture = main.getDepthTexture();
             GpuTextureView depth = main.getDepthTextureView();
             CompiledRenderPipeline pipeline = RenderSystem.getCompiledPipelineNullable(VISIBILITY);
-            if (depth == null || pipeline == null) return;
+            if (depthTexture == null || depth == null || pipeline == null) return;
+            // Where the box is read pixel by pixel, and how a depth there turns into a distance.
+            int width = depthTexture.getWidth(0), height = depthTexture.getHeight(0);
+            float[] terms = DepthFar.terms(minecraft);
             if (visibility == null || visibility.isClosed()) {
                 visibility = RenderSystem.getDevice().createTexture(() -> "Living Horizon visibility",
                         GpuTexture.USAGE_RENDER_ATTACHMENT | GpuTexture.USAGE_COPY_SRC, GpuFormat.RGBA8_UNORM, VISIBILITY_MAX, 1, 1, 1);
@@ -335,14 +337,12 @@ public final class FarDepthGpu {
                 READBACK_BUFFERS[slot] = RenderSystem.getDevice().createBuffer(() -> "Living Horizon visibility read-back",
                         GpuBuffer.USAGE_MAP_READ | GpuBuffer.USAGE_COPY_DST, (long) VISIBILITY_MAX * 4);
             }
-            if (visibilityUniforms == null) {
-                visibilityUniforms = new MappableRingBuffer(() -> "Living Horizon visibility", GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_MAP_WRITE, VISIBILITY_SIZE);
-            }
-            GpuBuffer uniforms = next(visibilityUniforms);
+            GpuBuffer uniforms = VISIBILITY_UNIFORMS.next();
             try (GpuBufferSlice.MappedView view = uniforms.map(false, true)) {
                 Std140Builder builder = Std140Builder.intoBuffer(view.data())
                         .putMat4f(new Matrix4f(FarDepth.viewProjection()))
-                        .putVec4(n, DepthFar.REVERSED ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f, 0f);
+                        .putVec4(n, DepthFar.REVERSED ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f, 0f)
+                        .putVec4(width, height, terms[0], terms[1]);
                 for (int i = 0; i < n; i++) {
                     builder.putVec4(BOXES[6 * i], BOXES[6 * i + 1], BOXES[6 * i + 2], 0f)
                             .putVec4(BOXES[6 * i + 3], BOXES[6 * i + 4], BOXES[6 * i + 5], 0f);
@@ -433,10 +433,7 @@ public final class FarDepthGpu {
             GpuTextureView color = main.getColorTextureView();
             CompiledRenderPipeline pipeline = RenderSystem.getCompiledPipelineNullable(VIEW);
             if (color == null || pipeline == null) return;
-            if (viewUniforms == null) {
-                viewUniforms = new MappableRingBuffer(() -> "Living Horizon depth view", GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_MAP_WRITE, VIEW_SIZE);
-            }
-            GpuBuffer uniforms = next(viewUniforms);
+            GpuBuffer uniforms = VIEW_UNIFORMS.next();
             float[] terms = DepthFar.terms(minecraft), planes = DepthFar.planes(minecraft);
             float margin = 8f / Math.max(1, main.width);
             try (GpuBufferSlice.MappedView view = uniforms.map(false, true)) {
@@ -484,9 +481,58 @@ public final class FarDepthGpu {
         return savedView;
     }
 
-    private static GpuBuffer next(MappableRingBuffer ring) {
-        ring.rotate();
-        return ring.currentBuffer();
+    /^*
+     * Uniform buffers of one kind, used in turn, each written again only once the GPU is done
+     * with it. The game's {@code MappableRingBuffer} keeps three and waits for the GPU when the
+     * next one is still in use: Distant Horizons' two fades (the second with Improved
+     * Transparency on) took one each, so every frame the first waited, in the middle of the
+     * frame, for the GPU to finish the one before. Here
+     * {@link #RING} of them: the one handed out is frames old, and is never waited for. Should
+     * it still be in use, one more is made instead.
+     ^/
+    private static final class Uniforms {
+        private final String label;
+        private final int size;
+        private GpuBuffer[] buffers = new GpuBuffer[0];
+        /^* After each buffer's last use: the frame it was handed out in, which the GPU has to finish. ^/
+        private GpuFence[] fences = new GpuFence[0];
+        private int current = -1;
+
+        Uniforms(String label, int size) {
+            this.label = label;
+            this.size = size;
+        }
+
+        GpuBuffer next() {
+            if (buffers.length < RING) {
+                add(buffers.length);
+                current = buffers.length - 1;
+            } else {
+                current = (current + 1) % buffers.length;
+                GpuFence fence = fences[current];
+                if (fence != null) {
+                    if (fence.awaitCompletion(0L)) fence.close();
+                    else add(current);
+                }
+            }
+            fences[current] = RenderSystem.getDevice().createCommandEncoder().createFence();
+            return buffers[current];
+        }
+
+        /^* A new buffer at {@code at}, the ones from there on moved one place along. ^/
+        private void add(int at) {
+            int count = buffers.length;
+            GpuBuffer[] grown = new GpuBuffer[count + 1];
+            GpuFence[] grownFences = new GpuFence[count + 1];
+            System.arraycopy(buffers, 0, grown, 0, at);
+            System.arraycopy(buffers, at, grown, at + 1, count - at);
+            System.arraycopy(fences, 0, grownFences, 0, at);
+            System.arraycopy(fences, at, grownFences, at + 1, count - at);
+            grown[at] = RenderSystem.getDevice().createBuffer(() -> label + " #" + count,
+                    GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_MAP_WRITE, size);
+            buffers = grown;
+            fences = grownFences;
+        }
     }
 
     private static GpuSampler nearest() {

@@ -10,6 +10,10 @@
 - **Phantoms et ghasts lointains qui volent** — les phantoms lointains tournent maintenant en rond dans le ciel et les ghasts lointains dérivent lentement, au lieu de rester figés en l'air.
 - **Phantoms et ghasts vus d'en dessous** — en *Entités simplifiées* (des images plates des mobs lointains), les phantoms et les ghasts sont maintenant dessinés vus d'en dessous et d'au-dessus aussi, comme les oiseaux, et plus seulement de côté.
 - **Plus fluide avec beaucoup de mobs lointains sous Vulkan** — le jeu ne perd plus de temps sur chaque mob lointain, à chaque image, quand il dessine avec Vulkan (Minecraft 26.2 et plus) ou sur Distant Horizons (Minecraft 26.3).
+- **Plus fluide sur Distant Horizons avec la Transparence améliorée** — le jeu n'attend plus la carte graphique au milieu de chaque image avec des mobs lointains sur Distant Horizons et la *Transparence améliorée* activée (Minecraft 26.3).
+
+#### Corrections
+- **Mobs lointains qui clignotent en groupe** — les mobs lointains serrés les uns contre les autres ne disparaissent plus un instant de temps en temps avec *Ignorer cachés* activé (Minecraft 26.3 sur Distant Horizons, ou avec Vulkan).
 
 ## 0.12.0 — 2026-10-23
 
