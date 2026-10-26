@@ -85,6 +85,7 @@ import net.minecraft.client.renderer.state.CameraRenderState;
 //?} else
 //import net.minecraft.client.renderer.MultiBufferSource;
 import com.mojang.blaze3d.vertex.PoseStack;
+import fr.clixmods.livinghorizon.compat.LycaniteMobs;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
@@ -1095,6 +1096,8 @@ public final class ImpostorAtlas {
                 GhostRenderer.drawState(stagedRider(minecraft, request.rider, view), seat.x, seat.y, seat.z, pose, buffers,
                         FULL_BRIGHT);
             }
+            // Lycanites Mobs queues most of its models for later: drawn into this picture now.
+            LycaniteMobs.drawQueued();
         }
     }
     *///?}
