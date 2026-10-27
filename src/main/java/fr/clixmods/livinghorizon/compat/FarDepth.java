@@ -359,6 +359,8 @@ public final class FarDepth {
         if (FRAME.merged || FRAME.captured) outOfOrder("the entities' depth was not given back after them");
         else if (FRAME.lateMerged || FRAME.lateBegan) outOfOrder("the translucent step's depth was not given back after it");
         else if (FRAME.fading) outOfOrder("Distant Horizons' fade did not end");
+        // A fade that did not end leaves the game's depth texture unfiltered: its filters come back.
+        refilter();
         FRAME.reset();
         DepthFar.noteFrame();
         gpuPath = workOutGpuPath() ? 1 : 0;
@@ -1122,6 +1124,7 @@ public final class FarDepth {
             } finally {
                 gl.restore();
             }
+            unfilter();
             FRAME.fading = true;
         } catch (Throwable e) {
             FRAME.fadeMask = false;
@@ -1143,11 +1146,44 @@ public final class FarDepth {
         if (!FRAME.fading) return;
         FRAME.fading = false;
         try {
+            refilter();
             copy(faded, depthTexture);
         } catch (Throwable e) {
             FRAME.fadeMask = false;
             fail(e);
         }
+    }
+
+    /** The game's depth texture's filters before {@link #unfilter}, to put back; 0 while untouched. */
+    private static int fadeTexture, fadeMinFilter, fadeMagFilter;
+
+    /**
+     * Distant Horizons' fade reads the game's depth through the texture's own filters. The game
+     * makes that texture unfiltered, but QDAA turns every filter of the main render target to
+     * linear, the depth's too (an unordered {@code @ModifyConstant} on {@code createBuffers}). A
+     * figure's pixel, emptied for the fade, then read a hair nearer than the sky wherever it
+     * touched the game's terrain: the fade took it for ground at the far plane and painted Distant
+     * Horizons' terrain over that edge, a shimmering outline round distant mobs. Read unfiltered
+     * for the fade, as without QDAA, and put back by {@link #refilter} as soon as it ends. Read at
+     * each pixel's centre, the fade itself comes out as it would with the filter left alone.
+     */
+    private static void unfilter() {
+        int[] filters = GlCache.filters(depthTexture);
+        if (filters[0] == GL11C.GL_NEAREST && filters[1] == GL11C.GL_NEAREST) return;
+        fadeTexture = depthTexture;
+        fadeMinFilter = filters[0];
+        fadeMagFilter = filters[1];
+        GL45C.glTextureParameteri(depthTexture, GL11C.GL_TEXTURE_MIN_FILTER, GL11C.GL_NEAREST);
+        GL45C.glTextureParameteri(depthTexture, GL11C.GL_TEXTURE_MAG_FILTER, GL11C.GL_NEAREST);
+    }
+
+    /** The game's depth texture gets back the filters {@link #unfilter} took off, if it did. */
+    private static void refilter() {
+        if (fadeTexture == 0) return;
+        int texture = fadeTexture;
+        fadeTexture = 0;
+        GL45C.glTextureParameteri(texture, GL11C.GL_TEXTURE_MIN_FILTER, fadeMinFilter);
+        GL45C.glTextureParameteri(texture, GL11C.GL_TEXTURE_MAG_FILTER, fadeMagFilter);
     }
 
     /**

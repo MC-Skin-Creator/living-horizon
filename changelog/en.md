@@ -11,6 +11,9 @@
 - **Phantoms and ghasts seen from below** — as *Simplified Entities* (flat pictures of far mobs), phantoms and ghasts are now pictured from below and from above too, like birds, not only from the side.
 - **Smoother with many distant mobs on Vulkan** — the game no longer loses time on every distant mob, every frame, when it draws with Vulkan (Minecraft 26.2 and later) or over Distant Horizons (Minecraft 26.3).
 
+#### Fixed
+- **Glowing edges on distant mobs** — distant mobs no longer have a glowing, shimmering outline over Distant Horizons when the anti-aliasing mod QDAA is installed too (Minecraft 1.20.1 to 1.21.4).
+
 ## 0.12.0 — 2026-10-23
 
 ### Server

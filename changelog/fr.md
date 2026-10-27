@@ -11,6 +11,9 @@
 - **Phantoms et ghasts vus d'en dessous** — en *Entités simplifiées* (des images plates des mobs lointains), les phantoms et les ghasts sont maintenant dessinés vus d'en dessous et d'au-dessus aussi, comme les oiseaux, et plus seulement de côté.
 - **Plus fluide avec beaucoup de mobs lointains sous Vulkan** — le jeu ne perd plus de temps sur chaque mob lointain, à chaque image, quand il dessine avec Vulkan (Minecraft 26.2 et plus) ou sur Distant Horizons (Minecraft 26.3).
 
+#### Corrections
+- **Contours lumineux sur les mobs lointains** — les mobs lointains n'ont plus de contour lumineux qui scintille sur Distant Horizons quand le mod d'anticrénelage QDAA est installé aussi (Minecraft 1.20.1 à 1.21.4).
+
 ## 0.12.0 — 2026-10-23
 
 ### Serveur

@@ -290,6 +290,14 @@ come back, add it here in the same pull request: this file is what the next sess
   without a shader pack): its fade runs after the translucent step, where players and a slime's
   outer layer are drawn. `FarDepth.beforeFade` unmasks that step's copies too (`lateFade`); a
   pixel left out of the mask is faded into its terrain. On 26.3 the GPU path's mask needs none.
+- **A glowing, shimmering edge round distant mobs over Distant Horizons** (no shader pack, with
+  QDAA, 1.20.1 to 1.21.4): QDAA's `@ModifyConstant` on `RenderTarget.createBuffers` has no
+  ordinal, so every `GL_NEAREST` there becomes `GL_LINEAR` on the main target, the depth
+  texture's filters included, and Distant Horizons' fade reads that depth with `texture()`. A
+  figure's pixel the fade mask emptied (sky) read a hair nearer beside the game's terrain:
+  ground at the far plane, painted with Distant Horizons' colour. `FarDepth.unfilter` makes the
+  depth unfiltered for the fade only, `refilter` puts the filters back. Any mod that makes the
+  game's depth filtered does the same.
 - **Distant Horizons' terrain in front of mobs standing before it** (a far mob cut by the hill
   behind it, from 26.1): the game makes its projection inside `Camera.update`, from `depthFar`.
   `CameraMixin` pushes that plane out right after it is set, before the projection; pushed at
