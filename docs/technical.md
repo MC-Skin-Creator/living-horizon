@@ -325,7 +325,7 @@ then rests a while and goes again:
 
 Another mod's mount goes by what it is: a living one walks like a horse, or flies like the
 happy ghast without gravity; a water creature stays put. Anything neither alive nor a boat (a
-minecart) stays where it was. In the saddle they look
+minecart, an aircraft) stays where it was. In the saddle they look
 around and raise their shield when hit; no bed, no chest, no sword. With `offlineLife` off,
 rider and mount wait on the spot.
 
@@ -364,6 +364,16 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
 - **Other mods' mobs** are shown from the start (monsters excepted), then left as the player
   sets them (`knownModdedMobs`). Each client remembers them itself: the server only shares
   vanilla kinds.
+- **Vehicles** that are neither mobs nor the game's boats (an aircraft, a car, a minecart) are
+  told by what their class does, never by a list of ids (`track/Vehicles`): one whose class
+  answers who steers it (`getControllingPassenger`, as a boat's does: Immersive Aircraft's
+  planes, another mod's boat) is shown from the start; one that only places its riders
+  (`positionRider`: a minecart, Superb Warfare's vehicles, Create's seats and moving
+  contraptions, whose copies could cost a lot) is listed but waits to be chosen. Both
+  methods are found on `Entity` by their shape, since their names differ between loaders.
+  Only an entity seen tells its kind is a vehicle, so a kind joins *Mobs & Entities...* when
+  one is first met (`knownVehicles`). A copy stands where it was left, as a boat does: no
+  animation, and only this client remembers it.
 - **Mannequins** (from 1.21.9) are shown too, standing still: Distant Friends uses them as its fake
   players. Mobs in `stillMobTypes` (happy ghast, mannequin) stand still instead of walking
   their loop. A copy wears its mannequin's skin, from a player's name or a texture of a
@@ -1112,6 +1122,7 @@ the mod, they come back at their last position.
 | `stillMobTypes` | Mobs & Entities..., *Still* | Happy ghast, mannequin | | Mobs shown standing still instead of walking their loop |
 | `scanRadius` | Scan Radius | `32` chunks | 4 to 1024 | Chunks around you read by a scan, in single player (32 chunks = 512 blocks) |
 | `knownModdedMobs` | (not shown) | Empty | | Mob types of other mods already offered once: a new one is shown from the start (monsters excepted), then left as you set it |
+| `knownVehicles` | (not shown) | Empty | | Vehicles met that are neither mobs nor boats, listed in *Mobs & Entities...* from then on: one its rider steers is shown from the start, one that only seats its riders waits to be chosen |
 
 *Forget Mobs* forgets every mob remembered on this server; those a server with the mod shares
 come back by themselves. *Scan Nearby Mobs* runs a scan.

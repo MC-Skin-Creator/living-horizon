@@ -455,6 +455,12 @@ come back, add it here in the same pull request: this file is what the next sess
   that changes more than the bracket saved throws: widen the bracket's `save`. A step that
   starts drawing into a framebuffer with colour must save `GlState.COLOUR` and set blending
   and the colour mask itself.
+- **Another mod's vehicle vanishing far away** (an aircraft, a car, a tank gone past the render
+  distance): an entity that is not alive is a vehicle only when its class declares
+  `getControllingPassenger` again (steered: shown from the start, like a boat) or `positionRider`
+  (seated: listed but off), found on `Entity` by shape (`track/Vehicles`), and a kind is only
+  listed in *Mobs & Entities...* once met (`knownVehicles`). Check the mod's class with `javap` on
+  its jar; the `vehicles` scenario checks Immersive Aircraft (`run.sh vehicles --with immersive-aircraft`).
 - **A far player's mount drawn twice, or a rider sitting on air** (a happy ghast beside its
   rider, a player met already riding floating far away): a mount is drawn under its rider
   (`FarPlayer.mountPuppet`), and the remembered mobs leave out every id `FarPlayer.carriedMount`

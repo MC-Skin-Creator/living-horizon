@@ -131,12 +131,13 @@ class FarConfigTest {
     @Test
     void fillsInWhatTheFileLeftOut() {
         FarConfig config = migrated("{\"version\": 10, \"mobTypes\": null, \"hiddenBirds\": null, \"birdStyle\": null,"
-                + " \"knownModdedMobs\": null, \"stillMobTypes\": null}");
+                + " \"knownModdedMobs\": null, \"knownVehicles\": null, \"stillMobTypes\": null}");
         assertTrue(config.mobTypes.contains("minecraft:horse"));
         assertTrue(config.stillMobTypes.contains(MANNEQUIN));
         assertEquals(java.util.List.of(), config.hiddenBirds);
         assertEquals("3d", config.birdStyle);
         assertEquals(java.util.List.of(), config.knownModdedMobs);
+        assertEquals(java.util.List.of(), config.knownVehicles);
     }
 
     @Test

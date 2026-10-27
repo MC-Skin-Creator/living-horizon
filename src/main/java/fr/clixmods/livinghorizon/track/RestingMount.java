@@ -217,8 +217,8 @@ final class RestingMount {
     /** How a mount gets about, from what it is. */
     static Kind kindOf(Entity entity) {
         if (!(entity instanceof LivingEntity living)) {
-            // Boats float; minecarts and the rest stay where they are.
-            return MobMemory.rememberable(entity) ? Kind.WATER : Kind.STILL;
+            // Boats float; minecarts, aircraft and the rest stay where they are.
+            return MobMemory.boat(entity) ? Kind.WATER : Kind.STILL;
         }
         if (living.isNoGravity() || EntityType.getKey(entity.getType()).getPath().equals("happy_ghast")) return Kind.AIR;
         MobCategory category = entity.getType().getCategory();

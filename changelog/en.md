@@ -4,6 +4,9 @@
 
 ### Client
 
+#### New
+- **Vehicles from other mods far away** — vehicles from other mods, such as Immersive Aircraft's planes, now stay visible past the render distance where they were left, like boats; each kind joins *Mobs & Entities...* the first time you see one, and the ones you ride without steering (minecarts, some other mods' vehicles) wait there, off, until you turn them on.
+
 #### Improved
 - **Smoother game among distant mobs and offline players** — working out where distant mobs and players who logged off can walk no longer takes time from the game: it is done in the background.
 - **Smoother frames with distant mobs** — the game waits less on the graphics driver each frame with distant mobs over Voxy or Distant Horizons, most of all on NVIDIA cards with *Threaded optimization* on.

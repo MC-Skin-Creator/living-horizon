@@ -379,7 +379,10 @@ public final class MobMemory {
      * up to it first, so that the mob does not jump from where the copy was.
      */
     public void onLoad(Entity entity) {
-        if (rememberable(entity)) live.put(entity.getUUID(), entity);
+        if (rememberable(entity)) {
+            live.put(entity.getUUID(), entity);
+            discover(entity);
+        }
         // Back in the world with its rider: remembered again once it leaves.
         takenAway.remove(entity.getUUID());
         Remembered mob = mobs.get(entity.getUUID());
@@ -584,17 +587,37 @@ public final class MobMemory {
     }
 
     /**
-     * Mobs, boats - a parked boat vanishes from far away just like an animal - and
-     * mannequins, the skinned figures that Distant Friends stands far away as fake players.
+     * Mobs, boats - a parked boat vanishes from far away just like an animal - other vehicles,
+     * other mods' aircraft and cars among them ({@link Vehicles}), and mannequins, the skinned
+     * figures that Distant Friends stands far away as fake players.
      */
     static boolean rememberable(Entity entity) {
-        // Mannequins came in 1.21.9; every boat was one class before 1.21.2.
+        // Mannequins came in 1.21.9.
         //? if >=1.21.9 {
-        return entity instanceof Mob || entity instanceof AbstractBoat || entity instanceof Mannequin;
-        //?} elif >=1.21.2 {
-        /*return entity instanceof Mob || entity instanceof AbstractBoat;
-        *///?} else
-        /*return entity instanceof Mob || entity instanceof net.minecraft.world.entity.vehicle.Boat;*/
+        return entity instanceof Mob || boat(entity) || entity instanceof Mannequin || Vehicles.is(entity);
+        //?} else
+        /*return entity instanceof Mob || boat(entity) || Vehicles.is(entity);*/
+    }
+
+    /** A boat or a raft, chest or not, other mods' boats built on the game's included. */
+    static boolean boat(Entity entity) {
+        // Every boat was one class before 1.21.2.
+        //? if >=1.21.2 {
+        return entity instanceof AbstractBoat;
+        //?} else
+        /*return entity instanceof net.minecraft.world.entity.vehicle.Boat;*/
+    }
+
+    /**
+     * A vehicle of a kind never met before, whose id the list of mobs cannot know (an aircraft,
+     * another mod's boat): from now on it is in that list, where the player chooses whether it
+     * is shown ({@link FarConfig#adoptVehicle}). The game's boats are listed already.
+     */
+    private static void discover(Entity entity) {
+        Vehicles.Kind kind = Vehicles.of(entity);
+        if (kind == Vehicles.Kind.NONE) return;
+        String id = EntityType.getKey(entity.getType()).toString();
+        if (!MobKinds.isBoat(id)) FarConfig.adoptVehicle(id, kind == Vehicles.Kind.STEERED);
     }
 
     private static boolean worthRemembering(Entity mob, FarConfig config) {
@@ -774,7 +797,7 @@ public final class MobMemory {
         return mob.motion;
     }
 
-    /** Where it was, facing where it faced, not moving: a boat, which has no animation. */
+    /** Where it was, facing where it faced, not moving: a boat or another vehicle, which has no animation. */
     private static void hold(Entity puppet, Remembered mob) {
         puppet.setOldPosAndRot();
         puppet.setPos(mob.x, mob.y, mob.z);

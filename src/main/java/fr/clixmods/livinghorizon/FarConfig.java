@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import fr.clixmods.livinghorizon.track.MobKinds;
+import fr.clixmods.livinghorizon.track.Vehicles;
 import fr.clixmods.livinghorizon.platform.Platform;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
@@ -245,6 +246,13 @@ public final class FarConfig {
      */
     public List<String> knownModdedMobs = new ArrayList<>();
 
+    /**
+     * Vehicles met so far that are neither mobs nor boats ({@link Vehicles}): an aircraft, a car,
+     * a minecart. Only seeing one tells that its kind is a vehicle, so the list of mobs offers
+     * these kinds once met.
+     */
+    public List<String> knownVehicles = new ArrayList<>();
+
     // --- Optimisations: each one can be switched off, to see what it saves -----------------
 
     /** Copies outside the view are not prepared at all. */
@@ -394,6 +402,7 @@ public final class FarConfig {
         if (config.hiddenBirds == null) config.hiddenBirds = new ArrayList<>();
         if (config.birdStyle == null) config.birdStyle = "3d";
         if (config.knownModdedMobs == null) config.knownModdedMobs = new ArrayList<>();
+        if (config.knownVehicles == null) config.knownVehicles = new ArrayList<>();
         if (config.version < 3) {
             // Boats came after the list was first written: shown unless taken out by hand.
             for (String type : MobKinds.TYPES) {
@@ -460,6 +469,23 @@ public final class FarConfig {
             changed = true;
         }
         if (changed) save();
+    }
+
+    /**
+     * A kind of vehicle met for the first time: listed among the mobs from now on. One its rider
+     * steers, as a boat, is shown far away from the start; one that only seats its riders (a
+     * minecart, a moving contraption) waits to be chosen. Either is then left as the player sets it.
+     */
+    public static void adoptVehicle(String id, boolean steered) {
+        if (instance.knownVehicles.contains(id)) return;
+        instance.knownVehicles.add(id);
+        // Offered here, once: never again among other mods' mobs as the game starts.
+        boolean offered = id.startsWith(Identifier.DEFAULT_NAMESPACE + ":") || instance.knownModdedMobs.contains(id);
+        if (!offered) {
+            instance.knownModdedMobs.add(id);
+            if (steered && !instance.mobTypes.contains(id)) instance.mobTypes.add(id);
+        }
+        save();
     }
 
     /** Every setting back to its default, mob and bird choices included, and written to the file. */
