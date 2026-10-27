@@ -121,8 +121,8 @@ performance: you can lower your simulation distance and still see a living world
 ### Mobs on the horizon
 
 All mobs are visible from far away, on the game's terrain and **on Voxy and Distant
-Horizons terrain**. This works for any entity Minecraft can draw, mobs from other mods
-included. Choose which ones in *Mobs & Entities...*.
+Horizons terrain**. This works for any entity Minecraft can draw, mobs and vehicles from
+other mods included. Choose which ones in *Mobs & Entities...*.
 
 ### Players at any distance
 

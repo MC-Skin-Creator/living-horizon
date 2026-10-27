@@ -17,8 +17,8 @@ see a living world.
 ### Mobs on the horizon
 
 All mobs are visible from far away, on the game's terrain and **on Voxy and Distant
-Horizons terrain**. This works for any entity Minecraft can draw, mobs from other mods
-included. Choose which ones in *Mobs & Entities...*.
+Horizons terrain**. This works for any entity Minecraft can draw, mobs and vehicles from
+other mods included. Choose which ones in *Mobs & Entities...*.
 
 ### Players at any distance
 
@@ -154,6 +154,7 @@ page, one file per game version and loader:
 | Iris and shader packs | Photon and Complementary checked. |
 | [Sodium](https://modrinth.com/mod/sodium) | From 0.8, the settings are also in Sodium's *Video Settings*. |
 | GeckoLib | Works. From 1.21.2 to 1.21.8 its mobs are not drawn far away yet ([#67](https://github.com/MC-Skin-Creator/living-horizon/issues/67)). |
+| [Immersive Aircraft](https://modrinth.com/mod/immersive-aircraft) | Its aircraft stay visible far away, where you left them. |
 
 Mobs from other mods should work. Mods not tested yet are listed under the
 [`mod compatibility`](https://github.com/MC-Skin-Creator/living-horizon/labels/mod%20compatibility)
