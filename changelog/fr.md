@@ -2,6 +2,11 @@
 
 ## Prochaine version
 
+### Client
+
+#### Corrections
+- **Benchmark ouvert à tous les joueurs** — `/livinghorizon benchmark` n'est plus proposé aux joueurs ; il est réservé aux tests du mod.
+
 ## 0.12.0 — 2026-10-23
 
 ### Serveur

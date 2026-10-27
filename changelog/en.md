@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Client
+
+#### Fixed
+- **Benchmark open to every player** — `/livinghorizon benchmark` is no longer offered to players; it is kept for testing the mod.
+
 ## 0.12.0 — 2026-10-23
 
 ### Server
