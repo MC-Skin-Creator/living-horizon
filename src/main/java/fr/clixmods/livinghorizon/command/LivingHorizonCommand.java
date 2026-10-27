@@ -157,7 +157,8 @@ public final class LivingHorizonCommand {
                             client.execute(() -> client.setScreen(new FarConfigScreen(null)));
                             return 1;
                         }))
-                        .then(LiteralArgumentBuilder.<S>literal("benchmark")
+                        // Only in a game started with -Dlh.benchmark=true: not a player's command.
+                        .then(LiteralArgumentBuilder.<S>literal("benchmark").requires(c -> Benchmark.ON)
                                 .executes(c -> benchmark(source.apply(c.getSource()), Benchmark.DEFAULT_SECONDS))
                                 .then(LiteralArgumentBuilder.<S>literal("world")
                                         // Leaving the world is not done on a typo: said first, done on "confirm".
