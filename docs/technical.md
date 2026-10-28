@@ -790,18 +790,22 @@ Changing `lodKeep` makes every level again.
   levels are made for the textures its layers were drawn with the frame before: a cube none of
   them shows is left out (a villager's hat rim, painted by some professions only), so that every
   layer of a figure shares the same triangles. A second model (a sheep's wool, armour) has levels
-  of its own. One set per root, parts drawn and textures, made on a thread of its own; one baked
-  texture per set and layer texture, baked there too, and handed to the graphics card one a frame.
+  of its own. One set per root, parts drawn and textures, made on a thread of its own; its views
+  are baked there too, once per layer texture, then put on shared pages of 1024 texels a side
+  (eyes on pages of their own), a few a frame, each written into its spot on the page alone.
 - *Layers.* The texture of a layer is read from its render type's description (the
   `textures/...png` it names): from the feature renderer's call from 1.21.9, from the buffer its
   renderer asks for before (`GhostRenderer.draw` wraps them). Render types other than the
   entity cut-out, solid, translucent and eyes kinds keep the figure whole.
 - *Drawing.* While a figure at level 1 to 3 is drawn, each part's `compile` draws none of its
   cubes and queues the groups anchored to it with its pose, light, overlay and colour. They are
-  drawn with the impostors (`LodRenderer.submit`, through `Sink`), one batch per baked texture:
-  from 1.21.9 the game draws that geometry after the models, so the poses are this frame's. From
-  26.2 the frame may be prepared in another order: they go into the model's own group once the
-  group is prepared (`ModelFeatureRendererMixin`, `buildGroup`).
+  drawn with the impostors (`LodRenderer.submit`, through `Sink`), one batch per page, so that
+  every simpler mob costs a draw or two, not one per model and layer. Each vertex goes to the game
+  in one call (`addVertex` with every attribute, as its cubes are written), which its buffer
+  writes at once rather than attribute by attribute. From 1.21.9 the game draws that geometry
+  after the models, so the poses are this frame's. From 26.2 the frame may be prepared in
+  another order: they go into the model's own group once the group is prepared
+  (`ModelFeatureRendererMixin`, `buildGroup`).
 - *Counting.* `PolygonStats` counts the triangles each figure draws, the quads the game is
   handed for them, and what its full models would cost, so the debug panel's gain and figures
   per level include the levels of detail.

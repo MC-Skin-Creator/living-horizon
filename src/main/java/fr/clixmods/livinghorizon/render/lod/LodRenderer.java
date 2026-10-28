@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.render.lod;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import fr.clixmods.livinghorizon.FarConfig;
@@ -35,6 +36,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
@@ -49,13 +52,17 @@ import java.util.regex.Pattern;
  * made, its boxes baked for that layer's texture), otherwise the figure keeps its full model.
  * As a model is drawn, each of its parts draws the cubes its level keeps ({@code ModelPartMixin}),
  * and the merged boxes anchored to it are queued with the part's pose, light and colour; they are
- * drawn after the models, one batch per baked texture, the way the impostors are
+ * drawn after the models, one batch per shared page of baked textures, the way the impostors are
  * ({@link #submit}). Only the mod's own figures, and no player yet: the game's entities and other
  * mods' rendering are never touched.
  */
 public final class LodRenderer {
     /** The most texels down a baked texture. */
     private static final int MAX_HEIGHT = 4096;
+    /** The side of a page the baked models share, in texels. */
+    private static final int PAGE = 1024;
+    /** The texels handed to the graphics card a frame at most: a few baked models. */
+    private static final int UPLOAD_TEXELS = 512 * 512;
     /** Share of a texture's visible texels that may be half transparent: more, and it is not cut out. */
     private static final double TRANSLUCENT = 0.02;
     private static final int WORKING = 0, PIXELS = 1, READY = 2, FAILED = -1;
@@ -103,12 +110,12 @@ public final class LodRenderer {
 
     /** The level each of this frame's figures is drawn at, and the one it would be at once ready. */
     private static final Map<Object, Integer> LEVELS = new IdentityHashMap<>(), WANTED = new IdentityHashMap<>();
-    /** The baked textures this frame's figures were chosen with: one batch each. */
-    private static final Set<Bake> ACTIVE = new LinkedHashSet<>();
-    /** The baked textures given boxes this frame. */
-    private static final List<Bake> DRAWING = new ArrayList<>();
-    /** The baked textures given boxes since the last {@link #flush}. */
-    private static final List<Bake> PENDING = new ArrayList<>();
+    /** The pages this frame's figures were chosen with: one batch each. */
+    private static final Set<Page> ACTIVE = new LinkedHashSet<>();
+    /** The pages given boxes this frame. */
+    private static final List<Page> DRAWING = new ArrayList<>();
+    /** The pages given boxes since the last {@link #flush}. */
+    private static final List<Page> PENDING = new ArrayList<>();
     private static int frame;
     private static boolean dirty;
     /** The share of polygons the levels made so far keep, {@code lodKeep}. */
@@ -124,9 +131,9 @@ public final class LodRenderer {
         LEVELS.clear();
         WANTED.clear();
         ACTIVE.clear();
-        for (Bake bake : DRAWING) {
-            bake.count = 0;
-            bake.drawing = false;
+        for (Page page : DRAWING) {
+            page.count = 0;
+            page.drawing = false;
         }
         DRAWING.clear();
         PENDING.clear();
@@ -175,7 +182,7 @@ public final class LodRenderer {
         }
         if (!ready) return;
         LEVELS.put(state, wanted);
-        ACTIVE.addAll(bakes);
+        for (int i = 0; i < bakes.size(); i++) ACTIVE.add(bakes.get(i).page);
     }
 
     // ---------------------------------------------------------------- what a figure is drawn with
@@ -411,18 +418,19 @@ public final class LodRenderer {
         Bake bake = drawingBake;
         LodSet set = drawing;
         LodSet.Plan plan = set == null ? null : set.plan();
-        if (draw.groups().length == 0 || bake == null || bake.faces == null || plan == null) return;
+        Page page = bake == null ? null : bake.page;
+        if (draw.groups().length == 0 || bake == null || bake.faces == null || plan == null || page == null) return;
         float[][] groups = bake.faces[drawingLevel];
         for (int group : draw.groups()) {
             float[] faces = groups[group];
             if (faces == null || faces.length == 0) continue;
-            if (!bake.drawing) {
-                bake.drawing = true;
-                DRAWING.add(bake);
+            if (!page.drawing) {
+                page.drawing = true;
+                DRAWING.add(page);
             }
-            if (bake.count == 0) PENDING.add(bake);
-            if (bake.count == bake.entries.size()) bake.entries.add(new Entry());
-            Entry entry = bake.entries.get(bake.count++);
+            if (page.count == 0) PENDING.add(page);
+            if (page.count == page.entries.size()) page.entries.add(new Entry());
+            Entry entry = page.entries.get(page.count++);
             entry.pose.set(pose.pose());
             entry.normal.set(pose.normal());
             entry.faces = faces;
@@ -443,32 +451,82 @@ public final class LodRenderer {
         int light, overlay, argb;
     }
 
-    //? if <1.20.5
-    /*private static final Matrix4f IDENTITY = new Matrix4f();*/
-
     /** The corner and normal being written: one at a time, on the render thread. */
     private static final Vector3f POINT = new Vector3f(), NORMAL = new Vector3f();
 
-    /** The boxes of one model baked with one texture, and their batch this frame. */
+    /** The boxes of one model baked with one texture: their faces, and where their texels are. */
     private static final class Bake {
         final LodSet set;
         final Layer layer;
+        /** The {@link #generation} it was asked for in: one from before a reload is dropped. */
+        final int generation;
         volatile int state = WORKING;
         int width, height;
         int @Nullable [] argb;
         /** For each level and group, its faces ({@link #FACE} floats each); null where not merged. */
         float @Nullable [][][] faces;
-        @Nullable Identifier page;
-        @Nullable RenderType type;
+        /** The page its texels were put on, once ready. */
+        @Nullable Page page;
+
+        Bake(LodSet set, Layer layer, int generation) {
+            this.set = set;
+            this.layer = layer;
+            this.generation = generation;
+        }
+    }
+
+    /**
+     * A texture the baked models share, and their batch this frame: one draw for every box
+     * drawn from it, rather than one per model and layer.
+     */
+    private static final class Page {
+        final Identifier id;
+        final DynamicTexture texture;
+        final RenderType type;
+        final boolean eyes;
+        final int width, height;
+        /** Where the next baked model goes: shelves, left to right, top to bottom. */
+        private int x, y, row;
         final List<Entry> entries = new ArrayList<>();
         int count;
         /** Given boxes this frame, so in {@link #DRAWING}. */
         boolean drawing;
         final Sink.Geometry geometry = (at, out) -> draw(out);
 
-        Bake(LodSet set, Layer layer) {
-            this.set = set;
-            this.layer = layer;
+        Page(boolean eyes, int width, int height) {
+            this.eyes = eyes;
+            this.width = width;
+            this.height = height;
+            Identifier page = Identifier.fromNamespaceAndPath(LivingHorizonClient.MOD_ID, "lod/" + pages++);
+            id = page;
+            //? if >=1.21.5 {
+            texture = new DynamicTexture(() -> "living horizon level of detail " + page, width, height, true);
+            //?} else
+            /*texture = new DynamicTexture(width, height, true);*/
+            // Cleared once: the rest is written a baked model at a time.
+            texture.upload();
+            Minecraft.getInstance().getTextureManager().register(page, texture);
+            // Drawn from both sides: a simplified surface may fold.
+            //? if >=26.1 {
+            /*type = eyes ? RenderTypes.eyes(page) : RenderTypes.entityCutout(page);
+            *///?} else {
+            type = eyes ? RenderTypes.eyes(page) : RenderTypes.entityCutoutNoCull(page);
+            //?}
+        }
+
+        /** Room for a baked model, its corner; null when the page is full. */
+        int @Nullable [] place(int wide, int tall) {
+            int atX = x, atY = y, shelf = row;
+            if (atX + wide > width) {
+                atX = 0;
+                atY += shelf + 1;
+                shelf = 0;
+            }
+            if (wide > width || atY + tall > height) return null;
+            x = atX + wide + 1;
+            y = atY;
+            row = Math.max(shelf, tall);
+            return new int[]{atX, atY};
         }
 
         /** This frame's boxes, from where their parts were drawn: the pose they are handed is not theirs. */
@@ -477,23 +535,23 @@ public final class LodRenderer {
             for (int i = 0; i < count; i++) {
                 Entry entry = entries.get(i);
                 float[] faces = entry.faces;
-                int a = entry.argb >>> 24, r = (entry.argb >> 16) & 0xFF, g = (entry.argb >> 8) & 0xFF, b = entry.argb & 0xFF;
+                int argb = entry.argb;
+                //? if <1.21 {
+                /*float a = (argb >>> 24) / 255f, r = ((argb >> 16) & 0xFF) / 255f, g = ((argb >> 8) & 0xFF) / 255f,
+                        b = (argb & 0xFF) / 255f;
+                *///?}
                 for (int f = 0; f + FACE <= faces.length; f += FACE) {
                     entry.normal.transform(normal.set(faces[f + 20], faces[f + 21], faces[f + 22])).normalize();
                     for (int k = 0; k < 4; k++) {
                         int v = f + k * 5;
                         entry.pose.transformPosition(point.set(faces[v], faces[v + 1], faces[v + 2]));
-                        //? if >=1.20.5 {
-                        out.addVertex(point.x, point.y, point.z)
-                                .setColor(r, g, b, a)
-                                .setUv(faces[v + 3], faces[v + 4])
-                                .setOverlay(entry.overlay)
-                                .setLight(entry.light)
-                                .setNormal(normal.x, normal.y, normal.z);
+                        // The whole vertex in one call, as the game writes its cubes: its buffers write it at once.
+                        //? if >=1.21 {
+                        out.addVertex(point.x, point.y, point.z, argb, faces[v + 3], faces[v + 4], entry.overlay,
+                                entry.light, normal.x, normal.y, normal.z);
                         //?} else {
-                        /*// Before 1.20.5 a vertex is written through a matrix: the identity, it is placed already.
-                        out.vertex(IDENTITY, point.x, point.y, point.z).color(r, g, b, a).uv(faces[v + 3], faces[v + 4])
-                                .overlayCoords(entry.overlay).uv2(entry.light).normal(normal.x, normal.y, normal.z).endVertex();
+                        /*out.vertex(point.x, point.y, point.z, r, g, b, a, faces[v + 3], faces[v + 4], entry.overlay,
+                                entry.light, normal.x, normal.y, normal.z);
                         *///?}
                     }
                 }
@@ -507,7 +565,7 @@ public final class LodRenderer {
         Map<Identifier, Bake> byTexture = BAKES.computeIfAbsent(set, s -> new HashMap<>());
         Bake bake = byTexture.get(layer.texture());
         if (bake == null) {
-            Bake made = new Bake(set, layer);
+            Bake made = new Bake(set, layer, generation);
             byTexture.put(layer.texture(), made);
             WORKER.execute(() -> bakeAway(made));
             bake = made;
@@ -607,6 +665,7 @@ public final class LodRenderer {
             bake.argb = argb;
             bake.faces = faces;
             bake.state = PIXELS;
+            BAKED.add(bake);
         } catch (RuntimeException | LinkageError e) {
             LivingHorizonClient.LOGGER.warn("Levels of detail: could not bake {}", bake.layer.texture(), e);
             bake.state = FAILED;
@@ -696,68 +755,117 @@ public final class LodRenderer {
         }
     }
 
-    /** One baked texture a frame is handed to the graphics card, on the render thread. */
+    /** Baked models whose texels wait for a page, from the worker. */
+    private static final Queue<Bake> BAKED = new ConcurrentLinkedQueue<>();
+    private static final List<Page> PAGES = new ArrayList<>();
+    private static int generation;
+
+    /** A few baked models a frame are put on pages and handed to the graphics card, on the render thread. */
     private static void upload() {
-        for (Map<Identifier, Bake> byTexture : BAKES.values()) {
-            for (Bake bake : byTexture.values()) {
-                if (bake.state != PIXELS) continue;
-                int[] argb = bake.argb;
-                bake.argb = null;
-                if (argb == null) {
-                    bake.state = FAILED;
-                    return;
-                }
-                try {
-                    NativeImage image = new NativeImage(bake.width, bake.height, false);
-                    for (int y = 0; y < bake.height; y++) {
-                        for (int x = 0; x < bake.width; x++) {
-                            int pixel = argb[y * bake.width + x];
-                            //? if >=1.21.2 {
-                            image.setPixel(x, y, pixel);
-                            //?} else
-                            /*image.setPixelRGBA(x, y, (pixel & 0xFF00FF00) | ((pixel >> 16) & 0xFF) | ((pixel & 0xFF) << 16));*/
+        int budget = UPLOAD_TEXELS;
+        while (budget > 0) {
+            Bake bake = BAKED.poll();
+            if (bake == null) return;
+            if (bake.generation != generation || bake.state != PIXELS) continue;
+            int[] argb = bake.argb;
+            bake.argb = null;
+            try {
+                if (argb == null) throw new IllegalStateException("no texels");
+                place(bake, argb);
+                bake.state = READY;
+            } catch (RuntimeException | LinkageError e) {
+                LivingHorizonClient.LOGGER.warn("Levels of detail: could not upload a baked texture", e);
+                bake.state = FAILED;
+            }
+            budget -= bake.width * bake.height;
+        }
+    }
+
+    /** Puts a baked model's texels on a page with room, and its texture coordinates onto that spot. */
+    private static void place(Bake bake, int[] argb) {
+        Page page = null;
+        int[] at = null;
+        for (Page open : PAGES) {
+            if (open.eyes != bake.layer.eyes()) continue;
+            at = open.place(bake.width, bake.height);
+            if (at != null) {
+                page = open;
+                break;
+            }
+        }
+        if (page == null || at == null) {
+            page = new Page(bake.layer.eyes(), Math.max(PAGE, bake.width), Math.max(PAGE, bake.height));
+            PAGES.add(page);
+            at = page.place(bake.width, bake.height);
+            if (at == null) throw new IllegalStateException("a baked model larger than its page");
+        }
+        write(page, at[0], at[1], bake.width, bake.height, argb);
+        // Made for a texture of its own: scaled and moved onto its spot.
+        float scaleU = (float) bake.width / page.width, scaleV = (float) bake.height / page.height;
+        float fromU = (float) at[0] / page.width, fromV = (float) at[1] / page.height;
+        float[][][] levels = bake.faces;
+        if (levels != null) {
+            for (float[][] level : levels) {
+                if (level == null) continue;
+                for (float[] faces : level) {
+                    if (faces == null) continue;
+                    for (int f = 0; f + FACE <= faces.length; f += FACE) {
+                        for (int k = 0; k < 4; k++) {
+                            faces[f + k * 5 + 3] = fromU + faces[f + k * 5 + 3] * scaleU;
+                            faces[f + k * 5 + 4] = fromV + faces[f + k * 5 + 4] * scaleV;
                         }
                     }
-                    Identifier page = Identifier.fromNamespaceAndPath(LivingHorizonClient.MOD_ID, "lod/" + pages++);
-                    //? if >=1.21.5 {
-                    DynamicTexture texture = new DynamicTexture(() -> "living horizon level of detail " + page, image);
-                    //?} else
-                    /*DynamicTexture texture = new DynamicTexture(image);*/
-                    Minecraft.getInstance().getTextureManager().register(page, texture);
-                    bake.page = page;
-                    // Drawn from both sides: a simplified surface may fold.
-                    //? if >=26.1 {
-                    /*bake.type = bake.layer.eyes() ? RenderTypes.eyes(page) : RenderTypes.entityCutout(page);
-                    *///?} else {
-                    bake.type = bake.layer.eyes() ? RenderTypes.eyes(page) : RenderTypes.entityCutoutNoCull(page);
-                    //?}
-                    bake.state = READY;
-                } catch (RuntimeException | LinkageError e) {
-                    LivingHorizonClient.LOGGER.warn("Levels of detail: could not upload a baked texture", e);
-                    bake.state = FAILED;
                 }
-                return;
             }
+        }
+        bake.page = page;
+    }
+
+    /** Writes a baked model's texels into its spot on a page. */
+    private static void write(Page page, int x, int y, int width, int height, int[] argb) {
+        try (NativeImage strip = new NativeImage(width, height, false)) {
+            for (int row = 0; row < height; row++) {
+                for (int column = 0; column < width; column++) {
+                    int pixel = argb[row * width + column];
+                    //? if >=1.21.2 {
+                    strip.setPixel(column, row, pixel);
+                    //?} else
+                    /*strip.setPixelRGBA(column, row, (pixel & 0xFF00FF00) | ((pixel >> 16) & 0xFF) | ((pixel & 0xFF) << 16));*/
+                }
+            }
+            //? if >=26.2 {
+            /*RenderSystem.getDevice().createCommandEncoder().writeToTexture(page.texture.getTexture(), strip, 0, 0, x, y);
+            *///?} elif >=1.21.6 {
+            RenderSystem.getDevice().createCommandEncoder().writeToTexture(page.texture.getTexture(), strip, 0, 0, x, y,
+                    width, height, 0, 0);
+            //?} elif >=1.21.5 {
+            /*RenderSystem.getDevice().createCommandEncoder().writeToTexture(page.texture.getTexture(), strip, 0, x, y,
+                    width, height, 0, 0);
+            *///?} elif >=1.21.4 {
+            /*page.texture.bind();
+            strip.upload(0, x, y, 0, 0, width, height, false);
+            *///?} else {
+            /*page.texture.bind();
+            strip.upload(0, x, y, 0, 0, width, height, false, false);
+            *///?}
         }
     }
 
     private static int pages;
     /** Kept from frame to frame, so that a frame makes no new list. */
     private static final List<Bake> CHOSEN = new ArrayList<>();
-    private static final Set<Bake> BATCHES = new LinkedHashSet<>();
+    private static final Set<Page> BATCHES = new LinkedHashSet<>();
 
-    /** The boxes queued this frame, one batch per baked texture, with the impostors. */
+    /** The boxes queued this frame, one batch per page, with the impostors. */
     public static void submit(PoseStack pose, Sink sink) {
         // From 26.2 they go with their models instead (flush): the frame may be prepared in another order.
         //? if >=26.2
         /*if (true) return;*/
-        Set<Bake> batches = BATCHES;
+        Set<Page> batches = BATCHES;
         batches.clear();
         batches.addAll(ACTIVE);
         batches.addAll(DRAWING);
-        for (Bake bake : batches) {
-            if (bake.state == READY && bake.type != null) sink.draw(pose, bake.type, bake.geometry);
-        }
+        for (Page page : batches) sink.draw(pose, page.type, page.geometry);
     }
 
     /**
@@ -766,8 +874,8 @@ public final class LodRenderer {
      * they go into it.
      */
     public static void flush(java.util.function.Function<RenderType, VertexConsumer> builder) {
-        for (Bake bake : PENDING) {
-            if (bake.count > 0 && bake.type != null) bake.draw(builder.apply(bake.type));
+        for (Page page : PENDING) {
+            if (page.count > 0) page.draw(builder.apply(page.type));
         }
         PENDING.clear();
     }
@@ -780,13 +888,14 @@ public final class LodRenderer {
     /** Throws away every level and baked texture; on the render thread. */
     private static void clear() {
         dirty = false;
-        for (Map<Identifier, Bake> byTexture : BAKES.values()) {
-            for (Bake bake : byTexture.values()) {
-                if (bake.page != null) Minecraft.getInstance().getTextureManager().release(bake.page);
-                // A bake still being made away from here is dropped with its map.
-                bake.state = FAILED;
-            }
-        }
+        // A bake still being made away from here is dropped with its generation.
+        generation++;
+        BAKED.clear();
+        for (Page page : PAGES) Minecraft.getInstance().getTextureManager().release(page.id);
+        PAGES.clear();
+        ACTIVE.clear();
+        DRAWING.clear();
+        PENDING.clear();
         BAKES.clear();
         SETS.clear();
         ModelReader.forget();
