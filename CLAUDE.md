@@ -192,8 +192,9 @@ request, and attaches the jar as a 14-day workflow artifact. A pull request that
 changes Markdown files and the LICENSE skips the targets (the changelog is still checked).
 CI is what checks a change; a pull request is not done until it is green.
 
-Every workflow runs Gradle through `.github/scripts/gradle.sh`: an attempt is stopped after
-25 minutes, and one stopped that way or ended by a failed download is tried again, three times
+Every workflow runs Gradle through `.github/scripts/gradle.sh`: an attempt is stopped once it
+has done nothing for 5 minutes (no log line, no byte written, no CPU for Java) or after 25
+minutes, and one stopped that way or ended by a failed download is tried again, three times
 at most; any other failure ends it at once. The build jobs stop after 90 minutes.
 
 The Gradle cache is written by `.github/workflows/cache.yml` on `develop` only, and read by
@@ -568,8 +569,13 @@ come back, add it here in the same pull request: this file is what the next sess
 - **CI jobs running for hours, or failing on a Forge node with `IOException: closed`**
   (`Received RST_STREAM`, after a `Cache miss!` stack trace that is only information): Forge's
   Maven left the download of `forge-<version>-userdev.jar` hanging, and ForgeGradle's Mavenizer
-  waits on it with no limit of its own. `gradle.sh` stops the attempt and tries again; a job
-  that still fails three times means Forge's Maven is down: re-run it later.
+  waits on it with no limit of its own. `gradle.sh` stops the attempt once it has stalled for
+  5 minutes and tries again; a job
+  that still fails three times means Forge's Maven is down: re-run it later. A timeout reads
+  `HttpTimeoutException: request timed out` too, and a download cut short stays in the cache
+  as a truncated jar (`zip END header not found` on the next attempt): `gradle.sh` deletes the
+  jars that do not open before trying again. What Forge's Maven served is kept in each Forge
+  node's cache entry (`mavenizer/caches/maven/forge`), so a build only asks it for what changed.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
