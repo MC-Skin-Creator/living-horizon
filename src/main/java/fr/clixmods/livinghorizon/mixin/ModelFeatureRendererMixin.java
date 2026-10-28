@@ -38,10 +38,17 @@ import net.minecraft.client.renderer.rendertype.RenderType;
 
     @Inject(method = "prepareModel", at = @At("TAIL"))
     private void livinghorizon$leave(ModelFeatureRenderer.Submit<?> submit, CallbackInfo ci) {
-        // The merged boxes of the model just prepared, into its own group of the frame: other
-        // features may be prepared before the models, so they cannot wait for one of their own.
-        LodRenderer.flush(this::getVertexBuilder);
         PolygonStats.leave();
+    }
+
+    /^*
+     * The merged boxes of the group of models just prepared, into that group: other features
+     * may be prepared before the models, so they cannot wait for one of their own. Once a group,
+     * not once a model: each change of render type in a group costs a lookup, or a draw.
+     ^/
+    @Inject(method = "buildGroup", at = @At("TAIL"))
+    private void livinghorizon$flush(CallbackInfo ci) {
+        LodRenderer.flush(this::getVertexBuilder);
     }
 }
 *///?} else {

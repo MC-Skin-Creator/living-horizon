@@ -97,18 +97,18 @@ public final class LodsScenario implements Scenario {
                 counts(context, "close-up level " + level);
                 Scene.screenshot(context, this, "close-level" + level);
             }
+            Scene.configure(context, config -> config.mobLods = false);
+            Scene.screenshot(context, this, "close-model");
             // From above, as a player on a hill sees them: the tops must hide the insides.
+            Scene.configure(context, config -> config.mobLods = true);
             Scene.command(world, "execute as @p at @s run tp @s ~ ~14 ~ 0 15");
             context.waitTicks(20);
             Scene.screenshot(context, this, "close-above-level3");
+            Scene.configure(context, config -> config.mobLods = false);
+            Scene.screenshot(context, this, "close-above-model");
         } finally {
             context.runOnClient(minecraft -> LodRenderer.forceLevelForTests(-1));
         }
-        Scene.configure(context, config -> config.mobLods = false);
-        Scene.screenshot(context, this, "close-above-model");
-        Scene.command(world, "execute as @p at @s run tp @s ~ ~-14 ~ 0 0");
-        context.waitTicks(20);
-        Scene.screenshot(context, this, "close-model");
     }
 
     /** Logs the counters, and gives the figures drawn at each level last frame. */

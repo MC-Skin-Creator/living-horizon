@@ -16,6 +16,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
@@ -33,7 +34,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.WeakHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -151,8 +151,8 @@ public final class LodRenderer {
                 ready = false;
                 continue;
             }
-            for (Layer layer : model.layers) {
-                Bake bake = bake(set, layer);
+            for (int i = 0; i < model.layers.size(); i++) {
+                Bake bake = bake(set, model.layers.get(i));
                 if (bake.state != READY) ready = false;
                 bakes.add(bake);
             }
@@ -167,32 +167,40 @@ public final class LodRenderer {
     /** How one of a figure's models was drawn in a frame: which of its parts, and with which layers. */
     private static final class Seen {
         long shown;
-        final Set<Layer> layers = new LinkedHashSet<>();
-        private @Nullable Key key;
+        /** Its layers, each once; a list kept from frame to frame, so that a frame makes none. */
+        final List<Layer> layers = new ArrayList<>();
+        /** What its levels are made for, the parts drawn and the textures in any order, as a number. */
+        long key;
 
         Seen reset(long shown) {
             this.shown = shown;
             layers.clear();
-            key = null;
+            key = mix(shown);
             return this;
         }
 
         void add(Layer layer) {
-            if (layers.add(layer)) key = null;
+            if (layers.contains(layer)) return;
+            layers.add(layer);
+            // A sum: the same textures in any order give the same key.
+            key += mix(layer.texture().toString().hashCode() * 0x9E3779B97F4A7C15L);
         }
 
-        /** What its levels are made for: the parts drawn and the textures, in any order. */
-        Key key() {
-            if (key == null) {
-                Set<Identifier> textures = new TreeSet<>(Comparator.comparing(Identifier::toString));
-                for (Layer layer : layers) textures.add(layer.texture());
-                key = new Key(shown, List.copyOf(textures));
+        /** Its textures, in a set order: when its levels are made. */
+        List<Identifier> textures() {
+            List<Identifier> textures = new ArrayList<>();
+            for (Layer layer : layers) {
+                if (!textures.contains(layer.texture())) textures.add(layer.texture());
             }
-            return key;
+            textures.sort(Comparator.comparing(Identifier::toString));
+            return textures;
         }
-    }
 
-    private record Key(long shown, List<Identifier> textures) {
+        private static long mix(long value) {
+            value = (value ^ (value >>> 33)) * 0xff51afd7ed558ccdL;
+            value = (value ^ (value >>> 33)) * 0xc4ceb9fe1a85ec53L;
+            return value ^ (value >>> 33);
+        }
     }
 
     /**
@@ -211,7 +219,7 @@ public final class LodRenderer {
             if (frame == LodRenderer.frame) return;
             frame = LodRenderer.frame;
             Map<ModelPart, Seen> old = last;
-            spare.addAll(old.values());
+            for (Seen seen : old.values()) spare.add(seen);
             old.clear();
             last = now;
             now = old;
@@ -272,13 +280,13 @@ public final class LodRenderer {
 
     // ---------------------------------------------------------------- the models
 
-    private static final Map<ModelPart, Map<Key, LodSet>> SETS = new IdentityHashMap<>();
+    private static final Map<ModelPart, Long2ObjectOpenHashMap<LodSet>> SETS = new IdentityHashMap<>();
     private static final Map<LodSet, Map<Identifier, Bake>> BAKES = new IdentityHashMap<>();
 
     /** The levels of a model drawn as {@code seen} says, made already or being made; null for none yet. */
     private static @Nullable LodSet set(ModelPart root, Seen seen) {
-        Map<Key, LodSet> sets = SETS.get(root);
-        return sets == null ? null : sets.get(seen.key());
+        Long2ObjectOpenHashMap<LodSet> sets = SETS.get(root);
+        return sets == null ? null : sets.get(seen.key);
     }
 
     /** How deep in a model's parts the drawing is: 1 at the part it was asked to draw. */
@@ -320,8 +328,8 @@ public final class LodRenderer {
         if (set == null) {
             // Made for the textures it was drawn with last frame, the parts as the game draws them now.
             LodSet made = new LodSet(ModelReader.read(root, ModelReader.GAME, true));
-            SETS.computeIfAbsent(root, part -> new HashMap<>()).put(before.key(), made);
-            List<Identifier> textures = before.key().textures();
+            SETS.computeIfAbsent(root, part -> new Long2ObjectOpenHashMap<>()).put(before.key, made);
+            List<Identifier> textures = before.textures();
             WORKER.execute(() -> generate(made, textures));
             set = made;
         }
@@ -409,6 +417,9 @@ public final class LodRenderer {
     //? if <1.20.5
     /*private static final Matrix4f IDENTITY = new Matrix4f();*/
 
+    /** The corner and normal being written: one at a time, on the render thread. */
+    private static final Vector3f POINT = new Vector3f(), NORMAL = new Vector3f();
+
     /** The boxes of one model baked with one texture, and their batch this frame. */
     private static final class Bake {
         final LodSet set;
@@ -433,7 +444,7 @@ public final class LodRenderer {
 
         /** This frame's boxes, from where their parts were drawn: the pose they are handed is not theirs. */
         void draw(VertexConsumer out) {
-            Vector3f point = new Vector3f(), normal = new Vector3f();
+            Vector3f point = POINT, normal = NORMAL;
             for (int i = 0; i < count; i++) {
                 Entry entry = entries.get(i);
                 float[] faces = entry.faces;
@@ -666,8 +677,8 @@ public final class LodRenderer {
 
     /**
      * The boxes queued since the last call, written at once with {@code builder}'s vertices for
-     * their textures: from 26.2, the model they belong to has just been prepared, and they go
-     * into its group of the frame.
+     * their textures: from 26.2, the group of models they belong to has just been prepared, and
+     * they go into it.
      */
     public static void flush(java.util.function.Function<RenderType, VertexConsumer> builder) {
         for (Bake bake : PENDING) {
