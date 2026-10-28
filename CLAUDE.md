@@ -318,6 +318,14 @@ come back, add it here in the same pull request: this file is what the next sess
   `DhSource.open` takes the one of the player's dimension; taking the first read another
   dimension's ground. And Distant Horizons' read cache keeps an area as first read, empty if it
   was not built yet: `DhSource.cache` empties it every 30 s, and 2 s after a column came back empty.
+- **The game frozen for good as the player changes dimension or leaves** (a thread dump with the
+  render thread in `LodWorld.release`, on a write lock; issue #248): a reader held the lock inside a
+  Distant Horizons read, which waits with no time limit for Distant Horizons' threads, while those
+  waited for the render thread (to upload their terrain) or had been shut down with the world,
+  dropping the read. Only a source that keeps what it reads between reads takes the lock
+  (`LodSource.keepsBetweenReads`, Voxy); a Distant Horizons read of a world left keeps nothing
+  (`DhSource.Opened`), and `LodWorld.suspend` interrupts those still waiting (`ModCalls`), which
+  Distant Horizons answers as cancelled. The game's thread never waits for a read of another mod.
 - **Depth view lighter or darker as far mobs show or hide**: the game's far plane follows the
   farthest figure drawn (`GhostRenderer.farPlane`); the view shades against `FarDepth.VIEW_FAR`.
 - **Distant Horizons' rendering engine** (from 3.3: Blaze3D or OpenGL). With Iris installed,

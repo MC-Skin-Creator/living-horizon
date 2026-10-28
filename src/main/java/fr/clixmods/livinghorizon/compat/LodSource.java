@@ -23,8 +23,28 @@ interface LodSource {
     /** Why this source turned itself off, or null. */
     @Nullable String failure();
 
-    /** Another world: whatever readers hold of the old one is let go. */
+    /**
+     * Another world: whatever readers hold of the old one is let go, and what a read still
+     * running gets from it is not kept. Called on the game's thread, with no read running only
+     * for a source that {@link #keepsBetweenReads() keeps what it reads}.
+     */
     void clear();
+
+    /**
+     * Whether readers keep what they read from one read to the next (Voxy's sections), which
+     * only {@link #clear()} lets go of, with no read running: {@link LodWorld} waits for the
+     * reads to end before it clears. The reads of a source that says no are never waited for.
+     */
+    default boolean keepsBetweenReads() {
+        return false;
+    }
+
+    /**
+     * No world any more, after {@link #clear()}: reads still waiting on the mod are called off,
+     * since it may never answer them. On the game's thread.
+     */
+    default void cancel() {
+    }
 
     /** The world to read on this thread, or null while the mod has none loaded. */
     @Nullable Object open() throws Throwable;
