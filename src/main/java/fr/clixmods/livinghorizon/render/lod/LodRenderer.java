@@ -99,6 +99,8 @@ public final class LodRenderer {
     private static final Set<Bake> ACTIVE = new LinkedHashSet<>();
     /** The baked textures given boxes this frame. */
     private static final List<Bake> DRAWING = new ArrayList<>();
+    /** The baked textures given boxes since the last {@link #flush}. */
+    private static final List<Bake> PENDING = new ArrayList<>();
     private static int frame;
     private static boolean dirty;
 
@@ -112,8 +114,12 @@ public final class LodRenderer {
         LEVELS.clear();
         WANTED.clear();
         ACTIVE.clear();
-        for (Bake bake : DRAWING) bake.count = 0;
+        for (Bake bake : DRAWING) {
+            bake.count = 0;
+            bake.drawing = false;
+        }
         DRAWING.clear();
+        PENDING.clear();
         if (dirty) clear();
         upload();
     }
@@ -373,7 +379,11 @@ public final class LodRenderer {
         for (int group : draw.merged()) {
             float[] faces = groups[group];
             if (faces == null || faces.length == 0) continue;
-            if (bake.count == 0) DRAWING.add(bake);
+            if (!bake.drawing) {
+                bake.drawing = true;
+                DRAWING.add(bake);
+            }
+            if (bake.count == 0) PENDING.add(bake);
             if (bake.count == bake.entries.size()) bake.entries.add(new Entry());
             Entry entry = bake.entries.get(bake.count++);
             entry.pose.set(pose.pose());
@@ -412,6 +422,8 @@ public final class LodRenderer {
         @Nullable RenderType type;
         final List<Entry> entries = new ArrayList<>();
         int count;
+        /** Given boxes this frame, so in {@link #DRAWING}. */
+        boolean drawing;
         final Sink.Geometry geometry = (at, out) -> draw(out);
 
         Bake(LodSet set, Layer layer) {
@@ -640,6 +652,9 @@ public final class LodRenderer {
 
     /** The boxes queued this frame, one batch per baked texture, with the impostors. */
     public static void submit(PoseStack pose, Sink sink) {
+        // From 26.2 they go with their models instead (flush): the frame may be prepared in another order.
+        //? if >=26.2
+        /*if (true) return;*/
         Set<Bake> batches = BATCHES;
         batches.clear();
         batches.addAll(ACTIVE);
@@ -647,6 +662,18 @@ public final class LodRenderer {
         for (Bake bake : batches) {
             if (bake.state == READY && bake.type != null) sink.draw(pose, bake.type, bake.geometry);
         }
+    }
+
+    /**
+     * The boxes queued since the last call, written at once with {@code builder}'s vertices for
+     * their textures: from 26.2, the model they belong to has just been prepared, and they go
+     * into its group of the frame.
+     */
+    public static void flush(java.util.function.Function<RenderType, VertexConsumer> builder) {
+        for (Bake bake : PENDING) {
+            if (bake.count > 0 && bake.type != null) bake.draw(builder.apply(bake.type));
+        }
+        PENDING.clear();
     }
 
     /** The game's textures were reloaded: the models may be new, the textures too. */

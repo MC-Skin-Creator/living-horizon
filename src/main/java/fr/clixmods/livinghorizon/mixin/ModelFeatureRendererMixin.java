@@ -15,16 +15,17 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.OutlineBufferSource;
 import net.minecraft.client.renderer.SubmitNodeStorage;
 import net.minecraft.client.renderer.rendertype.RenderType;
-//?}
+//?} else
+/*import net.minecraft.client.renderer.feature.RenderTypeFeatureRenderer;*/
 
 /**
  * Tells {@link PolygonStats} which entity a model belongs to while it is turned into polygons,
  * and {@link LodRenderer} what that layer is textured with.
  */
 @Mixin(ModelFeatureRenderer.class)
-abstract class ModelFeatureRendererMixin {
-    //? if >=26.2 {
-    /*// From 26.2 a model is turned into polygons while the frame is prepared, one submit at a time.
+//? if >=26.2 {
+/*abstract class ModelFeatureRendererMixin extends RenderTypeFeatureRenderer<ModelFeatureRenderer.Submit<?>> {
+    // From 26.2 a model is turned into polygons while the frame is prepared, one submit at a time.
     @Inject(method = "prepareModel", at = @At("HEAD"))
     private void livinghorizon$enter(ModelFeatureRenderer.Submit<?> submit, CallbackInfo ci) {
         PolygonStats.enter(submit.state());
@@ -37,9 +38,14 @@ abstract class ModelFeatureRendererMixin {
 
     @Inject(method = "prepareModel", at = @At("TAIL"))
     private void livinghorizon$leave(ModelFeatureRenderer.Submit<?> submit, CallbackInfo ci) {
+        // The merged boxes of the model just prepared, into its own group of the frame: other
+        // features may be prepared before the models, so they cannot wait for one of their own.
+        LodRenderer.flush(this::getVertexBuilder);
         PolygonStats.leave();
     }
-    *///?} else {
+}
+*///?} else {
+abstract class ModelFeatureRendererMixin {
     @Inject(method = "renderModel", at = @At("HEAD"))
     private void livinghorizon$enter(SubmitNodeStorage.ModelSubmit<?> submit, RenderType type, VertexConsumer consumer,
                                      OutlineBufferSource outline, MultiBufferSource.BufferSource buffers, CallbackInfo ci) {
@@ -52,6 +58,6 @@ abstract class ModelFeatureRendererMixin {
                                      OutlineBufferSource outline, MultiBufferSource.BufferSource buffers, CallbackInfo ci) {
         PolygonStats.leave();
     }
-    //?}
 }
+//?}
 //?}
