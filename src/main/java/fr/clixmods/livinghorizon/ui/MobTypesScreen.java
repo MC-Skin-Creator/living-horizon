@@ -9,6 +9,8 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.StringWidget;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
@@ -17,6 +19,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -28,23 +31,87 @@ import java.util.Map;
 /**
  * Which mobs are shown far away: every mob of the game, one switch each, with a search
  * field. The ones a server with the mod shares are marked; the others are only shown when
- * this client met them itself.
+ * this client met them itself. Two tabs, as in the impostor screen: the mobs, and the
+ * entities that are not mobs (boats, vehicles, mannequins), where another mod's vehicle
+ * shows once met.
  */
 public final class MobTypesScreen extends SideOptionsScreen {
     private static final String KEY = "livinghorizon.options.mobTypes.";
+    /** Where the title, the version under it and the tabs stand; the list starts below. */
+    private static final int TITLE_Y = 12, TABS_Y = 36, HEADER = 62;
+
+    /** The tab shown: the entities that are not mobs, or the mobs. Kept while the game runs. */
+    private static boolean entities;
+    private @Nullable StringWidget titleWidget;
+    private @Nullable Button mobsTab, entitiesTab;
 
     /** Every mob type, sorted by its name in the current language. */
     private final List<EntityType<?>> types;
-    private String filter = "";
+    private final String filter;
+    /** Opening a copy of itself, on another tab or search: the settings are saved once it closes. */
+    private boolean reopening;
     /** The switches on screen, by mob id: updated in place by All, None and Defaults. */
     private final Map<String, CycleButton<Mode>> buttons = new LinkedHashMap<>();
     /** The icon drawn beside each switch: the mob's spawn egg, the boat's item. */
     private final Map<String, ItemStack> icons = new LinkedHashMap<>();
 
-    public MobTypesScreen(Screen parent) {
+    public MobTypesScreen(@Nullable Screen parent) {
+        this(parent, "");
+    }
+
+    private MobTypesScreen(@Nullable Screen parent, String filter) {
         super(parent, Minecraft.getInstance().options, Component.translatable(KEY + "title"));
+        this.filter = filter;
         types = MobList.all();
         types.sort(Comparator.comparing(type -> type.getDescription().getString().toLowerCase(Locale.ROOT)));
+    }
+
+    /** The title, then the two tabs under the mod's version, the open one pressed down. */
+    @Override
+    protected void addTitle() {
+        // Built again when the window is resized before 1.20.5, on the same layout: one title.
+        if (titleWidget == null) titleWidget = layout.addToHeader(new StringWidget(title, font));
+        layout.setHeaderHeight(HEADER);
+        mobsTab = addRenderableWidget(Button.builder(Component.translatable(KEY + "tab.mobs"), b -> show(false))
+                .width(100).build());
+        entitiesTab = addRenderableWidget(Button.builder(Component.translatable(KEY + "tab.entities"), b -> show(true))
+                .tooltip(Tooltip.create(Component.translatable(KEY + "tab.entities.tooltip")))
+                .width(100).build());
+        mobsTab.active = entities;
+        entitiesTab.active = !entities;
+    }
+
+    private void show(boolean entities) {
+        if (MobTypesScreen.entities == entities) return;
+        MobTypesScreen.entities = entities;
+        reopen(filter);
+    }
+
+    /**
+     * The same screen on another tab or search: a new one, since building this one again would
+     * add a second title, list and row of buttons to its layout, the old ones left under the new.
+     */
+    private void reopen(String filter) {
+        reopening = true;
+        minecraft.setScreen(new MobTypesScreen(lastScreen, filter));
+    }
+
+    @Override
+    protected void repositionElements() {
+        super.repositionElements();
+        // The layout centres the title in the taller header: back where every other screen has it.
+        if (titleWidget != null) titleWidget.setY(TITLE_Y);
+        int middle = columnWidth() / 2;
+        if (mobsTab != null) mobsTab.setPosition(middle - 102, TABS_Y);
+        if (entitiesTab != null) entitiesTab.setPosition(middle + 2, TABS_Y);
+    }
+
+    /** Whether a kind is listed under the tab shown, and matches the search. */
+    private boolean listed(EntityType<?> type, String needle) {
+        if (MobList.creature(type) == entities) return false;
+        String id = EntityType.getKey(type).toString();
+        return needle.isEmpty() || type.getDescription().getString().toLowerCase(Locale.ROOT).contains(needle)
+                || id.contains(needle);
     }
 
     @Override
@@ -54,9 +121,7 @@ public final class MobTypesScreen extends SideOptionsScreen {
         search.setHint(Component.translatable(KEY + "search"));
         search.setValue(filter);
         search.setResponder(text -> {
-            if (text.equals(filter)) return;
-            filter = text;
-            rebuildWidgets();
+            if (!text.equals(filter)) reopen(text);
         });
         list.addSmall(search, null);
         setInitialFocus(search);
@@ -67,12 +132,9 @@ public final class MobTypesScreen extends SideOptionsScreen {
         buttons.clear();
         icons.clear();
         for (EntityType<?> type : types) {
+            if (!listed(type, needle)) continue;
             String id = EntityType.getKey(type).toString();
             Component name = type.getDescription();
-            if (!needle.isEmpty() && !name.getString().toLowerCase(Locale.ROOT).contains(needle)
-                    && !id.contains(needle)) {
-                continue;
-            }
             boolean shared = MobKinds.TYPES.contains(id);
             Component label = shared ? Component.translatable(KEY + "shared", name) : name;
             //? if >=1.21.11 {
@@ -170,20 +232,22 @@ public final class MobTypesScreen extends SideOptionsScreen {
         row.addChild(Button.builder(CommonComponents.GUI_DONE, b -> onClose()).width(74).build());
     }
 
-    /** Every mob the search shows: hidden, or shown (still ones stay still). */
+    /** Every mob the tab and the search show: hidden, or shown (still ones stay still). */
     private void setAll(boolean on) {
         String needle = filter.toLowerCase(Locale.ROOT).trim();
         for (EntityType<?> type : types) {
+            if (!listed(type, needle)) continue;
             String id = EntityType.getKey(type).toString();
-            if (!needle.isEmpty() && !type.getDescription().getString().toLowerCase(Locale.ROOT).contains(needle)
-                    && !id.contains(needle)) {
-                continue;
-            }
             Mode current = Mode.of(id);
             if (!on) Mode.HIDDEN.apply(id);
             else if (current == Mode.HIDDEN) Mode.ANIMATED.apply(id);
         }
         refreshButtons();
+    }
+
+    /** The kinds listed now, under the tab shown and the search, by id: what the game tests read. */
+    public java.util.Set<String> listedKinds() {
+        return java.util.Collections.unmodifiableSet(buttons.keySet());
     }
 
     /** Shows the config on the switches already there, without building the screen again. */
@@ -193,6 +257,6 @@ public final class MobTypesScreen extends SideOptionsScreen {
 
     @Override
     public void removed() {
-        FarConfig.save();
+        if (!reopening) FarConfig.save();
     }
 }

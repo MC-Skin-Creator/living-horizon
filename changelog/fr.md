@@ -5,10 +5,11 @@
 ### Client
 
 #### Nouveautés
-- **Véhicules des autres mods au loin** — les véhicules des autres mods, comme les avions d'Immersive Aircraft, restent maintenant visibles au-delà de la distance de rendu là où on les a laissés, comme les bateaux ; chaque type rejoint *Créatures et entités...* la première fois qu'on en voit un, et ceux qu'on monte sans les diriger (wagonnets, véhicules de certains autres mods) y attendent, désactivés, qu'on les active.
+- **Véhicules des autres mods au loin** — les véhicules des autres mods, comme les avions d'Immersive Aircraft, restent maintenant visibles au-delà de la distance de rendu là où on les a laissés, comme les bateaux ; chaque type rejoint l'onglet *Entités* de *Créatures et entités...* la première fois qu'on en voit un, et ceux qu'on monte sans les diriger (wagonnets, véhicules de certains autres mods) y attendent, désactivés, qu'on les active.
 
 #### Améliorations
 - **Serveurs sans le mod** — en rejoignant un serveur sans Living Horizon, ou avec une version trop ancienne ou trop récente du mod, le tchat dit maintenant que les joueurs lointains n'y sont pas affichés ; avec *Afficher les joueurs* désactivé, rien n'est dit.
+- **Créatures et entités en deux onglets** — *Créatures et entités...* range maintenant les créatures et les autres entités (bateaux, véhicules, mannequins) dans deux onglets.
 
 ## 0.13.0 — 2026-10-28
 

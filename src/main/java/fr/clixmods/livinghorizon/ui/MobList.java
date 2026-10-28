@@ -38,4 +38,12 @@ public final class MobList {
         }
         return mobs;
     }
+
+    /**
+     * Whether a kind of {@link #all} goes under the mobs' tab: a living kind, mannequins
+     * excepted. Boats, vehicles and mannequins go under the entities' tab.
+     */
+    public static boolean creature(EntityType<?> type) {
+        return DefaultAttributes.hasSupplier(type) && !EntityType.getKey(type).toString().equals("minecraft:mannequin");
+    }
 }

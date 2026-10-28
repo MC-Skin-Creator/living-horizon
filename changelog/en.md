@@ -5,10 +5,11 @@
 ### Client
 
 #### New
-- **Vehicles from other mods far away** — vehicles from other mods, such as Immersive Aircraft's planes, now stay visible past the render distance where they were left, like boats; each kind joins *Mobs & Entities...* the first time you see one, and the ones you ride without steering (minecarts, some other mods' vehicles) wait there, off, until you turn them on.
+- **Vehicles from other mods far away** — vehicles from other mods, such as Immersive Aircraft's planes, now stay visible past the render distance where they were left, like boats; each kind joins the *Entities* tab of *Mobs & Entities...* the first time you see one, and the ones you ride without steering (minecarts, some other mods' vehicles) wait there, off, until you turn them on.
 
 #### Improved
 - **Servers without the mod** — joining a server without Living Horizon, or with a version of it too old or too new, now says in the chat that distant players are not shown there; with *Show Players* off, nothing is said.
+- **Mobs & Entities in two tabs** — *Mobs & Entities...* now lists the mobs and the other entities (boats, vehicles, mannequins) under two tabs.
 
 ## 0.13.0 — 2026-10-28
 

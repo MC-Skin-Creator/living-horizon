@@ -6,6 +6,7 @@ import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobMemory;
 import fr.clixmods.livinghorizon.ui.MobList;
+import fr.clixmods.livinghorizon.ui.MobTypesScreen;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.loader.api.FabricLoader;
@@ -67,6 +68,11 @@ public final class VehiclesScenario implements Scenario {
                 }
                 List<String> list = MobList.all().stream().map(type -> EntityType.getKey(type).toString()).toList();
                 if (!list.contains(MINECART)) wrong.append(" the minecart is not in the list of mobs;");
+                // As the game starts, and the Defaults button: the minecart stays off all the same.
+                FarConfig.adoptNewMobs(MobList.all());
+                if (config.mobTypes.contains(MINECART)) wrong.append(" the minecart is shown once the game starts again;");
+                config.resetMobs(MobList.all());
+                if (config.mobTypes.contains(MINECART)) wrong.append(" the minecart is shown after Defaults;");
                 if (aircraft) {
                     for (String id : AIRCRAFT) {
                         if (!config.knownVehicles.contains(id)) wrong.append(' ').append(id).append(" was not found a vehicle;");
@@ -77,6 +83,7 @@ public final class VehiclesScenario implements Scenario {
                 return wrong.toString();
             });
             if (!listed.isEmpty()) throw new AssertionError("vehicles:" + listed);
+            tabs(context, aircraft);
             if (!aircraft) {
                 Scene.log("vehicles: Immersive Aircraft not loaded, only the minecart was checked (run with --with immersive-aircraft)");
                 return;
@@ -110,6 +117,55 @@ public final class VehiclesScenario implements Scenario {
             Scene.log("vehicles: " + drawn + " pixels drawn by the copies");
             if (drawn < 50) throw new AssertionError("vehicles: the copies of the aircraft were not drawn (" + drawn + " pixels)");
         }
+    }
+
+    /**
+     * The list of mobs, on each of its tabs: the vehicles met under the entities', with the boats,
+     * never under the mobs'. Larger, to be read on the screenshots.
+     */
+    private void tabs(ClientGameTestContext context, boolean aircraft) {
+        context.runOnClient(minecraft -> minecraft.options.guiScale().set(2));
+        context.setScreen(() -> new MobTypesScreen(null));
+        // Off the list, where no tooltip covers it.
+        context.getInput().setCursorPos(4, 4);
+        context.waitTicks(5);
+        java.util.Set<String> mobs = context.computeOnClient(minecraft -> listed(minecraft.screen));
+        Scene.screenshot(context, this, "tab-mobs");
+        context.clickScreenButton("livinghorizon.options.mobTypes.tab.entities");
+        // Over the entities' tab, which says what it holds.
+        double[] tab = context.computeOnClient(minecraft -> {
+            double scale = minecraft.getWindow().getGuiScale();
+            int middle = minecraft.screen instanceof MobTypesScreen types ? types.columnWidth() / 2 : 180;
+            return new double[]{(middle + 52) * scale, 46 * scale};
+        });
+        context.getInput().setCursorPos(tab[0], tab[1]);
+        context.waitTicks(5);
+        java.util.Set<String> entities = context.computeOnClient(minecraft -> listed(minecraft.screen));
+        Scene.screenshot(context, this, "tab-entities");
+        context.clickScreenButton("livinghorizon.options.mobTypes.tab.mobs");
+        // The search, on the tab back in front: each letter opens the screen again.
+        context.getInput().typeChars("cow");
+        context.waitTicks(5);
+        java.util.Set<String> searched = context.computeOnClient(minecraft -> listed(minecraft.screen));
+        context.setScreen(() -> null);
+        context.runOnClient(minecraft -> minecraft.options.guiScale().set(1));
+        Scene.log("vehicles: mobs tab " + mobs.size() + " kinds, entities tab " + entities);
+        StringBuilder wrong = new StringBuilder();
+        List<String> expected = new java.util.ArrayList<>(List.of(MINECART, "minecraft:oak_boat"));
+        if (aircraft) expected.addAll(List.of(AIRCRAFT));
+        for (String id : expected) {
+            if (!entities.contains(id)) wrong.append(' ').append(id).append(" is not under the entities' tab;");
+            if (mobs.contains(id)) wrong.append(' ').append(id).append(" is under the mobs' tab;");
+        }
+        if (!mobs.contains("minecraft:cow")) wrong.append(" the cow is not under the mobs' tab;");
+        if (entities.contains("minecraft:cow")) wrong.append(" the cow is under the entities' tab;");
+        Scene.log("vehicles: searching cow lists " + searched);
+        if (!searched.contains("minecraft:cow") || searched.size() > 4) wrong.append(" the search for cow lists ").append(searched).append(';');
+        if (!wrong.isEmpty()) throw new AssertionError("vehicles:" + wrong);
+    }
+
+    private static java.util.Set<String> listed(net.minecraft.client.gui.screens.Screen screen) {
+        return screen instanceof MobTypesScreen types ? new java.util.TreeSet<>(types.listedKinds()) : java.util.Set.of();
     }
 
     /** Pixels that tell two screenshots apart. */

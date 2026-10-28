@@ -379,7 +379,8 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
   contraptions, whose copies could cost a lot) is listed but waits to be chosen
   (`seatedVehicles`, kept by *Defaults* and a reset). Both methods are found on `Entity` by
   their shape, since their names differ between loaders. Only an entity seen tells its kind is
-  a vehicle, so a kind joins *Mobs & Entities...* when one is first met (`knownVehicles`). A copy
+  a vehicle, so a kind joins the *Entities* tab of *Mobs & Entities...* when one is first met
+  (`knownVehicles`; the *Mobs* tab holds the living kinds, mannequins excepted). A copy
   stands where it was left, as a boat does: no animation, and only this client remembers it.
 - **Mannequins** (from 1.21.9) are shown too, standing still: Distant Friends uses them as its fake
   players. Mobs in `stillMobTypes` (happy ghast, mannequin) stand still instead of walking
