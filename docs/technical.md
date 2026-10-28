@@ -357,13 +357,14 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
   position for everyone, and a mob gone from its loaded chunk disappears for everyone. The
   server shares the 31 mobs and the boats of `track/MobKinds.TYPES`, numbered in that order.
 - **Otherwise**, each client remembers the mobs it met itself (the types in `mobTypes`), in
-  `config/livinghorizon/mobs/<server>.json`.
+  `config/livinghorizon/mobs/<server>.json`. Every kind is in it by default, monsters too: one
+  that despawned is forgotten like any other (below).
 - **Look.** A mob met up close keeps its exact look (the game's own save of it); one known
   only from the server is built from kind, variant and age.
 - **Forgetting.** Coming back within range of a remembered mob that is not there forgets it.
-- **Other mods' mobs** are shown from the start (monsters excepted), then left as the player
-  sets them (`knownModdedMobs`). Each client remembers them itself: the server only shares
-  vanilla kinds.
+- **Every kind of mob**, the game's and other mods', is shown from the start, walking, then left
+  as the player sets it (`knownMobTypes`, offered once the game has registered them). Each client
+  remembers other mods' mobs itself: the server only shares vanilla kinds.
 - **Mannequins** (from 1.21.9) are shown too, standing still: Distant Friends uses them as its fake
   players. Mobs in `stillMobTypes` (happy ghast, mannequin) stand still instead of walking
   their loop. A copy wears its mannequin's skin, from a player's name or a texture of a
@@ -1108,10 +1109,10 @@ the mod, they come back at their last position.
 | `rememberNamedMobs` | Name-Tagged Mobs | `true` | | A mob with a name tag is shown whatever its type |
 | `animationMinPixels` | Min. Animated Size | `10` pixels | 0 to 40 | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
 | `animationMaxDistance` | Animation Distance | `0` blocks | 0 to 4000 | Past this, no distant mob plays an animation (`0`: no limit) |
-| `mobTypes` | Mobs & Entities... | The 31 mobs and the boats a server shares, and mannequins | | Which mobs are shown, and remembered by this client |
+| `mobTypes` | Mobs & Entities... | Every mob and boat of the game and of other mods | | Which mobs are shown, and remembered by this client |
 | `stillMobTypes` | Mobs & Entities..., *Still* | Happy ghast, mannequin | | Mobs shown standing still instead of walking their loop |
 | `scanRadius` | Scan Radius | `32` chunks | 4 to 1024 | Chunks around you read by a scan, in single player (32 chunks = 512 blocks) |
-| `knownModdedMobs` | (not shown) | Empty | | Mob types of other mods already offered once: a new one is shown from the start (monsters excepted), then left as you set it |
+| `knownMobTypes` | (not shown) | Those met so far | | Mob types already offered once, the game's and other mods': a new one is shown from the start, then left as you set it |
 
 *Forget Mobs* forgets every mob remembered on this server; those a server with the mod shares
 come back by themselves. *Scan Nearby Mobs* runs a scan.

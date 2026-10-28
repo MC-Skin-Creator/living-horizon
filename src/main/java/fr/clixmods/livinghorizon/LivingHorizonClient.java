@@ -122,8 +122,8 @@ public final class LivingHorizonClient {
 
         Events.tick(LivingHorizonClient::tick);
         OptionsButton.register();
-        // Every mod has registered its mobs by now: new kinds are shown far away from the start.
-        Events.started(() -> FarConfig.adoptModdedMobs(MobList.all()));
+        // Every mod has registered its mobs by now: kinds met for the first time are shown far away.
+        Events.started(() -> FarConfig.adoptNewMobs(MobList.all()));
         // Voxy's world cannot close while the readers still hold its sections.
         Events.disconnect(LodWorld::suspend);
         Events.stopping(LodWorld::suspend);
