@@ -178,7 +178,11 @@ public final class MobTypesScreen extends SideOptionsScreen {
 
     private static Map<String, Item> items;
 
-    /** The spawn egg of a mob, or the item of a boat: what the game itself shows for it. */
+    /**
+     * The spawn egg of a mob, or the item of a boat: what the game itself shows for it. From
+     * 26.1 an item has no components until a world's data binds them (the title screen, through
+     * Mod Menu), and a stack of it throws: the switch goes without its icon there.
+     */
     private static ItemStack icon(String id) {
         if (items == null) {
             items = new java.util.HashMap<>();
@@ -187,7 +191,12 @@ public final class MobTypesScreen extends SideOptionsScreen {
             }
         }
         Item item = items.getOrDefault(id + "_spawn_egg", items.get(id));
-        return item == null ? ItemStack.EMPTY : new ItemStack(item);
+        if (item == null) return ItemStack.EMPTY;
+        try {
+            return new ItemStack(item);
+        } catch (RuntimeException unbound) {
+            return ItemStack.EMPTY;
+        }
     }
 
     /**

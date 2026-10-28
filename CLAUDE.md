@@ -449,6 +449,11 @@ come back, add it here in the same pull request: this file is what the next sess
   bird is stood again on what is under it. Birds jumping in a loop: a move is a flight once it
   is long, so a target is only moved in from a column's edge (never re-drawn on the block), and a
   duck swims as far as the water goes on (`Perchers.swims`). The `perchers` scenario counts all three.
+- **Crash opening one of the mod's screens from the title screen on 26.x** ("Components not bound
+  yet" under `new ItemStack`, through Mod Menu): from 26.x an item has no components until a
+  world's data binds them, and a stack of it throws. `MobTypesScreen.icon` goes without its icon
+  there; any other item the mod's screens draw needs the same. The `vehicles` scenario opens the
+  list from the title screen and logs whether items have their components there.
 - **Escape from a screen opened on Sodium's page goes back to the game**, not to Sodium's:
   Sodium runs its "close" shortcut when Escape is released, so a screen that closes on the
   press hands the release to Sodium's. Over Sodium's screen the mod's screens and

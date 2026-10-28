@@ -16,6 +16,9 @@
 - **Mobs & Entities changes seen at once** — turning a kind on or off in *Mobs & Entities...* now shows in the world behind it straight away, not once the screen is closed.
 - **Distant mobs settings in three parts** — the *Distant Mobs & Entities* settings are now split into *General*, *Mobs* and *Entities*, with the list, the scan and *Forget All* under *General*.
 
+#### Fixed
+- **Crash opening Mobs & Entities from the title screen** — opening *Mobs & Entities...* from the title screen no longer crashes the game (Minecraft 26.x).
+
 ## 0.13.0 — 2026-10-28
 
 ### Client

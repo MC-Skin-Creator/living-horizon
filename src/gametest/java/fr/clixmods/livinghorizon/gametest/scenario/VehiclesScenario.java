@@ -52,6 +52,21 @@ public final class VehiclesScenario implements Scenario {
             config.impostors = false;
             config.hideOccludedMobs = false;
         });
+        // From the title screen, before a world: from 26.1 the items have no components yet there.
+        boolean bare = context.computeOnClient(minecraft -> {
+            try {
+                new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.PIG_SPAWN_EGG);
+                return false;
+            } catch (RuntimeException unbound) {
+                return true;
+            }
+        });
+        Scene.log("vehicles: items without components on the title screen " + bare);
+        context.setScreen(() -> new MobTypesScreen(null));
+        context.waitTicks(2);
+        boolean titleList = context.computeOnClient(minecraft -> minecraft.screen instanceof MobTypesScreen);
+        context.setScreen(() -> null);
+        if (!titleList) throw new AssertionError("vehicles: the list of mobs did not open from the title screen");
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
             if (aircraft) {
                 // Listed, and shown, before one is ever met: their renderers say what they draw.
