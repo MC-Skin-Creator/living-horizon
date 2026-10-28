@@ -5,6 +5,7 @@ import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
 
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -65,19 +66,50 @@ public final class ModelReader {
     }
 
     /**
-     * A number that changes when which parts the game draws changes: two models read with
-     * {@code drawnOnly} from the same root are the same when it is.
+     * A model's parts in the order they are read, and for each the index past its own
+     * children: walked every frame without asking the game's maps for an iterator each time.
      */
-    public static long drawn(ModelPart root, Tree tree) {
-        long hash = 0xcbf29ce484222325L;
-        return drawn(root, tree, hash);
+    private record Flat(ModelPart[] parts, int[] after) {
     }
 
-    private static long drawn(ModelPart part, Tree tree, long hash) {
-        hash = (hash ^ (part.visible ? 1 : 0) ^ (part.skipDraw ? 2 : 0)) * 0x100000001b3L;
-        if (!part.visible) return hash;
-        for (ModelPart child : tree.children(part).values()) hash = drawn(child, tree, hash);
+    private static final Map<ModelPart, Flat> FLAT = new IdentityHashMap<>();
+
+    /**
+     * A number that changes when which parts the game draws changes: two models read with
+     * {@code drawnOnly} from the same root are the same when it is. On the render thread.
+     */
+    public static long drawn(ModelPart root, Tree tree) {
+        Flat flat = FLAT.get(root);
+        if (flat == null) {
+            List<ModelPart> parts = new ArrayList<>();
+            List<Integer> after = new ArrayList<>();
+            flatten(root, tree, parts, after);
+            int[] ends = new int[after.size()];
+            for (int i = 0; i < ends.length; i++) ends[i] = after.get(i);
+            FLAT.put(root, flat = new Flat(parts.toArray(new ModelPart[0]), ends));
+        }
+        long hash = 0xcbf29ce484222325L;
+        ModelPart[] parts = flat.parts();
+        for (int i = 0; i < parts.length; ) {
+            ModelPart part = parts[i];
+            hash = (hash ^ (part.visible ? 1 : 0) ^ (part.skipDraw ? 2 : 0)) * 0x100000001b3L;
+            // The game draws nothing under a hidden part.
+            i = part.visible ? i + 1 : flat.after()[i];
+        }
         return hash;
+    }
+
+    private static void flatten(ModelPart part, Tree tree, List<ModelPart> parts, List<Integer> after) {
+        int at = parts.size();
+        parts.add(part);
+        after.add(0);
+        for (ModelPart child : tree.children(part).values()) flatten(child, tree, parts, after);
+        after.set(at, parts.size());
+    }
+
+    /** Forgets the models walked so far: the game's are made again on a reload. */
+    public static void forget() {
+        FLAT.clear();
     }
 
     private static void read(LodModel model, Tree tree, ModelPart part, String name, int parent, boolean drawnOnly,
