@@ -4,6 +4,9 @@
 
 ### Client
 
+#### New
+- **Changelog button** — the mod's settings now have a changelog button beside the Discord logo, to read what changed in each version (a *Read the changelog* button on Sodium's page).
+
 #### Improved
 - **Servers without the mod** — joining a server without Living Horizon, or with a version of it too old or too new, now says in the chat that distant players are not shown there; with *Show Players* off, nothing is said.
 

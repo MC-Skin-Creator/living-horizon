@@ -4,6 +4,9 @@
 
 ### Client
 
+#### Nouveautés
+- **Bouton du journal des modifications** — les réglages du mod ont maintenant un bouton du journal des modifications à côté du logo Discord, pour lire ce qui a changé à chaque version (un bouton *Lire le journal des modifications* sur la page de Sodium).
+
 #### Améliorations
 - **Serveurs sans le mod** — en rejoignant un serveur sans Living Horizon, ou avec une version trop ancienne ou trop récente du mod, le tchat dit maintenant que les joueurs lointains n'y sont pas affichés ; avec *Afficher les joueurs* désactivé, rien n'est dit.
 
