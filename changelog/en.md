@@ -5,12 +5,16 @@
 ### Client
 
 #### New
-- **Vehicles from other mods far away** — vehicles from other mods, such as Immersive Aircraft's planes, now stay visible past the render distance where they were left, like boats; each kind joins the *Entities* tab of *Mobs & Entities...* the first time you see one, and the ones you ride without steering (minecarts, some other mods' vehicles) wait there, off, until you turn them on.
+- **Vehicles from other mods far away** — vehicles from other mods, such as Immersive Aircraft's planes, now stay visible past the render distance where they were left, like boats; they are listed under the *Entities* tab of *Mobs & Entities...* from the start, and the ones you ride without steering (minecarts, some other mods' vehicles) are off until you turn them on.
+- **Settings for entities** — boats, vehicles and mannequins now have settings of their own, apart from the mobs: *Show Entities*, *Max Entities* and *Entity Render Distance*, which has no limit by default.
+- **Simplified Mobs and Simplified Entities** — *Simplified Entities* is now two switches: *Simplified Mobs*, and *Simplified Entities* for boats, vehicles and mannequins, which far away become flat pictures too, seen from above and below as well; *Simplified Players* no longer depends on either, and the button that shows the pictures is now *Picture Preview...*.
 - **Changelog button** — the mod's settings now have a changelog button beside the Discord logo, to read what changed in each version (a *Read the changelog* button on Sodium's page).
 
 #### Improved
 - **Servers without the mod** — joining a server without Living Horizon, or with a version of it too old or too new, now says in the chat that distant players are not shown there; with *Show Players* off, nothing is said.
 - **Mobs & Entities in two tabs** — *Mobs & Entities...* now lists the mobs and the other entities (boats, vehicles, mannequins) under two tabs, where a boat or a vehicle is simply shown or hidden.
+- **Mobs & Entities changes seen at once** — turning a kind on or off in *Mobs & Entities...* now shows in the world behind it straight away, not once the screen is closed.
+- **Distant mobs settings in three parts** — the *Distant Mobs & Entities* settings are now split into *General*, *Mobs* and *Entities*, with the list, the scan and *Forget All* under *General*.
 
 ## 0.13.0 — 2026-10-28
 

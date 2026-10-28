@@ -479,7 +479,7 @@ public final class MobMemory {
         if (file == null || (bound != null && level != bound) || !rememberable(entity)) return;
         Entity mob = entity;
         FarConfig config = FarConfig.get();
-        if (!config.distantMobs || !worthRemembering(mob, config)) return;
+        if (!config.shows(MobKinds.creature(mob.getType())) || !worthRemembering(mob, config)) return;
         if ((mob instanceof LivingEntity living && living.isDeadOrDying()) || carriesPlayer(mob)
                 || takenAway.contains(mob.getUUID())) {
             forget(mob.getUUID());
@@ -515,7 +515,7 @@ public final class MobMemory {
      * between with neither the real mob nor its copy. The next choice puts the list in order.
      */
     private void showNow(Remembered mob, ClientLevel level, FarConfig config) {
-        if (config.maxDistantMobs <= 0 || carried.contains(mob.id)) return;
+        if (config.most(creature(mob), 1) <= 0 || carried.contains(mob.id)) return;
         if (mob.puppet == null) {
             // A crowd unloaded at once (a teleport) is left to the ticks and their budget.
             if (config.optBackgroundBuild && builtNow >= BUILD_BUDGET) return;
@@ -655,7 +655,7 @@ public final class MobMemory {
         renderBlocks = renderDistanceBlocks;
         builtNow = 0;
         clock++;
-        if (!config.distantMobs) {
+        if (!config.distantMobs && !config.distantEntities) {
             shown = List.of();
             return;
         }
@@ -1036,27 +1036,61 @@ public final class MobMemory {
         return sent(type, reach);
     }
 
+    /** Milliseconds a change in the list of mobs may spend building the copies it shows. */
+    private static final long CHANGE_BUDGET = 100;
+
+    /**
+     * The kinds shown far away were just changed in the list of mobs: drawn or left out from
+     * this frame, not from the next tick, which never comes while the list pauses the game.
+     */
+    public void kindsChanged() {
+        FarConfig config = FarConfig.get();
+        ClientLevel level = bound;
+        chooseSoon = true;
+        if (level == null || file == null || (!config.distantMobs && !config.distantEntities)) return;
+        choose(level.dimension().identifier().toString(), config);
+        long until = System.nanoTime() + CHANGE_BUDGET * 1_000_000L;
+        for (Remembered mob : shown) {
+            if (System.nanoTime() > until) break;
+            if (mob.puppet != null || mob.failed || mob.gone || mob.handover != null) continue;
+            if (mob.parsed == null) mob.parsed = CompletableFuture.completedFuture(parse(mob.nbt));
+            if (mob.parsed.isDone()) build(mob, level);
+        }
+    }
+
     /** The nearest few, in this dimension: the ones drawn until the next choice. */
     private void choose(String dimension, FarConfig config) {
         chooseSoon = false;
         Set<String> wanted = new HashSet<>(config.mobTypes);
-        List<Remembered> here = new ArrayList<>();
+        // The mobs and the other entities, each shown or not and each limited on its own: a
+        // crowd of mobs never pushes an aircraft out.
+        List<Remembered> creatures = new ArrayList<>(), others = new ArrayList<>();
         for (Remembered mob : mobs.values()) {
             if (!mob.dimension.equals(dimension) || !isHere(mob)
                     || (live.containsKey(mob.id) && mob.handover == null) || carried.contains(mob.id)) continue;
             if (!wanted.contains(mob.type) && !(config.rememberNamedMobs && mob.named)) continue;
+            boolean creature = creature(mob);
+            if (!config.shows(creature)) continue;
             mob.distance = distance(mob.x, mob.y, mob.z);
-            here.add(mob);
+            (creature ? creatures : others).add(mob);
         }
-        here.sort(Comparator.comparingDouble(mob -> mob.distance));
-        int most = config.maxDistantMobs >= FarConfig.UNLIMITED_MOBS ? here.size() : Math.max(0, config.maxDistantMobs);
-        List<Remembered> chosen = here.subList(0, Math.min(here.size(), most));
+        List<Remembered> chosen = new ArrayList<>();
+        for (List<Remembered> here : List.of(creatures, others)) {
+            here.sort(Comparator.comparingDouble(mob -> mob.distance));
+            chosen.addAll(here.subList(0, config.most(here == creatures, here.size())));
+        }
         Set<Remembered> kept = Collections.newSetFromMap(new IdentityHashMap<>());
         kept.addAll(chosen);
         for (Remembered mob : shown) {
             if (!kept.contains(mob)) mob.puppet = null;
         }
         shown = Collections.unmodifiableList(new ArrayList<>(chosen));
+    }
+
+    /** A mob rather than another entity (a boat, a vehicle, a mannequin); one of a kind not known here is taken for a mob. */
+    private static boolean creature(Remembered mob) {
+        EntityType<?> type = type(mob);
+        return type == null || MobKinds.creature(type);
     }
 
     /** A mob that walks on the ground, and so can fall: not one that flies or swims. */

@@ -27,7 +27,7 @@ class FarConfigTest {
         FarConfig fresh = new FarConfig();
         fresh.version = migrated.version;
         assertEquals(GSON.toJson(fresh), GSON.toJson(migrated));
-        assertEquals(11, migrated.version);
+        assertEquals(12, migrated.version);
     }
 
     @Test
@@ -138,6 +138,14 @@ class FarConfigTest {
         assertFalse(config.knownMobTypes.contains("minecraft:enderman"));
         assertEquals(java.util.List.of("minecraft:cow"), config.mobTypes);
         assertFalse(migrated("{\"version\": 11, \"knownMobTypes\": []}").knownMobTypes.contains("minecraft:horse"));
+    }
+
+    @Test
+    void version12SplitsTheSimplifiedFigures() {
+        // The one switch off stays off for mobs and for the other entities alike.
+        assertFalse(migrated("{\"version\": 11, \"impostors\": false}").impostorEntities);
+        assertTrue(migrated("{\"version\": 11, \"impostors\": true}").impostorEntities);
+        assertTrue(migrated("{\"version\": 12, \"impostors\": false}").impostorEntities);
     }
 
     @Test

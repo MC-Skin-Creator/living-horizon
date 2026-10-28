@@ -71,7 +71,7 @@ public final class Vehicles {
     }
 
     /** What entities of this class are as vehicles. */
-    static Kind kindOf(Class<?> type) {
+    public static Kind kindOf(Class<?> type) {
         if (!Entity.class.isAssignableFrom(type) || LivingEntity.class.isAssignableFrom(type)) return Kind.NONE;
         if (overrides(type, STEERING)) return Kind.STEERED;
         return overrides(type, SEATING) ? Kind.SEATED : Kind.NONE;

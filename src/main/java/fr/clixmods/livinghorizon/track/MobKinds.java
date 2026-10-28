@@ -1,5 +1,7 @@
 package fr.clixmods.livinghorizon.track;
 
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
@@ -26,6 +28,14 @@ public final class MobKinds {
             "minecraft:jungle_chest_boat", "minecraft:acacia_chest_boat", "minecraft:cherry_chest_boat",
             "minecraft:dark_oak_chest_boat", "minecraft:pale_oak_chest_boat", "minecraft:mangrove_chest_boat",
             "minecraft:bamboo_chest_raft");
+
+    /**
+     * A mob, as the list of mobs files it: a living kind, mannequins excepted. Boats, vehicles and
+     * mannequins are the other entities, with a switch, a limit and a distance of their own.
+     */
+    public static boolean creature(EntityType<?> type) {
+        return DefaultAttributes.hasSupplier(type) && !EntityType.getKey(type).toString().equals("minecraft:mannequin");
+    }
 
     /** Every boat and raft, chest or not; before 1.21.2, the one boat of every wood. */
     public static boolean isBoat(String type) {

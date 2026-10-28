@@ -70,6 +70,11 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
     }
     *///?}
 
+    /** A title over part of a group of settings, in grey under the group's own. */
+    protected final void subheader(Component title) {
+        header(title.copy().withStyle(net.minecraft.ChatFormatting.GRAY));
+    }
+
     /** A title over a group of settings. The list has had its own since 1.21.11; before, a label in a row. */
     protected final void header(Component title) {
         if (list == null) return;

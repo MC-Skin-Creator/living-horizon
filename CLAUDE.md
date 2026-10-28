@@ -471,9 +471,12 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Another mod's vehicle vanishing far away** (an aircraft, a car, a tank gone past the render
   distance): an entity that is not alive is a vehicle only when its class declares
   `getControllingPassenger` again (steered: shown from the start, like a boat) or `positionRider`
-  (seated: listed but off), found on `Entity` by shape (`track/Vehicles`), and a kind is only
-  listed in *Mobs & Entities...* once met (`knownVehicles`). Check the mod's class with `javap` on
-  its jar; the `vehicles` scenario checks Immersive Aircraft (`run.sh vehicles --with immersive-aircraft`).
+  (seated: listed but off), found on `Entity` by shape (`track/Vehicles`). Its class is read from
+  the renderer its kind is drawn with (`MobList.vehicle`), so it is listed before one is met; a
+  renderer declared for any entity leaves it to the first one met (`knownVehicles`). It is drawn
+  up to *Entity Render Distance*, not the mobs' (`GhostRenderer.creature`). Check the mod's classes
+  with `javap` on its jar; the `vehicles` scenario checks Immersive Aircraft
+  (`run.sh vehicles --with immersive-aircraft`).
 - **A far player's mount drawn twice, or a rider sitting on air** (a happy ghast beside its
   rider, a player met already riding floating far away): a mount is drawn under its rider
   (`FarPlayer.mountPuppet`), and the remembered mobs leave out every id `FarPlayer.carriedMount`
@@ -620,7 +623,7 @@ someone who has never seen the code:
   behaviour: "mobs hide behind hills" reads as a feature, not a fix.
 - say what the player notices, not how it was done: no shader, depth, buffer, pass,
   query, mask, class or setting internals; nothing about the debug screens. Name settings
-  and screens as the game shows them (impostors are *Simplified Entities*), and explain
+  and screens as the game shows them (impostors are *Simplified Mobs*, *Simplified Entities* and *Simplified Players*), and explain
   them in plain words (flat pictures of far mobs).
 - one bullet per problem: two causes of the same symptom share one bullet.
 - nothing for CI, refactors, tooling, documentation or debug-only tools.

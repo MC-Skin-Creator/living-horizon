@@ -51,7 +51,7 @@ public final class FarConfig {
     @SerializedName(value = "depthOcclusion", alternate = "voxyOcclusion")
     public boolean depthOcclusion = true;
 
-    private static final int CURRENT = 11;
+    private static final int CURRENT = 12;
 
     /** Skinned figures, which Distant Friends uses as its fake players: shown, standing still. */
     private static final String MANNEQUIN = "minecraft:mannequin";
@@ -119,8 +119,39 @@ public final class FarConfig {
     /** How many remembered mobs are drawn at once: the nearest ones. {@link #UNLIMITED_MOBS}: all. */
     public int maxDistantMobs = 512;
 
+    /**
+     * Boats, vehicles and mannequins met on the way stay where they were, apart from the mobs:
+     * the other tab of the list of mobs ({@link fr.clixmods.livinghorizon.track.MobKinds#creature}).
+     */
+    public boolean distantEntities = true;
+
+    /**
+     * How many remembered boats, vehicles and mannequins are drawn at once, the nearest ones,
+     * apart from {@link #maxDistantMobs}: a crowd of mobs never pushes an aircraft out.
+     * {@link #UNLIMITED_MOBS}: all.
+     */
+    public int maxDistantEntities = 256;
+
+    /** Whether remembered figures of this kind are shown: the mobs, or the other entities. */
+    public boolean shows(boolean creature) {
+        return creature ? distantMobs : distantEntities;
+    }
+
+    /** How many of this kind are drawn at once, the nearest ones: every one past {@link #UNLIMITED_MOBS}. */
+    public int most(boolean creature, int there) {
+        int most = creature ? maxDistantMobs : maxDistantEntities;
+        return most >= UNLIMITED_MOBS ? there : Math.max(0, Math.min(most, there));
+    }
+
     /** Blocks: past this, distant mobs are not drawn. 0 is no limit. */
     public int mobMaxDistance = 512;
+
+    /**
+     * Blocks: past this, distant boats, vehicles and mannequins are not drawn, apart from the
+     * mobs' limit. 0, the default, is no limit: there are few of them, and an aircraft is seen
+     * from afar.
+     */
+    public int entityMaxDistance = 0;
 
     /**
      * Distant mobs are drawn only where terrain is drawn under them: a chunk the game draws, or
@@ -209,13 +240,22 @@ public final class FarConfig {
     public boolean hideOccludedMobs = true;
 
     /**
-     * Distant players and mobs past {@link #impostorDistance}, or smaller on screen than
+     * Distant mobs past {@link #impostorDistance}, or smaller on screen than
      * {@link #impostorPixels}, are drawn as a flat picture of
      * themselves, turned to the camera, instead of their whole model. The pictures are
      * baked from the game's own renderers when a world is joined and again whenever the
-     * resource packs change, so skins, mobs and packs are all followed.
+     * resource packs change, so skins, mobs and packs are all followed. "Simplified Mobs";
+     * {@link #impostorEntities} and {@link #impostorPlayers} do the same for the others.
      */
     public boolean impostors = true;
+
+    /** Boats, vehicles and mannequins as flat pictures too, as mobs are ("Simplified Entities"). */
+    public boolean impostorEntities = true;
+
+    /** Whether anything is drawn as a flat picture: mobs, the other entities or players. */
+    public boolean anyImpostors() {
+        return impostors || impostorEntities || impostorPlayers;
+    }
 
     /** Blocks: past this distance an impostor stands in for the model. */
     public int impostorDistance = 128;
@@ -365,7 +405,7 @@ public final class FarConfig {
 
     /** Whether anything distant is drawn: players, mobs or both, each on its own switch. */
     public boolean anyDistant() {
-        return enabled || distantMobs;
+        return enabled || distantMobs || distantEntities;
     }
 
     public static FarConfig get() {
@@ -469,6 +509,10 @@ public final class FarConfig {
                 if (!config.knownMobTypes.contains(type)) config.knownMobTypes.add(type);
             }
         }
+        if (config.version < 12) {
+            // One switch for every figure but players became one for mobs and one for the rest.
+            config.impostorEntities = config.impostors;
+        }
         // Written by hand out of range: the nearest end.
         config.impostorMobMemory = Math.clamp(config.impostorMobMemory, MIN_MOB_MEMORY, MAX_MOB_MEMORY);
         config.impostorPlayerMemory = Math.clamp(config.impostorPlayerMemory, MIN_PLAYER_MEMORY, MAX_PLAYER_MEMORY);
@@ -505,20 +549,30 @@ public final class FarConfig {
     }
 
     /**
-     * A kind of vehicle met for the first time: listed among the mobs from now on. One its rider
+     * A kind of vehicle met, its first one seen: listed among the mobs from now on. One its rider
      * steers, as a boat, is shown far away from the start; one that only seats its riders (a
      * minecart, a moving contraption) waits to be chosen. Either is then left as the player sets it.
      */
     public static void adoptVehicle(String id, boolean steered) {
-        if (instance.knownVehicles.contains(id)) return;
-        instance.knownVehicles.add(id);
-        if (!steered) instance.seatedVehicles.add(id);
+        boolean changed = instance.knowVehicle(id, steered);
         // Offered here, once: as the game starts, a known kind is left as it is.
         if (!instance.knownMobTypes.contains(id)) {
             instance.knownMobTypes.add(id);
             if (steered && !instance.mobTypes.contains(id)) instance.mobTypes.add(id);
+            changed = true;
         }
-        save();
+        if (changed) save();
+    }
+
+    /**
+     * A kind is a vehicle, steered or only seating its riders: listed among the mobs, and offered
+     * as such ({@link #adoptNewMobs}). True when it was not known yet. Not saved by itself.
+     */
+    public boolean knowVehicle(String id, boolean steered) {
+        if (knownVehicles.contains(id)) return false;
+        knownVehicles.add(id);
+        if (!steered) seatedVehicles.add(id);
+        return true;
     }
 
     /** Every setting back to its default, mob and bird choices included, and written to the file. */

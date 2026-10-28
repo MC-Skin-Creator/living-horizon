@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon.gametest.scenario;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
+import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobMemory;
 import fr.clixmods.livinghorizon.ui.MobList;
@@ -21,13 +22,15 @@ import javax.imageio.ImageIO;
 
 /**
  * Vehicles the list of mobs cannot name, met in the world. A minecart, which only seats its
- * rider, is listed once met but not shown until chosen; that part needs nothing else.
+ * rider, is listed but not shown until chosen; that part, and the list's two tabs, need
+ * nothing else.
  *
  * <p>With Immersive Aircraft ({@code run.sh vehicles --with immersive-aircraft}), its biplane
- * and airship, which their pilot steers, are listed and shown from the start: left behind
- * until the server no longer sends them, their copies stand where they were. The check is on
- * the copies being built, and on the picture: the same view with the aircraft hidden in the
- * list must differ where they stand. Without it, that part is skipped.
+ * and airship, which their pilot steers, are listed and shown before one is met. Left behind
+ * until the server no longer sends them, their copies stand where they were, past the mobs'
+ * distance (the entities' own reaches farther), as pictures with Simplified Entities. With the
+ * list open over the paused game, switching the airship off and on shows at once. Without the
+ * mod, that part is skipped.
  */
 public final class VehiclesScenario implements Scenario {
     private static final String MINECART = "minecraft:minecart";
@@ -50,6 +53,20 @@ public final class VehiclesScenario implements Scenario {
             config.hideOccludedMobs = false;
         });
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
+            if (aircraft) {
+                // Listed, and shown, before one is ever met: their renderers say what they draw.
+                String unmet = context.computeOnClient(minecraft -> {
+                    List<String> list = MobList.all().stream().map(type -> EntityType.getKey(type).toString()).toList();
+                    FarConfig.adoptNewMobs(MobList.all());
+                    StringBuilder wrong = new StringBuilder();
+                    for (String id : AIRCRAFT) {
+                        if (!list.contains(id)) wrong.append(' ').append(id).append(" is not listed before it is met;");
+                        if (!FarConfig.get().mobTypes.contains(id)) wrong.append(' ').append(id).append(" is not shown before it is met;");
+                    }
+                    return wrong.toString();
+                });
+                if (!unmet.isEmpty()) throw new AssertionError("vehicles:" + unmet);
+            }
             // Past 32 blocks: a mob that vanishes closer is taken as gone for good.
             Scene.summon(world, "minecart", 0, 36, 0);
             if (aircraft) {
@@ -108,15 +125,70 @@ public final class VehiclesScenario implements Scenario {
                 return missing.toString();
             });
             if (!built.isEmpty()) throw new AssertionError("vehicles: no copy of" + built);
-            Path shown = Scene.screenshot(context, this, "remembered");
-            Scene.configure(context, config -> config.mobTypes.removeAll(List.of(AIRCRAFT)));
-            // The copies drawn are chosen again once a second.
-            context.waitTicks(30);
-            Path hidden = Scene.screenshot(context, this, "hidden");
-            int drawn = differing(shown, hidden);
-            Scene.log("vehicles: " + drawn + " pixels drawn by the copies");
-            if (drawn < 50) throw new AssertionError("vehicles: the copies of the aircraft were not drawn (" + drawn + " pixels)");
+            // The mobs' distance stops short of them: the entities' own, unlimited, still reaches.
+            Scene.configure(context, config -> config.mobMaxDistance = 100);
+            Path pictures = Scene.screenshot(context, this, "remembered");
+            int impostors = context.computeOnClient(minecraft -> PolygonStats.impostors());
+            // From 80 blocks up: pictures baked from above, as a ghast's are.
+            // On a barrier, invisible: a fall from there kills.
+            Scene.command(world, "fill -1 19 -161 1 19 -159 minecraft:barrier");
+            Scene.command(world, "tp @a 0 20 -160 0 22");
+            context.waitTicks(60);
+            Scene.screenshot(context, this, "from-above");
+            int above = context.computeOnClient(minecraft -> PolygonStats.impostors());
+            Scene.screenshotAtlas(context, this);
+            Scene.command(world, "tp @a 0 -60 -160 0 0");
+            context.waitTicks(20);
+            Scene.log("vehicles: " + above + " drawn as pictures from above");
+            if (above < AIRCRAFT.length) throw new AssertionError("vehicles: the aircraft are not pictures from above");
+            Scene.configure(context, config -> config.impostorEntities = false);
+            Scene.screenshot(context, this, "remembered-models");
+            Scene.log("vehicles: " + impostors + " drawn as pictures with Simplified Entities");
+            if (impostors < AIRCRAFT.length) throw new AssertionError("vehicles: the aircraft are not pictures past the simplification distance");
+            menu(context);
+            // Show Entities off: the aircraft go, whatever the mobs do.
+            Path on = Scene.screenshot(context, this, "entities-on");
+            Scene.configure(context, config -> config.distantEntities = false);
+            Path off = Scene.screenshot(context, this, "entities-off");
+            int gone = differing(on, off, 0);
+            Scene.log("vehicles: Show Entities off changes " + gone + " pixels");
+            if (gone < 50) throw new AssertionError("vehicles: Show Entities off left the aircraft drawn (" + gone + " pixels)");
         }
+    }
+
+    /**
+     * The list of mobs open over the game, paused under it: switching the airship off and on
+     * shows at once behind the list, on the right of the screen where the list leaves the view.
+     */
+    private void menu(ClientGameTestContext context) {
+        context.setScreen(() -> new MobTypesScreen(null));
+        context.clickScreenButton("livinghorizon.options.mobTypes.tab.entities");
+        context.getInput().typeChars("airship");
+        context.getInput().setCursorPos(4, 4);
+        context.waitTicks(3);
+        Path before = Scene.screenshot(context, this, "menu-shown");
+        double[] at = context.computeOnClient(minecraft -> {
+            int[] middle = minecraft.screen instanceof MobTypesScreen types ? types.switchAt(AIRCRAFT[1]) : null;
+            double scale = minecraft.getWindow().getGuiScale();
+            int column = minecraft.screen instanceof MobTypesScreen types ? types.columnWidth() : 0;
+            return middle == null ? null : new double[]{middle[0] * scale, middle[1] * scale, column * scale};
+        });
+        if (at == null) throw new AssertionError("vehicles: the airship's switch is not on screen");
+        context.getInput().setCursorPos(at[0], at[1]);
+        context.getInput().pressMouse(0);
+        context.getInput().setCursorPos(4, 4);
+        context.waitTicks(2);
+        Path off = Scene.screenshot(context, this, "menu-hidden");
+        context.getInput().setCursorPos(at[0], at[1]);
+        context.getInput().pressMouse(0);
+        context.getInput().setCursorPos(4, 4);
+        context.waitTicks(2);
+        Path on = Scene.screenshot(context, this, "menu-shown-again");
+        context.setScreen(() -> null);
+        int gone = differing(before, off, (int) at[2]), back = differing(before, on, (int) at[2]);
+        Scene.log("vehicles: switching the airship off changes " + gone + " pixels behind the list, back on " + back);
+        if (gone < 50) throw new AssertionError("vehicles: the airship did not leave at once (" + gone + " pixels)");
+        if (back > gone / 4) throw new AssertionError("vehicles: the airship did not come back at once (" + back + " pixels off)");
     }
 
     /**
@@ -189,13 +261,13 @@ public final class VehiclesScenario implements Scenario {
         return screen instanceof MobTypesScreen types ? new java.util.TreeSet<>(types.listedKinds()) : java.util.Set.of();
     }
 
-    /** Pixels that tell two screenshots apart. */
-    private static int differing(Path a, Path b) {
+    /** Pixels that tell two screenshots apart, right of {@code fromX}. */
+    private static int differing(Path a, Path b, int fromX) {
         try {
             BufferedImage one = ImageIO.read(a.toFile()), two = ImageIO.read(b.toFile());
             int count = 0;
             for (int y = 0; y < Math.min(one.getHeight(), two.getHeight()); y++) {
-                for (int x = 0; x < Math.min(one.getWidth(), two.getWidth()); x++) {
+                for (int x = fromX; x < Math.min(one.getWidth(), two.getWidth()); x++) {
                     int p = one.getRGB(x, y), q = two.getRGB(x, y);
                     int d = Math.abs((p >> 16 & 255) - (q >> 16 & 255)) + Math.abs((p >> 8 & 255) - (q >> 8 & 255))
                             + Math.abs((p & 255) - (q & 255));

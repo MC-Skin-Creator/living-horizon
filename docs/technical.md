@@ -378,8 +378,10 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
   (`positionRider`: a minecart, Superb Warfare's vehicles, Create's seats and moving
   contraptions, whose copies could cost a lot) is listed but waits to be chosen
   (`seatedVehicles`, kept by *Defaults* and a reset). Both methods are found on `Entity` by
-  their shape, since their names differ between loaders. Only an entity seen tells its kind is
-  a vehicle, so a kind joins the *Entities* tab of *Mobs & Entities...* when one is first met
+  their shape, since their names differ between loaders. The class is the one the kind's
+  renderer is declared for (`MobList.vehicle`, read from the game's map of renderers with
+  Guava's `TypeToken`), so a kind is under the *Entities* tab of *Mobs & Entities...* from the
+  start; a renderer declared for any entity tells nothing, and then the first one met does
   (`knownVehicles`; the *Mobs* tab holds the living kinds, mannequins excepted). A copy
   stands where it was left, as a boat does: no animation, and only this client remembers it.
   So a kind that is not alive, a boat included, is only *Shown* or *Hidden* there, never
@@ -569,12 +571,15 @@ or the weather (`Ambience.summon`).
 
 ## Impostors
 
-In game: *Simplified Entities* (`impostors`, on by default). Past `impostorDistance` blocks, a
-distant player or mob is not extracted and submitted as a model: a flat picture of it, always
-turned to the camera, is drawn instead (`render/impostor/ImpostorRenderer`). A figure 200
-blocks away is a handful of pixels tall, so the picture loses nothing, and the game no longer
-builds a render state and a model for it every frame. With `impostorPlayers` off, players
-keep their whole model at any distance.
+In game: three switches, each on by default and on its own: *Simplified Mobs* (`impostors`, mobs
+and birds), *Simplified Entities* (`impostorEntities`: boats, vehicles and mannequins, the
+*Entities* tab of the list of mobs, `GhostRenderer.creature`) and *Simplified Players*
+(`impostorPlayers`). Past `impostorDistance` blocks, a distant figure is not extracted and
+submitted as a model: a flat picture of it, always turned to the camera, is drawn instead
+(`render/impostor/ImpostorRenderer`). A figure 200 blocks away is a handful of pixels tall, so the
+picture loses nothing, and the game no longer builds a render state and a model for it every
+frame. A boat or a vehicle is pictured from every height, as a phantom or a ghast is
+(`ImpostorViews.HEIGHTS`): an aircraft flies overhead, and a parked one is seen from a cliff.
 
 ### Baking the pictures
 
@@ -715,7 +720,7 @@ that a mob met in an earlier game is read back rather than baked.
 
 ### Preview
 
-*Simplified Entities...* in the settings, or `/livinghorizon impostors`: every figure baked,
+*Picture Preview...* in the settings, or `/livinghorizon impostors`: every figure baked,
 its eight views, and its front view at 32, 16 and 8 screen pixels, as it looks far away.
 *Rebuild* throws every picture away, on disk too, and bakes the figures on hand anew, even
 after a failed bake.
@@ -1043,7 +1048,7 @@ update, measure the same scene. Birds still choose where they fly by chance.
 |---|---|
 | `/livinghorizon` | Whether positions are shared, how many mobs are remembered and drawn, the cost per tick and per frame, and every distant player followed, with where their position comes from and how far they are |
 | `/livinghorizon config` | Opens the settings |
-| `/livinghorizon impostors` | Opens the impostor preview (*Simplified Entities...*) |
+| `/livinghorizon impostors` | Opens the impostor preview (*Picture Preview...*) |
 | `/livinghorizon scan [radius]` | Reads the mobs of the chunks around, in single player (see [Scanning nearby mobs](#scanning-nearby-mobs)) |
 | `/livinghorizon bird <kind>` | Calls a group of birds of that kind (see [Calling birds](#calling-birds)) |
 | `/livinghorizon lod` (or `voxy`) | Which far terrain mod is read and the state of its depth |
@@ -1097,7 +1102,8 @@ cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 
 | Setting | In game | Default | Range | What it does |
 |---|---|---|---|---|
-| `impostors` | Simplified Entities | `true` | | Far players and mobs drawn as a flat picture of themselves (see [Impostors](#impostors)) |
+| `impostors` | Simplified Mobs | `true` | | Far mobs and birds drawn as a flat picture of themselves (see [Impostors](#impostors)) |
+| `impostorEntities` | Simplified Entities | `true` | | Far boats, vehicles and mannequins drawn as pictures too, from every height; set from `impostors` when it came (layout 12) |
 | `impostorPlayers` | Simplified Players | `true` | | Distant players become impostors too; off, they keep their whole model at any distance |
 | `impostorDistance` | Simplification Distance | `128` blocks | 32 to 2000 | Past this distance an impostor stands in for the model |
 | `impostorPixels` | Simplification Size | `10` pixels | 0 to 64 | A figure shorter than this on screen is an impostor too, even closer than `impostorDistance` (`0`: the distance alone) |
@@ -1120,25 +1126,31 @@ cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 *Clear Offline Players* forgets every player who logged off on this server. On a server with
 the mod, they come back at their last position.
 
-#### Distant Mobs
+#### Distant Mobs & Entities
+
+In three parts, on both screens: *General*, *Mobs* (the living kinds, mannequins excepted) and
+*Entities* (boats, vehicles, mannequins).
 
 | Setting | In game | Default | Range | What it does |
 |---|---|---|---|---|
-| `distantMobs` | Show Mobs | `true` | | Remembered mobs stay visible far away |
-| `maxDistantMobs` | Max Mobs | `512` | 0 to 1000 | How many are drawn at once, nearest first (`0`: none, `1000`: no limit). No limit here and in `mobMaxDistance` together can crash the game |
-| `mobMaxDistance` | Mob Render Distance | `512` blocks | 0 to 4000 | Past this, distant mobs are not drawn (`0`: no limit) |
-| `rememberNamedMobs` | Name-Tagged Mobs | `true` | | A mob with a name tag is shown whatever its type |
-| `animationMinPixels` | Min. Animated Size | `10` pixels | 0 to 40 | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
-| `animationMaxDistance` | Animation Distance | `0` blocks | 0 to 4000 | Past this, no distant mob plays an animation (`0`: no limit) |
-| `mobTypes` | Mobs & Entities... | Every mob and boat of the game and of other mods | | Which mobs are shown, and remembered by this client |
-| `stillMobTypes` | Mobs & Entities..., *Still* | Happy ghast, mannequin | | Mobs shown standing still instead of walking their loop |
-| `scanRadius` | Scan Radius | `32` chunks | 4 to 1024 | Chunks around you read by a scan, in single player (32 chunks = 512 blocks) |
+| `mobTypes` | General: Mobs & Entities... | Every mob and boat of the game and of other mods, and the vehicles their rider steers | | Which mobs and entities are shown, and remembered by this client. A change shows at once, the game paused or not (`MobMemory.kindsChanged`) |
+| `stillMobTypes` | Mobs & Entities..., *Still* | Happy ghast, mannequin | | Mobs shown standing still instead of walking their loop; a boat or a vehicle is only *Shown* or *Hidden* |
+| `scanRadius` | General: Scan Radius | `32` chunks | 4 to 1024 | Chunks around you read by a scan, in single player (32 chunks = 512 blocks) |
+| `distantMobs` | Mobs: Show Mobs | `true` | | Remembered mobs stay visible far away |
+| `maxDistantMobs` | Mobs: Max Mobs | `512` | 0 to 1000 | How many are drawn at once, nearest first (`0`: none, `1000`: no limit). No limit here and in `mobMaxDistance` together can crash the game |
+| `mobMaxDistance` | Mobs: Mob Render Distance | `512` blocks | 0 to 4000 | Past this, distant mobs are not drawn (`0`: no limit) |
+| `rememberNamedMobs` | Mobs: Name-Tagged Mobs | `true` | | A mob with a name tag is shown whatever its type |
+| `animationMinPixels` | Mobs: Min. Animated Size | `10` pixels | 0 to 40 | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
+| `animationMaxDistance` | Mobs: Animation Distance | `0` blocks | 0 to 4000 | Past this, no distant mob plays an animation (`0`: no limit) |
+| `distantEntities` | Entities: Show Entities | `true` | | Remembered boats, vehicles and mannequins stay visible far away |
+| `maxDistantEntities` | Entities: Max Entities | `256` | 0 to 1000 | How many of them are drawn at once, nearest first, apart from the mobs: a crowd of mobs never pushes an aircraft out (`1000`: no limit) |
+| `entityMaxDistance` | Entities: Entity Render Distance | `0` blocks | 0 to 4000 | Past this, distant boats, vehicles and mannequins are not drawn (`0`: no limit; few, and an aircraft is seen from afar) |
 | `knownMobTypes` | (not shown) | Those met so far | | Mob types already offered once, the game's and other mods': a new one is shown from the start, then left as you set it |
-| `knownVehicles` | (not shown) | Empty | | Vehicles met that are neither mobs nor boats, listed in *Mobs & Entities...* from then on |
+| `knownVehicles` | (not shown) | Empty | | Vehicles that are neither mobs nor boats, as found from their renderer or met, listed in *Mobs & Entities...* |
 | `seatedVehicles` | (not shown) | Empty | | Those of them that only seat their riders (a minecart): listed, never shown by default |
 
-*Forget Mobs* forgets every mob remembered on this server; those a server with the mod shares
-come back by themselves. *Scan Nearby Mobs* runs a scan.
+*Forget All* forgets every mob, boat and vehicle remembered on this server; those a server with
+the mod shares come back by themselves. *Scan Nearby Mobs* runs a scan.
 
 #### Birds
 

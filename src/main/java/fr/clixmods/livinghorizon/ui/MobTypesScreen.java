@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.ui;
 
 import fr.clixmods.livinghorizon.FarConfig;
+import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobKinds;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.OptionInstance;
@@ -65,6 +66,8 @@ public final class MobTypesScreen extends SideOptionsScreen {
         super(parent, Minecraft.getInstance().options, Component.translatable(KEY + "title"));
         this.filter = filter;
         types = MobList.all();
+        // Kinds the list has just learnt of (another mod's vehicles): in their default mode.
+        FarConfig.adoptNewMobs(types);
         types.sort(Comparator.comparing(type -> type.getDescription().getString().toLowerCase(Locale.ROOT)));
     }
 
@@ -157,7 +160,10 @@ public final class MobTypesScreen extends SideOptionsScreen {
             *///?}
                     .withValues(alive ? Mode.MOVING : Mode.PLACED)
                     .withTooltip(OptionInstance.cachedConstantTooltip(Component.translatable(KEY + tooltip, id)))
-                    .create(0, 0, ICON_ROOM, 20, label, (b, mode) -> mode.apply(id));
+                    .create(0, 0, ICON_ROOM, 20, label, (b, mode) -> {
+                        mode.apply(id);
+                        changed();
+                    });
             buttons.put(id, button);
             ItemStack icon = icon(id);
             if (!icon.isEmpty()) icons.put(id, icon);
@@ -246,6 +252,7 @@ public final class MobTypesScreen extends SideOptionsScreen {
         row.addChild(Button.builder(Component.translatable(KEY + "defaults"), b -> {
             FarConfig.get().resetMobs(MobList.all());
             refreshButtons();
+            changed();
         }).width(74).build());
         row.addChild(Button.builder(CommonComponents.GUI_DONE, b -> onClose()).width(74).build());
     }
@@ -261,6 +268,7 @@ public final class MobTypesScreen extends SideOptionsScreen {
             else if (current == Mode.HIDDEN) Mode.ANIMATED.apply(id);
         }
         refreshButtons();
+        changed();
     }
 
     /** The kinds listed now, under the tab shown and the search, by id: what the game tests read. */
@@ -272,6 +280,18 @@ public final class MobTypesScreen extends SideOptionsScreen {
     public String switchText(String id) {
         CycleButton<Mode> button = buttons.get(id);
         return button == null ? "" : button.getMessage().getString();
+    }
+
+    /** The middle of a kind's switch on screen, or null when it is not drawn: what the game tests click. */
+    public int @Nullable [] switchAt(String id) {
+        CycleButton<Mode> button = buttons.get(id);
+        if (button == null || button.getY() == PARKED) return null;
+        return new int[]{button.getX() + button.getWidth() / 2, button.getY() + button.getHeight() / 2};
+    }
+
+    /** The world behind the list follows each change at once, not once it is closed. */
+    private static void changed() {
+        FarPlayerTracker.get().mobs().kindsChanged();
     }
 
     /** Shows the config on the switches already there, without building the screen again. */

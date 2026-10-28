@@ -5,12 +5,16 @@
 ### Client
 
 #### Nouveautés
-- **Véhicules des autres mods au loin** — les véhicules des autres mods, comme les avions d'Immersive Aircraft, restent maintenant visibles au-delà de la distance de rendu là où on les a laissés, comme les bateaux ; chaque type rejoint l'onglet *Entités* de *Créatures et entités...* la première fois qu'on en voit un, et ceux qu'on monte sans les diriger (wagonnets, véhicules de certains autres mods) y attendent, désactivés, qu'on les active.
+- **Véhicules des autres mods au loin** — les véhicules des autres mods, comme les avions d'Immersive Aircraft, restent maintenant visibles au-delà de la distance de rendu là où on les a laissés, comme les bateaux ; ils sont listés dans l'onglet *Entités* de *Créatures et entités...* dès le départ, et ceux qu'on monte sans les diriger (wagonnets, véhicules de certains autres mods) restent désactivés tant qu'on ne les active pas.
+- **Réglages des entités** — les bateaux, véhicules et mannequins ont maintenant leurs propres réglages, à part des créatures : *Afficher les entités*, *Entités max* et *Distance d'affichage des entités*, illimitée par défaut.
+- **Créatures simplifiées et Entités simplifiées** — *Entités simplifiées* devient deux options : *Créatures simplifiées*, et *Entités simplifiées* pour les bateaux, véhicules et mannequins, qui deviennent eux aussi des images plates au loin, vus aussi d'au-dessus et d'en dessous ; *Joueurs simplifiés* ne dépend plus d'aucune des deux, et le bouton qui montre les images devient *Aperçu des images...*.
 - **Bouton du journal des modifications** — les réglages du mod ont maintenant un bouton du journal des modifications à côté du logo Discord, pour lire ce qui a changé à chaque version (un bouton *Lire le journal des modifications* sur la page de Sodium).
 
 #### Améliorations
 - **Serveurs sans le mod** — en rejoignant un serveur sans Living Horizon, ou avec une version trop ancienne ou trop récente du mod, le tchat dit maintenant que les joueurs lointains n'y sont pas affichés ; avec *Afficher les joueurs* désactivé, rien n'est dit.
 - **Créatures et entités en deux onglets** — *Créatures et entités...* range maintenant les créatures et les autres entités (bateaux, véhicules, mannequins) dans deux onglets, où un bateau ou un véhicule est simplement affiché ou masqué.
+- **Créatures et entités appliqué tout de suite** — activer ou masquer un type dans *Créatures et entités...* se voit maintenant aussitôt dans le monde derrière, plus seulement une fois l'écran fermé.
+- **Réglages des créatures lointaines en trois parties** — les réglages *Créatures et entités lointaines* sont maintenant répartis en *Général*, *Créatures* et *Entités*, avec la liste, le scan et *Tout oublier* dans *Général*.
 
 ## 0.13.0 — 2026-10-28
 

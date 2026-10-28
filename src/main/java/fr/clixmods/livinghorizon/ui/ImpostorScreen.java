@@ -347,7 +347,7 @@ public final class ImpostorScreen extends Screen {
      */
     private Component status(int pictures) {
         FarConfig config = FarConfig.get();
-        if (!config.impostors) return Component.translatable(KEY + "off");
+        if (!config.anyImpostors()) return Component.translatable(KEY + "off");
         if (ImpostorAtlas.failed()) return Component.translatable("livinghorizon.debug.f3.impostorsFailed");
         return Component.translatable(KEY + "memory", megabytes(ImpostorAtlas.memory(players)),
                 megabytes(ImpostorAtlas.memoryLimit(players)), pictures, ImpostorAtlas.waiting());

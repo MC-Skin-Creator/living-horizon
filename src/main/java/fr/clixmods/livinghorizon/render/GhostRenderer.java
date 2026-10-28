@@ -20,6 +20,7 @@ import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
 import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobFlight;
+import fr.clixmods.livinghorizon.track.MobKinds;
 import fr.clixmods.livinghorizon.track.MobMemory;
 import fr.clixmods.livinghorizon.track.Puppets;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
@@ -55,6 +56,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3fc;
@@ -508,15 +510,36 @@ public final class GhostRenderer {
         if (watcher != null) add(frame, minecraft, eye, extract(dispatcher, watcher, partialTick), null, true, Mark.FAKE, config, null);
     }
 
+    /**
+     * Pictured from several heights, not only level with it: a phantom or a ghast, and a boat or
+     * a vehicle, which an aircraft is, flying overhead or seen from a cliff.
+     */
+    private static boolean fromHeights(Entity entity) {
+        return MobFlight.pictured(entity) || !(entity instanceof LivingEntity);
+    }
+
     /** Past the distance set in the options; 0 is no limit. */
     private static boolean tooFar(Entity entity, Vec3 eye, int limit) {
         return limit > 0 && entity.distanceToSqr(eye) > (double) limit * limit;
     }
 
+    /**
+     * A mob, as the list of mobs files it: alive, mannequins excepted. Boats, vehicles and
+     * mannequins are the other entities, with a distance and a switch for pictures of their own.
+     */
+    public static boolean creature(Entity entity) {
+        return MobKinds.creature(entity.getType());
+    }
+
+    /** How far a remembered or sent figure of the mobs' list is drawn: the mobs' distance, or the other entities'. */
+    private static int maxDistance(Entity entity, FarConfig config) {
+        return creature(entity) ? config.mobMaxDistance : config.entityMaxDistance;
+    }
+
     /** Mobs met on the way, where they were, playing their animation. */
     private static void mobs(List<EntityRenderState> frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
                              Vec3 eye, float partialTick, FarConfig config) {
-        if (!config.distantMobs) return;
+        if (!config.distantMobs && !config.distantEntities) return;
         MobMemory memory = FarPlayerTracker.get().mobs();
         List<MobMemory.Remembered> shown = memory.shown();
         for (MobMemory.Remembered mob : shown) {
@@ -525,7 +548,7 @@ public final class GhostRenderer {
                 if (debug && mob.waiting()) markRemembered(mob, Mark.WAITING);
                 continue;
             }
-            if (tooFar(puppet, eye, config.mobMaxDistance)) continue;
+            if (!config.shows(creature(puppet)) || tooFar(puppet, eye, maxDistance(puppet, config))) continue;
             // A copy walking up to its real mob stands for it, however close.
             if (!memory.handingOver(mob) && tooClose(puppet, eye, memory.nearRange(mob))) {
                 if (debug) DebugMarks.mark(puppet, Mark.NEAR);
@@ -611,7 +634,7 @@ public final class GhostRenderer {
      */
     private static void unseen(List<EntityRenderState> frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
                                Vec3 eye, float partialTick, FarConfig config) {
-        if (!config.distantMobs) return;
+        if (!config.distantMobs && !config.distantEntities) return;
         boolean game = debug && DebugMarks.gameMobs();
         Map<EntityType<?>, Boolean> wanted = WANTED;
         wanted.clear();
@@ -625,6 +648,7 @@ public final class GhostRenderer {
             // Its copy is still walking up to it, and drawn in its place.
             if (memory.hides(entity)) continue;
             EntityType<?> type = entity.getType();
+            if (!config.shows(MobKinds.creature(type))) continue;
             Boolean shown = wanted.get(type);
             if (shown == null) {
                 shown = config.mobTypes.contains(EntityType.getKey(type).toString());
@@ -633,7 +657,7 @@ public final class GhostRenderer {
             if (!shown && !(config.rememberNamedMobs && entity.hasCustomName())) continue;
             // Close by, the game leaves a mob out only when the terrain hides it.
             if (entity.distanceToSqr(eye) < 24 * 24) continue;
-            if (tooFar(entity, eye, config.mobMaxDistance)) continue;
+            if (tooFar(entity, eye, maxDistance(entity, config))) continue;
             if (overVoid(minecraft, eye, entity.getUUID(), entity, config)) continue;
             if (skipped(entity, true)) continue;
             if (occluded(entity.getUUID(), entity, config)) continue;
@@ -883,16 +907,17 @@ public final class GhostRenderer {
         for (FarPlayer player : config.impostorPlayers ? FarPlayerTracker.get().players() : List.<FarPlayer>of()) {
             if (player.puppet() != null) ImpostorAtlas.request(ImpostorKey.of(player.puppet()), player.puppet());
         }
-        if (!config.distantMobs) return;
+        if (!config.distantMobs && !config.distantEntities) return;
         for (MobMemory.Remembered mob : FarPlayerTracker.get().mobs().shown()) {
             Entity puppet = mob.puppet();
-            if (!(puppet instanceof LivingEntity)) continue;
+            if (puppet == null || !config.shows(creature(puppet))
+                    || !(creature(puppet) ? config.impostors : config.impostorEntities)) continue;
             ImpostorKey key = ImpostorKey.of(puppet);
-            if (!MobFlight.pictured(puppet)) {
+            if (!fromHeights(puppet)) {
                 ImpostorAtlas.request(key, puppet);
                 continue;
             }
-            // A phantom or a ghast: seen from every height, as it flies about.
+            // A phantom, a ghast, an aircraft: seen from every height, as it flies about.
             for (int height = 0; height < ImpostorViews.HEIGHTS.length; height++) {
                 ImpostorAtlas.request(ImpostorKey.seenFrom(key, height), puppet);
             }
@@ -935,16 +960,20 @@ public final class GhostRenderer {
      */
     private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config,
                                     double dx, double dy, double dz, float facing) {
-        if (!ImpostorAtlas.usable() || !(entity instanceof LivingEntity living)
-                || entity.isPassenger() || entity.isVehicle()
+        if (!ImpostorAtlas.usable() || entity.isPassenger() || entity.isVehicle()
                 || !drawable(minecraft.getEntityRenderDispatcher(), entity)) {
             return false;
         }
+        // Players are asked for under their own switch, before; mobs and the rest under theirs.
+        if (!(entity instanceof Player) && !(creature(entity) ? config.impostors : config.impostorEntities)) return false;
         ImpostorKey key = ImpostorKey.of(entity);
-        float yaw = Float.isNaN(facing) ? Mth.rotLerp(partialTick, living.yBodyRotO, living.yBodyRot) : facing;
-        boolean aloft = MobFlight.pictured(entity);
+        // A mob's body turns on its own; a boat or a vehicle is the way it faces.
+        float yaw = !Float.isNaN(facing) ? facing : entity instanceof LivingEntity living
+                ? Mth.rotLerp(partialTick, living.yBodyRotO, living.yBodyRot)
+                : Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
+        boolean aloft = fromHeights(entity);
         if (aloft) {
-            // A phantom or a ghast, often seen from below: the picture baked from the nearest
+            // A phantom, a ghast, an aircraft, often seen from below: the picture baked from the nearest
             // height, round its middle, turned to the camera up and down as a bird's is.
             dy += ImpostorAtlas.middle(entity);
             double ax = Mth.lerp(partialTick, entity.xOld, entity.getX()) + dx - eye.x;
