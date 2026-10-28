@@ -961,7 +961,9 @@ host shares, the other players see them too (see
 ### Benchmark
 
 `/livinghorizon benchmark [seconds]` (`debug/Benchmark`) measures what the mod costs where the
-player stands, on their own machine. The player stands still; the settings go through phases:
+player stands, on their own machine. It is not a player's command: it and its sub-commands are
+there only in a game started with `-Dlh.benchmark=true` (`Benchmark.ON`, a JVM argument in the
+launcher), and without it they are not even suggested. The player stands still; the settings go through phases:
 a warm-up of 20 seconds that is not measured, the mod off, the player's settings, each preset,
 the mod off again, distant players, mobs and birds each on their own, then mobs with
 *Simplified Entities*, *Skip Hidden Mobs* and *Hide Behind Far Terrain* off in turn, and the mod
@@ -1027,7 +1029,7 @@ update, measure the same scene. Birds still choose where they fly by chance.
 | `/livinghorizon lod` (or `voxy`) | Which far terrain mod is read and the state of its depth |
 | `/livinghorizon debug` | Turns the debug panel and the boxes on or off together |
 | `/livinghorizon debug offline test ...` | Test players who logged off (see [Test players](#test-players-who-logged-off)) |
-| `/livinghorizon benchmark [seconds]` | Measures what the mod costs, part by part, and writes a report (see [Benchmark](#benchmark)) |
+| `/livinghorizon benchmark [seconds]` | Measures what the mod costs, part by part, and writes a report (see [Benchmark](#benchmark)); only with `-Dlh.benchmark=true` |
 | `/livinghorizon benchmark world` | Makes the benchmark's world, the same every time, after saying so; `... confirm` goes ahead |
 
 Two key bindings, unbound by default: *Toggle Distant Players* (flips `enabled`) and *Open

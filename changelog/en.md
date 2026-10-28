@@ -14,6 +14,13 @@
 #### Fixed
 - **Game freezing when changing dimension or leaving a world** — the game no longer freezes for good when you go through a portal or leave a world (with Distant Horizons).
 
+## 0.12.1 — 2026-10-27
+
+### Client
+
+#### Fixed
+- **Benchmark open to every player** — `/livinghorizon benchmark` is no longer offered to players; it is kept for testing the mod.
+
 ## 0.12.0 — 2026-10-23
 
 ### Server

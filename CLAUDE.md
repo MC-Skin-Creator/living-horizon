@@ -547,7 +547,8 @@ come back, add it here in the same pull request: this file is what the next sess
   either**: the author measured 70 to 100 FPS from the two together; the per-box queries are the
   fallback for OpenGL older than 4.3 and nothing else.
 - **Frame rate lost to the mod** (with Voxy or not): measure before guessing. On the player's
-  machine, ask for the report of `/livinghorizon benchmark` (`debug/Benchmark`): frame times with
+  machine, ask for the report of `/livinghorizon benchmark` (`debug/Benchmark`; the game must be
+  started with `-Dlh.benchmark=true`, without it the command is not there): frame times with
   the mod off, each preset and each part on its own, on their GPU and mods. Run in the world
   `/livinghorizon benchmark world` makes, it starts from a fixed spot and view, so two reports,
   before and after an update, compare. Here, the `perf` game test does the same headless.
