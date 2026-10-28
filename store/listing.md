@@ -192,21 +192,8 @@ Open the settings from the Options screen, Mod Menu, Sodium's *Video Settings* o
 <details>
 <summary>Is it only visual? Does it break mob farms?</summary>
 
-It is only visual. Distant mobs are copies drawn on your screen, with no AI. The real mobs
-work as without the mod, so farms, spawning and the mob cap do not change. You cannot hit or
-ride a distant mob. The birds are only visual too.
-
-</details>
-
-<details>
-<summary>Do distant mobs move? What happens when I come close?</summary>
-
-They move. Each one plays ready-made animations that fit the ground around it: it walks a
-few blocks, grazes and looks around. Happy ghasts and mannequins stand still at first: set
-them to *Roaming* in *Mobs & Entities...*.
-
-As you come close, the copy walks back to the real mob, and the real mob takes its place.
-Most of the time you do not see the change.
+It is only visual, no AI. The real mobs work as without the mod, so farms, spawning and the
+mob cap do not change. You cannot hit a distant mob.
 
 </details>
 
@@ -224,8 +211,7 @@ since can still show until you come near it. Then it is forgotten.
 A higher simulation distance makes the server run more real mobs, which costs a lot, and the
 server still only sends them so far. Living Horizon draws copies that the server does not
 run. They play ready-made animations, and far away they become flat pictures (*Simplified
-Entities*). So you see mobs much farther away, for much less. Sodium only draws the mobs the
-server sends.
+Entities*).
 
 </details>
 
@@ -256,18 +242,10 @@ version.
 <details>
 <summary>Do mobs from other mods show far away?</summary>
 
-Yes. Any mob the game can draw shows far away, modded ones included. Monsters are off at
-first, from other mods as from the game: they despawn when nobody is near. Turn any mob on
-or off in *Mobs & Entities...*.
-
-- Mobs made with GeckoLib are not drawn far away on 1.21.2 to 1.21.8 yet
-  ([#67](https://github.com/MC-Skin-Creator/living-horizon/issues/67)).
-- Vehicles from other mods, such as planes, are not shown far away yet
-  ([#257](https://github.com/MC-Skin-Creator/living-horizon/issues/257)).
-- Create contraptions and Create: Aeronautics airships are not shown far away yet
-  ([#267](https://github.com/MC-Skin-Creator/living-horizon/issues/267)).
-- A server with the mod only shares the game's own mobs. Mobs from other mods show where
-  you met them.
+Yes, as long as they use Minecraft's own entity system. If a mod's entities work too
+differently, ask me to add support for it, in an
+[issue](https://github.com/MC-Skin-Creator/living-horizon/issues) or on the
+[Discord](https://discord.gg/THSV9dexNj) :)
 
 </details>
 
@@ -305,8 +283,7 @@ No. It changes nothing in your world and loads no chunk. It keeps what it rememb
 of its own: in the `config` folder, and in `livinghorizon-positions.dat` in the world folder
 for what the server shares. Removing the mod leaves your world as it was.
 
-On a server, the mod only sends positions to the players who have it: the players five
-times a second, the rest every five seconds.
+On a server, the mod only sends positions to the players who have it.
 
 </details>
 
@@ -315,9 +292,9 @@ times a second, the rest every five seconds.
 <details>
 <summary>Does the server need the mod?</summary>
 
-No. Everything works in single player, and you can join any server with it. Players at any
-distance need the mod on the server, and the server then shares more mobs and players who
-logged off. See *Multiplayer*.
+No. Almost everything works in single player, and you can join any server with it. But
+players at any distance need the mod on the server, and the server then shares more mobs and
+players who logged off. See *Multiplayer*.
 
 </details>
 
@@ -336,8 +313,6 @@ plugin for Paper is discussed in
 
 - Distant players need the mod on the server. Its owner may also limit who is shared.
 - On a server without the mod, only the mobs you met show.
-- Monsters are off at first: turn them on in *Mobs & Entities...*.
-- *Only Over Terrain* hides a mob where no terrain is drawn under it yet.
 
 </details>
 
@@ -366,15 +341,6 @@ No. Living Horizon is a mod for Minecraft Java Edition.
 </details>
 
 <details>
-<summary>Why are there so many files?</summary>
-
-There is one file per game version and loader: take the one for yours. Every file is built
-and checked automatically. I mostly play on 1.21.11 with Voxy myself, so reports on the
-other versions help a lot.
-
-</details>
-
-<details>
 <summary>My game version is not supported. Will it be?</summary>
 
 Tell me on the [Discord](https://discord.gg/THSV9dexNj) which version and loader you play.
@@ -385,9 +351,7 @@ It helps me choose what comes next.
 <details>
 <summary>Can I put it in a modpack?</summary>
 
-Yes. Use the official file, unchanged, and credit it: name Living Horizon and clixmods, and
-link to the [GitHub repository](https://github.com/MC-Skin-Creator/living-horizon). Modified versions and forks are not allowed: send
-a pull request instead.
+Yes. Use the official file and credit it.
 
 </details>
 
@@ -405,11 +369,14 @@ with credit. See section 5 of the [LICENSE](https://github.com/MC-Skin-Creator/l
 <details>
 <summary>Was it made with AI?</summary>
 
-Yes. I make video games for a living: I worked on Terra Memoria, and I have made mods since
-2017. The ideas and the techniques come from game development: impostors and ready-made
-animations are tricks games have used for years. AI writes much of the code. I decide how
-the mod works, test it in the game and fix what goes wrong. Without AI, a project this size
-would have taken me too long to make at all.
+Yes. I am a full-stack developer, specialised in video games, and it is my job. I have made
+mods since 2017: Call of Duty: Black Ops III maps such as
+[Nuketown Zombies Legacy](https://steamcommunity.com/sharedfiles/filedetails/?id=2180904327),
+with over a million downloads on the Steam Workshop (see my
+[portfolio](https://clixmods.github.io/)). The ideas and the techniques come from game
+development: impostors, LODs and ready-made animations are tricks games have used for years.
+AI writes much of the code. I decide how the mod works, test it in the game and fix what
+goes wrong. Without AI, a project this size would have taken me too long to make at all.
 
 </details>
 
