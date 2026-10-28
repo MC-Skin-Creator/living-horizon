@@ -14,6 +14,7 @@
 
 #### Fixed
 - **Buttons piled on top of each other** — the buttons at the bottom of *Distant Mobs & Entities* no longer sit on top of one another, and *Restore Defaults* is back to the left of *Done* in the settings (Minecraft 1.20.1).
+- **Game freezing when changing dimension or leaving a world** — the game no longer freezes for good when you go through a portal or leave a world (with Distant Horizons).
 
 ## 0.12.0 — 2026-10-23
 

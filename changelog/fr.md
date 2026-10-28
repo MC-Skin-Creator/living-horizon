@@ -14,6 +14,7 @@
 
 #### Corrections
 - **Boutons empilés les uns sur les autres** — les boutons en bas de *Créatures et entités lointaines* ne se chevauchent plus, et *Réinitialiser* est de retour à gauche de *Terminé* dans les réglages (Minecraft 1.20.1).
+- **Jeu figé en changeant de dimension ou en quittant un monde** — le jeu ne se fige plus pour de bon quand tu passes un portail ou quittes un monde (avec Distant Horizons).
 
 ## 0.12.0 — 2026-10-23
 

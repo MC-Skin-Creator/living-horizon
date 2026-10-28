@@ -192,6 +192,10 @@ request, and attaches the jar as a 14-day workflow artifact. A pull request that
 changes Markdown files and the LICENSE skips the targets (the changelog is still checked).
 CI is what checks a change; a pull request is not done until it is green.
 
+Every workflow runs Gradle through `.github/scripts/gradle.sh`: an attempt is stopped after
+25 minutes, and one stopped that way or ended by a failed download is tried again, three times
+at most; any other failure ends it at once. The build jobs stop after 90 minutes.
+
 The Gradle cache is written by `.github/workflows/cache.yml` on `develop` only, and read by
 the pull request builds and the release (`.github/actions/gradle-cache`): one entry of
 downloads shared by every job, and one per Forge and NeoForge node with its prepared
@@ -318,6 +322,14 @@ come back, add it here in the same pull request: this file is what the next sess
   `DhSource.open` takes the one of the player's dimension; taking the first read another
   dimension's ground. And Distant Horizons' read cache keeps an area as first read, empty if it
   was not built yet: `DhSource.cache` empties it every 30 s, and 2 s after a column came back empty.
+- **The game frozen for good as the player changes dimension or leaves** (a thread dump with the
+  render thread in `LodWorld.release`, on a write lock; issue #248): a reader held the lock inside a
+  Distant Horizons read, which waits with no time limit for Distant Horizons' threads, while those
+  waited for the render thread (to upload their terrain) or had been shut down with the world,
+  dropping the read. Only a source that keeps what it reads between reads takes the lock
+  (`LodSource.keepsBetweenReads`, Voxy); a Distant Horizons read of a world left keeps nothing
+  (`DhSource.Opened`), and `LodWorld.suspend` interrupts those still waiting (`ModCalls`), which
+  Distant Horizons answers as cancelled. The game's thread never waits for a read of another mod.
 - **Depth view lighter or darker as far mobs show or hide**: the game's far plane follows the
   farthest figure drawn (`GhostRenderer.farPlane`); the view shades against `FarDepth.VIEW_FAR`.
 - **Distant Horizons' rendering engine** (from 3.3: Blaze3D or OpenGL). With Iris installed,
@@ -553,6 +565,11 @@ come back, add it here in the same pull request: this file is what the next sess
   `glColorMask` for all buffers at once and puts back the first buffer's value desynchronises
   that cache for the pack's other buffers. `FarDepth.GlState` saves and restores both per draw
   buffer (`glEnablei`, `glColorMaski`); every raw GL draw of the mod goes through it.
+- **CI jobs running for hours, or failing on a Forge node with `IOException: closed`**
+  (`Received RST_STREAM`, after a `Cache miss!` stack trace that is only information): Forge's
+  Maven left the download of `forge-<version>-userdev.jar` hanging, and ForgeGradle's Mavenizer
+  waits on it with no limit of its own. `gradle.sh` stops the attempt and tries again; a job
+  that still fails three times means Forge's Maven is down: re-run it later.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
