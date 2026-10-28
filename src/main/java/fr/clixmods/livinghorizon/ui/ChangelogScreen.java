@@ -142,6 +142,8 @@ public final class ChangelogScreen extends Screen {
             graphics.drawCenteredString(font, Component.translatable(KEY + "empty"), width / 2, TOP + 20, DIM);
             return;
         }
+        // In a world nothing darkens the game behind: a panel keeps the text readable.
+        graphics.fill(0, TOP - 4, width, bottom() + 4, 0xB0000000);
         graphics.enableScissor(0, TOP, width, bottom());
         for (Row row : rows) {
             int y = TOP + row.y() - (int) scroll;
