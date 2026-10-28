@@ -32,7 +32,7 @@ public final class ChangelogScreen extends Screen {
     private static final int TOP = 32, MARGIN = 20, BAR_WIDTH = 6, TEXT = 0xFFFFFFFF, DIM = 0xFFA0A0A0;
 
     /** A line of the page: its place from the top of the text, and how far in it starts. */
-    private record Row(FormattedCharSequence text, int x, int y, boolean bullet) {}
+    private record Row(FormattedCharSequence content, int x, int y, boolean bullet) {}
 
     private final @Nullable Screen parent;
     private List<Row> rows = List.of();
@@ -112,8 +112,8 @@ public final class ChangelogScreen extends Screen {
         };
         boolean heading = line.kind() != ChangelogText.Kind.BULLET;
         MutableComponent text = Component.empty();
-        for (ChangelogText.Span span : ChangelogText.spans(line.text())) {
-            text.append(Component.literal(span.text()).withStyle(Style.EMPTY
+        for (ChangelogText.Span span : ChangelogText.spans(line.content())) {
+            text.append(Component.literal(span.content()).withStyle(Style.EMPTY
                     .withColor(span.bold() && !heading ? ChatFormatting.YELLOW : colour)
                     .withBold(heading || span.bold())
                     .withItalic(span.italic())));
@@ -149,7 +149,7 @@ public final class ChangelogScreen extends Screen {
             int y = TOP + row.y() - (int) scroll;
             if (y + font.lineHeight < TOP || y > bottom()) continue;
             if (row.bullet()) graphics.drawString(font, "•", row.x() - 8, y, DIM);
-            graphics.drawString(font, row.text(), row.x(), y, TEXT);
+            graphics.drawString(font, row.content(), row.x(), y, TEXT);
         }
         graphics.disableScissor();
         drawScrollBar(graphics);
