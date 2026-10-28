@@ -701,8 +701,11 @@ that a mob met in an earlier game is read back rather than baked.
   below: like a bird, one sheet per height they are seen from (well below, below, level,
   above: `ImpostorViews.HEIGHTS`, part of the key through `ImpostorKey.seenFrom`), baked
   turned round their middle (`ImpostorAtlas.MIDDLE`), facing the camera entirely when drawn.
-  All four are asked for together; kept on disk like any mob's. A happy ghast carrying a
-  player is pictured with its rider, upright, as before.
+  All four are asked for together; kept on disk like any mob's. Boats and vehicles are
+  pictured the same way. A picture turned up to the camera round the middle shows what is
+  nearer than that middle (an aircraft's nose, the wheels under it) farther along the line of
+  sight, under the ground the figure stands on when seen from above: `GhostRenderer.picture`
+  moves it nearer by half its size and makes it as much smaller, the same on screen.
 - **Players who logged off** are impostors in every posture: standing, seated on the ground,
   lying down or in a bed. A posture other than standing is part of the key
   (`ImpostorKey.posture`), and the picture is baked in it:
@@ -713,7 +716,9 @@ that a mob met in an earlier game is read back rather than baked.
   minecart...) are baked in one picture with what carries them (`ImpostorKey.riding`,
   `ImpostorAtlas.Rider`): the rider seated where it sits, turned as it is turned. A vehicle has
   no body to turn in its state, so the entity itself is turned for each view and put back
-  after the bake. Filed as a player's sheet, never kept on disk.
+  after the bake. Filed as a player's sheet, never kept on disk. On what is pictured from
+  every height (a boat, a vehicle, a happy ghast), the rider is too, both turned round the
+  middle of the two together (`ImpostorAtlas.middle(mount, rider)`).
 - **Never impostors**: a vehicle carrying more than one passenger (drawn as models, all of
   them), a mob carrying another that is not a player, the 2D birds, parrots and bats, and the
   types `GhostRenderer.drawable` leaves out (GeckoLib 4).

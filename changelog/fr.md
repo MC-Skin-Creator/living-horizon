@@ -15,6 +15,7 @@
 - **Créatures et entités en deux onglets** — *Créatures et entités...* range maintenant les créatures et les autres entités (bateaux, véhicules, mannequins) dans deux onglets, où un bateau ou un véhicule est simplement affiché ou masqué.
 - **Créatures et entités appliqué tout de suite** — activer ou masquer un type dans *Créatures et entités...* se voit maintenant aussitôt dans le monde derrière, plus seulement une fois l'écran fermé.
 - **Réglages des créatures lointaines en trois parties** — les réglages *Créatures et entités lointaines* sont maintenant répartis en *Général*, *Créatures* et *Entités*, avec la liste, le scan et *Tout oublier* dans *Général*.
+- **Joueurs montés au loin** — avec *Joueurs simplifiés*, un joueur lointain dans un bateau, un wagonnet, un avion ou sur un ghast joyeux est maintenant représenté vu d'au-dessus et d'en dessous comme ce qu'il monte, et plus de profil quand on le regarde d'en haut.
 
 #### Corrections
 - **Plantage en ouvrant Créatures et entités depuis l'écran titre** — ouvrir *Créatures et entités...* depuis l'écran titre ne fait plus planter le jeu (Minecraft 26.x).

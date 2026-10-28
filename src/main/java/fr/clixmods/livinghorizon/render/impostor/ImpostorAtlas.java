@@ -180,6 +180,12 @@ public final class ImpostorAtlas {
         return entity.getBbHeight() / 2;
     }
 
+    /** Blocks from a mount's feet to the middle it and its rider are pictured round, from a height. */
+    public static double middle(Entity mount, @Nullable Rider rider) {
+        if (rider == null) return middle(mount);
+        return Math.max(mount.getBbHeight(), rider.seat().y + rider.entity().getBbHeight()) / 2;
+    }
+
     /** How far down a tile the origin of an entity's pictures is: its feet, or its middle when seen from a height. */
     private static float feet(ImpostorKey key) {
         return Float.isNaN(ImpostorKey.elevation(key)) ? FEET : MIDDLE;
@@ -670,6 +676,7 @@ public final class ImpostorAtlas {
     /** A sheet thrown away: the figures sharing it, and its pixels, go with it. */
     private static void forget(ImpostorKey key) {
         USED.remove(key);
+        ImpostorKey.forget(key);
         ALIASES.values().removeIf(key::equals);
         LOOKS.values().removeIf(key::equals);
     }
@@ -1005,7 +1012,9 @@ public final class ImpostorAtlas {
 
     private static double lift(Request request) {
         // A flyer seen from a height: its middle where the tile turns.
-        if (request.puppet != null && !Float.isNaN(ImpostorKey.elevation(request.key))) return -middle(request.puppet);
+        if (request.puppet != null && !Float.isNaN(ImpostorKey.elevation(request.key))) {
+            return -middle(request.puppet, request.rider);
+        }
         return request.rider == null && request.key.posture() == ImpostorKey.LYING ? LYING_LIFT : 0;
     }
 
@@ -1080,7 +1089,7 @@ public final class ImpostorAtlas {
             if (request.rider != null) {
                 Vec3 seat = seat(request.rider, view);
                 minecraft.getEntityRenderDispatcher().submit(stagedRider(minecraft, request.rider, view),
-                        new CameraRenderState(), seat.x, seat.y, seat.z, pose, storage);
+                        new CameraRenderState(), seat.x, seat.y + lift(request), seat.z, pose, storage);
             }
         }
     }
@@ -1092,8 +1101,8 @@ public final class ImpostorAtlas {
             GhostRenderer.drawState(staged(minecraft, request, view), 0.0, lift(request), 0.0, pose, buffers, FULL_BRIGHT);
             if (request.rider != null) {
                 Vec3 seat = seat(request.rider, view);
-                GhostRenderer.drawState(stagedRider(minecraft, request.rider, view), seat.x, seat.y, seat.z, pose, buffers,
-                        FULL_BRIGHT);
+                GhostRenderer.drawState(stagedRider(minecraft, request.rider, view), seat.x, seat.y + lift(request), seat.z,
+                        pose, buffers, FULL_BRIGHT);
             }
         }
     }

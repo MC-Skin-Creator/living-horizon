@@ -3,16 +3,23 @@ package fr.clixmods.livinghorizon.gametest.scenario;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
+import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
+import fr.clixmods.livinghorizon.render.impostor.ImpostorKey;
+import fr.clixmods.livinghorizon.render.impostor.ImpostorViews;
 import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobMemory;
+import fr.clixmods.livinghorizon.track.RestingPlayers;
+import fr.clixmods.livinghorizon.track.RestingPuppet;
 import fr.clixmods.livinghorizon.ui.MobList;
 import fr.clixmods.livinghorizon.ui.MobTypesScreen;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.phys.Vec3;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -29,8 +36,9 @@ import javax.imageio.ImageIO;
  * and airship, which their pilot steers, are listed and shown before one is met. Left behind
  * until the server no longer sends them, their copies stand where they were, past the mobs'
  * distance (the entities' own reaches farther), as pictures with Simplified Entities. With the
- * list open over the paused game, switching the airship off and on shows at once. Without the
- * mod, that part is skipped.
+ * list open over the paused game, switching the airship off and on shows at once. A player left
+ * in the biplane is pictured with it from above, as the biplane is. Without the mod, that part
+ * is skipped.
  */
 public final class VehiclesScenario implements Scenario {
     private static final String MINECART = "minecraft:minecart";
@@ -149,13 +157,29 @@ public final class VehiclesScenario implements Scenario {
             Scene.command(world, "fill -1 19 -161 1 19 -159 minecraft:barrier");
             Scene.command(world, "tp @a 0 20 -160 0 22");
             context.waitTicks(60);
-            Scene.screenshot(context, this, "from-above");
+            Path abovePictures = Scene.screenshot(context, this, "from-above");
             int above = context.computeOnClient(minecraft -> PolygonStats.impostors());
             Scene.screenshotAtlas(context, this);
+            // As much of them shows as of their models: a picture turned up to the camera round
+            // their middle once sank its lower half into the ground they stand on.
+            Scene.configure(context, config -> config.impostorEntities = false);
+            Path aboveModels = Scene.screenshot(context, this, "from-above-models");
+            Scene.configure(context, config -> config.distantEntities = false);
+            Path aboveNothing = Scene.screenshot(context, this, "from-above-nothing");
+            Scene.configure(context, config -> {
+                config.distantEntities = true;
+                config.impostorEntities = true;
+            });
+            int pictured = differing(abovePictures, aboveNothing, 0), modelled = differing(aboveModels, aboveNothing, 0);
             Scene.command(world, "tp @a 0 -60 -160 0 0");
             context.waitTicks(20);
-            Scene.log("vehicles: " + above + " drawn as pictures from above");
+            Scene.log("vehicles: " + above + " drawn as pictures from above, " + pictured + " pixels as pictures, "
+                    + modelled + " as models");
             if (above < AIRCRAFT.length) throw new AssertionError("vehicles: the aircraft are not pictures from above");
+            if (pictured < modelled * 0.6) {
+                throw new AssertionError("vehicles: the pictures from above show " + pictured + " pixels, the models "
+                        + modelled + ": sunk into the ground");
+            }
             Scene.configure(context, config -> config.impostorEntities = false);
             Scene.screenshot(context, this, "remembered-models");
             Scene.log("vehicles: " + impostors + " drawn as pictures with Simplified Entities");
@@ -168,7 +192,64 @@ public final class VehiclesScenario implements Scenario {
             int gone = differing(on, off, 0);
             Scene.log("vehicles: Show Entities off changes " + gone + " pixels");
             if (gone < 50) throw new AssertionError("vehicles: Show Entities off left the aircraft drawn (" + gone + " pixels)");
+            pilot(context, world);
         }
+    }
+
+    /**
+     * A test player left in a biplane, seen from above far away: pictured with it from the height
+     * the biplane is seen from, never level with it as a rider on a horse is.
+     */
+    private void pilot(ClientGameTestContext context, TestSingleplayerContext world) {
+        Scene.configure(context, config -> {
+            config.distantEntities = true;
+            config.impostorEntities = true;
+            config.impostorPlayers = true;
+        });
+        Scene.command(world, "tp @a 0.5 -60 -14.5 0 0");
+        context.waitTicks(10);
+        Scene.command(world, "summon " + AIRCRAFT[0] + " 0.5 -60 -10.5 {Rotation:[90f,0f]}");
+        context.waitTicks(10);
+        Scene.command(world, "ride @p mount @e[type=" + AIRCRAFT[0] + ",limit=1,sort=nearest]");
+        context.waitTicks(20);
+        if (!context.computeOnClient(minecraft -> minecraft.player.isPassenger())) {
+            throw new AssertionError("vehicles: the camera could not ride the biplane");
+        }
+        context.runOnClient(minecraft -> minecraft.player.connection.sendCommand("livinghorizon debug offline test spawn Pilot"));
+        context.waitTicks(5);
+        Scene.command(world, "ride @p dismount");
+        Scene.command(world, "kill @e[type=" + AIRCRAFT[0] + ",limit=1,sort=nearest]");
+        // 150 blocks off and 80 up, on the barrier, where the terrain is drawn already.
+        Scene.command(world, "tp @a 0.5 20 -159.5 0 28");
+        String why = null;
+        for (int i = 0; i < 30 && !"".equals(why); i++) {
+            context.waitTicks(10);
+            why = context.computeOnClient(minecraft -> {
+                RestingPlayers resting = FarPlayerTracker.get().resting();
+                RestingPuppet rider = null;
+                for (RestingPlayers.Spot spot : resting.spots()) {
+                    if (spot.name().equals("Pilot") && minecraft.level != null) rider = resting.puppet(minecraft.level, spot);
+                }
+                if (rider == null) return "no test player";
+                Entity mount = rider.mount();
+                if (mount == null) return "the pilot is on nothing";
+                Vec3 seat = rider.position().subtract(mount.position()).yRot((float) Math.toRadians(mount.getYRot()));
+                ImpostorKey key = ImpostorKey.riding(rider, mount, seat, Mth.wrapDegrees(rider.yBodyRot - mount.getYRot()));
+                if (ImpostorAtlas.sheet(key) != null) return "the pilot is pictured level with the biplane";
+                for (int height = 0; height < ImpostorViews.HEIGHTS.length; height++) {
+                    if (ImpostorAtlas.sheet(ImpostorKey.seenFrom(key, height)) != null) return "";
+                }
+                return "no picture of the pilot from a height (waiting " + ImpostorAtlas.waiting() + ")";
+            });
+        }
+        Scene.log("vehicles: pilot " + (why.isEmpty() ? "pictured from a height" : why));
+        context.waitTicks(60);
+        Scene.screenshot(context, this, "pilot-above");
+        Scene.configure(context, config -> config.impostorPlayers = false);
+        Scene.screenshot(context, this, "pilot-above-models");
+        Scene.screenshotAtlas(context, this);
+        context.runOnClient(minecraft -> minecraft.player.connection.sendCommand("livinghorizon debug offline test clear"));
+        if (!why.isEmpty()) throw new AssertionError("vehicles: " + why);
     }
 
     /**

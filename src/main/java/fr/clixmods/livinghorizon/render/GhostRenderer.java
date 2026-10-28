@@ -976,14 +976,20 @@ public final class GhostRenderer {
             // A phantom, a ghast, an aircraft, often seen from below: the picture baked from the nearest
             // height, round its middle, turned to the camera up and down as a bird's is.
             dy += ImpostorAtlas.middle(entity);
-            double ax = Mth.lerp(partialTick, entity.xOld, entity.getX()) + dx - eye.x;
-            double ay = Mth.lerp(partialTick, entity.yOld, entity.getY()) + dy - eye.y;
-            double az = Mth.lerp(partialTick, entity.zOld, entity.getZ()) + dz - eye.z;
-            double elevation = Math.toDegrees(Math.atan2(-ay, Math.sqrt(ax * ax + az * az)));
-            key = ImpostorKey.seenFrom(key, ImpostorViews.height(elevation));
+            key = seenFrom(key, entity, eye, partialTick, dx, dy, dz);
         }
         return picture(minecraft, eye, entity, entity, key, null, 0, partialTick, config,
                 dx, dy, dz, yaw, Math.max(entity.getBbHeight(), entity.getBbWidth()), aloft);
+    }
+
+    /** The key of the pictures of {@code at} baked from the height nearest the camera's, round the point given. */
+    private static ImpostorKey seenFrom(ImpostorKey key, Entity at, Vec3 eye, float partialTick,
+                                        double dx, double dy, double dz) {
+        double ax = Mth.lerp(partialTick, at.xOld, at.getX()) + dx - eye.x;
+        double ay = Mth.lerp(partialTick, at.yOld, at.getY()) + dy - eye.y;
+        double az = Mth.lerp(partialTick, at.zOld, at.getZ()) + dz - eye.z;
+        double elevation = Math.toDegrees(Math.atan2(-ay, Math.sqrt(ax * ax + az * az)));
+        return ImpostorKey.seenFrom(key, ImpostorViews.height(elevation));
     }
 
     /**
@@ -1007,7 +1013,14 @@ public final class GhostRenderer {
         ImpostorKey key = ImpostorKey.riding(rider, mount, seat, turned);
         float yaw = Mth.rotLerp(partialTick, facingO, facing);
         double extent = Math.max(Math.max(mount.getBbHeight(), seat.y + rider.getBbHeight()), mount.getBbWidth());
-        return picture(minecraft, eye, rider, mount, key, seat, turned, partialTick, config, 0, 0, 0, yaw, extent, false);
+        // On an aircraft, a boat or a happy ghast, the rider is pictured from the heights its mount is.
+        boolean aloft = fromHeights(mount);
+        double dy = 0;
+        if (aloft) {
+            dy = ImpostorAtlas.middle(mount, new ImpostorAtlas.Rider(rider, seat, turned));
+            key = seenFrom(key, mount, eye, partialTick, 0, dy, 0);
+        }
+        return picture(minecraft, eye, rider, mount, key, seat, turned, partialTick, config, 0, dy, 0, yaw, extent, aloft);
     }
 
     /**
@@ -1050,6 +1063,13 @@ public final class GhostRenderer {
         double pull = Apparent.pull(distance, DepthFar.of(minecraft));
         // As large as its model would be drawn: a figure turning into its picture keeps its size.
         double boost = Apparent.boost(Apparent.extent(size), distance, pixelsPerRadian, config.minApparentPixels);
+        if (facing) {
+            // Turned to the camera round its middle, a picture shows what is nearer than that middle
+            // (an aircraft's nose, the wheels under it) farther along the line of sight: seen from
+            // above, under the ground it stands on, which hid it. Moved nearer by half its size,
+            // and made as much smaller, it looks the same and stands in front of that ground.
+            pull *= Math.max(0.1, 1 - sheet.worldSize() * boost * 0.5 / distance);
+        }
         int view = ImpostorViews.view(yaw, -ax, -az, last == null ? -1 : last.view);
         if (last == null) SHOWN.put(shown, last = new Shown());
         last.key = key;
