@@ -129,6 +129,66 @@ public final class LodLevels {
         return out;
     }
 
+    /**
+     * The levels of a model drawn over another one of the same figure (a sheep's wool over its
+     * body, a saddle, armour), grouped as the other's are, part by part by name: every group of
+     * {@code template}'s level takes this model's cubes of the parts its cubes belong to, merged
+     * into one box where the template's are, anchored to the part of the same name. A part the
+     * template has at that level no group for is left out; one the template does not have at all
+     * keeps its cubes. Its boxes then wrap the other's when its cubes do (wool is drawn larger).
+     */
+    public static List<Level> follow(LodModel model, LodModel template, List<Level> templateLevels) {
+        List<LodModel.Cube> cubes = model.cubes();
+        List<LodModel.Part> parts = model.parts();
+        java.util.Map<String, Integer> partByName = new java.util.HashMap<>();
+        for (int p = 0; p < parts.size(); p++) partByName.putIfAbsent(parts.get(p).name(), p);
+        java.util.Set<String> known = new java.util.HashSet<>();
+        for (LodModel.Part part : template.parts()) known.add(part.name());
+        List<Level> out = new ArrayList<>();
+        List<Group> all = new ArrayList<>();
+        for (int i = 0; i < cubes.size(); i++) all.add(single(model, i));
+        out.add(new Level(List.copyOf(all), model.quads()));
+        for (int level = 1; level < templateLevels.size(); level++) {
+            boolean[] used = new boolean[cubes.size()];
+            List<Group> groups = new ArrayList<>();
+            for (Group group : templateLevels.get(level).groups()) {
+                java.util.Set<String> names = new java.util.HashSet<>();
+                for (int source : group.sources()) names.add(template.parts().get(template.cubes().get(source).part()).name());
+                List<Integer> mine = new ArrayList<>();
+                for (int c = 0; c < cubes.size(); c++) {
+                    if (!used[c] && names.contains(parts.get(cubes.get(c).part()).name())) mine.add(c);
+                }
+                if (mine.isEmpty()) continue;
+                for (int c : mine) used[c] = true;
+                if (!group.merged()) {
+                    for (int c : mine) groups.add(single(model, c));
+                    continue;
+                }
+                int[] sources = mine.stream().mapToInt(Integer::intValue).toArray();
+                Integer named = partByName.get(template.parts().get(group.anchor()).name());
+                int anchor = named != null ? named : cubes.get(sources[0]).part();
+                if (named == null) {
+                    for (int source : sources) anchor = common(parts, anchor, cubes.get(source).part());
+                }
+                double[] box = boxOf(model, sources, anchor);
+                double filled = 0;
+                for (int source : sources) filled += volume(cubes.get(source).box());
+                groups.add(new Group(anchor, sources, box, Math.min(filled, volume(box)), faces(box), true));
+            }
+            for (int c = 0; c < cubes.size(); c++) {
+                // A part of the template's that this level has no group for went: so does this model's.
+                if (!used[c] && !known.contains(parts.get(cubes.get(c).part()).name())) groups.add(single(model, c));
+            }
+            out.add(new Level(List.copyOf(groups), quads(groups)));
+        }
+        return out;
+    }
+
+    private static Group single(LodModel model, int index) {
+        LodModel.Cube cube = model.cubes().get(index);
+        return new Group(cube.part(), new int[]{index}, cube.box().clone(), volume(cube.box()), cube.quads().length, false);
+    }
+
     private record Choice(double cost, int saved, int remove, int a, int b, Group merged) {
         static Choice remove(double cost, int saved, int index) {
             return new Choice(cost, saved, index, -1, -1, null);

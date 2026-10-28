@@ -45,8 +45,11 @@ public final class LodPreview {
                     continue;
                 }
                 Matrix4d rest = model.parts().get(group.anchor()).rest();
-                for (LodBake.Pixels texture : textures) {
-                    for (LodBake.Face face : LodBake.bake(model, group, texture)) faces.add(bakedFace(rest, face));
+                for (int t = 0; t < textures.size(); t++) {
+                    // Solid boxes for the first layer; those drawn over it keep their holes.
+                    for (LodBake.Face face : LodBake.bake(model, group, textures.get(t), t > 0)) {
+                        faces.add(bakedFace(rest, face));
+                    }
                 }
             }
             if (level == 0) {

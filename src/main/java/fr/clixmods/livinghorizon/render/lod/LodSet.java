@@ -37,6 +37,9 @@ public final class LodSet {
     private final boolean[] skips;
     private volatile @Nullable Plan plan;
     private volatile boolean failed;
+    /** A number of its own, for the models whose levels follow its. */
+    final long id = NEXT.incrementAndGet();
+    private static final java.util.concurrent.atomic.AtomicLong NEXT = new java.util.concurrent.atomic.AtomicLong();
 
     LodSet(ModelReader.Read read, net.minecraft.network.chat.Component name,
            List<net.minecraft.resources.Identifier> layers) {
@@ -54,9 +57,10 @@ public final class LodSet {
 
     /**
      * Makes the levels from the cubes one of {@code textures} shows, each keeping {@code ratio}
-     * of the polygons of the one before; away from the render thread.
+     * of the polygons of the one before, or grouped as {@code template}'s are (a model drawn
+     * over the figure's first, see {@link LodLevels#follow}); away from the render thread.
      */
-    void generate(List<LodBake.Pixels> textures, double ratio) {
+    void generate(List<LodBake.Pixels> textures, double ratio, @Nullable Plan template) {
         try {
             List<LodModel.Cube> all = read.cubes();
             boolean[] keep = new boolean[all.size()];
@@ -72,7 +76,8 @@ public final class LodSet {
             }
             LodModel model = read.keep(keep);
             int[] index = kept.stream().mapToInt(Integer::intValue).toArray();
-            List<LodLevels.Level> levels = LodLevels.generate(model, LodLevels.MODEL_LEVELS, ratio, true);
+            List<LodLevels.Level> levels = template != null ? LodLevels.follow(model, template.model(), template.levels())
+                    : LodLevels.generate(model, LodLevels.MODEL_LEVELS, ratio, true);
             int partCount = model.parts().size();
             PartDraw[][] draws = new PartDraw[levels.size()][];
             boolean[] usable = new boolean[levels.size()];

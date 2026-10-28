@@ -77,8 +77,16 @@ class LodBakeTest {
     }
 
     @Test
-    void theGapBetweenTheCubesIsCutOutInTheirColour() {
-        LodBake.Face top = LodBake.bake(twoCubes(), merged(twoCubes()), TEXTURE).get(4);
+    void theGapBetweenTheCubesIsFilledSolidInTheirColour() {
+        LodBake.Pixels pixels = LodBake.bake(twoCubes(), merged(twoCubes()), TEXTURE).get(4).pixels();
+        for (int x = 0; x < pixels.width(); x++) {
+            assertEquals(SIDE_COLOURS[2], pixels.argb(x, 5), "column " + x);
+        }
+    }
+
+    @Test
+    void aLayerDrawnOverAnotherKeepsTheGapClear() {
+        LodBake.Face top = LodBake.bake(twoCubes(), merged(twoCubes()), TEXTURE, true).get(4);
         LodBake.Pixels pixels = top.pixels();
         int opaque = 0, clear = 0;
         for (int x = 0; x < pixels.width(); x++) {
@@ -109,19 +117,26 @@ class LodBakeTest {
     }
 
     @Test
-    void emptyTexelsTakeTheirNeighboursColour() {
+    void emptyTexelsTakeTheirNeighboursColourAndStayOpaque() {
         int[] argb = {0xFF102030, 0, 0xFF304050};
-        LodBake.fill(argb, 3, 1);
+        LodBake.fill(argb, 3, 1, false);
         assertEquals(0xFF102030, argb[0]);
-        assertEquals(0x00203040, argb[1]);
+        assertEquals(0xFF203040, argb[1]);
         assertEquals(0xFF304050, argb[2]);
+    }
+
+    @Test
+    void anOverlaysEmptyTexelsStayClear() {
+        int[] argb = {0xFF102030, 0, 0xFF304050};
+        LodBake.fill(argb, 3, 1, true);
+        assertEquals(0x00203040, argb[1]);
     }
 
     @Test
     void texelsFarFromAnyDrawnOneAreGrey() {
         int[] argb = new int[3];
-        LodBake.fill(argb, 3, 1);
-        assertEquals(0x00808080, argb[1]);
+        LodBake.fill(argb, 3, 1, false);
+        assertEquals(0xFF808080, argb[1]);
     }
 
     @Test

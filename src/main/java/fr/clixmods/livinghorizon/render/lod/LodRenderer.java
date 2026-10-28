@@ -154,6 +154,7 @@ public final class LodRenderer {
         if (layers == null) return;
         // Chosen before the figure is drawn this frame: what it was drawn with last.
         Map<ModelPart, Seen> seen = layers.frame == frame ? layers.last : layers.now;
+        ModelPart first = layers.frame == frame ? layers.firstLast : layers.firstNow;
         boolean failed = layers.frame == frame ? layers.lastFailed : layers.failed;
         if (failed || seen.isEmpty()) return;
         List<Bake> bakes = CHOSEN;
@@ -162,7 +163,8 @@ public final class LodRenderer {
         // Its keys rather than its entries: an identity map makes an entry each step.
         for (ModelPart root : seen.keySet()) {
             Seen model = seen.get(root);
-            LodSet set = set(root, model);
+            long follows = follows(root, seen, first);
+            LodSet set = follows == -1 ? null : set(root, model, follows);
             if (set == null || !set.ready(wanted)) {
                 ready = false;
                 continue;
@@ -221,7 +223,7 @@ public final class LodRenderer {
             return textures;
         }
 
-        private static long mix(long value) {
+        static long mix(long value) {
             value = (value ^ (value >>> 33)) * 0xff51afd7ed558ccdL;
             value = (value ^ (value >>> 33)) * 0xc4ceb9fe1a85ec53L;
             return value ^ (value >>> 33);
@@ -236,6 +238,8 @@ public final class LodRenderer {
         int frame;
         boolean failed, lastFailed;
         Map<ModelPart, Seen> now = new IdentityHashMap<>(), last = new IdentityHashMap<>();
+        /** The first model drawn in each record: the figure's own, which the others follow. */
+        @Nullable ModelPart firstNow, firstLast;
         /** Records of frames gone, kept for the next ones: a frame makes none. */
         private final List<Seen> spare = new ArrayList<>();
 
@@ -248,6 +252,8 @@ public final class LodRenderer {
             old.clear();
             last = now;
             now = old;
+            firstLast = firstNow;
+            firstNow = null;
             lastFailed = failed;
             failed = false;
         }
@@ -256,6 +262,7 @@ public final class LodRenderer {
             Seen seen = now.get(root);
             if (seen == null) {
                 seen = (spare.isEmpty() ? new Seen() : spare.remove(spare.size() - 1)).reset(shown);
+                if (now.isEmpty()) firstNow = root;
                 now.put(root, seen);
             }
             return seen;
@@ -309,9 +316,28 @@ public final class LodRenderer {
     private static final Map<LodSet, Map<Identifier, Bake>> BAKES = new IdentityHashMap<>();
 
     /** The levels of a model drawn as {@code seen} says, made already or being made; null for none yet. */
-    private static @Nullable LodSet set(ModelPart root, Seen seen) {
+    private static @Nullable LodSet set(ModelPart root, Seen seen, long follows) {
         Long2ObjectOpenHashMap<LodSet> sets = SETS.get(root);
-        return sets == null ? null : sets.get(seen.key);
+        return sets == null ? null : sets.get(seen.key ^ follows);
+    }
+
+    /**
+     * The levels a model of a figure follows, from one of its records: none (0) for the figure's
+     * first model, else the first model's ({@link LodLevels#follow}), whose number goes into the
+     * key; -1 while those are not made yet.
+     */
+    private static long follows(ModelPart root, Map<ModelPart, Seen> record, @Nullable ModelPart first) {
+        if (first == null || root == first) return 0;
+        Seen own = record.get(first);
+        LodSet template = own == null ? null : set(first, own, 0);
+        return template == null || template.plan() == null ? -1 : Seen.mix(template.id) | 1;
+    }
+
+    /** The first model's levels, which {@code root}'s follow; null for the first model itself. */
+    private static @Nullable LodSet template(ModelPart root, Map<ModelPart, Seen> record, @Nullable ModelPart first) {
+        if (first == null || root == first) return null;
+        Seen own = record.get(first);
+        return own == null ? null : set(first, own, 0);
     }
 
     /** How deep in a model's parts the drawing is: 1 at the part it was asked to draw. */
@@ -349,15 +375,20 @@ public final class LodRenderer {
         seen.add(drawn);
         Seen before = layers.last.get(root);
         if (before == null || before.shown != shown) return;
-        LodSet set = set(root, before);
+        // A model drawn over the figure's first (wool, a saddle) is grouped as the first is.
+        long follows = follows(root, layers.last, layers.firstLast);
+        if (follows == -1) return;
+        LodSet set = set(root, before, follows);
         if (set == null) {
+            LodSet template = template(root, layers.last, layers.firstLast);
+            LodSet.Plan follow = template == null ? null : template.plan();
             // Made for the textures it was drawn with last frame, the parts as the game draws them now.
             LodSet made = new LodSet(ModelReader.read(root, ModelReader.GAME, true), owner.getType().getDescription(),
                     before.drawOrder());
-            SETS.computeIfAbsent(root, part -> new Long2ObjectOpenHashMap<>()).put(before.key, made);
+            SETS.computeIfAbsent(root, part -> new Long2ObjectOpenHashMap<>()).put(before.key ^ follows, made);
             List<Identifier> textures = before.textures();
             double ratio = FarConfig.get().lodKeep / 100.0;
-            WORKER.execute(() -> generate(made, textures, ratio));
+            WORKER.execute(() -> generate(made, textures, ratio, follow));
             set = made;
         }
         if (set.failed()) {
@@ -374,7 +405,7 @@ public final class LodRenderer {
     }
 
     /** Makes a model's levels from the textures it is drawn with; away from the render thread. */
-    private static void generate(LodSet set, List<Identifier> textures, double ratio) {
+    private static void generate(LodSet set, List<Identifier> textures, double ratio, LodSet.@Nullable Plan follow) {
         List<LodBake.Pixels> pixels = new ArrayList<>();
         for (Identifier texture : textures) {
             LodBake.Pixels read = pixels(texture);
@@ -384,7 +415,7 @@ public final class LodRenderer {
             }
             pixels.add(read);
         }
-        set.generate(pixels, ratio);
+        set.generate(pixels, ratio, follow);
     }
 
     /**
@@ -524,13 +555,15 @@ public final class LodRenderer {
             }
             record Placed(int level, int group, LodBake.Face face) {
             }
+            // Solid boxes for the model's first layer; those drawn over it keep their holes.
+            boolean overlay = !bake.set.layers.isEmpty() && !bake.set.layers.get(0).equals(bake.layer.texture());
             List<Placed> placed = new ArrayList<>();
             List<LodLevels.Level> levels = plan.levels();
             for (int level = 1; level < levels.size(); level++) {
                 List<LodLevels.Group> groups = levels.get(level).groups();
                 for (int g = 0; g < groups.size(); g++) {
                     if (!groups.get(g).merged()) continue;
-                    for (LodBake.Face face : LodBake.bake(plan.model(), groups.get(g), texture)) {
+                    for (LodBake.Face face : LodBake.bake(plan.model(), groups.get(g), texture, overlay)) {
                         placed.add(new Placed(level, g, face));
                     }
                 }

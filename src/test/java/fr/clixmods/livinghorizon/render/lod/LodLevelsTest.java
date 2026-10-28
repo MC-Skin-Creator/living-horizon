@@ -154,6 +154,40 @@ class LodLevelsTest {
         assertFalse(level.groups().get(0).merged());
     }
 
+    /** A four-legged body, its cubes grown by {@code grow} pixels on every side: grown, it is its wool. */
+    private static LodModel animal(double grow) {
+        LodModel model = new LodModel();
+        int root = model.part("root", -1, 0, 0, 0, 0, 0, 0, 1, 1, 1);
+        cube(model, "body", root, 0, 12, 0, new double[]{-5 - grow, -4 - grow, -8 - grow, 5 + grow, 4 + grow, 8 + grow});
+        cube(model, "head", root, 0, 8, -10, new double[]{-3 - grow, -3 - grow, -3 - grow, 3 + grow, 3 + grow, 3 + grow});
+        for (String leg : List.of("right_hind_leg", "left_hind_leg", "right_front_leg", "left_front_leg")) {
+            double x = leg.startsWith("right") ? -3 : 3, z = leg.contains("hind") ? 6 : -6;
+            cube(model, leg, root, x, 16, z, new double[]{-2 - grow, -grow, -2 - grow, 2 + grow, 8 + grow, 2 + grow});
+        }
+        return model;
+    }
+
+    @Test
+    void aModelDrawnOverAnotherIsGroupedAsItIsAndWrapsIt() {
+        LodModel body = animal(0), wool = animal(1);
+        List<LodLevels.Level> bodyLevels = LodLevels.generate(body);
+        List<LodLevels.Level> woolLevels = LodLevels.follow(wool, body, bodyLevels);
+        assertEquals(bodyLevels.size(), woolLevels.size());
+        for (int level = 1; level < bodyLevels.size(); level++) {
+            List<LodLevels.Group> bodies = bodyLevels.get(level).groups(), wools = woolLevels.get(level).groups();
+            assertEquals(bodies.size(), wools.size(), "level " + level);
+            for (int g = 0; g < bodies.size(); g++) {
+                LodLevels.Group under = bodies.get(g), over = wools.get(g);
+                assertEquals(under.merged(), over.merged(), "level " + level);
+                assertEquals(java.util.Arrays.toString(under.sources()), java.util.Arrays.toString(over.sources()));
+                for (int axis = 0; axis < 3; axis++) {
+                    assertTrue(over.box()[axis] <= under.box()[axis] + 1e-9, "level " + level + " axis " + axis);
+                    assertTrue(over.box()[axis + 3] >= under.box()[axis + 3] - 1e-9, "level " + level + " axis " + axis);
+                }
+            }
+        }
+    }
+
     @Test
     void flatBoxesHaveTwoFaces() {
         assertEquals(2, LodLevels.faces(new double[]{0, 0, 0, 4, 0, 4}));

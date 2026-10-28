@@ -13,10 +13,12 @@ import java.util.List;
  * side, at {@link #TEXELS} texels per pixel of the model. Drawn on the CPU from the model's
  * texture, so that it can be done away from the render thread.
  *
- * <p>Empty texels stay transparent (the box is cut out like the cubes it stands for) and take
- * their neighbours' colour, so that no dark edge shows where they are filtered. The faces are
- * meant to be drawn from outside only: from inside, the holes of the cut-out would show the
- * faces behind, and the figure would look doubled.
+ * <p>A box is solid and closed: its empty texels (where it goes past its cubes, between two legs
+ * welded together) take their neighbours' colour and stay opaque. The shape swells, but its
+ * faces meet and nothing is hollow; a box cut out like its cubes was tried and refused, its
+ * faces no longer touching, the head and body hollow. Only the layers drawn over a model's first
+ * (a villager's clothes) keep their texture's holes, or they would hide the layer under them.
+ * The faces are drawn from outside only.
  */
 public final class LodBake {
     /** Texels per pixel of the model. */
@@ -70,8 +72,16 @@ public final class LodBake {
             {0, 1, 0, 0, 0, 1}, {0, -1, 0, 0, 0, 1},
     };
 
-    /** The faces of a merged group, baked from its cubes with the model's texture. Flat sides are left out. */
+    /** The faces of a merged group, solid, baked from its cubes with the model's texture. Flat sides are left out. */
     public static List<Face> bake(LodModel model, LodLevels.Group group, Texture texture) {
+        return bake(model, group, texture, false);
+    }
+
+    /**
+     * @param overlay a layer drawn over the model's first: the texels its cubes leave empty stay
+     *                transparent, so that the layer under it shows there
+     */
+    public static List<Face> bake(LodModel model, LodLevels.Group group, Texture texture, boolean overlay) {
         List<float[]> triangles = triangles(model, group);
         double[] box = group.box();
         Vector3d middle = new Vector3d((box[0] + box[3]) / 2, (box[1] + box[4]) / 2, (box[2] + box[5]) / 2);
@@ -87,7 +97,7 @@ public final class LodBake {
             int ph = Math.min(MAX_SIDE, Math.max(1, (int) Math.ceil(height * TEXELS - 1e-6)));
             Vector3d center = new Vector3d(middle).fma(depth / 2, out);
             int[] argb = draw(triangles, texture, center, right, up, out, width, height, depth, pw, ph);
-            fill(argb, pw, ph);
+            fill(argb, pw, ph, overlay);
             faces.add(new Face(center, right, up, width, height, new Pixels(pw, ph, argb)));
         }
         return faces;
@@ -188,9 +198,9 @@ public final class LodBake {
     /**
      * Spreads the colours of the drawn texels into the empty ones, a round at a time, each
      * taking the average of its drawn neighbours; texels still empty after that are grey.
-     * The drawn texels are opaque, the others transparent.
+     * Every texel is opaque, but for the empty ones of an {@code overlay}, which stay transparent.
      */
-    static void fill(int[] argb, int width, int height) {
+    static void fill(int[] argb, int width, int height, boolean overlay) {
         int count = width * height;
         boolean[] solid = new boolean[count], drawn = new boolean[count];
         for (int i = 0; i < count; i++) solid[i] = drawn[i] = (argb[i] >>> 24) >= 128;
@@ -224,7 +234,7 @@ public final class LodBake {
         }
         for (int i = 0; i < count; i++) {
             int rgb = solid[i] ? argb[i] & 0xFFFFFF : 0x808080;
-            argb[i] = (drawn[i] ? 0xFF000000 : 0) | rgb;
+            argb[i] = (drawn[i] || !overlay ? 0xFF000000 : 0) | rgb;
         }
     }
 

@@ -737,10 +737,13 @@ quads, the villager 66, 30, 12 and 6 (`LodLevelsTest`), as the Mob LOD Lab did.
 **Baked faces** (`LodBake`): each side of a merged box is a picture of its cubes seen from
 outside, straight on, framed on that side, at 3 texels per model pixel (256 at most a side),
 drawn on the CPU from the model's texture so that it can run away from the render thread.
-Texels the cubes leave empty stay transparent, cut out like the cubes, and take their
-neighbours' colour so that no dark edge shows once filtered. The faces are drawn from outside
-only, or the holes would show the faces behind and the figure would look doubled; their
-texture coordinates stay a quarter texel inside, so that nothing next to them on a page bleeds in.
+A box is solid and closed: the texels its cubes leave empty (between two legs welded together)
+take their neighbours' colour and stay opaque, so the shape swells but its faces meet and nothing is
+hollow. A box cut out like its cubes was tried and refused: its faces no longer touched, the head
+and body looked hollow. Only a layer drawn over a model's first one (a villager's clothes, over
+the same boxes) keeps its texture's holes, or it would hide the layer under it. The faces are drawn
+from outside only; their texture coordinates stay a quarter texel inside, so that nothing next to
+them on a page bleeds in.
 
 **In game** (`LodRenderer`, *Levels of Detail* in the settings, a section and a Sodium page of
 its own, [below](#levels-of-detail-1)). Only the mod's own mobs, never a player yet, never what the
@@ -767,7 +770,10 @@ Changing `lodKeep` makes every level again.
   first `render` of a figure's model is its root), with the parts the game draws then. Its
   levels are made for the textures its layers were drawn with the frame before: a cube none of
   them shows is left out (a villager's hat rim, painted by some professions only), so that every
-  layer of a figure shares the same boxes. One set per root, parts drawn and textures, made on a
+  layer of a figure shares the same boxes. A second model drawn over the figure's first one (a
+  sheep's wool, a saddle, armour) is not simplified on its own: its levels follow the first
+  model's, part by part by name (`LodLevels.follow`), so that its boxes, made from its larger
+  cubes, wrap the first model's instead of being crossed by them. One set per root, parts drawn and textures, made on a
   thread of its own; one baked texture per set and layer texture, baked there too, and handed to
   the graphics card one a frame.
 - *Layers.* The texture of a layer is read from its render type's description (the
