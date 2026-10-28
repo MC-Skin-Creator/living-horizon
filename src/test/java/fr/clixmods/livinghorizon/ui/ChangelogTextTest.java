@@ -53,8 +53,8 @@ class ChangelogTextTest {
             assertFalse(lines.isEmpty(), name);
             assertEquals(Kind.VERSION, lines.get(0).kind(), name);
             for (Line line : lines) {
-                for (Span span : ChangelogText.spans(line.text())) {
-                    assertFalse(span.text().contains("*"), name + ": " + line.text());
+                for (Span span : ChangelogText.spans(line.words())) {
+                    assertFalse(span.words().contains("*"), name + ": " + line.words());
                 }
             }
         }
