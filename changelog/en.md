@@ -9,7 +9,7 @@
 
 #### Improved
 - **Servers without the mod** — joining a server without Living Horizon, or with a version of it too old or too new, now says in the chat that distant players are not shown there; with *Show Players* off, nothing is said.
-- **Mobs & Entities in two tabs** — *Mobs & Entities...* now lists the mobs and the other entities (boats, vehicles, mannequins) under two tabs.
+- **Mobs & Entities in two tabs** — *Mobs & Entities...* now lists the mobs and the other entities (boats, vehicles, mannequins) under two tabs, where a boat or a vehicle is simply shown or hidden.
 
 ## 0.13.0 — 2026-10-28
 

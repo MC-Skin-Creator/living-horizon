@@ -44,6 +44,11 @@ public final class MobList {
      * excepted. Boats, vehicles and mannequins go under the entities' tab.
      */
     public static boolean creature(EntityType<?> type) {
-        return DefaultAttributes.hasSupplier(type) && !EntityType.getKey(type).toString().equals("minecraft:mannequin");
+        return alive(type) && !EntityType.getKey(type).toString().equals("minecraft:mannequin");
+    }
+
+    /** A living kind of {@link #all}, mannequins included: not a boat nor another vehicle. */
+    public static boolean alive(EntityType<?> type) {
+        return DefaultAttributes.hasSupplier(type);
     }
 }

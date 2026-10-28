@@ -9,7 +9,7 @@
 
 #### Améliorations
 - **Serveurs sans le mod** — en rejoignant un serveur sans Living Horizon, ou avec une version trop ancienne ou trop récente du mod, le tchat dit maintenant que les joueurs lointains n'y sont pas affichés ; avec *Afficher les joueurs* désactivé, rien n'est dit.
-- **Créatures et entités en deux onglets** — *Créatures et entités...* range maintenant les créatures et les autres entités (bateaux, véhicules, mannequins) dans deux onglets.
+- **Créatures et entités en deux onglets** — *Créatures et entités...* range maintenant les créatures et les autres entités (bateaux, véhicules, mannequins) dans deux onglets, où un bateau ou un véhicule est simplement affiché ou masqué.
 
 ## 0.13.0 — 2026-10-28
 

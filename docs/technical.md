@@ -382,6 +382,8 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
   a vehicle, so a kind joins the *Entities* tab of *Mobs & Entities...* when one is first met
   (`knownVehicles`; the *Mobs* tab holds the living kinds, mannequins excepted). A copy
   stands where it was left, as a boat does: no animation, and only this client remembers it.
+  So a kind that is not alive, a boat included, is only *Shown* or *Hidden* there, never
+  *Roaming* or *Still*.
 - **Mannequins** (from 1.21.9) are shown too, standing still: Distant Friends uses them as its fake
   players. Mobs in `stillMobTypes` (happy ghast, mannequin) stand still instead of walking
   their loop. A copy wears its mannequin's skin, from a player's name or a texture of a

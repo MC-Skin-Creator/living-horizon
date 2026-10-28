@@ -52,6 +52,8 @@ public final class MobTypesScreen extends SideOptionsScreen {
     private boolean reopening;
     /** The switches on screen, by mob id: updated in place by All, None and Defaults. */
     private final Map<String, CycleButton<Mode>> buttons = new LinkedHashMap<>();
+    /** Those of them that are not alive: boats and other vehicles, with two choices only. */
+    private final java.util.Set<String> placed = new java.util.HashSet<>();
     /** The icon drawn beside each switch: the mob's spawn egg, the boat's item. */
     private final Map<String, ItemStack> icons = new LinkedHashMap<>();
 
@@ -136,6 +138,7 @@ public final class MobTypesScreen extends SideOptionsScreen {
         String needle = filter.toLowerCase(Locale.ROOT).trim();
         List<AbstractWidget> switches = new ArrayList<>();
         buttons.clear();
+        placed.clear();
         icons.clear();
         for (EntityType<?> type : types) {
             if (!listed(type, needle)) continue;
@@ -143,14 +146,17 @@ public final class MobTypesScreen extends SideOptionsScreen {
             Component name = type.getDescription();
             boolean shared = MobKinds.TYPES.contains(id);
             Component label = shared ? Component.translatable(KEY + "shared", name) : name;
+            // A boat or another vehicle never moves far away: shown or not, nothing more.
+            boolean alive = MobList.alive(type);
+            if (!alive) placed.add(id);
+            String tooltip = (alive ? "" : "vehicle.") + (shared ? "shared.tooltip" : "local.tooltip");
             //? if >=1.21.11 {
-            CycleButton<Mode> button = CycleButton.builder(Mode::label, Mode.of(id))
+            CycleButton<Mode> button = CycleButton.builder(Mode::label, Mode.of(id, alive))
             //?} else {
-            /*CycleButton<Mode> button = CycleButton.builder(Mode::label).withInitialValue(Mode.of(id))
+            /*CycleButton<Mode> button = CycleButton.builder(Mode::label).withInitialValue(Mode.of(id, alive))
             *///?}
-                    .withValues(List.of(Mode.values()))
-                    .withTooltip(OptionInstance.cachedConstantTooltip(Component.translatable(
-                            KEY + (shared ? "shared.tooltip" : "local.tooltip"), id)))
+                    .withValues(alive ? Mode.MOVING : Mode.PLACED)
+                    .withTooltip(OptionInstance.cachedConstantTooltip(Component.translatable(KEY + tooltip, id)))
                     .create(0, 0, ICON_ROOM, 20, label, (b, mode) -> mode.apply(id));
             buttons.put(id, button);
             ItemStack icon = icon(id);
@@ -200,15 +206,21 @@ public final class MobTypesScreen extends SideOptionsScreen {
 
     /** How one kind of mob is shown far away. */
     private enum Mode {
-        HIDDEN, ANIMATED, STILL;
+        HIDDEN, ANIMATED, STILL, SHOWN;
+
+        /** The choices of a mob, which walks or stays still. */
+        static final List<Mode> MOVING = List.of(HIDDEN, ANIMATED, STILL);
+        /** The choices of a boat or another vehicle, which stays where it was left whatever is chosen. */
+        static final List<Mode> PLACED = List.of(HIDDEN, SHOWN);
 
         Component label() {
             return Component.translatable(KEY + "mode." + name().toLowerCase(Locale.ROOT));
         }
 
-        static Mode of(String id) {
+        static Mode of(String id, boolean alive) {
             FarConfig config = FarConfig.get();
             if (!config.mobTypes.contains(id)) return HIDDEN;
+            if (!alive) return SHOWN;
             return config.stillMobTypes.contains(id) ? STILL : ANIMATED;
         }
 
@@ -244,7 +256,7 @@ public final class MobTypesScreen extends SideOptionsScreen {
         for (EntityType<?> type : types) {
             if (!listed(type, needle)) continue;
             String id = EntityType.getKey(type).toString();
-            Mode current = Mode.of(id);
+            Mode current = Mode.of(id, MobList.alive(type));
             if (!on) Mode.HIDDEN.apply(id);
             else if (current == Mode.HIDDEN) Mode.ANIMATED.apply(id);
         }
@@ -256,9 +268,15 @@ public final class MobTypesScreen extends SideOptionsScreen {
         return java.util.Collections.unmodifiableSet(buttons.keySet());
     }
 
+    /** The text of a kind's switch, its name and choice, or "" when it is not listed: what the game tests read. */
+    public String switchText(String id) {
+        CycleButton<Mode> button = buttons.get(id);
+        return button == null ? "" : button.getMessage().getString();
+    }
+
     /** Shows the config on the switches already there, without building the screen again. */
     private void refreshButtons() {
-        buttons.forEach((id, button) -> button.setValue(Mode.of(id)));
+        buttons.forEach((id, button) -> button.setValue(Mode.of(id, !placed.contains(id))));
     }
 
     @Override

@@ -130,6 +130,7 @@ public final class VehiclesScenario implements Scenario {
         context.getInput().setCursorPos(4, 4);
         context.waitTicks(5);
         java.util.Set<String> mobs = context.computeOnClient(minecraft -> listed(minecraft.screen));
+        String cow = context.computeOnClient(minecraft -> switchText(minecraft.screen, "minecraft:cow"));
         Scene.screenshot(context, this, "tab-mobs");
         context.clickScreenButton("livinghorizon.options.mobTypes.tab.entities");
         // Over the entities' tab, which says what it holds.
@@ -141,7 +142,15 @@ public final class VehiclesScenario implements Scenario {
         context.getInput().setCursorPos(tab[0], tab[1]);
         context.waitTicks(5);
         java.util.Set<String> entities = context.computeOnClient(minecraft -> listed(minecraft.screen));
+        String boat = context.computeOnClient(minecraft -> switchText(minecraft.screen, "minecraft:oak_boat"));
         Scene.screenshot(context, this, "tab-entities");
+        // The search on this tab: the minecart, off since nobody steers it.
+        context.getInput().setCursorPos(4, 4);
+        context.getInput().typeChars("cart");
+        context.waitTicks(5);
+        String minecart = context.computeOnClient(minecraft -> switchText(minecraft.screen, MINECART));
+        Scene.screenshot(context, this, "tab-entities-search");
+        context.setScreen(() -> new MobTypesScreen(null));
         context.clickScreenButton("livinghorizon.options.mobTypes.tab.mobs");
         // The search, on the tab back in front: each letter opens the screen again.
         context.getInput().typeChars("cow");
@@ -158,10 +167,22 @@ public final class VehiclesScenario implements Scenario {
             if (mobs.contains(id)) wrong.append(' ').append(id).append(" is under the mobs' tab;");
         }
         if (!mobs.contains("minecraft:cow")) wrong.append(" the cow is not under the mobs' tab;");
+        // A vehicle is shown or hidden; a mob roams or stands still.
+        String shown = net.minecraft.client.resources.language.I18n.get("livinghorizon.options.mobTypes.mode.shown");
+        String hidden = net.minecraft.client.resources.language.I18n.get("livinghorizon.options.mobTypes.mode.hidden");
+        String roaming = net.minecraft.client.resources.language.I18n.get("livinghorizon.options.mobTypes.mode.animated");
+        Scene.log("vehicles: switches '" + cow + "', '" + boat + "', '" + minecart + "'");
+        if (!cow.endsWith(roaming)) wrong.append(" the cow's switch reads '").append(cow).append("';");
+        if (!boat.endsWith(shown)) wrong.append(" the boat's switch reads '").append(boat).append("';");
+        if (!minecart.endsWith(hidden)) wrong.append(" the minecart's switch reads '").append(minecart).append("';");
         if (entities.contains("minecraft:cow")) wrong.append(" the cow is under the entities' tab;");
         Scene.log("vehicles: searching cow lists " + searched);
         if (!searched.contains("minecraft:cow") || searched.size() > 4) wrong.append(" the search for cow lists ").append(searched).append(';');
         if (!wrong.isEmpty()) throw new AssertionError("vehicles:" + wrong);
+    }
+
+    private static String switchText(net.minecraft.client.gui.screens.Screen screen, String id) {
+        return screen instanceof MobTypesScreen types ? types.switchText(id) : "";
     }
 
     private static java.util.Set<String> listed(net.minecraft.client.gui.screens.Screen screen) {
