@@ -16,6 +16,8 @@ gives a repository):
 
 What a job only downloads (the JDKs and the game files Forge fetches, the game's sounds
 and textures NeoForge fetches) is left out: downloading it again is quicker than keeping it.
+What Forge's own Maven serves is the exception: it often leaves a download hanging, so
+Forge's userdev jar and the tools beside it are kept with the node.
 
 A key is a hash of the files that decide the entry's content. The mod's identity and
 version (the "mod" keys of stonecutter.properties.toml) are left out: the release and
@@ -47,6 +49,9 @@ NODE_PATHS = {
     "forge": [
         f"{FORGE_CACHE}/forge",
         f"{FORGE_CACHE}/mcp",
+        # What came from Forge's Maven, forge-<version>-userdev.jar among it, which
+        # ForgeGradle fetches even when the prepared game is restored.
+        f"{FORGE_CACHE}/maven/forge",
     ],
     "neoforge": [
         "~/.gradle/caches/neoformruntime/intermediate_results",
@@ -134,6 +139,8 @@ def main() -> None:
         read("gradle/target.gradle.kts"),
         read(f"build.{loader}.gradle.kts"),
         read(ACCESS),
+        # A path added or dropped makes a new entry, filled with it.
+        encode(NODE_PATHS[loader]),
     )
     output("node-key", f"minecraft-{node}-{VERSION}-{own}")
     output("node-restore", f"minecraft-{node}-{VERSION}-")

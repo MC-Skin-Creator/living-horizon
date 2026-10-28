@@ -569,7 +569,10 @@ come back, add it here in the same pull request: this file is what the next sess
   (`Received RST_STREAM`, after a `Cache miss!` stack trace that is only information): Forge's
   Maven left the download of `forge-<version>-userdev.jar` hanging, and ForgeGradle's Mavenizer
   waits on it with no limit of its own. `gradle.sh` stops the attempt and tries again; a job
-  that still fails three times means Forge's Maven is down: re-run it later.
+  that still fails three times means Forge's Maven is down: re-run it later. ForgeGradle fetches
+  that jar even with the prepared game cached, so a Forge node's cache entry keeps it too
+  (`mavenizer/caches/maven/forge` in `gradle-cache.py`): a job that downloads it anyway had no
+  entry, and running the cache workflow from `develop` fills one.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
