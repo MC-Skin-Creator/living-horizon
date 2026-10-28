@@ -69,7 +69,7 @@ prints two parts in words:
 
 - **What the mod costs:** the frame time without the mod and with its defaults, the mod's
   own code per frame (average and worst), and the memory it allocates per frame.
-- **What each setting does:** every `opt*` switch and *Simplified Entities*, changed alone
+- **What each setting does:** every `opt*` switch, *Simplified Entities* and *Detail Levels*, changed alone
   and compared with the defaults measured just before and after it, so a slow drift of the
   game cancels out. `+` is slower once changed. The verdict reads the frame time when it
   moved more than the noise, else the mod's own code, else says "no difference".
