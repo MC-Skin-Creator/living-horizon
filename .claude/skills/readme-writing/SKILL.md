@@ -45,10 +45,12 @@ unless it is as big as the three below.
    server without the mod, then how to set up a server.
 5. **Getting started**, **Useful commands**, **Requirements** (with the versions table),
    **Compatibility**.
-6. **FAQ**: the questions players ask again and again (compatibility, modded mobs, servers,
-   modpacks, why the project is unlisted on Modrinth). One `###` question each, a short
-   answer, a pointer to the section above rather than a copy of it. The store keeps it,
-   with the mods named in place of *Compatibility* and every link absolute.
+6. **FAQ**: the questions players ask again and again (what is only visual, compatibility,
+   modded mobs, servers, modpacks, AI and Modrinth). Grouped under `###` topics, each
+   question a collapsible block: `<details>`, `<summary>` with the question in plain text,
+   a blank line, the answer, a blank line, `</details>`. A short answer, a pointer to the
+   section above rather than a copy of it. The store keeps it, with the mods named in place
+   of *Compatibility*, no pointer to a README-only section, and every link absolute.
 7. **Made with AI**, **More**.
 
 ## Tone

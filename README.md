@@ -161,7 +161,61 @@ label.
 
 ## FAQ
 
-### Does it work with my mod?
+### How it works
+
+<details>
+<summary>Is it only visual? Does it break mob farms?</summary>
+
+It is only visual. Distant mobs are copies drawn on your screen, with no AI. The real mobs
+work as without the mod, so farms, spawning and the mob cap do not change. You cannot hit or
+ride a distant mob. The birds are only visual too.
+
+</details>
+
+<details>
+<summary>Do distant mobs move? What happens when I come close?</summary>
+
+They move. Each one plays ready-made animations that fit the ground around it: it walks a
+few blocks, grazes and looks around. Happy ghasts and mannequins stand still at first: set
+them to *Roaming* in *Mobs & Entities...*.
+
+As you come close, the copy walks back to the real mob, and the real mob takes its place.
+Most of the time you do not see the change.
+
+</details>
+
+<details>
+<summary>Are the distant mobs real, or placed at random?</summary>
+
+They are real mobs, where your game or the server last saw them. One that died or despawned
+since can still show until you come near it. Then it is forgotten.
+
+</details>
+
+<details>
+<summary>How is it different from a higher simulation or entity distance?</summary>
+
+A higher simulation distance makes the server run more real mobs, which costs a lot, and the
+server still only sends them so far. Living Horizon draws copies that the server does not
+run. They play ready-made animations, and far away they become flat pictures (*Simplified
+Entities*). So you see mobs much farther away, for much less. Sodium only draws the mobs the
+server sends.
+
+</details>
+
+<details>
+<summary>How far does it show mobs and players?</summary>
+
+Mobs: 512 blocks by default, up to *Unlimited* with *Mob Render Distance*. Players: any
+distance by default, which *Player Render Distance* can limit. A mob only shows once your
+game or the server has seen it.
+
+</details>
+
+### Compatibility
+
+<details>
+<summary>Does it work with my mod?</summary>
 
 Most likely. Voxy, Distant Horizons, Sodium, Iris and shader packs work with it (see
 *Compatibility*). Living Horizon only adds its own figures: it does not change how other
@@ -171,7 +225,10 @@ label. If something breaks, open an
 [issue](https://github.com/MC-Skin-Creator/living-horizon/issues) with the mod's name and
 version.
 
-### Do mobs from other mods show far away?
+</details>
+
+<details>
+<summary>Do mobs from other mods show far away?</summary>
 
 Yes. Any mob the game can draw shows far away, modded ones included. Monsters are off at
 first, from other mods as from the game: they despawn when nobody is near. Turn any mob on
@@ -181,28 +238,75 @@ or off in *Mobs & Entities...*.
   ([#67](https://github.com/MC-Skin-Creator/living-horizon/issues/67)).
 - Vehicles from other mods, such as planes, are not shown far away yet
   ([#257](https://github.com/MC-Skin-Creator/living-horizon/issues/257)).
+- Create contraptions and Create: Aeronautics airships are not shown far away yet
+  ([#267](https://github.com/MC-Skin-Creator/living-horizon/issues/267)).
 - A server with the mod only shares the game's own mobs. Mobs from other mods show where
   you met them.
 
-### Do I need Voxy or Distant Horizons?
+</details>
+
+<details>
+<summary>Do I need Voxy or Distant Horizons?</summary>
 
 No. Without them, distant mobs and players show on the game's own terrain, out to your
 render distance. With one of them, they also show on its far terrain.
 
-### Does the server need the mod?
+</details>
+
+### Performance and settings
+
+<details>
+<summary>Will it lower my frame rate?</summary>
+
+Drawing more entities costs frame rate. If your game slows down, keep *Simplified Entities*
+on and pick a lower *Preset*. *Max Mobs* and *Mob Render Distance* both on *Unlimited* can
+crash the game.
+
+</details>
+
+<details>
+<summary>Can I choose what is shown?</summary>
+
+Yes. *Show Mobs*, *Show Players*, *Offline Players* and *Show Birds* turn each part on or
+off. *Mobs & Entities...* chooses mob by mob.
+
+</details>
+
+<details>
+<summary>Does it change my world or load chunks?</summary>
+
+No. It changes nothing in your world and loads no chunk. It keeps what it remembers in files
+of its own: in the `config` folder, and in `livinghorizon-positions.dat` in the world folder
+for what the server shares. Removing the mod leaves your world as it was.
+
+On a server, the mod only sends positions to the players who have it: the players five
+times a second, the rest every five seconds.
+
+</details>
+
+### Multiplayer
+
+<details>
+<summary>Does the server need the mod?</summary>
 
 No. Everything works in single player, and you can join any server with it. Players at any
 distance need the mod on the server, and the server then shares more mobs and players who
 logged off. See *Multiplayer*.
 
-### Does it work on Paper or Spigot servers?
+</details>
+
+<details>
+<summary>Does it work on Paper or Spigot servers?</summary>
 
 You can play on them with the mod, as on any server without it. The server side runs on
 Fabric, Quilt, NeoForge and Forge only, so a Paper or Spigot server shares nothing. A
 plugin for Paper is discussed in
 [#156](https://github.com/MC-Skin-Creator/living-horizon/issues/156).
 
-### I see no distant mobs or players. Why?
+</details>
+
+<details>
+<summary>I see no distant mobs or players. Why?</summary>
 
 - Distant players need the mod on the server. Its owner may also limit who is shared (see
   *Server settings*).
@@ -210,57 +314,97 @@ plugin for Paper is discussed in
 - Monsters are off at first: turn them on in *Mobs & Entities...*.
 - *Only Over Terrain* hides a mob where no terrain is drawn under it yet.
 
-### Will it lower my frame rate?
+</details>
 
-Drawing more entities costs frame rate. If your game slows down, keep *Simplified Entities*
-on and pick a lower *Preset*. *Max Mobs* and *Mob Render Distance* both on *Unlimited* can
-crash the game.
-
-### Can I hit or ride a distant mob?
-
-No. Distant mobs are copies drawn on your screen, with no AI. When you come close, the real
-mob takes their place.
-
-### Can it be used to cheat? Is it allowed on servers?
+<details>
+<summary>Can it be used to cheat? Is it allowed on servers?</summary>
 
 It only shows other players where the server allows it. Distant players only show on a
 server that has the mod, and its owner chooses what it shares: how far, with teammates
-only, and which players and dimensions stay hidden (see *Server settings*). On other
-servers, you only see what your own game saw. The mod sends nothing to the server. Each
-server has its own rules about mods, though: ask its staff.
+only, and which players and dimensions stay hidden. `"sharePlayers": false` turns it off
+(see *Server settings*). Invisible players and players in spectator mode are never shared.
+Sneaking players are, for now
+([#269](https://github.com/MC-Skin-Creator/living-horizon/issues/269)).
 
-### Is there a Bedrock version?
+On other servers, you only see what your own game saw. The mod sends nothing to the server.
+Each server has its own rules about mods, though: ask its staff.
+
+</details>
+
+### Downloads and license
+
+<details>
+<summary>Is there a Bedrock version?</summary>
 
 No. Living Horizon is a mod for Minecraft Java Edition.
 
-### My game version is not supported. Will it be?
+</details>
+
+<details>
+<summary>Why are there so many files?</summary>
+
+There is one file per game version and loader: take the one for yours. Every file is built
+and checked automatically. I mostly play on 1.21.11 with Voxy myself, so reports on the
+other versions help a lot.
+
+</details>
+
+<details>
+<summary>My game version is not supported. Will it be?</summary>
 
 Tell me on the [Discord](https://discord.gg/THSV9dexNj) which version and loader you play.
 It helps me choose what comes next.
 
-### Can I put it in a modpack?
+</details>
+
+<details>
+<summary>Can I put it in a modpack?</summary>
 
 Yes. Use the official file, unchanged, and credit it: name Living Horizon and clixmods, and
 link to this repository. Modified versions and forks are not allowed: send a pull request
 instead (see [CONTRIBUTING.md](CONTRIBUTING.md)).
 
-### Why is Living Horizon unlisted on Modrinth?
+</details>
 
-Because it is made with AI. Since August 2026,
+<details>
+<summary>What if the project is abandoned?</summary>
+
+The license plans for it. Once the project is declared abandoned (this repository archived,
+or the README saying so), its license turns into the GPL: anyone may carry the project on,
+with credit. See section 5 of the [LICENSE](LICENSE).
+
+</details>
+
+### AI
+
+<details>
+<summary>Was it made with AI?</summary>
+
+Yes. I make video games for a living: I worked on Terra Memoria, and I have made mods since
+2017. The ideas and the techniques come from game development: impostors and ready-made
+animations are tricks games have used for years. AI writes much of the code. I decide how
+the mod works, test it in the game and fix what goes wrong. Without AI, a project this size
+would have taken me too long to make at all.
+
+</details>
+
+<details>
+<summary>Is it on Modrinth? Why is it unlisted there?</summary>
+
+It is on Modrinth, but unlisted: it does not show in Modrinth's search. Since August 2026,
 [Modrinth's rules](https://modrinth.com/legal/rules) do not allow a project made mainly
-with AI to be public, so its staff unlisted it.
+with AI to be public, so its staff unlisted it. CurseForge, Nexus Mods and the
+[releases](https://github.com/MC-Skin-Creator/living-horizon/releases) page have the same
+files.
 
 Unlisted does not mean unsafe. It is about how the mod is made, not about what it does:
 
-- I make video games for a living: I worked on Terra Memoria, and I have made mods since
-  2017. I know how to build this mod. AI lets me build it much faster. I decide how it
-  works and I test it in the game.
 - The code is public: anyone can read it in this repository.
 - GitHub builds every release from this code, and its build logs are public.
 - The mod has no code of its own that connects to the internet. Player skins come from
   Mojang through the game, and the Discord link opens only when you click it.
-- Modrinth, CurseForge and Nexus Mods get the same files as the
-  [releases](https://github.com/MC-Skin-Creator/living-horizon/releases) page.
+
+</details>
 
 ## Made with AI
 
