@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Client
+
+#### Improved
+- **Servers without the mod** — joining a server without Living Horizon, or with a version of it too old or too new, now says in the chat that distant players are not shown there; with *Show Players* off, nothing is said.
+
 ## 0.13.0 — 2026-10-28
 
 ### Client

@@ -2,6 +2,11 @@
 
 ## Prochaine version
 
+### Client
+
+#### Améliorations
+- **Serveurs sans le mod** — en rejoignant un serveur sans Living Horizon, ou avec une version trop ancienne ou trop récente du mod, le tchat dit maintenant que les joueurs lointains n'y sont pas affichés ; avec *Afficher les joueurs* désactivé, rien n'est dit.
+
 ## 0.13.0 — 2026-10-28
 
 ### Client
