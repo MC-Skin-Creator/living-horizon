@@ -6,6 +6,7 @@
 
 #### Nouveautés
 - **Véhicules des autres mods au loin** — les véhicules des autres mods, comme les avions d'Immersive Aircraft, restent maintenant visibles au-delà de la distance de rendu là où on les a laissés, comme les bateaux ; chaque type rejoint l'onglet *Entités* de *Créatures et entités...* la première fois qu'on en voit un, et ceux qu'on monte sans les diriger (wagonnets, véhicules de certains autres mods) y attendent, désactivés, qu'on les active.
+- **Bouton du journal des modifications** — les réglages du mod ont maintenant un bouton du journal des modifications à côté du logo Discord, pour lire ce qui a changé à chaque version (un bouton *Lire le journal des modifications* sur la page de Sodium).
 
 #### Améliorations
 - **Serveurs sans le mod** — en rejoignant un serveur sans Living Horizon, ou avec une version trop ancienne ou trop récente du mod, le tchat dit maintenant que les joueurs lointains n'y sont pas affichés ; avec *Afficher les joueurs* désactivé, rien n'est dit.

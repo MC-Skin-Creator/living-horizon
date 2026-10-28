@@ -31,11 +31,13 @@ import java.util.function.Consumer;
 public final class FarConfigScreen extends SideOptionsScreen {
     private static final String KEY = "livinghorizon.options.";
 
-    /** Beside the title: only the Discord logo, drawn over it, which says what it is. */
+    /** Beside the title: only the Discord logo and the changelog's icon, drawn over their buttons, which says what they are. */
     private static final int LOGO_BUTTON = 20;
+    private static final int LOGO_GAP = 4;
 
     private final @Nullable Screen parent;
     private @Nullable Button discord;
+    private @Nullable Button changelog;
 
     public FarConfigScreen(@Nullable Screen parent) {
         super(parent, Minecraft.getInstance().options, Component.translatable(KEY + "title"));
@@ -135,21 +137,27 @@ public final class FarConfigScreen extends SideOptionsScreen {
         discord = addRenderableWidget(Button.builder(Component.empty(), b -> DiscordLink.open(this))
                 .size(LOGO_BUTTON, LOGO_BUTTON)
                 .tooltip(Tooltip.create(Component.translatable(KEY + "discord.tooltip"))).build());
+        changelog = addRenderableWidget(Button.builder(Component.empty(), b -> minecraft.setScreen(new ChangelogScreen(this)))
+                .size(LOGO_BUTTON, LOGO_BUTTON)
+                .tooltip(Tooltip.create(Component.translatable(KEY + "changelog.tooltip"))).build());
     }
 
-    /** The logo goes where the title ends, in the middle of the header. */
+    /** The logos go where the title ends, in the middle of the header: Discord, then the changelog. */
     @Override
     protected void repositionElements() {
         super.repositionElements();
-        if (discord == null) return;
+        if (discord == null || changelog == null) return;
         discord.setX(columnWidth() / 2 + font.width(title) / 2 + 6);
         discord.setY((layout.getHeaderHeight() - LOGO_BUTTON) / 2);
+        changelog.setX(discord.getX() + LOGO_BUTTON + LOGO_GAP);
+        changelog.setY(discord.getY());
     }
 
     @Override
     protected void drawOver(GuiGraphics graphics) {
-        if (discord == null) return;
+        if (discord == null || changelog == null) return;
         Icons.discord(graphics, discord.getX() + (LOGO_BUTTON - Icons.SIZE) / 2, discord.getY() + (LOGO_BUTTON - Icons.SIZE) / 2);
+        Icons.changelog(graphics, changelog.getX() + (LOGO_BUTTON - Icons.SIZE) / 2, changelog.getY() + (LOGO_BUTTON - Icons.SIZE) / 2);
     }
 
     /** Restore defaults sits beside Done: it is about every setting of the screen, not the birds. */
