@@ -38,15 +38,28 @@ abstract class ModelPartMixin implements PartTree {
     @Unique
     private int livinghorizon$polygons = -1;
 
-    // Every way of drawing a part ends in this one: the first call of a model is its root.
+    // Every way of drawing a part ends in this one: the first call of a model is its root, which
+    // a figure standing still at its simplest level draws whole, the game's walk cancelled.
     //? if >=1.21 {
     @Inject(method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;III)V",
-            at = @At("HEAD"))
-    //?} else
-    /*@Inject(method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;IIFFFF)V", at = @At("HEAD"))*/
-    private void livinghorizon$enter(CallbackInfo ci) {
-        if (PolygonStats.counting()) LodRenderer.enterPart((ModelPart) (Object) this);
+            at = @At("HEAD"), cancellable = true)
+    private void livinghorizon$enter(PoseStack poses, VertexConsumer out, int light, int overlay, int color,
+                                     CallbackInfo ci) {
+        if (PolygonStats.counting() && LodRenderer.enterRoot((ModelPart) (Object) this, poses.last(), light, overlay, color)) {
+            ci.cancel();
+        }
     }
+    //?} else {
+    /*@Inject(method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;IIFFFF)V",
+            at = @At("HEAD"), cancellable = true)
+    private void livinghorizon$enter(PoseStack poses, VertexConsumer out, int light, int overlay, float red, float green,
+                                     float blue, float alpha, CallbackInfo ci) {
+        int color = (int) (alpha * 255) << 24 | (int) (red * 255) << 16 | (int) (green * 255) << 8 | (int) (blue * 255);
+        if (PolygonStats.counting() && LodRenderer.enterRoot((ModelPart) (Object) this, poses.last(), light, overlay, color)) {
+            ci.cancel();
+        }
+    }
+    *///?}
 
     //? if >=1.21 {
     @Inject(method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;III)V",

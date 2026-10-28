@@ -41,6 +41,9 @@ public final class LodSet {
     /** Its baked textures, one per layer texture, as {@link LodRenderer} keeps them: a few, searched in order. */
     final List<Object> bakes = new java.util.ArrayList<>();
     private final boolean[] skips;
+    /** Where each part stands in the model at rest, in blocks, and how its normals turn; made when first asked. */
+    private org.joml.Matrix4f @Nullable [] rests;
+    private org.joml.Matrix3f @Nullable [] restNormals;
     private volatile @Nullable Plan plan;
     private volatile boolean failed;
 
@@ -161,6 +164,36 @@ public final class LodSet {
     boolean ready(int level) {
         Plan p = plan;
         return p != null && level < p.usable().length && p.usable()[level];
+    }
+
+    /** The quads the game draws for its full model. */
+    int fullQuads() {
+        return read.quads();
+    }
+
+    /** Where part {@code part} stands in the model at rest, in blocks: a figure drawn standing. */
+    org.joml.Matrix4f rest(int part) {
+        if (rests == null) rests();
+        return rests[part];
+    }
+
+    /** How part {@code part} turns its normals at rest. */
+    org.joml.Matrix3f restNormal(int part) {
+        if (restNormals == null) rests();
+        return restNormals[part];
+    }
+
+    private void rests() {
+        List<LodModel.Part> parts = read.parts();
+        org.joml.Matrix4f[] places = new org.joml.Matrix4f[parts.size()];
+        org.joml.Matrix3f[] turns = new org.joml.Matrix3f[parts.size()];
+        for (int i = 0; i < parts.size(); i++) {
+            // In model pixels; the game moves its parts by a sixteenth of that, and the faces are in blocks.
+            places[i] = new org.joml.Matrix4f().scaling(1 / 16f).mul(new org.joml.Matrix4f(parts.get(i).rest())).scale(16f);
+            turns[i] = places[i].normal(new org.joml.Matrix3f());
+        }
+        restNormals = turns;
+        rests = places;
     }
 
     /** What the game's part {@code part} draws at {@code level}, null for all of its cubes as usual. */

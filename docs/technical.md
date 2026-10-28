@@ -773,7 +773,7 @@ game draws itself. With the defaults:
 | 0 | | The full model |
 | 1 | 18 blocks (`lodDistance`) | Half the triangles (`lodKeep`) |
 | 2 | 36 blocks (`lodSpacing` 200%) | A quarter |
-| 3 | 72 blocks, to the end without impostors (`lodLevels` 3) | An eighth |
+| 3 | 72 blocks, to the end without impostors (`lodLevels` 3) | An eighth, standing still |
 | Impostor | `impostorDistance` | The flat picture (see [Impostors](#impostors)) |
 
 With `lodPixels` above 0, a figure shorter than that on screen takes level 1 even closer, and one
@@ -800,8 +800,12 @@ Changing `lodKeep` makes every level again.
   `textures/...png` it names): from the feature renderer's call from 1.21.9, from the buffer its
   renderer asks for before (`GhostRenderer.draw` wraps them). Render types other than the
   entity cut-out, solid, translucent and eyes kinds keep the figure whole.
-- *Drawing.* While a figure at level 1 to 3 is drawn, each part's `compile` draws none of its
-  cubes and queues the groups anchored to it with its pose, light, overlay and colour. They are
+- *Drawing.* While a figure at level 1 or 2 is drawn, each part's `compile` draws none of its
+  cubes and queues the groups anchored to it with its pose, light, overlay and colour. At level
+  3 the figure stands still, as its impostor does: its root's `render` queues every group at
+  once, each where its anchor stands at rest (`LodSet.rest`), and the game walks none of its
+  parts (`LodRenderer.enterRoot`, `STANDING`). Walking the parts and the hook on each cost more
+  than the simpler shape saved, with Sodium. They are
   drawn with the impostors (`LodRenderer.submit`, through `Sink`), one batch per page, so that
   every simpler mob costs a draw or two, not one per model and layer. Each vertex goes to the game
   in one call (`addVertex` with every attribute, as its cubes are written), which its buffer

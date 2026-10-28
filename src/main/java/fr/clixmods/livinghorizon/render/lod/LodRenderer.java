@@ -347,6 +347,40 @@ public final class LodRenderer {
         if (depth++ == 0) beginModel(part);
     }
 
+    /**
+     * The game starts drawing the root of one of the mod's figures, at {@code pose}: true when
+     * it was drawn whole here, standing ({@link #STANDING}), and the game must draw none of it.
+     */
+    public static boolean enterRoot(ModelPart root, PoseStack.Pose pose, int light, int overlay, int argb) {
+        if (depth != 0) {
+            enterPart(root);
+            return false;
+        }
+        enterPart(root);
+        LodSet set = drawing;
+        if (set == null || drawingLevel < STANDING || !root.visible) return false;
+        // Its parts at rest, each group in one go: none of the game's parts is walked.
+        LodSet.Plan plan = set.plan();
+        if (plan == null) return false;
+        PolygonStats.full(set.fullQuads());
+        int tinted = tint(argb);
+        List<LodLevels.Group> groups = plan.levels().groups();
+        for (int g = 0; g < groups.size(); g++) {
+            int anchor = groups.get(g).anchor();
+            Matrix4f place = PLACE.set(pose.pose()).mul(set.rest(anchor));
+            Matrix3f turn = TURN.set(pose.normal()).mul(set.restNormal(anchor));
+            queue(g, place, turn, light, overlay, tinted);
+        }
+        depth = 0;
+        drawing = null;
+        return true;
+    }
+
+    /** From this level a figure stands still, at rest, as its impostor does: too far for its legs to show. */
+    private static final int STANDING = LodLevels.MODEL_LEVELS - 1;
+    private static final Matrix4f PLACE = new Matrix4f();
+    private static final Matrix3f TURN = new Matrix3f();
+
     public static void leavePart() {
         if (depth > 0 && --depth == 0) drawing = null;
     }
@@ -429,30 +463,32 @@ public final class LodRenderer {
 
     /** The groups a part anchors at its level, queued with its pose, light and colour. */
     public static void queue(LodSet.PartDraw draw, PoseStack.Pose pose, int light, int overlay, int argb) {
+        for (int group : draw.groups()) queue(group, pose.pose(), pose.normal(), light, overlay, argb);
+    }
+
+    /** One group of the model being drawn, where its anchor stands. */
+    private static void queue(int group, Matrix4f pose, Matrix3f normal, int light, int overlay, int argb) {
         Bake bake = drawingBake;
         LodSet set = drawing;
         LodSet.Plan plan = set == null ? null : set.plan();
         Page page = bake == null ? null : bake.page;
-        if (draw.groups().length == 0 || bake == null || bake.faces == null || plan == null || page == null) return;
-        float[][] groups = bake.faces[drawingLevel];
-        for (int group : draw.groups()) {
-            float[] faces = groups[group];
-            if (faces == null || faces.length == 0) continue;
-            if (!page.drawing) {
-                page.drawing = true;
-                DRAWING.add(page);
-            }
-            if (page.count == 0) PENDING.add(page);
-            if (page.count == page.entries.size()) page.entries.add(new Entry());
-            Entry entry = page.entries.get(page.count++);
-            entry.pose.set(pose.pose());
-            entry.normal.set(pose.normal());
-            entry.faces = faces;
-            entry.light = light;
-            entry.overlay = overlay;
-            entry.argb = argb;
-            PolygonStats.lod(plan.triangles()[drawingLevel][group], faces.length / FACE);
+        if (bake == null || bake.faces == null || plan == null || page == null) return;
+        float[] faces = bake.faces[drawingLevel][group];
+        if (faces == null || faces.length == 0) return;
+        if (!page.drawing) {
+            page.drawing = true;
+            DRAWING.add(page);
         }
+        if (page.count == 0) PENDING.add(page);
+        if (page.count == page.entries.size()) page.entries.add(new Entry());
+        Entry entry = page.entries.get(page.count++);
+        entry.pose.set(pose);
+        entry.normal.set(normal);
+        entry.faces = faces;
+        entry.light = light;
+        entry.overlay = overlay;
+        entry.argb = argb;
+        PolygonStats.lod(plan.triangles()[drawingLevel][group], faces.length / FACE);
     }
 
     // ---------------------------------------------------------------- the boxes
