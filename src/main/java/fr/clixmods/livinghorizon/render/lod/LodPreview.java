@@ -116,8 +116,9 @@ public final class LodPreview {
         Arrays.fill(argb, 0);
         double[] depth = new double[size * size];
         Arrays.fill(depth, Double.NEGATIVE_INFINITY);
-        // The model's y points down: turned up, then round, then tipped towards the viewer.
-        Matrix4d view = new Matrix4d().rotateX(-pitch).rotateY(yaw).scale(1, -1, 1).translate(-middle.x, -middle.y, -middle.z);
+        // The model's y points down: turned up as the game turns it, x and y together (a half
+        // turn, which keeps which side of a face is its front), then round, then tipped towards the viewer.
+        Matrix4d view = new Matrix4d().rotateX(pitch).rotateY(yaw).scale(-1, -1, 1).translate(-middle.x, -middle.y, -middle.z);
         double scale = size / (2.2 * radius);
         double[] x = new double[4], y = new double[4], z = new double[4];
         Vector3d point = new Vector3d(), normal = new Vector3d(), a = new Vector3d(), b = new Vector3d();
