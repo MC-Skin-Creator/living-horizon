@@ -16,6 +16,7 @@ the *Debugging checklist* of [CLAUDE.md](../CLAUDE.md).
 - [Distant mobs](#distant-mobs)
 - [Birds](#birds)
 - [Impostors](#impostors)
+- [Levels of detail](#levels-of-detail)
 - [Far terrain depth](#far-terrain-depth)
 - [Fog on distant figures](#fog-on-distant-figures)
 - [Skipping hidden mobs](#skipping-hidden-mobs)
@@ -700,6 +701,40 @@ that a mob met in an earlier game is read back rather than baked.
 its eight views, and its front view at 32, 16 and 8 screen pixels, as it looks far away.
 *Rebuild* throws every picture away, on disk too, and bakes the figures on hand anew, even
 after a failed bake.
+
+## Levels of detail
+
+Between a figure's full model and its impostor, simpler models: fewer quads for figures too
+far to show the difference. They are made at run time from the model's own tree of parts
+(`render/lod/ModelReader`: every part at its initial pose, every cube with its quads and texture
+coordinates), so that a mob of any mod gets them, once per model. The code in `render/lod` asks
+the game nothing but that tree, and is tested without it.
+
+**Levels** (`LodLevels`): level 0 is the full model; level `i` may keep `round(Q0 × 0.5^i)` of
+its `Q0` quads, for levels 1 to 3; the impostor comes after them. Each cube starts as a group of
+its own, anchored to its part. While a level has more quads than it may keep, the cheapest of
+these is done:
+
+- **remove** a group: 3 times the square root of its box's largest face, in model pixels;
+- **merge** two groups into one box, made in the space of their nearest common part from their
+  cubes' corners at rest: the cube root of the empty room it adds (filled is A's plus B's, less
+  where their boxes overlap). A group carried up past an animated part (a leg, an arm or the
+  head, told by the part's name) freezes it, and costs half its size plus 2 more. A merge that
+  saves no quad is never made; a flat box has two faces.
+
+Of two that cost the same, the one that saves more quads. A level can end over its budget when
+one box is left. A group never merged keeps its cube's quads and texture; a merged one is a box
+of six faces (two when flat), drawn with the part it is anchored to, so it follows that part's
+animation; a part whose cubes all went elsewhere draws nothing. The cow gives 60, 30, 12 and 6
+quads, the villager 66, 30, 12 and 6 (`LodLevelsTest`), as the Mob LOD Lab did.
+
+**Baked faces** (`LodBake`): each side of a merged box is a picture of its cubes seen from
+outside, straight on, framed on that side, at 3 texels per model pixel (256 at most a side),
+drawn on the CPU from the model's texture so that it can run away from the render thread.
+Texels the cubes leave empty stay transparent, cut out like the cubes, and take their
+neighbours' colour so that no dark edge shows once filtered. The faces are drawn from outside
+only, or the holes would show the faces behind and the figure would look doubled; their
+texture coordinates stay a quarter texel inside, so that nothing next to them on a page bleeds in.
 
 ## Far terrain depth
 

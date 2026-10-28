@@ -95,6 +95,32 @@ class LodLevelsTest {
         }
     }
 
+    @Test
+    void everyMergedBoxOfTheCowBakes() {
+        LodModel model = ModelReader.read(roots.get(ModelLayers.COW).bakeRoot(), REFLECTED);
+        // Every texel opaque, its colour its place: what the faces show can be told apart.
+        int[] argb = new int[64 * 64];
+        for (int i = 0; i < argb.length; i++) argb[i] = 0xFF000000 | i * 2654435 & 0xFFFFFF;
+        LodBake.Pixels texture = new LodBake.Pixels(64, 64, argb);
+        int merged = 0;
+        for (LodLevels.Level level : LodLevels.generate(model)) {
+            for (LodLevels.Group group : level.groups()) {
+                if (!group.merged()) continue;
+                merged++;
+                List<LodBake.Face> faces = LodBake.bake(model, group, texture);
+                assertEquals(LodLevels.faces(group.box()), faces.size());
+                for (LodBake.Face face : faces) {
+                    LodBake.Pixels pixels = face.pixels();
+                    assertTrue(pixels.width() <= LodBake.MAX_SIDE && pixels.height() <= LodBake.MAX_SIDE);
+                    int opaque = 0;
+                    for (int texel : pixels.argb()) if (texel >>> 24 == 0xFF) opaque++;
+                    assertTrue(opaque > 0, "a face of a merged box shows nothing");
+                }
+            }
+        }
+        assertTrue(merged > 0);
+    }
+
     /** A cube of six faces in a part of its own, under the root. */
     private static int cube(LodModel model, String name, int parent, double x, double y, double z, double[] box) {
         int part = model.part(name, parent, x, y, z, 0, 0, 0, 1, 1, 1);
