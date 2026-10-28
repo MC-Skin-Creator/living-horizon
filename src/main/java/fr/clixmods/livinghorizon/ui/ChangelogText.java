@@ -11,10 +11,10 @@ public final class ChangelogText {
     /** What a line is, by the number of {@code #} before it: a version, a part (server, client), a kind, or a bullet. */
     public enum Kind { VERSION, PART, KIND, BULLET }
 
-    public record Line(Kind kind, String text) {}
+    public record Line(Kind kind, String content) {}
 
     /** A run of text with one look. */
-    public record Span(String text, boolean bold, boolean italic) {}
+    public record Span(String content, boolean bold, boolean italic) {}
 
     private ChangelogText() {}
 
@@ -30,7 +30,7 @@ public final class ChangelogText {
             else if (!line.isEmpty() && !line.startsWith("# ") && !lines.isEmpty() && lines.get(lines.size() - 1).kind() == Kind.BULLET) {
                 // A bullet carried onto the next line.
                 Line last = lines.remove(lines.size() - 1);
-                lines.add(new Line(Kind.BULLET, last.text() + " " + line));
+                lines.add(new Line(Kind.BULLET, last.content() + " " + line));
             }
         }
         return lines;
