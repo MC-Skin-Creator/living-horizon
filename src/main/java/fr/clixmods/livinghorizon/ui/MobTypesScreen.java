@@ -37,8 +37,8 @@ import java.util.Map;
  */
 public final class MobTypesScreen extends SideOptionsScreen {
     private static final String KEY = "livinghorizon.options.mobTypes.";
-    /** Where the title, the version under it and the tabs stand; the list starts below. */
-    private static final int TITLE_Y = 12, TABS_Y = 36, HEADER = 62;
+    /** Where the title and the tabs under it stand; the list starts below. */
+    private static final int TITLE_Y = 12, TABS_Y = 26, HEADER = 52;
 
     /** The tab shown: the entities that are not mobs, or the mobs. Kept while the game runs. */
     private static boolean entities;
@@ -66,7 +66,7 @@ public final class MobTypesScreen extends SideOptionsScreen {
         types.sort(Comparator.comparing(type -> type.getDescription().getString().toLowerCase(Locale.ROOT)));
     }
 
-    /** The title, then the two tabs under the mod's version, the open one pressed down. */
+    /** The title, then the two tabs, the open one pressed down. */
     @Override
     protected void addTitle() {
         // Built again when the window is resized before 1.20.5, on the same layout: one title.
@@ -104,6 +104,12 @@ public final class MobTypesScreen extends SideOptionsScreen {
         int middle = columnWidth() / 2;
         if (mobsTab != null) mobsTab.setPosition(middle - 102, TABS_Y);
         if (entitiesTab != null) entitiesTab.setPosition(middle + 2, TABS_Y);
+    }
+
+    /** The tabs stand where the other screens show the mod's version. */
+    @Override
+    protected boolean showsVersion() {
+        return false;
     }
 
     /** Whether a kind is listed under the tab shown, and matches the search. */

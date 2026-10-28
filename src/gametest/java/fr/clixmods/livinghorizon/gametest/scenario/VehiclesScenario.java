@@ -136,7 +136,7 @@ public final class VehiclesScenario implements Scenario {
         double[] tab = context.computeOnClient(minecraft -> {
             double scale = minecraft.getWindow().getGuiScale();
             int middle = minecraft.screen instanceof MobTypesScreen types ? types.columnWidth() / 2 : 180;
-            return new double[]{(middle + 52) * scale, 46 * scale};
+            return new double[]{(middle + 52) * scale, 36 * scale};
         });
         context.getInput().setCursorPos(tab[0], tab[1]);
         context.waitTicks(5);
