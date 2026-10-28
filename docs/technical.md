@@ -773,8 +773,8 @@ are fixed). Only the mod's own mobs, never a player yet, never what the game dra
   its level keeps, and queues the merged boxes anchored to it with its pose, light, overlay and
   colour. The boxes are drawn with the impostors (`LodRenderer.submit`, through `Sink`), one
   batch per baked texture: from 1.21.9 the game draws that geometry after the models, so the
-  poses are this frame's. Faces are wound clockwise from outside, since the game draws models
-  mirrored, and culled from inside.
+  poses are this frame's. Faces are wound counter-clockwise from outside and culled from inside:
+  the game turns its models upside down by mirroring x and y together, which keeps the winding.
 - *Counting.* `PolygonStats` counts what each figure draws and what its full models would
   cost, so the debug panel's gain and figures per level include the levels of detail.
 

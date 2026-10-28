@@ -533,9 +533,9 @@ public final class LodRenderer {
             for (int level = 1; level < levels.size(); level++) faces[level] = new float[levels.get(level).groups().size()][];
             Map<Long, List<Placed>> byGroup = new HashMap<>();
             for (Placed p : placed) byGroup.computeIfAbsent((long) p.level() << 32 | p.group(), k -> new ArrayList<>()).add(p);
-            // Clockwise as seen from outside: the game draws models mirrored (y down), which
-            // turns it round, and only the outside of a baked face is drawn.
-            double[][] corners = {{0, 0}, {0, 1}, {1, 1}, {1, 0}};
+            // Counter-clockwise seen from outside, the side drawn: the game turns its models
+            // upside down by mirroring two axes at once, which keeps the winding as it is.
+            double[][] corners = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
             for (List<Placed> group : byGroup.values()) {
                 float[] out = new float[group.size() * FACE];
                 int o = 0;

@@ -97,10 +97,17 @@ public final class LodsScenario implements Scenario {
                 counts(context, "close-up level " + level);
                 Scene.screenshot(context, this, "close-level" + level);
             }
+            // From above, as a player on a hill sees them: the tops must hide the insides.
+            Scene.command(world, "execute as @p at @s run tp @s ~ ~14 ~ 0 15");
+            context.waitTicks(20);
+            Scene.screenshot(context, this, "close-above-level3");
         } finally {
             context.runOnClient(minecraft -> LodRenderer.forceLevelForTests(-1));
         }
         Scene.configure(context, config -> config.mobLods = false);
+        Scene.screenshot(context, this, "close-above-model");
+        Scene.command(world, "execute as @p at @s run tp @s ~ ~-14 ~ 0 0");
+        context.waitTicks(20);
         Scene.screenshot(context, this, "close-model");
     }
 
