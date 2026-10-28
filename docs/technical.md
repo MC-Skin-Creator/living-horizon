@@ -99,6 +99,11 @@ a named channel before 1.20.5; NeoForge's; Forge's channels, its `NetworkRegistr
 1.20.2). Nothing goes through the scoreboard or any other part of the
 world, and a player without the mod is sent nothing.
 
+A server without the mod sends nothing either. Ten seconds after joining a server (never a
+world played alone) with nothing received, the client says so once, in its log and, while
+*Show Players* is on, in the chat (`FarPlayerTracker.warn`); the `nomodserver` game test
+checks it.
+
 ### What is sent, and when
 
 - **Five times a second**, to every player online: each player's position, yaw, dimension
@@ -123,7 +128,8 @@ Their layout, from version 3:
   (`READABLE_FROM`). A version that only adds fields at the end of a record, or after the
   records, keeps `READABLE_FROM` and older clients skip what they do not know; one that
   changes what is there raises it. A client that cannot read the server's messages says so in
-  its log, with both versions, ten seconds after joining;
+  its log, with both versions, ten seconds after joining, and in the chat which side needs the
+  update;
 - the kind of message, then the table of the dimensions it names, by id
   (`minecraft:overworld`, `aether:the_aether`): a record names its dimension by its place in
   the table. Version 2 numbered them 0 to 2 and gave 3 to every other one, so players in two
@@ -357,23 +363,24 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
   position for everyone, and a mob gone from its loaded chunk disappears for everyone. The
   server shares the 31 mobs and the boats of `track/MobKinds.TYPES`, numbered in that order.
 - **Otherwise**, each client remembers the mobs it met itself (the types in `mobTypes`), in
-  `config/livinghorizon/mobs/<server>.json`.
+  `config/livinghorizon/mobs/<server>.json`. Every kind is in it by default, monsters too: one
+  that despawned is forgotten like any other (below).
 - **Look.** A mob met up close keeps its exact look (the game's own save of it); one known
   only from the server is built from kind, variant and age.
 - **Forgetting.** Coming back within range of a remembered mob that is not there forgets it.
-- **Other mods' mobs** are shown from the start (monsters excepted), then left as the player
-  sets them (`knownModdedMobs`). Each client remembers them itself: the server only shares
-  vanilla kinds.
+- **Every kind of mob**, the game's and other mods', is shown from the start, walking, then left
+  as the player sets it (`knownMobTypes`, offered once the game has registered them). Each client
+  remembers other mods' mobs itself: the server only shares vanilla kinds.
 - **Vehicles** that are neither mobs nor the game's boats (an aircraft, a car, a minecart) are
   told by what their class does, never by a list of ids (`track/Vehicles`): one whose class
   answers who steers it (`getControllingPassenger`, as a boat's does: Immersive Aircraft's
   planes, another mod's boat) is shown from the start; one that only places its riders
   (`positionRider`: a minecart, Superb Warfare's vehicles, Create's seats and moving
-  contraptions, whose copies could cost a lot) is listed but waits to be chosen. Both
-  methods are found on `Entity` by their shape, since their names differ between loaders.
-  Only an entity seen tells its kind is a vehicle, so a kind joins *Mobs & Entities...* when
-  one is first met (`knownVehicles`). A copy stands where it was left, as a boat does: no
-  animation, and only this client remembers it.
+  contraptions, whose copies could cost a lot) is listed but waits to be chosen
+  (`seatedVehicles`, kept by *Defaults* and a reset). Both methods are found on `Entity` by
+  their shape, since their names differ between loaders. Only an entity seen tells its kind is
+  a vehicle, so a kind joins *Mobs & Entities...* when one is first met (`knownVehicles`). A copy
+  stands where it was left, as a boat does: no animation, and only this client remembers it.
 - **Mannequins** (from 1.21.9) are shown too, standing still: Distant Friends uses them as its fake
   players. Mobs in `stillMobTypes` (happy ghast, mannequin) stand still instead of walking
   their loop. A copy wears its mannequin's skin, from a player's name or a texture of a
@@ -971,7 +978,9 @@ host shares, the other players see them too (see
 ### Benchmark
 
 `/livinghorizon benchmark [seconds]` (`debug/Benchmark`) measures what the mod costs where the
-player stands, on their own machine. The player stands still; the settings go through phases:
+player stands, on their own machine. It is not a player's command: it and its sub-commands are
+there only in a game started with `-Dlh.benchmark=true` (`Benchmark.ON`, a JVM argument in the
+launcher), and without it they are not even suggested. The player stands still; the settings go through phases:
 a warm-up of 20 seconds that is not measured, the mod off, the player's settings, each preset,
 the mod off again, distant players, mobs and birds each on their own, then mobs with
 *Simplified Entities*, *Skip Hidden Mobs* and *Hide Behind Far Terrain* off in turn, and the mod
@@ -1037,7 +1046,7 @@ update, measure the same scene. Birds still choose where they fly by chance.
 | `/livinghorizon lod` (or `voxy`) | Which far terrain mod is read and the state of its depth |
 | `/livinghorizon debug` | Turns the debug panel and the boxes on or off together |
 | `/livinghorizon debug offline test ...` | Test players who logged off (see [Test players](#test-players-who-logged-off)) |
-| `/livinghorizon benchmark [seconds]` | Measures what the mod costs, part by part, and writes a report (see [Benchmark](#benchmark)) |
+| `/livinghorizon benchmark [seconds]` | Measures what the mod costs, part by part, and writes a report (see [Benchmark](#benchmark)); only with `-Dlh.benchmark=true` |
 | `/livinghorizon benchmark world` | Makes the benchmark's world, the same every time, after saying so; `... confirm` goes ahead |
 
 Two key bindings, unbound by default: *Toggle Distant Players* (flips `enabled`) and *Open
@@ -1118,11 +1127,12 @@ the mod, they come back at their last position.
 | `rememberNamedMobs` | Name-Tagged Mobs | `true` | | A mob with a name tag is shown whatever its type |
 | `animationMinPixels` | Min. Animated Size | `10` pixels | 0 to 40 | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
 | `animationMaxDistance` | Animation Distance | `0` blocks | 0 to 4000 | Past this, no distant mob plays an animation (`0`: no limit) |
-| `mobTypes` | Mobs & Entities... | The 31 mobs and the boats a server shares, and mannequins | | Which mobs are shown, and remembered by this client |
+| `mobTypes` | Mobs & Entities... | Every mob and boat of the game and of other mods | | Which mobs are shown, and remembered by this client |
 | `stillMobTypes` | Mobs & Entities..., *Still* | Happy ghast, mannequin | | Mobs shown standing still instead of walking their loop |
 | `scanRadius` | Scan Radius | `32` chunks | 4 to 1024 | Chunks around you read by a scan, in single player (32 chunks = 512 blocks) |
-| `knownModdedMobs` | (not shown) | Empty | | Mob types of other mods already offered once: a new one is shown from the start (monsters excepted), then left as you set it |
-| `knownVehicles` | (not shown) | Empty | | Vehicles met that are neither mobs nor boats, listed in *Mobs & Entities...* from then on: one its rider steers is shown from the start, one that only seats its riders waits to be chosen |
+| `knownMobTypes` | (not shown) | Those met so far | | Mob types already offered once, the game's and other mods': a new one is shown from the start, then left as you set it |
+| `knownVehicles` | (not shown) | Empty | | Vehicles met that are neither mobs nor boats, listed in *Mobs & Entities...* from then on |
+| `seatedVehicles` | (not shown) | Empty | | Those of them that only seat their riders (a minecart): listed, never shown by default |
 
 *Forget Mobs* forgets every mob remembered on this server; those a server with the mod shares
 come back by themselves. *Scan Nearby Mobs* runs a scan.

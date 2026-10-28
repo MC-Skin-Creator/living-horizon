@@ -158,8 +158,8 @@ public final class FarConfigScreen extends SideOptionsScreen {
         //? if >=1.20.2 {
         LinearLayout row = LinearLayout.horizontal().spacing(8);
         //?} else {
-        /*LinearLayout row = new LinearLayout(0, 0, LinearLayout.Orientation.HORIZONTAL);
-        row.defaultChildLayoutSetting().padding(4);
+        /*// Before 1.20.2 the row spreads its buttons over its own width: two of 150 and a gap of 8.
+        LinearLayout row = new LinearLayout(2 * 150 + 8, 20, LinearLayout.Orientation.HORIZONTAL);
         *///?}
         row.addChild(Button.builder(Component.translatable(KEY + "restoreDefaults"), b -> restoreDefaults())
                 .tooltip(Tooltip.create(Component.translatable(KEY + "restoreDefaults.tooltip"))).width(150).build());
@@ -193,7 +193,7 @@ public final class FarConfigScreen extends SideOptionsScreen {
     /** Asks, then puts every setting back to its default and reopens the screen to show them. */
     private void restoreDefaults() {
         minecraft.setScreen(new ConfirmScreen(yes -> {
-            if (yes) FarConfig.reset();
+            if (yes) FarConfig.reset(MobList.all());
             minecraft.setScreen(yes ? new FarConfigScreen(parent) : this);
         }, Component.translatable(KEY + "restoreDefaults"), Component.translatable(KEY + "restoreDefaults.confirm")));
     }

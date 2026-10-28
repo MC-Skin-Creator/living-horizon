@@ -27,12 +27,12 @@ class FarConfigTest {
         FarConfig fresh = new FarConfig();
         fresh.version = migrated.version;
         assertEquals(GSON.toJson(fresh), GSON.toJson(migrated));
-        assertEquals(10, migrated.version);
+        assertEquals(11, migrated.version);
     }
 
     @Test
     void leavesAnUpToDateFileAsItIs() {
-        String json = "{\"version\": 10, \"minApparentPixels\": 14, \"birdSize\": 2, \"depthOcclusion\": false,"
+        String json = "{\"version\": 11, \"minApparentPixels\": 14, \"birdSize\": 2, \"depthOcclusion\": false,"
                 + " \"maxDistantMobs\": 200, \"mobMaxDistance\": 0, \"impostors\": false, \"easterEggs\": false,"
                 + " \"mobTypes\": [\"minecraft:cow\"], \"stillMobTypes\": []}";
         FarConfig config = migrated(json);
@@ -129,15 +129,28 @@ class FarConfigTest {
     }
 
     @Test
+    void version11OffersEveryOtherMob() {
+        FarConfig config = migrated("{\"version\": 10, \"mobTypes\": [\"minecraft:cow\"],"
+                + " \"knownModdedMobs\": [\"othermod:zombie\"]}");
+        // The old defaults keep the player's choice; the game's monsters are left to be offered.
+        assertTrue(config.knownMobTypes.contains("minecraft:horse"));
+        assertTrue(config.knownMobTypes.contains("othermod:zombie"));
+        assertFalse(config.knownMobTypes.contains("minecraft:enderman"));
+        assertEquals(java.util.List.of("minecraft:cow"), config.mobTypes);
+        assertFalse(migrated("{\"version\": 11, \"knownMobTypes\": []}").knownMobTypes.contains("minecraft:horse"));
+    }
+
+    @Test
     void fillsInWhatTheFileLeftOut() {
-        FarConfig config = migrated("{\"version\": 10, \"mobTypes\": null, \"hiddenBirds\": null, \"birdStyle\": null,"
-                + " \"knownModdedMobs\": null, \"knownVehicles\": null, \"stillMobTypes\": null}");
+        FarConfig config = migrated("{\"version\": 11, \"mobTypes\": null, \"hiddenBirds\": null, \"birdStyle\": null,"
+                + " \"knownMobTypes\": null, \"knownVehicles\": null, \"seatedVehicles\": null, \"stillMobTypes\": null}");
         assertTrue(config.mobTypes.contains("minecraft:horse"));
         assertTrue(config.stillMobTypes.contains(MANNEQUIN));
         assertEquals(java.util.List.of(), config.hiddenBirds);
         assertEquals("3d", config.birdStyle);
-        assertEquals(java.util.List.of(), config.knownModdedMobs);
+        assertTrue(config.knownMobTypes.contains("minecraft:horse"));
         assertEquals(java.util.List.of(), config.knownVehicles);
+        assertEquals(java.util.List.of(), config.seatedVehicles);
     }
 
     @Test

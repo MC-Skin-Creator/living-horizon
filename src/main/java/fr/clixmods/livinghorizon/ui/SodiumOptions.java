@@ -74,7 +74,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                         .addOption(opens(b, "debug", DebugScreen::new))
                         .addOption(button(b, "discord", DiscordLink::open))
                         .addOption(button(b, "restoreDefaults", parent -> confirm(parent, "restoreDefaults", () -> {
-                            FarConfig.reset();
+                            FarConfig.reset(MobList.all());
                             reload();
                         }))));
     }
