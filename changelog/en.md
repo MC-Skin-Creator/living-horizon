@@ -11,6 +11,9 @@
 - **Servers without the mod** — joining a server without Living Horizon, or with a version of it too old or too new, now says in the chat that distant players are not shown there; with *Show Players* off, nothing is said.
 - **Saved pictures shown** — the *Simplified Entities* screen now says under each mob whether its picture is shared, read back from an earlier game, new and saved for the next ones, or not saved, with when and in which world it was made.
 
+#### Fixed
+- **Bright outline round mobs with QDAA** — mobs, near or far, no longer have a thin bright line along their edges when Distant Horizons and QDAA are installed together.
+
 ## 0.13.0 — 2026-10-28
 
 ### Client

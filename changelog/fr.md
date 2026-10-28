@@ -11,6 +11,9 @@
 - **Serveurs sans le mod** — en rejoignant un serveur sans Living Horizon, ou avec une version trop ancienne ou trop récente du mod, le tchat dit maintenant que les joueurs lointains n'y sont pas affichés ; avec *Afficher les joueurs* désactivé, rien n'est dit.
 - **Images sauvegardées affichées** — l'écran des *Entités simplifiées* indique maintenant sous chaque mob si son image est partagée, relue d'une partie précédente, nouvelle et sauvegardée pour les suivantes, ou non sauvegardée, avec quand et dans quel monde elle a été faite.
 
+#### Corrections
+- **Contour clair autour des mobs avec QDAA** — les mobs, proches ou lointains, n'ont plus de fine ligne claire le long de leurs bords quand Distant Horizons et QDAA sont installés ensemble.
+
 ## 0.13.0 — 2026-10-28
 
 ### Client

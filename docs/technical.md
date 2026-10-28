@@ -786,7 +786,9 @@ entities).
 
 Without a shader pack, Distant Horizons fades the game's picture into its terrain after the
 entities. `FarDepth.beforeFade` keeps that fade off our figures (`optDhFade`); otherwise it
-paints its terrain over distant mobs.
+paints its terrain over distant mobs. For the fade, the entities' pixels stand at the near
+plane, where it writes the game's own colour back, opaque. As sky they would get the sky's
+alpha of 0, which QDAA (supersampling) carries to the screen as a bright line round every mob.
 
 **On 26.3**, with Vulkan, or with OpenGL over Distant Horizons without a shader pack (unless
 Distant Horizons draws with OpenGL itself, as it does with Iris installed), all of this goes
