@@ -4,6 +4,7 @@ import fr.clixmods.livinghorizon.render.PartTree;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -37,12 +38,50 @@ public final class ModelReader {
 
     /** The model under {@code root}, every part and cube of it, each part at its initial pose. */
     public static LodModel read(ModelPart root, Tree tree) {
-        LodModel model = new LodModel();
-        read(model, tree, root, "root", -1);
-        return model;
+        return read(root, tree, false).model();
     }
 
-    private static void read(LodModel model, Tree tree, ModelPart part, String name, int parent) {
+    /**
+     * A model read with the game's parts it came from.
+     *
+     * @param parts     the game's part of each of the model's parts, by index
+     * @param cubeIndex for each of the model's cubes, its index in its part's own list
+     */
+    public record Read(LodModel model, List<ModelPart> parts, int[] cubeIndex) {
+    }
+
+    /**
+     * The model under {@code root}; with {@code drawnOnly}, only the cubes the game draws as the
+     * parts stand now: none under a hidden part, none of a part that skips its own.
+     */
+    public static Read read(ModelPart root, Tree tree, boolean drawnOnly) {
+        LodModel model = new LodModel();
+        List<ModelPart> parts = new ArrayList<>();
+        List<Integer> cubeIndex = new ArrayList<>();
+        read(model, tree, root, "root", -1, drawnOnly, parts, cubeIndex);
+        int[] indices = new int[cubeIndex.size()];
+        for (int i = 0; i < indices.length; i++) indices[i] = cubeIndex.get(i);
+        return new Read(model, parts, indices);
+    }
+
+    /**
+     * A number that changes when which parts the game draws changes: two models read with
+     * {@code drawnOnly} from the same root are the same when it is.
+     */
+    public static long drawn(ModelPart root, Tree tree) {
+        long hash = 0xcbf29ce484222325L;
+        return drawn(root, tree, hash);
+    }
+
+    private static long drawn(ModelPart part, Tree tree, long hash) {
+        hash = (hash ^ (part.visible ? 1 : 0) ^ (part.skipDraw ? 2 : 0)) * 0x100000001b3L;
+        if (!part.visible) return hash;
+        for (ModelPart child : tree.children(part).values()) hash = drawn(child, tree, hash);
+        return hash;
+    }
+
+    private static void read(LodModel model, Tree tree, ModelPart part, String name, int parent, boolean drawnOnly,
+                             List<ModelPart> parts, List<Integer> cubeIndex) {
         PartPose pose = part.getInitialPose();
         //? if >=1.21.2 {
         int index = model.part(name, parent, pose.x(), pose.y(), pose.z(), pose.xRot(), pose.yRot(), pose.zRot(),
@@ -50,13 +89,20 @@ public final class ModelReader {
         //?} else {
         /*int index = model.part(name, parent, pose.x, pose.y, pose.z, pose.xRot, pose.yRot, pose.zRot, 1, 1, 1);
         *///?}
-        for (ModelPart.Cube cube : tree.cubes(part)) {
-            float[][] quads = new float[cube.polygons.length][];
-            for (int q = 0; q < quads.length; q++) quads[q] = quad(cube.polygons[q]);
-            model.cube(index, new double[]{cube.minX, cube.minY, cube.minZ, cube.maxX, cube.maxY, cube.maxZ}, quads);
+        parts.add(part);
+        if (drawnOnly && !part.visible) return;
+        if (!drawnOnly || !part.skipDraw) {
+            List<ModelPart.Cube> cubes = tree.cubes(part);
+            for (int c = 0; c < cubes.size(); c++) {
+                ModelPart.Cube cube = cubes.get(c);
+                float[][] quads = new float[cube.polygons.length][];
+                for (int q = 0; q < quads.length; q++) quads[q] = quad(cube.polygons[q]);
+                model.cube(index, new double[]{cube.minX, cube.minY, cube.minZ, cube.maxX, cube.maxY, cube.maxZ}, quads);
+                cubeIndex.add(c);
+            }
         }
         for (Map.Entry<String, ModelPart> child : tree.children(part).entrySet()) {
-            read(model, tree, child.getValue(), child.getKey(), index);
+            read(model, tree, child.getValue(), child.getKey(), index, drawnOnly, parts, cubeIndex);
         }
     }
 

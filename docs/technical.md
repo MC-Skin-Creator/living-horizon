@@ -707,8 +707,8 @@ after a failed bake.
 Between a figure's full model and its impostor, simpler models: fewer quads for figures too
 far to show the difference. They are made at run time from the model's own tree of parts
 (`render/lod/ModelReader`: every part at its initial pose, every cube with its quads and texture
-coordinates), so that a mob of any mod gets them, once per model. The code in `render/lod` asks
-the game nothing but that tree, and is tested without it.
+coordinates), so that a mob of any mod gets them, once per model. `LodLevels` and `LodBake` ask
+the game nothing but that tree, and are tested without it.
 
 **Levels** (`LodLevels`): level 0 is the full model; level `i` may keep `round(Q0 × 0.5^i)` of
 its `Q0` quads, for levels 1 to 3; the impostor comes after them. Each cube starts as a group of
@@ -735,6 +735,42 @@ Texels the cubes leave empty stay transparent, cut out like the cubes, and take 
 neighbours' colour so that no dark edge shows once filtered. The faces are drawn from outside
 only, or the holes would show the faces behind and the figure would look doubled; their
 texture coordinates stay a quarter texel inside, so that nothing next to them on a page bleeds in.
+
+**In game** (`LodRenderer`, *Detail Levels*, `mobLods`, on by default; the levels and distances
+are fixed). Only the mod's own mobs, never a player yet, never what the game draws itself.
+
+| Level | From | What is drawn |
+|---|---|---|
+| 0 | | The full model |
+| 1 | 18 blocks | Half the quads |
+| 2 | 36 blocks | A quarter |
+| 3 | 72 blocks, to the end without impostors | An eighth, often one box |
+| Impostor | `impostorDistance` | The flat picture (see [Impostors](#impostors)) |
+
+- *Choosing.* `GhostRenderer.place` hands each figure's distance to `LodRenderer.choose`. A
+  figure takes its level only once every model and layer it was drawn with in its last frame
+  has that level ready; until then it keeps its full model. A layer whose texture cannot be
+  told (an atlas sprite, a glint) or is half see-through (a slime's outside) keeps its figure
+  whole for good.
+- *What a model is made of.* A model is read when the game draws it (`ModelPartMixin`, the
+  first `render` of a figure's model is its root), with the parts the game draws then. Its
+  levels are made for the textures its layers were drawn with the frame before: a cube none of
+  them shows is left out (a villager's hat rim, painted by some professions only), so that every
+  layer of a figure shares the same boxes. One set per root, parts drawn and textures, made on a
+  thread of its own; one baked texture per set and layer texture, baked there too, and handed to
+  the graphics card one a frame.
+- *Layers.* The texture of a layer is read from its render type's description (the
+  `textures/...png` it names): from the feature renderer's call from 1.21.9, from the buffer its
+  renderer asks for before (`GhostRenderer.draw` wraps them). Render types other than the
+  entity cut-out, solid, translucent and eyes kinds keep the figure whole.
+- *Drawing.* While a figure at level 1 to 3 is drawn, each part's `compile` draws only the cubes
+  its level keeps, and queues the merged boxes anchored to it with its pose, light, overlay and
+  colour. The boxes are drawn with the impostors (`LodRenderer.submit`, through `Sink`), one
+  batch per baked texture: from 1.21.9 the game draws that geometry after the models, so the
+  poses are this frame's. Faces are wound clockwise from outside, since the game draws models
+  mirrored, and culled from inside.
+- *Counting.* `PolygonStats` counts what each figure draws and what its full models would
+  cost, so the debug panel's gain and figures per level include the levels of detail.
 
 ## Far terrain depth
 
@@ -1014,7 +1050,7 @@ there only in a game started with `-Dlh.benchmark=true` (`Benchmark.ON`, a JVM a
 launcher), and without it they are not even suggested. The player stands still; the settings go through phases:
 a warm-up of 20 seconds that is not measured, the mod off, the player's settings, each preset,
 the mod off again, distant players, mobs and birds each on their own, then mobs with
-*Simplified Entities*, *Skip Hidden Mobs* and *Hide Behind Far Terrain* off in turn, and the mod
+*Simplified Entities*, *Detail Levels*, *Skip Hidden Mobs* and *Hide Behind Far Terrain* off in turn, and the mod
 off a third time. Each phase settles for 4 seconds, then is measured for `seconds` (8 by
 default, 3 to 60): about three minutes in all. `/livinghorizon benchmark stop` ends it early,
 and it stops by itself if the world closes or the game pauses.
@@ -1127,6 +1163,7 @@ cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 |---|---|---|---|---|
 | `impostors` | Simplified Entities | `true` | | Far players and mobs drawn as a flat picture of themselves (see [Impostors](#impostors)) |
 | `impostorPlayers` | Simplified Players | `true` | | Distant players become impostors too; off, they keep their whole model at any distance |
+| `mobLods` | Detail Levels | `true` | | Distant mobs drawn with simpler models the farther they are, before the impostor (see [Levels of detail](#levels-of-detail)) |
 | `impostorDistance` | Simplification Distance | `128` blocks | 32 to 2000 | Past this distance an impostor stands in for the model |
 | `impostorPixels` | Simplification Size | `10` pixels | 0 to 64 | A figure shorter than this on screen is an impostor too, even closer than `impostorDistance` (`0`: the distance alone) |
 | `impostorMobMemory` | Mob Picture Memory | `1024` MB | 64 to 4096 | Video memory the mobs' pictures may take, apart from the players' |

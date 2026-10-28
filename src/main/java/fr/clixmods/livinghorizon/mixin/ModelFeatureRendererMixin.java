@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon.mixin;
 // The feature renderers came in 1.21.9; before, GhostRenderer counts what it draws itself.
 //? if >=1.21.9 {
 import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
+import fr.clixmods.livinghorizon.render.lod.LodRenderer;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,7 +17,10 @@ import net.minecraft.client.renderer.SubmitNodeStorage;
 import net.minecraft.client.renderer.rendertype.RenderType;
 //?}
 
-/** Tells {@link PolygonStats} which entity a model belongs to while it is turned into polygons. */
+/**
+ * Tells {@link PolygonStats} which entity a model belongs to while it is turned into polygons,
+ * and {@link LodRenderer} what that layer is textured with.
+ */
 @Mixin(ModelFeatureRenderer.class)
 abstract class ModelFeatureRendererMixin {
     //? if >=26.2 {
@@ -24,6 +28,11 @@ abstract class ModelFeatureRendererMixin {
     @Inject(method = "prepareModel", at = @At("HEAD"))
     private void livinghorizon$enter(ModelFeatureRenderer.Submit<?> submit, CallbackInfo ci) {
         PolygonStats.enter(submit.state());
+        // An atlas sprite's texture coordinates (a uv mapping from 26.3) are not the texture's own.
+        //? if >=26.3 {
+        /^if (PolygonStats.counting()) LodRenderer.layer(submit.renderType(), submit.uvMapping() != null);
+        ^///?} else
+        if (PolygonStats.counting()) LodRenderer.layer(submit.renderType(), submit.sprite() != null);
     }
 
     @Inject(method = "prepareModel", at = @At("TAIL"))
@@ -35,6 +44,7 @@ abstract class ModelFeatureRendererMixin {
     private void livinghorizon$enter(SubmitNodeStorage.ModelSubmit<?> submit, RenderType type, VertexConsumer consumer,
                                      OutlineBufferSource outline, MultiBufferSource.BufferSource buffers, CallbackInfo ci) {
         PolygonStats.enter(submit.state());
+        if (PolygonStats.counting()) LodRenderer.layer(type, submit.sprite() != null);
     }
 
     @Inject(method = "renderModel", at = @At("TAIL"))

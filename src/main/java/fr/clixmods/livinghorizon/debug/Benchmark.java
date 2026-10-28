@@ -337,6 +337,10 @@ public final class Benchmark {
             mobsOnly(config);
             config.impostors = false;
         }));
+        list.add(new Phase("mobs-no-lods", "distant mobs, Detail Levels off", config -> {
+            mobsOnly(config);
+            config.mobLods = false;
+        }));
         list.add(new Phase("mobs-no-occlusion", "distant mobs, Skip Hidden Mobs off", config -> {
             mobsOnly(config);
             config.hideOccludedMobs = false;

@@ -58,6 +58,16 @@ public final class LodModel {
         this.quads += quads.length;
     }
 
+    /** The same parts with only the cubes {@code keep} says. */
+    public LodModel keep(boolean[] keep) {
+        LodModel out = new LodModel();
+        out.parts.addAll(parts);
+        for (int i = 0; i < cubes.size(); i++) {
+            if (keep[i]) out.cube(cubes.get(i).part(), cubes.get(i).box(), cubes.get(i).quads());
+        }
+        return out;
+    }
+
     public List<Part> parts() {
         return Collections.unmodifiableList(parts);
     }

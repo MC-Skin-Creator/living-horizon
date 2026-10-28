@@ -17,6 +17,7 @@ import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorThreshold;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorViews;
 import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
+import fr.clixmods.livinghorizon.render.lod.LodRenderer;
 import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobFlight;
@@ -235,6 +236,7 @@ public final class GhostRenderer {
         /*RENDERERS.clear();*/
         ImpostorRenderer.beginFrame();
         PolygonStats.beginFrame();
+        LodRenderer.beginFrame();
         forgetShown();
         neededFar = farthest > 0 ? (float) Math.min(MAX_FAR, farthest * 1.1 + 64) : 0f;
         farthest = 0;
@@ -404,7 +406,13 @@ public final class GhostRenderer {
      * Draws this frame's figures into the world's buffers, right after the game's own
      * entities: moved and scaled as {@link #transform} says, in the light worked out for them.
      ^/
-    public static void draw(PoseStack pose, MultiBufferSource buffers, Vec3 camera) {
+    public static void draw(PoseStack pose, MultiBufferSource world, Vec3 camera) {
+        // Each layer asks for its buffer just before its model is drawn: the levels of detail
+        // learn what it is textured with from that.
+        MultiBufferSource buffers = type -> {
+            LodRenderer.layer(type, false);
+            return world.getBuffer(type);
+        };
         for (EntityRenderState state : CLASSIC) {
             double x = state.x - camera.x, y = state.y - camera.y, z = state.z - camera.z;
             int light = LIGHTS.getOrDefault(state, LightTexture.pack(0, 15));
@@ -776,6 +784,8 @@ public final class GhostRenderer {
     private static void place(List<EntityRenderState> frame, EntityRenderState state, Transform transform, boolean puppet,
                               Mark kind, FarConfig config, @Nullable LocalPlayer self, @Nullable ClientLevel level) {
         TRANSFORMS.put(state, transform);
+        LodRenderer.choose(state, Math.sqrt(transform.anchorX * transform.anchorX + transform.anchorY * transform.anchorY
+                + transform.anchorZ * transform.anchorZ));
         // A boat hides the water inside its hull with a patch that the water then fails to
         // draw over. Drawn bigger or nearer than it is, that patch hides the water around
         // it; under a shader pack (Photon), drawn with our figures, it turns the game's

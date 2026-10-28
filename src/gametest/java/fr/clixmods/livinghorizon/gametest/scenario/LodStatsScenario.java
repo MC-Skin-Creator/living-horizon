@@ -13,8 +13,8 @@ import net.minecraft.world.entity.LivingEntity;
 /**
  * The debug counters of the levels of detail: a row of mobs at 50 blocks drawn as models,
  * a row at 95 drawn as impostors, with the debug panel on. With LOD Colours on the
- * impostors are red and the models untinted; the triangles "without LOD" count each
- * impostor as the model it stands for, so they are more than the triangles drawn.
+ * impostors are red and the models in their level's colour; the triangles "without LOD"
+ * count each figure as its full model, so they are more than the triangles drawn.
  */
 public final class LodStatsScenario implements Scenario {
     private static final String[] MOBS = {"cow", "sheep", "pig", "villager", "chicken", "horse", "wolf", "iron_golem"};
@@ -52,8 +52,10 @@ public final class LodStatsScenario implements Scenario {
                 Scene.log("lodstats triangles=" + PolygonStats.triangles() + " without=" + PolygonStats.fullTriangles()
                         + " gain=" + PolygonStats.gain() + "% quads=" + PolygonStats.polygons() + " models="
                         + PolygonStats.models() + " impostors=" + PolygonStats.impostors() + " levels:" + levels);
+                int modelFigures = 0;
+                for (int level = 0; level < PolygonStats.IMPOSTOR; level++) modelFigures += PolygonStats.figures(level);
                 return new int[]{PolygonStats.models(), PolygonStats.impostors(), PolygonStats.triangles(),
-                        PolygonStats.fullTriangles(), PolygonStats.figures(0), PolygonStats.figures(PolygonStats.IMPOSTOR)};
+                        PolygonStats.fullTriangles(), modelFigures, PolygonStats.figures(PolygonStats.IMPOSTOR)};
             });
             if (counts[0] == 0 || counts[1] == 0) {
                 throw new AssertionError("Expected models and impostors, got " + counts[0] + " and " + counts[1]);

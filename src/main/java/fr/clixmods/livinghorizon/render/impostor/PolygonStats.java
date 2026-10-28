@@ -2,6 +2,7 @@ package fr.clixmods.livinghorizon.render.impostor;
 
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.PartTree;
+import fr.clixmods.livinghorizon.render.lod.LodRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
@@ -51,7 +52,10 @@ public final class PolygonStats {
 
     /** The entity each of this frame's states was extracted from. */
     private static final Map<Object, Entity> OWNERS = new IdentityHashMap<>();
-    /** Quads drawn this frame for each of the mod's states, all its layers together. */
+    /**
+     * For each of the mod's states this frame, all its layers together: the quads drawn, then
+     * the quads its full models would have cost.
+     */
     private static final Map<Object, int[]> FIGURES = new IdentityHashMap<>();
     /** What a figure cost the last time it was drawn as a full model. */
     private static final Map<Entity, Integer> BY_ENTITY = new WeakHashMap<>();
@@ -73,9 +77,9 @@ public final class PolygonStats {
     /** A frame begins: what the one before counted is what is shown. */
     public static void beginFrame() {
         for (Map.Entry<Object, int[]> figure : FIGURES.entrySet()) {
-            int quads = figure.getValue()[0];
+            int quads = figure.getValue()[1];
             fullPolygons += quads;
-            LEVEL_FIGURES[0]++;
+            LEVEL_FIGURES[LodRenderer.level(figure.getKey())]++;
             Entity owner = OWNERS.get(figure.getKey());
             if (owner == null || quads == 0) continue;
             BY_ENTITY.put(owner, quads);
@@ -105,8 +109,9 @@ public final class PolygonStats {
         counting = state instanceof EntityRenderState entity && GhostRenderer.transform(entity) != null;
         if (!counting) return;
         current = state;
+        LodRenderer.figure();
         if (!FIGURES.containsKey(state)) {
-            FIGURES.put(state, new int[1]);
+            FIGURES.put(state, new int[2]);
             models++;
         }
     }
@@ -114,6 +119,7 @@ public final class PolygonStats {
     public static void leave() {
         counting = false;
         current = null;
+        LodRenderer.figure();
     }
 
     /** Whether the model being drawn is one of the mod's. */
@@ -121,11 +127,27 @@ public final class PolygonStats {
         return counting;
     }
 
-    /** One part of a model is drawn, with this many faces. */
+    /** The state of the mod's figure being drawn, null for none. */
+    public static @Nullable Object current() {
+        return current;
+    }
+
+    /** The entity this frame's state was made from, null for none. */
+    public static @Nullable Entity ownerOf(Object state) {
+        return OWNERS.get(state);
+    }
+
+    /** Faces drawn for the figure being drawn: a part of its model, or the boxes standing for parts. */
     public static void model(int polygons) {
         modelPolygons += polygons;
         int[] figure = current == null ? null : FIGURES.get(current);
         if (figure != null) figure[0] += polygons;
+    }
+
+    /** Faces one part of its full model has, drawn or not. */
+    public static void full(int polygons) {
+        int[] figure = current == null ? null : FIGURES.get(current);
+        if (figure != null) figure[1] += polygons;
     }
 
     /** An impostor is drawn: one quad, standing for a model of {@code full} quads. */
