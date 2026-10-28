@@ -5,7 +5,7 @@
 ### Client
 
 #### New
-- **Distant mobs in simpler shapes** — distant mobs are drawn with fewer, larger boxes the farther they are, before they turn into flat pictures, so crowds of far mobs cost much less to draw; *Levels of Detail* in the settings sets how far and how simple, and *Detail Levels...* shows what each mob looks like.
+- **Distant mobs in simpler shapes** — distant mobs are drawn with simpler, smoother shapes the farther they are, before they turn into flat pictures, so crowds of far mobs cost much less to draw; *Levels of Detail* in the settings sets how far and how simple, and *Detail Levels...* shows what each mob looks like.
 - **Changelog button** — the mod's settings now have a changelog button beside the Discord logo, to read what changed in each version (a *Read the changelog* button on Sodium's page).
 
 #### Improved

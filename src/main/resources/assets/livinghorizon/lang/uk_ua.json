@@ -362,7 +362,7 @@
   "livinghorizon.lods.model": "%s (%s з %s)",
   "livinghorizon.lods.full": "Повна модель",
   "livinghorizon.lods.level": "Рівень %s",
-  "livinghorizon.lods.quads": "Полігонів: %s",
+  "livinghorizon.lods.quads": "Трикутників: %s",
   "livinghorizon.lods.near": "До %s блоків",
   "livinghorizon.lods.from": "Від %s блоків",
   "livinghorizon.lods.unused": "Не використовується",

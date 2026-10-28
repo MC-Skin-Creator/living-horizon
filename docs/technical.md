@@ -710,40 +710,59 @@ after a failed bake.
 
 ## Levels of detail
 
-Between a figure's full model and its impostor, simpler models: fewer quads for figures too
-far to show the difference. They are made at run time from the model's own tree of parts
-(`render/lod/ModelReader`: every part at its initial pose, every cube with its quads and texture
-coordinates), so that a mob of any mod gets them, once per model. `LodLevels` and `LodBake` ask
-the game nothing but that tree, and are tested without it.
+Between a figure's full model and its impostor, simpler models: fewer triangles for figures too
+far to show the difference, the Mob LOD Lab's "voxel remesh and decimation". They are made at run
+time from the model's own tree of parts (`render/lod/ModelReader`: every part at its initial pose,
+every cube with its quads and texture coordinates, its box taken from its corners so that a grown
+cube, wool or armour, keeps its thickness), so that a mob of any mod gets them, once per model.
+`LodLevels` and `LodBake` ask the game nothing but that tree, and are tested without it.
 
-**Levels** (`LodLevels`): level 0 is the full model; level `i` may keep `round(Q0 × 0.5^i)` of
-its `Q0` quads, for levels 1 to 3; the impostor comes after them. Each cube starts as a group of
-its own, anchored to its part. While a level has more quads than it may keep, the cheapest of
-these is done:
+**Levels** (`LodLevels`): level 0 is the full model; level `i` keeps `max(4, round(T0 × 0.5^i))`
+of its `T0` triangles (two a quad), for levels 1 to 3; the impostor comes after them.
 
-- **remove** a group: 3 times the square root of its box's largest face, in model pixels;
-- **merge** two groups into one box, made in the space of their nearest common part from their
-  cubes' corners at rest: the cube root of the empty room it adds (filled is A's plus B's, less
-  where their boxes overlap). A group carried up past an animated part (a leg, an arm or the
-  head, told by the part's name) freezes it, and costs half its size plus 2 more. A merge that
-  saves no quad is never made; a flat box has two faces.
+1. *Rigid groups.* One group per animated part (a leg, an arm, the head, told by the part's name),
+   with the cubes of the parts under it that do not move on their own (ears, horns, nose); the
+   rest of the model is the root's group. A group is made in its part's space at rest and drawn
+   with that part's pose, so it follows its animation.
+2. *Voxels.* Each group fills a grid aligned on its part, centred on its cubes' box, one model
+   pixel a cell or more so that the longest side has at most 32 cells. A cell is solid when 3 of
+   its 8 samples (at the quarters and three quarters of the cell) fall in a cube; a flat cube is
+   one pixel thick.
+3. *Closed surface.* Every side of a solid cell against an empty one gives two triangles facing
+   out, their corners shared: one welded surface per group, nothing loose, nothing hollow; cubes
+   that touch or overlap (a hat on a head) are one surface.
+4. *Decimation* (Garland-Heckbert quadrics, as Blender's Decimate, Unity's and Unreal's automatic
+   levels): every vertex carries the area-weighted quadrics of its triangles' planes; edges are
+   collapsed cheapest first, the new vertex at the quadric's minimum when it stays within twice
+   the edge's length and half a pixel of its middle, else the best of its two ends and its middle.
+   A collapse that would turn a triangle over (its normal turned by more than about 78 degrees) or
+   flatten it waits behind every other with 10 000 more cost. Groups are never merged into one
+   another; each level goes on from the one before.
 
-Of two that cost the same, the one that saves more quads. A level can end over its budget when
-one box is left. A group never merged keeps its cube's quads and texture; a merged one is a box
-of six faces (two when flat), drawn with the part it is anchored to, so it follows that part's
-animation; a part whose cubes all went elsewhere draws nothing. The cow gives 60, 30, 12 and 6
-quads, the villager 66, 30, 12 and 6 (`LodLevelsTest`), as the Mob LOD Lab did.
+The cow gives 120, 60, 30 and 14 triangles (`LodLevelsTest`), as the lab did. Level 1 keeps the
+shape well; at level 2 the shapes round off and legs thin; at level 3 the shape turns pointed.
+Mobs of few cubes (a sheep's wool, a pig) are pointed sooner: their budgets are a few triangles a
+group. What was tried in the lab and refused: welded boxes cut out (hollow, loose faces), welded
+boxes solid (blocks from level 2), decimation straight on the cubes and vertex clustering (legs
+turned to spikes or gone at level 1).
 
-**Baked faces** (`LodBake`): each side of a merged box is a picture of its cubes seen from
-outside, straight on, framed on that side, at 3 texels per model pixel (256 at most a side),
-drawn on the CPU from the model's texture so that it can run away from the render thread.
-A box is solid and closed: the texels its cubes leave empty (between two legs welded together)
-take their neighbours' colour and stay opaque, so the shape swells but its faces meet and nothing is
-hollow. A box cut out like its cubes was tried and refused: its faces no longer touched, the head
-and body looked hollow. Only a layer drawn over a model's first one (a villager's clothes, over
-the same boxes) keeps its texture's holes, or it would hide the layer under it. The faces are drawn
-from outside only; their texture coordinates stay a quarter texel inside, so that nothing next to
-them on a page bleeds in.
+**Quads for the game** (`LodLevels.pair`): the game draws entities in quads, and a lone triangle
+handed to it costs a whole quad. Two triangles of a group that share an edge and the same view
+are exactly one quad (the game splits a quad along its first and third corners), so they are
+handed over as one; a triangle left alone is a quad whose last corner repeats its third. The
+levels go through the game's own entity render type, so lighting, fog, Iris and shader packs
+treat them as any entity; a render type of our own drawing triangles would differ on every
+version and is unknown to Iris.
+
+**Baked views** (`LodBake`): each group has six views, one per side of its box, its cubes seen
+from outside, straight on, at 3 texels per model pixel (256 at most a side), drawn on the CPU from
+the model's texture so that it can run away from the render thread. Empty texels take their
+neighbours' colour and stay opaque, so that a surface reaching past the cubes shows no hole.
+Only a layer drawn over a model's first one (a villager's clothes, on the same triangles) keeps
+its texture's holes, or it would hide the layer under it. Each triangle takes the view its normal
+faces most; its corners' texture coordinates are their projection onto it, kept on the view and
+a quarter texel inside, so that nothing next to it on the page bleeds in. Triangles are drawn from
+both sides: a decimated surface may fold.
 
 **In game** (`LodRenderer`, *Levels of Detail* in the settings, a section and a Sodium page of
 its own, [below](#levels-of-detail-1)). Only the mod's own mobs, never a player yet, never what the
@@ -752,9 +771,9 @@ game draws itself. With the defaults:
 | Level | From | What is drawn |
 |---|---|---|
 | 0 | | The full model |
-| 1 | 18 blocks (`lodDistance`) | Half the quads (`lodKeep`) |
+| 1 | 18 blocks (`lodDistance`) | Half the triangles (`lodKeep`) |
 | 2 | 36 blocks (`lodSpacing` 200%) | A quarter |
-| 3 | 72 blocks, to the end without impostors (`lodLevels` 3) | An eighth, often one box |
+| 3 | 72 blocks, to the end without impostors (`lodLevels` 3) | An eighth |
 | Impostor | `impostorDistance` | The flat picture (see [Impostors](#impostors)) |
 
 With `lodPixels` above 0, a figure shorter than that on screen takes level 1 even closer, and one
@@ -770,24 +789,22 @@ Changing `lodKeep` makes every level again.
   first `render` of a figure's model is its root), with the parts the game draws then. Its
   levels are made for the textures its layers were drawn with the frame before: a cube none of
   them shows is left out (a villager's hat rim, painted by some professions only), so that every
-  layer of a figure shares the same boxes. A second model drawn over the figure's first one (a
-  sheep's wool, a saddle, armour) is not simplified on its own: its levels follow the first
-  model's, part by part by name (`LodLevels.follow`), so that its boxes, made from its larger
-  cubes, wrap the first model's instead of being crossed by them. One set per root, parts drawn and textures, made on a
-  thread of its own; one baked texture per set and layer texture, baked there too, and handed to
-  the graphics card one a frame.
+  layer of a figure shares the same triangles. A second model (a sheep's wool, armour) has levels
+  of its own. One set per root, parts drawn and textures, made on a thread of its own; one baked
+  texture per set and layer texture, baked there too, and handed to the graphics card one a frame.
 - *Layers.* The texture of a layer is read from its render type's description (the
   `textures/...png` it names): from the feature renderer's call from 1.21.9, from the buffer its
   renderer asks for before (`GhostRenderer.draw` wraps them). Render types other than the
   entity cut-out, solid, translucent and eyes kinds keep the figure whole.
-- *Drawing.* While a figure at level 1 to 3 is drawn, each part's `compile` draws only the cubes
-  its level keeps, and queues the merged boxes anchored to it with its pose, light, overlay and
-  colour. The boxes are drawn with the impostors (`LodRenderer.submit`, through `Sink`), one
-  batch per baked texture: from 1.21.9 the game draws that geometry after the models, so the
-  poses are this frame's. Faces are wound counter-clockwise from outside and culled from inside:
-  the game turns its models upside down by mirroring x and y together, which keeps the winding.
-- *Counting.* `PolygonStats` counts what each figure draws and what its full models would
-  cost, so the debug panel's gain and figures per level include the levels of detail.
+- *Drawing.* While a figure at level 1 to 3 is drawn, each part's `compile` draws none of its
+  cubes and queues the groups anchored to it with its pose, light, overlay and colour. They are
+  drawn with the impostors (`LodRenderer.submit`, through `Sink`), one batch per baked texture:
+  from 1.21.9 the game draws that geometry after the models, so the poses are this frame's. From
+  26.2 the frame may be prepared in another order: they go into the model's own group once the
+  group is prepared (`ModelFeatureRendererMixin`, `buildGroup`).
+- *Counting.* `PolygonStats` counts the triangles each figure draws, the quads the game is
+  handed for them, and what its full models would cost, so the debug panel's gain and figures
+  per level include the levels of detail.
 
 ## Far terrain depth
 
@@ -1194,8 +1211,8 @@ cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 | `lodDistance` | Detail Distance | `18` blocks | 4 to 256 | Where the first simpler model begins |
 | `lodSpacing` | Detail Spacing | `200` percent | 125 to 400 | Each next simpler model begins this much farther than the one before |
 | `lodPixels` | Detail Size | `0` pixels | 0 to 256 | A mob shorter than this on screen takes a simpler model even closer (`0`: the distance alone) |
-| `lodKeep` | Polygons Kept | `50` percent | 20 to 80 | Share of the polygons each simpler model keeps from the one before; a change makes every level again |
-| | Detail Levels... | | | The preview (`ui/LodScreen`): each model the mod has made levels for, its full model and every level side by side, turning, with their polygons and the distance each begins at, drawn on the CPU by `LodPreview` |
+| `lodKeep` | Polygons Kept | `50` percent | 20 to 80 | Share of the triangles each simpler model keeps from the one before; a change makes every level again |
+| | Detail Levels... | | | The preview (`ui/LodScreen`): each model the mod has made levels for, its full model and every level side by side, turning, with their triangles and the distance each begins at, drawn on the CPU by `LodPreview` |
 
 #### Distant Players
 

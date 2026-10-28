@@ -362,7 +362,7 @@
   "livinghorizon.lods.model": "%s (%s/%s)",
   "livinghorizon.lods.full": "완전한 모델",
   "livinghorizon.lods.level": "수준 %s",
-  "livinghorizon.lods.quads": "폴리곤 %s개",
+  "livinghorizon.lods.quads": "삼각형 %s개",
   "livinghorizon.lods.near": "%s블록까지",
   "livinghorizon.lods.from": "%s블록부터",
   "livinghorizon.lods.unused": "사용 안 함",

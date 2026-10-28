@@ -129,13 +129,32 @@ public final class ModelReader {
                 ModelPart.Cube cube = cubes.get(c);
                 float[][] quads = new float[cube.polygons.length][];
                 for (int q = 0; q < quads.length; q++) quads[q] = quad(cube.polygons[q]);
-                model.cube(index, new double[]{cube.minX, cube.minY, cube.minZ, cube.maxX, cube.maxY, cube.maxZ}, quads);
+                model.cube(index, bounds(cube, quads), quads);
                 cubeIndex.add(c);
             }
         }
         for (Map.Entry<String, ModelPart> child : tree.children(part).entrySet()) {
             read(model, tree, child.getValue(), child.getKey(), index, drawnOnly, parts, cubeIndex);
         }
+    }
+
+    /**
+     * A cube's box as it is drawn: from its corners, which a grown cube (a sheep's wool, armour)
+     * has outside the box the game keeps for it; the kept box for a cube with no face.
+     */
+    private static double[] bounds(ModelPart.Cube cube, float[][] quads) {
+        if (quads.length == 0) return new double[]{cube.minX, cube.minY, cube.minZ, cube.maxX, cube.maxY, cube.maxZ};
+        double[] box = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE,
+                -Double.MAX_VALUE};
+        for (float[] quad : quads) {
+            for (int k = 0; k < 4; k++) {
+                for (int axis = 0; axis < 3; axis++) {
+                    box[axis] = Math.min(box[axis], quad[k * 5 + axis]);
+                    box[axis + 3] = Math.max(box[axis + 3], quad[k * 5 + axis]);
+                }
+            }
+        }
+        return box;
     }
 
     /** One face: its four corners, x, y, z in pixels and u, v from 0 to 1. */

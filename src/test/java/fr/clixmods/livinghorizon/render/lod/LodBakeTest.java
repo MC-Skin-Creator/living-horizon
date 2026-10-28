@@ -47,7 +47,7 @@ class LodBakeTest {
     }
 
     private static LodLevels.Group merged(LodModel model) {
-        return new LodLevels.Group(0, new int[]{0, 1}, new double[]{0, 0, 0, 10, 4, 4}, 128, 6, true);
+        return new LodLevels.Group(0, new int[]{0, 1}, new double[]{0, 0, 0, 10, 4, 4});
     }
 
     @Test

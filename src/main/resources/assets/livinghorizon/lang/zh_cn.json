@@ -362,7 +362,7 @@
   "livinghorizon.lods.model": "%s（%s/%s）",
   "livinghorizon.lods.full": "完整模型",
   "livinghorizon.lods.level": "层次%s",
-  "livinghorizon.lods.quads": "%s个多边形",
+  "livinghorizon.lods.quads": "%s个三角形",
   "livinghorizon.lods.near": "%s格以内",
   "livinghorizon.lods.from": "从%s格起",
   "livinghorizon.lods.unused": "未使用",

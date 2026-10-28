@@ -9,17 +9,17 @@ import java.util.List;
 
 /**
  * Pictures of a model at each of its levels of detail, drawn on the CPU from its cubes, its
- * baked boxes and its textures: what the preview screen shows, the same on every game version.
- * Each picture is the model turned to {@code yaw}, seen from a little above, lit from the
- * front, its layers drawn in the order the game draws them.
+ * simplified triangles and its textures: what the preview screen shows, the same on every game
+ * version. Each picture is the model turned to {@code yaw}, seen from a little above, lit from
+ * the front, its layers drawn in the order the game draws them.
  */
 public final class LodPreview {
-    /** One textured face, in the model's space (pixels, y down). */
+    /** One textured quad, in the model's space (pixels, y down); a triangle repeats its last corner. */
     private record Face(double[] corners, float[] uv, LodBake.Pixels texture, boolean oneSided) {
     }
 
     private final List<List<Face>> levels = new ArrayList<>();
-    private final int[] quads;
+    private final int[] triangles;
     /** Half the size of the full model, round its middle: every level is framed on it. */
     private final double radius;
     private final Vector3d middle;
@@ -27,38 +27,49 @@ public final class LodPreview {
     /**
      * @param textures the textures the model is drawn with, in the order of its layers
      */
-    public LodPreview(LodModel model, List<LodLevels.Level> levelList, List<LodBake.Pixels> textures) {
-        quads = new int[levelList.size()];
+    public LodPreview(LodRenderer.Preview preview, List<LodBake.Pixels> textures) {
+        LodSet.Plan plan = preview.plan;
+        LodModel model = plan.model();
+        LodLevels.Levels made = plan.levels();
+        int count = made.count();
+        triangles = new int[count];
         double[] low = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE};
         double[] high = {-Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE};
-        for (int level = 0; level < levelList.size(); level++) {
-            List<Face> faces = new ArrayList<>();
-            LodLevels.Level at = levelList.get(level);
-            quads[level] = at.quads();
-            for (LodLevels.Group group : at.groups()) {
-                if (!group.merged()) {
-                    LodModel.Cube cube = model.cubes().get(group.sources()[0]);
-                    Matrix4d rest = model.parts().get(cube.part()).rest();
-                    for (LodBake.Pixels texture : textures) {
-                        for (float[] quad : cube.quads()) faces.add(cubeFace(rest, quad, texture));
-                    }
-                    continue;
-                }
-                Matrix4d rest = model.parts().get(group.anchor()).rest();
-                for (int t = 0; t < textures.size(); t++) {
-                    // Solid boxes for the first layer; those drawn over it keep their holes.
-                    for (LodBake.Face face : LodBake.bake(model, group, textures.get(t), t > 0)) {
-                        faces.add(bakedFace(rest, face));
-                    }
+        // The full model: every cube with every layer.
+        List<Face> full = new ArrayList<>();
+        for (LodModel.Cube cube : model.cubes()) {
+            Matrix4d rest = model.parts().get(cube.part()).rest();
+            for (LodBake.Pixels texture : textures) {
+                for (float[] quad : cube.quads()) full.add(cubeFace(rest, quad, texture));
+            }
+        }
+        for (Face face : full) {
+            for (int k = 0; k < 4; k++) {
+                for (int axis = 0; axis < 3; axis++) {
+                    low[axis] = Math.min(low[axis], face.corners[k * 3 + axis]);
+                    high[axis] = Math.max(high[axis], face.corners[k * 3 + axis]);
                 }
             }
-            if (level == 0) {
-                for (Face face : faces) {
-                    for (int k = 0; k < 4; k++) {
-                        for (int axis = 0; axis < 3; axis++) {
-                            low[axis] = Math.min(low[axis], face.corners[k * 3 + axis]);
-                            high[axis] = Math.max(high[axis], face.corners[k * 3 + axis]);
-                        }
+        }
+        levels.add(full);
+        triangles[0] = made.triangles(0);
+        // Each group's views, once per layer: solid for the first, holes kept for those over it.
+        List<LodLevels.Group> groups = made.groups();
+        List<List<List<LodBake.Face>>> views = new ArrayList<>();
+        for (LodLevels.Group group : groups) {
+            List<List<LodBake.Face>> byLayer = new ArrayList<>();
+            for (int t = 0; t < textures.size(); t++) byLayer.add(LodBake.bake(model, group, textures.get(t), t > 0));
+            views.add(byLayer);
+        }
+        for (int level = 1; level < count; level++) {
+            List<Face> faces = new ArrayList<>();
+            triangles[level] = made.triangles(level);
+            for (int g = 0; g < groups.size(); g++) {
+                Matrix4d rest = model.parts().get(groups.get(g).anchor()).rest();
+                for (double[] quad : plan.quads()[level][g]) {
+                    for (List<LodBake.Face> layer : views.get(g)) {
+                        LodBake.Face view = view(layer, (int) quad[12]);
+                        if (view != null) faces.add(simplified(rest, quad, view));
                     }
                 }
             }
@@ -66,6 +77,11 @@ public final class LodPreview {
         }
         middle = new Vector3d((low[0] + high[0]) / 2, (low[1] + high[1]) / 2, (low[2] + high[2]) / 2);
         radius = Math.max(1, new Vector3d(high[0] - low[0], high[1] - low[1], high[2] - low[2]).length() / 2);
+    }
+
+    private static LodBake.Face view(List<LodBake.Face> views, int side) {
+        for (LodBake.Face face : views) if (face.side() == side) return face;
+        return views.isEmpty() ? null : views.get(0);
     }
 
     private static Face cubeFace(Matrix4d rest, float[] quad, LodBake.Pixels texture) {
@@ -84,19 +100,24 @@ public final class LodPreview {
         return new Face(corners, uv, texture, false);
     }
 
-    private static Face bakedFace(Matrix4d rest, LodBake.Face face) {
-        double[][] st = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+    /** A simplified quad, textured from its view as the game draws it: projected onto it, from both sides. */
+    private static Face simplified(Matrix4d rest, double[] quad, LodBake.Face view) {
         double[] corners = new double[12];
         float[] uv = new float[8];
+        Vector3d point = new Vector3d(), local = new Vector3d();
         for (int k = 0; k < 4; k++) {
-            Vector3d point = rest.transformPosition(face.corner(st[k][0], st[k][1]));
+            local.set(quad[k * 3], quad[k * 3 + 1], quad[k * 3 + 2]);
+            rest.transformPosition(point.set(local));
             corners[k * 3] = point.x;
             corners[k * 3 + 1] = point.y;
             corners[k * 3 + 2] = point.z;
-            uv[k * 2] = (float) st[k][0];
-            uv[k * 2 + 1] = (float) (1 - st[k][1]);
+            local.sub(view.center());
+            double s = Math.min(1, Math.max(0, local.dot(view.right()) / view.width() + 0.5));
+            double t = Math.min(1, Math.max(0, local.dot(view.up()) / view.height() + 0.5));
+            uv[k * 2] = (float) s;
+            uv[k * 2 + 1] = (float) (1 - t);
         }
-        return new Face(corners, uv, face.pixels(), true);
+        return new Face(corners, uv, view.pixels(), false);
     }
 
     /** How many levels there are, the full model included. */
@@ -104,9 +125,9 @@ public final class LodPreview {
         return levels.size();
     }
 
-    /** The quads of a level. */
-    public int quads(int level) {
-        return quads[level];
+    /** The triangles of a level. */
+    public int triangles(int level) {
+        return triangles[level];
     }
 
     /**

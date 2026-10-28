@@ -16,16 +16,21 @@ import java.util.Map;
  * away from it: {@link #plan} is null until then.
  */
 public final class LodSet {
-    /** What a part draws at a level: some of its own cubes, and merged boxes anchored to it. */
-    public record PartDraw(int[] kept, int[] merged, int keptQuads) {
+    /**
+     * What a part draws at a simpler level: none of its own cubes, and the groups anchored to it,
+     * as triangles paired into quads.
+     */
+    public record PartDraw(int[] groups) {
     }
 
     /**
-     * The model its levels were made from, its levels, and for each level and part what it
-     * draws. {@code usable[i]} is false where level {@code i} cannot be drawn: a box anchored
-     * to a part the game never asks to draw itself.
+     * The model its levels were made from, its levels, and for each simpler level and group its
+     * quads ({@link LodLevels#pair}) and triangles, and what each part draws. {@code usable[i]} is
+     * false where level {@code i} cannot be drawn: a group anchored to a part the game never asks
+     * to draw itself.
      */
-    record Plan(LodModel model, List<LodLevels.Level> levels, PartDraw[][] draws, boolean[] usable) {
+    record Plan(LodModel model, LodLevels.Levels levels, List<double[]>[][] quads, int[][] triangles,
+                PartDraw[][] draws, boolean[] usable) {
     }
 
     private final LodModel read;
@@ -33,13 +38,9 @@ public final class LodSet {
     final net.minecraft.network.chat.Component name;
     final List<net.minecraft.resources.Identifier> layers;
     private final Map<ModelPart, Integer> index = new IdentityHashMap<>();
-    private final int[] cubeIndex;
     private final boolean[] skips;
     private volatile @Nullable Plan plan;
     private volatile boolean failed;
-    /** A number of its own, for the models whose levels follow its. */
-    final long id = NEXT.incrementAndGet();
-    private static final java.util.concurrent.atomic.AtomicLong NEXT = new java.util.concurrent.atomic.AtomicLong();
 
     LodSet(ModelReader.Read read, net.minecraft.network.chat.Component name,
            List<net.minecraft.resources.Identifier> layers) {
@@ -52,65 +53,63 @@ public final class LodSet {
             index.put(parts.get(i), i);
             skips[i] = parts.get(i).skipDraw;
         }
-        cubeIndex = read.cubeIndex();
     }
 
     /**
      * Makes the levels from the cubes one of {@code textures} shows, each keeping {@code ratio}
-     * of the polygons of the one before, or grouped as {@code template}'s are (a model drawn
-     * over the figure's first, see {@link LodLevels#follow}); away from the render thread.
+     * of the triangles of the one before; away from the render thread.
      */
-    void generate(List<LodBake.Pixels> textures, double ratio, @Nullable Plan template) {
+    @SuppressWarnings("unchecked")
+    void generate(List<LodBake.Pixels> textures, double ratio) {
         try {
             List<LodModel.Cube> all = read.cubes();
             boolean[] keep = new boolean[all.size()];
-            List<Integer> kept = new ArrayList<>();
+            boolean any = false;
             for (int c = 0; c < all.size(); c++) {
                 for (LodBake.Pixels texture : textures) {
                     if (shows(all.get(c), texture)) {
-                        keep[c] = true;
-                        kept.add(cubeIndex[c]);
+                        keep[c] = any = true;
                         break;
                     }
                 }
             }
+            if (!any) {
+                failed = true;
+                return;
+            }
             LodModel model = read.keep(keep);
-            int[] index = kept.stream().mapToInt(Integer::intValue).toArray();
-            List<LodLevels.Level> levels = template != null ? LodLevels.follow(model, template.model(), template.levels())
-                    : LodLevels.generate(model, LodLevels.MODEL_LEVELS, ratio, true);
+            LodLevels.Levels levels = LodLevels.generate(model, ratio);
+            List<LodLevels.Group> groups = levels.groups();
             int partCount = model.parts().size();
-            PartDraw[][] draws = new PartDraw[levels.size()][];
-            boolean[] usable = new boolean[levels.size()];
-            for (int level = 1; level < levels.size(); level++) {
-                List<List<Integer>> keptCubes = new ArrayList<>(), merged = new ArrayList<>();
-                int[] keptQuads = new int[partCount];
-                for (int p = 0; p < partCount; p++) {
-                    keptCubes.add(new ArrayList<>());
-                    merged.add(new ArrayList<>());
-                }
+            int count = levels.count();
+            List<double[]>[][] quads = new List[count][];
+            int[][] triangles = new int[count][];
+            PartDraw[][] draws = new PartDraw[count][];
+            boolean[] usable = new boolean[count];
+            for (int level = 1; level < count; level++) {
+                List<List<LodLevels.Triangle>> byGroup = new ArrayList<>();
+                for (int g = 0; g < groups.size(); g++) byGroup.add(new ArrayList<>());
+                for (LodLevels.Triangle triangle : levels.level(level)) byGroup.get(triangle.group()).add(triangle);
+                quads[level] = new List[groups.size()];
+                triangles[level] = new int[groups.size()];
+                List<List<Integer>> anchored = new ArrayList<>();
+                for (int p = 0; p < partCount; p++) anchored.add(new ArrayList<>());
                 boolean ok = true;
-                List<LodLevels.Group> groups = levels.get(level).groups();
                 for (int g = 0; g < groups.size(); g++) {
-                    LodLevels.Group group = groups.get(g);
-                    if (group.merged()) {
-                        merged.get(group.anchor()).add(g);
-                        if (skips[group.anchor()]) ok = false;
-                    } else {
-                        int source = group.sources()[0];
-                        int part = model.cubes().get(source).part();
-                        keptCubes.get(part).add(index[source]);
-                        keptQuads[part] += group.quads();
-                    }
+                    quads[level][g] = LodLevels.pair(byGroup.get(g));
+                    triangles[level][g] = byGroup.get(g).size();
+                    int anchor = groups.get(g).anchor();
+                    anchored.get(anchor).add(g);
+                    if (skips[anchor] && !byGroup.get(g).isEmpty()) ok = false;
                 }
                 PartDraw[] byPart = new PartDraw[partCount];
                 for (int p = 0; p < partCount; p++) {
-                    byPart[p] = new PartDraw(keptCubes.get(p).stream().mapToInt(Integer::intValue).sorted().toArray(),
-                            merged.get(p).stream().mapToInt(Integer::intValue).toArray(), keptQuads[p]);
+                    byPart[p] = new PartDraw(anchored.get(p).stream().mapToInt(Integer::intValue).toArray());
                 }
                 draws[level] = byPart;
                 usable[level] = ok;
             }
-            plan = new Plan(model, levels, draws, usable);
+            plan = new Plan(model, levels, quads, triangles, draws, usable);
         } catch (RuntimeException e) {
             failed = true;
             throw e;

@@ -8,17 +8,16 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * The faces of a merged box ({@link LodLevels.Group#merged()}), baked from its cubes: for each
- * of the box's six sides, the cubes seen from outside, straight on, framed exactly on that
- * side, at {@link #TEXELS} texels per pixel of the model. Drawn on the CPU from the model's
+ * The six views of a group of cubes ({@link LodLevels.Group}), baked from its cubes: for each
+ * side of its box, the cubes seen from outside, straight on, framed exactly on that side, at
+ * {@link #TEXELS} texels per pixel of the model; each triangle of a simpler level is textured
+ * from the view its normal faces most. Drawn on the CPU from the model's
  * texture, so that it can be done away from the render thread.
  *
- * <p>A box is solid and closed: its empty texels (where it goes past its cubes, between two legs
- * welded together) take their neighbours' colour and stay opaque. The shape swells, but its
- * faces meet and nothing is hollow; a box cut out like its cubes was tried and refused, its
- * faces no longer touching, the head and body hollow. Only the layers drawn over a model's first
- * (a villager's clothes) keep their texture's holes, or they would hide the layer under them.
- * The faces are drawn from outside only.
+ * <p>Empty texels take their neighbours' colour and stay opaque, so that a simplified surface
+ * that reaches past the cubes shows no hole and no dark edge. Only the layers drawn over a
+ * model's first (a villager's clothes) keep their texture's holes, or they would hide the layer
+ * under them.
  */
 public final class LodBake {
     /** Texels per pixel of the model. */
@@ -57,8 +56,9 @@ public final class LodBake {
      * @param width  pixels of the model along {@code right}
      * @param height pixels of the model along {@code up}
      * @param pixels its texels, top row first
+     * @param side   which side of the box it is: +x, -x, +z, -z, +y, -y
      */
-    public record Face(Vector3d center, Vector3d right, Vector3d up, double width, double height, Pixels pixels) {
+    public record Face(Vector3d center, Vector3d right, Vector3d up, double width, double height, Pixels pixels, int side) {
         /** A point of the side, {@code s} from left (0) to right (1), {@code t} from bottom (0) to top (1). */
         public Vector3d corner(double s, double t) {
             return new Vector3d(center).fma((s - 0.5) * width, right).fma((t - 0.5) * height, up);
@@ -72,7 +72,7 @@ public final class LodBake {
             {0, 1, 0, 0, 0, 1}, {0, -1, 0, 0, 0, 1},
     };
 
-    /** The faces of a merged group, solid, baked from its cubes with the model's texture. Flat sides are left out. */
+    /** The views of a group, solid, baked from its cubes with the model's texture. Flat sides are left out. */
     public static List<Face> bake(LodModel model, LodLevels.Group group, Texture texture) {
         return bake(model, group, texture, false);
     }
@@ -87,7 +87,8 @@ public final class LodBake {
         Vector3d middle = new Vector3d((box[0] + box[3]) / 2, (box[1] + box[4]) / 2, (box[2] + box[5]) / 2);
         Vector3d extent = new Vector3d(box[3] - box[0], box[4] - box[1], box[5] - box[2]);
         List<Face> faces = new ArrayList<>();
-        for (double[] side : SIDES) {
+        for (int index = 0; index < SIDES.length; index++) {
+            double[] side = SIDES[index];
             Vector3d out = new Vector3d(side[0], side[1], side[2]);
             Vector3d up = new Vector3d(side[3], side[4], side[5]);
             Vector3d right = new Vector3d(up).cross(out);
@@ -98,7 +99,7 @@ public final class LodBake {
             Vector3d center = new Vector3d(middle).fma(depth / 2, out);
             int[] argb = draw(triangles, texture, center, right, up, out, width, height, depth, pw, ph);
             fill(argb, pw, ph, overlay);
-            faces.add(new Face(center, right, up, width, height, new Pixels(pw, ph, argb)));
+            faces.add(new Face(center, right, up, width, height, new Pixels(pw, ph, argb), index));
         }
         return faces;
     }

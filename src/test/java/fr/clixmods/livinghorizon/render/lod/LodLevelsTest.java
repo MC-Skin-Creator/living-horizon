@@ -11,16 +11,20 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The levels of detail the generator makes: the game's own cow and villager give the quads the
- * Mob LOD Lab gave for them, and a few models of two cubes show each rule on its own.
+ * The levels of detail the generator makes: the game's own cow gives the triangles the Mob LOD
+ * Lab gave for it, every level keeps to its budget, the voxel surface is closed, and the
+ * triangles pair into quads for the game.
  */
 class LodLevelsTest {
     private static Map<ModelLayerLocation, LayerDefinition> roots;
@@ -56,154 +60,131 @@ class LodLevelsTest {
         }
     };
 
-    private static List<Integer> quads(ModelLayerLocation layer) {
-        LodModel model = ModelReader.read(roots.get(layer).bakeRoot(), REFLECTED);
-        List<Integer> quads = new ArrayList<>();
-        for (LodLevels.Level level : LodLevels.generate(model)) quads.add(level.quads());
-        return quads;
+    private static LodModel model(ModelLayerLocation layer) {
+        return ModelReader.read(roots.get(layer).bakeRoot(), REFLECTED);
+    }
+
+    private static List<Integer> triangles(ModelLayerLocation layer) {
+        LodLevels.Levels levels = LodLevels.generate(model(layer));
+        List<Integer> out = new ArrayList<>();
+        for (int level = 0; level < levels.count(); level++) out.add(levels.triangles(level));
+        return out;
     }
 
     //? if >=1.21.5 {
     // The cow's model as the lab read it from 1.21.11: the one of the cow variants.
     @Test
     void cowAsInTheLab() {
-        assertEquals(List.of(60, 30, 12, 6), quads(ModelLayers.COW));
+        assertEquals(List.of(120, 60, 30, 14), triangles(ModelLayers.COW));
     }
     //?}
 
-    @Test
-    void villagerAsInTheLab() {
-        assertEquals(List.of(66, 30, 12, 6), quads(ModelLayers.VILLAGER));
-    }
+    private static final List<ModelLayerLocation> MOBS = List.of(ModelLayers.COW, ModelLayers.PIG, ModelLayers.SHEEP,
+            ModelLayers.CHICKEN, ModelLayers.HORSE, ModelLayers.WOLF, ModelLayers.IRON_GOLEM, ModelLayers.ZOMBIE,
+            ModelLayers.VILLAGER);
 
     @Test
-    void everyLevelKeepsToItsBudgetOrIsOneBox() {
-        for (ModelLayerLocation layer : List.of(ModelLayers.COW, ModelLayers.PIG, ModelLayers.SHEEP, ModelLayers.CHICKEN,
-                ModelLayers.HORSE, ModelLayers.WOLF, ModelLayers.IRON_GOLEM, ModelLayers.ZOMBIE)) {
-            LodModel model = ModelReader.read(roots.get(layer).bakeRoot(), REFLECTED);
-            List<LodLevels.Level> levels = LodLevels.generate(model);
-            assertEquals(LodLevels.MODEL_LEVELS, levels.size(), layer.toString());
-            assertEquals(model.quads(), levels.get(0).quads(), layer.toString());
-            for (int i = 1; i < levels.size(); i++) {
-                int budget = Math.max(1, (int) Math.round(model.quads() * Math.pow(LodLevels.RATIO, i)));
-                // One box left is as simple as a model gets, even over the budget.
-                assertTrue(levels.get(i).quads() <= budget || levels.get(i).groups().size() == 1,
-                        layer + " level " + i + ": " + levels.get(i).quads());
-                assertTrue(levels.get(i).quads() <= levels.get(i - 1).quads(), layer + " level " + i);
-                assertFalse(levels.get(i).groups().isEmpty(), layer + " level " + i);
+    void everyLevelKeepsToItsBudget() {
+        for (ModelLayerLocation layer : MOBS) {
+            LodModel model = model(layer);
+            LodLevels.Levels levels = LodLevels.generate(model);
+            assertEquals(LodLevels.MODEL_LEVELS, levels.count(), layer.toString());
+            assertEquals(model.quads() * 2, levels.triangles(0), layer.toString());
+            for (int level = 1; level < levels.count(); level++) {
+                int budget = Math.max(4, (int) Math.round(model.quads() * 2 * Math.pow(LodLevels.RATIO, level)));
+                assertTrue(levels.triangles(level) <= budget, layer + " level " + level + ": " + levels.triangles(level));
+                assertTrue(levels.triangles(level) <= levels.triangles(level - 1), layer + " level " + level);
+                assertFalse(levels.level(level).isEmpty(), layer + " level " + level);
             }
         }
     }
 
     @Test
-    void everyMergedBoxOfTheCowBakes() {
-        LodModel model = ModelReader.read(roots.get(ModelLayers.COW).bakeRoot(), REFLECTED);
-        // Every texel opaque, its colour its place: what the faces show can be told apart.
+    void theVoxelSurfaceIsClosed() {
+        for (ModelLayerLocation layer : MOBS) {
+            LodModel model = model(layer);
+            LodLevels.Mesh mesh = LodLevels.surface(model, LodLevels.groups(model));
+            Map<Long, Integer> edges = new HashMap<>();
+            for (int[] tri : mesh.triangles) {
+                for (int k = 0; k < 3; k++) {
+                    long a = tri[k], b = tri[(k + 1) % 3];
+                    edges.merge(Math.min(a, b) << 32 | Math.max(a, b), 1, Integer::sum);
+                }
+            }
+            assertFalse(edges.isEmpty(), layer.toString());
+            // Closed: every edge between two triangles, or four where two solid cells touch by an edge only.
+            for (int shared : edges.values()) assertEquals(0, shared % 2, layer.toString());
+        }
+    }
+
+    @Test
+    void noTriangleIsFlat() {
+        for (ModelLayerLocation layer : MOBS) {
+            LodLevels.Levels levels = LodLevels.generate(model(layer));
+            for (int level = 1; level < levels.count(); level++) {
+                for (LodLevels.Triangle triangle : levels.level(level)) {
+                    double[] n = triangle.normal();
+                    assertTrue(n[0] * n[0] + n[1] * n[1] + n[2] * n[2] > 1e-12, layer + " level " + level);
+                }
+            }
+        }
+    }
+
+    @Test
+    void trianglesPairIntoQuadsForTheGame() {
+        LodLevels.Levels levels = LodLevels.generate(model(ModelLayers.COW));
+        for (int level = 1; level < levels.count(); level++) {
+            Map<Integer, List<LodLevels.Triangle>> byGroup = new HashMap<>();
+            for (LodLevels.Triangle t : levels.level(level)) byGroup.computeIfAbsent(t.group(), g -> new ArrayList<>()).add(t);
+            int triangles = 0, quads = 0;
+            for (List<LodLevels.Triangle> group : byGroup.values()) {
+                triangles += group.size();
+                quads += LodLevels.pair(group).size();
+            }
+            assertTrue(quads >= (triangles + 1) / 2 && quads <= triangles, "level " + level + ": " + quads + " for " + triangles);
+            // Most triangles find a partner: the game is handed far fewer quads than triangles.
+            assertTrue(quads < triangles * 0.8, "level " + level + ": " + quads + " quads for " + triangles + " triangles");
+        }
+    }
+
+    @Test
+    void aQuadIsItsTwoTriangles() {
+        double[] a = {0, 0, 0, 1, 0, 0, 1, 1, 0}, b = {0, 0, 0, 1, 1, 0, 0, 1, 0};
+        List<double[]> quads = LodLevels.pair(List.of(new LodLevels.Triangle(0, a), new LodLevels.Triangle(0, b)));
+        assertEquals(1, quads.size());
+        double[] q = quads.get(0);
+        // The game splits a quad into corners 0, 1, 2 and 0, 2, 3: those must be the two triangles.
+        Set<Set<String>> drawn = Set.of(points(q, 0, 1, 2), points(q, 0, 2, 3));
+        assertEquals(Set.of(points(a, 0, 1, 2), points(b, 0, 1, 2)), drawn);
+    }
+
+    /** A triangle's corners as a set of points, whatever their order. */
+    private static Set<String> points(double[] corners, int i, int j, int k) {
+        Set<String> out = new HashSet<>();
+        for (int c : new int[]{i, j, k}) out.add(corners[c * 3] + "," + corners[c * 3 + 1] + "," + corners[c * 3 + 2]);
+        return out;
+    }
+
+    @Test
+    void oneGroupPerAnimatedPart() {
+        // The cow: its body and the root's other parts, its head, four legs.
+        assertEquals(6, LodLevels.groups(model(ModelLayers.COW)).size());
+    }
+
+    @Test
+    void everyGroupOfTheCowBakesSolid() {
+        LodModel model = model(ModelLayers.COW);
         int[] argb = new int[64 * 64];
         for (int i = 0; i < argb.length; i++) argb[i] = 0xFF000000 | i * 2654435 & 0xFFFFFF;
         LodBake.Pixels texture = new LodBake.Pixels(64, 64, argb);
-        int merged = 0;
-        for (LodLevels.Level level : LodLevels.generate(model)) {
-            for (LodLevels.Group group : level.groups()) {
-                if (!group.merged()) continue;
-                merged++;
-                List<LodBake.Face> faces = LodBake.bake(model, group, texture);
-                assertEquals(LodLevels.faces(group.box()), faces.size());
-                for (LodBake.Face face : faces) {
-                    LodBake.Pixels pixels = face.pixels();
-                    assertTrue(pixels.width() <= LodBake.MAX_SIDE && pixels.height() <= LodBake.MAX_SIDE);
-                    int opaque = 0;
-                    for (int texel : pixels.argb()) if (texel >>> 24 == 0xFF) opaque++;
-                    assertTrue(opaque > 0, "a face of a merged box shows nothing");
-                }
+        for (LodLevels.Group group : LodLevels.groups(model)) {
+            List<LodBake.Face> faces = LodBake.bake(model, group, texture);
+            assertFalse(faces.isEmpty());
+            for (LodBake.Face face : faces) {
+                assertTrue(face.pixels().width() <= LodBake.MAX_SIDE && face.pixels().height() <= LodBake.MAX_SIDE);
+                for (int texel : face.pixels().argb()) assertEquals(0xFF, texel >>> 24, "a solid view has no hole");
             }
         }
-        assertTrue(merged > 0);
-    }
-
-    /** A cube of six faces in a part of its own, under the root. */
-    private static int cube(LodModel model, String name, int parent, double x, double y, double z, double[] box) {
-        int part = model.part(name, parent, x, y, z, 0, 0, 0, 1, 1, 1);
-        model.cube(part, box, new float[6][20]);
-        return part;
-    }
-
-    @Test
-    void twoCubesSideBySideMergeIntoOneBox() {
-        LodModel model = new LodModel();
-        int root = model.part("root", -1, 0, 0, 0, 0, 0, 0, 1, 1, 1);
-        cube(model, "a", root, 0, 0, 0, new double[]{0, 0, 0, 4, 4, 4});
-        cube(model, "b", root, 4, 0, 0, new double[]{0, 0, 0, 4, 4, 4});
-        LodLevels.Level level = LodLevels.generate(model, 2, 0.5, true).get(1);
-        assertEquals(6, level.quads());
-        LodLevels.Group group = level.groups().get(0);
-        assertTrue(group.merged());
-        assertEquals(root, group.anchor());
-        assertEquals(List.of(0.0, 0.0, 0.0, 8.0, 4.0, 4.0), boxList(group.box()));
-    }
-
-    @Test
-    void aSmallCubeFarAwayIsRemovedRatherThanMerged() {
-        LodModel model = new LodModel();
-        int root = model.part("root", -1, 0, 0, 0, 0, 0, 0, 1, 1, 1);
-        cube(model, "body", root, 0, 0, 0, new double[]{0, 0, 0, 8, 8, 8});
-        cube(model, "speck", root, 40, 40, 40, new double[]{0, 0, 0, 1, 1, 1});
-        LodLevels.Level level = LodLevels.generate(model, 2, 0.5, true).get(1);
-        assertEquals(1, level.groups().size());
-        assertEquals(0, level.groups().get(0).sources()[0]);
-        assertFalse(level.groups().get(0).merged());
-    }
-
-    /** A four-legged body, its cubes grown by {@code grow} pixels on every side: grown, it is its wool. */
-    private static LodModel animal(double grow) {
-        LodModel model = new LodModel();
-        int root = model.part("root", -1, 0, 0, 0, 0, 0, 0, 1, 1, 1);
-        cube(model, "body", root, 0, 12, 0, new double[]{-5 - grow, -4 - grow, -8 - grow, 5 + grow, 4 + grow, 8 + grow});
-        cube(model, "head", root, 0, 8, -10, new double[]{-3 - grow, -3 - grow, -3 - grow, 3 + grow, 3 + grow, 3 + grow});
-        for (String leg : List.of("right_hind_leg", "left_hind_leg", "right_front_leg", "left_front_leg")) {
-            double x = leg.startsWith("right") ? -3 : 3, z = leg.contains("hind") ? 6 : -6;
-            cube(model, leg, root, x, 16, z, new double[]{-2 - grow, -grow, -2 - grow, 2 + grow, 8 + grow, 2 + grow});
-        }
-        return model;
-    }
-
-    @Test
-    void aModelDrawnOverAnotherIsGroupedAsItIsAndWrapsIt() {
-        LodModel body = animal(0), wool = animal(1);
-        List<LodLevels.Level> bodyLevels = LodLevels.generate(body);
-        List<LodLevels.Level> woolLevels = LodLevels.follow(wool, body, bodyLevels);
-        assertEquals(bodyLevels.size(), woolLevels.size());
-        for (int level = 1; level < bodyLevels.size(); level++) {
-            List<LodLevels.Group> bodies = bodyLevels.get(level).groups(), wools = woolLevels.get(level).groups();
-            assertEquals(bodies.size(), wools.size(), "level " + level);
-            for (int g = 0; g < bodies.size(); g++) {
-                LodLevels.Group under = bodies.get(g), over = wools.get(g);
-                assertEquals(under.merged(), over.merged(), "level " + level);
-                assertEquals(java.util.Arrays.toString(under.sources()), java.util.Arrays.toString(over.sources()));
-                for (int axis = 0; axis < 3; axis++) {
-                    assertTrue(over.box()[axis] <= under.box()[axis] + 1e-9, "level " + level + " axis " + axis);
-                    assertTrue(over.box()[axis + 3] >= under.box()[axis + 3] - 1e-9, "level " + level + " axis " + axis);
-                }
-            }
-        }
-    }
-
-    @Test
-    void flatBoxesHaveTwoFaces() {
-        assertEquals(2, LodLevels.faces(new double[]{0, 0, 0, 4, 0, 4}));
-        assertEquals(6, LodLevels.faces(new double[]{0, 0, 0, 4, 1, 4}));
-    }
-
-    @Test
-    void freezingALegCostsMore() {
-        LodModel model = new LodModel();
-        int root = model.part("root", -1, 0, 0, 0, 0, 0, 0, 1, 1, 1);
-        int body = cube(model, "body", root, 0, 0, 0, new double[]{0, 0, 0, 8, 4, 4});
-        int leg = cube(model, "right_hind_leg", root, 0, 4, 0, new double[]{0, 0, 0, 2, 6, 2});
-        assertTrue(model.parts().get(leg).animated());
-        assertFalse(model.parts().get(body).animated());
-        assertTrue(LodLevels.freezes(model.parts(), leg, root));
-        assertFalse(LodLevels.freezes(model.parts(), body, root));
     }
 
     @Test

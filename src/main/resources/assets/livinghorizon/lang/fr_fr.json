@@ -362,7 +362,7 @@
   "livinghorizon.lods.model": "%s (%s sur %s)",
   "livinghorizon.lods.full": "Modèle complet",
   "livinghorizon.lods.level": "Niveau %s",
-  "livinghorizon.lods.quads": "%s polygones",
+  "livinghorizon.lods.quads": "%s triangles",
   "livinghorizon.lods.near": "Jusqu'à %s blocs",
   "livinghorizon.lods.from": "À partir de %s blocs",
   "livinghorizon.lods.unused": "Non utilisé",

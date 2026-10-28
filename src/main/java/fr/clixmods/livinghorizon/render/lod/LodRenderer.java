@@ -154,7 +154,6 @@ public final class LodRenderer {
         if (layers == null) return;
         // Chosen before the figure is drawn this frame: what it was drawn with last.
         Map<ModelPart, Seen> seen = layers.frame == frame ? layers.last : layers.now;
-        ModelPart first = layers.frame == frame ? layers.firstLast : layers.firstNow;
         boolean failed = layers.frame == frame ? layers.lastFailed : layers.failed;
         if (failed || seen.isEmpty()) return;
         List<Bake> bakes = CHOSEN;
@@ -163,8 +162,7 @@ public final class LodRenderer {
         // Its keys rather than its entries: an identity map makes an entry each step.
         for (ModelPart root : seen.keySet()) {
             Seen model = seen.get(root);
-            long follows = follows(root, seen, first);
-            LodSet set = follows == -1 ? null : set(root, model, follows);
+            LodSet set = set(root, model);
             if (set == null || !set.ready(wanted)) {
                 ready = false;
                 continue;
@@ -238,8 +236,6 @@ public final class LodRenderer {
         int frame;
         boolean failed, lastFailed;
         Map<ModelPart, Seen> now = new IdentityHashMap<>(), last = new IdentityHashMap<>();
-        /** The first model drawn in each record: the figure's own, which the others follow. */
-        @Nullable ModelPart firstNow, firstLast;
         /** Records of frames gone, kept for the next ones: a frame makes none. */
         private final List<Seen> spare = new ArrayList<>();
 
@@ -252,8 +248,6 @@ public final class LodRenderer {
             old.clear();
             last = now;
             now = old;
-            firstLast = firstNow;
-            firstNow = null;
             lastFailed = failed;
             failed = false;
         }
@@ -262,7 +256,6 @@ public final class LodRenderer {
             Seen seen = now.get(root);
             if (seen == null) {
                 seen = (spare.isEmpty() ? new Seen() : spare.remove(spare.size() - 1)).reset(shown);
-                if (now.isEmpty()) firstNow = root;
                 now.put(root, seen);
             }
             return seen;
@@ -316,28 +309,9 @@ public final class LodRenderer {
     private static final Map<LodSet, Map<Identifier, Bake>> BAKES = new IdentityHashMap<>();
 
     /** The levels of a model drawn as {@code seen} says, made already or being made; null for none yet. */
-    private static @Nullable LodSet set(ModelPart root, Seen seen, long follows) {
+    private static @Nullable LodSet set(ModelPart root, Seen seen) {
         Long2ObjectOpenHashMap<LodSet> sets = SETS.get(root);
-        return sets == null ? null : sets.get(seen.key ^ follows);
-    }
-
-    /**
-     * The levels a model of a figure follows, from one of its records: none (0) for the figure's
-     * first model, else the first model's ({@link LodLevels#follow}), whose number goes into the
-     * key; -1 while those are not made yet.
-     */
-    private static long follows(ModelPart root, Map<ModelPart, Seen> record, @Nullable ModelPart first) {
-        if (first == null || root == first) return 0;
-        Seen own = record.get(first);
-        LodSet template = own == null ? null : set(first, own, 0);
-        return template == null || template.plan() == null ? -1 : Seen.mix(template.id) | 1;
-    }
-
-    /** The first model's levels, which {@code root}'s follow; null for the first model itself. */
-    private static @Nullable LodSet template(ModelPart root, Map<ModelPart, Seen> record, @Nullable ModelPart first) {
-        if (first == null || root == first) return null;
-        Seen own = record.get(first);
-        return own == null ? null : set(first, own, 0);
+        return sets == null ? null : sets.get(seen.key);
     }
 
     /** How deep in a model's parts the drawing is: 1 at the part it was asked to draw. */
@@ -375,20 +349,15 @@ public final class LodRenderer {
         seen.add(drawn);
         Seen before = layers.last.get(root);
         if (before == null || before.shown != shown) return;
-        // A model drawn over the figure's first (wool, a saddle) is grouped as the first is.
-        long follows = follows(root, layers.last, layers.firstLast);
-        if (follows == -1) return;
-        LodSet set = set(root, before, follows);
+        LodSet set = set(root, before);
         if (set == null) {
-            LodSet template = template(root, layers.last, layers.firstLast);
-            LodSet.Plan follow = template == null ? null : template.plan();
             // Made for the textures it was drawn with last frame, the parts as the game draws them now.
             LodSet made = new LodSet(ModelReader.read(root, ModelReader.GAME, true), owner.getType().getDescription(),
                     before.drawOrder());
-            SETS.computeIfAbsent(root, part -> new Long2ObjectOpenHashMap<>()).put(before.key ^ follows, made);
+            SETS.computeIfAbsent(root, part -> new Long2ObjectOpenHashMap<>()).put(before.key, made);
             List<Identifier> textures = before.textures();
             double ratio = FarConfig.get().lodKeep / 100.0;
-            WORKER.execute(() -> generate(made, textures, ratio, follow));
+            WORKER.execute(() -> generate(made, textures, ratio));
             set = made;
         }
         if (set.failed()) {
@@ -405,7 +374,7 @@ public final class LodRenderer {
     }
 
     /** Makes a model's levels from the textures it is drawn with; away from the render thread. */
-    private static void generate(LodSet set, List<Identifier> textures, double ratio, LodSet.@Nullable Plan follow) {
+    private static void generate(LodSet set, List<Identifier> textures, double ratio) {
         List<LodBake.Pixels> pixels = new ArrayList<>();
         for (Identifier texture : textures) {
             LodBake.Pixels read = pixels(texture);
@@ -415,7 +384,7 @@ public final class LodRenderer {
             }
             pixels.add(read);
         }
-        set.generate(pixels, ratio, follow);
+        set.generate(pixels, ratio);
     }
 
     /**
@@ -437,12 +406,14 @@ public final class LodRenderer {
         return (argb & 0xFF000000) | r << 16 | g << 8 | b;
     }
 
-    /** The merged boxes a part anchors at its level, queued with its pose, light and colour. */
+    /** The groups a part anchors at its level, queued with its pose, light and colour. */
     public static void queue(LodSet.PartDraw draw, PoseStack.Pose pose, int light, int overlay, int argb) {
         Bake bake = drawingBake;
-        if (draw.merged().length == 0 || bake == null || bake.faces == null) return;
+        LodSet set = drawing;
+        LodSet.Plan plan = set == null ? null : set.plan();
+        if (draw.groups().length == 0 || bake == null || bake.faces == null || plan == null) return;
         float[][] groups = bake.faces[drawingLevel];
-        for (int group : draw.merged()) {
+        for (int group : draw.groups()) {
             float[] faces = groups[group];
             if (faces == null || faces.length == 0) continue;
             if (!bake.drawing) {
@@ -458,7 +429,7 @@ public final class LodRenderer {
             entry.light = light;
             entry.overlay = overlay;
             entry.argb = argb;
-            PolygonStats.model(faces.length / FACE);
+            PolygonStats.lod(plan.triangles()[drawingLevel][group], faces.length / FACE);
         }
     }
 
@@ -553,27 +524,24 @@ public final class LodRenderer {
                 bake.state = FAILED;
                 return;
             }
-            record Placed(int level, int group, LodBake.Face face) {
+            record Placed(int group, LodBake.Face face) {
             }
-            // Solid boxes for the model's first layer; those drawn over it keep their holes.
+            // Solid views for the model's first layer; those drawn over it keep their holes.
             boolean overlay = !bake.set.layers.isEmpty() && !bake.set.layers.get(0).equals(bake.layer.texture());
+            List<LodLevels.Group> groups = plan.levels().groups();
             List<Placed> placed = new ArrayList<>();
-            List<LodLevels.Level> levels = plan.levels();
-            for (int level = 1; level < levels.size(); level++) {
-                List<LodLevels.Group> groups = levels.get(level).groups();
-                for (int g = 0; g < groups.size(); g++) {
-                    if (!groups.get(g).merged()) continue;
-                    for (LodBake.Face face : LodBake.bake(plan.model(), groups.get(g), texture, overlay)) {
-                        placed.add(new Placed(level, g, face));
-                    }
-                }
+            List<List<LodBake.Face>> views = new ArrayList<>();
+            for (int g = 0; g < groups.size(); g++) {
+                List<LodBake.Face> sides = LodBake.bake(plan.model(), groups.get(g), texture, overlay);
+                views.add(sides);
+                for (LodBake.Face face : sides) placed.add(new Placed(g, face));
             }
-            // Shelves, the tallest faces first; a texel of room round each.
+            // Shelves, the tallest views first; a texel of room round each.
             int width = 256;
             for (Placed p : placed) width = Math.max(width, p.face().pixels().width() + 1);
             List<Placed> sorted = new ArrayList<>(placed);
             sorted.sort(Comparator.comparingInt((Placed p) -> -p.face().pixels().height()));
-            Map<Placed, int[]> at = new IdentityHashMap<>();
+            Map<LodBake.Face, int[]> at = new IdentityHashMap<>();
             int x = 0, y = 0, row = 0;
             for (Placed p : sorted) {
                 LodBake.Pixels pixels = p.face().pixels();
@@ -582,7 +550,7 @@ public final class LodRenderer {
                     y += row + 1;
                     row = 0;
                 }
-                at.put(p, new int[]{x, y});
+                at.put(p.face(), new int[]{x, y});
                 x += pixels.width() + 1;
                 row = Math.max(row, pixels.height());
             }
@@ -594,42 +562,45 @@ public final class LodRenderer {
             int[] argb = new int[width * height];
             for (Placed p : placed) {
                 LodBake.Pixels pixels = p.face().pixels();
-                int[] corner = at.get(p);
-                for (int row2 = 0; row2 < pixels.height(); row2++) {
-                    System.arraycopy(pixels.argb(), row2 * pixels.width(), argb, (corner[1] + row2) * width + corner[0],
+                int[] corner = at.get(p.face());
+                for (int line = 0; line < pixels.height(); line++) {
+                    System.arraycopy(pixels.argb(), line * pixels.width(), argb, (corner[1] + line) * width + corner[0],
                             pixels.width());
                 }
             }
-            float[][][] faces = new float[levels.size()][][];
-            for (int level = 1; level < levels.size(); level++) faces[level] = new float[levels.get(level).groups().size()][];
-            Map<Long, List<Placed>> byGroup = new HashMap<>();
-            for (Placed p : placed) byGroup.computeIfAbsent((long) p.level() << 32 | p.group(), k -> new ArrayList<>()).add(p);
-            // Counter-clockwise seen from outside, the side drawn: the game turns its models
-            // upside down by mirroring two axes at once, which keeps the winding as it is.
-            double[][] corners = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
-            for (List<Placed> group : byGroup.values()) {
-                float[] out = new float[group.size() * FACE];
-                int o = 0;
-                for (Placed p : group) {
-                    LodBake.Face face = p.face();
-                    int[] corner = at.get(p);
-                    for (double[] st : corners) {
-                        Vector3d point = face.corner(st[0], st[1]);
-                        float[] uv = LodBake.pageUv(face, corner[0], corner[1], width, height, st[0], st[1]);
-                        // Model pixels to blocks, as the game divides its cubes' corners as it draws them.
-                        out[o++] = (float) point.x / 16;
-                        out[o++] = (float) point.y / 16;
-                        out[o++] = (float) point.z / 16;
-                        out[o++] = uv[0];
-                        out[o++] = uv[1];
+            // Each quad's corners, textured from the view of its side: projected onto it.
+            int levels = plan.levels().count();
+            float[][][] faces = new float[levels][][];
+            Vector3d point = new Vector3d();
+            for (int level = 1; level < levels; level++) {
+                faces[level] = new float[groups.size()][];
+                for (int g = 0; g < groups.size(); g++) {
+                    List<double[]> quads = plan.quads()[level][g];
+                    float[] out = new float[quads.size() * FACE];
+                    int o = 0;
+                    for (double[] quad : quads) {
+                        LodBake.Face view = view(views.get(g), (int) quad[12]);
+                        if (view == null) continue;
+                        int[] corner = at.get(view);
+                        for (int k = 0; k < 4; k++) {
+                            point.set(quad[k * 3], quad[k * 3 + 1], quad[k * 3 + 2]).sub(view.center());
+                            double s = Math.clamp(point.dot(view.right()) / view.width() + 0.5, 0, 1);
+                            double t = Math.clamp(point.dot(view.up()) / view.height() + 0.5, 0, 1);
+                            float[] uv = LodBake.pageUv(view, corner[0], corner[1], width, height, s, t);
+                            // Model pixels to blocks, as the game divides its cubes' corners as it draws them.
+                            out[o++] = (float) quad[k * 3] / 16;
+                            out[o++] = (float) quad[k * 3 + 1] / 16;
+                            out[o++] = (float) quad[k * 3 + 2] / 16;
+                            out[o++] = uv[0];
+                            out[o++] = uv[1];
+                        }
+                        double[] n = normal(quad);
+                        out[o++] = (float) n[0];
+                        out[o++] = (float) n[1];
+                        out[o++] = (float) n[2];
                     }
-                    Vector3d facing = new Vector3d(face.right()).cross(face.up());
-                    out[o++] = (float) facing.x;
-                    out[o++] = (float) facing.y;
-                    out[o++] = (float) facing.z;
+                    faces[level][g] = o == out.length ? out : java.util.Arrays.copyOf(out, o);
                 }
-                Placed first = group.get(0);
-                faces[first.level()][first.group()] = out;
             }
             bake.width = width;
             bake.height = height;
@@ -642,9 +613,44 @@ public final class LodRenderer {
         }
     }
 
+    /** The view of a group for a side, the first one when that side is flat. */
+    private static LodBake.@Nullable Face view(List<LodBake.Face> views, int side) {
+        for (LodBake.Face face : views) if (face.side() == side) return face;
+        return views.isEmpty() ? null : views.get(0);
+    }
+
+    /** A quad's normal, from its first triangle. */
+    private static double[] normal(double[] q) {
+        double ux = q[3] - q[0], uy = q[4] - q[1], uz = q[5] - q[2];
+        double vx = q[6] - q[0], vy = q[7] - q[1], vz = q[8] - q[2];
+        return new double[]{uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx};
+    }
+
     /** A model whose levels are made, for the preview screen. */
-    public record Preview(net.minecraft.network.chat.Component name, LodModel model, List<LodLevels.Level> levels,
-                          List<Identifier> textures) {
+    public static final class Preview {
+        private final net.minecraft.network.chat.Component name;
+        final LodSet.Plan plan;
+        private final List<Identifier> textures;
+
+        Preview(net.minecraft.network.chat.Component name, LodSet.Plan plan, List<Identifier> textures) {
+            this.name = name;
+            this.plan = plan;
+            this.textures = textures;
+        }
+
+        public net.minecraft.network.chat.Component name() {
+            return name;
+        }
+
+        /** Its textures, in the order its layers are drawn. */
+        public List<Identifier> textures() {
+            return textures;
+        }
+
+        /** Whether it shows the same model as {@code other}. */
+        public boolean same(Preview other) {
+            return plan == other.plan;
+        }
     }
 
     /** The models whose levels are made so far, by name: those of the mobs drawn far away since the game started. */
@@ -653,7 +659,7 @@ public final class LodRenderer {
         for (Map<Long, LodSet> sets : SETS.values()) {
             for (LodSet set : sets.values()) {
                 LodSet.Plan plan = set.plan();
-                if (plan != null && !set.failed()) out.add(new Preview(set.name, plan.model(), plan.levels(), set.layers));
+                if (plan != null && !set.failed()) out.add(new Preview(set.name, plan, set.layers));
             }
         }
         out.sort(Comparator.comparing((Preview p) -> p.name().getString()).thenComparing(p -> p.textures().toString()));
@@ -719,10 +725,11 @@ public final class LodRenderer {
                     /*DynamicTexture texture = new DynamicTexture(image);*/
                     Minecraft.getInstance().getTextureManager().register(page, texture);
                     bake.page = page;
+                    // Drawn from both sides: a simplified surface may fold.
                     //? if >=26.1 {
-                    /*bake.type = bake.layer.eyes() ? RenderTypes.eyes(page) : RenderTypes.entityCutoutCull(page);
+                    /*bake.type = bake.layer.eyes() ? RenderTypes.eyes(page) : RenderTypes.entityCutout(page);
                     *///?} else {
-                    bake.type = bake.layer.eyes() ? RenderTypes.eyes(page) : RenderTypes.entityCutout(page);
+                    bake.type = bake.layer.eyes() ? RenderTypes.eyes(page) : RenderTypes.entityCutoutNoCull(page);
                     //?}
                     bake.state = READY;
                 } catch (RuntimeException | LinkageError e) {

@@ -46,8 +46,8 @@ public final class PolygonStats {
 
     private static boolean counting;
     private static @Nullable Object current;
-    private static int models, modelPolygons, impostors, fullPolygons;
-    private static int lastModels, lastModelPolygons, lastImpostors, lastFullPolygons;
+    private static int models, modelPolygons, modelTriangles, impostors, fullPolygons;
+    private static int lastModels, lastModelPolygons, lastModelTriangles, lastImpostors, lastFullPolygons;
     private static final int[] LEVEL_FIGURES = new int[LEVELS], LAST_LEVEL_FIGURES = new int[LEVELS];
 
     /** The entity each of this frame's states was extracted from. */
@@ -89,12 +89,14 @@ public final class PolygonStats {
         OWNERS.clear();
         lastModels = models;
         lastModelPolygons = modelPolygons;
+        lastModelTriangles = modelTriangles;
         lastImpostors = impostors;
         lastFullPolygons = fullPolygons;
         System.arraycopy(LEVEL_FIGURES, 0, LAST_LEVEL_FIGURES, 0, LEVELS);
         Arrays.fill(LEVEL_FIGURES, 0);
         models = 0;
         modelPolygons = 0;
+        modelTriangles = 0;
         impostors = 0;
         fullPolygons = 0;
     }
@@ -137,11 +139,23 @@ public final class PolygonStats {
         return OWNERS.get(state);
     }
 
-    /** Faces drawn for the figure being drawn: a part of its model, or the boxes standing for parts. */
+    /** Faces of its model drawn for the figure being drawn: a quad, two triangles, each. */
     public static void model(int polygons) {
         modelPolygons += polygons;
+        modelTriangles += polygons * 2;
         int[] figure = current == null ? null : FIGURES.get(current);
         if (figure != null) figure[0] += polygons;
+    }
+
+    /**
+     * A simplified group drawn for the figure being drawn: {@code triangles} triangles, handed
+     * to the game as {@code quads} quads (two triangles that share an edge make one).
+     */
+    public static void lod(int triangles, int quads) {
+        modelPolygons += quads;
+        modelTriangles += triangles;
+        int[] figure = current == null ? null : FIGURES.get(current);
+        if (figure != null) figure[0] += quads;
     }
 
     /** Faces one part of its full model has, drawn or not. */
@@ -182,7 +196,7 @@ public final class PolygonStats {
         return lastModels;
     }
 
-    /** Polygons of those models. */
+    /** Quads of those models handed to the game. */
     public static int modelPolygons() {
         return lastModelPolygons;
     }
@@ -192,14 +206,14 @@ public final class PolygonStats {
         return lastImpostors;
     }
 
-    /** Every polygon of the mod's entities last frame. */
+    /** Every quad of the mod's entities the game was handed last frame. */
     public static int polygons() {
         return lastModelPolygons + lastImpostors;
     }
 
-    /** The same, as the graphics card sees it. */
+    /** The triangles they make: two a quad, but for the simplified levels, whose quads may be lone triangles. */
     public static int triangles() {
-        return polygons() * 2;
+        return lastModelTriangles + lastImpostors * 2;
     }
 
     /** Polygons the same figures would have cost last frame, each drawn as its full model. */
@@ -214,7 +228,7 @@ public final class PolygonStats {
 
     /** Percent of the triangles the levels of detail saved last frame, 0 with nothing drawn. */
     public static int gain() {
-        return lastFullPolygons == 0 ? 0 : (int) Math.round(100.0 * (lastFullPolygons - polygons()) / lastFullPolygons);
+        return lastFullPolygons == 0 ? 0 : (int) Math.round(100.0 * (fullTriangles() - triangles()) / fullTriangles());
     }
 
     /** Figures drawn at {@code level} last frame. */

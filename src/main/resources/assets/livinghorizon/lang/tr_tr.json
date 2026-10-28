@@ -362,7 +362,7 @@
   "livinghorizon.lods.model": "%s (%s / %s)",
   "livinghorizon.lods.full": "Tam model",
   "livinghorizon.lods.level": "Seviye %s",
-  "livinghorizon.lods.quads": "%s çokgen",
+  "livinghorizon.lods.quads": "%s üçgen",
   "livinghorizon.lods.near": "%s bloğa kadar",
   "livinghorizon.lods.from": "%s bloktan itibaren",
   "livinghorizon.lods.unused": "Kullanılmıyor",

@@ -362,7 +362,7 @@
   "livinghorizon.lods.model": "%s (%s из %s)",
   "livinghorizon.lods.full": "Полная модель",
   "livinghorizon.lods.level": "Уровень %s",
-  "livinghorizon.lods.quads": "Полигонов: %s",
+  "livinghorizon.lods.quads": "Треугольников: %s",
   "livinghorizon.lods.near": "До %s блоков",
   "livinghorizon.lods.from": "От %s блоков",
   "livinghorizon.lods.unused": "Не используется",

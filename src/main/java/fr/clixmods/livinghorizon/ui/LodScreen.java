@@ -143,7 +143,7 @@ public final class LodScreen extends Screen {
         }
         shown = Math.floorMod(shown, previews.size());
         LodRenderer.Preview chosen = previews.get(shown);
-        if (preview == null || previewOf == null || !previewOf.model().equals(chosen.model())) open(chosen);
+        if (preview == null || previewOf == null || !previewOf.same(chosen)) open(chosen);
         graphics.drawCenteredString(font, Component.translatable(KEY + "model", chosen.name(), shown + 1, previews.size()),
                 width / 2, 28, TEXT);
         if (preview == null) return;
@@ -162,7 +162,7 @@ public final class LodScreen extends Screen {
             int y = top + size + 4;
             Component name = level == 0 ? Component.translatable(KEY + "full") : Component.translatable(KEY + "level", level);
             graphics.drawCenteredString(font, name, x + size / 2, y, TEXT);
-            graphics.drawCenteredString(font, Component.translatable(KEY + "quads", preview.quads(level)), x + size / 2,
+            graphics.drawCenteredString(font, Component.translatable(KEY + "quads", preview.triangles(level)), x + size / 2,
                     y + font.lineHeight + 2, DIM);
             Component when;
             if (level == 0) {
@@ -185,7 +185,7 @@ public final class LodScreen extends Screen {
             LodBake.Pixels read = LodRenderer.pixels(id);
             if (read != null) textures.add(read);
         }
-        preview = textures.isEmpty() ? null : new LodPreview(chosen.model(), chosen.levels(), textures);
+        preview = textures.isEmpty() ? null : new LodPreview(chosen, textures);
     }
 
     /** Draws every level, turned to where the clock says, into the texture; made again when the size changes. */

@@ -362,7 +362,7 @@
   "livinghorizon.lods.model": "%s（%s/%s）",
   "livinghorizon.lods.full": "完全なモデル",
   "livinghorizon.lods.level": "レベル%s",
-  "livinghorizon.lods.quads": "ポリゴン%s",
+  "livinghorizon.lods.quads": "三角形%s",
   "livinghorizon.lods.near": "%sブロックまで",
   "livinghorizon.lods.from": "%sブロックから",
   "livinghorizon.lods.unused": "未使用",

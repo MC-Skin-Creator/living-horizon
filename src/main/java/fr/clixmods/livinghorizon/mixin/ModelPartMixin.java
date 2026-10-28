@@ -19,8 +19,8 @@ import java.util.Map;
 
 /**
  * The parts of the mod's figures: their faces counted for {@link PolygonStats}, and, for a
- * figure drawn at a simpler level of detail, only the cubes that level keeps, with the merged
- * boxes anchored to the part queued for {@link LodRenderer}. The game's own entities are left
+ * figure drawn at a simpler level of detail, none of their cubes but the simplified groups
+ * anchored to the part, queued for {@link LodRenderer}. The game's own entities are left
  * as they are. Also lets the mod read a part's cubes and children ({@link PartTree}).
  */
 @Mixin(ModelPart.class)
@@ -59,9 +59,7 @@ abstract class ModelPartMixin implements PartTree {
         if (!PolygonStats.counting()) return;
         LodSet.PartDraw draw = level(ci);
         if (draw == null) return;
-        int tinted = LodRenderer.tint(color);
-        for (int k : draw.kept()) cubes.get(k).compile(pose, out, light, overlay, tinted);
-        LodRenderer.queue(draw, pose, light, overlay, tinted);
+        LodRenderer.queue(draw, pose, light, overlay, LodRenderer.tint(color));
     }
     //?} else {
     /*@Inject(method = "compile", at = @At("HEAD"), cancellable = true)
@@ -70,11 +68,8 @@ abstract class ModelPartMixin implements PartTree {
         if (!PolygonStats.counting()) return;
         LodSet.PartDraw draw = level(ci);
         if (draw == null) return;
-        int tinted = LodRenderer.tint((int) (alpha * 255) << 24 | (int) (red * 255) << 16 | (int) (green * 255) << 8
-                | (int) (blue * 255));
-        float r = ((tinted >> 16) & 0xFF) / 255f, g = ((tinted >> 8) & 0xFF) / 255f, b = (tinted & 0xFF) / 255f;
-        for (int k : draw.kept()) cubes.get(k).compile(pose, out, light, overlay, r, g, b, alpha);
-        LodRenderer.queue(draw, pose, light, overlay, tinted);
+        LodRenderer.queue(draw, pose, light, overlay, LodRenderer.tint((int) (alpha * 255) << 24
+                | (int) (red * 255) << 16 | (int) (green * 255) << 8 | (int) (blue * 255)));
     }
     *///?}
 
@@ -91,8 +86,8 @@ abstract class ModelPartMixin implements PartTree {
             PolygonStats.model(polygons);
             return null;
         }
+        // Its simplified groups stand for every cube: none of them is drawn.
         ci.cancel();
-        PolygonStats.model(draw.keptQuads());
         return draw;
     }
 
