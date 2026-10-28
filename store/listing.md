@@ -283,8 +283,8 @@ Unlisted does not mean unsafe. It is about how the mod is made, not about what i
 - The code is public: anyone can read it on
   [GitHub](https://github.com/MC-Skin-Creator/living-horizon).
 - GitHub builds every release from this code, and its build logs are public.
-- The mod does not connect to the internet by itself. Player skins load through the game,
-  as usual, and the Discord link opens only when you click it.
+- The mod has no code of its own that connects to the internet. Player skins come from
+  Mojang through the game, and the Discord link opens only when you click it.
 - Modrinth, CurseForge and Nexus Mods get the same files as the
   [GitHub releases](https://github.com/MC-Skin-Creator/living-horizon/releases).
 
