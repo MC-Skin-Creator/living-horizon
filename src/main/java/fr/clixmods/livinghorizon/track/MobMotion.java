@@ -23,15 +23,23 @@ import org.jspecify.annotations.Nullable;
  * walks where the server has it, at the server's pace, and faces the way the real one faces.
  *
  * <p>Walks, or hops: a slime, a magma cube or a rabbit covers the same way in hops, as its
- * kind does ({@link MobGait}), and waits on the ground between two.
+ * kind does ({@link MobGait}), and waits on the ground between two. A phantom or a ghast
+ * flies instead, along its {@link MobFlight}, facing and tilted the way it goes.
  */
 final class MobMotion {
     /** Degrees a body turns in a tick, at most. */
     private static final float TURN = 18f;
     /** No room to walk: a slow turn on the spot every so many ticks. */
     private static final int TURN_ROUND = 300;
+    /** Blocks a tick a flyer covers at most catching up with its flight, and at least. */
+    private static final double FLY_FAST = 1.2, FLY_SLOW = 0.7;
+    /** Degrees a flyer tilts at most, nose up or down. */
+    private static final float TILT = 35f;
 
     private final long seed;
+    private final @Nullable MobFlight flight;
+    /** Where its flight has it at this tick and the next, from its spot: scratch, on the game's thread. */
+    private final double[] flyNow = new double[3], flyNext = new double[3];
     private double x, y, z;
     private float body, head, pitch;
     private boolean placed;
@@ -49,8 +57,10 @@ final class MobMotion {
     private double hopPace, lift;
     private boolean tookOff, landed, climbing;
 
-    MobMotion(long seed) {
+    /** {@code flight}: how it flies, null for a mob that walks, hops or swims. */
+    MobMotion(long seed, @Nullable MobFlight flight) {
         this.seed = seed;
+        this.flight = flight;
     }
 
     /** Where the puppet is drawn: where the animation took it, not where it was remembered. */
@@ -135,6 +145,10 @@ final class MobMotion {
         if (!placed) place(mob);
         if (gait == null) gait = MobGait.of(puppet);
         following = 0;
+        if (flight != null && roam && !mob.simulated) {
+            fly(puppet, mob, flight, clock, tiny, home);
+            return;
+        }
         if (choice != playing) {
             // Read again and the same as it plays already: it goes on rather than starting over.
             if (choice == null || playing == null || !choice.same(playing)) started = clock;
@@ -213,6 +227,58 @@ final class MobMotion {
         }
         pitch = Mth.lerp(0.15f, pitch, grazing ? 40f : 0f);
         apply(puppet, Math.hypot(x - fromX, z - fromZ), tiny);
+    }
+
+    /**
+     * One tick of a flyer's flight, {@link MobFlight}: on its path, or on the way to it
+     * through the air when it is not there yet (just remembered, or called back to its spot).
+     * It faces where it flies and tilts as it climbs or dives.
+     */
+    private void fly(LivingEntity puppet, MobMemory.Remembered mob, MobFlight flight, int clock, boolean tiny,
+                     float home) {
+        playing = null;
+        // Each one at its own point of its flight.
+        double t = clock + Math.floorMod(seed >> 17, 4000L);
+        flight.at(seed, t, flyNow);
+        flight.at(seed, t + 1, flyNext);
+        double tx = mob.x + flyNow[0], ty = mob.y + flyNow[1], tz = mob.z + flyNow[2];
+        if (home > 0) {
+            // Close to the hand-over: back towards the spot where the real one was last seen.
+            tx = Mth.lerp(home, tx, mob.x);
+            ty = Mth.lerp(home, ty, mob.y);
+            tz = Mth.lerp(home, tz, mob.z);
+        }
+        double dx = tx - x, dy = ty - y, dz = tz - z, d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        // Its flight never goes faster than the slowest of this: on it, it is where it should be every tick.
+        double step = Math.min(d, Mth.clamp(d / 10, FLY_SLOW, FLY_FAST));
+        double fromX = x, fromY = y, fromZ = z;
+        if (d > 1e-6) {
+            x += dx / d * step;
+            y += dy / d * step;
+            z += dz / d * step;
+        }
+        double mx = x - fromX, my = y - fromY, mz = z - fromZ, across = Math.hypot(mx, mz);
+        float turnTo, tiltTo;
+        if (across > 1e-3) {
+            turnTo = (float) (Mth.atan2(mz, mx) * Mth.RAD_TO_DEG) - 90f;
+            tiltTo = (float) (Mth.atan2(my, across) * Mth.RAD_TO_DEG);
+        } else if (home >= 1) {
+            // Waiting at its spot for the real one: turned as it was seen.
+            turnTo = mob.yaw;
+            tiltTo = 0f;
+        } else {
+            // Hanging where its flight has it: the way its flight goes on.
+            double nx = flyNext[0] - flyNow[0], nz = flyNext[2] - flyNow[2];
+            turnTo = Math.hypot(nx, nz) > 1e-6 ? (float) (Mth.atan2(nz, nx) * Mth.RAD_TO_DEG) - 90f : body;
+            tiltTo = 0f;
+        }
+        body = Mth.approachDegrees(body, turnTo, TURN);
+        head = Mth.approachDegrees(head, body, TURN);
+        pitch = Mth.lerp(0.2f, pitch, Mth.clamp(tiltTo, -TILT, TILT));
+        air = -1;
+        lift = 0;
+        climbing = false;
+        apply(puppet, Math.sqrt(mx * mx + my * my + mz * mz), tiny);
     }
 
     /**

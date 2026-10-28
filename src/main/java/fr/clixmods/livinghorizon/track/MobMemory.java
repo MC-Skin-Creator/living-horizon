@@ -65,7 +65,8 @@ import java.util.concurrent.CompletableFuture;
  * never added to the world, saved as the game saves it (so the horse keeps its coat,
  * the sheep its colour, the wolf its collar), that plays where it was an animation
  * chosen from the blocks around it ({@link MobPaths}, {@link MobMotion}): a stroll, a pause
- * to graze or look around, and back. It is a picture of what lives there, not a simulation.
+ * to graze or look around, and back; a phantom or a ghast flies its own loop ({@link MobFlight}).
+ * It is a picture of what lives there, not a simulation.
  * When the server sends the real mob again, the copy walks up to it first: the real one
  * is only drawn once the copy stands where it is.
  *
@@ -161,7 +162,7 @@ public final class MobMemory {
     private static final long BUILD_BUDGET = 2_000_000L;
     /** A copy not drawn for this long (nanoseconds) is frozen, with {@link FarConfig#optFreezeHidden}. */
     private static final long FREEZE_AFTER = 500_000_000L;
-    /** Grounds read per tick, at most: a few thousand blocks each, when the chunks are loaded. */
+    /** Grounds asked for per tick, at most: a copy of a few sections each here, the rest off the game's thread. */
     private static final int READS_PER_TICK = 6;
     /**
      * Ticks before a ground read with columns missing is read again - the far world may not
@@ -707,13 +708,15 @@ public final class MobMemory {
                     continue;
                 }
                 boolean roam = !still.contains(mob.type);
+                // A phantom or a ghast flies its own way, on no ground: nothing to read for it.
+                boolean grounded = roam && MobFlight.of(mob.type) == null;
                 long grounding = System.nanoTime();
                 // Moved by the server's word: the blocks are read again around where it is now.
                 MobPaths.Choice choice = mob.choice;
                 if (choice != null && !choice.ground().around(mob.x, mob.z)) mob.choice = choice = null;
                 // Read with part of the far world missing: read again, now that it may be there.
                 boolean again = choice != null && !choice.complete() && clock >= mob.replanAt;
-                if (choice == null && roam && !mob.simulated && !mob.planning && mob.ground != null) {
+                if (choice == null && grounded && !mob.simulated && !mob.planning && mob.ground != null) {
                     // Saved with it: the ground it was last seen on, if it is still where it was.
                     MobPaths.Ground saved = MobPaths.Ground.load(mob.ground);
                     if (saved != null && saved.around(mob.x, mob.z) && walker(living)) {
@@ -722,7 +725,7 @@ public final class MobMemory {
                         mob.ground = null;
                     }
                 }
-                if ((choice == null || again) && roam && !mob.simulated && !mob.planning && reads < READS_PER_TICK) {
+                if ((choice == null || again) && grounded && !mob.simulated && !mob.planning && reads < READS_PER_TICK) {
                     reads++;
                     mob.planning = true;
                     if (choice == null) mob.replans = 0;
@@ -767,7 +770,7 @@ public final class MobMemory {
     }
 
     private static MobMotion motion(Remembered mob) {
-        if (mob.motion == null) mob.motion = new MobMotion(seed(mob));
+        if (mob.motion == null) mob.motion = new MobMotion(seed(mob), MobFlight.of(mob.type));
         return mob.motion;
     }
 

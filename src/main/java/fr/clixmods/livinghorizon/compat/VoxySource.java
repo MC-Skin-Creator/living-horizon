@@ -67,6 +67,12 @@ final class VoxySource implements LodSource {
         for (Cache cache : ALL_CACHES) releaseAll(cache);
     }
 
+    /** Each reader keeps its sections between reads: {@link #clear()} waits for the reads to end. */
+    @Override
+    public boolean keepsBetweenReads() {
+        return true;
+    }
+
     /** One reader's sections, for one world; a {@link Miss} where Voxy had none. */
     private static final class Cache {
         final LinkedHashMap<Long, Object> sections = new LinkedHashMap<>(128, 0.75f, true);

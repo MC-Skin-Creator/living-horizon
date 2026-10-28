@@ -69,6 +69,16 @@ final class GlPrograms {
         return linked;
     }
 
+    /**
+     * The locations of a program's uniforms, in the order of {@code names}: looked up once, as the
+     * program is made, since each lookup waits for a driver that runs on a thread of its own.
+     */
+    static int[] uniforms(int program, String... names) {
+        int[] locations = new int[names.length];
+        for (int i = 0; i < names.length; i++) locations[i] = GL20C.glGetUniformLocation(program, names[i]);
+        return locations;
+    }
+
     /** One shader, its {@link #DEPTH_MATH} line replaced by that file. */
     static int shader(String name, int type, String source) {
         int shader = GL20C.glCreateShader(type);

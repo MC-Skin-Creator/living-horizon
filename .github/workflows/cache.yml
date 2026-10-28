@@ -61,6 +61,8 @@ jobs:
         entry: ${{ fromJSON(needs.entries.outputs.entries) }}
     name: fill ${{ matrix.entry }}
     runs-on: ubuntu-latest
+    # As in build.yml: three attempts of 25 minutes at most, then the job is stopped.
+    timeout-minutes: 90
 
     steps:
       - name: Checkout
@@ -125,8 +127,8 @@ jobs:
           else
             tasks=(":$ENTRY:compileJava")
           fi
-          ./gradlew "${tasks[@]}" --stacktrace --configure-on-demand \
-            -Porg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64,JAVA_HOME_21_X64,JAVA_HOME_25_X64
+          # A download that fails or hangs is tried again.
+          .github/scripts/gradle.sh "${tasks[@]}"
           # Nothing may still be writing into the cache while it is saved.
           ./gradlew --stop
 

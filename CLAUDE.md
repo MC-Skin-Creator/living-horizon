@@ -192,6 +192,11 @@ request, and attaches the jar as a 14-day workflow artifact. A pull request that
 changes Markdown files and the LICENSE skips the targets (the changelog is still checked).
 CI is what checks a change; a pull request is not done until it is green.
 
+Every workflow runs Gradle through `.github/scripts/gradle.sh`: an attempt is stopped once it
+has done nothing for 5 minutes (no log line, no byte written, no CPU for Java) or after 25
+minutes, and one stopped that way or ended by a failed download is tried again, three times
+at most; any other failure ends it at once. The build jobs stop after 90 minutes.
+
 The Gradle cache is written by `.github/workflows/cache.yml` on `develop` only, and read by
 the pull request builds and the release (`.github/actions/gradle-cache`): one entry of
 downloads shared by every job, and one per Forge and NeoForge node with its prepared
@@ -318,6 +323,14 @@ come back, add it here in the same pull request: this file is what the next sess
   `DhSource.open` takes the one of the player's dimension; taking the first read another
   dimension's ground. And Distant Horizons' read cache keeps an area as first read, empty if it
   was not built yet: `DhSource.cache` empties it every 30 s, and 2 s after a column came back empty.
+- **The game frozen for good as the player changes dimension or leaves** (a thread dump with the
+  render thread in `LodWorld.release`, on a write lock; issue #248): a reader held the lock inside a
+  Distant Horizons read, which waits with no time limit for Distant Horizons' threads, while those
+  waited for the render thread (to upload their terrain) or had been shut down with the world,
+  dropping the read. Only a source that keeps what it reads between reads takes the lock
+  (`LodSource.keepsBetweenReads`, Voxy); a Distant Horizons read of a world left keeps nothing
+  (`DhSource.Opened`), and `LodWorld.suspend` interrupts those still waiting (`ModCalls`), which
+  Distant Horizons answers as cancelled. The game's thread never waits for a read of another mod.
 - **Depth view lighter or darker as far mobs show or hide**: the game's far plane follows the
   farthest figure drawn (`GhostRenderer.farPlane`); the view shades against `FarDepth.VIEW_FAR`.
 - **Distant Horizons' rendering engine** (from 3.3: Blaze3D or OpenGL). With Iris installed,
@@ -397,10 +410,10 @@ come back, add it here in the same pull request: this file is what the next sess
   not (a helmet worn by the sun changed its item, and the key, every few seconds; a pig's
   random sound variant), or a kind of figure has more looks than its pages may hold. With the
   pages full, "waiting" going round and round with the baked count stuck: a figure baked
-  small, grown, refused for lack of room and asked for again the next second. `room` squeezes
-  it into smaller tiles, or `REFUSED` keeps it a model for a while; `crowd` checks it. The same
-  figure twice in the impostor screen: two keys for one look (a value the picture does not show);
-  `ImpostorAtlas.place` compares the pixels and makes the second an alias of the first.
+  small, grown, refused for lack of room and asked for again the next second. `REFUSED` keeps
+  it a model for a while; `crowd` checks it. The same figure twice in the impostor screen: two
+  keys for one look (a value the picture does not show); `ImpostorAtlas.place` compares a 64-bit
+  hash of the pixels (`Look`) and makes the second an alias of the first.
   `ImpostorKey` leaves out what never shows (positions, times, owners, names, sound variants,
   an item's damage), names variants by their registry key so that a sheet is found again in
   the next world, and learns per kind of mob the values seen changing again and again
@@ -446,6 +459,15 @@ come back, add it here in the same pull request: this file is what the next sess
   often under the same names, and a framebuffer not bound at that moment keeps the deleted one. Our
   framebuffers attach their texture again every frame (`FarDepth.attachDepth`), never by name only;
   the `resize` scenario checks it.
+- **Depth copies or the occlusion test wrong for a second, then fine** (a garbled depth view,
+  mobs through the far terrain, after a shader pack changed or a texture was made again):
+  `GlCache` keeps what OpenGL said of a texture's size and format and a framebuffer's
+  attachment, asked again on a resize and once a second. A texture this mod makes or deletes
+  is told to it (`GlCache.made`, `deleted`); one made elsewhere under an old name at the same
+  size is only seen at the next refresh. A step drawing inside a `FarDepth.GlState` bracket
+  that changes more than the bracket saved throws: widen the bracket's `save`. A step that
+  starts drawing into a framebuffer with colour must save `GlState.COLOUR` and set blending
+  and the colour mask itself.
 - **A far player's mount drawn twice, or a rider sitting on air** (a happy ghast beside its
   rider, a player met already riding floating far away): a mount is drawn under its rider
   (`FarPlayer.mountPuppet`), and the remembered mobs leave out every id `FarPlayer.carriedMount`
@@ -545,6 +567,16 @@ come back, add it here in the same pull request: this file is what the next sess
   `glColorMask` for all buffers at once and puts back the first buffer's value desynchronises
   that cache for the pack's other buffers. `FarDepth.GlState` saves and restores both per draw
   buffer (`glEnablei`, `glColorMaski`); every raw GL draw of the mod goes through it.
+- **CI jobs running for hours, or failing on a Forge node with `IOException: closed`**
+  (`Received RST_STREAM`, after a `Cache miss!` stack trace that is only information): Forge's
+  Maven left the download of `forge-<version>-userdev.jar` hanging, and ForgeGradle's Mavenizer
+  waits on it with no limit of its own. `gradle.sh` stops the attempt once it has stalled for
+  5 minutes and tries again; a job
+  that still fails three times means Forge's Maven is down: re-run it later. A timeout reads
+  `HttpTimeoutException: request timed out` too, and a download cut short stays in the cache
+  as a truncated jar (`zip END header not found` on the next attempt): `gradle.sh` deletes the
+  jars that do not open before trying again. What Forge's Maven served is kept in each Forge
+  node's cache entry (`mavenizer/caches/maven/forge`), so a build only asks it for what changed.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

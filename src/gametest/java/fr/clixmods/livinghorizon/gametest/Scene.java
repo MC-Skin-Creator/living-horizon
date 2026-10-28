@@ -3,7 +3,6 @@ package fr.clixmods.livinghorizon.gametest;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorKey;
-import fr.clixmods.livinghorizon.render.impostor.ImpostorViews;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
@@ -215,7 +214,7 @@ public final class Scene {
                 line = 0;
             }
             if (number == sheet.page()) {
-                int rowHeight = ImpostorViews.TILE * sheet.scale();
+                int rowHeight = sheet.tile();
                 return new int[]{x, y + sheet.row() * rowHeight / 2, wide / 2, rowHeight / 2};
             }
             x += wide / 2 + 8;

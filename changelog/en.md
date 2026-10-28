@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Client
+
+#### Improved
+- **Smoother game among distant mobs and offline players** — working out where distant mobs and players who logged off can walk no longer takes time from the game: it is done in the background.
+- **Smoother frames with distant mobs** — the game waits less on the graphics driver each frame with distant mobs over Voxy or Distant Horizons, most of all on NVIDIA cards with *Threaded optimization* on.
+- **Distant phantoms and ghasts flying** — distant phantoms now circle in the sky and distant ghasts drift about, instead of hanging still in the air.
+- **Phantoms and ghasts seen from below** — as *Simplified Entities* (flat pictures of far mobs), phantoms and ghasts are now pictured from below and from above too, like birds, not only from the side.
+- **Smoother with many distant mobs on Vulkan** — the game no longer loses time on every distant mob, every frame, when it draws with Vulkan (Minecraft 26.2 and later) or over Distant Horizons (Minecraft 26.3).
+- **Every mob seen from afar** — monsters, bats, fish and every other mob are now shown far away from the start, roaming like the animals, so endermen stay in view across the End; animals you hid stay hidden.
+
+#### Fixed
+- **Buttons piled on top of each other** — the buttons at the bottom of *Distant Mobs & Entities* no longer sit on top of one another, and *Restore Defaults* is back to the left of *Done* in the settings (Minecraft 1.20.1).
+- **Game freezing when changing dimension or leaving a world** — the game no longer freezes for good when you go through a portal or leave a world (with Distant Horizons).
+
 ## 0.12.1 — 2026-10-27
 
 ### Client

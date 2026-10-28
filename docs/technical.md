@@ -246,11 +246,14 @@ under 48.
   too, and always in the Nether and the End.
 - **Walking** (`track/Walkway`) only where a player could: one block up, two down, no corner
   cut, nothing walked through but doors and fence gates, which they cannot open. It is worked
-  out on the client from the blocks it has. The area around is read a little every tick (600
-  spots per tick for all of them and their mounts together, 250 at most for one), and again
-  every 30 seconds or when they find themselves off it. Each way is searched towards where
-  they go. Looking for beds and chests, dodging and walking back after a blast have budgets
-  of their own.
+  out on the client from the blocks it has, off the game's thread: the chunk sections around
+  their spot (`roam` + 4 blocks across, 32 below and 48 above) are copied a few at a time (96
+  sections per tick for all of them and their mounts together, `track/BlockCopy`), then
+  searched on threads of their own (`track/GroundWork`), beds and chests looked for in the
+  same go. The area is read again every 30 seconds, when they find themselves off it, or when
+  a step of their way can no longer be stood on. Each way is searched towards where they go,
+  in the copy the area was read from. Dodging and walking back after a blast are small
+  searches made on the spot.
 - **Monsters** within 10 blocks and in plain sight put them on guard: an iron sword drawn,
   the shield up, eyes on the nearest, a step away when it comes closer than 3.5 blocks. They
   never fight. Safe indoors, behind walls, shut doors or windows, they ignore them.
@@ -354,13 +357,14 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
   position for everyone, and a mob gone from its loaded chunk disappears for everyone. The
   server shares the 31 mobs and the boats of `track/MobKinds.TYPES`, numbered in that order.
 - **Otherwise**, each client remembers the mobs it met itself (the types in `mobTypes`), in
-  `config/livinghorizon/mobs/<server>.json`.
+  `config/livinghorizon/mobs/<server>.json`. Every kind is in it by default, monsters too: one
+  that despawned is forgotten like any other (below).
 - **Look.** A mob met up close keeps its exact look (the game's own save of it); one known
   only from the server is built from kind, variant and age.
 - **Forgetting.** Coming back within range of a remembered mob that is not there forgets it.
-- **Other mods' mobs** are shown from the start (monsters excepted), then left as the player
-  sets them (`knownModdedMobs`). Each client remembers them itself: the server only shares
-  vanilla kinds.
+- **Every kind of mob**, the game's and other mods', is shown from the start, walking, then left
+  as the player sets it (`knownMobTypes`, offered once the game has registered them). Each client
+  remembers other mods' mobs itself: the server only shares vanilla kinds.
 - **Mannequins** (from 1.21.9) are shown too, standing still: Distant Friends uses them as its fake
   players. Mobs in `stillMobTypes` (happy ghast, mannequin) stand still instead of walking
   their loop. A copy wears its mannequin's skin, from a player's name or a texture of a
@@ -398,10 +402,12 @@ off, then run or jump to it once it was sent again.
 
 Once its copy is drawn, the blocks within 8 blocks of a mob (a square of 17 by 17 columns,
 `track/MobPaths`) are read, a few mobs per tick, from loaded chunks or from the far world
-(Voxy or Distant Horizons). They are read again when the mob moves, and later and later while
+(Voxy or Distant Horizons): the loaded sections are copied on the game's thread
+(`track/BlockCopy`) and the ground and animation worked out on `track/GroundWork`'s threads,
+so the answer comes a tick or so later. They are read again when the mob moves, and later and later while
 columns are missing; a ground read whole is saved with the mob and used at once next time.
-Mobs that stand still and mobs the server moves read nothing, and flyers and swimmers get a
-flat disc at their own height.
+Mobs that stand still and mobs the server moves read nothing, phantoms and ghasts fly (see
+below), and other flyers and swimmers get a flat disc at their own height.
 
 - **The ground**: in each column, the floor nearest the mob's height with room above it.
   Grass, flowers, crops and snow layers count as air; a path dug with a shovel counts as
@@ -419,6 +425,11 @@ flat disc at their own height.
   in the air, a slime stretching as it leaves the ground and squashing as it lands, a
   rabbit's legs kicking. A chicken flaps while it steps up or down a block. Impostors are
   baked with all of it at rest.
+- **Flying** (`track/MobFlight`): a phantom circles 5 blocks above where it was last seen, 7 to
+  13 blocks out, either way round, now wider, now tighter, rising and dipping; a ghast drifts
+  in slow loops within 10 blocks of its spot, 3 up or down. Like an animation, where it is
+  comes from its UUID and the clock alone, and no ground is read. It faces where it flies and
+  tilts as it climbs or dives, and flies back to its spot as the player comes near.
 - **No teleporting**: when the server reports a drawn mob somewhere else, its copy walks to
   the new spot in a straight line (the ground there is read again meanwhile), then plays the
   animation chosen there.
@@ -662,6 +673,12 @@ that a mob met in an earlier game is read back rather than baked.
     that height, and the wing beat goes on from one sheet to the next;
   - they are baked again each game, never kept on disk, and named after the species in the
     impostor screen.
+- **Phantoms and ghasts** (happy ghasts included, `MobFlight.pictured`) are mostly seen from
+  below: like a bird, one sheet per height they are seen from (well below, below, level,
+  above: `ImpostorViews.HEIGHTS`, part of the key through `ImpostorKey.seenFrom`), baked
+  turned round their middle (`ImpostorAtlas.MIDDLE`), facing the camera entirely when drawn.
+  All four are asked for together; kept on disk like any mob's. A happy ghast carrying a
+  player is pictured with its rider, upright, as before.
 - **Players who logged off** are impostors in every posture: standing, seated on the ground,
   lying down or in a bed. A posture other than standing is part of the key
   (`ImpostorKey.posture`), and the picture is baked in it:
@@ -784,6 +801,27 @@ Voxy's depth textures, and nothing else:
 Anywhere else, what Voxy draws is left exactly as it is. *Voxy Shadow Fix* (`optVoxyShadows`)
 turns it off.
 
+### Asking OpenGL as little as possible
+
+With the driver on a thread of its own (NVIDIA's *Threaded optimization*, Mesa's glthread),
+every `glGet*`, `glIsEnabled` or `glGetQueryObject` stops the game until the driver has caught
+up. The depth steps and the occlusion test keep those few:
+
+- **Uniform locations** are looked up once, when each program is made (`GlPrograms.uniforms`).
+- **Texture sizes and formats, framebuffer attachments** come from `compat/GlCache`. It asks
+  again once the main render target changes size, and once a second whatever happens. The
+  copies `FarDepth` makes are noted as they are made (`GlCache.made`, `deleted`), never asked
+  about.
+- **`FarDepth.GlState`** reads only what a step changes: the texture units it binds, and only
+  for the steps that move them the scissor box (`intoVoxy`, Voxy's blit), the read framebuffer
+  (Voxy's blit) and blending and the colour mask of every draw buffer (Voxy's blit, the
+  restore into Voxy's framebuffer, the depth view). Our own framebuffers have no colour: the
+  steps drawing there (the occlusion test, Distant Horizons' merge, the fade mask, `intoVoxy`)
+  leave blending and the colour masks alone. Where a bracket runs two steps (the merge and the
+  occlusion test, the restore and `intoVoxy`), one save covers both. One object, reused.
+- **Voxy's framebuffer** (`noteTarget`) is asked for only under a pack that keeps Voxy's depth
+  apart, the one case the merge reads it.
+
 ## Fog on distant figures
 
 From 1.21.6 the game fogs the world twice: a render distance fog at the edge of the loaded
@@ -838,15 +876,22 @@ in `compat/FarDepthGpu` and the answers read back from there, a capped number pe
 
 Why the answer can be trusted:
 
-- The GPU projects the box exactly as the mob is drawn, so the answer is the picture's.
+- The GPU projects the box exactly as the mob is drawn, so the answer is the picture's. With a
+  *Minimum Size*, the box is as large as the mob is drawn: model, picture and box take their
+  size from the same arithmetic (`render/Apparent`), never under a player's height.
 - Depth clamping keeps a box past the far plane at the far plane: the sky never hides a mob,
   terrain in front does.
 - A mob never asked about, or whose answer is more than six frames old, is drawn.
 
+The `occlusion` scenario checks the answers: a row of remembered cows 200 blocks away, half
+of them hidden behind a wall, none once it is gone.
+
 With `optOcclusionQueries` off, or once the queries have failed, the mobs are tested in the
 far terrain's world instead (`render/Occlusion`). The two answers are never mixed. With
 Vulkan, once Distant Horizons' depth is merged, no mob is skipped: the depth test hides them
-pixel by pixel.
+pixel by pixel. Which way the frame goes (`DepthFar.openGl`, `FarDepth.gpuPath`) is worked out
+once, as the level starts to render (`FarDepth.noteView`): with Vulkan, asking OpenGL throws, and
+the GPU path asks Distant Horizons and Iris through reflection, too much for every mob.
 
 ## Debug tools
 
@@ -1066,10 +1111,10 @@ the mod, they come back at their last position.
 | `rememberNamedMobs` | Name-Tagged Mobs | `true` | | A mob with a name tag is shown whatever its type |
 | `animationMinPixels` | Min. Animated Size | `10` pixels | 0 to 40 | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
 | `animationMaxDistance` | Animation Distance | `0` blocks | 0 to 4000 | Past this, no distant mob plays an animation (`0`: no limit) |
-| `mobTypes` | Mobs & Entities... | The 31 mobs and the boats a server shares, and mannequins | | Which mobs are shown, and remembered by this client |
+| `mobTypes` | Mobs & Entities... | Every mob and boat of the game and of other mods | | Which mobs are shown, and remembered by this client |
 | `stillMobTypes` | Mobs & Entities..., *Still* | Happy ghast, mannequin | | Mobs shown standing still instead of walking their loop |
 | `scanRadius` | Scan Radius | `32` chunks | 4 to 1024 | Chunks around you read by a scan, in single player (32 chunks = 512 blocks) |
-| `knownModdedMobs` | (not shown) | Empty | | Mob types of other mods already offered once: a new one is shown from the start (monsters excepted), then left as you set it |
+| `knownMobTypes` | (not shown) | Those met so far | | Mob types already offered once, the game's and other mods': a new one is shown from the start, then left as you set it |
 
 *Forget Mobs* forgets every mob remembered on this server; those a server with the mod shares
 come back by themselves. *Scan Nearby Mobs* runs a scan.

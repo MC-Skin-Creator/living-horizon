@@ -10,6 +10,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.EasterEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FarFogScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FollowedMobsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.FlyersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.GaitsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.HeadTurnScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorCrowdScenario;
@@ -22,6 +23,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LanShareScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.MannequinsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.OcclusionScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DiscordScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
@@ -84,10 +86,12 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new DepthViewScenario(),
             new EntityDepthScenario(),
             new ResizeScenario(),
+            new OcclusionScenario(),
             new UnloadScenario(),
             new FollowedMobsScenario(),
             new HeadTurnScenario(),
             new GaitsScenario(),
+            new FlyersScenario(),
             new EasterEggsScenario(),
             new BirdsScenario(),
             new PerchersScenario(),

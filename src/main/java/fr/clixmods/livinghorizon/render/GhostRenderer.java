@@ -19,6 +19,7 @@ import fr.clixmods.livinghorizon.render.impostor.ImpostorViews;
 import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
 import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
+import fr.clixmods.livinghorizon.track.MobFlight;
 import fr.clixmods.livinghorizon.track.MobMemory;
 import fr.clixmods.livinghorizon.track.Puppets;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
@@ -145,6 +146,7 @@ public final class GhostRenderer {
 
     /** The view this frame: where the camera looks, how wide, how many pixels a radian is. */
     private static double eyeX, eyeY, eyeZ, lookX, lookY, lookZ, viewAngle, pixelsPerRadian, drawnRange;
+    /** Figures drawn this frame, models or pictures, and those left out: for the debug panel. */
     private static int drawn, skipped;
 
     private static void view(Camera camera, Minecraft minecraft) {
@@ -206,8 +208,7 @@ public final class GhostRenderer {
     }
 
     private static @Nullable Mark count(@Nullable Mark why) {
-        if (why == null) drawn++;
-        else skipped++;
+        if (why != null) skipped++;
         return why;
     }
 
@@ -562,18 +563,13 @@ public final class GhostRenderer {
         if (!config.hideOccludedMobs) return false;
         double dx = entity.getX() - eyeX, dy = entity.getY() - eyeY, dz = entity.getZ() - eyeZ;
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        // Drawn bigger than it is with a minimum size: the bigger box is what must be hidden.
-        double boost = 1.0;
-        if (config.minApparentPixels > 0 && distance > 1e-3) {
-            double extent = Math.max(0.5, Math.max(entity.getBbHeight(), entity.getBbWidth()));
-            boost = Math.clamp(config.minApparentPixels / (extent / distance * pixelsPerRadian), 1.0, 400.0);
-        }
+        // Drawn bigger than it is with a minimum size: the bigger box, as drawn, is what must be hidden.
+        double boost = Apparent.boost(Apparent.extent(entity.getBbHeight(), entity.getBbWidth()), distance,
+                pixelsPerRadian, config.minApparentPixels);
         if (!Occlusion.hidden(key, entity, dx, dy, dz, boost)) {
             return false;
         }
         noteDistance(distance);
-        // Counted as drawn when it passed the view tests: it is not drawn after all.
-        drawn--;
         skipped++;
         if (debug) DebugMarks.mark(entity, Mark.HIDDEN);
         return true;
@@ -752,17 +748,10 @@ public final class GhostRenderer {
         // closer and smaller in proportion, which looks the same but shows through whatever
         // stands between.
         farthest = Math.max(farthest, distance);
-        double reach = DepthFar.of(minecraft) * 0.95;
-        double pull = distance > reach ? reach / distance : 1.0;
-
-        double boost = 1.0;
-        if (config.minApparentPixels > 0) {
-            double pixelsPerRadian = DepthFar.pixelsPerRadian(minecraft);
-            // The longest side: a sleeper is 1.8 blocks long and 0.2 high.
-            double extent = Math.max(1.8, Math.max(body.boundingBoxHeight, body.boundingBoxWidth)) * size;
-            double apparent = extent / distance * pixelsPerRadian;
-            boost = Math.clamp(config.minApparentPixels / apparent, 1.0, 400.0);
-        }
+        drawn++;
+        double pull = Apparent.pull(distance, DepthFar.of(minecraft));
+        double extent = Apparent.extent(body.boundingBoxHeight, body.boundingBoxWidth) * size;
+        double boost = Apparent.boost(extent, distance, pixelsPerRadian, config.minApparentPixels);
 
         Transform transform = nextTransform();
         transform.anchorX = ax;
@@ -772,8 +761,8 @@ public final class GhostRenderer {
         transform.scale = pull * boost * size;
         if (distance > drawnRange) {
             // Where it shows on screen: as big as drawn, around its middle, a mount included.
-            double extent = Math.max(1.8, Math.max(body.boundingBoxHeight, body.boundingBoxWidth)) * size * boost;
-            FarDepth.figure(ax, ay + extent * 0.5, az, extent * (mount == null ? 0.75 : 1.5));
+            double shown = extent * boost;
+            FarDepth.figure(ax, ay + shown * 0.5, az, shown * (mount == null ? 0.75 : 1.5));
         }
         LocalPlayer self = minecraft.player;
         ClientLevel level = minecraft.level;
@@ -897,7 +886,16 @@ public final class GhostRenderer {
         if (!config.distantMobs) return;
         for (MobMemory.Remembered mob : FarPlayerTracker.get().mobs().shown()) {
             Entity puppet = mob.puppet();
-            if (puppet instanceof LivingEntity) ImpostorAtlas.request(ImpostorKey.of(puppet), puppet);
+            if (!(puppet instanceof LivingEntity)) continue;
+            ImpostorKey key = ImpostorKey.of(puppet);
+            if (!MobFlight.pictured(puppet)) {
+                ImpostorAtlas.request(key, puppet);
+                continue;
+            }
+            // A phantom or a ghast: seen from every height, as it flies about.
+            for (int height = 0; height < ImpostorViews.HEIGHTS.length; height++) {
+                ImpostorAtlas.request(ImpostorKey.seenFrom(key, height), puppet);
+            }
         }
     }
 
@@ -944,8 +942,19 @@ public final class GhostRenderer {
         }
         ImpostorKey key = ImpostorKey.of(entity);
         float yaw = Float.isNaN(facing) ? Mth.rotLerp(partialTick, living.yBodyRotO, living.yBodyRot) : facing;
+        boolean aloft = MobFlight.pictured(entity);
+        if (aloft) {
+            // A phantom or a ghast, often seen from below: the picture baked from the nearest
+            // height, round its middle, turned to the camera up and down as a bird's is.
+            dy += ImpostorAtlas.middle(entity);
+            double ax = Mth.lerp(partialTick, entity.xOld, entity.getX()) + dx - eye.x;
+            double ay = Mth.lerp(partialTick, entity.yOld, entity.getY()) + dy - eye.y;
+            double az = Mth.lerp(partialTick, entity.zOld, entity.getZ()) + dz - eye.z;
+            double elevation = Math.toDegrees(Math.atan2(-ay, Math.sqrt(ax * ax + az * az)));
+            key = ImpostorKey.seenFrom(key, ImpostorViews.height(elevation));
+        }
         return picture(minecraft, eye, entity, entity, key, null, 0, partialTick, config,
-                dx, dy, dz, yaw, Math.max(entity.getBbHeight(), entity.getBbWidth()));
+                dx, dy, dz, yaw, Math.max(entity.getBbHeight(), entity.getBbWidth()), aloft);
     }
 
     /**
@@ -969,7 +978,7 @@ public final class GhostRenderer {
         ImpostorKey key = ImpostorKey.riding(rider, mount, seat, turned);
         float yaw = Mth.rotLerp(partialTick, facingO, facing);
         double extent = Math.max(Math.max(mount.getBbHeight(), seat.y + rider.getBbHeight()), mount.getBbWidth());
-        return picture(minecraft, eye, rider, mount, key, seat, turned, partialTick, config, 0, 0, 0, yaw, extent);
+        return picture(minecraft, eye, rider, mount, key, seat, turned, partialTick, config, 0, 0, 0, yaw, extent, false);
     }
 
     /**
@@ -977,11 +986,12 @@ public final class GhostRenderer {
      * {@code dz}), its view chosen for a body facing {@code yaw}; asked for while it is not
      * baked. {@code shown} is the figure the picture stands for, which keeps its last picture
      * until the new one is baked. A rider ({@code shown}) is pictured on its mount ({@code at}),
-     * sitting at {@code seat} on it, turned {@code turned} degrees from it.
+     * sitting at {@code seat} on it, turned {@code turned} degrees from it. {@code facing}: a
+     * picture baked from a height, round the figure's middle, turned to the camera up and down too.
      */
     private static boolean picture(Minecraft minecraft, Vec3 eye, Entity shown, Entity at, ImpostorKey key,
                                    @Nullable Vec3 seat, float turned, float partialTick, FarConfig config,
-                                   double dx, double dy, double dz, float yaw, double size) {
+                                   double dx, double dy, double dz, float yaw, double size, boolean facing) {
         double x = Mth.lerp(partialTick, at.xOld, at.getX()) + dx;
         double y = Mth.lerp(partialTick, at.yOld, at.getY()) + dy;
         double z = Mth.lerp(partialTick, at.zOld, at.getZ()) + dz;
@@ -1007,12 +1017,10 @@ public final class GhostRenderer {
         }
         if (distance > drawnRange) FarDepth.needed();
         farthest = Math.max(farthest, distance);
-        double reach = DepthFar.of(minecraft) * 0.95;
-        double pull = distance > reach ? reach / distance : 1.0;
-        double boost = 1.0;
-        if (config.minApparentPixels > 0) {
-            boost = Math.clamp(config.minApparentPixels / apparent, 1.0, 400.0);
-        }
+        drawn++;
+        double pull = Apparent.pull(distance, DepthFar.of(minecraft));
+        // As large as its model would be drawn: a figure turning into its picture keeps its size.
+        double boost = Apparent.boost(Apparent.extent(size), distance, pixelsPerRadian, config.minApparentPixels);
         int view = ImpostorViews.view(yaw, -ax, -az, last == null ? -1 : last.view);
         if (last == null) SHOWN.put(shown, last = new Shown());
         last.key = key;
@@ -1023,10 +1031,11 @@ public final class GhostRenderer {
         int outline = minecraft.player == null ? 0 : DebugMarks.impostorOutline(config);
         if (outline != 0 && ImpostorRenderer.OUTLINES) glowing = true;
         ImpostorRenderer.add(ax * pull, ay * pull, az * pull, sheet.worldSize() * pull * boost, sheet, view, light,
-                outline, false);
+                outline, facing);
         if (distance > drawnRange) {
             double extent = sheet.worldSize() * boost;
-            FarDepth.figure(ax, ay + extent * 0.5, az, extent * 0.75);
+            // Round its feet, or round its middle for a picture seen from a height.
+            FarDepth.figure(ax, facing ? ay : ay + extent * 0.5, az, extent * 0.75);
         }
         return true;
     }
