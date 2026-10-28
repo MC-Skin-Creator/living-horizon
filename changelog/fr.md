@@ -6,6 +6,14 @@
 
 #### Nouveautés
 - **Mobs lointains aux formes simplifiées** — avec *Niveaux de détail* (dans *Performance*), plus les mobs lointains sont loin, moins ils ont de blocs, et plus gros, avant de devenir des images plates : les foules de mobs lointains coûtent bien moins à dessiner.
+- **Bouton du journal des modifications** — les réglages du mod ont maintenant un bouton du journal des modifications à côté du logo Discord, pour lire ce qui a changé à chaque version (un bouton *Lire le journal des modifications* sur la page de Sodium).
+
+#### Améliorations
+- **Serveurs sans le mod** — en rejoignant un serveur sans Living Horizon, ou avec une version trop ancienne ou trop récente du mod, le tchat dit maintenant que les joueurs lointains n'y sont pas affichés ; avec *Afficher les joueurs* désactivé, rien n'est dit.
+
+## 0.13.0 — 2026-10-28
+
+### Client
 
 #### Améliorations
 - **Jeu plus fluide parmi les mobs lointains et les joueurs déconnectés** — chercher où les mobs lointains et les joueurs déconnectés peuvent marcher ne prend plus de temps au jeu : c'est fait en arrière-plan.

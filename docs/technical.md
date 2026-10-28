@@ -100,6 +100,11 @@ a named channel before 1.20.5; NeoForge's; Forge's channels, its `NetworkRegistr
 1.20.2). Nothing goes through the scoreboard or any other part of the
 world, and a player without the mod is sent nothing.
 
+A server without the mod sends nothing either. Ten seconds after joining a server (never a
+world played alone) with nothing received, the client says so once, in its log and, while
+*Show Players* is on, in the chat (`FarPlayerTracker.warn`); the `nomodserver` game test
+checks it.
+
 ### What is sent, and when
 
 - **Five times a second**, to every player online: each player's position, yaw, dimension
@@ -124,7 +129,8 @@ Their layout, from version 3:
   (`READABLE_FROM`). A version that only adds fields at the end of a record, or after the
   records, keeps `READABLE_FROM` and older clients skip what they do not know; one that
   changes what is there raises it. A client that cannot read the server's messages says so in
-  its log, with both versions, ten seconds after joining;
+  its log, with both versions, ten seconds after joining, and in the chat which side needs the
+  update;
 - the kind of message, then the table of the dimensions it names, by id
   (`minecraft:overworld`, `aether:the_aether`): a record names its dimension by its place in
   the table. Version 2 numbered them 0 to 2 and gave 3 to every other one, so players in two

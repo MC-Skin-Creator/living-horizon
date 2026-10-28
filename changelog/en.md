@@ -6,6 +6,14 @@
 
 #### New
 - **Distant mobs in simpler shapes** — with *Detail Levels* (in *Performance*), distant mobs are drawn with fewer, larger boxes the farther they are, before they turn into flat pictures, so crowds of far mobs cost much less to draw.
+- **Changelog button** — the mod's settings now have a changelog button beside the Discord logo, to read what changed in each version (a *Read the changelog* button on Sodium's page).
+
+#### Improved
+- **Servers without the mod** — joining a server without Living Horizon, or with a version of it too old or too new, now says in the chat that distant players are not shown there; with *Show Players* off, nothing is said.
+
+## 0.13.0 — 2026-10-28
+
+### Client
 
 #### Improved
 - **Smoother game among distant mobs and offline players** — working out where distant mobs and players who logged off can walk no longer takes time from the game: it is done in the background.
