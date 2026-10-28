@@ -10,6 +10,7 @@ import net.minecraft.client.model.geom.ModelPart;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -32,6 +33,10 @@ abstract class ModelPartMixin implements PartTree {
     @Shadow
     @Final
     private Map<String, ModelPart> children;
+
+    /** Its cubes' faces, -1 until counted. */
+    @Unique
+    private int livinghorizon$polygons = -1;
 
     // Every way of drawing a part ends in this one: the first call of a model is its root.
     //? if >=1.21 {
@@ -78,8 +83,13 @@ abstract class ModelPartMixin implements PartTree {
      * cancelled, or null for its cubes as the game draws them.
      */
     private LodSet.PartDraw level(CallbackInfo ci) {
-        int polygons = 0;
-        for (ModelPart.Cube cube : cubes) polygons += cube.polygons.length;
+        int polygons = livinghorizon$polygons;
+        if (polygons < 0) {
+            // A part's cubes never change: counted once.
+            polygons = 0;
+            for (ModelPart.Cube cube : cubes) polygons += cube.polygons.length;
+            livinghorizon$polygons = polygons;
+        }
         PolygonStats.full(polygons);
         LodSet.PartDraw draw = LodRenderer.part((ModelPart) (Object) this);
         if (draw == null) {

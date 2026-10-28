@@ -38,6 +38,8 @@ public final class LodSet {
     final net.minecraft.network.chat.Component name;
     final List<net.minecraft.resources.Identifier> layers;
     private final Map<ModelPart, Integer> index = new IdentityHashMap<>();
+    /** Its baked textures, one per layer texture, as {@link LodRenderer} keeps them: a few, searched in order. */
+    final List<Object> bakes = new java.util.ArrayList<>();
     private final boolean[] skips;
     private volatile @Nullable Plan plan;
     private volatile boolean failed;

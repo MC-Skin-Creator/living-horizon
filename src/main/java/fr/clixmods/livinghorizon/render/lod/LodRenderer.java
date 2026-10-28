@@ -27,15 +27,11 @@ import org.jspecify.annotations.Nullable;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.IdentityHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import java.util.WeakHashMap;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -110,8 +106,8 @@ public final class LodRenderer {
 
     /** The level each of this frame's figures is drawn at, and the one it would be at once ready. */
     private static final Map<Object, Integer> LEVELS = new IdentityHashMap<>(), WANTED = new IdentityHashMap<>();
-    /** The pages this frame's figures were chosen with: one batch each. */
-    private static final Set<Page> ACTIVE = new LinkedHashSet<>();
+    /** The pages this frame's figures were chosen with: one batch each, each once ({@link Page#active}). */
+    private static final List<Page> ACTIVE = new ArrayList<>();
     /** The pages given boxes this frame. */
     private static final List<Page> DRAWING = new ArrayList<>();
     /** The pages given boxes since the last {@link #flush}. */
@@ -157,45 +153,50 @@ public final class LodRenderer {
         int wanted = forced >= 0 ? forced : levelFor(distance, pixels, config);
         if (wanted == 0) return;
         WANTED.put(state, wanted);
-        Layers layers = LAYERS.get(owner);
+        Layers layers = layers(owner, false);
         if (layers == null) return;
         // Chosen before the figure is drawn this frame: what it was drawn with last.
-        Map<ModelPart, Seen> seen = layers.frame == frame ? layers.last : layers.now;
-        boolean failed = layers.frame == frame ? layers.lastFailed : layers.failed;
-        if (failed || seen.isEmpty()) return;
-        List<Bake> bakes = CHOSEN;
-        bakes.clear();
-        boolean ready = true;
-        // Its keys rather than its entries: an identity map makes an entry each step.
-        for (ModelPart root : seen.keySet()) {
-            Seen model = seen.get(root);
-            LodSet set = set(root, model);
-            if (set == null || !set.ready(wanted)) {
-                ready = false;
-                continue;
-            }
+        boolean rolled = layers.frame == frame;
+        Seen[] seen = rolled ? layers.last : layers.now;
+        int count = rolled ? layers.lastCount : layers.nowCount;
+        boolean failed = rolled ? layers.lastFailed : layers.failed;
+        if (failed || count == 0) return;
+        Bake[] bakes = CHOSEN;
+        int chosen = 0;
+        for (int m = 0; m < count; m++) {
+            Seen model = seen[m];
+            LodSet set = set(model.root, model);
+            if (set == null || !set.ready(wanted)) return;
             for (int i = 0; i < model.layers.size(); i++) {
                 Bake bake = bake(set, model.layers.get(i));
-                if (bake.state != READY) ready = false;
-                bakes.add(bake);
+                if (bake.state != READY) return;
+                if (chosen == bakes.length) CHOSEN = bakes = java.util.Arrays.copyOf(bakes, chosen * 2);
+                bakes[chosen++] = bake;
             }
         }
-        if (!ready) return;
         LEVELS.put(state, wanted);
-        for (int i = 0; i < bakes.size(); i++) ACTIVE.add(bakes.get(i).page);
+        for (int i = 0; i < chosen; i++) {
+            Page page = bakes[i].page;
+            if (page != null && page.active != frame) {
+                page.active = frame;
+                ACTIVE.add(page);
+            }
+        }
     }
 
     // ---------------------------------------------------------------- what a figure is drawn with
 
     /** How one of a figure's models was drawn in a frame: which of its parts, and with which layers. */
     private static final class Seen {
+        @Nullable ModelPart root;
         long shown;
         /** Its layers, each once; a list kept from frame to frame, so that a frame makes none. */
         final List<Layer> layers = new ArrayList<>();
         /** What its levels are made for, the parts drawn and the textures in any order, as a number. */
         long key;
 
-        Seen reset(long shown) {
+        Seen reset(ModelPart root, long shown) {
+            this.root = root;
             this.shown = shown;
             layers.clear();
             key = mix(shown);
@@ -206,7 +207,7 @@ public final class LodRenderer {
             if (layers.contains(layer)) return;
             layers.add(layer);
             // A sum: the same textures in any order give the same key.
-            key += mix(layer.texture().toString().hashCode() * 0x9E3779B97F4A7C15L);
+            key += mix(layer.texture().hashCode() * 0x9E3779B97F4A7C15L);
         }
 
         /** Its textures in the order its layers are drawn, each once. */
@@ -237,39 +238,53 @@ public final class LodRenderer {
 
     /**
      * The models a figure was drawn with in its last two frames: its levels are chosen from the
-     * last, and a model's levels are made for the textures it was drawn with then.
+     * last, and a model's levels are made for the textures it was drawn with then. A figure has
+     * a model or three: arrays searched in order, swapped as a frame starts, never a map.
      */
     private static final class Layers {
-        int frame;
+        int frame, generation = LodRenderer.generation;
         boolean failed, lastFailed;
-        Map<ModelPart, Seen> now = new IdentityHashMap<>(), last = new IdentityHashMap<>();
-        /** Records of frames gone, kept for the next ones: a frame makes none. */
-        private final List<Seen> spare = new ArrayList<>();
+        Seen[] now = new Seen[2], last = new Seen[2];
+        int nowCount, lastCount;
 
         /** Its first model this frame: this frame's record starts. */
         void roll() {
             if (frame == LodRenderer.frame) return;
             frame = LodRenderer.frame;
-            Map<ModelPart, Seen> old = last;
-            for (Seen seen : old.values()) spare.add(seen);
-            old.clear();
+            Seen[] old = last;
             last = now;
             now = old;
+            lastCount = nowCount;
+            nowCount = 0;
             lastFailed = failed;
             failed = false;
         }
 
         Seen seen(ModelPart root, long shown) {
-            Seen seen = now.get(root);
-            if (seen == null) {
-                seen = (spare.isEmpty() ? new Seen() : spare.remove(spare.size() - 1)).reset(shown);
-                now.put(root, seen);
-            }
-            return seen;
+            for (int i = 0; i < nowCount; i++) if (now[i].root == root) return now[i];
+            if (nowCount == now.length) now = java.util.Arrays.copyOf(now, nowCount * 2);
+            Seen seen = now[nowCount];
+            if (seen == null) now[nowCount] = seen = new Seen();
+            nowCount++;
+            return seen.reset(root, shown);
+        }
+
+        @Nullable Seen last(ModelPart root) {
+            for (int i = 0; i < lastCount; i++) if (last[i].root == root) return last[i];
+            return null;
         }
     }
 
-    private static final Map<Entity, Layers> LAYERS = new WeakHashMap<>();
+    /** A figure's record, kept on its entity ({@link LodHolder}); a new one after the levels were thrown away. */
+    private static @Nullable Layers layers(Entity owner, boolean make) {
+        LodHolder holder = (LodHolder) owner;
+        Layers layers = holder.livinghorizon$lod() instanceof Layers kept ? kept : null;
+        if (layers != null && layers.generation == generation) return layers;
+        if (!make) return null;
+        layers = new Layers();
+        holder.livinghorizon$lod(layers);
+        return layers;
+    }
 
     /** What the layer being drawn is textured with, and whether it glows. */
     private record Layer(Identifier texture, boolean eyes) {
@@ -313,7 +328,6 @@ public final class LodRenderer {
     // ---------------------------------------------------------------- the models
 
     private static final Map<ModelPart, Long2ObjectOpenHashMap<LodSet>> SETS = new IdentityHashMap<>();
-    private static final Map<LodSet, Map<Identifier, Bake>> BAKES = new IdentityHashMap<>();
 
     /** The levels of a model drawn as {@code seen} says, made already or being made; null for none yet. */
     private static @Nullable LodSet set(ModelPart root, Seen seen) {
@@ -342,7 +356,7 @@ public final class LodRenderer {
         Object state = PolygonStats.current();
         Entity owner = state == null ? null : PolygonStats.ownerOf(state);
         if (owner == null || !WANTED.containsKey(state)) return;
-        Layers layers = LAYERS.computeIfAbsent(owner, entity -> new Layers());
+        Layers layers = layers(owner, true);
         layers.roll();
         Layer drawn = layer;
         if (drawn == null) {
@@ -354,7 +368,7 @@ public final class LodRenderer {
         // A layer that hides other parts of the same model than the first: not one set of boxes for both.
         if (seen.shown != shown) layers.failed = true;
         seen.add(drawn);
-        Seen before = layers.last.get(root);
+        Seen before = layers.last(root);
         if (before == null || before.shown != shown) return;
         LodSet set = set(root, before);
         if (set == null) {
@@ -491,6 +505,8 @@ public final class LodRenderer {
         int count;
         /** Given boxes this frame, so in {@link #DRAWING}. */
         boolean drawing;
+        /** The frames it was put in {@link #ACTIVE} and handed to the game in. */
+        int active = -1, submitted = -1;
         final Sink.Geometry geometry = (at, out) -> draw(out);
 
         Page(boolean eyes, int width, int height) {
@@ -562,11 +578,15 @@ public final class LodRenderer {
 
     /** The boxes of a model baked with a layer's texture, asked for the first time it is needed. */
     private static Bake bake(LodSet set, Layer layer) {
-        Map<Identifier, Bake> byTexture = BAKES.computeIfAbsent(set, s -> new HashMap<>());
-        Bake bake = byTexture.get(layer.texture());
+        List<Object> bakes = set.bakes;
+        Bake bake = null;
+        for (int i = 0; i < bakes.size() && bake == null; i++) {
+            Bake kept = (Bake) bakes.get(i);
+            if (kept.layer.texture().equals(layer.texture())) bake = kept;
+        }
         if (bake == null) {
             Bake made = new Bake(set, layer, generation);
-            byTexture.put(layer.texture(), made);
+            bakes.add(made);
             WORKER.execute(() -> bakeAway(made));
             bake = made;
         }
@@ -853,19 +873,22 @@ public final class LodRenderer {
 
     private static int pages;
     /** Kept from frame to frame, so that a frame makes no new list. */
-    private static final List<Bake> CHOSEN = new ArrayList<>();
-    private static final Set<Page> BATCHES = new LinkedHashSet<>();
+    private static Bake[] CHOSEN = new Bake[8];
 
     /** The boxes queued this frame, one batch per page, with the impostors. */
     public static void submit(PoseStack pose, Sink sink) {
         // From 26.2 they go with their models instead (flush): the frame may be prepared in another order.
         //? if >=26.2
         /*if (true) return;*/
-        Set<Page> batches = BATCHES;
-        batches.clear();
-        batches.addAll(ACTIVE);
-        batches.addAll(DRAWING);
-        for (Page page : batches) sink.draw(pose, page.type, page.geometry);
+        for (int i = 0; i < ACTIVE.size(); i++) batch(ACTIVE.get(i), pose, sink);
+        for (int i = 0; i < DRAWING.size(); i++) batch(DRAWING.get(i), pose, sink);
+    }
+
+    /** A page's batch, once a frame however many lists it is in. */
+    private static void batch(Page page, PoseStack pose, Sink sink) {
+        if (page.submitted == frame) return;
+        page.submitted = frame;
+        sink.draw(pose, page.type, page.geometry);
     }
 
     /**
@@ -896,10 +919,8 @@ public final class LodRenderer {
         ACTIVE.clear();
         DRAWING.clear();
         PENDING.clear();
-        BAKES.clear();
         SETS.clear();
         ModelReader.forget();
-        LAYERS.clear();
         LAYER_OF.clear();
     }
 }

@@ -2,6 +2,7 @@ package fr.clixmods.livinghorizon.render.impostor;
 
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.PartTree;
+import fr.clixmods.livinghorizon.render.lod.LodHolder;
 import fr.clixmods.livinghorizon.render.lod.LodRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelPart;
@@ -19,7 +20,6 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.WeakHashMap;
 
 /**
  * How many polygons the mod's own entities (the distant players and mobs, never the ones
@@ -46,6 +46,8 @@ public final class PolygonStats {
 
     private static boolean counting;
     private static @Nullable Object current;
+    /** The counts of the figure being drawn, kept at hand: added to for every part. */
+    private static int @Nullable [] counts;
     private static int models, modelPolygons, modelTriangles, impostors, fullPolygons;
     private static int lastModels, lastModelPolygons, lastModelTriangles, lastImpostors, lastFullPolygons;
     private static final int[] LEVEL_FIGURES = new int[LEVELS], LAST_LEVEL_FIGURES = new int[LEVELS];
@@ -57,8 +59,6 @@ public final class PolygonStats {
      * the quads its full models would have cost.
      */
     private static final Map<Object, int[]> FIGURES = new IdentityHashMap<>();
-    /** What a figure cost the last time it was drawn as a full model. */
-    private static final Map<Entity, Integer> BY_ENTITY = new WeakHashMap<>();
     /**
      * The same for its kind of figure, for one never drawn as a model itself: the adult's,
      * then the baby's, 0 while unknown.
@@ -82,7 +82,10 @@ public final class PolygonStats {
             LEVEL_FIGURES[LodRenderer.level(figure.getKey())]++;
             Entity owner = OWNERS.get(figure.getKey());
             if (owner == null || quads == 0) continue;
-            BY_ENTITY.put(owner, quads);
+            // What it costs as a full model, kept on the entity; its kind's only when it changed.
+            LodHolder holder = (LodHolder) owner;
+            if (holder.livinghorizon$fullQuads() == quads) continue;
+            holder.livinghorizon$fullQuads(quads);
             BY_KIND.computeIfAbsent(owner.getType(), type -> new int[2])[age(owner)] = quads;
         }
         FIGURES.clear();
@@ -112,15 +115,18 @@ public final class PolygonStats {
         if (!counting) return;
         current = state;
         LodRenderer.figure();
-        if (!FIGURES.containsKey(state)) {
-            FIGURES.put(state, new int[2]);
+        int[] figure = FIGURES.get(state);
+        if (figure == null) {
+            FIGURES.put(state, figure = new int[2]);
             models++;
         }
+        counts = figure;
     }
 
     public static void leave() {
         counting = false;
         current = null;
+        counts = null;
         LodRenderer.figure();
     }
 
@@ -143,7 +149,7 @@ public final class PolygonStats {
     public static void model(int polygons) {
         modelPolygons += polygons;
         modelTriangles += polygons * 2;
-        int[] figure = current == null ? null : FIGURES.get(current);
+        int[] figure = counts;
         if (figure != null) figure[0] += polygons;
     }
 
@@ -154,13 +160,13 @@ public final class PolygonStats {
     public static void lod(int triangles, int quads) {
         modelPolygons += quads;
         modelTriangles += triangles;
-        int[] figure = current == null ? null : FIGURES.get(current);
+        int[] figure = counts;
         if (figure != null) figure[0] += quads;
     }
 
     /** Faces one part of its full model has, drawn or not. */
     public static void full(int polygons) {
-        int[] figure = current == null ? null : FIGURES.get(current);
+        int[] figure = counts;
         if (figure != null) figure[1] += polygons;
     }
 
@@ -176,8 +182,8 @@ public final class PolygonStats {
      * kind, or what its renderer's model holds; 1 when none of these is known.
      */
     public static int fullQuads(Entity entity) {
-        Integer known = BY_ENTITY.get(entity);
-        if (known != null) return known;
+        int known = ((LodHolder) entity).livinghorizon$fullQuads();
+        if (known > 0) return known;
         int age = age(entity);
         int[] kind = BY_KIND.get(entity.getType());
         if (kind != null && kind[age] > 0) return kind[age];

@@ -782,7 +782,10 @@ Changing `lodKeep` makes every level again.
 
 - *Choosing.* `GhostRenderer.place` hands each figure's distance to `LodRenderer.choose`. A
   figure takes its level only once every model and layer it was drawn with in its last frame
-  has that level ready; until then it keeps its full model. A layer whose texture cannot be
+  has that level ready; until then it keeps its full model. What a figure was drawn with is kept on its
+  entity (`LodHolder`, a slot `EntityMixin` adds), in arrays of a model or three: with Sodium a
+  full model costs little to draw, and the levels' own work each frame must cost less than it.
+  The `lodcost` game test measures both with Sodium. A layer whose texture cannot be
   told (an atlas sprite, a glint) or is half see-through (a slime's outside) keeps its figure
   whole for good.
 - *What a model is made of.* A model is read when the game draws it (`ModelPartMixin`, the
