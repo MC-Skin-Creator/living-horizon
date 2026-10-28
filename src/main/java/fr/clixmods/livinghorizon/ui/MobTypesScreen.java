@@ -158,17 +158,13 @@ public final class MobTypesScreen extends SideOptionsScreen {
         //? if >=1.20.2 {
         LinearLayout row = layout.addToFooter(LinearLayout.horizontal().spacing(8));
         //?} else {
-        /*// No spacing before 1.20.2: each button keeps half of it on either side.
-        LinearLayout row = layout.addToFooter(new LinearLayout(0, 0, LinearLayout.Orientation.HORIZONTAL));
-        row.defaultChildLayoutSetting().paddingHorizontal(4);
+        /*// Before 1.20.2 the row spreads its buttons over its own width: four of 74 and three gaps of 8.
+        LinearLayout row = layout.addToFooter(new LinearLayout(4 * 74 + 3 * 8, 20, LinearLayout.Orientation.HORIZONTAL));
         *///?}
         row.addChild(Button.builder(Component.translatable(KEY + "all"), b -> setAll(true)).width(74).build());
         row.addChild(Button.builder(Component.translatable(KEY + "none"), b -> setAll(false)).width(74).build());
         row.addChild(Button.builder(Component.translatable(KEY + "defaults"), b -> {
-            FarConfig.get().mobTypes.clear();
-            FarConfig.get().mobTypes.addAll(MobKinds.TYPES);
-            FarConfig.get().stillMobTypes.clear();
-            FarConfig.get().stillMobTypes.add("minecraft:happy_ghast");
+            FarConfig.get().resetMobs(MobList.all());
             refreshButtons();
         }).width(74).build());
         row.addChild(Button.builder(CommonComponents.GUI_DONE, b -> onClose()).width(74).build());

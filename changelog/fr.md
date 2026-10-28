@@ -10,8 +10,10 @@
 - **Phantoms et ghasts lointains qui volent** — les phantoms lointains tournent maintenant en rond dans le ciel et les ghasts lointains dérivent lentement, au lieu de rester figés en l'air.
 - **Phantoms et ghasts vus d'en dessous** — en *Entités simplifiées* (des images plates des mobs lointains), les phantoms et les ghasts sont maintenant dessinés vus d'en dessous et d'au-dessus aussi, comme les oiseaux, et plus seulement de côté.
 - **Plus fluide avec beaucoup de mobs lointains sous Vulkan** — le jeu ne perd plus de temps sur chaque mob lointain, à chaque image, quand il dessine avec Vulkan (Minecraft 26.2 et plus) ou sur Distant Horizons (Minecraft 26.3).
+- **Tous les mobs visibles de loin** — les monstres, les chauves-souris, les poissons et tous les autres mobs sont maintenant affichés au loin dès le départ, en balade comme les animaux : les endermen restent en vue à travers l'End ; les animaux que tu avais masqués le restent.
 
 #### Corrections
+- **Boutons empilés les uns sur les autres** — les boutons en bas de *Créatures et entités lointaines* ne se chevauchent plus, et *Réinitialiser* est de retour à gauche de *Terminé* dans les réglages (Minecraft 1.20.1).
 - **Jeu figé en changeant de dimension ou en quittant un monde** — le jeu ne se fige plus pour de bon quand tu passes un portail ou quittes un monde (avec Distant Horizons).
 
 ## 0.12.1 — 2026-10-27
