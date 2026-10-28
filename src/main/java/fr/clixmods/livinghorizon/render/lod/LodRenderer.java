@@ -54,10 +54,6 @@ import java.util.regex.Pattern;
  * mods' rendering are never touched.
  */
 public final class LodRenderer {
-    /** Blocks from which a figure takes level 1. */
-    public static final double FIRST = 18;
-    /** How much farther each next level begins. */
-    public static final double STEP = 2;
     /** The most texels down a baked texture. */
     private static final int MAX_HEIGHT = 4096;
     /** Share of a texture's visible texels that may be half transparent: more, and it is not cut out. */
@@ -76,11 +72,23 @@ public final class LodRenderer {
     private LodRenderer() {
     }
 
-    /** The level a figure takes at a distance, before its impostor: 0 up to {@link #FIRST}, then one more each {@link #STEP} times. */
-    public static int levelFor(double distance) {
-        if (distance < FIRST) return 0;
-        int level = 1;
-        for (double next = FIRST * STEP; level < LodLevels.MODEL_LEVELS - 1 && distance >= next; next *= STEP) level++;
+    /**
+     * The level a figure takes, before its impostor: one more each time it is {@code lodSpacing}
+     * farther, from {@code lodDistance}; with {@code lodPixels}, one more each time it is that
+     * much smaller on screen too, the larger of the two; never past {@code lodLevels}.
+     *
+     * @param pixels how tall it is on screen
+     */
+    public static int levelFor(double distance, double pixels, FarConfig config) {
+        int most = Math.max(1, Math.min(config.lodLevels, LodLevels.MODEL_LEVELS - 1));
+        double step = Math.max(1.05, config.lodSpacing / 100.0);
+        int level = 0;
+        for (double from = config.lodDistance; level < most && distance >= from; from *= step) level++;
+        if (config.lodPixels > 0) {
+            int small = 0;
+            for (double below = config.lodPixels; small < most && pixels < below; below /= step) small++;
+            level = Math.max(level, small);
+        }
         return level;
     }
 
@@ -103,6 +111,8 @@ public final class LodRenderer {
     private static final List<Bake> PENDING = new ArrayList<>();
     private static int frame;
     private static boolean dirty;
+    /** The share of polygons the levels made so far keep, {@code lodKeep}. */
+    private static int keptFor = -1;
 
     /** The level a state of this frame is drawn at, 0 for its full model. */
     public static int level(Object state) {
@@ -120,6 +130,11 @@ public final class LodRenderer {
         }
         DRAWING.clear();
         PENDING.clear();
+        // The polygons each level keeps changed: every level is made again.
+        if (FarConfig.get().lodKeep != keptFor) {
+            keptFor = FarConfig.get().lodKeep;
+            dirty = true;
+        }
         if (dirty) clear();
         upload();
     }
@@ -128,10 +143,11 @@ public final class LodRenderer {
      * A figure is in this frame, {@code distance} blocks away: the level it is drawn at, if it
      * is one of the mod's mobs and every model it was last drawn with has that level ready.
      */
-    public static void choose(Object state, double distance) {
+    public static void choose(Object state, double distance, double pixels) {
         Entity owner = PolygonStats.ownerOf(state);
-        if (owner == null || owner instanceof Player || !FarConfig.get().mobLods) return;
-        int wanted = forced >= 0 ? forced : levelFor(distance);
+        FarConfig config = FarConfig.get();
+        if (owner == null || owner instanceof Player || !config.mobLods) return;
+        int wanted = forced >= 0 ? forced : levelFor(distance, pixels, config);
         if (wanted == 0) return;
         WANTED.put(state, wanted);
         Layers layers = LAYERS.get(owner);
@@ -184,6 +200,15 @@ public final class LodRenderer {
             layers.add(layer);
             // A sum: the same textures in any order give the same key.
             key += mix(layer.texture().toString().hashCode() * 0x9E3779B97F4A7C15L);
+        }
+
+        /** Its textures in the order its layers are drawn, each once. */
+        List<Identifier> drawOrder() {
+            List<Identifier> textures = new ArrayList<>();
+            for (Layer layer : layers) {
+                if (!textures.contains(layer.texture())) textures.add(layer.texture());
+            }
+            return textures;
         }
 
         /** Its textures, in a set order: when its levels are made. */
@@ -327,10 +352,12 @@ public final class LodRenderer {
         LodSet set = set(root, before);
         if (set == null) {
             // Made for the textures it was drawn with last frame, the parts as the game draws them now.
-            LodSet made = new LodSet(ModelReader.read(root, ModelReader.GAME, true));
+            LodSet made = new LodSet(ModelReader.read(root, ModelReader.GAME, true), owner.getType().getDescription(),
+                    before.drawOrder());
             SETS.computeIfAbsent(root, part -> new Long2ObjectOpenHashMap<>()).put(before.key, made);
             List<Identifier> textures = before.textures();
-            WORKER.execute(() -> generate(made, textures));
+            double ratio = FarConfig.get().lodKeep / 100.0;
+            WORKER.execute(() -> generate(made, textures, ratio));
             set = made;
         }
         if (set.failed()) {
@@ -347,7 +374,7 @@ public final class LodRenderer {
     }
 
     /** Makes a model's levels from the textures it is drawn with; away from the render thread. */
-    private static void generate(LodSet set, List<Identifier> textures) {
+    private static void generate(LodSet set, List<Identifier> textures, double ratio) {
         List<LodBake.Pixels> pixels = new ArrayList<>();
         for (Identifier texture : textures) {
             LodBake.Pixels read = pixels(texture);
@@ -357,7 +384,7 @@ public final class LodRenderer {
             }
             pixels.add(read);
         }
-        set.generate(pixels);
+        set.generate(pixels, ratio);
     }
 
     /**
@@ -582,8 +609,26 @@ public final class LodRenderer {
         }
     }
 
+    /** A model whose levels are made, for the preview screen. */
+    public record Preview(net.minecraft.network.chat.Component name, LodModel model, List<LodLevels.Level> levels,
+                          List<Identifier> textures) {
+    }
+
+    /** The models whose levels are made so far, by name: those of the mobs drawn far away since the game started. */
+    public static List<Preview> previews() {
+        List<Preview> out = new ArrayList<>();
+        for (Map<Long, LodSet> sets : SETS.values()) {
+            for (LodSet set : sets.values()) {
+                LodSet.Plan plan = set.plan();
+                if (plan != null && !set.failed()) out.add(new Preview(set.name, plan.model(), plan.levels(), set.layers));
+            }
+        }
+        out.sort(Comparator.comparing((Preview p) -> p.name().getString()).thenComparing(p -> p.textures().toString()));
+        return out;
+    }
+
     /** A texture's pixels, ARGB, from the resource packs; null when it cannot be read or is not cut out. */
-    private static LodBake.@Nullable Pixels pixels(Identifier id) {
+    public static LodBake.@Nullable Pixels pixels(Identifier id) {
         Optional<Resource> resource = Minecraft.getInstance().getResourceManager().getResource(id);
         if (resource.isEmpty()) return null;
         try (InputStream in = resource.get().open(); NativeImage image = NativeImage.read(in)) {

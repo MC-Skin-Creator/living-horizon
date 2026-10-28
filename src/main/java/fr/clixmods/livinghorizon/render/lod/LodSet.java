@@ -29,14 +29,20 @@ public final class LodSet {
     }
 
     private final LodModel read;
+    /** The kind of mob it was read for, and its textures in the order its layers are drawn: for the preview. */
+    final net.minecraft.network.chat.Component name;
+    final List<net.minecraft.resources.Identifier> layers;
     private final Map<ModelPart, Integer> index = new IdentityHashMap<>();
     private final int[] cubeIndex;
     private final boolean[] skips;
     private volatile @Nullable Plan plan;
     private volatile boolean failed;
 
-    LodSet(ModelReader.Read read) {
+    LodSet(ModelReader.Read read, net.minecraft.network.chat.Component name,
+           List<net.minecraft.resources.Identifier> layers) {
         this.read = read.model();
+        this.name = name;
+        this.layers = List.copyOf(layers);
         List<ModelPart> parts = read.parts();
         skips = new boolean[parts.size()];
         for (int i = 0; i < parts.size(); i++) {
@@ -46,8 +52,11 @@ public final class LodSet {
         cubeIndex = read.cubeIndex();
     }
 
-    /** Makes the levels from the cubes one of {@code textures} shows; away from the render thread. */
-    void generate(List<LodBake.Pixels> textures) {
+    /**
+     * Makes the levels from the cubes one of {@code textures} shows, each keeping {@code ratio}
+     * of the polygons of the one before; away from the render thread.
+     */
+    void generate(List<LodBake.Pixels> textures, double ratio) {
         try {
             List<LodModel.Cube> all = read.cubes();
             boolean[] keep = new boolean[all.size()];
@@ -63,7 +72,7 @@ public final class LodSet {
             }
             LodModel model = read.keep(keep);
             int[] index = kept.stream().mapToInt(Integer::intValue).toArray();
-            List<LodLevels.Level> levels = LodLevels.generate(model);
+            List<LodLevels.Level> levels = LodLevels.generate(model, LodLevels.MODEL_LEVELS, ratio, true);
             int partCount = model.parts().size();
             PartDraw[][] draws = new PartDraw[levels.size()][];
             boolean[] usable = new boolean[levels.size()];

@@ -70,7 +70,6 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(
                 bool("impostors", c.impostors, v -> c.impostors = v),
                 bool("impostorPlayers", c.impostorPlayers, v -> c.impostorPlayers = v));
-        list.addSmall(bool("mobLods", c.mobLods, v -> c.mobLods = v), null);
         list.addBig(blocks("impostorDistance", 32, 2000, c.impostorDistance, v -> c.impostorDistance = v));
         list.addBig(unit("impostorPixels", "pixels", 0, FarConfig.MAX_IMPOSTOR_PIXELS, c.impostorPixels,
                 v -> c.impostorPixels = v));
@@ -81,6 +80,23 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "impostorPreview"), b -> minecraft.setScreen(new ImpostorScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "impostorPreview.tooltip"))).build(),
+                null);
+
+        // The simpler models before the impostor: a section of their own.
+        header(Component.translatable(KEY + "lodSection"));
+        list.addSmall(
+                bool("mobLods", c.mobLods, v -> c.mobLods = v),
+                integer("lodLevels", 1, FarConfig.MAX_LOD_LEVELS, c.lodLevels, v -> c.lodLevels = v, false));
+        list.addBig(blocks("lodDistance", FarConfig.MIN_LOD_DISTANCE, FarConfig.MAX_LOD_DISTANCE, c.lodDistance,
+                v -> c.lodDistance = v));
+        list.addBig(unit("lodSpacing", "percent", FarConfig.MIN_LOD_SPACING, FarConfig.MAX_LOD_SPACING, c.lodSpacing,
+                v -> c.lodSpacing = v));
+        list.addBig(unit("lodPixels", "pixels", 0, FarConfig.MAX_LOD_PIXELS, c.lodPixels, v -> c.lodPixels = v));
+        list.addBig(unit("lodKeep", "percent", FarConfig.MIN_LOD_KEEP, FarConfig.MAX_LOD_KEEP, c.lodKeep,
+                v -> c.lodKeep = v));
+        list.addSmall(
+                Button.builder(Component.translatable(KEY + "lodPreview"), b -> minecraft.setScreen(new LodScreen(this)))
+                        .tooltip(Tooltip.create(Component.translatable(KEY + "lodPreview.tooltip"))).build(),
                 null);
 
         header(Component.translatable(KEY + "players"));

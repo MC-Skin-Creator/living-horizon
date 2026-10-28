@@ -5,7 +5,7 @@
 ### Client
 
 #### Nouveautés
-- **Mobs lointains aux formes simplifiées** — avec *Niveaux de détail* (dans *Performance*), plus les mobs lointains sont loin, moins ils ont de blocs, et plus gros, avant de devenir des images plates : les foules de mobs lointains coûtent bien moins à dessiner.
+- **Mobs lointains aux formes simplifiées** — plus les mobs lointains sont loin, moins ils ont de blocs, et plus gros, avant de devenir des images plates : les foules de mobs lointains coûtent bien moins à dessiner ; *Niveaux de détail* dans les réglages choisit à quelle distance et à quel point, et *Niveaux de détail...* montre l'allure de chaque mob.
 - **Bouton du journal des modifications** — les réglages du mod ont maintenant un bouton du journal des modifications à côté du logo Discord, pour lire ce qui a changé à chaque version (un bouton *Lire le journal des modifications* sur la page de Sodium).
 
 #### Améliorations

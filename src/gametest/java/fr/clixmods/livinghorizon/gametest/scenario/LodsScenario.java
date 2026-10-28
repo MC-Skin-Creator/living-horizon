@@ -4,6 +4,7 @@ import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
 import fr.clixmods.livinghorizon.render.lod.LodRenderer;
+import fr.clixmods.livinghorizon.ui.LodScreen;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
@@ -65,6 +66,15 @@ public final class LodsScenario implements Scenario {
             counts(context, "no impostors");
             context.runOnClient(minecraft -> minecraft.options.fov().set(70));
             Scene.screenshot(context, this, "no-impostors");
+
+            // The preview of the settings: the models made so far, each level side by side.
+            context.setScreen(() -> new LodScreen(null));
+            context.waitTicks(30);
+            int previews = context.computeOnClient(minecraft -> LodRenderer.previews().size());
+            Scene.log("lods preview: " + previews + " models");
+            if (previews == 0) throw new AssertionError("The preview has no model to show");
+            Scene.screenshot(context, this, "preview");
+            context.setScreen(() -> null);
 
             // Close up: a few mobs side by side, at each level in turn, then as models.
             Scene.command(world, "kill @e[type=!player]");

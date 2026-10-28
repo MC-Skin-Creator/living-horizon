@@ -742,16 +742,21 @@ neighbours' colour so that no dark edge shows once filtered. The faces are drawn
 only, or the holes would show the faces behind and the figure would look doubled; their
 texture coordinates stay a quarter texel inside, so that nothing next to them on a page bleeds in.
 
-**In game** (`LodRenderer`, *Detail Levels*, `mobLods`, on by default; the levels and distances
-are fixed). Only the mod's own mobs, never a player yet, never what the game draws itself.
+**In game** (`LodRenderer`, *Levels of Detail* in the settings, a section and a Sodium page of
+its own, [below](#levels-of-detail-1)). Only the mod's own mobs, never a player yet, never what the
+game draws itself. With the defaults:
 
 | Level | From | What is drawn |
 |---|---|---|
 | 0 | | The full model |
-| 1 | 18 blocks | Half the quads |
-| 2 | 36 blocks | A quarter |
-| 3 | 72 blocks, to the end without impostors | An eighth, often one box |
+| 1 | 18 blocks (`lodDistance`) | Half the quads (`lodKeep`) |
+| 2 | 36 blocks (`lodSpacing` 200%) | A quarter |
+| 3 | 72 blocks, to the end without impostors (`lodLevels` 3) | An eighth, often one box |
 | Impostor | `impostorDistance` | The flat picture (see [Impostors](#impostors)) |
+
+With `lodPixels` above 0, a figure shorter than that on screen takes level 1 even closer, and one
+more level each time it is `lodSpacing` smaller again; the larger of the two levels is drawn.
+Changing `lodKeep` makes every level again.
 
 - *Choosing.* `GhostRenderer.place` hands each figure's distance to `LodRenderer.choose`. A
   figure takes its level only once every model and layer it was drawn with in its last frame
@@ -1169,11 +1174,22 @@ cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 |---|---|---|---|---|
 | `impostors` | Simplified Entities | `true` | | Far players and mobs drawn as a flat picture of themselves (see [Impostors](#impostors)) |
 | `impostorPlayers` | Simplified Players | `true` | | Distant players become impostors too; off, they keep their whole model at any distance |
-| `mobLods` | Detail Levels | `true` | | Distant mobs drawn with simpler models the farther they are, before the impostor (see [Levels of detail](#levels-of-detail)) |
 | `impostorDistance` | Simplification Distance | `128` blocks | 32 to 2000 | Past this distance an impostor stands in for the model |
 | `impostorPixels` | Simplification Size | `10` pixels | 0 to 64 | A figure shorter than this on screen is an impostor too, even closer than `impostorDistance` (`0`: the distance alone) |
 | `impostorMobMemory` | Mob Picture Memory | `1024` MB | 64 to 4096 | Video memory the mobs' pictures may take, apart from the players' |
 | `impostorPlayerMemory` | Player Picture Memory | `512` MB | 32 to 2048 | Video memory the players' pictures may take (riders with what they ride), apart from the mobs' |
+
+#### Levels of Detail
+
+| Setting | In game | Default | Range | What it does |
+|---|---|---|---|---|
+| `mobLods` | Detail Levels | `true` | | Distant mobs drawn with simpler models the farther they are, before the impostor (see [Levels of detail](#levels-of-detail)) |
+| `lodLevels` | Simpler Models | `3` | 1 to 3 | How many simpler models a mob goes through before its impostor |
+| `lodDistance` | Detail Distance | `18` blocks | 4 to 256 | Where the first simpler model begins |
+| `lodSpacing` | Detail Spacing | `200` percent | 125 to 400 | Each next simpler model begins this much farther than the one before |
+| `lodPixels` | Detail Size | `0` pixels | 0 to 256 | A mob shorter than this on screen takes a simpler model even closer (`0`: the distance alone) |
+| `lodKeep` | Polygons Kept | `50` percent | 20 to 80 | Share of the polygons each simpler model keeps from the one before; a change makes every level again |
+| | Detail Levels... | | | The preview (`ui/LodScreen`): each model the mod has made levels for, its full model and every level side by side, turning, with their polygons and the distance each begins at, drawn on the CPU by `LodPreview` |
 
 #### Distant Players
 

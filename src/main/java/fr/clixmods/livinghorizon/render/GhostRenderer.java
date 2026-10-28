@@ -784,8 +784,11 @@ public final class GhostRenderer {
     private static void place(List<EntityRenderState> frame, EntityRenderState state, Transform transform, boolean puppet,
                               Mark kind, FarConfig config, @Nullable LocalPlayer self, @Nullable ClientLevel level) {
         TRANSFORMS.put(state, transform);
-        LodRenderer.choose(state, Math.sqrt(transform.anchorX * transform.anchorX + transform.anchorY * transform.anchorY
-                + transform.anchorZ * transform.anchorZ));
+        double distance = Math.sqrt(transform.anchorX * transform.anchorX + transform.anchorY * transform.anchorY
+                + transform.anchorZ * transform.anchorZ);
+        double pixels = distance < 1e-3 ? Double.MAX_VALUE
+                : Apparent.extent(state.boundingBoxHeight, state.boundingBoxWidth) / distance * pixelsPerRadian;
+        LodRenderer.choose(state, distance, pixels);
         // A boat hides the water inside its hull with a patch that the water then fails to
         // draw over. Drawn bigger or nearer than it is, that patch hides the water around
         // it; under a shader pack (Photon), drawn with our figures, it turns the game's

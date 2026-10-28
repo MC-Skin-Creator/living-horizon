@@ -53,6 +53,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                 .setNonTintedIcon(id("icon.png"))
                 .addPage(general(builder, defaults))
                 .addPage(impostors(builder, defaults))
+                .addPage(lods(builder, defaults))
                 .addPage(players(builder, defaults))
                 .addPage(mobs(builder, defaults))
                 .addPage(birds(builder, defaults));
@@ -80,6 +81,35 @@ public final class SodiumOptions implements ConfigEntryPoint {
                         }))));
     }
 
+    /** The simpler models before the impostor: their own page, as their own section on the mod's screen. */
+    private OptionPageBuilder lods(ConfigBuilder b, FarConfig d) {
+        return b.createOptionPage().setName(Component.translatable(KEY + "lodSection"))
+                .addOptionGroup(b.createOptionGroup()
+                        .addOption(bool(b, "mobLods", d.mobLods, v -> FarConfig.get().mobLods = v,
+                                () -> FarConfig.get().mobLods))
+                        .addOption(integer(b, "lodLevels", 1, FarConfig.MAX_LOD_LEVELS, d.lodLevels,
+                                v -> FarConfig.get().lodLevels = v, () -> FarConfig.get().lodLevels,
+                                plain("lodLevels", 1, false))
+                                .setEnabledProvider(on("mobLods"), id("mobLods")))
+                        .addOption(blocks(b, "lodDistance", FarConfig.MIN_LOD_DISTANCE, FarConfig.MAX_LOD_DISTANCE,
+                                d.lodDistance, v -> FarConfig.get().lodDistance = v, () -> FarConfig.get().lodDistance)
+                                .setEnabledProvider(on("mobLods"), id("mobLods")))
+                        .addOption(integer(b, "lodSpacing", FarConfig.MIN_LOD_SPACING, FarConfig.MAX_LOD_SPACING,
+                                d.lodSpacing, v -> FarConfig.get().lodSpacing = v, () -> FarConfig.get().lodSpacing,
+                                unit("lodSpacing", "percent", FarConfig.MIN_LOD_SPACING))
+                                .setEnabledProvider(on("mobLods"), id("mobLods")))
+                        .addOption(integer(b, "lodPixels", 0, FarConfig.MAX_LOD_PIXELS, d.lodPixels,
+                                v -> FarConfig.get().lodPixels = v, () -> FarConfig.get().lodPixels,
+                                unit("lodPixels", "pixels", 0))
+                                .setEnabledProvider(on("mobLods"), id("mobLods")))
+                        .addOption(integer(b, "lodKeep", FarConfig.MIN_LOD_KEEP, FarConfig.MAX_LOD_KEEP, d.lodKeep,
+                                v -> FarConfig.get().lodKeep = v, () -> FarConfig.get().lodKeep,
+                                unit("lodKeep", "percent", FarConfig.MIN_LOD_KEEP))
+                                .setEnabledProvider(on("mobLods"), id("mobLods"))))
+                .addOptionGroup(b.createOptionGroup()
+                        .addOption(opens(b, "lodPreview", LodScreen::new)));
+    }
+
     private OptionPageBuilder impostors(ConfigBuilder b, FarConfig d) {
         return b.createOptionPage().setName(Component.translatable(KEY + "impostorsSection"))
                 .addOptionGroup(b.createOptionGroup()
@@ -88,8 +118,6 @@ public final class SodiumOptions implements ConfigEntryPoint {
                         .addOption(bool(b, "impostorPlayers", d.impostorPlayers, v -> FarConfig.get().impostorPlayers = v,
                                 () -> FarConfig.get().impostorPlayers)
                                 .setEnabledProvider(on("impostors"), id("impostors")))
-                        .addOption(bool(b, "mobLods", d.mobLods, v -> FarConfig.get().mobLods = v,
-                                () -> FarConfig.get().mobLods))
                         .addOption(blocks(b, "impostorDistance", 32, 2000, d.impostorDistance,
                                 v -> FarConfig.get().impostorDistance = v, () -> FarConfig.get().impostorDistance)
                                 .setEnabledProvider(on("impostors"), id("impostors")))
