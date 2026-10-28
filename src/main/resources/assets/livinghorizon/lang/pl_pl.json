@@ -224,6 +224,8 @@
   "livinghorizon.options.hideOccludedMobs.tooltip": "Odległe stworzenia całkowicie zasłonięte przez teren (łącznie z dalekim terenem) w ogóle nie są rysowane, zamiast być rysowane i zakrywane piksel po pikselu. Oszczędniej przy wielu stworzeniach. Decyzja zapada na podstawie głębi obrazu: stworzenie choćby częściowo widoczne jest nadal rysowane, a zasłonięte pojawia się klatkę lub dwie po odsłonięciu widoku.",
   "livinghorizon.options.impostors": "Uproszczone byty",
   "livinghorizon.options.impostors.tooltip": "Od pewnej odległości byty są rysowane jako płaskie obrazy zamiast pełnych modeli 3D. Z daleka trudno zauważyć różnicę, a wydajność przy wielu bytach jest znacznie lepsza.",
+  "livinghorizon.options.mobLods": "Poziomy szczegółów",
+  "livinghorizon.options.mobLods.tooltip": "Im dalej są odległe stworzenia, tym prostszy jest ich model: kilka prostopadłościanów zamiast każdej części, zanim staną się płaskimi obrazami. Z tej odległości różnicę trudno zauważyć, a wydajność przy wielu stworzeniach jest lepsza.",
   "livinghorizon.options.impostorDistance": "Odległość uproszczenia",
   "livinghorizon.options.impostorDistance.tooltip": "Odległość, od której byty są upraszczane. Niżej poprawia wydajność; wyżej dłużej zachowuje pełne modele.",
   "livinghorizon.options.impostorPixels": "Rozmiar uproszczenia",

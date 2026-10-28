@@ -224,6 +224,8 @@
   "livinghorizon.options.hideOccludedMobs.tooltip": "Les mobs lointains entièrement cachés par le relief (terrain lointain compris) ne sont pas dessinés du tout, au lieu d'être dessinés puis masqués pixel par pixel. Moins coûteux avec beaucoup de mobs. Décidé d'après la profondeur de l'image : un mob même en partie visible reste dessiné, et un mob réapparaît une image ou deux après que la vue se dégage.",
   "livinghorizon.options.impostors": "Entités simplifiées",
   "livinghorizon.options.impostors.tooltip": "Au-delà d'une distance, les entités sont dessinées comme des images plates au lieu de modèles 3D complets. La différence se voit à peine de loin, et les performances sont bien meilleures avec beaucoup d'entités.",
+  "livinghorizon.options.mobLods": "Niveaux de détail",
+  "livinghorizon.options.mobLods.tooltip": "Plus les mobs lointains sont loin, plus leur modèle est simple : quelques blocs au lieu de chaque partie, avant de devenir des images plates. La différence se voit à peine à cette distance, et les performances sont meilleures avec beaucoup de mobs.",
   "livinghorizon.options.impostorDistance": "Distance de simplification",
   "livinghorizon.options.impostorDistance.tooltip": "Distance à partir de laquelle les entités sont simplifiées. Plus bas améliore les performances ; plus haut garde les modèles complets plus longtemps.",
   "livinghorizon.options.impostorPixels": "Taille de simplification",

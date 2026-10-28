@@ -87,6 +87,8 @@ public final class SodiumOptions implements ConfigEntryPoint {
                         .addOption(bool(b, "impostorPlayers", d.impostorPlayers, v -> FarConfig.get().impostorPlayers = v,
                                 () -> FarConfig.get().impostorPlayers)
                                 .setEnabledProvider(on("impostors"), id("impostors")))
+                        .addOption(bool(b, "mobLods", d.mobLods, v -> FarConfig.get().mobLods = v,
+                                () -> FarConfig.get().mobLods))
                         .addOption(blocks(b, "impostorDistance", 32, 2000, d.impostorDistance,
                                 v -> FarConfig.get().impostorDistance = v, () -> FarConfig.get().impostorDistance)
                                 .setEnabledProvider(on("impostors"), id("impostors")))

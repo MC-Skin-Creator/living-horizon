@@ -224,6 +224,8 @@
   "livinghorizon.options.hideOccludedMobs.tooltip": "Las criaturas lejanas que el terreno oculta por completo (incluido el terreno lejano) no se dibujan, en lugar de dibujarse y taparse píxel a píxel. Más ligero con muchas criaturas. Se decide por la profundidad de la imagen: una criatura visible aunque sea en parte se sigue dibujando, y una aparece uno o dos fotogramas después de que la vista se despeje.",
   "livinghorizon.options.impostors": "Entidades simplificadas",
   "livinghorizon.options.impostors.tooltip": "A partir de cierta distancia, las entidades se dibujan como imágenes planas en lugar de modelos 3D completos. La diferencia apenas se nota de lejos, y el rendimiento mejora mucho con muchas entidades.",
+  "livinghorizon.options.mobLods": "Niveles de detalle",
+  "livinghorizon.options.mobLods.tooltip": "Cuanto más lejos están los mobs, más simple es su modelo: unos pocos bloques en lugar de cada parte, antes de convertirse en imágenes planas. La diferencia apenas se nota a esa distancia, y el rendimiento mejora con muchos mobs.",
   "livinghorizon.options.impostorDistance": "Distancia de simplificación",
   "livinghorizon.options.impostorDistance.tooltip": "Distancia a partir de la cual las entidades se simplifican. Más baja mejora el rendimiento; más alta mantiene los modelos completos más tiempo.",
   "livinghorizon.options.impostorPixels": "Tamaño de simplificación",

@@ -216,6 +216,13 @@ public final class FarConfig {
      */
     public boolean impostors = true;
 
+    /**
+     * Distant mobs are drawn with simpler models the farther they are (render/lod): fewer
+     * boxes before the impostor. The levels and their distances are fixed; only this switch is
+     * the player's.
+     */
+    public boolean mobLods = true;
+
     /** Blocks: past this distance an impostor stands in for the model. */
     public int impostorDistance = 128;
 

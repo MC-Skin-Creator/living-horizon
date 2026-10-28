@@ -224,6 +224,8 @@
   "livinghorizon.options.hideOccludedMobs.tooltip": "被地形（包括遠景地形）完全遮擋的遠處生物將完全不繪製，而不是繪製後再被逐像素覆蓋。生物較多時開銷更低。依據畫面深度判斷：即使只有一部分可見的生物仍會繪製，視線暢通後一兩幀內就會出現。",
   "livinghorizon.options.impostors": "簡化實體",
   "livinghorizon.options.impostors.tooltip": "超過一定距離後，實體會以平面圖片代替完整的 3D 模型繪製。遠看幾乎看不出差別，而實體較多時效能會好得多。",
+  "livinghorizon.options.mobLods": "細節層次",
+  "livinghorizon.options.mobLods.tooltip": "遠處的生物越遠，模型就越簡單：在變成平面圖片之前，用幾個方塊代替每個部件。在那樣的距離上幾乎看不出差別，而生物較多時效能更好。",
   "livinghorizon.options.impostorDistance": "簡化距離",
   "livinghorizon.options.impostorDistance.tooltip": "實體開始被簡化的距離。越低效能越好；越高則完整模型保留得越久。",
   "livinghorizon.options.impostorPixels": "簡化尺寸",

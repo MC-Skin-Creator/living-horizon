@@ -224,6 +224,8 @@
   "livinghorizon.options.hideOccludedMobs.tooltip": "地形（遠方の地形を含む）に完全に隠れた遠くのMobは、描画してからピクセル単位で覆うのではなく、まったく描画されません。Mobが多いときに軽くなります。画面の深度から判断します：少しでも見えているMobは描画され、視界が開けると1～2フレーム後に現れます。",
   "livinghorizon.options.impostors": "簡略化エンティティ",
   "livinghorizon.options.impostors.tooltip": "一定の距離より先では、エンティティを完全な3Dモデルではなく平面の画像として描画します。遠くからでは違いがわかりにくく、エンティティが多いときのパフォーマンスが大きく向上します。",
+  "livinghorizon.options.mobLods": "詳細レベル",
+  "livinghorizon.options.mobLods.tooltip": "遠くのMobほど単純なモデルで描画します。平面の画像になる前に、各パーツの代わりにいくつかの箱で描きます。その距離では違いがわかりにくく、Mobが多いときのパフォーマンスが向上します。",
   "livinghorizon.options.impostorDistance": "簡略化の距離",
   "livinghorizon.options.impostorDistance.tooltip": "エンティティが簡略化される距離です。低いとパフォーマンスが向上し、高いと完全なモデルを長く保ちます。",
   "livinghorizon.options.impostorPixels": "簡略化のサイズ",

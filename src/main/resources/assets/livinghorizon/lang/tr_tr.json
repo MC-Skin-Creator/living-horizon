@@ -224,6 +224,8 @@
   "livinghorizon.options.hideOccludedMobs.tooltip": "Arazinin (uzak arazi dahil) tamamen gizlediği uzak canlılar, çizilip piksel piksel örtülmek yerine hiç çizilmez. Çok canlı varken daha hafif. Görüntünün derinliğine göre karar verilir: kısmen bile görünen bir canlı yine çizilir ve görüş açıldıktan bir iki kare sonra belirir.",
   "livinghorizon.options.impostors": "Basit Varlıklar",
   "livinghorizon.options.impostors.tooltip": "Belli bir mesafeden sonra varlıklar tam 3D modeller yerine düz resimler olarak çizilir. Fark uzaktan zor görülür ve çok varlık varken performans çok daha iyidir.",
+  "livinghorizon.options.mobLods": "Ayrıntı Seviyeleri",
+  "livinghorizon.options.mobLods.tooltip": "Uzaktaki canlılar uzaklaştıkça daha basit modellerle çizilir, düz resimlere dönüşmeden önce her parça yerine birkaç kutu kullanılır. Bu mesafede fark zor görülür ve çok canlı varken performans daha iyidir.",
   "livinghorizon.options.impostorDistance": "Basitleştirme Mesafesi",
   "livinghorizon.options.impostorDistance.tooltip": "Varlıkların basitleştirilmeye başladığı mesafe. Düşük değer performansı arttırır; yüksek değer tam modelleri daha uzun süre korur.",
   "livinghorizon.options.impostorPixels": "Basitleştirme Boyutu",

@@ -224,6 +224,8 @@
   "livinghorizon.options.hideOccludedMobs.tooltip": "Ferne Kreaturen, die das Gelände ganz verdeckt (fernes Gelände eingeschlossen), werden gar nicht gezeichnet, statt gezeichnet und Pixel für Pixel überdeckt zu werden. Spart Leistung bei vielen Kreaturen. Entschieden anhand der Tiefe des Bildes: Eine auch nur teilweise sichtbare Kreatur wird weiter gezeichnet, und eine verdeckte erscheint ein oder zwei Bilder, nachdem die Sicht frei wird.",
   "livinghorizon.options.impostors": "Vereinfachte Objekte",
   "livinghorizon.options.impostors.tooltip": "Ab einer gewissen Entfernung werden Objekte als flache Bilder statt als volle 3D‐Modelle gezeichnet. Der Unterschied ist aus der Ferne kaum zu sehen, und die Leistung ist mit vielen Objekten deutlich besser.",
+  "livinghorizon.options.mobLods": "Detailstufen",
+  "livinghorizon.options.mobLods.tooltip": "Ferne Kreaturen werden mit wachsender Entfernung mit einfacheren Modellen gezeichnet, ein paar Quader statt jedes Teils, bevor sie zu flachen Bildern werden. Auf diese Entfernung ist der Unterschied kaum zu sehen, und die Leistung ist mit vielen Kreaturen besser.",
   "livinghorizon.options.impostorDistance": "Vereinfachungsweite",
   "livinghorizon.options.impostorDistance.tooltip": "Entfernung, ab der Objekte vereinfacht werden. Niedriger verbessert die Leistung; höher behält volle Modelle länger.",
   "livinghorizon.options.impostorPixels": "Vereinfachungsgröße",
