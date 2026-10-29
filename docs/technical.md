@@ -906,6 +906,23 @@ reaches there: the same fog up to the limit, Voxy's from there on.
 
 The `farfog` scenario checks it, with a limit standing in for Voxy's.
 
+**Distant Horizons** takes the game's fog away altogether while it draws (both ramps pushed out
+to 4×10¹⁴ blocks, `MixinFogRenderer`) and fogs its own terrain in a pass of its own: the
+entities had no fog at all, a far mob sharp against fogged hills. Its far fog's thickness at a
+distance `d` (`shaders/fog/*/frag.fsh`, its settings through its API) is, with `x = d / R` (its
+render distance `R` in blocks) and `u = (x - start) / (end - start)`, `min + (max - min)` times
+`u` kept to 0..1 (linear), `1 - e^(-u·density)` (exponential) or `1 - e^(-(u·density)²)`
+(exponential squared, its default), across the ground or in every direction (height fog mixed
+`SPHERICAL`). `compat/DhFog` gives the entities the same through the game's two ramps, whose
+larger one times the colour's alpha is the fog: the alpha is `max`, one ramp a floor at `min`
+(running from 10⁷ blocks behind to as far ahead, flat over any distance seen), the other the
+slope, on the distance Distant Horizons uses. The slope is exact for a linear fog and a least
+squares fit over two render distances for the others (off by 0.12 at most for the exponential
+squared, 0.2 for the exponential, which thickens fastest at its start). Fitted again when its
+settings change, read once a second. Left out: its height fog, and its *sky colour* fog colour
+(the world's stays). *DH Fog Fix* (`optDhFog`, debug screen, on) turns it off. `DhFogTest`
+checks the fit against Distant Horizons' formula; Distant Horizons cannot run in the game tests.
+
 ## Skipping hidden mobs
 
 *Skip Hidden Mobs* (`hideOccludedMobs`) does not draw a distant mob the terrain hides
@@ -1235,6 +1252,7 @@ Every one is on by default except `optFreezeHidden`. Switch one off to see what 
 | `optDhFade` | DH Fade | Distant Horizons' fade leaves the entities alone, without a shader pack; off, it paints its terrain over distant mobs |
 | `optVoxyShadows` | Voxy Shadow Fix | Our far figures are written into Voxy's depth, on their own pixels only, so that Photon's terrain shadows do not fall across them |
 | `optVoxyFog` | Voxy Fog Fix | Without a shader pack, the world's entities get Voxy's fog, which stops growing past a limit (see [Fog on distant figures](#fog-on-distant-figures)); off, the game's fog |
+| `optDhFog` | DH Fog Fix | Without a shader pack, the world's entities get Distant Horizons' far fog, which takes the game's away (see [Fog on distant figures](#fog-on-distant-figures)); off, no fog on them |
 | `optBackgroundBuild` | Background Build | Saved mobs are read off the game's thread and built within 2 ms per tick |
 | `optStillTiny` | Still Tiny Mobs | Mobs under `animationMinPixels` play no walking or idle animation |
 | `optFreezeHidden` | Freeze Undrawn Mobs | A copy not drawn for half a second is not animated, only moved where the server says |

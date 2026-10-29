@@ -40,21 +40,29 @@ public final class FarFog {
     }
 
     /**
-     * The fog the entities get, from the game's this frame, Voxy's changes in it: its end, then
-     * the factor on its colour's alpha. Null where it is the game's: switched off
-     * ({@code optVoxyFog}), no Voxy, Voxy's fog off, a shader pack, the game's render distance
-     * fog on, or Voxy's limit past the fog's end.
+     * The fog the entities get, from the game's this frame: Voxy's changes in it, or Distant
+     * Horizons' fog where it took the game's away ({@link DhFog}). Null where it is the game's:
+     * switched off ({@code optVoxyFog}, {@code optDhFog}), neither mod's fog, a shader pack, the
+     * game's render distance fog on, or Voxy's limit past the fog's end.
      */
-    public static float @Nullable [] capped(float environmentalStart, float environmentalEnd, float renderDistanceStart) {
-        if (!FarConfig.get().optVoxyFog) return null;
+    public static DhFog.@Nullable Ramps capped(float environmentalStart, float environmentalEnd,
+                                              float renderDistanceStart, float renderDistanceEnd) {
+        FarConfig config = FarConfig.get();
         if (!Float.isNaN(limitForTests)) {
-            return environmentalEnd - environmentalStart > 1 ? limited(environmentalStart, environmentalEnd, limitForTests) : null;
+            if (!config.optVoxyFog) return null;
+            float[] far = environmentalEnd - environmentalStart > 1 ? limited(environmentalStart, environmentalEnd, limitForTests) : null;
+            return far == null ? null : new DhFog.Ramps(environmentalStart, far[0], renderDistanceStart, renderDistanceEnd, far[1]);
+        }
+        if (!config.anyDistant() || IrisLink.shaderPackOn()) return null;
+        // Distant Horizons takes the game's fog away altogether, both ramps; Voxy only the render distance's.
+        if (environmentalStart >= NO_RENDER_DISTANCE_FOG && renderDistanceStart >= NO_RENDER_DISTANCE_FOG) {
+            return config.optDhFog ? DhFog.now() : null;
         }
         // A fog that ends close (water, lava, blindness) is left alone, as Voxy leaves it.
-        if (renderDistanceStart < NO_RENDER_DISTANCE_FOG || environmentalEnd < 10
+        if (!config.optVoxyFog || renderDistanceStart < NO_RENDER_DISTANCE_FOG || environmentalEnd < 10
                 || environmentalEnd - environmentalStart <= 1) return null;
-        if (!FarConfig.get().anyDistant() || IrisLink.shaderPackOn()) return null;
-        return limited(environmentalStart, environmentalEnd, voxyLimit());
+        float[] far = limited(environmentalStart, environmentalEnd, voxyLimit());
+        return far == null ? null : new DhFog.Ramps(environmentalStart, far[0], renderDistanceStart, renderDistanceEnd, far[1]);
     }
 
     /**
