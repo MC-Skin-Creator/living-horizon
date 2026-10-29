@@ -992,7 +992,7 @@ public final class ImpostorAtlas {
             puppet.setXRot(0f);
             puppet.xRotO = 0f;
         }
-        EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), puppet, 1.0f);
+        EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), puppet, 1.0f, FULL_BRIGHT);
         if (state == null) throw new LeftOut();
         stage(state, view);
         posture(state, request.key.posture());
@@ -1033,7 +1033,7 @@ public final class ImpostorAtlas {
 
     /** A rider's state for one view: on the mount, turned with it, in the riding pose. */
     private static EntityRenderState stagedRider(Minecraft minecraft, Rider rider, int view) {
-        EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), rider.entity, 1.0f);
+        EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), rider.entity, 1.0f, FULL_BRIGHT);
         if (state == null) throw new LeftOut();
         stage(state, view);
         if (state instanceof LivingEntityRenderState living) living.bodyRot += rider.yaw;

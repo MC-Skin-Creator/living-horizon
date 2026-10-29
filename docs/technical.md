@@ -605,7 +605,10 @@ frame. A boat or a vehicle is pictured from every height, as a phantom or a ghas
   Only the light where the figure stands (sky, torches, night) is applied on top. Under a
   shader pack, Iris works out a quad's normal from its corners, so `ImpostorLean` leans the
   quad back, without changing how it looks on screen, to face it where the light should come
-  from.
+  from. A figure is baked at full light: some renderers keep the light they read as they
+  extract (Immersive Aircraft's, from 26.1), so `GhostRenderer.extract` hands the light over
+  then too, through `EntityRendererLightMixin`, and does the same for the models it draws far
+  away, where the client may have no light yet.
 - **When.** Every figure on hand (distant players, remembered mobs) is queued about once a
   second, near or far, and baked a little each frame (from the GUI pass from 1.21.6; see
   below), 3 ms of it, checked after each sheet, one sheet at least, so it is ready when the

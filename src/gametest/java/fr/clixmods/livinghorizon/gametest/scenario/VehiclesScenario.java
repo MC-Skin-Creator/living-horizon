@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon.gametest.scenario;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
+import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorKey;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorViews;
@@ -195,8 +196,101 @@ public final class VehiclesScenario implements Scenario {
             Scene.log("vehicles: Show Entities off changes " + gone + " pixels");
             if (gone < 50) throw new AssertionError("vehicles: Show Entities off left the aircraft drawn (" + gone + " pixels)");
             pilot(context, world);
+            fleet(context, world);
         }
     }
+
+    /**
+     * Forty test players in biplanes, seen from far past the render distance, where the client
+     * has no light: each plane is extracted lit, as a renderer that keeps its own copy of the
+     * light reads it (Immersive Aircraft's, from 26.1). At 0 it drew the plane black, as a model
+     * and in its picture.
+     */
+    private void fleet(ClientGameTestContext context, TestSingleplayerContext world) {
+        Scene.configure(context, config -> {
+            config.impostorPlayers = true;
+            config.impostorEntities = true;
+        });
+        Scene.command(world, "tp @a 0.5 -60 -14.5 0 0");
+        context.waitTicks(10);
+        Scene.command(world, "summon " + AIRCRAFT[0] + " 0.5 -60 -10.5 {Rotation:[90f,0f]}");
+        context.waitTicks(10);
+        Scene.command(world, "ride @p mount @e[type=" + AIRCRAFT[0] + ",limit=1,sort=nearest]");
+        context.waitTicks(20);
+        context.runOnClient(minecraft -> minecraft.player.connection.sendCommand("livinghorizon debug offline test spawn Fleet 60 40 100"));
+        context.waitTicks(5);
+        Scene.command(world, "ride @p dismount");
+        Scene.command(world, "kill @e[type=" + AIRCRAFT[0] + ",limit=1,sort=nearest]");
+        // Floating, as a player flying over them.
+        Scene.command(world, "gamemode spectator @a");
+        Scene.command(world, "tp @a 0.5 30 -200.5 0 30");
+        context.waitTicks(200);
+        Scene.screenshot(context, this, "fleet");
+        // Away until their chunks are gone, then straight back among them: as each chunk comes
+        // in, the client has no light in it for a few frames, and reads 0 there.
+        Scene.command(world, "tp @a 0.5 30 -700.5 0 30");
+        context.waitTicks(100);
+        Scene.command(world, "tp @a 0.5 -40 -10.5 0 30");
+        int planes = 0, dark = 0, unlitSeen = 0;
+        for (int tick = 0; tick < 60; tick++) {
+            int[] counts = context.computeOnClient(minecraft -> {
+                RestingPlayers resting = FarPlayerTracker.get().resting();
+                int seen = 0, black = 0, unlit = 0;
+                for (RestingPlayers.Spot spot : resting.spots()) {
+                    if (!spot.name().startsWith("Fleet") || minecraft.level == null) continue;
+                    RestingPuppet rider = resting.puppet(minecraft.level, spot);
+                    Entity mount = rider == null ? null : rider.mount();
+                    if (mount == null) continue;
+                    net.minecraft.core.BlockPos at = mount.blockPosition().above();
+                    if (minecraft.level.hasChunkAt(at)
+                            && minecraft.level.getBrightness(net.minecraft.world.level.LightLayer.SKY, at) == 0) {
+                        unlit++;
+                    }
+                    int light = keptLight(GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), mount, 1f));
+                    if (light < 0) continue;
+                    seen++;
+                    if ((light >> 20 & 15) < 15) black++;
+                }
+                return new int[]{seen, black, unlit};
+            });
+            planes = Math.max(planes, counts[0]);
+            dark = Math.max(dark, counts[1]);
+            unlitSeen = Math.max(unlitSeen, counts[2]);
+            context.waitTicks(1);
+        }
+        Scene.log("vehicles: fleet " + planes + " planes extracted as their chunks came in, up to " + unlitSeen
+                + " in chunks without light yet, up to " + dark + " extracted without the sky's light");
+        // Before 1.21.9 the light is handed over as a figure is drawn: no state keeps one.
+        String unlit = dark == 0 ? "" : " up to " + dark + " of " + planes
+                + " planes extracted without light as their chunks came in: drawn black";
+        context.runOnClient(minecraft -> minecraft.player.connection.sendCommand("livinghorizon debug offline test clear"));
+        Scene.command(world, "gamemode creative @a");
+        if (!unlit.isEmpty()) throw new AssertionError("vehicles:" + unlit);
+    }
+
+    /**
+     * The light a renderer keeps in its state: Immersive Aircraft's own {@code light} field from
+     * 26.1, the game's {@code lightCoords} from 1.21.9; -1 when the state keeps none.
+     */
+    private static int keptLight(net.minecraft.client.renderer.entity.state.@org.jspecify.annotations.Nullable EntityRenderState state) {
+        if (state == null) return -1;
+        for (String name : new String[]{"light", "lightCoords"}) {
+            for (Class<?> type = state.getClass(); type != null; type = type.getSuperclass()) {
+                try {
+                    java.lang.reflect.Field field = type.getDeclaredField(name);
+                    if (field.getType() != int.class) continue;
+                    field.setAccessible(true);
+                    return field.getInt(state);
+                } catch (NoSuchFieldException ignored) {
+                    // Not on this class: its parent's, or the next name.
+                } catch (IllegalAccessException e) {
+                    throw new IllegalStateException(e);
+                }
+            }
+        }
+        return -1;
+    }
+
 
     /** Picture Preview: the aircraft under its Entities tab, never under the mobs' or the players'. */
     private void preview(ClientGameTestContext context) {

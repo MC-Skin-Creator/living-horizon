@@ -280,9 +280,22 @@ public final class GhostRenderer {
      * it too. Null when its renderer cannot give one: that entity is not drawn far away.
      */
     public static @Nullable EntityRenderState extract(EntityRenderDispatcher dispatcher, Entity entity, float partialTick) {
+        return extract(dispatcher, entity, partialTick,
+                light(Minecraft.getInstance().level, entity.getX(), entity.getY(), entity.getZ()));
+    }
+
+    /**
+     * The state of a figure, extracted with {@code light} (packed): the renderer reads the light
+     * as it extracts, and some keep that copy whatever the state says later
+     * ({@code EntityRendererLightMixin}).
+     */
+    public static @Nullable EntityRenderState extract(EntityRenderDispatcher dispatcher, Entity entity, float partialTick,
+                                                      int light) {
         if (!drawable(dispatcher, entity)) return null;
         Puppets.skin(entity);
         Puppets.cape(entity);
+        int before = extractLight;
+        extractLight = light;
         try {
             //? if >=1.21.9 {
             return dispatcher.extractEntity(entity, partialTick);
@@ -295,7 +308,22 @@ public final class GhostRenderer {
             // Another mod's renderer, called for an entity in no world: never worth a crash.
             leaveOut(entity.getType(), error);
             return null;
+        } finally {
+            extractLight = before;
         }
+    }
+
+    /** The light of the figure being extracted, packed; -1 outside {@link #extract}. On the render thread. */
+    private static int extractLight = -1;
+
+    /** The sky light the figure being extracted is lit with, -1 when none is extracted. */
+    public static int extractedSky() {
+        return extractLight < 0 ? -1 : extractLight >> 20 & 15;
+    }
+
+    /** The block light the figure being extracted is lit with, -1 when none is extracted. */
+    public static int extractedBlock() {
+        return extractLight < 0 ? -1 : extractLight >> 4 & 15;
     }
 
     /** Entity types whose renderer gave no state, or failed: never drawn far away again. */

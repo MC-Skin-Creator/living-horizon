@@ -482,6 +482,12 @@ come back, add it here in the same pull request: this file is what the next sess
   up to *Entity Render Distance*, not the mobs' (`GhostRenderer.creature`). Check the mod's classes
   with `javap` on its jar; the `vehicles` scenario checks Immersive Aircraft
   (`run.sh vehicles --with immersive-aircraft`).
+- **Another mod's figure drawn black far away, its rider lit** (Immersive Aircraft's planes as
+  you travel towards them, from 26.1): its renderer keeps its own copy of the light, read as it
+  extracts (`getPackedLightCoords`), and ignores the `lightCoords` the mod sets after. In a chunk
+  the client has just received and not lit yet that reads 0. While `GhostRenderer.extract` runs,
+  `EntityRendererLightMixin` hands out the mod's light (full in a picture being baked). The
+  `vehicles` scenario reads the light the planes keep as their chunks come in.
 - **A far player's mount drawn twice, or a rider sitting on air** (a happy ghast beside its
   rider, a player met already riding floating far away): a mount is drawn under its rider
   (`FarPlayer.mountPuppet`), and the remembered mobs leave out every id `FarPlayer.carriedMount`
