@@ -30,9 +30,11 @@ public class OptionsList extends ContainerObjectSelectionList<OptionsList.Entry>
         setRenderBackground(false);
     }
 
+    /^* Two to a row; a null leaves the right half empty, as with the game's list from 1.20.5. ^/
     public void addSmall(OptionInstance<?>... options) {
         for (int i = 0; i < options.length; i += 2) {
-            addSmall(button(options[i]), i + 1 < options.length ? button(options[i + 1]) : null);
+            OptionInstance<?> second = i + 1 < options.length ? options[i + 1] : null;
+            addSmall(button(options[i]), second == null ? null : button(second));
         }
     }
 
