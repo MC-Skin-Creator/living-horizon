@@ -610,6 +610,13 @@ come back, add it here in the same pull request: this file is what the next sess
   as a truncated jar (`zip END header not found` on the next attempt): `gradle.sh` deletes the
   jars that do not open before trying again. What Forge's Maven served is kept in each Forge
   node's cache entry (`mavenizer/caches/maven/forge`), so a build only asks it for what changed.
+- **Animals of unexplored land missing or drawn twice** (none far off in a world never explored,
+  or one beside the real herd as a chunk loads): `SeedMobs` foresees them on the server, around
+  players with the mod only, in a dimension of the usual terrain (a flat world has none, the
+  client game tests' consistent settings included). A chunk is left out once loaded or saved past
+  the step that puts its animals there. The client never draws one in a chunk it holds: ask its
+  chunk source (`level.getChunkSource().hasChunk`), never `ClientLevel.hasChunk`, which always
+  says yes. The `seedmobs` scenario checks it and how many stand where the game puts them.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

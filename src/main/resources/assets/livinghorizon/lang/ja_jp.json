@@ -116,6 +116,8 @@
   "livinghorizon.source.vanished": "消失",
   "livinghorizon.options.rememberNamedMobs": "名札付きのMob",
   "livinghorizon.options.rememberNamedMobs.tooltip": "名札を付けたMobは、種類にかかわらず常に記憶され、表示されます。",
+  "livinghorizon.options.seedMobs": "未探索の地のMob",
+  "livinghorizon.options.seedMobs.tooltip": "まだ誰も探索していない土地にワールドが配置する動物を、だいたい見つかる場所に表示します。サーバーにこのMODが必要です。シングルプレイでは常に有効です。",
   "livinghorizon.options.onlyOverTerrain": "地形の上のみ",
   "livinghorizon.options.onlyOverTerrain.tooltip": "遠くのMobは、その下に地形が描画されている場所にだけ描画されます：ゲーム自身の地形、またはVoxyやDistant Horizonsの地形です。オフにすると、まだ何も描画されていない場所で記憶されたMobが奈落に浮かびます。",
   "livinghorizon.options.chooseMobs": "Mobとエンティティ…",

@@ -116,6 +116,8 @@
   "livinghorizon.source.vanished": "zniknął",
   "livinghorizon.options.rememberNamedMobs": "Stworzenia z plakietką",
   "livinghorizon.options.rememberNamedMobs.tooltip": "Stworzenie z plakietką jest zawsze zapamiętywane i pokazywane, bez względu na rodzaj.",
+  "livinghorizon.options.seedMobs": "Nieodkryte stworzenia",
+  "livinghorizon.options.seedMobs.tooltip": "Pokazuje zwierzęta, które świat umieszcza na ziemiach, których nikt jeszcze nie zbadał, mniej więcej tam, gdzie je znajdziesz. Wymaga moda na serwerze; w trybie jednoosobowym jest zawsze.",
   "livinghorizon.options.onlyOverTerrain": "Tylko nad terenem",
   "livinghorizon.options.onlyOverTerrain.tooltip": "Odległe stworzenia są rysowane tylko tam, gdzie pod nimi jest narysowany teren: gry albo Voxy lub Distant Horizons. Wyłączone: stworzenie zapamiętane tam, gdzie nic jeszcze nie narysowano, unosi się w pustce.",
   "livinghorizon.options.chooseMobs": "Stworzenia i byty…",

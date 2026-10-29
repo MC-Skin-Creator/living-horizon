@@ -112,6 +112,8 @@ public final class PositionPublisher {
     private final LinkedHashMap<UUID, PositionsMessage.Mob> mobs = new LinkedHashMap<>();
     /** What was last read of each mob's saved data. */
     private final Map<UUID, Read> reads = new HashMap<>();
+    /** The animals of the chunks not generated yet, from the seed: shared with the mobs, never saved. */
+    private final SeedMobs seeded = new SeedMobs();
     /** Test players the host placed with the debug command: shared, never saved. */
     private Map<String, PositionsMessage.Player> tests = Map.of();
     /** Test players handed over by the host's game, not taken yet. */
@@ -165,7 +167,10 @@ public final class PositionPublisher {
         // A player who just joined is sent the mobs as they are now, not as they were a few seconds ago.
         boolean joined = false;
         for (ServerPlayer player : online) joined |= !greeted.contains(player.getUUID()) && Network.canSend(player);
-        if (full || joined) refreshMobs();
+        if (full || joined) {
+            refreshMobs();
+            foresee(online, config, rules);
+        }
 
         Set<UUID> sent = new HashSet<>();
         List<PositionsMessage.Player> shown = onlinePlayers();
@@ -180,7 +185,7 @@ public final class PositionPublisher {
                 List<byte[]> offline = PositionsMessage.offline(
                         withLooks(rules.offline(offlinePlayers(), viewer), player));
                 byte[] around = PositionsMessage.mobs(
-                        rules.mobs(viewer.dimension()) ? mobsAround(player) : noMobs(player));
+                        rules.mobs(viewer.dimension()) ? mobsAround(player, config) : noMobs(player));
                 sentBytes[0] += everyone.length + around.length;
                 Network.send(player, everyone);
                 for (byte[] part : offline) {
@@ -421,14 +426,30 @@ public final class PositionPublisher {
         return new Read(variant, extra != null && extra.length() <= MAX_EXTRA ? extra : null, runs);
     }
 
-    private PositionsMessage.Mobs mobsAround(ServerPlayer player) {
+    private PositionsMessage.Mobs mobsAround(ServerPlayer player, ServerConfig config) {
         String dimension = SharedPositions.dimensionId(player.level().dimension());
         PositionsMessage.Mobs around = new PositionsMessage.Mobs(new ArrayList<>(), dimension,
                 player.getX(), player.getZ(), MOB_RANGE);
         for (PositionsMessage.Mob mob : mobs.values()) {
             if (around.covers(mob.dimension(), mob.x(), mob.z())) around.mobs().add(mob);
         }
+        if (config.seedMobs) {
+            seeded.addAround((ServerLevel) player.level(), player.getX(), player.getZ(), config.seedMobRange, around.mobs());
+        }
         return around;
+    }
+
+    /** The animals of the chunks not generated yet, worked out around the players they are shared with. */
+    private void foresee(List<ServerPlayer> online, ServerConfig config, ShareRules rules) {
+        List<ServerPlayer> viewers = new ArrayList<>();
+        if (config.seedMobs) {
+            for (ServerPlayer player : online) {
+                if (Network.canSend(player) && rules.mobs(SharedPositions.dimensionId(player.level().dimension()))) {
+                    viewers.add(player);
+                }
+            }
+        }
+        seeded.update(server, viewers, config.seedMobRange);
     }
 
     /** No mobs, in a circle that covers nothing: the client keeps the mobs it remembers. */

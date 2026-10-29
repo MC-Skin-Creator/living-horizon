@@ -116,6 +116,8 @@
   "livinghorizon.source.vanished": "gitti",
   "livinghorizon.options.rememberNamedMobs": "Ad Etiketli Canlılar",
   "livinghorizon.options.rememberNamedMobs.tooltip": "Ad etiketi olan bir canlı, türü ne olursa olsun her zaman hatırlanır ve gösterilir.",
+  "livinghorizon.options.seedMobs": "Keşfedilmemiş Canlılar",
+  "livinghorizon.options.seedMobs.tooltip": "Dünyanın henüz kimsenin keşfetmediği topraklara yerleştirdiği hayvanları, aşağı yukarı onları bulacağınız yerde gösterir. Sunucuda modun olması gerekir; tek oyunculuda her zaman vardır.",
   "livinghorizon.options.onlyOverTerrain": "Yalnızca Arazi Üstünde",
   "livinghorizon.options.onlyOverTerrain.tooltip": "Uzak canlılar yalnızca altlarında arazi çizilen yerlerde çizilir: oyununki ya da Voxy veya Distant Horizons'unki. Kapalıyken, henüz hiçbir şey çizilmemiş bir yerde hatırlanan bir canlı boşlukta süzülür.",
   "livinghorizon.options.chooseMobs": "Canlılar ve Varlıklar...",

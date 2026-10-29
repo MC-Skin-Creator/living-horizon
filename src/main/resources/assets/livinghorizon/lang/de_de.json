@@ -116,6 +116,8 @@
   "livinghorizon.source.vanished": "verschwunden",
   "livinghorizon.options.rememberNamedMobs": "Benannte Kreaturen",
   "livinghorizon.options.rememberNamedMobs.tooltip": "Eine Kreatur mit Namensschild wird immer gespeichert und angezeigt, egal welcher Art.",
+  "livinghorizon.options.seedMobs": "Unentdeckte Kreaturen",
+  "livinghorizon.options.seedMobs.tooltip": "Zeigt die Tiere, die die Welt in noch von niemandem erkundetem Land platziert, ungefähr dort, wo du sie finden wirst. Braucht die Mod auf dem Server; im Einzelspielermodus immer vorhanden.",
   "livinghorizon.options.onlyOverTerrain": "Nur über Gelände",
   "livinghorizon.options.onlyOverTerrain.tooltip": "Ferne Kreaturen werden nur gezeichnet, wo unter ihnen Gelände gezeichnet ist: das des Spiels oder das von Voxy oder Distant Horizons. Aus: Eine gespeicherte Kreatur, wo noch nichts gezeichnet ist, schwebt in der Leere.",
   "livinghorizon.options.chooseMobs": "Kreaturen & Objekte …",

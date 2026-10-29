@@ -33,7 +33,7 @@ positions with the clients that have it.
 |---|---|---|
 | [Distant players](#distant-players) | Online players past the server's view distance | Positions shared by a server with the mod |
 | [Players who logged off](#players-who-logged-off) | Players at the spot they left, living around it | This client's memory and the server's file |
-| [Distant mobs](#distant-mobs) | Mobs out of range, playing an animation in a loop | This client's memory, or the server's |
+| [Distant mobs](#distant-mobs) | Mobs out of range, playing an animation in a loop | This client's memory, or the server's, and the world's seed for land never explored |
 | [Birds](#birds) | Flocks, perched birds, ducks, bats, parrots | Made up on the client from the terrain |
 | [Impostors](#impostors) | Flat pictures in place of far models | Baked by the game's own renderers |
 | [Far terrain depth](#far-terrain-depth) | Nothing of its own: hides our figures behind the far terrain | Voxy's or Distant Horizons' depth |
@@ -46,7 +46,7 @@ never added to a level (`track/Puppets`).
 | Package | What is in it |
 |---|---|
 | root | `LivingHorizonCommon` (entry point on both sides, opens the network channel), `LivingHorizonClient` (client entry point), `FarConfig` (the settings file), `QualityPreset`, `Stats` |
-| `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
+| `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`, `SeedMobs`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
 | `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`; `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
 | `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
 | `ambient/` | The birds (`Ambience`, `BirdModels`, `BirdFigure`, `AmbientRenderer`) and the easter eggs |
@@ -119,7 +119,9 @@ checks it.
     they left, with how they looked and the mount they took away for those among the 64. The
     server sends them all; each client chooses how many it draws (`maxOfflinePlayers`);
   - the remembered mobs within 2048 blocks of them, with what they wear (saddle, harness,
-    armour, carpet, chest; see [Distant mobs](#distant-mobs)).
+    armour, carpet, chest; see [Distant mobs](#distant-mobs)), and the animals foreseen in the
+    chunks not generated yet within `seedMobRange` of them (see
+    [Animals of unexplored land](#animals-of-unexplored-land)).
 - **At once, to a player who joins**: all of it, without waiting for the next five seconds.
 
 The messages (`track/PositionsMessage`) are written with plain Java streams, the same on
@@ -173,6 +175,8 @@ alone. An unknown key is said in the console and dropped.
 `track/ShareRules` decides, for each player sent the lists, who is left out, with no type of
 the game's but a team's name:
 
+- `seedMobs` (on) and `seedMobRange` (512 blocks, 0 to 2048) share the animals foreseen in the
+  chunks not generated yet, with the mobs: off, none are worked out at all.
 - `sharePlayers`, `shareOfflinePlayers`, `shareMobs` switch each list off. The players
   message is still sent, empty but for the player themselves, so the client knows the
   server has the mod. Mobs switched off, or a player in a hidden dimension, get an empty
@@ -378,6 +382,8 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
 - **Otherwise**, each client remembers the mobs it met itself (the types in `mobTypes`), in
   `config/livinghorizon/mobs/<server>.json`. Every kind is in it by default, monsters too: one
   that despawned is forgotten like any other (below).
+- **Land never explored**: a server with the mod also shares the animals the game will put
+  in the chunks it has not generated yet, from the world's seed (see below).
 - **Look.** A mob met up close keeps its exact look (the game's own save of it); one known
   only from the server is built from kind, variant and age.
 - **Forgetting.** Coming back within range of a remembered mob that is not there forgets it.
@@ -411,6 +417,45 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
   made on the client always stands it up: `MobMemory.onUnload` writes the pose the client sees
   (`isInSittingPose`) into the save's `Sitting` instead. In single player the server's pose is
   taken with each answer (below), and a copy walking up to its real pet sits or stands as it does.
+
+### Animals of unexplored land
+
+A chunk gets its first animals as the game generates it, from a random seeded by the world's
+seed and the chunk's position alone (`NoiseBasedChunkGenerator.spawnOriginalMobs`). The server
+makes the same draws for the chunks it has not generated yet (`track/SeedMobs`), so land nobody
+has explored has its herds from afar, about where the game will put them.
+
+- **Where.** Around each player with the mod, within `seedMobRange` (512 blocks), on a thread of
+  its own, a pass every five seconds: up to 2048 chunks a pass, the nearest first, each worked
+  out once while a player is near. Only a dimension of the usual terrain
+  (`NoiseBasedChunkGenerator`, mobs not switched off by its settings, no ceiling) with mobs
+  spawning (`doMobSpawning`, from 1.21.11 where the game reads it there too).
+- **How.** The biome is the generator's, read at the chunk's corner at the top of the world
+  through the game's own zoom, as the game reads it; on 26.3 the animals and their odds are
+  environment attributes, the dimension's then the biome's. The terrain is the generator's bare
+  noise (`getBaseColumn`): no grass, trees or snow yet. A column topped with water or lava is no
+  place for an animal, any other is, and a turtle only lower than the sea plus 4 blocks, as the
+  game's rule says; the draws then go on as the game's do, so a herd stands where the game puts
+  it wherever the bare terrain is right. Where the game turns a spot down for what the bare
+  terrain lacks (no grass under it, a tree in the way), its draws and these part ways for the
+  rest of the chunk: that herd is missing or elsewhere. The `seedmobs` game test generates
+  a square of such chunks and counts how many stand within 3 blocks of the game's.
+- **Look.** The game draws a coat, colour or age with a random nothing can foresee: they are
+  drawn from the mob's id, with the game's odds (a herd of horses one coat, a family of rabbits
+  one fur, the first of a group never a baby; sheep by climate from 1.21.5).
+- **Ids.** Each has a name-based id (version 3, from the seed, the dimension, the chunk and its
+  place in it): the same every time, and no mob the game makes has one (`SeedMobs.foreseen`).
+- **Generated.** A chunk is left out once it has its animals: loaded on the server, or saved in
+  its region file past the step that puts them there. The region's header says which chunks are
+  saved (read again when the file changes); the game's storage thread is then asked, in the
+  background, the status each was saved at (`chunkScanner`, that one field). A chunk the game
+  only began, around one it generated (up to `features` or `light`), still gets its animals
+  later: those stay foreseen. Its own mobs are there once generated, remembered by the server
+  like any other, and the client forgets those foreseen as it forgets a mob the server stopped
+  sharing; it never draws one in a chunk it holds itself.
+- **On the client.** *Unexplored Land Mobs* (`seedMobs`, on) hides them. They are never saved
+  in the client's file, are taken only within *Mob Render Distance* plus 64 blocks, and go first
+  when its 2000 mobs are full.
 
 ### Scanning nearby mobs
 
@@ -1173,6 +1218,7 @@ In three parts, on both screens: *General*, *Mobs* (the living kinds, mannequins
 | `maxDistantMobs` | Mobs: Max Mobs | `512` | 0 to 1000 | How many are drawn at once, nearest first (`0`: none, `1000`: no limit). No limit here and in `mobMaxDistance` together can crash the game |
 | `mobMaxDistance` | Mobs: Mob Render Distance | `512` blocks | 0 to 4000 | Past this, distant mobs are not drawn (`0`: no limit) |
 | `rememberNamedMobs` | Mobs: Name-Tagged Mobs | `true` | | A mob with a name tag is shown whatever its type |
+| `seedMobs` | Mobs: Unexplored Land Mobs | `true` | | The animals a server with the mod foresees in land nobody has explored, from the seed, are shown |
 | `animationMinPixels` | Mobs: Min. Animated Size | `10` pixels | 0 to 40 | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
 | `animationMaxDistance` | Mobs: Animation Distance | `0` blocks | 0 to 4000 | Past this, no distant mob plays an animation (`0`: no limit) |
 | `distantEntities` | Entities: Show Entities | `true` | | Remembered boats, vehicles and mannequins stay visible far away |

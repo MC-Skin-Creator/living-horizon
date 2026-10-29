@@ -116,6 +116,8 @@
   "livinghorizon.source.vanished": "disparu",
   "livinghorizon.options.rememberNamedMobs": "Créatures renommées",
   "livinghorizon.options.rememberNamedMobs.tooltip": "Une créature renommée avec une étiquette est toujours retenue et affichée, quel que soit son type.",
+  "livinghorizon.options.seedMobs": "Créatures à découvrir",
+  "livinghorizon.options.seedMobs.tooltip": "Affiche les animaux que le monde place dans les terres que personne n'a encore explorées, à peu près là où vous les trouverez. Il faut le mod sur le serveur ; toujours le cas en solo.",
   "livinghorizon.options.onlyOverTerrain": "Sur terrain seulement",
   "livinghorizon.options.onlyOverTerrain.tooltip": "Les créatures lointaines ne sont dessinées que là où du terrain est dessiné sous elles : celui du jeu, ou celui de Voxy ou Distant Horizons. Désactivé, une créature retenue là où rien n'est encore dessiné flotte dans le vide.",
   "livinghorizon.options.chooseMobs": "Créatures et entités...",

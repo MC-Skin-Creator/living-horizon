@@ -116,6 +116,8 @@
   "livinghorizon.source.vanished": "зник",
   "livinghorizon.options.rememberNamedMobs": "Моби з ярликами",
   "livinghorizon.options.rememberNamedMobs.tooltip": "Моба з ярликом завжди запам’ятовано й показано, хоч якого він виду.",
+  "livinghorizon.options.seedMobs": "Невідкриті моби",
+  "livinghorizon.options.seedMobs.tooltip": "Показує тварин, яких світ розміщує на землях, де ще ніхто не бував, приблизно там, де ви їх знайдете. Потрібен мод на сервері; в одиночній грі він є завжди.",
   "livinghorizon.options.onlyOverTerrain": "Лише над рельєфом",
   "livinghorizon.options.onlyOverTerrain.tooltip": "Далекі моби малюються лише там, де під ними намальовано рельєф: гри, Voxy або Distant Horizons. Якщо вимкнено, моб, запам’ятаний там, де ще нічого не намальовано, висить у порожнечі.",
   "livinghorizon.options.chooseMobs": "Моби й сутності…",

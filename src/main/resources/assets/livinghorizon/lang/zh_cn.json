@@ -116,6 +116,8 @@
   "livinghorizon.source.vanished": "已消失",
   "livinghorizon.options.rememberNamedMobs": "已命名的生物",
   "livinghorizon.options.rememberNamedMobs.tooltip": "用命名牌命名过的生物无论什么种类，都会始终被记住并显示。",
+  "livinghorizon.options.seedMobs": "未探索区域的生物",
+  "livinghorizon.options.seedMobs.tooltip": "显示世界在尚无人探索的土地上放置的动物，大致就在你将找到它们的地方。需要服务器装有本模组；单人游戏中总是可用。",
   "livinghorizon.options.onlyOverTerrain": "仅在地形上显示",
   "livinghorizon.options.onlyOverTerrain.tooltip": "远处生物只在其下方绘制了地形的地方绘制：游戏自身的地形，或Voxy或Distant Horizons的地形。关闭时，记住的生物若所在之处尚未绘制任何东西，会悬浮在虚空中。",
   "livinghorizon.options.chooseMobs": "生物与实体…",

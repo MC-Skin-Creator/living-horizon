@@ -183,6 +183,12 @@ public final class FarConfig {
     public boolean rememberNamedMobs = true;
 
     /**
+     * The animals a server with the mod foresees in the land nobody has explored yet, from the
+     * world's seed ({@code track/SeedMobs}), are shown with the remembered mobs.
+     */
+    public boolean seedMobs = true;
+
+    /**
      * Chunks around the player read by a scan ("Scan the chunks around", or
      * {@code /livinghorizon scan}): in a single player world, the mobs of these chunks
      * are read from the world itself instead of met on the way.

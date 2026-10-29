@@ -116,6 +116,8 @@
   "livinghorizon.source.vanished": "gone",
   "livinghorizon.options.rememberNamedMobs": "Name-Tagged Mobs",
   "livinghorizon.options.rememberNamedMobs.tooltip": "A mob with a name tag is always remembered and shown, whatever its type.",
+  "livinghorizon.options.seedMobs": "Unexplored Land Mobs",
+  "livinghorizon.options.seedMobs.tooltip": "Shows the animals the world puts in land nobody has explored yet, about where you will find them. Needs the mod on the server; always there in single player.",
   "livinghorizon.options.onlyOverTerrain": "Only Over Terrain",
   "livinghorizon.options.onlyOverTerrain.tooltip": "Distant mobs are only drawn where terrain is drawn under them: the game's own, or Voxy or Distant Horizons terrain. Off, a mob remembered where nothing is drawn yet floats in the void.",
   "livinghorizon.options.chooseMobs": "Mobs & Entities...",

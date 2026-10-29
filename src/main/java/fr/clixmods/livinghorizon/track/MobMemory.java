@@ -589,6 +589,14 @@ public final class MobMemory {
     }
 
     private void trim() {
+        if (mobs.size() > MAX_REMEMBERED) {
+            // The animals foreseen from the seed go first: the server shares them again whenever they are near.
+            List<UUID> foreseen = new ArrayList<>();
+            for (Remembered mob : mobs.values()) {
+                if (SeedMobs.foreseen(mob.id)) foreseen.add(mob.id);
+            }
+            for (int i = 0; i < foreseen.size() && mobs.size() > MAX_REMEMBERED; i++) forget(foreseen.get(i));
+        }
         while (mobs.size() > MAX_REMEMBERED) mobs.remove(mobs.keySet().iterator().next());
     }
 
@@ -866,6 +874,7 @@ public final class MobMemory {
      * it sent the mobs died: the server forgets a mob whose chunk is loaded without it.
      */
     private void sync(SharedPositions pack) {
+        FarConfig config = FarConfig.get();
         Set<UUID> published = new HashSet<>();
         for (UUID id : pack.mobs()) {
             SharedPositions.MobReport report = pack.readMob(id);
@@ -883,6 +892,8 @@ public final class MobMemory {
             Remembered mob = mobs.get(id);
             // Followed on the single player server, which knows better than the last report.
             if (mob != null && mob.simulated) continue;
+            // An animal foreseen from the seed, which would not be drawn: not taken at all.
+            if (mob == null && SeedMobs.foreseen(id) && !wantsForeseen(report, config)) continue;
             String look = packLook(report);
             if (mob == null) {
                 mob = new Remembered();
@@ -920,6 +931,20 @@ public final class MobMemory {
                     && pack.covers(mob.dimension, mob.x, mob.z)) dead.add(mob.id);
         }
         dead.forEach(this::forget);
+    }
+
+    /**
+     * Whether the chunk of an animal foreseen from the seed is here: generated, with mobs of its
+     * own, which the server stops foreseeing at its next share.
+     */
+    private boolean generated(Remembered mob) {
+        return bound != null && bound.getChunkSource().hasChunk((int) Math.floor(mob.x) >> 4, (int) Math.floor(mob.z) >> 4);
+    }
+
+    /** Whether an animal foreseen from the seed is worth remembering: shown, and not past the distance mobs are drawn at. */
+    private boolean wantsForeseen(SharedPositions.MobReport report, FarConfig config) {
+        if (!config.seedMobs) return false;
+        return config.mobMaxDistance <= 0 || Math.hypot(report.x() - selfX, report.z() - selfZ) <= config.mobMaxDistance + 64;
     }
 
     /** How the server says a mob looks, as one text. */
@@ -1103,6 +1128,7 @@ public final class MobMemory {
             if (!wanted.contains(mob.type) && !(config.rememberNamedMobs && mob.named)) continue;
             boolean creature = creature(mob);
             if (!config.shows(creature)) continue;
+            if (SeedMobs.foreseen(mob.id) && (!config.seedMobs || generated(mob))) continue;
             mob.distance = distance(mob.x, mob.y, mob.z);
             (creature ? creatures : others).add(mob);
         }
@@ -1236,7 +1262,11 @@ public final class MobMemory {
         long started = Profile.begin(Profile.Section.SAVE_MOBS);
         long bytes = -1;
         try {
-            Collection<Remembered> kept = new ArrayList<>(mobs.values());
+            // Those foreseen from the seed are the server's to share again, not this client's to keep.
+            Collection<Remembered> kept = new ArrayList<>();
+            for (Remembered mob : mobs.values()) {
+                if (!SeedMobs.foreseen(mob.id)) kept.add(mob);
+            }
             JsonStore.write(file, writer -> write(kept, writer));
             bytes = Files.size(file);
         } catch (IOException e) {
