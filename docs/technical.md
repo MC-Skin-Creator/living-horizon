@@ -331,10 +331,16 @@ then rests a while and goes again:
 | Horse (any mount that walks) | Only where it has room for itself and its rider (0.9 blocks wide at most), worked out like a walk on foot | A loop on the ground read around the spot |
 | Boat | On the water it floats on; stays put on land | A loop on the water |
 | Happy ghast | Straight lines through open air, at most 24 blocks from its spot and 4 up or down | A loop in the air, at its height |
+| Aircraft left flying | Round and round at its height, near or far: from its spot along the way it faced, at the pace it went (0.2 to 1.2 blocks a tick), round a point 16 to 48 blocks beside it | The same |
+| Aircraft left still in the air | Hovers on its spot | The same |
 
 Another mod's mount goes by what it is: a living one walks like a horse, or flies like the
-happy ghast without gravity; a water creature stays put. Anything neither alive nor a boat (a
-minecart, an aircraft) stays where it was. In the saddle they look
+happy ghast without gravity; a water creature stays put. A vehicle its rider steers, left off
+the ground, is an aircraft (`RestingMount.kindOf`, `HOVER` or `CIRCLE`): one going at least
+0.15 blocks a tick circles, as a plane cannot stop in the air, one slower hovers. How fast it
+went is in its save; where the client never saw it move by itself (a vehicle the server moves,
+a copy the mod moves), `RestingMount.keepMotion` writes its last move there. Anything else
+neither alive nor a boat (a minecart, a vehicle on the ground) stays where it was. In the saddle they look
 around and raise their shield when hit; no bed, no chest, no sword. With `offlineLife` off,
 rider and mount wait on the spot.
 

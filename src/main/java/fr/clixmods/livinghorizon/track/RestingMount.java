@@ -4,6 +4,8 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.DoubleTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -36,8 +38,19 @@ import java.util.concurrent.CompletableFuture;
  * a happy ghast the air at its height. Nothing is read nor decided while it plays.
  */
 final class RestingMount {
-    /** How it gets about. */
-    enum Kind { GROUND, WATER, AIR, STILL }
+    /**
+     * How it gets about. An aircraft its rider left in the air stays there: {@code HOVER} on
+     * its spot when it was still, {@code CIRCLE} round and round at its height when it was going,
+     * as a plane cannot stop in the air.
+     */
+    enum Kind { GROUND, WATER, AIR, STILL, HOVER, CIRCLE }
+
+    /** Blocks per tick an aircraft was going at least, as its rider left, to fly in circles rather than hover. */
+    static final double CRUISE = 0.15;
+    /** Blocks per tick a circling aircraft flies at, whatever it was going at. */
+    private static final double CIRCLE_SLOWEST = 0.2, CIRCLE_FASTEST = 1.2;
+    /** Blocks across half its circle, per block a tick it flies, and the narrowest and widest. */
+    private static final double CIRCLE_RADIUS = 40, CIRCLE_NARROWEST = 16, CIRCLE_WIDEST = 48;
 
     /** Blocks per tick: a horse's walk, a boat rowed gently, a happy ghast's drift. */
     private static final double WALK = 0.13, ROW = 0.1, DRIFT = 0.06;
@@ -88,6 +101,8 @@ final class RestingMount {
     private boolean placed;
     private double fall;
     private double moved;
+    /** Ticks it has flown its circle, from its spot. */
+    private int circling;
     /** Where it can go, being looked for: the blocks around copied a few sections a tick, then read off the game's thread. */
     private BlockCopy.@Nullable Builder copying;
     private @Nullable CompletableFuture<Optional<Walkway.Survey>> survey;
@@ -106,7 +121,7 @@ final class RestingMount {
         this.homeYaw = mount.yaw();
         this.home = rider.subtract(seatAt(mount.yaw()));
         double width = entity.getBbWidth() / 2;
-        this.half = kind == Kind.AIR ? width : Math.min(width, MAX_HALF);
+        this.half = aloft() ? width : Math.min(width, MAX_HALF);
         this.height = Math.max(entity.getBbHeight(), seat.y + RIDER);
         this.blocks = Footing.live(level);
         reset();
@@ -119,6 +134,21 @@ final class RestingMount {
         if (entity == null) return null;
         long seed = spot.name().toLowerCase(java.util.Locale.ROOT).hashCode() * 0xBF58476D1CE4E5B9L;
         return new RestingMount(level, entity, mount, new Vec3(spot.x(), spot.y(), spot.z()), random, seed);
+    }
+
+    /**
+     * Writes into its save how fast it was going, where the game kept less: a vehicle this client
+     * only sees moved by the server, or a copy moved by the mod, has no motion of its own. A
+     * plane left in the air flies on in circles at that pace ({@link Kind#CIRCLE}).
+     */
+    static void keepMotion(Entity vehicle, CompoundTag saved) {
+        double dx = vehicle.getX() - vehicle.xo, dy = vehicle.getY() - vehicle.yo, dz = vehicle.getZ() - vehicle.zo;
+        if (vehicle.getDeltaMovement().horizontalDistanceSqr() >= dx * dx + dz * dz) return;
+        ListTag motion = new ListTag();
+        motion.add(DoubleTag.valueOf(dx));
+        motion.add(DoubleTag.valueOf(dy));
+        motion.add(DoubleTag.valueOf(dz));
+        saved.put("Motion", motion);
     }
 
     /** A copy of a kept mount, as it was saved; null when its type is gone or it does not read. */
@@ -217,8 +247,14 @@ final class RestingMount {
     /** How a mount gets about, from what it is. */
     static Kind kindOf(Entity entity) {
         if (!(entity instanceof LivingEntity living)) {
-            // Boats float; minecarts, aircraft and the rest stay where they are.
-            return MobMemory.boat(entity) ? Kind.WATER : Kind.STILL;
+            // Boats float; minecarts and the rest stay where they are.
+            if (MobMemory.boat(entity)) return Kind.WATER;
+            // An aircraft left in the air (another mod's plane, steered): round and round where it
+            // was if it was going, hovering there if it was still. A car on the ground stays put.
+            if (!entity.onGround() && Vehicles.of(entity) == Vehicles.Kind.STEERED) {
+                return entity.getDeltaMovement().horizontalDistance() >= CRUISE ? Kind.CIRCLE : Kind.HOVER;
+            }
+            return Kind.STILL;
         }
         if (living.isNoGravity() || EntityType.getKey(entity.getType()).getPath().equals("happy_ghast")) return Kind.AIR;
         MobCategory category = entity.getType().getCategory();
@@ -233,6 +269,7 @@ final class RestingMount {
     void reset() {
         stop();
         far = false;
+        circling = 0;
         yaw = homeYaw;
         placed = false;
         fall = 0;
@@ -289,6 +326,12 @@ final class RestingMount {
         }
         entity.tickCount++;
         moved = 0;
+        if (kind == Kind.CIRCLE && lively) {
+            // In the air, near or far: nothing to read, nothing in its way at its height.
+            circle();
+            animate();
+            return;
+        }
         if (lively && !near) {
             playLoop();
             animate();
@@ -321,11 +364,38 @@ final class RestingMount {
         switch (kind) {
             case GROUND, WATER -> roam(level, roam, work);
             case AIR -> drift(level, roam);
-            case STILL -> {
+            case STILL, HOVER, CIRCLE -> {
             }
         }
         if (!moving()) settle(level, false);
         animate();
+    }
+
+    /** In the air for good: a happy ghast, an aircraft left hovering or circling. */
+    private boolean aloft() {
+        return kind == Kind.AIR || kind == Kind.HOVER || kind == Kind.CIRCLE;
+    }
+
+    /**
+     * One tick of its circle, at the height it was left at: it flies on from its spot the way it
+     * faced, at the pace it was going, and turns left or right round a point beside it.
+     */
+    private void circle() {
+        double speed = Mth.clamp(entity.getDeltaMovement().horizontalDistance(), CIRCLE_SLOWEST, CIRCLE_FASTEST);
+        double radius = Mth.clamp(speed * CIRCLE_RADIUS, CIRCLE_NARROWEST, CIRCLE_WIDEST);
+        int turn = (seed & 1) == 0 ? 1 : -1;
+        double facing = Math.toRadians(homeYaw);
+        // Beside its spot, square to the way it faced: the circle starts on the spot, along that way.
+        double cx = home.x + Math.cos(facing) * radius * turn, cz = home.z + Math.sin(facing) * radius * turn;
+        double start = Math.atan2(home.z - cz, home.x - cx);
+        circling++;
+        double angle = start - turn * circling * speed / radius;
+        double x = cx + Math.cos(angle) * radius, z = cz + Math.sin(angle) * radius;
+        // Along the circle: the way it goes now.
+        double tx = Math.sin(angle) * turn, tz = -Math.cos(angle) * turn;
+        entity.setPos(x, home.y, z);
+        yaw = (float) Math.toDegrees(Math.atan2(-tx, tz));
+        moved = speed;
     }
 
     // --- Away from the camera -----------------------------------------------------------------
@@ -357,7 +427,7 @@ final class RestingMount {
             case GROUND -> MobPaths.plan(level, home.x, home.y, home.z, entity.getBbWidth(), seed);
             case AIR -> CompletableFuture.completedFuture(MobPaths.free(home.x, home.y, home.z, seed));
             case WATER -> water();
-            case STILL -> CompletableFuture.completedFuture(MobPaths.stand(home.x, home.y, home.z));
+            case STILL, HOVER, CIRCLE -> CompletableFuture.completedFuture(MobPaths.stand(home.x, home.y, home.z));
         };
     }
 
@@ -579,7 +649,7 @@ final class RestingMount {
         double x = entity.getX(), y = entity.getY(), z = entity.getZ();
         double target;
         if (!Footing.fits(blocks, x, y, z, half, height)) target = Footing.freeAbove(blocks, x, y, z, half, height);
-        else if (kind != Kind.AIR && !Footing.supported(blocks, x, y, z, half)) target = Footing.floorBelow(blocks, x, y, z, half);
+        else if (!aloft() && !Footing.supported(blocks, x, y, z, half)) target = Footing.floorBelow(blocks, x, y, z, half);
         else target = y;
         if (target == y) {
             fall = 0;

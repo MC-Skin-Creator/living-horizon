@@ -16,6 +16,7 @@
 - **Créatures et entités appliqué tout de suite** — activer ou masquer un type dans *Créatures et entités...* se voit maintenant aussitôt dans le monde derrière, plus seulement une fois l'écran fermé.
 - **Réglages des créatures lointaines en trois parties** — les réglages *Créatures et entités lointaines* sont maintenant répartis en *Général*, *Créatures* et *Entités*, avec la liste, le scan et *Tout oublier* dans *Général*.
 - **Joueurs montés au loin** — avec *Joueurs simplifiés*, un joueur lointain dans un bateau, un wagonnet, un avion ou sur un ghast joyeux est maintenant représenté vu d'au-dessus et d'en dessous comme ce qu'il monte, et plus de profil quand on le regarde d'en haut.
+- **Avions laissés en l'air** — un joueur qui se déconnecte en vol reste en l'air dans son avion, qui reste sur place s'il était immobile, ou tourne en rond s'il volait.
 - **Images sauvegardées affichées** — l'écran *Aperçu des images* indique maintenant sous chaque créature si son image est partagée, relue d'une partie précédente, nouvelle et sauvegardée pour les suivantes, ou non sauvegardée, avec quand et dans quel monde elle a été faite.
 
 #### Corrections

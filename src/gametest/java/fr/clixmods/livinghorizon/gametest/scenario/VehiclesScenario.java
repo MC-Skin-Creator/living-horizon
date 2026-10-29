@@ -197,7 +197,72 @@ public final class VehiclesScenario implements Scenario {
             if (gone < 50) throw new AssertionError("vehicles: Show Entities off left the aircraft drawn (" + gone + " pixels)");
             pilot(context, world);
             fleet(context, world);
+            aloft(context, world);
         }
+    }
+
+    /**
+     * Test players left in the air on what they flew, 30 blocks up: in a biplane going, it flies
+     * round in circles at its height; in an airship standing still, it hovers there. Neither
+     * falls to the ground.
+     */
+    private void aloft(ClientGameTestContext context, TestSingleplayerContext world) {
+        Scene.configure(context, config -> {
+            config.offlinePlayers = true;
+            config.offlineLife = true;
+            config.impostorPlayers = false;
+        });
+        leftAloft(context, world, "Circler", AIRCRAFT[0], 0.5, "{Motion:[0.0d,0.0d,0.8d],Rotation:[0f,0f]}");
+        leftAloft(context, world, "Hoverer", AIRCRAFT[1], 40.5, "{Rotation:[0f,0f]}");
+        Scene.command(world, "tp @a 20.5 -50 -110.5 0 -15");
+        context.waitTicks(40);
+        Vec3[] before = context.computeOnClient(minecraft -> new Vec3[]{mountAt(minecraft, "Circler"), mountAt(minecraft, "Hoverer")});
+        context.waitTicks(40);
+        Vec3[] after = context.computeOnClient(minecraft -> new Vec3[]{mountAt(minecraft, "Circler"), mountAt(minecraft, "Hoverer")});
+        Scene.screenshot(context, this, "aloft");
+        context.runOnClient(minecraft -> minecraft.player.connection.sendCommand("livinghorizon debug offline test clear"));
+        context.waitTicks(20);
+        Scene.log("vehicles: left aloft, the biplane from " + before[0] + " to " + after[0] + ", the airship from "
+                + before[1] + " to " + after[1]);
+        StringBuilder wrong = new StringBuilder();
+        if (before[0] == null || after[0] == null || before[1] == null || after[1] == null) {
+            throw new AssertionError("vehicles: a test player left in the air has no aircraft under them");
+        }
+        if (before[0].distanceTo(after[0]) < 4) wrong.append(" the biplane does not fly on;");
+        if (Math.abs(after[0].y - before[0].y) > 0.5 || after[0].y < -50) wrong.append(" the biplane does not keep its height;");
+        if (Math.hypot(after[0].x - 0.5, after[0].z + 30.5) > 100) {
+            wrong.append(" the biplane flies off instead of round;");
+        }
+        if (before[1].distanceTo(after[1]) > 0.5) wrong.append(" the airship moves instead of hovering;");
+        if (after[1].y < -50) wrong.append(" the airship came down;");
+        if (!wrong.isEmpty()) throw new AssertionError("vehicles:" + wrong);
+    }
+
+    /** Rides a new {@code type} 30 blocks up at x, leaves test player {@code name} on it there, and takes it away. */
+    private static void leftAloft(ClientGameTestContext context, TestSingleplayerContext world, String name, String type,
+                                  double x, String nbt) {
+        Scene.command(world, "tp @a " + x + " -30 -34.5 0 0");
+        Scene.command(world, "summon " + type + " " + x + " -30 -30.5 " + nbt);
+        // Nearest to the player: the console's nearest is the parked one by the world's spawn.
+        Scene.command(world, "execute as @p at @s run ride @s mount @e[type=" + type + ",limit=1,sort=nearest]");
+        context.waitTicks(3);
+        context.runOnClient(minecraft -> minecraft.player.connection.sendCommand("livinghorizon debug offline test spawn " + name));
+        context.waitTicks(3);
+        Scene.command(world, "ride @p dismount");
+        Scene.command(world, "execute at @p run kill @e[type=" + type + ",limit=1,sort=nearest]");
+        context.waitTicks(5);
+    }
+
+    /** Where the aircraft under test player {@code name} is; null when they have none. */
+    private static @org.jspecify.annotations.Nullable Vec3 mountAt(net.minecraft.client.Minecraft minecraft, String name) {
+        RestingPlayers resting = FarPlayerTracker.get().resting();
+        for (RestingPlayers.Spot spot : resting.spots()) {
+            if (!spot.name().equals(name) || minecraft.level == null) continue;
+            RestingPuppet rider = resting.puppet(minecraft.level, spot);
+            Entity mount = rider == null ? null : rider.mount();
+            return mount == null ? null : mount.position();
+        }
+        return null;
     }
 
     /**

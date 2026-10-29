@@ -13,6 +13,7 @@ import fr.clixmods.livinghorizon.JsonStore;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.platform.Platform;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -127,9 +128,10 @@ public final class RestingPlayers {
          */
         static @Nullable Mount of(Entity vehicle, Vec3 seat, float yaw, float riderYaw) {
             try {
-                return new Mount(EntityType.getKey(vehicle.getType()).toString(),
-                        EntityNbt.save(vehicle, vehicle.level()).toString(), RestingMount.dataOf(vehicle),
-                        seat.x, seat.y, seat.z, yaw, riderYaw);
+                CompoundTag saved = EntityNbt.save(vehicle, vehicle.level());
+                RestingMount.keepMotion(vehicle, saved);
+                return new Mount(EntityType.getKey(vehicle.getType()).toString(), saved.toString(),
+                        RestingMount.dataOf(vehicle), seat.x, seat.y, seat.z, yaw, riderYaw);
             } catch (RuntimeException e) {
                 // A modded mount the game cannot save from the client: they rest on foot.
                 return null;
@@ -149,7 +151,8 @@ public final class RestingPlayers {
 
         /** Whether a mount flies, as a happy ghast does: it stays in the air, at its height. */
         public static boolean flies(Entity vehicle) {
-            return RestingMount.kindOf(vehicle) == RestingMount.Kind.AIR;
+            RestingMount.Kind kind = RestingMount.kindOf(vehicle);
+            return kind == RestingMount.Kind.AIR || kind == RestingMount.Kind.HOVER || kind == RestingMount.Kind.CIRCLE;
         }
 
         /** The same mount, turned to {@code facing}, its rider turned with it. */
