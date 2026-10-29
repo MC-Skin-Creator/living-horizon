@@ -72,6 +72,8 @@
   "livinghorizon.options.entityMaxDistance": "Distância das entidades",
   "livinghorizon.options.entityMaxDistance.tooltip": "Até que distância os botes, veículos e manequins distantes são exibidos, à parte das criaturas. Ilimitada: até onde forem lembrados.",
   "livinghorizon.options.entityMaxDistance.zero": "Ilimitada",
+  "livinghorizon.options.distantStructures": "Mostrar dirigíveis",
+  "livinghorizon.options.distantStructures.tooltip": "Dirigíveis e outras construções que o Sable move (Create: Aeronautics) continuam visíveis fora de alcance, onde foram vistos pela última vez. \"Distância das entidades\" também vale para eles.",
   "livinghorizon.options.animationMinPixels": "Tam. mín. animado",
   "livinghorizon.options.animationMinPixels.tooltip": "Criaturas menores que isso na tela param as animações de andar e de repouso, que não seriam vistas de qualquer forma. Menor é mais vivo; maior melhora o desempenho.",
   "livinghorizon.options.animationMinPixels.zero": "Sempre",

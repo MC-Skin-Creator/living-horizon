@@ -154,6 +154,13 @@ public final class FarConfig {
     public int entityMaxDistance = 0;
 
     /**
+     * Moving builds of Sable (the airships and cars of Create: Aeronautics), which are not
+     * entities, stay where they were last seen ({@link fr.clixmods.livinghorizon.track.FarStructures}).
+     * {@link #entityMaxDistance} limits them too. Nothing without Sable.
+     */
+    public boolean distantStructures = true;
+
+    /**
      * Distant mobs are drawn only where terrain is drawn under them: a chunk the game draws, or
      * the far terrain of Voxy or Distant Horizons. Off, a mob remembered where neither has drawn
      * anything yet stands in the void.
@@ -403,9 +410,9 @@ public final class FarConfig {
 
     private static FarConfig instance = new FarConfig();
 
-    /** Whether anything distant is drawn: players, mobs or both, each on its own switch. */
+    /** Whether anything distant is drawn: players, mobs, other entities or moving builds, each on its own switch. */
     public boolean anyDistant() {
-        return enabled || distantMobs || distantEntities;
+        return enabled || distantMobs || distantEntities || (distantStructures && Platform.isModLoaded("sable"));
     }
 
     public static FarConfig get() {

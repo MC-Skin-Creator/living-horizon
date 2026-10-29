@@ -72,6 +72,8 @@
   "livinghorizon.options.entityMaxDistance": "Distance d'affichage des entités",
   "livinghorizon.options.entityMaxDistance.tooltip": "Jusqu'à quelle distance les bateaux, véhicules et mannequins lointains sont affichés, à part des créatures. Illimitée : aussi loin qu'ils sont retenus.",
   "livinghorizon.options.entityMaxDistance.zero": "Illimitée",
+  "livinghorizon.options.distantStructures": "Afficher les dirigeables",
+  "livinghorizon.options.distantStructures.tooltip": "Les dirigeables et autres constructions que déplace Sable (Create: Aeronautics) restent visibles une fois hors de portée, là où on les a vus en dernier. « Distance d'affichage des entités » s'applique aussi à eux.",
   "livinghorizon.options.animationMinPixels": "Taille min. animée",
   "livinghorizon.options.animationMinPixels.tooltip": "Les créatures plus petites que ça à l'écran arrêtent leurs animations, invisibles de toute façon. Plus bas est plus vivant ; plus haut améliore les performances.",
   "livinghorizon.options.animationMinPixels.zero": "Toujours",

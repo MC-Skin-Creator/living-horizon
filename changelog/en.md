@@ -9,6 +9,7 @@
 - **Settings for entities** — boats, vehicles and mannequins now have settings of their own, apart from the mobs: *Show Entities*, *Max Entities* and *Entity Render Distance*, which has no limit by default.
 - **Simplified Mobs and Simplified Entities** — *Simplified Entities* is now two switches: *Simplified Mobs*, and *Simplified Entities* for boats, vehicles and mannequins, which far away become flat pictures too, seen from above and below as well; *Simplified Players* no longer depends on either, and the button that shows the pictures is now *Picture Preview...*, with a tab for the entities' pictures.
 - **Changelog button** — the mod's settings now have a changelog button beside the Discord logo, to read what changed in each version (a *Read the changelog* button on Sodium's page).
+- **Airships far away** — the airships and other moving builds of Create: Aeronautics now stay visible past the render distance, where they were last seen, with *Show Airships* under *Entities* in *Distant Mobs & Entities* (Minecraft 1.21.1).
 
 #### Improved
 - **Servers without the mod** — joining a server without Living Horizon, or with a version of it too old or too new, now says in the chat that distant players are not shown there; with *Show Players* off, nothing is said.

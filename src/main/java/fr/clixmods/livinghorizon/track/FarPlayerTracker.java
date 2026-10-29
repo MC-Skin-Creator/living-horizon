@@ -46,6 +46,7 @@ public final class FarPlayerTracker {
     private final SharedPositions shared = new SharedPositions();
     private final RestingPlayers resting = new RestingPlayers();
     private final MobMemory mobs = new MobMemory();
+    private final FarStructures structures = new FarStructures();
     private final Ambience ambience = new Ambience();
     private @Nullable ClientLevel level;
     private @Nullable String server;
@@ -91,6 +92,11 @@ public final class FarPlayerTracker {
         return mobs;
     }
 
+    /** Moving builds met on the way (Sable's airships), kept where they were. */
+    public FarStructures structures() {
+        return structures;
+    }
+
     /** Players who logged off and rest where they were. */
     public RestingPlayers resting() {
         return resting;
@@ -111,6 +117,7 @@ public final class FarPlayerTracker {
                 LodWorld.suspend();
                 resting.close();
                 mobs.close();
+                structures.close();
                 ambience.calendar().close();
                 server = null;
             }
@@ -122,12 +129,14 @@ public final class FarPlayerTracker {
             lastCarried = Map.of();
             resting.forgetPuppets();
             mobs.forgetPuppets();
+            structures.levelChanged();
             LodWorld.clear();
             level = current;
             String joined = serverKey(minecraft);
             if (!joined.equals(server)) {
                 resting.open(joined);
                 mobs.open(joined);
+                structures.open(joined);
                 ambience.calendar().open(joined);
                 server = joined;
                 // What the server shared is kept: it sends everything as soon as the player joins,
@@ -273,6 +282,7 @@ public final class FarPlayerTracker {
         mobs.carried(carried.keySet());
         mobs.tick(current, self, minecraft.options.getEffectiveRenderDistance() * 16, config,
                 shared.active() ? shared : null);
+        structures.tick(current, self, minecraft.options.getEffectiveRenderDistance() * 16, config);
     }
 
     /** Everyone followed rests where they were last known, as they looked, on what they rode. */

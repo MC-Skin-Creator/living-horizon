@@ -145,8 +145,10 @@ public final class SodiumOptions implements ConfigEntryPoint {
         return b.createOptionPage().setName(Component.translatable(KEY + "mobs"))
                 .addOptionGroup(scan(b, d, b.createOptionGroup().setName(Component.translatable(KEY + "mobs.general"))
                         .addOption(opens(b, "chooseMobs", MobTypesScreen::new))
-                        .addOption(button(b, "forgetMobs", parent -> confirm(parent, "forgetMobs",
-                                () -> FarPlayerTracker.get().mobs().forgetAll())))))
+                        .addOption(button(b, "forgetMobs", parent -> confirm(parent, "forgetMobs", () -> {
+                            FarPlayerTracker.get().mobs().forgetAll();
+                            FarPlayerTracker.get().structures().forgetAll();
+                        })))))
                 .addOptionGroup(b.createOptionGroup().setName(Component.translatable(KEY + "mobs.creatures"))
                         .addOption(bool(b, "distantMobs", d.distantMobs, v -> FarConfig.get().distantMobs = v,
                                 () -> FarConfig.get().distantMobs))
@@ -169,7 +171,9 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 v -> FarConfig.get().maxDistantEntities = v, () -> FarConfig.get().maxDistantEntities,
                                 plain("maxDistantEntities", 0, true)))
                         .addOption(blocks(b, "entityMaxDistance", 0, 4000, d.entityMaxDistance,
-                                v -> FarConfig.get().entityMaxDistance = v, () -> FarConfig.get().entityMaxDistance)));
+                                v -> FarConfig.get().entityMaxDistance = v, () -> FarConfig.get().entityMaxDistance))
+                        .addOption(bool(b, "distantStructures", d.distantStructures,
+                                v -> FarConfig.get().distantStructures = v, () -> FarConfig.get().distantStructures)));
     }
 
     /** "Scan the chunks around": only in a single player world, read again whenever the screen is built. */

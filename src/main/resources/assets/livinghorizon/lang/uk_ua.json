@@ -72,6 +72,8 @@
   "livinghorizon.options.entityMaxDistance": "Промальовка сутностей",
   "livinghorizon.options.entityMaxDistance.tooltip": "На якій відстані показано далекі човни, транспорт і манекени, окремо від мобів. «Без обмежень»: так далеко, як їх запам’ятовано.",
   "livinghorizon.options.entityMaxDistance.zero": "Без обмежень",
+  "livinghorizon.options.distantStructures": "Показувати дирижаблі",
+  "livinghorizon.options.distantStructures.tooltip": "Дирижаблі та інші споруди, які рухає Sable (Create: Aeronautics), залишаються видимими поза зоною, там, де їх бачили востаннє. «Промальовка сутностей» діє і на них.",
   "livinghorizon.options.animationMinPixels": "Мін. для анімації",
   "livinghorizon.options.animationMinPixels.tooltip": "Моби, менші за цей розмір на екрані, припиняють анімації ходьби й спокою, яких однаково не видно. Менше — жвавіше; більше — краща продуктивність.",
   "livinghorizon.options.animationMinPixels.zero": "Завжди",

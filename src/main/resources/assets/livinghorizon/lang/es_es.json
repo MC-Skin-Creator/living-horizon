@@ -72,6 +72,8 @@
   "livinghorizon.options.entityMaxDistance": "Renderizado de entidades",
   "livinghorizon.options.entityMaxDistance.tooltip": "Hasta qué distancia se muestran las barcas, los vehículos y los maniquíes lejanos, aparte de las criaturas. Sin límite: hasta donde se recuerdan.",
   "livinghorizon.options.entityMaxDistance.zero": "Sin límite",
+  "livinghorizon.options.distantStructures": "Mostrar dirigibles",
+  "livinghorizon.options.distantStructures.tooltip": "Los dirigibles y otras construcciones que mueve Sable (Create: Aeronautics) siguen visibles fuera de alcance, donde se vieron por última vez. «Renderizado de entidades» también se aplica a ellos.",
   "livinghorizon.options.animationMinPixels": "Tamaño mín. animado",
   "livinghorizon.options.animationMinPixels.tooltip": "Las criaturas más pequeñas que esto en pantalla dejan de reproducir sus animaciones de caminar y de reposo, que de todos modos no se verían. Más bajo es más vivo; más alto mejora el rendimiento.",
   "livinghorizon.options.animationMinPixels.zero": "Siempre",

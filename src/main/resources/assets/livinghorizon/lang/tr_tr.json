@@ -72,6 +72,8 @@
   "livinghorizon.options.entityMaxDistance": "Varlık Görüş Mesafesi",
   "livinghorizon.options.entityMaxDistance.tooltip": "Uzaktaki teknelerin, araçların ve mankenlerin canlılardan ayrı olarak ne kadar uzağa kadar gösterileceği. Sınırsız: hatırlandıkları her yere kadar.",
   "livinghorizon.options.entityMaxDistance.zero": "Sınırsız",
+  "livinghorizon.options.distantStructures": "Hava Gemilerini Göster",
+  "livinghorizon.options.distantStructures.tooltip": "Sable'ın hareket ettirdiği hava gemileri ve diğer yapılar (Create: Aeronautics), menzil dışına çıktıklarında en son görüldükleri yerde görünür kalır. \"Varlık Görüş Mesafesi\" onlar için de geçerlidir.",
   "livinghorizon.options.animationMinPixels": "Animasyon Eşiği",
   "livinghorizon.options.animationMinPixels.tooltip": "Ekranda bundan küçük görünen canlılar, zaten görülemeyecek yürüme ve bekleme animasyonlarını durdurur. Düşük değer daha canlı; yüksek değer performansı arttırır.",
   "livinghorizon.options.animationMinPixels.zero": "Her Zaman",
