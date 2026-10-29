@@ -10,6 +10,7 @@ import net.minecraft.client.OptionInstance;
 import net.minecraft.client.Options;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.ConfirmScreen;
@@ -18,6 +19,7 @@ import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -31,13 +33,21 @@ import java.util.function.Consumer;
 public final class FarConfigScreen extends SideOptionsScreen {
     private static final String KEY = "livinghorizon.options.";
 
-    /** Beside the title: only the Discord logo and the changelog's icon, drawn over their buttons, which says what they are. */
+    /**
+     * Beside the title: one button per {@link ProjectLink}, then the changelog's, only their icon
+     * drawn over them, which says what they are.
+     */
     private static final int LOGO_BUTTON = 20;
-    private static final int LOGO_GAP = 4;
+    private static final int LOGO_GAP = 2;
+    /** Between the end of the title and the first icon, and from the icons to the column's edge. */
+    private static final int MARGIN = 6;
 
     private final @Nullable Screen parent;
-    private @Nullable Button discord;
+    private final List<Button> links = new ArrayList<>();
     private @Nullable Button changelog;
+    private @Nullable StringWidget titleWidget;
+    /** How far left the title and the icons were moved to fit a narrow column. */
+    private int titleShift;
 
     public FarConfigScreen(@Nullable Screen parent) {
         super(parent, Minecraft.getInstance().options, Component.translatable(KEY + "title"));
@@ -144,30 +154,61 @@ public final class FarConfigScreen extends SideOptionsScreen {
     @Override
     protected void addTitle() {
         super.addTitle();
-        discord = addRenderableWidget(Button.builder(Component.empty(), b -> DiscordLink.open(this))
-                .size(LOGO_BUTTON, LOGO_BUTTON)
-                .tooltip(Tooltip.create(Component.translatable(KEY + "discord.tooltip"))).build());
+        links.clear();
+        for (ProjectLink link : ProjectLink.values()) {
+            links.add(addRenderableWidget(Button.builder(Component.empty(), b -> LinkScreen.open(this, link))
+                    .size(LOGO_BUTTON, LOGO_BUTTON)
+                    .tooltip(Tooltip.create(Component.translatable(KEY + link.key + ".tooltip"))).build()));
+        }
         changelog = addRenderableWidget(Button.builder(Component.empty(), b -> minecraft.setScreen(new ChangelogScreen(this)))
                 .size(LOGO_BUTTON, LOGO_BUTTON)
                 .tooltip(Tooltip.create(Component.translatable(KEY + "changelog.tooltip"))).build());
+        titleWidget = null;
+        layout.visitWidgets(widget -> {
+            if (widget instanceof StringWidget text && text.getMessage() == title) titleWidget = text;
+        });
     }
 
-    /** The logos go where the title ends, in the middle of the header: Discord, then the changelog. */
+    /**
+     * The icons go where the title ends, in the middle of the header: the links, then the
+     * changelog. On a narrow column the title and the icons slide left together to fit.
+     */
     @Override
     protected void repositionElements() {
         super.repositionElements();
-        if (discord == null || changelog == null) return;
-        discord.setX(columnWidth() / 2 + font.width(title) / 2 + 6);
-        discord.setY((layout.getHeaderHeight() - LOGO_BUTTON) / 2);
-        changelog.setX(discord.getX() + LOGO_BUTTON + LOGO_GAP);
-        changelog.setY(discord.getY());
+        if (changelog == null) return;
+        List<Button> row = new ArrayList<>(links);
+        row.add(changelog);
+        int rowWidth = row.size() * LOGO_BUTTON + (row.size() - 1) * LOGO_GAP;
+        int start = columnWidth() / 2 + font.width(title) / 2 + MARGIN;
+        titleShift = Math.max(0, start + rowWidth + MARGIN - columnWidth());
+        if (titleWidget != null) titleWidget.setX(titleWidget.getX() - titleShift);
+        int x = start - titleShift;
+        for (Button button : row) {
+            button.setX(x);
+            button.setY((layout.getHeaderHeight() - LOGO_BUTTON) / 2);
+            x += LOGO_BUTTON + LOGO_GAP;
+        }
+    }
+
+    /** The version stays under the title when the title was moved. */
+    @Override
+    protected int titleCentre() {
+        return super.titleCentre() - titleShift;
     }
 
     @Override
     protected void drawOver(GuiGraphics graphics) {
-        if (discord == null || changelog == null) return;
-        Icons.discord(graphics, discord.getX() + (LOGO_BUTTON - Icons.SIZE) / 2, discord.getY() + (LOGO_BUTTON - Icons.SIZE) / 2);
-        Icons.changelog(graphics, changelog.getX() + (LOGO_BUTTON - Icons.SIZE) / 2, changelog.getY() + (LOGO_BUTTON - Icons.SIZE) / 2);
+        ProjectLink[] all = ProjectLink.values();
+        for (int i = 0; i < links.size() && i < all.length; i++) {
+            Button button = links.get(i);
+            Icons.draw(graphics, all[i].icon, button.getX() + (LOGO_BUTTON - Icons.SIZE) / 2,
+                    button.getY() + (LOGO_BUTTON - Icons.SIZE) / 2);
+        }
+        if (changelog != null) {
+            Icons.changelog(graphics, changelog.getX() + (LOGO_BUTTON - Icons.SIZE) / 2,
+                    changelog.getY() + (LOGO_BUTTON - Icons.SIZE) / 2);
+        }
     }
 
     /** Restore defaults sits beside Done: it is about every setting of the screen, not the birds. */
