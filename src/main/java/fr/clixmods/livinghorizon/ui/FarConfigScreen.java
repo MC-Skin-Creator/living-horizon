@@ -31,11 +31,13 @@ import java.util.function.Consumer;
 public final class FarConfigScreen extends SideOptionsScreen {
     private static final String KEY = "livinghorizon.options.";
 
-    /** Beside the title: only the Discord logo, drawn over it, which says what it is. */
+    /** Beside the title: only the Discord logo and the changelog's icon, drawn over their buttons, which says what they are. */
     private static final int LOGO_BUTTON = 20;
+    private static final int LOGO_GAP = 4;
 
     private final @Nullable Screen parent;
     private @Nullable Button discord;
+    private @Nullable Button changelog;
 
     public FarConfigScreen(@Nullable Screen parent) {
         super(parent, Minecraft.getInstance().options, Component.translatable(KEY + "title"));
@@ -67,7 +69,8 @@ public final class FarConfigScreen extends SideOptionsScreen {
         header(Component.translatable(KEY + "impostorsSection"));
         list.addSmall(
                 bool("impostors", c.impostors, v -> c.impostors = v),
-                bool("impostorPlayers", c.impostorPlayers, v -> c.impostorPlayers = v));
+                bool("impostorEntities", c.impostorEntities, v -> c.impostorEntities = v));
+        list.addSmall(bool("impostorPlayers", c.impostorPlayers, v -> c.impostorPlayers = v), null);
         list.addBig(blocks("impostorDistance", 32, 2000, c.impostorDistance, v -> c.impostorDistance = v));
         list.addBig(unit("impostorPixels", "pixels", 0, FarConfig.MAX_IMPOSTOR_PIXELS, c.impostorPixels,
                 v -> c.impostorPixels = v));
@@ -97,15 +100,9 @@ public final class FarConfigScreen extends SideOptionsScreen {
                                 () -> FarPlayerTracker.get().resting().forgetAll()))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "forgetSleepers.tooltip"))).build());
 
+        // In three parts, as on Sodium's page: what goes for both, then the mobs, then the other entities.
         header(Component.translatable(KEY + "mobs"));
-        list.addSmall(
-                bool("distantMobs", c.distantMobs, v -> c.distantMobs = v),
-                integer("maxDistantMobs", 0, FarConfig.UNLIMITED_MOBS, c.maxDistantMobs, v -> c.maxDistantMobs = v, true));
-        list.addBig(blocks("mobMaxDistance", 0, 4000, c.mobMaxDistance, v -> c.mobMaxDistance = v));
-        list.addSmall(
-                bool("rememberNamedMobs", c.rememberNamedMobs, v -> c.rememberNamedMobs = v),
-                unit("animationMinPixels", "pixels", 0, 40, c.animationMinPixels, v -> c.animationMinPixels = v));
-        list.addBig(blocks("animationMaxDistance", 0, 4000, c.animationMaxDistance, v -> c.animationMaxDistance = v));
+        subheader(Component.translatable(KEY + "mobs.general"));
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "chooseMobs"), b -> minecraft.setScreen(new MobTypesScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "chooseMobs.tooltip"))).build(),
@@ -114,6 +111,21 @@ public final class FarConfigScreen extends SideOptionsScreen {
                         .tooltip(Tooltip.create(Component.translatable(KEY + "forgetMobs.tooltip"))).build());
         list.addSmall(scanButton(), chunks("scanRadius", MobScan.MIN_RADIUS, MobScan.MAX_RADIUS, c.scanRadius,
                 v -> c.scanRadius = v).createButton(minecraft.options, 0, 0, 150));
+        subheader(Component.translatable(KEY + "mobs.creatures"));
+        list.addSmall(
+                bool("distantMobs", c.distantMobs, v -> c.distantMobs = v),
+                integer("maxDistantMobs", 0, FarConfig.UNLIMITED_MOBS, c.maxDistantMobs, v -> c.maxDistantMobs = v, true));
+        list.addBig(blocks("mobMaxDistance", 0, 4000, c.mobMaxDistance, v -> c.mobMaxDistance = v));
+        list.addSmall(
+                bool("rememberNamedMobs", c.rememberNamedMobs, v -> c.rememberNamedMobs = v),
+                unit("animationMinPixels", "pixels", 0, 40, c.animationMinPixels, v -> c.animationMinPixels = v));
+        list.addBig(blocks("animationMaxDistance", 0, 4000, c.animationMaxDistance, v -> c.animationMaxDistance = v));
+        subheader(Component.translatable(KEY + "mobs.entities"));
+        list.addSmall(
+                bool("distantEntities", c.distantEntities, v -> c.distantEntities = v),
+                integer("maxDistantEntities", 0, FarConfig.UNLIMITED_MOBS, c.maxDistantEntities,
+                        v -> c.maxDistantEntities = v, true));
+        list.addBig(blocks("entityMaxDistance", 0, 4000, c.entityMaxDistance, v -> c.entityMaxDistance = v));
 
         header(Component.translatable(KEY + "birds"));
         list.addSmall(
@@ -135,21 +147,27 @@ public final class FarConfigScreen extends SideOptionsScreen {
         discord = addRenderableWidget(Button.builder(Component.empty(), b -> DiscordLink.open(this))
                 .size(LOGO_BUTTON, LOGO_BUTTON)
                 .tooltip(Tooltip.create(Component.translatable(KEY + "discord.tooltip"))).build());
+        changelog = addRenderableWidget(Button.builder(Component.empty(), b -> minecraft.setScreen(new ChangelogScreen(this)))
+                .size(LOGO_BUTTON, LOGO_BUTTON)
+                .tooltip(Tooltip.create(Component.translatable(KEY + "changelog.tooltip"))).build());
     }
 
-    /** The logo goes where the title ends, in the middle of the header. */
+    /** The logos go where the title ends, in the middle of the header: Discord, then the changelog. */
     @Override
     protected void repositionElements() {
         super.repositionElements();
-        if (discord == null) return;
+        if (discord == null || changelog == null) return;
         discord.setX(columnWidth() / 2 + font.width(title) / 2 + 6);
         discord.setY((layout.getHeaderHeight() - LOGO_BUTTON) / 2);
+        changelog.setX(discord.getX() + LOGO_BUTTON + LOGO_GAP);
+        changelog.setY(discord.getY());
     }
 
     @Override
     protected void drawOver(GuiGraphics graphics) {
-        if (discord == null) return;
+        if (discord == null || changelog == null) return;
         Icons.discord(graphics, discord.getX() + (LOGO_BUTTON - Icons.SIZE) / 2, discord.getY() + (LOGO_BUTTON - Icons.SIZE) / 2);
+        Icons.changelog(graphics, changelog.getX() + (LOGO_BUTTON - Icons.SIZE) / 2, changelog.getY() + (LOGO_BUTTON - Icons.SIZE) / 2);
     }
 
     /** Restore defaults sits beside Done: it is about every setting of the screen, not the birds. */
@@ -158,8 +176,8 @@ public final class FarConfigScreen extends SideOptionsScreen {
         //? if >=1.20.2 {
         LinearLayout row = LinearLayout.horizontal().spacing(8);
         //?} else {
-        /*LinearLayout row = new LinearLayout(0, 0, LinearLayout.Orientation.HORIZONTAL);
-        row.defaultChildLayoutSetting().padding(4);
+        /*// Before 1.20.2 the row spreads its buttons over its own width: two of 150 and a gap of 8.
+        LinearLayout row = new LinearLayout(2 * 150 + 8, 20, LinearLayout.Orientation.HORIZONTAL);
         *///?}
         row.addChild(Button.builder(Component.translatable(KEY + "restoreDefaults"), b -> restoreDefaults())
                 .tooltip(Tooltip.create(Component.translatable(KEY + "restoreDefaults.tooltip"))).width(150).build());
@@ -193,7 +211,7 @@ public final class FarConfigScreen extends SideOptionsScreen {
     /** Asks, then puts every setting back to its default and reopens the screen to show them. */
     private void restoreDefaults() {
         minecraft.setScreen(new ConfirmScreen(yes -> {
-            if (yes) FarConfig.reset();
+            if (yes) FarConfig.reset(MobList.all());
             minecraft.setScreen(yes ? new FarConfigScreen(parent) : this);
         }, Component.translatable(KEY + "restoreDefaults"), Component.translatable(KEY + "restoreDefaults.confirm")));
     }

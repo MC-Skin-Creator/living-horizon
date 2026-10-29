@@ -5,7 +5,30 @@
 ### Client
 
 #### New
+- **Vehicles from other mods far away** — vehicles from other mods, such as Immersive Aircraft's planes, now stay visible past the render distance where they were left, like boats; they are listed under the *Entities* tab of *Mobs & Entities...* from the start, and the ones you ride without steering (minecarts, some other mods' vehicles) are off until you turn them on.
+- **Settings for entities** — boats, vehicles and mannequins now have settings of their own, apart from the mobs: *Show Entities*, *Max Entities* and *Entity Render Distance*, which has no limit by default.
+- **Simplified Mobs and Simplified Entities** — *Simplified Entities* is now two switches: *Simplified Mobs*, and *Simplified Entities* for boats, vehicles and mannequins, which far away become flat pictures too, seen from above and below as well; *Simplified Players* no longer depends on either, and the button that shows the pictures is now *Picture Preview...*, with a tab for the entities' pictures.
 - **List of hidden mobs** — `config/livinghorizon.json` now has a `hiddenMobs` list of the mobs never shown far away, by id (`"minecraft:pig"`) or for a whole mod (`"cobblemon:*"`), easy to share in a modpack; mobs switched to *Hidden* under *Mobs & Entities...* are written there.
+- **Changelog button** — the mod's settings now have a changelog button beside the Discord logo, to read what changed in each version (a *Read the changelog* button on Sodium's page).
+
+#### Improved
+- **Servers without the mod** — joining a server without Living Horizon, or with a version of it too old or too new, now says in the chat that distant players are not shown there; with *Show Players* off, nothing is said.
+- **Mobs & Entities in two tabs** — *Mobs & Entities...* now lists the mobs and the other entities (boats, vehicles, mannequins) under two tabs, where a boat or a vehicle is simply shown or hidden.
+- **Mobs & Entities changes seen at once** — turning a kind on or off in *Mobs & Entities...* now shows in the world behind it straight away, not once the screen is closed.
+- **Distant mobs settings in three parts** — the *Distant Mobs & Entities* settings are now split into *General*, *Mobs* and *Entities*, with the list, the scan and *Forget All* under *General*.
+- **Players riding far away** — with *Simplified Players*, a far player in a boat, a minecart, a plane or on a happy ghast is now pictured from above and below like what they ride, no longer seen side-on when you look down on them.
+- **Planes left in the air** — a player who logs off while flying stays in the air on their plane, which hovers where it was, or flies round in circles if it was flying along.
+- **Saved pictures shown** — the *Picture Preview* screen now says under each mob whether its picture is shared, read back from an earlier game, new and saved for the next ones, or not saved, with when and in which world it was made.
+- **Sitting pets stay put** — cats, wolves and parrots told to sit now stay sitting far away, instead of standing up and wandering off.
+
+#### Fixed
+- **Crash opening Mobs & Entities from the title screen** — opening *Mobs & Entities...* from the title screen no longer crashes the game (Minecraft 26.x).
+- **Other mods' vehicles turning black** — far vehicles and mobs from some other mods, such as Immersive Aircraft's planes, no longer turn black for a moment as you travel towards them.
+- **Mounts drawn twice** — the mount or vehicle a far player rides, such as another mod's plane, is no longer drawn a second time beside them.
+
+## 0.13.0 — 2026-10-28
+
+### Client
 
 #### Improved
 - **Smoother game among distant mobs and offline players** — working out where distant mobs and players who logged off can walk no longer takes time from the game: it is done in the background.
@@ -13,6 +36,18 @@
 - **Distant phantoms and ghasts flying** — distant phantoms now circle in the sky and distant ghasts drift about, instead of hanging still in the air.
 - **Phantoms and ghasts seen from below** — as *Simplified Entities* (flat pictures of far mobs), phantoms and ghasts are now pictured from below and from above too, like birds, not only from the side.
 - **Smoother with many distant mobs on Vulkan** — the game no longer loses time on every distant mob, every frame, when it draws with Vulkan (Minecraft 26.2 and later) or over Distant Horizons (Minecraft 26.3).
+- **Every mob seen from afar** — monsters, bats, fish and every other mob are now shown far away from the start, roaming like the animals, so endermen stay in view across the End; animals you hid stay hidden.
+
+#### Fixed
+- **Buttons piled on top of each other** — the buttons at the bottom of *Distant Mobs & Entities* no longer sit on top of one another, and *Restore Defaults* is back to the left of *Done* in the settings (Minecraft 1.20.1).
+- **Game freezing when changing dimension or leaving a world** — the game no longer freezes for good when you go through a portal or leave a world (with Distant Horizons).
+
+## 0.12.1 — 2026-10-27
+
+### Client
+
+#### Fixed
+- **Benchmark open to every player** — `/livinghorizon benchmark` is no longer offered to players; it is kept for testing the mod.
 
 ## 0.12.0 — 2026-10-23
 

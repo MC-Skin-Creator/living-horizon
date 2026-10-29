@@ -192,6 +192,11 @@ request, and attaches the jar as a 14-day workflow artifact. A pull request that
 changes Markdown files and the LICENSE skips the targets (the changelog is still checked).
 CI is what checks a change; a pull request is not done until it is green.
 
+Every workflow runs Gradle through `.github/scripts/gradle.sh`: an attempt is stopped once it
+has done nothing for 5 minutes (no log line, no byte written, no CPU for Java) or after 25
+minutes, and one stopped that way or ended by a failed download is tried again, three times
+at most; any other failure ends it at once. The build jobs stop after 90 minutes.
+
 The Gradle cache is written by `.github/workflows/cache.yml` on `develop` only, and read by
 the pull request builds and the release (`.github/actions/gradle-cache`): one entry of
 downloads shared by every job, and one per Forge and NeoForge node with its prepared
@@ -318,6 +323,14 @@ come back, add it here in the same pull request: this file is what the next sess
   `DhSource.open` takes the one of the player's dimension; taking the first read another
   dimension's ground. And Distant Horizons' read cache keeps an area as first read, empty if it
   was not built yet: `DhSource.cache` empties it every 30 s, and 2 s after a column came back empty.
+- **The game frozen for good as the player changes dimension or leaves** (a thread dump with the
+  render thread in `LodWorld.release`, on a write lock; issue #248): a reader held the lock inside a
+  Distant Horizons read, which waits with no time limit for Distant Horizons' threads, while those
+  waited for the render thread (to upload their terrain) or had been shut down with the world,
+  dropping the read. Only a source that keeps what it reads between reads takes the lock
+  (`LodSource.keepsBetweenReads`, Voxy); a Distant Horizons read of a world left keeps nothing
+  (`DhSource.Opened`), and `LodWorld.suspend` interrupts those still waiting (`ModCalls`), which
+  Distant Horizons answers as cancelled. The game's thread never waits for a read of another mod.
 - **Depth view lighter or darker as far mobs show or hide**: the game's far plane follows the
   farthest figure drawn (`GhostRenderer.farPlane`); the view shades against `FarDepth.VIEW_FAR`.
 - **Distant Horizons' rendering engine** (from 3.3: Blaze3D or OpenGL). With Iris installed,
@@ -436,6 +449,11 @@ come back, add it here in the same pull request: this file is what the next sess
   bird is stood again on what is under it. Birds jumping in a loop: a move is a flight once it
   is long, so a target is only moved in from a column's edge (never re-drawn on the block), and a
   duck swims as far as the water goes on (`Perchers.swims`). The `perchers` scenario counts all three.
+- **Crash opening one of the mod's screens from the title screen on 26.x** ("Components not bound
+  yet" under `new ItemStack`, through Mod Menu): from 26.x an item has no components until a
+  world's data binds them, and a stack of it throws. `MobTypesScreen.icon` goes without its icon
+  there; any other item the mod's screens draw needs the same. The `vehicles` scenario opens the
+  list from the title screen and logs whether items have their components there.
 - **Escape from a screen opened on Sodium's page goes back to the game**, not to Sodium's:
   Sodium runs its "close" shortcut when Escape is released, so a screen that closes on the
   press hands the release to Sodium's. Over Sodium's screen the mod's screens and
@@ -455,6 +473,21 @@ come back, add it here in the same pull request: this file is what the next sess
   that changes more than the bracket saved throws: widen the bracket's `save`. A step that
   starts drawing into a framebuffer with colour must save `GlState.COLOUR` and set blending
   and the colour mask itself.
+- **Another mod's vehicle vanishing far away** (an aircraft, a car, a tank gone past the render
+  distance): an entity that is not alive is a vehicle only when its class declares
+  `getControllingPassenger` again (steered: shown from the start, like a boat) or `positionRider`
+  (seated: listed but off), found on `Entity` by shape (`track/Vehicles`). Its class is read from
+  the renderer its kind is drawn with (`MobList.vehicle`), so it is listed before one is met; a
+  renderer declared for any entity leaves it to the first one met (`knownVehicles`). It is drawn
+  up to *Entity Render Distance*, not the mobs' (`GhostRenderer.creature`). Check the mod's classes
+  with `javap` on its jar; the `vehicles` scenario checks Immersive Aircraft
+  (`run.sh vehicles --with immersive-aircraft`).
+- **Another mod's figure drawn black far away, its rider lit** (Immersive Aircraft's planes as
+  you travel towards them, from 26.1): its renderer keeps its own copy of the light, read as it
+  extracts (`getPackedLightCoords`), and ignores the `lightCoords` the mod sets after. In a chunk
+  the client has just received and not lit yet that reads 0. While `GhostRenderer.extract` runs,
+  `EntityRendererLightMixin` hands out the mod's light (full in a picture being baked). The
+  `vehicles` scenario reads the light the planes keep as their chunks come in.
 - **A far player's mount drawn twice, or a rider sitting on air** (a happy ghast beside its
   rider, a player met already riding floating far away): a mount is drawn under its rider
   (`FarPlayer.mountPuppet`), and the remembered mobs leave out every id `FarPlayer.carriedMount`
@@ -464,6 +497,15 @@ come back, add it here in the same pull request: this file is what the next sess
   the server's copy of the mount (`PositionsMessage.Mount`, kept by `PositionPublisher` with
   their last position) unless this client saw it itself. `CarriedMountTest`,
   `SharedPositionsTest` and the `lanshare`, `dedicated` and `restingmount` scenarios check it.
+  The server names what each player rides by its id, whatever it is (a plane, a modded mount):
+  named only for the shared kinds, a plane taken out of this client's sight had no id, and its
+  remembered copy was drawn on its own as well as under the rider (`FarPlayer.mountFrom`).
+- **A plane left in the air hovering or on the ground, when its pilot logged off flying** (the
+  debug command's test players circle; a real player's plane does not): what the client sees of
+  a vehicle the server moves has no motion, its last positions stop before the player leaves, and
+  a copy made while it stood says it is on the ground. `FarPlayer.Pace` keeps the fastest of the
+  last two seconds for `RestingMount.keepMotion`, `FarPlayer.mountToRest` takes off the ground or
+  not from the server's last copy, and `RestingMount.tick` looks under it once its blocks are known.
 - **A far player in an old skin** (they changed it, the puppet did not): a `RemotePlayer` finds its
   `PlayerInfo` by id once and keeps it. A new tab list entry means a new skin, so
   `FarPlayer.observeRemote` makes a new puppet when the entry changes (`newSkin`). The server's
@@ -485,6 +527,10 @@ come back, add it here in the same pull request: this file is what the next sess
   answers. Far, resting and logged-off player puppets are not ticked
   either, on every version (`Player.xCloak` before 1.21.9): not covered yet, and `cape` cannot
   just take any `ClientAvatarEntity`, since live players go through the same `extract` and tick.
+- **Distant pets standing up** (a cat or wolf told to sit, its copy far away standing and
+  strolling): the game saves the order to sit from `orderedToSit`, which only the server sets, so a
+  save made on the client says `Sitting:0b`. `MobMemory.onUnload` writes `isInSittingPose()` into
+  it; a sitting copy gets no stroll. The `sittingpets` scenario checks it.
 - **A rider turned sideways** (a player resting in a boat facing left or right of it): the seat's
   yaw is the rider's body (`yBodyRot`), which the boat keeps in line with itself, never the head
   (`getYRot`), which looks wherever the player looked as they left.
@@ -534,7 +580,8 @@ come back, add it here in the same pull request: this file is what the next sess
   either**: the author measured 70 to 100 FPS from the two together; the per-box queries are the
   fallback for OpenGL older than 4.3 and nothing else.
 - **Frame rate lost to the mod** (with Voxy or not): measure before guessing. On the player's
-  machine, ask for the report of `/livinghorizon benchmark` (`debug/Benchmark`): frame times with
+  machine, ask for the report of `/livinghorizon benchmark` (`debug/Benchmark`; the game must be
+  started with `-Dlh.benchmark=true`, without it the command is not there): frame times with
   the mod off, each preset and each part on its own, on their GPU and mods. Run in the world
   `/livinghorizon benchmark world` makes, it starts from a fixed spot and view, so two reports,
   before and after an update, compare. Here, the `perf` game test does the same headless.
@@ -553,6 +600,16 @@ come back, add it here in the same pull request: this file is what the next sess
   `glColorMask` for all buffers at once and puts back the first buffer's value desynchronises
   that cache for the pack's other buffers. `FarDepth.GlState` saves and restores both per draw
   buffer (`glEnablei`, `glColorMaski`); every raw GL draw of the mod goes through it.
+- **CI jobs running for hours, or failing on a Forge node with `IOException: closed`**
+  (`Received RST_STREAM`, after a `Cache miss!` stack trace that is only information): Forge's
+  Maven left the download of `forge-<version>-userdev.jar` hanging, and ForgeGradle's Mavenizer
+  waits on it with no limit of its own. `gradle.sh` stops the attempt once it has stalled for
+  5 minutes and tries again; a job
+  that still fails three times means Forge's Maven is down: re-run it later. A timeout reads
+  `HttpTimeoutException: request timed out` too, and a download cut short stays in the cache
+  as a truncated jar (`zip END header not found` on the next attempt): `gradle.sh` deletes the
+  jars that do not open before trying again. What Forge's Maven served is kept in each Forge
+  node's cache entry (`mavenizer/caches/maven/forge`), so a build only asks it for what changed.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
@@ -590,7 +647,7 @@ someone who has never seen the code:
   behaviour: "mobs hide behind hills" reads as a feature, not a fix.
 - say what the player notices, not how it was done: no shader, depth, buffer, pass,
   query, mask, class or setting internals; nothing about the debug screens. Name settings
-  and screens as the game shows them (impostors are *Simplified Entities*), and explain
+  and screens as the game shows them (impostors are *Simplified Mobs*, *Simplified Entities* and *Simplified Players*), and explain
   them in plain words (flat pictures of far mobs).
 - one bullet per problem: two causes of the same symptom share one bullet.
 - nothing for CI, refactors, tooling, documentation or debug-only tools.

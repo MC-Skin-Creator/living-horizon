@@ -143,7 +143,8 @@ public final class AmbientRenderer {
      */
     private static boolean impostor(Ambience.Flyer bird, double x, double y, double z, double distance, double pull,
                                     float yaw, float wingDegrees, FarConfig config, double pixelsPerRadian) {
-        if (!ImpostorAtlas.usable()) return false;
+        // Birds are creatures: pictured under Simplified Mobs.
+        if (!ImpostorAtlas.usable() || !config.impostors) return false;
         double apparent = distance < 1e-3 ? Double.MAX_VALUE : bird.span * bird.scale / distance * pixelsPerRadian;
         if (!ImpostorThreshold.pictured(distance, apparent, bird.view >= 0, config.impostorDistance, config.impostorPixels)) {
             return false;

@@ -103,6 +103,8 @@ extra["lhMixins"] = buildList {
     add("DhClientApiMixin")
     add("EntityMixin")
     add("EntityRenderDispatcherMixin")
+    // The light of the figures the mod extracts, where the client has none.
+    add("EntityRendererLightMixin")
     // The far plane: the game renderer's before 26.1, the camera's from there.
     add(if (atLeast("26.1")) "CameraMixin" else "GameRendererMixin")
     // From 26.1 the projection with view bobbing in it only goes to the GPU: read on its way.

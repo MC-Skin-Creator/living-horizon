@@ -142,6 +142,8 @@ tasks {
 
         // The license and the credits travel with the jar.
         from(rootProject.file("LICENSE"))
+        // The changelog the game shows in its own screen.
+        from(rootProject.file("changelog")) { include("en.md", "fr.md"); into("assets/livinghorizon/changelog") }
         from(rootProject.file("CREDITS.md"))
     }
 

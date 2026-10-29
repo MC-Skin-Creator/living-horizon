@@ -5,10 +5,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import fr.clixmods.livinghorizon.track.MobKinds;
+import fr.clixmods.livinghorizon.track.Vehicles;
 import fr.clixmods.livinghorizon.platform.Platform;
-import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.MobCategory;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
@@ -52,10 +51,20 @@ public final class FarConfig {
     @SerializedName(value = "depthOcclusion", alternate = "voxyOcclusion")
     public boolean depthOcclusion = true;
 
-    private static final int CURRENT = 11;
+    private static final int CURRENT = 13;
 
     /** Skinned figures, which Distant Friends uses as its fake players: shown, standing still. */
     private static final String MANNEQUIN = "minecraft:mannequin";
+
+    /**
+     * The mobs a server shares and mannequins: what a new file holds before the game has
+     * registered its mobs, which {@link #adoptNewMobs} then adds.
+     */
+    private static List<String> defaultMobTypes() {
+        List<String> types = new ArrayList<>(MobKinds.TYPES);
+        types.add(MANNEQUIN);
+        return types;
+    }
 
     /** Whether {@link #hiddenMobs} hides this type, by its own id or its mod's. */
     public boolean hidesMob(String type) {
@@ -75,10 +84,8 @@ public final class FarConfig {
         return (rememberNamedMobs && named) || mobTypes.contains(type);
     }
 
-    private static List<String> defaultMobTypes() {
-        List<String> types = new ArrayList<>(MobKinds.TYPES);
-        types.add(MANNEQUIN);
-        return types;
+    private static List<String> defaultStillMobTypes() {
+        return new ArrayList<>(List.of("minecraft:happy_ghast", MANNEQUIN));
     }
 
 
@@ -130,8 +137,39 @@ public final class FarConfig {
     /** How many remembered mobs are drawn at once: the nearest ones. {@link #UNLIMITED_MOBS}: all. */
     public int maxDistantMobs = 512;
 
+    /**
+     * Boats, vehicles and mannequins met on the way stay where they were, apart from the mobs:
+     * the other tab of the list of mobs ({@link fr.clixmods.livinghorizon.track.MobKinds#creature}).
+     */
+    public boolean distantEntities = true;
+
+    /**
+     * How many remembered boats, vehicles and mannequins are drawn at once, the nearest ones,
+     * apart from {@link #maxDistantMobs}: a crowd of mobs never pushes an aircraft out.
+     * {@link #UNLIMITED_MOBS}: all.
+     */
+    public int maxDistantEntities = 256;
+
+    /** Whether remembered figures of this kind are shown: the mobs, or the other entities. */
+    public boolean shows(boolean creature) {
+        return creature ? distantMobs : distantEntities;
+    }
+
+    /** How many of this kind are drawn at once, the nearest ones: every one past {@link #UNLIMITED_MOBS}. */
+    public int most(boolean creature, int there) {
+        int most = creature ? maxDistantMobs : maxDistantEntities;
+        return most >= UNLIMITED_MOBS ? there : Math.max(0, Math.min(most, there));
+    }
+
     /** Blocks: past this, distant mobs are not drawn. 0 is no limit. */
     public int mobMaxDistance = 512;
+
+    /**
+     * Blocks: past this, distant boats, vehicles and mannequins are not drawn, apart from the
+     * mobs' limit. 0, the default, is no limit: there are few of them, and an aircraft is seen
+     * from afar.
+     */
+    public int entityMaxDistance = 0;
 
     /**
      * Distant mobs are drawn only where terrain is drawn under them: a chunk the game draws, or
@@ -147,10 +185,17 @@ public final class FarConfig {
      * The mobs shown far away, by type id ({@code "minecraft:horse"}). This client
      * remembers these when it sees them leave; a server with the mod shares its own list
      * ({@link MobKinds#TYPES}), and only those of its mobs in this list are shown.
-     * Hostile mobs despawn when nobody is near, so remembering them shows ghosts.
+     * Every kind is shown from the start, monsters too ({@link #adoptNewMobs}): one that
+     * despawned is forgotten when the player comes back and it is not there.
      * Chosen in game under "Choose mobs...".
      */
     public List<String> mobTypes = defaultMobTypes();
+
+    /**
+     * Mobs of {@link #mobTypes} shown standing still, where they were, instead of strolling
+     * around: a happy ghast drifting around on its own looks wrong.
+     */
+    public List<String> stillMobTypes = defaultStillMobTypes();
 
     /**
      * Mobs never shown far away, whatever {@link #mobTypes} and {@link #rememberNamedMobs} say:
@@ -158,12 +203,6 @@ public final class FarConfig {
      * switched to Hidden under "Mobs &amp; Entities..." is written here, so a modpack can ship the list.
      */
     public List<String> hiddenMobs = new ArrayList<>();
-
-    /**
-     * Mobs of {@link #mobTypes} shown standing still, where they were, instead of strolling
-     * around: a happy ghast drifting around on its own looks wrong.
-     */
-    public List<String> stillMobTypes = new ArrayList<>(List.of("minecraft:happy_ghast", MANNEQUIN));
 
     /** A mob with a name tag is remembered and shown whatever its type, unless in {@link #hiddenMobs}. */
     public boolean rememberNamedMobs = true;
@@ -226,13 +265,22 @@ public final class FarConfig {
     public boolean hideOccludedMobs = true;
 
     /**
-     * Distant players and mobs past {@link #impostorDistance}, or smaller on screen than
+     * Distant mobs past {@link #impostorDistance}, or smaller on screen than
      * {@link #impostorPixels}, are drawn as a flat picture of
      * themselves, turned to the camera, instead of their whole model. The pictures are
      * baked from the game's own renderers when a world is joined and again whenever the
-     * resource packs change, so skins, mobs and packs are all followed.
+     * resource packs change, so skins, mobs and packs are all followed. "Simplified Mobs";
+     * {@link #impostorEntities} and {@link #impostorPlayers} do the same for the others.
      */
     public boolean impostors = true;
+
+    /** Boats, vehicles and mannequins as flat pictures too, as mobs are ("Simplified Entities"). */
+    public boolean impostorEntities = true;
+
+    /** Whether anything is drawn as a flat picture: mobs, the other entities or players. */
+    public boolean anyImpostors() {
+        return impostors || impostorEntities || impostorPlayers;
+    }
 
     /** Blocks: past this distance an impostor stands in for the model. */
     public int impostorDistance = 128;
@@ -265,10 +313,25 @@ public final class FarConfig {
     public static final int MIN_MOB_MEMORY = 64, MAX_MOB_MEMORY = 4096, MIN_PLAYER_MEMORY = 32, MAX_PLAYER_MEMORY = 2048;
 
     /**
-     * Mob types of other mods already offered once. A new one is shown far away from the
-     * start (unless it is a monster), then left as the player sets it.
+     * Mob types already offered once, the game's and other mods'. A new one is shown far
+     * away from the start, walking, then left as the player sets it. Named
+     * {@code knownModdedMobs} when only other mods' mobs were offered, monsters excepted.
      */
-    public List<String> knownModdedMobs = new ArrayList<>();
+    @SerializedName(value = "knownMobTypes", alternate = "knownModdedMobs")
+    public List<String> knownMobTypes = defaultMobTypes();
+
+    /**
+     * Vehicles met so far that are neither mobs nor boats ({@link Vehicles}): an aircraft, a car,
+     * a minecart. Only seeing one tells that its kind is a vehicle, so the list of mobs offers
+     * these kinds once met. What the game is, not a choice: a reset keeps it.
+     */
+    public List<String> knownVehicles = new ArrayList<>();
+
+    /**
+     * Those of {@link #knownVehicles} that only seat their riders (a minecart, a moving
+     * contraption): listed, but never shown by default, which a reset keeps too.
+     */
+    public List<String> seatedVehicles = new ArrayList<>();
 
     // --- Optimisations: each one can be switched off, to see what it saves -----------------
 
@@ -367,7 +430,7 @@ public final class FarConfig {
 
     /** Whether anything distant is drawn: players, mobs or both, each on its own switch. */
     public boolean anyDistant() {
-        return enabled || distantMobs;
+        return enabled || distantMobs || distantEntities;
     }
 
     public static FarConfig get() {
@@ -406,7 +469,7 @@ public final class FarConfig {
             config.minApparentPixels = 0.0;
         }
         if (config.mobTypes == null) config.mobTypes = defaultMobTypes();
-        if (config.stillMobTypes == null) config.stillMobTypes = new ArrayList<>(List.of("minecraft:happy_ghast", MANNEQUIN));
+        if (config.stillMobTypes == null) config.stillMobTypes = defaultStillMobTypes();
         if (config.version < 5) {
             // Mannequins came with Distant Friends' fake players: shown, and still, unless set otherwise.
             if (!config.mobTypes.contains(MANNEQUIN)) config.mobTypes.add(MANNEQUIN);
@@ -419,7 +482,9 @@ public final class FarConfig {
         if (config.hiddenBirds == null) config.hiddenBirds = new ArrayList<>();
         if (config.hiddenMobs == null) config.hiddenMobs = new ArrayList<>();
         if (config.birdStyle == null) config.birdStyle = "3d";
-        if (config.knownModdedMobs == null) config.knownModdedMobs = new ArrayList<>();
+        if (config.knownMobTypes == null) config.knownMobTypes = defaultMobTypes();
+        if (config.knownVehicles == null) config.knownVehicles = new ArrayList<>();
+        if (config.seatedVehicles == null) config.seatedVehicles = new ArrayList<>();
         if (config.version < 3) {
             // Boats came after the list was first written: shown unless taken out by hand.
             for (String type : MobKinds.TYPES) {
@@ -464,10 +529,22 @@ public final class FarConfig {
             config.ufo = null;
         }
         if (config.version < 11) {
-            // The mobs switched off by hand become the list of hidden ones, where a modpack finds them.
-            List<String> offered = defaultMobTypes();
-            for (String type : offered) {
-                if (!config.mobTypes.contains(type) && !config.hiddenMobs.contains(type)) config.hiddenMobs.add(type);
+            // Every kind is offered now, the game's monsters too: those shown by default
+            // before keep the player's choice, the others are shown once the game is started.
+            for (String type : defaultMobTypes()) {
+                if (!config.knownMobTypes.contains(type)) config.knownMobTypes.add(type);
+            }
+        }
+        if (config.version < 12) {
+            // One switch for every figure but players became one for mobs and one for the rest.
+            config.impostorEntities = config.impostors;
+        }
+        if (config.version < 13) {
+            // The kinds switched off by hand become the list of hidden ones, where a modpack finds
+            // them; vehicles that only seat their riders were never shown, and are not listed.
+            for (String type : config.knownMobTypes) {
+                if (!config.mobTypes.contains(type) && !config.seatedVehicles.contains(type)
+                        && !config.hiddenMobs.contains(type)) config.hiddenMobs.add(type);
             }
         }
         // Written by hand out of range: the nearest end.
@@ -478,27 +555,71 @@ public final class FarConfig {
     }
 
     /**
-     * Mob types of other mods met for the first time: shown far away, unless monsters,
-     * which despawn as soon as nobody is near. Called once the game has registered them.
+     * Mob types met for the first time, the game's and other mods': shown far away, walking.
+     * Called once the game has registered them.
      */
-    public static void adoptModdedMobs(Iterable<EntityType<?>> types) {
+    public static void adoptNewMobs(Iterable<EntityType<?>> types) {
+        if (instance.adopt(types)) save();
+    }
+
+    private boolean adopt(Iterable<EntityType<?>> types) {
         boolean changed = false;
         for (EntityType<?> type : types) {
-            Identifier key = EntityType.getKey(type);
-            if (Identifier.DEFAULT_NAMESPACE.equals(key.getNamespace())) continue;
-            String id = key.toString();
-            if (instance.knownModdedMobs.contains(id)) continue;
-            instance.knownModdedMobs.add(id);
-            if (type.getCategory() != MobCategory.MONSTER && !instance.mobTypes.contains(id)) instance.mobTypes.add(id);
+            String id = EntityType.getKey(type).toString();
+            if (knownMobTypes.contains(id)) continue;
+            knownMobTypes.add(id);
+            if (!mobTypes.contains(id) && !seatedVehicles.contains(id)) mobTypes.add(id);
+            changed = true;
+        }
+        return changed;
+    }
+
+    /** The mob choices back to their defaults: every kind shown but whole mods hidden, the happy ghast and mannequins still. */
+    public void resetMobs(Iterable<EntityType<?>> types) {
+        mobTypes = defaultMobTypes();
+        stillMobTypes = defaultStillMobTypes();
+        knownMobTypes = defaultMobTypes();
+        // Whole mods hidden in the file stay hidden: no switch could show them again.
+        hiddenMobs.removeIf(entry -> !entry.endsWith(":*"));
+        adopt(types);
+    }
+
+    /**
+     * A kind of vehicle met, its first one seen: listed among the mobs from now on. One its rider
+     * steers, as a boat, is shown far away from the start; one that only seats its riders (a
+     * minecart, a moving contraption) waits to be chosen. Either is then left as the player sets it.
+     */
+    public static void adoptVehicle(String id, boolean steered) {
+        boolean changed = instance.knowVehicle(id, steered);
+        // Offered here, once: as the game starts, a known kind is left as it is.
+        if (!instance.knownMobTypes.contains(id)) {
+            instance.knownMobTypes.add(id);
+            if (steered && !instance.mobTypes.contains(id)) instance.mobTypes.add(id);
             changed = true;
         }
         if (changed) save();
     }
 
+    /**
+     * A kind is a vehicle, steered or only seating its riders: listed among the mobs, and offered
+     * as such ({@link #adoptNewMobs}). True when it was not known yet. Not saved by itself.
+     */
+    public boolean knowVehicle(String id, boolean steered) {
+        if (knownVehicles.contains(id)) return false;
+        knownVehicles.add(id);
+        if (!steered) seatedVehicles.add(id);
+        return true;
+    }
+
     /** Every setting back to its default, mob and bird choices included, and written to the file. */
-    public static void reset() {
+    public static void reset(Iterable<EntityType<?>> types) {
+        FarConfig old = instance;
         instance = new FarConfig();
         instance.version = CURRENT;
+        // Which kinds are vehicles is what the game is, not a setting.
+        instance.knownVehicles = old.knownVehicles;
+        instance.seatedVehicles = old.seatedVehicles;
+        instance.adopt(types);
         save();
     }
 

@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -48,19 +49,26 @@ public final class LodWorld {
     /** Tasks given to the readers and not finished yet, for the debug panel. */
     private static final AtomicInteger PENDING = new AtomicInteger();
 
-    /** Reads hold the read side; letting go of what they hold waits for them on the write side. */
+    /**
+     * Reads of a source that keeps what it reads between reads (Voxy) hold the read side;
+     * letting go of what they hold waits for them on the write side. Distant Horizons' reads
+     * hold nothing: one can wait for Distant Horizons' threads while those wait for the game's
+     * (to upload its terrain), or have been shut down with the world - and the game, waiting
+     * here as the player changed dimension or left, froze for good.
+     */
     private static final ReadWriteLock READS = new ReentrantReadWriteLock();
     /** Set while there is no world: reads find nothing and hold nothing. */
     private static volatile boolean suspended;
 
-    private static void run(Runnable task) {
+    private static void run(LodSource source, Runnable task) {
         PENDING.incrementAndGet();
         (FarConfig.get().optParallelRead ? READERS : READER).execute(() -> {
-            READS.readLock().lock();
+            Lock held = source.keepsBetweenReads() ? READS.readLock() : null;
+            if (held != null) held.lock();
             try {
                 task.run();
             } finally {
-                READS.readLock().unlock();
+                if (held != null) held.unlock();
                 PENDING.decrementAndGet();
             }
         });
@@ -77,7 +85,7 @@ public final class LodWorld {
     }
 
     public static int columnsKnown() {
-        return COLUMNS.size();
+        return memory.size();
     }
 
     public static int threads() {
@@ -89,7 +97,11 @@ public final class LodWorld {
     }
 
     private static final Surface NOTHING = new Surface(Integer.MIN_VALUE, "", false, null);
-    private static final ConcurrentHashMap<Long, Known> COLUMNS = new ConcurrentHashMap<>();
+    /**
+     * Replaced, never emptied, by {@link #release()}: a read still running for the world left,
+     * which nothing waits for, fills the old one.
+     */
+    private static volatile ConcurrentHashMap<Long, Known> memory = new ConcurrentHashMap<>();
 
     private static final LodSource[] SOURCES = {new VoxySource(), new DhSource()};
 
@@ -106,19 +118,21 @@ public final class LodWorld {
 
     /**
      * No world any more, or the game is closing: everything held is let go at once, so that
-     * the mods can close their worlds. Reads find nothing until {@link #clear()}.
+     * the mods can close their worlds, and reads still waiting on a mod are called off, since
+     * it may never answer them. Reads find nothing until {@link #clear()}.
      */
     public static void suspend() {
         suspended = true;
         DrawnGround.clear();
         release();
+        for (LodSource source : SOURCES) source.cancel();
     }
 
     private static void release() {
         READS.writeLock().lock();
         try {
             for (LodSource source : SOURCES) source.clear();
-            COLUMNS.clear();
+            memory = new ConcurrentHashMap<>();
         } finally {
             READS.writeLock().unlock();
         }
@@ -196,7 +210,7 @@ public final class LodWorld {
                     : "neither Voxy nor Distant Horizons is loaded"));
             return result;
         }
-        run(() -> {
+        run(source, () -> {
             try {
                 Object world = open(source);
                 if (world == null) {
@@ -248,8 +262,9 @@ public final class LodWorld {
         long now = System.nanoTime();
         boolean cache = FarConfig.get().optColumnCache;
         boolean missing = false;
+        ConcurrentHashMap<Long, Known> remembered = memory;
         for (int i = 0; i < xs.length; i++) {
-            Known known = cache ? COLUMNS.get(key(xs[i], zs[i])) : null;
+            Known known = cache ? remembered.get(key(xs[i], zs[i])) : null;
             if (known != null && now - known.at < COLUMN_NANOS && (trustNothing || known.surface != NOTHING)) {
                 found[i] = known.surface == NOTHING ? null : known.surface;
             } else {
@@ -258,21 +273,23 @@ public final class LodWorld {
         }
         if (!missing) return CompletableFuture.completedFuture(found);
         CompletableFuture<@Nullable Surface[]> result = new CompletableFuture<>();
-        run(() -> {
+        run(source, () -> {
+            // Taken before the world is: a release from here on leaves this read the old memory.
+            ConcurrentHashMap<Long, Known> columns = memory;
             try {
                 Object world = open(source);
                 if (world != null) {
                     long at = System.nanoTime();
-                    if (COLUMNS.size() > COLUMNS_KEPT) COLUMNS.clear();
+                    if (columns.size() > COLUMNS_KEPT) columns.clear();
                     for (int i = 0; i < xs.length; i++) {
                         long key = key(xs[i], zs[i]);
-                        Known known = cache ? COLUMNS.get(key) : null;
+                        Known known = cache ? columns.get(key) : null;
                         if (known != null && at - known.at < COLUMN_NANOS && (trustNothing || known.surface != NOTHING)) {
                             found[i] = known.surface == NOTHING ? null : known.surface;
                             continue;
                         }
                         Surface surface = source.column(world, xs[i], zs[i]);
-                        if (cache) COLUMNS.put(key, new Known(surface == null ? NOTHING : surface, at));
+                        if (cache) columns.put(key, new Known(surface == null ? NOTHING : surface, at));
                         found[i] = surface;
                     }
                 }
@@ -295,7 +312,7 @@ public final class LodWorld {
         LodSource source = source();
         if (source == null) return CompletableFuture.completedFuture(found);
         CompletableFuture<BlockState @Nullable [][]> result = new CompletableFuture<>();
-        run(() -> {
+        run(source, () -> {
             try {
                 Object world = open(source);
                 if (world != null) {
@@ -318,7 +335,7 @@ public final class LodWorld {
         LodSource source = source();
         if (source == null) return CompletableFuture.completedFuture(null);
         CompletableFuture<boolean @Nullable []> result = new CompletableFuture<>();
-        run(() -> {
+        run(source, () -> {
             boolean[] blocked = null;
             try {
                 Object world = open(source);

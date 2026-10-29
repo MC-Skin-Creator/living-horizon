@@ -27,7 +27,7 @@ class FarConfigTest {
         FarConfig fresh = new FarConfig();
         fresh.version = migrated.version;
         assertEquals(GSON.toJson(fresh), GSON.toJson(migrated));
-        assertEquals(11, migrated.version);
+        assertEquals(13, migrated.version);
     }
 
     @Test
@@ -129,18 +129,38 @@ class FarConfigTest {
     }
 
     @Test
-    void version11ListsTheMobsSwitchedOff() {
-        FarConfig config = migrated("{\"version\": 10, \"mobTypes\": [\"minecraft:cow\", \"cobblemon:pokemon\"]}");
-        assertTrue(config.hiddenMobs.contains("minecraft:horse"));
-        assertTrue(config.hiddenMobs.contains(MANNEQUIN));
-        assertFalse(config.hiddenMobs.contains("minecraft:cow"));
-        assertFalse(config.hiddenMobs.contains("minecraft:zombie"));
-        assertTrue(migrated("{\"version\": 11, \"mobTypes\": []}").hiddenMobs.isEmpty());
+    void version11OffersEveryOtherMob() {
+        FarConfig config = migrated("{\"version\": 10, \"mobTypes\": [\"minecraft:cow\"],"
+                + " \"knownModdedMobs\": [\"othermod:zombie\"]}");
+        // The old defaults keep the player's choice; the game's monsters are left to be offered.
+        assertTrue(config.knownMobTypes.contains("minecraft:horse"));
+        assertTrue(config.knownMobTypes.contains("othermod:zombie"));
+        assertFalse(config.knownMobTypes.contains("minecraft:enderman"));
+        assertEquals(java.util.List.of("minecraft:cow"), config.mobTypes);
+        assertFalse(migrated("{\"version\": 11, \"knownMobTypes\": []}").knownMobTypes.contains("minecraft:horse"));
+    }
+
+    @Test
+    void version12SplitsTheSimplifiedFigures() {
+        // The one switch off stays off for mobs and for the other entities alike.
+        assertFalse(migrated("{\"version\": 11, \"impostors\": false}").impostorEntities);
+        assertTrue(migrated("{\"version\": 11, \"impostors\": true}").impostorEntities);
+        assertTrue(migrated("{\"version\": 12, \"impostors\": false}").impostorEntities);
+    }
+
+    @Test
+    void version13ListsTheKindsSwitchedOff() {
+        FarConfig config = migrated("{\"version\": 12, \"mobTypes\": [\"minecraft:cow\"],"
+                + " \"knownMobTypes\": [\"minecraft:cow\", \"minecraft:horse\", \"minecraft:minecart\"],"
+                + " \"seatedVehicles\": [\"minecraft:minecart\"]}");
+        assertEquals(java.util.List.of("minecraft:horse"), config.hiddenMobs);
+        assertTrue(migrated("{\"version\": 13, \"mobTypes\": [], \"knownMobTypes\": [\"minecraft:horse\"]}")
+                .hiddenMobs.isEmpty());
     }
 
     @Test
     void hiddenMobsBeatEveryOtherChoice() {
-        FarConfig config = migrated("{\"version\": 11, \"mobTypes\": [\"minecraft:cow\", \"cobblemon:pokemon\","
+        FarConfig config = migrated("{\"version\": 13, \"mobTypes\": [\"minecraft:cow\", \"cobblemon:pokemon\","
                 + " \"minecraft:pig\"], \"hiddenMobs\": [\"minecraft:pig\", \"cobblemon:*\"]}");
         assertTrue(config.showsMob("minecraft:cow", false));
         assertTrue(config.showsMob("minecraft:zombie", true));
@@ -153,13 +173,16 @@ class FarConfigTest {
 
     @Test
     void fillsInWhatTheFileLeftOut() {
-        FarConfig config = migrated("{\"version\": 10, \"mobTypes\": null, \"hiddenBirds\": null, \"birdStyle\": null,"
-                + " \"knownModdedMobs\": null, \"stillMobTypes\": null, \"hiddenMobs\": null}");
+        FarConfig config = migrated("{\"version\": 11, \"mobTypes\": null, \"hiddenBirds\": null, \"birdStyle\": null,"
+                + " \"knownMobTypes\": null, \"knownVehicles\": null, \"seatedVehicles\": null, \"stillMobTypes\": null,"
+                + " \"hiddenMobs\": null}");
         assertTrue(config.mobTypes.contains("minecraft:horse"));
         assertTrue(config.stillMobTypes.contains(MANNEQUIN));
         assertEquals(java.util.List.of(), config.hiddenBirds);
         assertEquals("3d", config.birdStyle);
-        assertEquals(java.util.List.of(), config.knownModdedMobs);
+        assertTrue(config.knownMobTypes.contains("minecraft:horse"));
+        assertEquals(java.util.List.of(), config.knownVehicles);
+        assertEquals(java.util.List.of(), config.seatedVehicles);
         assertEquals(java.util.List.of(), config.hiddenMobs);
     }
 

@@ -175,6 +175,9 @@ jobs:
 
     name: build ${{ matrix.minecraft }}
     runs-on: ubuntu-latest
+    # gradle.sh gives each of its three attempts 25 minutes; a hung job is stopped here
+    # rather than after GitHub's 6 hours.
+    timeout-minutes: 90
 
     steps:
       - name: Checkout
@@ -218,12 +221,11 @@ jobs:
 
       - name: Build
         # build compiles and runs the tests; buildAndCollect copies the jar into
-        # build/libs/<mod version>/, which is what gets uploaded.
-        # --configure-on-demand configures this one target and the root alone.
-        run: >-
-          ./gradlew ":${{ matrix.minecraft }}:build" ":${{ matrix.minecraft }}:buildAndCollect"
-          --stacktrace --configure-on-demand
-          -Porg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64,JAVA_HOME_21_X64,JAVA_HOME_25_X64
+        # build/libs/<mod version>/, which is what gets uploaded. A download that fails
+        # or hangs is tried again (gradle.sh); a compile error or a test failure is not.
+        env:
+          NODE: ${{ matrix.minecraft }}
+        run: .github/scripts/gradle.sh ":${NODE}:build" ":${NODE}:buildAndCollect"
 
       - name: Upload test report
         # Only worth having when something failed, and then it is the first thing

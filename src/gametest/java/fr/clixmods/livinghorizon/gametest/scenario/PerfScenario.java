@@ -127,6 +127,7 @@ public final class PerfScenario implements Scenario {
     private static void off(FarConfig config) {
         config.enabled = false;
         config.distantMobs = false;
+        config.distantEntities = false;
         config.offlinePlayers = false;
         config.skyBirds = false;
     }

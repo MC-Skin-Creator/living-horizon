@@ -180,6 +180,12 @@ public final class ImpostorAtlas {
         return entity.getBbHeight() / 2;
     }
 
+    /** Blocks from a mount's feet to the middle it and its rider are pictured round, from a height. */
+    public static double middle(Entity mount, @Nullable Rider rider) {
+        if (rider == null) return middle(mount);
+        return Math.max(mount.getBbHeight(), rider.seat().y + rider.entity().getBbHeight()) / 2;
+    }
+
     /** How far down a tile the origin of an entity's pictures is: its feet, or its middle when seen from a height. */
     private static float feet(ImpostorKey key) {
         return Float.isNaN(ImpostorKey.elevation(key)) ? FEET : MIDDLE;
@@ -511,6 +517,8 @@ public final class ImpostorAtlas {
     *///?}
 
     private static final Map<ImpostorKey, Sheet> SHEETS = new LinkedHashMap<>(64, 0.75f, true);
+    /** Where each sheet's pictures come from, for the impostor screen. */
+    private static final Map<ImpostorKey, Origin> ORIGINS = new HashMap<>();
     /** When each sheet was last drawn or asked for, in milliseconds: written over in place. */
     private static final Map<ImpostorKey, long[]> USED = new HashMap<>();
 
@@ -583,22 +591,51 @@ public final class ImpostorAtlas {
         ImpostorDisk.clear();
     }
 
-    /** One baked figure, for the impostor screen. */
-    public record Baked(ImpostorKey key, Sheet sheet) {
+    /** One baked figure, for the impostor screen: where its pictures come from, if known. */
+    public record Baked(ImpostorKey key, Sheet sheet, @Nullable Origin origin) {
+    }
+
+    /** Where a sheet's pictures come from. */
+    public enum Source {
+        /** Baked in an earlier game and read back from disk: shared between games and worlds. */
+        DISK,
+        /** Baked in this game and saved: the worlds opened later and the next games read it back. */
+        SAVED,
+        /** Baked in this game and not kept on disk: players, riders, the mod's own figures. */
+        TEMPORARY
+    }
+
+    /**
+     * Where a sheet's pictures come from, when they were baked (milliseconds since 1970, 0 when
+     * not known: saved by an older version) and in which world or server (empty when not known).
+     */
+    public record Origin(Source source, long bakedAt, String world) {
     }
 
     /** Every figure baked, without counting as a use: a new list, the caller's to sort. */
     public static List<Baked> baked() {
         settle();
         List<Baked> baked = new ArrayList<>(SHEETS.size());
-        SHEETS.forEach((key, sheet) -> baked.add(new Baked(key, sheet)));
+        SHEETS.forEach((key, sheet) -> baked.add(new Baked(key, sheet, ORIGINS.get(key))));
         return baked;
+    }
+
+    /** The world or server being played, as its list names it; empty in none. */
+    private static String world() {
+        Minecraft minecraft = Minecraft.getInstance();
+        try {
+            if (minecraft.getSingleplayerServer() != null) return minecraft.getSingleplayerServer().getWorldData().getLevelName();
+            if (minecraft.getCurrentServer() != null) return minecraft.getCurrentServer().name;
+        } catch (RuntimeException ignored) {
+            // Only a label for the impostor screen.
+        }
+        return "";
     }
 
     /** Whether impostors can be used at all: switched on, and the bake has not failed. */
     public static boolean usable() {
         FarConfig config = FarConfig.get();
-        return config.anyDistant() && config.impostors && !failed;
+        return config.anyDistant() && config.anyImpostors() && !failed;
     }
 
     /** The pictures of a figure, if baked. Counts as a use, so the sheets in use are kept. */
@@ -670,6 +707,8 @@ public final class ImpostorAtlas {
     /** A sheet thrown away: the figures sharing it, and its pixels, go with it. */
     private static void forget(ImpostorKey key) {
         USED.remove(key);
+        ImpostorKey.forget(key);
+        ORIGINS.remove(key);
         ALIASES.values().removeIf(key::equals);
         LOOKS.values().removeIf(key::equals);
     }
@@ -740,6 +779,7 @@ public final class ImpostorAtlas {
         }
         PAGES.clear();
         SHEETS.clear();
+        ORIGINS.clear();
         ALIASES.clear();
         LOOKS.clear();
         USED.clear();
@@ -798,6 +838,9 @@ public final class ImpostorAtlas {
             }
             try {
                 place(loaded.key, index, loaded.stored.worldSize(), feet(loaded.key), loaded.stored.levels());
+                if (SHEETS.containsKey(loaded.key)) {
+                    ORIGINS.put(loaded.key, new Origin(Source.DISK, loaded.stored.bakedAt(), loaded.stored.world()));
+                }
                 loads++;
             } catch (RuntimeException | LinkageError error) {
                 free(index);
@@ -985,7 +1028,7 @@ public final class ImpostorAtlas {
             puppet.setXRot(0f);
             puppet.xRotO = 0f;
         }
-        EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), puppet, 1.0f);
+        EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), puppet, 1.0f, FULL_BRIGHT);
         if (state == null) throw new LeftOut();
         stage(state, view);
         posture(state, request.key.posture());
@@ -1005,7 +1048,9 @@ public final class ImpostorAtlas {
 
     private static double lift(Request request) {
         // A flyer seen from a height: its middle where the tile turns.
-        if (request.puppet != null && !Float.isNaN(ImpostorKey.elevation(request.key))) return -middle(request.puppet);
+        if (request.puppet != null && !Float.isNaN(ImpostorKey.elevation(request.key))) {
+            return -middle(request.puppet, request.rider);
+        }
         return request.rider == null && request.key.posture() == ImpostorKey.LYING ? LYING_LIFT : 0;
     }
 
@@ -1024,7 +1069,7 @@ public final class ImpostorAtlas {
 
     /** A rider's state for one view: on the mount, turned with it, in the riding pose. */
     private static EntityRenderState stagedRider(Minecraft minecraft, Rider rider, int view) {
-        EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), rider.entity, 1.0f);
+        EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), rider.entity, 1.0f, FULL_BRIGHT);
         if (state == null) throw new LeftOut();
         stage(state, view);
         if (state instanceof LivingEntityRenderState living) living.bodyRot += rider.yaw;
@@ -1080,7 +1125,7 @@ public final class ImpostorAtlas {
             if (request.rider != null) {
                 Vec3 seat = seat(request.rider, view);
                 minecraft.getEntityRenderDispatcher().submit(stagedRider(minecraft, request.rider, view),
-                        new CameraRenderState(), seat.x, seat.y, seat.z, pose, storage);
+                        new CameraRenderState(), seat.x, seat.y + lift(request), seat.z, pose, storage);
             }
         }
     }
@@ -1092,8 +1137,8 @@ public final class ImpostorAtlas {
             GhostRenderer.drawState(staged(minecraft, request, view), 0.0, lift(request), 0.0, pose, buffers, FULL_BRIGHT);
             if (request.rider != null) {
                 Vec3 seat = seat(request.rider, view);
-                GhostRenderer.drawState(stagedRider(minecraft, request.rider, view), seat.x, seat.y, seat.z, pose, buffers,
-                        FULL_BRIGHT);
+                GhostRenderer.drawState(stagedRider(minecraft, request.rider, view), seat.x, seat.y + lift(request), seat.z,
+                        pose, buffers, FULL_BRIGHT);
             }
         }
     }
@@ -1509,7 +1554,11 @@ public final class ImpostorAtlas {
             if (!place(key, index, size, request.feet(), levels)) return;
             BAKING.remove(index);
             // The mod's own figures are not kept: their sheets have no entity to be read for.
-            if (!PLAYER.equals(key.type()) && request.figure == null) ImpostorDisk.write(key, size, levels);
+            boolean kept = !PLAYER.equals(key.type()) && request.figure == null;
+            long now = System.currentTimeMillis();
+            String world = world();
+            if (SHEETS.containsKey(key)) ORIGINS.put(key, new Origin(kept ? Source.SAVED : Source.TEMPORARY, now, world));
+            if (kept) ImpostorDisk.write(key, size, levels, now, world);
         } catch (RuntimeException | LinkageError error) {
             if (generation == ImpostorAtlas.generation) fail(error);
         } finally {

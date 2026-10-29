@@ -5,7 +5,30 @@
 ### Client
 
 #### Nouveautés
+- **Véhicules des autres mods au loin** — les véhicules des autres mods, comme les avions d'Immersive Aircraft, restent maintenant visibles au-delà de la distance de rendu là où on les a laissés, comme les bateaux ; ils sont listés dans l'onglet *Entités* de *Créatures et entités...* dès le départ, et ceux qu'on monte sans les diriger (wagonnets, véhicules de certains autres mods) restent désactivés tant qu'on ne les active pas.
+- **Réglages des entités** — les bateaux, véhicules et mannequins ont maintenant leurs propres réglages, à part des créatures : *Afficher les entités*, *Entités max* et *Distance d'affichage des entités*, illimitée par défaut.
+- **Créatures simplifiées et Entités simplifiées** — *Entités simplifiées* devient deux options : *Créatures simplifiées*, et *Entités simplifiées* pour les bateaux, véhicules et mannequins, qui deviennent eux aussi des images plates au loin, vus aussi d'au-dessus et d'en dessous ; *Joueurs simplifiés* ne dépend plus d'aucune des deux, et le bouton qui montre les images devient *Aperçu des images...*, avec un onglet pour les images des entités.
 - **Liste des mobs masqués** — `config/livinghorizon.json` a maintenant une liste `hiddenMobs` des mobs jamais affichés au loin, par identifiant (`"minecraft:pig"`) ou pour tout un mod (`"cobblemon:*"`), facile à partager dans un modpack ; les mobs passés en *Masqué* dans *Créatures et entités...* y sont écrits.
+- **Bouton du journal des modifications** — les réglages du mod ont maintenant un bouton du journal des modifications à côté du logo Discord, pour lire ce qui a changé à chaque version (un bouton *Lire le journal des modifications* sur la page de Sodium).
+
+#### Améliorations
+- **Serveurs sans le mod** — en rejoignant un serveur sans Living Horizon, ou avec une version trop ancienne ou trop récente du mod, le tchat dit maintenant que les joueurs lointains n'y sont pas affichés ; avec *Afficher les joueurs* désactivé, rien n'est dit.
+- **Créatures et entités en deux onglets** — *Créatures et entités...* range maintenant les créatures et les autres entités (bateaux, véhicules, mannequins) dans deux onglets, où un bateau ou un véhicule est simplement affiché ou masqué.
+- **Créatures et entités appliqué tout de suite** — activer ou masquer un type dans *Créatures et entités...* se voit maintenant aussitôt dans le monde derrière, plus seulement une fois l'écran fermé.
+- **Réglages des créatures lointaines en trois parties** — les réglages *Créatures et entités lointaines* sont maintenant répartis en *Général*, *Créatures* et *Entités*, avec la liste, le scan et *Tout oublier* dans *Général*.
+- **Joueurs montés au loin** — avec *Joueurs simplifiés*, un joueur lointain dans un bateau, un wagonnet, un avion ou sur un ghast joyeux est maintenant représenté vu d'au-dessus et d'en dessous comme ce qu'il monte, et plus de profil quand on le regarde d'en haut.
+- **Avions laissés en l'air** — un joueur qui se déconnecte en vol reste en l'air dans son avion, qui reste sur place s'il était immobile, ou tourne en rond s'il volait.
+- **Images sauvegardées affichées** — l'écran *Aperçu des images* indique maintenant sous chaque créature si son image est partagée, relue d'une partie précédente, nouvelle et sauvegardée pour les suivantes, ou non sauvegardée, avec quand et dans quel monde elle a été faite.
+- **Animaux assis qui le restent** — les chats, les loups et les perroquets à qui tu as dit de s'asseoir restent maintenant assis au loin, au lieu de se lever et de partir se balader.
+
+#### Corrections
+- **Plantage en ouvrant Créatures et entités depuis l'écran titre** — ouvrir *Créatures et entités...* depuis l'écran titre ne fait plus planter le jeu (Minecraft 26.x).
+- **Véhicules d'autres mods qui deviennent noirs** — les véhicules et créatures lointains de certains autres mods, comme les avions d'Immersive Aircraft, ne deviennent plus noirs un instant quand on s'en approche.
+- **Montures dessinées deux fois** — la monture ou le véhicule d'un joueur lointain, comme l'avion d'un autre mod, n'est plus dessiné une seconde fois à côté de lui.
+
+## 0.13.0 — 2026-10-28
+
+### Client
 
 #### Améliorations
 - **Jeu plus fluide parmi les mobs lointains et les joueurs déconnectés** — chercher où les mobs lointains et les joueurs déconnectés peuvent marcher ne prend plus de temps au jeu : c'est fait en arrière-plan.
@@ -13,6 +36,18 @@
 - **Phantoms et ghasts lointains qui volent** — les phantoms lointains tournent maintenant en rond dans le ciel et les ghasts lointains dérivent lentement, au lieu de rester figés en l'air.
 - **Phantoms et ghasts vus d'en dessous** — en *Entités simplifiées* (des images plates des mobs lointains), les phantoms et les ghasts sont maintenant dessinés vus d'en dessous et d'au-dessus aussi, comme les oiseaux, et plus seulement de côté.
 - **Plus fluide avec beaucoup de mobs lointains sous Vulkan** — le jeu ne perd plus de temps sur chaque mob lointain, à chaque image, quand il dessine avec Vulkan (Minecraft 26.2 et plus) ou sur Distant Horizons (Minecraft 26.3).
+- **Tous les mobs visibles de loin** — les monstres, les chauves-souris, les poissons et tous les autres mobs sont maintenant affichés au loin dès le départ, en balade comme les animaux : les endermen restent en vue à travers l'End ; les animaux que tu avais masqués le restent.
+
+#### Corrections
+- **Boutons empilés les uns sur les autres** — les boutons en bas de *Créatures et entités lointaines* ne se chevauchent plus, et *Réinitialiser* est de retour à gauche de *Terminé* dans les réglages (Minecraft 1.20.1).
+- **Jeu figé en changeant de dimension ou en quittant un monde** — le jeu ne se fige plus pour de bon quand tu passes un portail ou quittes un monde (avec Distant Horizons).
+
+## 0.12.1 — 2026-10-27
+
+### Client
+
+#### Corrections
+- **Benchmark ouvert à tous les joueurs** — `/livinghorizon benchmark` n'est plus proposé aux joueurs ; il est réservé aux tests du mod.
 
 ## 0.12.0 — 2026-10-23
 
