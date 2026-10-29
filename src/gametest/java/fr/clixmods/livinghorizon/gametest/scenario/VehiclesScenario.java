@@ -265,6 +265,8 @@ public final class VehiclesScenario implements Scenario {
                 + " planes extracted without light as their chunks came in: drawn black";
         context.runOnClient(minecraft -> minecraft.player.connection.sendCommand("livinghorizon debug offline test clear"));
         Scene.command(world, "gamemode creative @a");
+        // The command's answer home before the world closes: the test framework counts every packet.
+        context.waitTicks(20);
         if (!unlit.isEmpty()) throw new AssertionError("vehicles:" + unlit);
     }
 
