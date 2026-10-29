@@ -53,6 +53,9 @@ public final class FarConfig {
 
     private static final int CURRENT = 13;
 
+    /** The game's own namespace, the one an id without a colon belongs to. */
+    private static final String GAME = "minecraft";
+
     /** Skinned figures, which Distant Friends uses as its fake players: shown, standing still. */
     private static final String MANNEQUIN = "minecraft:mannequin";
 
@@ -75,7 +78,7 @@ public final class FarConfig {
     /** The {@link #hiddenMobs} entry that hides every mob of this type's mod: {@code "cobblemon:*"}. */
     public static String wholeMod(String type) {
         int colon = type.indexOf(':');
-        return (colon < 0 ? Identifier.DEFAULT_NAMESPACE : type.substring(0, colon)) + ":*";
+        return (colon < 0 ? GAME : type.substring(0, colon)) + ":*";
     }
 
     /** Hidden for its whole mod ({@code "cobblemon:*"}): no switch can show it, only the file. */
@@ -108,7 +111,7 @@ public final class FarConfig {
         for (String entry : entries) {
             if (entry == null || entry.isBlank()) continue;
             String id = entry.trim().toLowerCase(java.util.Locale.ROOT);
-            tidy.add(id.indexOf(':') < 0 ? Identifier.DEFAULT_NAMESPACE + ":" + id : id);
+            tidy.add(id.indexOf(':') < 0 ? GAME + ":" + id : id);
         }
         return new ArrayList<>(tidy);
     }
