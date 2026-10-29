@@ -22,7 +22,8 @@ other mods included. Choose which ones in *Mobs & Entities...*.
 
 Land nobody has explored yet has its animals too. The mod works out from the world's seed
 which animals the game will put there. This needs the mod on the server, and works in
-single player.
+single player. Look through a spyglass to see them farther away, or press *Guess Nearby
+Mobs* to show them up to 1024 chunks around.
 
 ### Players at any distance
 
@@ -107,6 +108,7 @@ choose what it shares. Changes apply after a few seconds, without a restart.
 | `shareMobs` | `true` | Shares the remembered mobs past the view distance |
 | `seedMobs` | `true` | Shares the animals of land nobody has explored yet, worked out from the seed |
 | `seedMobRange` | `512` | How far from a player those animals are shared, in blocks, up to `2048` |
+| `shareSeed` | `false` | Sends the world's seed to the players with the mod, so their game finds those animals anywhere. Whoever has the seed knows the whole world |
 
 These settings only change what the server sends. Within the view distance, players see
 each other as usual. What a player's game saw on its own stays in its memory.

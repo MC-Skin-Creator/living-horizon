@@ -126,7 +126,8 @@ other mods included. Choose which ones in *Mobs & Entities...*.
 
 Land nobody has explored yet has its animals too. The mod works out from the world's seed
 which animals the game will put there. This needs the mod on the server, and works in
-single player.
+single player. Look through a spyglass to see them farther away, or press *Guess Nearby
+Mobs* to show them up to 1024 chunks around.
 
 ### Players at any distance
 
