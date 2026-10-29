@@ -120,7 +120,8 @@ public record ImpostorKey(String type, long appearance, int posture) {
 
     /**
      * The height each key of a flying figure ({@link #seenFrom}) is pictured from, as an index
-     * of {@link ImpostorViews#HEIGHTS}. A few per look of a phantom or a ghast: never trimmed.
+     * of {@link ImpostorViews#HEIGHTS}. A few per look of a phantom, a ghast, a vehicle or a
+     * rider on one; {@link #seenFrom} puts a key back each time it is asked for.
      */
     private static final Map<ImpostorKey, Integer> HEIGHTS = new HashMap<>();
     /** Mixed into the key of a figure pictured from a height, so that it never meets the same figure standing. */
@@ -192,6 +193,11 @@ public record ImpostorKey(String type, long appearance, int posture) {
         ImpostorKey key = compute(entity, values);
         KNOWN.put(entity, new Known(key, now, values, changes));
         return key;
+    }
+
+    /** A sheet thrown away: the height its key is pictured from goes with it. */
+    public static void forget(ImpostorKey key) {
+        HEIGHTS.remove(key);
     }
 
     public static void forgetAll() {

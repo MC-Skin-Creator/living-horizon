@@ -73,6 +73,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                 .addOptionGroup(b.createOptionGroup()
                         .addOption(opens(b, "debug", DebugScreen::new))
                         .addOption(button(b, "discord", DiscordLink::open))
+                        .addOption(opens(b, "changelog", ChangelogScreen::new))
                         .addOption(button(b, "restoreDefaults", parent -> confirm(parent, "restoreDefaults", () -> {
                             FarConfig.reset(MobList.all());
                             reload();
@@ -84,26 +85,27 @@ public final class SodiumOptions implements ConfigEntryPoint {
                 .addOptionGroup(b.createOptionGroup()
                         .addOption(bool(b, "impostors", d.impostors, v -> FarConfig.get().impostors = v,
                                 () -> FarConfig.get().impostors))
+                        .addOption(bool(b, "impostorEntities", d.impostorEntities, v -> FarConfig.get().impostorEntities = v,
+                                () -> FarConfig.get().impostorEntities))
                         .addOption(bool(b, "impostorPlayers", d.impostorPlayers, v -> FarConfig.get().impostorPlayers = v,
-                                () -> FarConfig.get().impostorPlayers)
-                                .setEnabledProvider(on("impostors"), id("impostors")))
+                                () -> FarConfig.get().impostorPlayers))
                         .addOption(blocks(b, "impostorDistance", 32, 2000, d.impostorDistance,
                                 v -> FarConfig.get().impostorDistance = v, () -> FarConfig.get().impostorDistance)
-                                .setEnabledProvider(on("impostors"), id("impostors")))
+                                .setEnabledProvider(any(PICTURED), ids(PICTURED)))
                         .addOption(integer(b, "impostorPixels", 0, FarConfig.MAX_IMPOSTOR_PIXELS, d.impostorPixels,
                                 v -> FarConfig.get().impostorPixels = v, () -> FarConfig.get().impostorPixels,
                                 unit("impostorPixels", "pixels", 0))
-                                .setEnabledProvider(on("impostors"), id("impostors")))
+                                .setEnabledProvider(any(PICTURED), ids(PICTURED)))
                         .addOption(integer(b, "impostorMobMemory", FarConfig.MIN_MOB_MEMORY, FarConfig.MAX_MOB_MEMORY,
                                 d.impostorMobMemory, v -> FarConfig.get().impostorMobMemory = v,
                                 () -> FarConfig.get().impostorMobMemory,
                                 unit("impostorMobMemory", "megabytes", FarConfig.MIN_MOB_MEMORY))
-                                .setEnabledProvider(on("impostors"), id("impostors")))
+                                .setEnabledProvider(any(NOT_PLAYERS), ids(NOT_PLAYERS)))
                         .addOption(integer(b, "impostorPlayerMemory", FarConfig.MIN_PLAYER_MEMORY, FarConfig.MAX_PLAYER_MEMORY,
                                 d.impostorPlayerMemory, v -> FarConfig.get().impostorPlayerMemory = v,
                                 () -> FarConfig.get().impostorPlayerMemory,
                                 unit("impostorPlayerMemory", "megabytes", FarConfig.MIN_PLAYER_MEMORY))
-                                .setEnabledProvider(on("impostors"), id("impostors"))))
+                                .setEnabledProvider(on("impostorPlayers"), id("impostorPlayers"))))
                 .addOptionGroup(b.createOptionGroup()
                         .addOption(opens(b, "impostorPreview", ImpostorScreen::new)));
     }
@@ -139,8 +141,13 @@ public final class SodiumOptions implements ConfigEntryPoint {
     }
 
     private OptionPageBuilder mobs(ConfigBuilder b, FarConfig d) {
+        // In three parts, as on the mod's own screen: what goes for both, the mobs, the other entities.
         return b.createOptionPage().setName(Component.translatable(KEY + "mobs"))
-                .addOptionGroup(b.createOptionGroup()
+                .addOptionGroup(scan(b, d, b.createOptionGroup().setName(Component.translatable(KEY + "mobs.general"))
+                        .addOption(opens(b, "chooseMobs", MobTypesScreen::new))
+                        .addOption(button(b, "forgetMobs", parent -> confirm(parent, "forgetMobs",
+                                () -> FarPlayerTracker.get().mobs().forgetAll())))))
+                .addOptionGroup(b.createOptionGroup().setName(Component.translatable(KEY + "mobs.creatures"))
                         .addOption(bool(b, "distantMobs", d.distantMobs, v -> FarConfig.get().distantMobs = v,
                                 () -> FarConfig.get().distantMobs))
                         .addOption(integer(b, "maxDistantMobs", 0, FarConfig.UNLIMITED_MOBS, d.maxDistantMobs,
@@ -149,23 +156,26 @@ public final class SodiumOptions implements ConfigEntryPoint {
                         .addOption(blocks(b, "mobMaxDistance", 0, 4000, d.mobMaxDistance,
                                 v -> FarConfig.get().mobMaxDistance = v, () -> FarConfig.get().mobMaxDistance))
                         .addOption(bool(b, "rememberNamedMobs", d.rememberNamedMobs,
-                                v -> FarConfig.get().rememberNamedMobs = v, () -> FarConfig.get().rememberNamedMobs)))
-                .addOptionGroup(b.createOptionGroup()
+                                v -> FarConfig.get().rememberNamedMobs = v, () -> FarConfig.get().rememberNamedMobs))
                         .addOption(integer(b, "animationMinPixels", 0, 40, d.animationMinPixels,
                                 v -> FarConfig.get().animationMinPixels = v, () -> FarConfig.get().animationMinPixels,
                                 unit("animationMinPixels", "pixels", 0)))
                         .addOption(blocks(b, "animationMaxDistance", 0, 4000, d.animationMaxDistance,
                                 v -> FarConfig.get().animationMaxDistance = v, () -> FarConfig.get().animationMaxDistance)))
-                .addOptionGroup(b.createOptionGroup()
-                        .addOption(opens(b, "chooseMobs", MobTypesScreen::new))
-                        .addOption(button(b, "forgetMobs", parent -> confirm(parent, "forgetMobs",
-                                () -> FarPlayerTracker.get().mobs().forgetAll()))))
-                .addOptionGroup(scan(b, d));
+                .addOptionGroup(b.createOptionGroup().setName(Component.translatable(KEY + "mobs.entities"))
+                        .addOption(bool(b, "distantEntities", d.distantEntities, v -> FarConfig.get().distantEntities = v,
+                                () -> FarConfig.get().distantEntities))
+                        .addOption(integer(b, "maxDistantEntities", 0, FarConfig.UNLIMITED_MOBS, d.maxDistantEntities,
+                                v -> FarConfig.get().maxDistantEntities = v, () -> FarConfig.get().maxDistantEntities,
+                                plain("maxDistantEntities", 0, true)))
+                        .addOption(blocks(b, "entityMaxDistance", 0, 4000, d.entityMaxDistance,
+                                v -> FarConfig.get().entityMaxDistance = v, () -> FarConfig.get().entityMaxDistance)));
     }
 
     /** "Scan the chunks around": only in a single player world, read again whenever the screen is built. */
-    private OptionGroupBuilder scan(ConfigBuilder b, FarConfig d) {
-        return b.createOptionGroup()
+    /** The scan's two settings, added to {@code group}. */
+    private OptionGroupBuilder scan(ConfigBuilder b, FarConfig d, OptionGroupBuilder group) {
+        return group
                 .addOption(b.createIntegerOption(id("scanRadius"))
                         .setName(Component.translatable(KEY + "scanRadius"))
                         .setTooltip(tooltip("scanRadius"))
@@ -363,6 +373,26 @@ public final class SodiumOptions implements ConfigEntryPoint {
 
     private static Function<ConfigState, Boolean> on(String name) {
         return state -> state.readBooleanOption(id(name));
+    }
+
+    /** The switches of the flat pictures: what the pictures' distance and size follow, and the mobs' memory. */
+    private static final String[] PICTURED = {"impostors", "impostorEntities", "impostorPlayers"};
+    private static final String[] NOT_PLAYERS = {"impostors", "impostorEntities"};
+
+    /** On while any of these switches is on. */
+    private static Function<ConfigState, Boolean> any(String[] names) {
+        return state -> {
+            for (String name : names) {
+                if (state.readBooleanOption(id(name))) return true;
+            }
+            return false;
+        };
+    }
+
+    private static Identifier[] ids(String[] names) {
+        Identifier[] ids = new Identifier[names.length];
+        for (int i = 0; i < names.length; i++) ids[i] = id(names[i]);
+        return ids;
     }
 
     private static Component tooltip(String name) {

@@ -37,10 +37,13 @@ import fr.clixmods.livinghorizon.gametest.scenario.RestingImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingLoopScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingMountScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.ServerWithoutModScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ShoreScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.SittingPetsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.SodiumControlsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.SodiumPagesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.UnloadScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.VehiclesScenario;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
@@ -72,6 +75,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new RememberedMobsScenario(),
             new OverVoidScenario(),
             new MannequinsScenario(),
+            new VehiclesScenario(),
             new OutlinesScenario(),
             new RestingScenario(),
             new RestingMountScenario(),
@@ -89,6 +93,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new OcclusionScenario(),
             new UnloadScenario(),
             new FollowedMobsScenario(),
+            new SittingPetsScenario(),
             new HeadTurnScenario(),
             new GaitsScenario(),
             new FlyersScenario(),
@@ -98,6 +103,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new BirdCommandScenario(),
             new LanShareScenario(),
             new DedicatedServerScenario(),
+            new ServerWithoutModScenario(),
             new PerfScenario(),
             new BenchmarkScenario(),
             new BenchmarkWorldScenario());

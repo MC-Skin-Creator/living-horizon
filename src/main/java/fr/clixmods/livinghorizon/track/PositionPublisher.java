@@ -250,8 +250,10 @@ public final class PositionPublisher {
                 ridden.remove(name);
             }
             if (runs % LOOK_EVERY == 0 || !looks.containsKey(name)) looks.put(name, lookOf(player));
-            UUID published = vehicle != null && KINDS.containsKey(EntityType.getKey(vehicle.getType()).toString())
-                    ? vehicle.getUUID() : null;
+            // What they ride, whatever it is: a client that remembers it (a mob shared, a plane it
+            // met) draws it under them, and never on its own again.
+            Entity root = player.getRootVehicle();
+            UUID published = root != player ? root.getUUID() : null;
             players.put(name, new PositionsMessage.Player(name, player.getX(), player.getY(), player.getZ(),
                     player.getYRot(), SharedPositions.dimensionId(player.level().dimension()), true,
                     vehicle != null, published));

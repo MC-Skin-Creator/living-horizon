@@ -70,6 +70,11 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
     }
     *///?}
 
+    /** A title over part of a group of settings, in grey under the group's own. */
+    protected final void subheader(Component title) {
+        header(title.copy().withStyle(net.minecraft.ChatFormatting.GRAY));
+    }
+
     /** A title over a group of settings. The list has had its own since 1.21.11; before, a label in a row. */
     protected final void header(Component title) {
         if (list == null) return;
@@ -150,10 +155,15 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
     }
     *///?}
 
-    /** The mod's version in grey, centred under the title of every screen of the mod's settings. */
+    /** The mod's version in grey, centred under the title of the screens of the mod's settings. */
     private void drawVersion(GuiGraphics graphics) {
-        graphics.drawCenteredString(font, ModVersion.label(), columnWidth() / 2, 23, 0xFFAAAAAA);
+        if (showsVersion()) graphics.drawCenteredString(font, ModVersion.label(), columnWidth() / 2, 23, 0xFFAAAAAA);
         drawOver(graphics);
+    }
+
+    /** Whether the version stands under the title: a screen with something else there says no. */
+    protected boolean showsVersion() {
+        return true;
     }
 
     /** Drawn over the widgets, after everything: a picture on a button. */
