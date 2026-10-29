@@ -339,7 +339,11 @@ happy ghast without gravity; a water creature stays put. A vehicle its rider ste
 the ground, is an aircraft (`RestingMount.kindOf`, `HOVER` or `CIRCLE`): one going at least
 0.15 blocks a tick circles, as a plane cannot stop in the air, one slower hovers. How fast it
 went is in its save; where the client never saw it move by itself (a vehicle the server moves,
-a copy the mod moves), `RestingMount.keepMotion` writes its last move there. Anything else
+a copy the mod moves), `RestingMount.keepMotion` writes there the fastest its rider went over
+the last two seconds (`FarPlayer.Pace`): the last positions of a player logging off come to a
+stop before they leave. Off the ground or not is the vehicle's own word while the server sends
+it, else the server's last copy of it; a copy older than the flight (made while it stood) says
+it stands, and it is found in the air once the blocks under it are known. Anything else
 neither alive nor a boat (a minecart, a vehicle on the ground) stays where it was. In the saddle they look
 around and raise their shield when hit; no bed, no chest, no sword. With `offlineLife` off,
 rider and mount wait on the spot.

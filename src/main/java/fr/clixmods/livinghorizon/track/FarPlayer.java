@@ -81,6 +81,11 @@ public final class FarPlayer {
     private boolean placed;
     private double x, y, z;
     private double velX, velZ;
+    /** How fast they went lately: the plane they log off in flies on at that pace. */
+    private final Pace going = new Pace();
+    /** Whether the server's last copy of their mount was off the ground; null when it said nothing. */
+    private @Nullable Boolean sharedAloft;
+    private PositionsMessage.@Nullable Mount aloftOf;
     private float yaw;
 
     @Nullable RemotePlayer puppet;
@@ -134,7 +139,9 @@ public final class FarPlayer {
         for (Entity passenger : vehicle.getIndirectPassengers()) {
             if (passenger instanceof Player other && !other.getUUID().equals(id)) return null;
         }
-        return RestingPlayers.Mount.of(vehicle, riderOffset, mountYaw, riderYaw);
+        // Off the ground or not: what the game sees of it while sent, else the server's last word.
+        Boolean aloft = source == Source.LIVE ? null : sharedAloft;
+        return RestingPlayers.Mount.of(vehicle, riderOffset, mountYaw, riderYaw, going.fastest(), aloft);
     }
 
     /** What they wear and hold, to keep when they log off: as last seen, or as the server last said. */
@@ -201,6 +208,7 @@ public final class FarPlayer {
         if (wasPlaced) {
             velX = lerp(0.3, velX, x - px);
             velZ = lerp(0.3, velZ, z - pz);
+            going.note(velX, velZ);
         }
         yaw = player.getYRot();
         puppet = null;
@@ -227,6 +235,12 @@ public final class FarPlayer {
             shownGear = look.gear();
         }
 
+        // Read once each time the server sends a new copy: the game saves it as text.
+        if (sharedMount != aloftOf) {
+            aloftOf = sharedMount;
+            String nbt = sharedMount == null ? "" : sharedMount.nbt();
+            sharedAloft = nbt.contains("OnGround:0b") ? Boolean.TRUE : nbt.contains("OnGround:1b") ? Boolean.FALSE : null;
+        }
         Source heard = shared == null ? null : share(shared, dimension);
         if (heard != null && riding) {
             // Got onto another mount out of sight: the one drawn is no longer theirs.
@@ -371,6 +385,30 @@ public final class FarPlayer {
         z += (tz - z) * k;
         velX = lerp(0.2, velX, x - px);
         velZ = lerp(0.2, velZ, z - pz);
+        going.note(velX, velZ);
+    }
+
+    /**
+     * The fastest a player went over the last two seconds, in blocks a tick: the last positions
+     * of one logging off come to a stop before they leave, though their plane was flying.
+     */
+    static final class Pace {
+        static final int KEPT = 40;
+        private double x, z;
+        private int ago;
+
+        /** One tick at this pace. */
+        void note(double vx, double vz) {
+            if (++ago > KEPT || Math.hypot(vx, vz) >= Math.hypot(x, z)) {
+                x = vx;
+                z = vz;
+                ago = 0;
+            }
+        }
+
+        Vec3 fastest() {
+            return new Vec3(x, 0, z);
+        }
     }
 
     // --- Puppets ---------------------------------------------------------------------

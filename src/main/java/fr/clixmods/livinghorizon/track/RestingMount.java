@@ -77,7 +77,8 @@ final class RestingMount {
     private static final double DRAFT = 0.1, SEAT = -0.41;
 
     final Entity entity;
-    final Kind kind;
+    /** How it gets about: an aircraft whose save said it stood on the ground turns out to be in the air once the blocks are known. */
+    Kind kind;
     /** The rider's feet from the mount's, in the mount's own frame. */
     private final Vec3 seat;
     private final float riderYaw;
@@ -138,11 +139,18 @@ final class RestingMount {
 
     /**
      * Writes into its save how fast it was going, where the game kept less: a vehicle this client
-     * only sees moved by the server, or a copy moved by the mod, has no motion of its own. A
-     * plane left in the air flies on in circles at that pace ({@link Kind#CIRCLE}).
+     * only sees moved by the server, or a copy moved by the mod, has no motion of its own; its
+     * rider's last pace ({@code going}) stands for it. A plane left in the air flies on in circles
+     * at that pace ({@link Kind#CIRCLE}).
      */
-    static void keepMotion(Entity vehicle, CompoundTag saved) {
+    static void keepMotion(Entity vehicle, CompoundTag saved, Vec3 going) {
         double dx = vehicle.getX() - vehicle.xo, dy = vehicle.getY() - vehicle.yo, dz = vehicle.getZ() - vehicle.zo;
+        // Its rider's pace, when that was faster: the last positions came to a stop as they left.
+        if (going.horizontalDistanceSqr() > dx * dx + dz * dz) {
+            dx = going.x;
+            dy = 0;
+            dz = going.z;
+        }
         if (vehicle.getDeltaMovement().horizontalDistanceSqr() >= dx * dx + dz * dz) return;
         ListTag motion = new ListTag();
         motion.add(DoubleTag.valueOf(dx));
@@ -353,6 +361,12 @@ final class RestingMount {
         }
         boolean first = !placed;
         placed = true;
+        if (first && kind == Kind.STILL && !(entity instanceof LivingEntity)
+                && Vehicles.of(entity) == Vehicles.Kind.STEERED
+                && !Footing.supported(blocks, entity.getX(), entity.getY(), entity.getZ(), half)) {
+            // Its save was older than its flight (a copy made while it stood): nothing under it now.
+            kind = entity.getDeltaMovement().horizontalDistance() >= CRUISE ? Kind.CIRCLE : Kind.HOVER;
+        }
         if (!lively) {
             stop();
             settle(level, first);

@@ -127,9 +127,20 @@ public final class RestingPlayers {
          * (in its frame); null when the game cannot save it on the client.
          */
         static @Nullable Mount of(Entity vehicle, Vec3 seat, float yaw, float riderYaw) {
+            return of(vehicle, seat, yaw, riderYaw, Vec3.ZERO, null);
+        }
+
+        /**
+         * The same, knowing how fast its rider last went ({@code going}, blocks a tick) and
+         * whether it was off the ground ({@code aloft}; null to take the entity's word): what
+         * the client sees of a vehicle the server moves says little of either.
+         */
+        static @Nullable Mount of(Entity vehicle, Vec3 seat, float yaw, float riderYaw, Vec3 going,
+                                  @Nullable Boolean aloft) {
             try {
                 CompoundTag saved = EntityNbt.save(vehicle, vehicle.level());
-                RestingMount.keepMotion(vehicle, saved);
+                RestingMount.keepMotion(vehicle, saved, going);
+                if (aloft != null) saved.putBoolean("OnGround", !aloft);
                 return new Mount(EntityType.getKey(vehicle.getType()).toString(), saved.toString(),
                         RestingMount.dataOf(vehicle), seat.x, seat.y, seat.z, yaw, riderYaw);
             } catch (RuntimeException e) {

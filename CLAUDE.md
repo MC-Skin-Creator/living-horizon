@@ -500,6 +500,12 @@ come back, add it here in the same pull request: this file is what the next sess
   The server names what each player rides by its id, whatever it is (a plane, a modded mount):
   named only for the shared kinds, a plane taken out of this client's sight had no id, and its
   remembered copy was drawn on its own as well as under the rider (`FarPlayer.mountFrom`).
+- **A plane left in the air hovering or on the ground, when its pilot logged off flying** (the
+  debug command's test players circle; a real player's plane does not): what the client sees of
+  a vehicle the server moves has no motion, its last positions stop before the player leaves, and
+  a copy made while it stood says it is on the ground. `FarPlayer.Pace` keeps the fastest of the
+  last two seconds for `RestingMount.keepMotion`, `FarPlayer.mountToRest` takes off the ground or
+  not from the server's last copy, and `RestingMount.tick` looks under it once its blocks are known.
 - **A far player in an old skin** (they changed it, the puppet did not): a `RemotePlayer` finds its
   `PlayerInfo` by id once and keeps it. A new tab list entry means a new skin, so
   `FarPlayer.observeRemote` makes a new puppet when the entry changes (`newSkin`). The server's
