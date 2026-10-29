@@ -107,8 +107,11 @@ checks it.
 ### What is sent, and when
 
 - **Five times a second**, to every player online: each player's position, yaw, dimension
-  and which mob they ride (a vehicle not in `track/MobKinds.TYPES` only as "riding"), so that
-  a far player is drawn on their own mount.
+  and the id of what they ride, whatever it is, so that a far player is drawn on their own
+  mount, and a client that remembers that mount or vehicle (shared by the server, or met) does
+  not draw it a second time on its own. A server of an older version names only the kinds of
+  `track/MobKinds.TYPES`: the client then keeps the mount it knew while the server's copy is of
+  its kind (`FarPlayer.mountFrom`).
 - **Every five seconds**, to every player online:
   - how the 64 players nearest them look, online or logged off (skin, armour and what they
     hold, read every second), and what they ride, as the server saves it;
@@ -328,10 +331,20 @@ then rests a while and goes again:
 | Horse (any mount that walks) | Only where it has room for itself and its rider (0.9 blocks wide at most), worked out like a walk on foot | A loop on the ground read around the spot |
 | Boat | On the water it floats on; stays put on land | A loop on the water |
 | Happy ghast | Straight lines through open air, at most 24 blocks from its spot and 4 up or down | A loop in the air, at its height |
+| Aircraft left flying | Round and round at its height, near or far: from its spot along the way it faced, at the pace it went (0.2 to 1.2 blocks a tick), round a point 16 to 48 blocks beside it | The same |
+| Aircraft left still in the air | Hovers on its spot | The same |
 
 Another mod's mount goes by what it is: a living one walks like a horse, or flies like the
-happy ghast without gravity; a water creature stays put. Anything neither alive nor a boat (a
-minecart) stays where it was. In the saddle they look
+happy ghast without gravity; a water creature stays put. A vehicle its rider steers, left off
+the ground, is an aircraft (`RestingMount.kindOf`, `HOVER` or `CIRCLE`): one going at least
+0.15 blocks a tick circles, as a plane cannot stop in the air, one slower hovers. How fast it
+went is in its save; where the client never saw it move by itself (a vehicle the server moves,
+a copy the mod moves), `RestingMount.keepMotion` writes there the fastest its rider went over
+the last two seconds (`FarPlayer.Pace`): the last positions of a player logging off come to a
+stop before they leave. Off the ground or not is the vehicle's own word while the server sends
+it, else the server's last copy of it; a copy older than the flight (made while it stood) says
+it stands, and it is found in the air once the blocks under it are known. Anything else
+neither alive nor a boat (a minecart, a vehicle on the ground) stays where it was. In the saddle they look
 around and raise their shield when hit; no bed, no chest, no sword. With `offlineLife` off,
 rider and mount wait on the spot.
 
@@ -371,6 +384,21 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
 - **Every kind of mob**, the game's and other mods', is shown from the start, walking, then left
   as the player sets it (`knownMobTypes`, offered once the game has registered them). Each client
   remembers other mods' mobs itself: the server only shares vanilla kinds.
+- **Vehicles** that are neither mobs nor the game's boats (an aircraft, a car, a minecart) are
+  told by what their class does, never by a list of ids (`track/Vehicles`): one whose class
+  answers who steers it (`getControllingPassenger`, as a boat's does: Immersive Aircraft's
+  planes, another mod's boat) is shown from the start; one that only places its riders
+  (`positionRider`: a minecart, Superb Warfare's vehicles, Create's seats and moving
+  contraptions, whose copies could cost a lot) is listed but waits to be chosen
+  (`seatedVehicles`, kept by *Defaults* and a reset). Both methods are found on `Entity` by
+  their shape, since their names differ between loaders. The class is the one the kind's
+  renderer is declared for (`MobList.vehicle`, read from the game's map of renderers with
+  Guava's `TypeToken`), so a kind is under the *Entities* tab of *Mobs & Entities...* from the
+  start; a renderer declared for any entity tells nothing, and then the first one met does
+  (`knownVehicles`; the *Mobs* tab holds the living kinds, mannequins excepted). A copy
+  stands where it was left, as a boat does: no animation, and only this client remembers it.
+  So a kind that is not alive, a boat included, is only *Shown* or *Hidden* there, never
+  *Roaming* or *Still*.
 - **Mannequins** (from 1.21.9) are shown too, standing still: Distant Friends uses them as its fake
   players. Mobs in `stillMobTypes` (happy ghast, mannequin) stand still instead of walking
   their loop. A copy wears its mannequin's skin, from a player's name or a texture of a
@@ -562,12 +590,15 @@ or the weather (`Ambience.summon`).
 
 ## Impostors
 
-In game: *Simplified Entities* (`impostors`, on by default). Past `impostorDistance` blocks, a
-distant player or mob is not extracted and submitted as a model: a flat picture of it, always
-turned to the camera, is drawn instead (`render/impostor/ImpostorRenderer`). A figure 200
-blocks away is a handful of pixels tall, so the picture loses nothing, and the game no longer
-builds a render state and a model for it every frame. With `impostorPlayers` off, players
-keep their whole model at any distance.
+In game: three switches, each on by default and on its own: *Simplified Mobs* (`impostors`, mobs
+and birds), *Simplified Entities* (`impostorEntities`: boats, vehicles and mannequins, the
+*Entities* tab of the list of mobs, `GhostRenderer.creature`) and *Simplified Players*
+(`impostorPlayers`). Past `impostorDistance` blocks, a distant figure is not extracted and
+submitted as a model: a flat picture of it, always turned to the camera, is drawn instead
+(`render/impostor/ImpostorRenderer`). A figure 200 blocks away is a handful of pixels tall, so the
+picture loses nothing, and the game no longer builds a render state and a model for it every
+frame. A boat or a vehicle is pictured from every height, as a phantom or a ghast is
+(`ImpostorViews.HEIGHTS`): an aircraft flies overhead, and a parked one is seen from a cliff.
 
 ### Baking the pictures
 
@@ -593,7 +624,10 @@ keep their whole model at any distance.
   Only the light where the figure stands (sky, torches, night) is applied on top. Under a
   shader pack, Iris works out a quad's normal from its corners, so `ImpostorLean` leans the
   quad back, without changing how it looks on screen, to face it where the light should come
-  from.
+  from. A figure is baked at full light: some renderers keep the light they read as they
+  extract (Immersive Aircraft's, from 26.1), so `GhostRenderer.extract` hands the light over
+  then too, through `EntityRendererLightMixin`, and does the same for the models it draws far
+  away, where the client may have no light yet.
 - **When.** Every figure on hand (distant players, remembered mobs) is queued about once a
   second, near or far, and baked a little each frame (from the GUI pass from 1.21.6; see
   below), 3 ms of it, checked after each sheet, one sheet at least, so it is ready when the
@@ -695,8 +729,11 @@ that a mob met in an earlier game is read back rather than baked.
   below: like a bird, one sheet per height they are seen from (well below, below, level,
   above: `ImpostorViews.HEIGHTS`, part of the key through `ImpostorKey.seenFrom`), baked
   turned round their middle (`ImpostorAtlas.MIDDLE`), facing the camera entirely when drawn.
-  All four are asked for together; kept on disk like any mob's. A happy ghast carrying a
-  player is pictured with its rider, upright, as before.
+  All four are asked for together; kept on disk like any mob's. Boats and vehicles are
+  pictured the same way. A picture turned up to the camera round the middle shows what is
+  nearer than that middle (an aircraft's nose, the wheels under it) farther along the line of
+  sight, under the ground the figure stands on when seen from above: `GhostRenderer.picture`
+  moves it nearer by half its size and makes it as much smaller, the same on screen.
 - **Players who logged off** are impostors in every posture: standing, seated on the ground,
   lying down or in a bed. A posture other than standing is part of the key
   (`ImpostorKey.posture`), and the picture is baked in it:
@@ -707,14 +744,16 @@ that a mob met in an earlier game is read back rather than baked.
   minecart...) are baked in one picture with what carries them (`ImpostorKey.riding`,
   `ImpostorAtlas.Rider`): the rider seated where it sits, turned as it is turned. A vehicle has
   no body to turn in its state, so the entity itself is turned for each view and put back
-  after the bake. Filed as a player's sheet, never kept on disk.
+  after the bake. Filed as a player's sheet, never kept on disk. On what is pictured from
+  every height (a boat, a vehicle, a happy ghast), the rider is too, both turned round the
+  middle of the two together (`ImpostorAtlas.middle(mount, rider)`).
 - **Never impostors**: a vehicle carrying more than one passenger (drawn as models, all of
   them), a mob carrying another that is not a player, the 2D birds, parrots and bats, and the
   types `GhostRenderer.drawable` leaves out (GeckoLib 4).
 
 ### Preview
 
-*Simplified Entities...* in the settings, or `/livinghorizon impostors`: every figure baked,
+*Picture Preview...* in the settings, or `/livinghorizon impostors`: every figure baked,
 its eight views, and its front view at 32, 16 and 8 screen pixels, as it looks far away.
 *Rebuild* throws every picture away, on disk too, and bakes the figures on hand anew, even
 after a failed bake.
@@ -1042,7 +1081,7 @@ update, measure the same scene. Birds still choose where they fly by chance.
 |---|---|
 | `/livinghorizon` | Whether positions are shared, how many mobs are remembered and drawn, the cost per tick and per frame, and every distant player followed, with where their position comes from and how far they are |
 | `/livinghorizon config` | Opens the settings |
-| `/livinghorizon impostors` | Opens the impostor preview (*Simplified Entities...*) |
+| `/livinghorizon impostors` | Opens the impostor preview (*Picture Preview...*) |
 | `/livinghorizon scan [radius]` | Reads the mobs of the chunks around, in single player (see [Scanning nearby mobs](#scanning-nearby-mobs)) |
 | `/livinghorizon bird <kind>` | Calls a group of birds of that kind (see [Calling birds](#calling-birds)) |
 | `/livinghorizon lod` (or `voxy`) | Which far terrain mod is read and the state of its depth |
@@ -1096,7 +1135,8 @@ cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 
 | Setting | In game | Default | Range | What it does |
 |---|---|---|---|---|
-| `impostors` | Simplified Entities | `true` | | Far players and mobs drawn as a flat picture of themselves (see [Impostors](#impostors)) |
+| `impostors` | Simplified Mobs | `true` | | Far mobs and birds drawn as a flat picture of themselves (see [Impostors](#impostors)) |
+| `impostorEntities` | Simplified Entities | `true` | | Far boats, vehicles and mannequins drawn as pictures too, from every height; set from `impostors` when it came (layout 12) |
 | `impostorPlayers` | Simplified Players | `true` | | Distant players become impostors too; off, they keep their whole model at any distance |
 | `impostorDistance` | Simplification Distance | `128` blocks | 32 to 2000 | Past this distance an impostor stands in for the model |
 | `impostorPixels` | Simplification Size | `10` pixels | 0 to 64 | A figure shorter than this on screen is an impostor too, even closer than `impostorDistance` (`0`: the distance alone) |
@@ -1119,23 +1159,31 @@ cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 *Clear Offline Players* forgets every player who logged off on this server. On a server with
 the mod, they come back at their last position.
 
-#### Distant Mobs
+#### Distant Mobs & Entities
+
+In three parts, on both screens: *General*, *Mobs* (the living kinds, mannequins excepted) and
+*Entities* (boats, vehicles, mannequins).
 
 | Setting | In game | Default | Range | What it does |
 |---|---|---|---|---|
-| `distantMobs` | Show Mobs | `true` | | Remembered mobs stay visible far away |
-| `maxDistantMobs` | Max Mobs | `512` | 0 to 1000 | How many are drawn at once, nearest first (`0`: none, `1000`: no limit). No limit here and in `mobMaxDistance` together can crash the game |
-| `mobMaxDistance` | Mob Render Distance | `512` blocks | 0 to 4000 | Past this, distant mobs are not drawn (`0`: no limit) |
-| `rememberNamedMobs` | Name-Tagged Mobs | `true` | | A mob with a name tag is shown whatever its type |
-| `animationMinPixels` | Min. Animated Size | `10` pixels | 0 to 40 | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
-| `animationMaxDistance` | Animation Distance | `0` blocks | 0 to 4000 | Past this, no distant mob plays an animation (`0`: no limit) |
-| `mobTypes` | Mobs & Entities... | Every mob and boat of the game and of other mods | | Which mobs are shown, and remembered by this client |
-| `stillMobTypes` | Mobs & Entities..., *Still* | Happy ghast, mannequin | | Mobs shown standing still instead of walking their loop |
-| `scanRadius` | Scan Radius | `32` chunks | 4 to 1024 | Chunks around you read by a scan, in single player (32 chunks = 512 blocks) |
+| `mobTypes` | General: Mobs & Entities... | Every mob and boat of the game and of other mods, and the vehicles their rider steers | | Which mobs and entities are shown, and remembered by this client. A change shows at once, the game paused or not (`MobMemory.kindsChanged`) |
+| `stillMobTypes` | Mobs & Entities..., *Still* | Happy ghast, mannequin | | Mobs shown standing still instead of walking their loop; a boat or a vehicle is only *Shown* or *Hidden* |
+| `scanRadius` | General: Scan Radius | `32` chunks | 4 to 1024 | Chunks around you read by a scan, in single player (32 chunks = 512 blocks) |
+| `distantMobs` | Mobs: Show Mobs | `true` | | Remembered mobs stay visible far away |
+| `maxDistantMobs` | Mobs: Max Mobs | `512` | 0 to 1000 | How many are drawn at once, nearest first (`0`: none, `1000`: no limit). No limit here and in `mobMaxDistance` together can crash the game |
+| `mobMaxDistance` | Mobs: Mob Render Distance | `512` blocks | 0 to 4000 | Past this, distant mobs are not drawn (`0`: no limit) |
+| `rememberNamedMobs` | Mobs: Name-Tagged Mobs | `true` | | A mob with a name tag is shown whatever its type |
+| `animationMinPixels` | Mobs: Min. Animated Size | `10` pixels | 0 to 40 | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
+| `animationMaxDistance` | Mobs: Animation Distance | `0` blocks | 0 to 4000 | Past this, no distant mob plays an animation (`0`: no limit) |
+| `distantEntities` | Entities: Show Entities | `true` | | Remembered boats, vehicles and mannequins stay visible far away |
+| `maxDistantEntities` | Entities: Max Entities | `256` | 0 to 1000 | How many of them are drawn at once, nearest first, apart from the mobs: a crowd of mobs never pushes an aircraft out (`1000`: no limit) |
+| `entityMaxDistance` | Entities: Entity Render Distance | `0` blocks | 0 to 4000 | Past this, distant boats, vehicles and mannequins are not drawn (`0`: no limit; few, and an aircraft is seen from afar) |
 | `knownMobTypes` | (not shown) | Those met so far | | Mob types already offered once, the game's and other mods': a new one is shown from the start, then left as you set it |
+| `knownVehicles` | (not shown) | Empty | | Vehicles that are neither mobs nor boats, as found from their renderer or met, listed in *Mobs & Entities...* |
+| `seatedVehicles` | (not shown) | Empty | | Those of them that only seat their riders (a minecart): listed, never shown by default |
 
-*Forget Mobs* forgets every mob remembered on this server; those a server with the mod shares
-come back by themselves. *Scan Nearby Mobs* runs a scan.
+*Forget All* forgets every mob, boat and vehicle remembered on this server; those a server with
+the mod shares come back by themselves. *Scan Nearby Mobs* runs a scan.
 
 #### Birds
 

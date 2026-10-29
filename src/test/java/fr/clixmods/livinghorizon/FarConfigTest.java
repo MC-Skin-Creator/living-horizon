@@ -27,7 +27,7 @@ class FarConfigTest {
         FarConfig fresh = new FarConfig();
         fresh.version = migrated.version;
         assertEquals(GSON.toJson(fresh), GSON.toJson(migrated));
-        assertEquals(11, migrated.version);
+        assertEquals(12, migrated.version);
     }
 
     @Test
@@ -141,14 +141,24 @@ class FarConfigTest {
     }
 
     @Test
+    void version12SplitsTheSimplifiedFigures() {
+        // The one switch off stays off for mobs and for the other entities alike.
+        assertFalse(migrated("{\"version\": 11, \"impostors\": false}").impostorEntities);
+        assertTrue(migrated("{\"version\": 11, \"impostors\": true}").impostorEntities);
+        assertTrue(migrated("{\"version\": 12, \"impostors\": false}").impostorEntities);
+    }
+
+    @Test
     void fillsInWhatTheFileLeftOut() {
         FarConfig config = migrated("{\"version\": 11, \"mobTypes\": null, \"hiddenBirds\": null, \"birdStyle\": null,"
-                + " \"knownMobTypes\": null, \"stillMobTypes\": null}");
+                + " \"knownMobTypes\": null, \"knownVehicles\": null, \"seatedVehicles\": null, \"stillMobTypes\": null}");
         assertTrue(config.mobTypes.contains("minecraft:horse"));
         assertTrue(config.stillMobTypes.contains(MANNEQUIN));
         assertEquals(java.util.List.of(), config.hiddenBirds);
         assertEquals("3d", config.birdStyle);
         assertTrue(config.knownMobTypes.contains("minecraft:horse"));
+        assertEquals(java.util.List.of(), config.knownVehicles);
+        assertEquals(java.util.List.of(), config.seatedVehicles);
     }
 
     @Test

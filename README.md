@@ -17,8 +17,8 @@ see a living world.
 ### Mobs on the horizon
 
 All mobs are visible from far away, on the game's terrain and **on Voxy and Distant
-Horizons terrain**. This works for any entity Minecraft can draw, mobs from other mods
-included. Choose which ones in *Mobs & Entities...*.
+Horizons terrain**. This works for any entity Minecraft can draw, mobs and vehicles from
+other mods included. Choose which ones in *Mobs & Entities...*.
 
 ### Players at any distance
 
@@ -52,10 +52,11 @@ through them, they cannot block or push you, and mobs ignore them.
 ### Simplified Entities
 
 Many games draw far objects as **impostors**: a flat picture instead of a 3D model. Living
-Horizon does the same for far mobs and players. It costs much less to draw, so you can show
-many more entities.
+Horizon does the same for far mobs, vehicles and players, each with its own switch:
+*Simplified Mobs*, *Simplified Entities* and *Simplified Players*. It costs much less to draw,
+so you can show many more entities.
 
-Keep *Simplified Entities* on if you raise *Mob Render Distance* or *Max Mobs*. A *Preset*
+Keep *Simplified Mobs* on if you raise *Mob Render Distance* or *Max Mobs*. A *Preset*
 (*Low*, *Normal*, *High*, *Ultra*) sets everything at once.
 
 **Careful:** *Max Mobs* and *Mob Render Distance* both on *Unlimited* can crash the game.
@@ -154,6 +155,7 @@ page, one file per game version and loader:
 | Iris and shader packs | Photon and Complementary checked. |
 | [Sodium](https://modrinth.com/mod/sodium) | From 0.8, the settings are also in Sodium's *Video Settings*. |
 | GeckoLib | Works. From 1.21.2 to 1.21.8 its mobs are not drawn far away yet ([#67](https://github.com/MC-Skin-Creator/living-horizon/issues/67)). |
+| [Immersive Aircraft](https://modrinth.com/mod/immersive-aircraft) | Its aircraft stay visible far away, where you left them. |
 
 Mobs from other mods should work. Mods not tested yet are listed under the
 [`mod compatibility`](https://github.com/MC-Skin-Creator/living-horizon/labels/mod%20compatibility)
@@ -192,9 +194,9 @@ Entities*).
 <details>
 <summary>How far does it show mobs and players?</summary>
 
-Mobs: 512 blocks by default, up to *Unlimited* with *Mob Render Distance*. Players: any
-distance by default, which *Player Render Distance* can limit. A mob only shows once your
-game or the server has seen it.
+Mobs: 512 blocks by default, up to *Unlimited* with *Mob Render Distance*. Players, boats and
+vehicles: any distance by default, which *Player Render Distance* and *Entity Render Distance*
+can limit. A mob only shows once your game or the server has seen it.
 
 </details>
 
@@ -236,8 +238,8 @@ render distance. With one of them, they also show on its far terrain.
 <details>
 <summary>Will it lower my frame rate?</summary>
 
-Drawing more entities costs frame rate. If your game slows down, keep *Simplified Entities*
-on and pick a lower *Preset*. *Max Mobs* and *Mob Render Distance* both on *Unlimited* can
+Drawing more entities costs frame rate. If your game slows down, keep *Simplified Mobs* and
+*Simplified Entities* on and pick a lower *Preset*. *Max Mobs* and *Mob Render Distance* both on *Unlimited* can
 crash the game.
 
 </details>

@@ -382,7 +382,10 @@ public final class MobMemory {
      * up to it first, so that the mob does not jump from where the copy was.
      */
     public void onLoad(Entity entity) {
-        if (rememberable(entity)) live.put(entity.getUUID(), entity);
+        if (rememberable(entity)) {
+            live.put(entity.getUUID(), entity);
+            discover(entity);
+        }
         // Back in the world with its rider: remembered again once it leaves.
         takenAway.remove(entity.getUUID());
         Remembered mob = mobs.get(entity.getUUID());
@@ -479,7 +482,7 @@ public final class MobMemory {
         if (file == null || (bound != null && level != bound) || !rememberable(entity)) return;
         Entity mob = entity;
         FarConfig config = FarConfig.get();
-        if (!config.distantMobs || !worthRemembering(mob, config)) return;
+        if (!config.shows(MobKinds.creature(mob.getType())) || !worthRemembering(mob, config)) return;
         if ((mob instanceof LivingEntity living && living.isDeadOrDying()) || carriesPlayer(mob)
                 || takenAway.contains(mob.getUUID())) {
             forget(mob.getUUID());
@@ -518,7 +521,7 @@ public final class MobMemory {
      * between with neither the real mob nor its copy. The next choice puts the list in order.
      */
     private void showNow(Remembered mob, ClientLevel level, FarConfig config) {
-        if (config.maxDistantMobs <= 0 || carried.contains(mob.id)) return;
+        if (config.most(creature(mob), 1) <= 0 || carried.contains(mob.id)) return;
         if (mob.puppet == null) {
             // A crowd unloaded at once (a teleport) is left to the ticks and their budget.
             if (config.optBackgroundBuild && builtNow >= BUILD_BUDGET) return;
@@ -590,17 +593,37 @@ public final class MobMemory {
     }
 
     /**
-     * Mobs, boats - a parked boat vanishes from far away just like an animal - and
-     * mannequins, the skinned figures that Distant Friends stands far away as fake players.
+     * Mobs, boats - a parked boat vanishes from far away just like an animal - other vehicles,
+     * other mods' aircraft and cars among them ({@link Vehicles}), and mannequins, the skinned
+     * figures that Distant Friends stands far away as fake players.
      */
     static boolean rememberable(Entity entity) {
-        // Mannequins came in 1.21.9; every boat was one class before 1.21.2.
+        // Mannequins came in 1.21.9.
         //? if >=1.21.9 {
-        return entity instanceof Mob || entity instanceof AbstractBoat || entity instanceof Mannequin;
-        //?} elif >=1.21.2 {
-        /*return entity instanceof Mob || entity instanceof AbstractBoat;
-        *///?} else
-        /*return entity instanceof Mob || entity instanceof net.minecraft.world.entity.vehicle.Boat;*/
+        return entity instanceof Mob || boat(entity) || entity instanceof Mannequin || Vehicles.is(entity);
+        //?} else
+        /*return entity instanceof Mob || boat(entity) || Vehicles.is(entity);*/
+    }
+
+    /** A boat or a raft, chest or not, other mods' boats built on the game's included. */
+    static boolean boat(Entity entity) {
+        // Every boat was one class before 1.21.2.
+        //? if >=1.21.2 {
+        return entity instanceof AbstractBoat;
+        //?} else
+        /*return entity instanceof net.minecraft.world.entity.vehicle.Boat;*/
+    }
+
+    /**
+     * A vehicle of a kind never met before, whose id the list of mobs cannot know (an aircraft,
+     * another mod's boat): from now on it is in that list, where the player chooses whether it
+     * is shown ({@link FarConfig#adoptVehicle}). The game's boats are listed already.
+     */
+    private static void discover(Entity entity) {
+        Vehicles.Kind kind = Vehicles.of(entity);
+        if (kind == Vehicles.Kind.NONE) return;
+        String id = EntityType.getKey(entity.getType()).toString();
+        if (!MobKinds.isBoat(id)) FarConfig.adoptVehicle(id, kind == Vehicles.Kind.STEERED);
     }
 
     private static boolean worthRemembering(Entity mob, FarConfig config) {
@@ -658,7 +681,7 @@ public final class MobMemory {
         renderBlocks = renderDistanceBlocks;
         builtNow = 0;
         clock++;
-        if (!config.distantMobs) {
+        if (!config.distantMobs && !config.distantEntities) {
             shown = List.of();
             return;
         }
@@ -805,7 +828,7 @@ public final class MobMemory {
         return mob.motion;
     }
 
-    /** Where it was, facing where it faced, not moving: a boat, which has no animation. */
+    /** Where it was, facing where it faced, not moving: a boat or another vehicle, which has no animation. */
     private static void hold(Entity puppet, Remembered mob) {
         puppet.setOldPosAndRot();
         puppet.setPos(mob.x, mob.y, mob.z);
@@ -1045,27 +1068,61 @@ public final class MobMemory {
         return sent(type, reach);
     }
 
+    /** Milliseconds a change in the list of mobs may spend building the copies it shows. */
+    private static final long CHANGE_BUDGET = 100;
+
+    /**
+     * The kinds shown far away were just changed in the list of mobs: drawn or left out from
+     * this frame, not from the next tick, which never comes while the list pauses the game.
+     */
+    public void kindsChanged() {
+        FarConfig config = FarConfig.get();
+        ClientLevel level = bound;
+        chooseSoon = true;
+        if (level == null || file == null || (!config.distantMobs && !config.distantEntities)) return;
+        choose(level.dimension().identifier().toString(), config);
+        long until = System.nanoTime() + CHANGE_BUDGET * 1_000_000L;
+        for (Remembered mob : shown) {
+            if (System.nanoTime() > until) break;
+            if (mob.puppet != null || mob.failed || mob.gone || mob.handover != null) continue;
+            if (mob.parsed == null) mob.parsed = CompletableFuture.completedFuture(parse(mob.nbt));
+            if (mob.parsed.isDone()) build(mob, level);
+        }
+    }
+
     /** The nearest few, in this dimension: the ones drawn until the next choice. */
     private void choose(String dimension, FarConfig config) {
         chooseSoon = false;
         Set<String> wanted = new HashSet<>(config.mobTypes);
-        List<Remembered> here = new ArrayList<>();
+        // The mobs and the other entities, each shown or not and each limited on its own: a
+        // crowd of mobs never pushes an aircraft out.
+        List<Remembered> creatures = new ArrayList<>(), others = new ArrayList<>();
         for (Remembered mob : mobs.values()) {
             if (!mob.dimension.equals(dimension) || !isHere(mob)
                     || (live.containsKey(mob.id) && mob.handover == null) || carried.contains(mob.id)) continue;
             if (!wanted.contains(mob.type) && !(config.rememberNamedMobs && mob.named)) continue;
+            boolean creature = creature(mob);
+            if (!config.shows(creature)) continue;
             mob.distance = distance(mob.x, mob.y, mob.z);
-            here.add(mob);
+            (creature ? creatures : others).add(mob);
         }
-        here.sort(Comparator.comparingDouble(mob -> mob.distance));
-        int most = config.maxDistantMobs >= FarConfig.UNLIMITED_MOBS ? here.size() : Math.max(0, config.maxDistantMobs);
-        List<Remembered> chosen = here.subList(0, Math.min(here.size(), most));
+        List<Remembered> chosen = new ArrayList<>();
+        for (List<Remembered> here : List.of(creatures, others)) {
+            here.sort(Comparator.comparingDouble(mob -> mob.distance));
+            chosen.addAll(here.subList(0, config.most(here == creatures, here.size())));
+        }
         Set<Remembered> kept = Collections.newSetFromMap(new IdentityHashMap<>());
         kept.addAll(chosen);
         for (Remembered mob : shown) {
             if (!kept.contains(mob)) mob.puppet = null;
         }
         shown = Collections.unmodifiableList(new ArrayList<>(chosen));
+    }
+
+    /** A mob rather than another entity (a boat, a vehicle, a mannequin); one of a kind not known here is taken for a mob. */
+    private static boolean creature(Remembered mob) {
+        EntityType<?> type = type(mob);
+        return type == null || MobKinds.creature(type);
     }
 
     /** A mob that walks on the ground, and so can fall: not one that flies or swims. */

@@ -18,6 +18,7 @@ into a virtual display (Xvfb).
 .claude/skills/game-test/run.sh impostors        # one, or several: a,b
 .claude/skills/game-test/run.sh all --sodium     # with Sodium loaded too
 .claude/skills/game-test/run.sh impostors --shaders <pack folder>   # Sodium, Iris and a shader pack
+.claude/skills/game-test/run.sh vehicles --with immersive-aircraft   # another mod, by its Modrinth project
 ```
 
 It takes 1 to 3 minutes per scenario. The script:
@@ -136,6 +137,10 @@ thread), `setScreen`, `clickScreenButton(translation key)`, `takeScreenshot`. Th
   its zip from Modrinth unpacked into the scratchpad. The run folder is emptied at start, so a pack copied there by hand is lost.
 - Sodium can be added (`--sodium`, downloaded from Modrinth into `build/game-test-mods`). The
   `sodium` scenario shows the mod's pages in Sodium's video settings; without Sodium it does nothing.
+- Any other mod can be added by its Modrinth project, `--with <project>` (repeatable): its
+  Fabric jar for the node's game version, in a folder of its own, loaded by that run only. Its
+  own dependencies are not fetched; the Fabric API is there already. The `vehicles` scenario
+  checks Immersive Aircraft's aircraft with `--with immersive-aircraft`, the minecart without.
 
 ## Never
 

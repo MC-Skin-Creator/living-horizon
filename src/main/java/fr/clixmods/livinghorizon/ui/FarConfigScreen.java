@@ -69,7 +69,8 @@ public final class FarConfigScreen extends SideOptionsScreen {
         header(Component.translatable(KEY + "impostorsSection"));
         list.addSmall(
                 bool("impostors", c.impostors, v -> c.impostors = v),
-                bool("impostorPlayers", c.impostorPlayers, v -> c.impostorPlayers = v));
+                bool("impostorEntities", c.impostorEntities, v -> c.impostorEntities = v));
+        list.addSmall(bool("impostorPlayers", c.impostorPlayers, v -> c.impostorPlayers = v), null);
         list.addBig(blocks("impostorDistance", 32, 2000, c.impostorDistance, v -> c.impostorDistance = v));
         list.addBig(unit("impostorPixels", "pixels", 0, FarConfig.MAX_IMPOSTOR_PIXELS, c.impostorPixels,
                 v -> c.impostorPixels = v));
@@ -99,15 +100,9 @@ public final class FarConfigScreen extends SideOptionsScreen {
                                 () -> FarPlayerTracker.get().resting().forgetAll()))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "forgetSleepers.tooltip"))).build());
 
+        // In three parts, as on Sodium's page: what goes for both, then the mobs, then the other entities.
         header(Component.translatable(KEY + "mobs"));
-        list.addSmall(
-                bool("distantMobs", c.distantMobs, v -> c.distantMobs = v),
-                integer("maxDistantMobs", 0, FarConfig.UNLIMITED_MOBS, c.maxDistantMobs, v -> c.maxDistantMobs = v, true));
-        list.addBig(blocks("mobMaxDistance", 0, 4000, c.mobMaxDistance, v -> c.mobMaxDistance = v));
-        list.addSmall(
-                bool("rememberNamedMobs", c.rememberNamedMobs, v -> c.rememberNamedMobs = v),
-                unit("animationMinPixels", "pixels", 0, 40, c.animationMinPixels, v -> c.animationMinPixels = v));
-        list.addBig(blocks("animationMaxDistance", 0, 4000, c.animationMaxDistance, v -> c.animationMaxDistance = v));
+        subheader(Component.translatable(KEY + "mobs.general"));
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "chooseMobs"), b -> minecraft.setScreen(new MobTypesScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "chooseMobs.tooltip"))).build(),
@@ -116,6 +111,21 @@ public final class FarConfigScreen extends SideOptionsScreen {
                         .tooltip(Tooltip.create(Component.translatable(KEY + "forgetMobs.tooltip"))).build());
         list.addSmall(scanButton(), chunks("scanRadius", MobScan.MIN_RADIUS, MobScan.MAX_RADIUS, c.scanRadius,
                 v -> c.scanRadius = v).createButton(minecraft.options, 0, 0, 150));
+        subheader(Component.translatable(KEY + "mobs.creatures"));
+        list.addSmall(
+                bool("distantMobs", c.distantMobs, v -> c.distantMobs = v),
+                integer("maxDistantMobs", 0, FarConfig.UNLIMITED_MOBS, c.maxDistantMobs, v -> c.maxDistantMobs = v, true));
+        list.addBig(blocks("mobMaxDistance", 0, 4000, c.mobMaxDistance, v -> c.mobMaxDistance = v));
+        list.addSmall(
+                bool("rememberNamedMobs", c.rememberNamedMobs, v -> c.rememberNamedMobs = v),
+                unit("animationMinPixels", "pixels", 0, 40, c.animationMinPixels, v -> c.animationMinPixels = v));
+        list.addBig(blocks("animationMaxDistance", 0, 4000, c.animationMaxDistance, v -> c.animationMaxDistance = v));
+        subheader(Component.translatable(KEY + "mobs.entities"));
+        list.addSmall(
+                bool("distantEntities", c.distantEntities, v -> c.distantEntities = v),
+                integer("maxDistantEntities", 0, FarConfig.UNLIMITED_MOBS, c.maxDistantEntities,
+                        v -> c.maxDistantEntities = v, true));
+        list.addBig(blocks("entityMaxDistance", 0, 4000, c.entityMaxDistance, v -> c.entityMaxDistance = v));
 
         header(Component.translatable(KEY + "birds"));
         list.addSmall(

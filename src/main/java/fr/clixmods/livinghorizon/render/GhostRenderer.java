@@ -20,6 +20,7 @@ import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
 import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobFlight;
+import fr.clixmods.livinghorizon.track.MobKinds;
 import fr.clixmods.livinghorizon.track.MobMemory;
 import fr.clixmods.livinghorizon.track.Puppets;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
@@ -55,6 +56,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3fc;
@@ -278,9 +280,22 @@ public final class GhostRenderer {
      * it too. Null when its renderer cannot give one: that entity is not drawn far away.
      */
     public static @Nullable EntityRenderState extract(EntityRenderDispatcher dispatcher, Entity entity, float partialTick) {
+        return extract(dispatcher, entity, partialTick,
+                light(Minecraft.getInstance().level, entity.getX(), entity.getY(), entity.getZ()));
+    }
+
+    /**
+     * The state of a figure, extracted with {@code light} (packed): the renderer reads the light
+     * as it extracts, and some keep that copy whatever the state says later
+     * ({@code EntityRendererLightMixin}).
+     */
+    public static @Nullable EntityRenderState extract(EntityRenderDispatcher dispatcher, Entity entity, float partialTick,
+                                                      int light) {
         if (!drawable(dispatcher, entity)) return null;
         Puppets.skin(entity);
         Puppets.cape(entity);
+        int before = extractLight;
+        extractLight = light;
         try {
             //? if >=1.21.9 {
             return dispatcher.extractEntity(entity, partialTick);
@@ -293,7 +308,22 @@ public final class GhostRenderer {
             // Another mod's renderer, called for an entity in no world: never worth a crash.
             leaveOut(entity.getType(), error);
             return null;
+        } finally {
+            extractLight = before;
         }
+    }
+
+    /** The light of the figure being extracted, packed; -1 outside {@link #extract}. On the render thread. */
+    private static int extractLight = -1;
+
+    /** The sky light the figure being extracted is lit with, -1 when none is extracted. */
+    public static int extractedSky() {
+        return extractLight < 0 ? -1 : extractLight >> 20 & 15;
+    }
+
+    /** The block light the figure being extracted is lit with, -1 when none is extracted. */
+    public static int extractedBlock() {
+        return extractLight < 0 ? -1 : extractLight >> 4 & 15;
     }
 
     /** Entity types whose renderer gave no state, or failed: never drawn far away again. */
@@ -508,15 +538,36 @@ public final class GhostRenderer {
         if (watcher != null) add(frame, minecraft, eye, extract(dispatcher, watcher, partialTick), null, true, Mark.FAKE, config, null);
     }
 
+    /**
+     * Pictured from several heights, not only level with it: a phantom or a ghast, and a boat or
+     * a vehicle, which an aircraft is, flying overhead or seen from a cliff.
+     */
+    private static boolean fromHeights(Entity entity) {
+        return MobFlight.pictured(entity) || !(entity instanceof LivingEntity);
+    }
+
     /** Past the distance set in the options; 0 is no limit. */
     private static boolean tooFar(Entity entity, Vec3 eye, int limit) {
         return limit > 0 && entity.distanceToSqr(eye) > (double) limit * limit;
     }
 
+    /**
+     * A mob, as the list of mobs files it: alive, mannequins excepted. Boats, vehicles and
+     * mannequins are the other entities, with a distance and a switch for pictures of their own.
+     */
+    public static boolean creature(Entity entity) {
+        return MobKinds.creature(entity.getType());
+    }
+
+    /** How far a remembered or sent figure of the mobs' list is drawn: the mobs' distance, or the other entities'. */
+    private static int maxDistance(Entity entity, FarConfig config) {
+        return creature(entity) ? config.mobMaxDistance : config.entityMaxDistance;
+    }
+
     /** Mobs met on the way, where they were, playing their animation. */
     private static void mobs(List<EntityRenderState> frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
                              Vec3 eye, float partialTick, FarConfig config) {
-        if (!config.distantMobs) return;
+        if (!config.distantMobs && !config.distantEntities) return;
         MobMemory memory = FarPlayerTracker.get().mobs();
         List<MobMemory.Remembered> shown = memory.shown();
         for (MobMemory.Remembered mob : shown) {
@@ -525,7 +576,7 @@ public final class GhostRenderer {
                 if (debug && mob.waiting()) markRemembered(mob, Mark.WAITING);
                 continue;
             }
-            if (tooFar(puppet, eye, config.mobMaxDistance)) continue;
+            if (!config.shows(creature(puppet)) || tooFar(puppet, eye, maxDistance(puppet, config))) continue;
             // A copy walking up to its real mob stands for it, however close.
             if (!memory.handingOver(mob) && tooClose(puppet, eye, memory.nearRange(mob))) {
                 if (debug) DebugMarks.mark(puppet, Mark.NEAR);
@@ -611,7 +662,7 @@ public final class GhostRenderer {
      */
     private static void unseen(List<EntityRenderState> frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
                                Vec3 eye, float partialTick, FarConfig config) {
-        if (!config.distantMobs) return;
+        if (!config.distantMobs && !config.distantEntities) return;
         boolean game = debug && DebugMarks.gameMobs();
         Map<EntityType<?>, Boolean> wanted = WANTED;
         wanted.clear();
@@ -625,6 +676,7 @@ public final class GhostRenderer {
             // Its copy is still walking up to it, and drawn in its place.
             if (memory.hides(entity)) continue;
             EntityType<?> type = entity.getType();
+            if (!config.shows(MobKinds.creature(type))) continue;
             Boolean shown = wanted.get(type);
             if (shown == null) {
                 shown = config.mobTypes.contains(EntityType.getKey(type).toString());
@@ -633,7 +685,7 @@ public final class GhostRenderer {
             if (!shown && !(config.rememberNamedMobs && entity.hasCustomName())) continue;
             // Close by, the game leaves a mob out only when the terrain hides it.
             if (entity.distanceToSqr(eye) < 24 * 24) continue;
-            if (tooFar(entity, eye, config.mobMaxDistance)) continue;
+            if (tooFar(entity, eye, maxDistance(entity, config))) continue;
             if (overVoid(minecraft, eye, entity.getUUID(), entity, config)) continue;
             if (skipped(entity, true)) continue;
             if (occluded(entity.getUUID(), entity, config)) continue;
@@ -883,16 +935,17 @@ public final class GhostRenderer {
         for (FarPlayer player : config.impostorPlayers ? FarPlayerTracker.get().players() : List.<FarPlayer>of()) {
             if (player.puppet() != null) ImpostorAtlas.request(ImpostorKey.of(player.puppet()), player.puppet());
         }
-        if (!config.distantMobs) return;
+        if (!config.distantMobs && !config.distantEntities) return;
         for (MobMemory.Remembered mob : FarPlayerTracker.get().mobs().shown()) {
             Entity puppet = mob.puppet();
-            if (!(puppet instanceof LivingEntity)) continue;
+            if (puppet == null || !config.shows(creature(puppet))
+                    || !(creature(puppet) ? config.impostors : config.impostorEntities)) continue;
             ImpostorKey key = ImpostorKey.of(puppet);
-            if (!MobFlight.pictured(puppet)) {
+            if (!fromHeights(puppet)) {
                 ImpostorAtlas.request(key, puppet);
                 continue;
             }
-            // A phantom or a ghast: seen from every height, as it flies about.
+            // A phantom, a ghast, an aircraft: seen from every height, as it flies about.
             for (int height = 0; height < ImpostorViews.HEIGHTS.length; height++) {
                 ImpostorAtlas.request(ImpostorKey.seenFrom(key, height), puppet);
             }
@@ -935,26 +988,36 @@ public final class GhostRenderer {
      */
     private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config,
                                     double dx, double dy, double dz, float facing) {
-        if (!ImpostorAtlas.usable() || !(entity instanceof LivingEntity living)
-                || entity.isPassenger() || entity.isVehicle()
+        if (!ImpostorAtlas.usable() || entity.isPassenger() || entity.isVehicle()
                 || !drawable(minecraft.getEntityRenderDispatcher(), entity)) {
             return false;
         }
+        // Players are asked for under their own switch, before; mobs and the rest under theirs.
+        if (!(entity instanceof Player) && !(creature(entity) ? config.impostors : config.impostorEntities)) return false;
         ImpostorKey key = ImpostorKey.of(entity);
-        float yaw = Float.isNaN(facing) ? Mth.rotLerp(partialTick, living.yBodyRotO, living.yBodyRot) : facing;
-        boolean aloft = MobFlight.pictured(entity);
+        // A mob's body turns on its own; a boat or a vehicle is the way it faces.
+        float yaw = !Float.isNaN(facing) ? facing : entity instanceof LivingEntity living
+                ? Mth.rotLerp(partialTick, living.yBodyRotO, living.yBodyRot)
+                : Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
+        boolean aloft = fromHeights(entity);
         if (aloft) {
-            // A phantom or a ghast, often seen from below: the picture baked from the nearest
+            // A phantom, a ghast, an aircraft, often seen from below: the picture baked from the nearest
             // height, round its middle, turned to the camera up and down as a bird's is.
             dy += ImpostorAtlas.middle(entity);
-            double ax = Mth.lerp(partialTick, entity.xOld, entity.getX()) + dx - eye.x;
-            double ay = Mth.lerp(partialTick, entity.yOld, entity.getY()) + dy - eye.y;
-            double az = Mth.lerp(partialTick, entity.zOld, entity.getZ()) + dz - eye.z;
-            double elevation = Math.toDegrees(Math.atan2(-ay, Math.sqrt(ax * ax + az * az)));
-            key = ImpostorKey.seenFrom(key, ImpostorViews.height(elevation));
+            key = seenFrom(key, entity, eye, partialTick, dx, dy, dz);
         }
         return picture(minecraft, eye, entity, entity, key, null, 0, partialTick, config,
                 dx, dy, dz, yaw, Math.max(entity.getBbHeight(), entity.getBbWidth()), aloft);
+    }
+
+    /** The key of the pictures of {@code at} baked from the height nearest the camera's, round the point given. */
+    private static ImpostorKey seenFrom(ImpostorKey key, Entity at, Vec3 eye, float partialTick,
+                                        double dx, double dy, double dz) {
+        double ax = Mth.lerp(partialTick, at.xOld, at.getX()) + dx - eye.x;
+        double ay = Mth.lerp(partialTick, at.yOld, at.getY()) + dy - eye.y;
+        double az = Mth.lerp(partialTick, at.zOld, at.getZ()) + dz - eye.z;
+        double elevation = Math.toDegrees(Math.atan2(-ay, Math.sqrt(ax * ax + az * az)));
+        return ImpostorKey.seenFrom(key, ImpostorViews.height(elevation));
     }
 
     /**
@@ -978,7 +1041,14 @@ public final class GhostRenderer {
         ImpostorKey key = ImpostorKey.riding(rider, mount, seat, turned);
         float yaw = Mth.rotLerp(partialTick, facingO, facing);
         double extent = Math.max(Math.max(mount.getBbHeight(), seat.y + rider.getBbHeight()), mount.getBbWidth());
-        return picture(minecraft, eye, rider, mount, key, seat, turned, partialTick, config, 0, 0, 0, yaw, extent, false);
+        // On an aircraft, a boat or a happy ghast, the rider is pictured from the heights its mount is.
+        boolean aloft = fromHeights(mount);
+        double dy = 0;
+        if (aloft) {
+            dy = ImpostorAtlas.middle(mount, new ImpostorAtlas.Rider(rider, seat, turned));
+            key = seenFrom(key, mount, eye, partialTick, 0, dy, 0);
+        }
+        return picture(minecraft, eye, rider, mount, key, seat, turned, partialTick, config, 0, dy, 0, yaw, extent, aloft);
     }
 
     /**
@@ -1021,6 +1091,13 @@ public final class GhostRenderer {
         double pull = Apparent.pull(distance, DepthFar.of(minecraft));
         // As large as its model would be drawn: a figure turning into its picture keeps its size.
         double boost = Apparent.boost(Apparent.extent(size), distance, pixelsPerRadian, config.minApparentPixels);
+        if (facing) {
+            // Turned to the camera round its middle, a picture shows what is nearer than that middle
+            // (an aircraft's nose, the wheels under it) farther along the line of sight: seen from
+            // above, under the ground it stands on, which hid it. Moved nearer by half its size,
+            // and made as much smaller, it looks the same and stands in front of that ground.
+            pull *= Math.max(0.1, 1 - sheet.worldSize() * boost * 0.5 / distance);
+        }
         int view = ImpostorViews.view(yaw, -ax, -az, last == null ? -1 : last.view);
         if (last == null) SHOWN.put(shown, last = new Shown());
         last.key = key;

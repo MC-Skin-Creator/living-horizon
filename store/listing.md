@@ -121,8 +121,8 @@ performance: you can lower your simulation distance and still see a living world
 ### Mobs on the horizon
 
 All mobs are visible from far away, on the game's terrain and **on Voxy and Distant
-Horizons terrain**. This works for any entity Minecraft can draw, mobs from other mods
-included. Choose which ones in *Mobs & Entities...*.
+Horizons terrain**. This works for any entity Minecraft can draw, mobs and vehicles from
+other mods included. Choose which ones in *Mobs & Entities...*.
 
 ### Players at any distance
 
@@ -141,8 +141,8 @@ ducks, bats... They land on trees, buildings, fields and beaches.
 
 - **No AI far away.** Far entities play ready-made animations that fit the ground around
   them. Players who logged off and birds have a small AI only when you are close.
-- **Simplified Entities.** Far mobs and players are drawn as flat pictures instead of 3D
-  models. It costs much less to draw, so you can show many more entities.
+- **Simplified Entities.** Far mobs, vehicles and players are drawn as flat pictures instead
+  of 3D models. It costs much less to draw, so you can show many more entities.
 - **Everything runs on your computer.** The server only shares positions, so two players
   can see the same far mob doing different things.
 
@@ -218,9 +218,9 @@ Entities*).
 <details>
 <summary>How far does it show mobs and players?</summary>
 
-Mobs: 512 blocks by default, up to *Unlimited* with *Mob Render Distance*. Players: any
-distance by default, which *Player Render Distance* can limit. A mob only shows once your
-game or the server has seen it.
+Mobs: 512 blocks by default, up to *Unlimited* with *Mob Render Distance*. Players, boats and
+vehicles: any distance by default, which *Player Render Distance* and *Entity Render Distance*
+can limit. A mob only shows once your game or the server has seen it.
 
 </details>
 
@@ -262,8 +262,8 @@ render distance. With one of them, they also show on its far terrain.
 <details>
 <summary>Will it lower my frame rate?</summary>
 
-Drawing more entities costs frame rate. If your game slows down, keep *Simplified Entities*
-on and pick a lower *Preset*. *Max Mobs* and *Mob Render Distance* both on *Unlimited* can
+Drawing more entities costs frame rate. If your game slows down, keep *Simplified Mobs* and
+*Simplified Entities* on and pick a lower *Preset*. *Max Mobs* and *Mob Render Distance* both on *Unlimited* can
 crash the game.
 
 </details>

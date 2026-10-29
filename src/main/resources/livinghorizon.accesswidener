@@ -99,3 +99,6 @@ accessible field net/minecraft/world/entity/animal/rabbit/Rabbit jumpDuration I
 # @until 1.21.10
 accessible field net/minecraft/world/entity/animal/Rabbit jumpTicks I
 accessible field net/minecraft/world/entity/animal/Rabbit jumpDuration I
+
+# Each kind's renderer, whose declared entity class tells a vehicle kind before one is met.
+accessible field net/minecraft/client/renderer/entity/EntityRenderDispatcher renderers Ljava/util/Map;
