@@ -154,7 +154,9 @@ public final class LodScreen extends Screen {
         int size = Math.max(32, Math.min((width - 40 - gap * (levels - 1)) / levels, height - top - 80));
         draw(levels, size, now);
         int left = (width - levels * size - (levels - 1) * gap) / 2;
-        double from = config.lodDistance;
+        // Where each level begins: in blocks, or, with the distance off, in pixels on screen.
+        boolean byDistance = config.lodDistance > 0, bySize = config.lodPixels > 0;
+        double from = byDistance ? config.lodDistance : config.lodPixels;
         for (int level = 0; level < levels; level++) {
             int x = left + level * (size + gap);
             graphics.fill(x, top, x + size, top + size, SKY);
@@ -166,12 +168,16 @@ public final class LodScreen extends Screen {
                     y + font.lineHeight + 2, DIM);
             Component when;
             if (level == 0) {
-                when = Component.translatable(KEY + "near", (int) Math.round(from));
-            } else if (!config.mobLods || level > config.lodLevels) {
+                when = byDistance ? Component.translatable(KEY + "near", (int) Math.round(from))
+                        : bySize ? Component.translatable(KEY + "above", (int) Math.round(from)) : Component.empty();
+            } else if (!config.mobLods || level > config.lodLevels || !byDistance && !bySize) {
                 when = Component.translatable(KEY + "unused");
-            } else {
+            } else if (byDistance) {
                 when = Component.translatable(KEY + "from", (int) Math.round(from));
                 from *= config.lodSpacing / 100.0;
+            } else {
+                when = Component.translatable(KEY + "under", (int) Math.round(from));
+                from /= config.lodSpacing / 100.0;
             }
             graphics.drawCenteredString(font, when, x + size / 2, y + 2 * (font.lineHeight + 2), DIM);
         }

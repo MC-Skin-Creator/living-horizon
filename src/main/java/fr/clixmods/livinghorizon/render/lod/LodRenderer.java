@@ -77,7 +77,7 @@ public final class LodRenderer {
 
     /**
      * The level a figure takes, before its impostor: one more each time it is {@code lodSpacing}
-     * farther, from {@code lodDistance}; with {@code lodPixels}, one more each time it is that
+     * farther, from {@code lodDistance} (0: none); with {@code lodPixels}, one more each time it is that
      * much smaller on screen too, the larger of the two; never past {@code lodLevels}.
      *
      * @param pixels how tall it is on screen
@@ -86,7 +86,9 @@ public final class LodRenderer {
         int most = Math.max(1, Math.min(config.lodLevels, LodLevels.MODEL_LEVELS - 1));
         double step = Math.max(1.05, config.lodSpacing / 100.0);
         int level = 0;
-        for (double from = config.lodDistance; level < most && distance >= from; from *= step) level++;
+        if (config.lodDistance > 0) {
+            for (double from = config.lodDistance; level < most && distance >= from; from *= step) level++;
+        }
         if (config.lodPixels > 0) {
             int small = 0;
             for (double below = config.lodPixels; small < most && pixels < below; below /= step) small++;

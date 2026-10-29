@@ -778,6 +778,8 @@ game draws itself. With the defaults:
 
 With `lodPixels` above 0, a figure shorter than that on screen takes level 1 even closer, and one
 more level each time it is `lodSpacing` smaller again; the larger of the two levels is drawn.
+With `lodDistance` at 0 (OFF) the size on screen alone chooses; both off, the full model is
+always drawn.
 Changing `lodKeep` makes every level again.
 
 - *Choosing.* `GhostRenderer.place` hands each figure's distance to `LodRenderer.choose`. A
@@ -1219,7 +1221,7 @@ cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 |---|---|---|---|---|
 | `mobLods` | Detail Levels | `true` | | Distant mobs drawn with simpler models the farther they are, before the impostor (see [Levels of detail](#levels-of-detail)) |
 | `lodLevels` | Simpler Models | `3` | 1 to 3 | How many simpler models a mob goes through before its impostor |
-| `lodDistance` | Detail Distance | `18` blocks | 4 to 256 | Where the first simpler model begins |
+| `lodDistance` | Detail Distance | `18` blocks | OFF, 1 to 256 | Where the first simpler model begins; OFF leaves *Detail Size* alone |
 | `lodSpacing` | Detail Spacing | `200` percent | 125 to 400 | Each next simpler model begins this much farther than the one before |
 | `lodPixels` | Detail Size | `0` pixels | 0 to 256 | A mob shorter than this on screen takes a simpler model even closer (`0`: the distance alone) |
 | `lodKeep` | Polygons Kept | `50` percent | 20 to 80 | Share of the triangles each simpler model keeps from the one before; a change makes every level again |

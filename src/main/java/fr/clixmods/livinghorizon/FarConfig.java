@@ -221,7 +221,7 @@ public final class FarConfig {
      * boxes before the impostor, which {@link #impostorDistance} still starts.
      */
     public boolean mobLods = true;
-    /** Blocks from which a mob takes its first simpler model. */
+    /** Blocks from which a mob takes its first simpler model; 0: off, {@link #lodPixels} alone. */
     public int lodDistance = 18;
     /** Percent: each next simpler model begins this much farther than the one before (200: twice). */
     public int lodSpacing = 200;
@@ -235,7 +235,7 @@ public final class FarConfig {
     /** How many simpler models a mob goes through before its impostor, 1 to 3. */
     public int lodLevels = 3;
 
-    public static final int MIN_LOD_DISTANCE = 4, MAX_LOD_DISTANCE = 256;
+    public static final int MIN_LOD_DISTANCE = 0, MAX_LOD_DISTANCE = 256;
     public static final int MIN_LOD_SPACING = 125, MAX_LOD_SPACING = 400;
     public static final int MAX_LOD_PIXELS = 256;
     public static final int MIN_LOD_KEEP = 20, MAX_LOD_KEEP = 80;

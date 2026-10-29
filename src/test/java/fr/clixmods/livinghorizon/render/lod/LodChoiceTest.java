@@ -58,4 +58,18 @@ class LodChoiceTest {
         config.lodPixels = 0;
         assertEquals(0, LodRenderer.levelFor(5, 1, config));
     }
+
+    @Test
+    void withTheDistanceOffOnlyTheSizeOnScreenCounts() {
+        FarConfig config = new FarConfig();
+        config.lodDistance = 0;
+        config.lodPixels = 40;
+        // Far but large on screen: still the full model.
+        assertEquals(0, LodRenderer.levelFor(500, 60, config));
+        assertEquals(1, LodRenderer.levelFor(500, 30, config));
+        assertEquals(3, LodRenderer.levelFor(5, 8, config));
+        // Both off: never simpler.
+        config.lodPixels = 0;
+        assertEquals(0, LodRenderer.levelFor(5000, 1, config));
+    }
 }
