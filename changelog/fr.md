@@ -34,6 +34,12 @@
 - **Créatures lointaines visibles sur le terrain lointain** — Les créatures lointaines, estimées comprises, restent maintenant visibles sur le terrain lointain, au lieu d'être masquées comme s'il n'y avait rien sous elles : un moment après l'ouverture d'un monde, parmi des milliers de créatures estimées, ou quand Voxy ou Distant Horizons tarde à répondre.
 - **Brouillard de Distant Horizons appliqué aux créatures** — Les créatures lointaines reçoivent maintenant le même brouillard que le terrain de Distant Horizons et s'estompent avec lui, au lieu de ressortir nettement sur le paysage. (Minecraft 1.21.6 et plus, sans shaders.)
 
+#### Améliorations
+- **Mobs géants nets au loin** — les très grands mobs juste au-delà de la *Distance de simplification* gardent leur modèle complet jusqu'à être assez petits à l'écran, au lieu d'une image plate pixelisée.
+
+#### Corrections
+- **Images plates étranges des mobs d'Ice and Fire** — en *Créatures simplifiées* (des images plates des mobs lointains), les dragons adultes d'Ice and Fire ne sont plus un gros plan de leurs pattes ou d'une aile, des dragons d'âges différents ne partagent plus la même image, et les serpents de mer gardent leur modèle au lieu d'une image coupée.
+
 ## 0.14.0 — 2026-10-29
 
 ### Client

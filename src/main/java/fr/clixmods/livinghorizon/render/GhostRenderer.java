@@ -1082,12 +1082,18 @@ public final class GhostRenderer {
             if (sheet == null) return false;
             key = last.key;
         }
+        // As large as its model would be drawn: a figure turning into its picture keeps its size.
+        double boost = Apparent.boost(Apparent.extent(size), distance, pixelsPerRadian, config.minApparentPixels);
+        // Far larger on screen than its picture holds (a huge mob just past the distance): its
+        // model, rather than a picture blown up into blocks.
+        if (ImpostorThreshold.enlarged(sheet.worldSize() * boost / distance * pixelsPerRadian, sheet.tile(), last != null)) {
+            if (last != null) SHOWN.remove(shown);
+            return false;
+        }
         if (distance > drawnRange) FarDepth.needed();
         farthest = Math.max(farthest, distance);
         drawn++;
         double pull = Apparent.pull(distance, DepthFar.of(minecraft));
-        // As large as its model would be drawn: a figure turning into its picture keeps its size.
-        double boost = Apparent.boost(Apparent.extent(size), distance, pixelsPerRadian, config.minApparentPixels);
         if (facing) {
             // Turned to the camera round its middle, a picture shows what is nearer than that middle
             // (an aircraft's nose, the wheels under it) farther along the line of sight: seen from

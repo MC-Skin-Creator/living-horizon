@@ -41,6 +41,17 @@ class ImpostorThresholdTest {
     }
 
     @Test
+    void aPictureIsNeverBlownUpPastTwiceItsPixels() {
+        // A 64-pixel tile: a cow's at 130 blocks is a dozen pixels, a grown dragon's hundreds.
+        assertFalse(ImpostorThreshold.enlarged(13, 64, false));
+        assertFalse(ImpostorThreshold.enlarged(128, 64, false));
+        assertTrue(ImpostorThreshold.enlarged(300, 64, false));
+        // Its picture kept until a little past the limit, its model until a little inside it.
+        assertFalse(ImpostorThreshold.enlarged(132, 64, true));
+        assertTrue(ImpostorThreshold.enlarged(132, 64, false));
+    }
+
+    @Test
     void neverAtTheEye() {
         assertFalse(ImpostorThreshold.pictured(0, 0, true, 128, 20));
     }

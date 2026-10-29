@@ -787,8 +787,9 @@ textures, draws and reads back the views, and writes a sheet into its page. Ever
 `ImpostorKey` decides which picture a figure gets. Figures with the same key share one sheet.
 
 - **In the key**: the type, the player's skin, the synched data that changes the look
-  (variant, colour, profession, baby, pose; not health, air, score or being on fire), and
-  what it wears, however worn.
+  (variant, colour, profession, baby, pose; not health, air, score or being on fire), what
+  it wears, however worn, and its box to about 6%: some mods' mobs take their size from a
+  value that keeps changing (an Ice and Fire dragon's age), which the key leaves out.
 - **Left out**: what never shows (positions, times, owners, sound variants, names but the four
   the game draws differently: Dinnerbone, Grumm, jeb_ and Toast) and,
   learnt per kind of mob, what keeps changing on one (a dolphin drying, a zombie raising its
@@ -803,6 +804,9 @@ textures, draws and reads back the views, and writes a sheet into its page. Ever
 - A figure becomes an impostor past `impostorDistance`, or shorter on screen than `impostorPixels`
   (its height or width, the larger, in the window's pixels), and a model again only 5% inside both
   (`ImpostorThreshold`). Birds too. Either may be 0, off: the other alone decides.
+- It keeps its model while its picture would be shown more than twice the 64 pixels it holds
+  (a dragon twenty blocks long just past the distance), and a picture kept stays one until 5%
+  past that.
 - It keeps a picture until it has turned 8 degrees past the edge between it and the next one.
 - When its look changes, a player or a mob keeps its old picture until the new one is baked;
   a 3D bird is drawn as a model meanwhile.
@@ -813,7 +817,12 @@ textures, draws and reads back the views, and writes a sheet into its page. Ever
   4 rows, then 8, 16, then 32, every tile 64 pixels. A sheet takes 170 KB of video memory
   (512 by 64 pixels and three smaller levels).
 - **Large figures.** A figure larger than its box (a horse's muzzle) is drawn smaller in its
-  tile rather than cut off: at a hundred blocks a figure is a dozen pixels tall.
+  tile rather than cut off: at a hundred blocks a figure is a dozen pixels tall. Its picture
+  covers up to five times its box (an Ice and Fire dragon's tail needs nearly four); one still
+  cut off there keeps its model far away, and the log says so once per kind.
+- **Copies' size.** A copy loaded from a mob's saved data works its box out again
+  (`EntityNbt.load`): mods that size their mobs in the tick (Ice and Fire's dragons, by age)
+  left a copy, which never ticks, with a newborn's box.
 - **Mobs** keep their sheets, up to `impostorMobMemory` (1 GB) in all, taken only as looks are
   met (pages are taken 4 rows at a time and more: 50 looks of one kind take about 10 MB, 50
   kinds of one look each about 35 MB). Past that, an unused sheet of the same kind gives
