@@ -16,6 +16,7 @@
 - **Mobs & Entities changes seen at once** — turning a kind on or off in *Mobs & Entities...* now shows in the world behind it straight away, not once the screen is closed.
 - **Distant mobs settings in three parts** — the *Distant Mobs & Entities* settings are now split into *General*, *Mobs* and *Entities*, with the list, the scan and *Forget All* under *General*.
 - **Players riding far away** — with *Simplified Players*, a far player in a boat, a minecart, a plane or on a happy ghast is now pictured from above and below like what they ride, no longer seen side-on when you look down on them.
+- **Saved pictures shown** — the *Picture Preview* screen now says under each mob whether its picture is shared, read back from an earlier game, new and saved for the next ones, or not saved, with when and in which world it was made.
 
 #### Fixed
 - **Crash opening Mobs & Entities from the title screen** — opening *Mobs & Entities...* from the title screen no longer crashes the game (Minecraft 26.x).
