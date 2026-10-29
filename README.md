@@ -20,6 +20,10 @@ All mobs are visible from far away, on the game's terrain and **on Voxy and Dist
 Horizons terrain**. This works for any entity Minecraft can draw, mobs and vehicles from
 other mods included. Choose which ones in *Mobs & Entities...*.
 
+Land nobody has explored yet has its animals too. The mod works out from the world's seed
+which animals the game will put there. This needs the mod on the server, and works in
+single player.
+
 ### Players at any distance
 
 Other players are visible at any distance, with their gear and their mount.
@@ -101,6 +105,8 @@ choose what it shares. Changes apply after a few seconds, without a restart.
 | `hiddenDimensions` | `[]` | Dimensions where nothing is shared, such as `["minecraft:the_nether"]` |
 | `shareOfflinePlayers` | `true` | Shares players who logged off where they left |
 | `shareMobs` | `true` | Shares the remembered mobs past the view distance |
+| `seedMobs` | `true` | Shares the animals of land nobody has explored yet, worked out from the seed |
+| `seedMobRange` | `512` | How far from a player those animals are shared, in blocks, up to `2048` |
 
 These settings only change what the server sends. Within the view distance, players see
 each other as usual. What a player's game saw on its own stays in its memory.
