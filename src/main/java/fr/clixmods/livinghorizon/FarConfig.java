@@ -52,10 +52,28 @@ public final class FarConfig {
     @SerializedName(value = "depthOcclusion", alternate = "voxyOcclusion")
     public boolean depthOcclusion = true;
 
-    private static final int CURRENT = 10;
+    private static final int CURRENT = 11;
 
     /** Skinned figures, which Distant Friends uses as its fake players: shown, standing still. */
     private static final String MANNEQUIN = "minecraft:mannequin";
+
+    /** Whether {@link #hiddenMobs} hides this type, by its own id or its mod's. */
+    public boolean hidesMob(String type) {
+        if (hiddenMobs.isEmpty()) return false;
+        return hiddenMobs.contains(type) || hiddenMobs.contains(wholeMod(type));
+    }
+
+    /** The {@link #hiddenMobs} entry that hides every mob of this type's mod: {@code "cobblemon:*"}. */
+    public static String wholeMod(String type) {
+        int colon = type.indexOf(':');
+        return (colon < 0 ? Identifier.DEFAULT_NAMESPACE : type.substring(0, colon)) + ":*";
+    }
+
+    /** Whether a mob of this type, with a name tag or not, is shown far away. */
+    public boolean showsMob(String type, boolean named) {
+        if (hidesMob(type)) return false;
+        return (rememberNamedMobs && named) || mobTypes.contains(type);
+    }
 
     private static List<String> defaultMobTypes() {
         List<String> types = new ArrayList<>(MobKinds.TYPES);
@@ -135,12 +153,19 @@ public final class FarConfig {
     public List<String> mobTypes = defaultMobTypes();
 
     /**
+     * Mobs never shown far away, whatever {@link #mobTypes} and {@link #rememberNamedMobs} say:
+     * a type id ({@code "minecraft:cow"}), or every mob of a mod ({@code "cobblemon:*"}). A mob
+     * switched to Hidden under "Mobs &amp; Entities..." is written here, so a modpack can ship the list.
+     */
+    public List<String> hiddenMobs = new ArrayList<>();
+
+    /**
      * Mobs of {@link #mobTypes} shown standing still, where they were, instead of strolling
      * around: a happy ghast drifting around on its own looks wrong.
      */
     public List<String> stillMobTypes = new ArrayList<>(List.of("minecraft:happy_ghast", MANNEQUIN));
 
-    /** A mob with a name tag is remembered and shown whatever its type. */
+    /** A mob with a name tag is remembered and shown whatever its type, unless in {@link #hiddenMobs}. */
     public boolean rememberNamedMobs = true;
 
     /**
@@ -392,6 +417,7 @@ public final class FarConfig {
             config.birdSize = 1;
         }
         if (config.hiddenBirds == null) config.hiddenBirds = new ArrayList<>();
+        if (config.hiddenMobs == null) config.hiddenMobs = new ArrayList<>();
         if (config.birdStyle == null) config.birdStyle = "3d";
         if (config.knownModdedMobs == null) config.knownModdedMobs = new ArrayList<>();
         if (config.version < 3) {
@@ -436,6 +462,13 @@ public final class FarConfig {
         if (config.version < 10) {
             if (Boolean.FALSE.equals(config.ufo)) config.easterEggs = false;
             config.ufo = null;
+        }
+        if (config.version < 11) {
+            // The mobs switched off by hand become the list of hidden ones, where a modpack finds them.
+            List<String> offered = defaultMobTypes();
+            for (String type : offered) {
+                if (!config.mobTypes.contains(type) && !config.hiddenMobs.contains(type)) config.hiddenMobs.add(type);
+            }
         }
         // Written by hand out of range: the nearest end.
         config.impostorMobMemory = Math.clamp(config.impostorMobMemory, MIN_MOB_MEMORY, MAX_MOB_MEMORY);

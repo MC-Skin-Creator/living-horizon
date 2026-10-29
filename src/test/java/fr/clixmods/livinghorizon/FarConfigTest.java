@@ -27,12 +27,12 @@ class FarConfigTest {
         FarConfig fresh = new FarConfig();
         fresh.version = migrated.version;
         assertEquals(GSON.toJson(fresh), GSON.toJson(migrated));
-        assertEquals(10, migrated.version);
+        assertEquals(11, migrated.version);
     }
 
     @Test
     void leavesAnUpToDateFileAsItIs() {
-        String json = "{\"version\": 10, \"minApparentPixels\": 14, \"birdSize\": 2, \"depthOcclusion\": false,"
+        String json = "{\"version\": 11, \"minApparentPixels\": 14, \"birdSize\": 2, \"depthOcclusion\": false,"
                 + " \"maxDistantMobs\": 200, \"mobMaxDistance\": 0, \"impostors\": false, \"easterEggs\": false,"
                 + " \"mobTypes\": [\"minecraft:cow\"], \"stillMobTypes\": []}";
         FarConfig config = migrated(json);
@@ -129,14 +129,38 @@ class FarConfigTest {
     }
 
     @Test
+    void version11ListsTheMobsSwitchedOff() {
+        FarConfig config = migrated("{\"version\": 10, \"mobTypes\": [\"minecraft:cow\", \"cobblemon:pokemon\"]}");
+        assertTrue(config.hiddenMobs.contains("minecraft:horse"));
+        assertTrue(config.hiddenMobs.contains(MANNEQUIN));
+        assertFalse(config.hiddenMobs.contains("minecraft:cow"));
+        assertFalse(config.hiddenMobs.contains("minecraft:zombie"));
+        assertTrue(migrated("{\"version\": 11, \"mobTypes\": []}").hiddenMobs.isEmpty());
+    }
+
+    @Test
+    void hiddenMobsBeatEveryOtherChoice() {
+        FarConfig config = migrated("{\"version\": 11, \"mobTypes\": [\"minecraft:cow\", \"cobblemon:pokemon\","
+                + " \"minecraft:pig\"], \"hiddenMobs\": [\"minecraft:pig\", \"cobblemon:*\"]}");
+        assertTrue(config.showsMob("minecraft:cow", false));
+        assertTrue(config.showsMob("minecraft:zombie", true));
+        assertFalse(config.showsMob("minecraft:zombie", false));
+        assertFalse(config.showsMob("minecraft:pig", true));
+        assertFalse(config.showsMob("cobblemon:pokemon", true));
+        assertEquals("cobblemon:*", FarConfig.wholeMod("cobblemon:pokemon"));
+        assertEquals("minecraft:*", FarConfig.wholeMod("pig"));
+    }
+
+    @Test
     void fillsInWhatTheFileLeftOut() {
         FarConfig config = migrated("{\"version\": 10, \"mobTypes\": null, \"hiddenBirds\": null, \"birdStyle\": null,"
-                + " \"knownModdedMobs\": null, \"stillMobTypes\": null}");
+                + " \"knownModdedMobs\": null, \"stillMobTypes\": null, \"hiddenMobs\": null}");
         assertTrue(config.mobTypes.contains("minecraft:horse"));
         assertTrue(config.stillMobTypes.contains(MANNEQUIN));
         assertEquals(java.util.List.of(), config.hiddenBirds);
         assertEquals("3d", config.birdStyle);
         assertEquals(java.util.List.of(), config.knownModdedMobs);
+        assertEquals(java.util.List.of(), config.hiddenMobs);
     }
 
     @Test

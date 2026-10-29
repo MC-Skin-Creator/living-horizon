@@ -364,6 +364,8 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
 - **Other mods' mobs** are shown from the start (monsters excepted), then left as the player
   sets them (`knownModdedMobs`). Each client remembers them itself: the server only shares
   vanilla kinds.
+- **Hidden mobs.** `hiddenMobs` beats every other choice, name tags included: a mob of a type
+  there (or of a mod named `modid:*`) is neither remembered nor drawn (`FarConfig.showsMob`).
 - **Mannequins** (from 1.21.9) are shown too, standing still: Distant Friends uses them as its fake
   players. Mobs in `stillMobTypes` (happy ghast, mannequin) stand still instead of walking
   their loop. A copy wears its mannequin's skin, from a player's name or a texture of a
@@ -1109,6 +1111,7 @@ the mod, they come back at their last position.
 | `animationMinPixels` | Min. Animated Size | `10` pixels | 0 to 40 | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
 | `animationMaxDistance` | Animation Distance | `0` blocks | 0 to 4000 | Past this, no distant mob plays an animation (`0`: no limit) |
 | `mobTypes` | Mobs & Entities... | The 31 mobs and the boats a server shares, and mannequins | | Which mobs are shown, and remembered by this client |
+| `hiddenMobs` | Mobs & Entities..., *Hidden* | Empty | | Mobs never shown, over `mobTypes` and name tags: a type id, or `modid:*` for every mob of a mod (its switches then locked). A mob shown until now and switched to *Hidden* is written here, so a modpack can ship the list
 | `stillMobTypes` | Mobs & Entities..., *Still* | Happy ghast, mannequin | | Mobs shown standing still instead of walking their loop |
 | `scanRadius` | Scan Radius | `32` chunks | 4 to 1024 | Chunks around you read by a scan, in single player (32 chunks = 512 blocks) |
 | `knownModdedMobs` | (not shown) | Empty | | Mob types of other mods already offered once: a new one is shown from the start (monsters excepted), then left as you set it |

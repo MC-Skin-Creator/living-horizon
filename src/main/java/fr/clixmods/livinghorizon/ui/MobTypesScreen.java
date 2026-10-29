@@ -81,15 +81,22 @@ public final class MobTypesScreen extends SideOptionsScreen {
             /*CycleButton<Mode> button = CycleButton.builder(Mode::label).withInitialValue(Mode.of(id))
             *///?}
                     .withValues(List.of(Mode.values()))
-                    .withTooltip(OptionInstance.cachedConstantTooltip(Component.translatable(
-                            KEY + (shared ? "shared.tooltip" : "local.tooltip"), id)))
+                    .withTooltip(OptionInstance.cachedConstantTooltip(locked(id)
+                            ? Component.translatable(KEY + "locked.tooltip", id, FarConfig.wholeMod(id))
+                            : Component.translatable(KEY + (shared ? "shared.tooltip" : "local.tooltip"), id)))
                     .create(0, 0, ICON_ROOM, 20, label, (b, mode) -> mode.apply(id));
+            button.active = !locked(id);
             buttons.put(id, button);
             ItemStack icon = icon(id);
             if (!icon.isEmpty()) icons.put(id, icon);
             switches.add(button);
         }
         list.addSmall(switches);
+    }
+
+    /** Hidden for its whole mod in the file ({@code "cobblemon:*"}): a switch cannot show it. */
+    private static boolean locked(String id) {
+        return FarConfig.get().hiddenMobs.contains(FarConfig.wholeMod(id));
     }
 
     /** A switch leaves 20 pixels of its 150-wide cell for the icon. */
@@ -140,14 +147,22 @@ public final class MobTypesScreen extends SideOptionsScreen {
 
         static Mode of(String id) {
             FarConfig config = FarConfig.get();
-            if (!config.mobTypes.contains(id)) return HIDDEN;
+            if (config.hidesMob(id) || !config.mobTypes.contains(id)) return HIDDEN;
             return config.stillMobTypes.contains(id) ? STILL : ANIMATED;
         }
 
+        /**
+         * A mob shown until now and switched off goes into {@link FarConfig#hiddenMobs}, where a
+         * modpack finds it; one never shown (a monster) is only left out of {@link FarConfig#mobTypes}.
+         */
         void apply(String id) {
             FarConfig config = FarConfig.get();
+            if (locked(id)) return;
+            boolean wasShown = of(id) != HIDDEN;
             config.mobTypes.remove(id);
             config.stillMobTypes.remove(id);
+            boolean listed = config.hiddenMobs.remove(id);
+            if (this == HIDDEN && (wasShown || listed)) config.hiddenMobs.add(id);
             if (this != HIDDEN) config.mobTypes.add(id);
             if (this == STILL) config.stillMobTypes.add(id);
         }
@@ -169,6 +184,8 @@ public final class MobTypesScreen extends SideOptionsScreen {
             FarConfig.get().mobTypes.addAll(MobKinds.TYPES);
             FarConfig.get().stillMobTypes.clear();
             FarConfig.get().stillMobTypes.add("minecraft:happy_ghast");
+            // Whole mods hidden in the file stay hidden: no switch here could show them again.
+            FarConfig.get().hiddenMobs.removeIf(entry -> !entry.endsWith(":*"));
             refreshButtons();
         }).width(74).build());
         row.addChild(Button.builder(CommonComponents.GUI_DONE, b -> onClose()).width(74).build());

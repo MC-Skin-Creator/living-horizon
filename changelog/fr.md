@@ -4,6 +4,9 @@
 
 ### Client
 
+#### Nouveautés
+- **Liste des mobs masqués** — `config/livinghorizon.json` a maintenant une liste `hiddenMobs` des mobs jamais affichés au loin, par identifiant (`"minecraft:pig"`) ou pour tout un mod (`"cobblemon:*"`), facile à partager dans un modpack ; les mobs passés en *Masqué* dans *Créatures et entités...* y sont écrits.
+
 #### Améliorations
 - **Jeu plus fluide parmi les mobs lointains et les joueurs déconnectés** — chercher où les mobs lointains et les joueurs déconnectés peuvent marcher ne prend plus de temps au jeu : c'est fait en arrière-plan.
 - **Images plus fluides avec les mobs lointains** — le jeu attend moins le pilote graphique à chaque image avec des mobs lointains sur Voxy ou Distant Horizons, surtout sur les cartes NVIDIA avec l'*Optimisation threadée* activée.

@@ -4,6 +4,9 @@
 
 ### Client
 
+#### New
+- **List of hidden mobs** — `config/livinghorizon.json` now has a `hiddenMobs` list of the mobs never shown far away, by id (`"minecraft:pig"`) or for a whole mod (`"cobblemon:*"`), easy to share in a modpack; mobs switched to *Hidden* under *Mobs & Entities...* are written there.
+
 #### Improved
 - **Smoother game among distant mobs and offline players** — working out where distant mobs and players who logged off can walk no longer takes time from the game: it is done in the background.
 - **Smoother frames with distant mobs** — the game waits less on the graphics driver each frame with distant mobs over Voxy or Distant Horizons, most of all on NVIDIA cards with *Threaded optimization* on.
