@@ -355,6 +355,7 @@
   "livinghorizon.impostors.title": "图片预览",
   "livinghorizon.impostors.memory": "显存：%s / %s - 图片：%s，等待中：%s",
   "livinghorizon.impostors.tab.mobs": "生物",
+  "livinghorizon.impostors.tab.entities": "实体",
   "livinghorizon.impostors.tab.players": "玩家",
   "livinghorizon.impostors.off": "“简化生物”“简化实体”和“简化玩家”均已关闭：请在设置中开启其中一项以生成和使用图片。",
   "livinghorizon.impostors.empty": "暂无图片：周围远处玩家和生物的图片会在几秒内生成。",

@@ -355,6 +355,7 @@
   "livinghorizon.impostors.title": "Vista previa de imágenes",
   "livinghorizon.impostors.memory": "Memoria de vídeo: %s de %s - imágenes: %s, en espera: %s",
   "livinghorizon.impostors.tab.mobs": "Criaturas",
+  "livinghorizon.impostors.tab.entities": "Entidades",
   "livinghorizon.impostors.tab.players": "Jugadores",
   "livinghorizon.impostors.off": "Criaturas, entidades y jugadores simplificados están todos en NO: activa uno en los ajustes para crear y usar las imágenes.",
   "livinghorizon.impostors.empty": "Aún no hay imágenes: las de los jugadores y criaturas lejanos de alrededor se crean en unos segundos.",

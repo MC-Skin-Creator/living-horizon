@@ -355,6 +355,7 @@
   "livinghorizon.impostors.title": "Bildvorschau",
   "livinghorizon.impostors.memory": "Grafikspeicher: %s von %s - Bilder: %s, wartend: %s",
   "livinghorizon.impostors.tab.mobs": "Kreaturen",
+  "livinghorizon.impostors.tab.entities": "Objekte",
   "livinghorizon.impostors.tab.players": "Spieler",
   "livinghorizon.impostors.off": "„Vereinfachte Kreaturen“, „Vereinfachte Objekte“ und „Vereinfachte Spieler“ sind alle aus: Schalte eines in den Einstellungen ein, um die Bilder zu erstellen und zu verwenden.",
   "livinghorizon.impostors.empty": "Noch keine Bilder: Die der fernen Spieler und Kreaturen ringsum entstehen innerhalb weniger Sekunden.",

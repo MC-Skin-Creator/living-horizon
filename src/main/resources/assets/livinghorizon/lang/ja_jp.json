@@ -355,6 +355,7 @@
   "livinghorizon.impostors.title": "画像のプレビュー",
   "livinghorizon.impostors.memory": "ビデオメモリ：%s / %s - 画像：%s、待機中：%s",
   "livinghorizon.impostors.tab.mobs": "Mob",
+  "livinghorizon.impostors.tab.entities": "エンティティ",
   "livinghorizon.impostors.tab.players": "プレイヤー",
   "livinghorizon.impostors.off": "「簡略化Mob」「簡略化エンティティ」「簡略化プレイヤー」がすべてオフです：画像を作成して使うには、設定でいずれかをオンにしてください。",
   "livinghorizon.impostors.empty": "まだ画像がありません：周囲の遠くのプレイヤーとMobの画像が数秒以内に作成されます。",

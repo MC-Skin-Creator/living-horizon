@@ -355,6 +355,7 @@
   "livinghorizon.impostors.title": "Picture Preview",
   "livinghorizon.impostors.memory": "Video memory: %s of %s - pictures: %s, waiting: %s",
   "livinghorizon.impostors.tab.mobs": "Mobs",
+  "livinghorizon.impostors.tab.entities": "Entities",
   "livinghorizon.impostors.tab.players": "Players",
   "livinghorizon.impostors.off": "Simplified Mobs, Entities and Players are all OFF: turn one on in the settings to make and use the pictures.",
   "livinghorizon.impostors.empty": "No pictures yet: those of the distant players and mobs around are made within a few seconds.",

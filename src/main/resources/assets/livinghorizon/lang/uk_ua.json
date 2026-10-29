@@ -355,6 +355,7 @@
   "livinghorizon.impostors.title": "Перегляд зображень",
   "livinghorizon.impostors.memory": "Відеопам'ять: %s з %s - зображення: %s, очікує: %s",
   "livinghorizon.impostors.tab.mobs": "Моби",
+  "livinghorizon.impostors.tab.entities": "Сутності",
   "livinghorizon.impostors.tab.players": "Гравці",
   "livinghorizon.impostors.off": "«Спрощені моби», «Спрощені сутності» і «Спрощені гравці» вимкнено: увімкніть щось у налаштуваннях, щоб створювати й використовувати зображення.",
   "livinghorizon.impostors.empty": "Зображень поки немає: зображення далеких гравців і мобів довкола створюються за кілька секунд.",

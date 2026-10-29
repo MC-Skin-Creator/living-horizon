@@ -355,6 +355,7 @@
   "livinghorizon.impostors.title": "Resim Önizleme",
   "livinghorizon.impostors.memory": "Video belleği: %s / %s - resimler: %s, bekleyen: %s",
   "livinghorizon.impostors.tab.mobs": "Canlılar",
+  "livinghorizon.impostors.tab.entities": "Varlıklar",
   "livinghorizon.impostors.tab.players": "Oyuncular",
   "livinghorizon.impostors.off": "Basit Canlılar, Basit Varlıklar ve Basit Oyuncular KAPALI: resimleri oluşturmak ve kullanmak için ayarlardan birini açın.",
   "livinghorizon.impostors.empty": "Henüz resim yok: çevredeki uzak oyuncuların ve canlıların resimleri birkaç saniye içinde oluşturulur.",

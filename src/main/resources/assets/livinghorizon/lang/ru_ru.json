@@ -355,6 +355,7 @@
   "livinghorizon.impostors.title": "Просмотр картинок",
   "livinghorizon.impostors.memory": "Видеопамять: %s из %s - картинки: %s, ожидает: %s",
   "livinghorizon.impostors.tab.mobs": "Мобы",
+  "livinghorizon.impostors.tab.entities": "Сущности",
   "livinghorizon.impostors.tab.players": "Игроки",
   "livinghorizon.impostors.off": "«Упрощённые мобы», «Упрощённые сущности» и «Упрощённые игроки» выключены: включите что-нибудь в настройках, чтобы создавать и использовать картинки.",
   "livinghorizon.impostors.empty": "Картинок пока нет: картинки далёких игроков и мобов вокруг создаются за несколько секунд.",

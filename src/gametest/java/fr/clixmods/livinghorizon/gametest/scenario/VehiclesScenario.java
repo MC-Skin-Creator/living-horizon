@@ -12,6 +12,7 @@ import fr.clixmods.livinghorizon.track.MobMemory;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
 import fr.clixmods.livinghorizon.track.RestingPuppet;
 import fr.clixmods.livinghorizon.ui.MobList;
+import fr.clixmods.livinghorizon.ui.ImpostorScreen;
 import fr.clixmods.livinghorizon.ui.MobTypesScreen;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -160,6 +161,7 @@ public final class VehiclesScenario implements Scenario {
             Path abovePictures = Scene.screenshot(context, this, "from-above");
             int above = context.computeOnClient(minecraft -> PolygonStats.impostors());
             Scene.screenshotAtlas(context, this);
+            preview(context);
             // As much of them shows as of their models: a picture turned up to the camera round
             // their middle once sank its lower half into the ground they stand on.
             Scene.configure(context, config -> config.impostorEntities = false);
@@ -194,6 +196,32 @@ public final class VehiclesScenario implements Scenario {
             if (gone < 50) throw new AssertionError("vehicles: Show Entities off left the aircraft drawn (" + gone + " pixels)");
             pilot(context, world);
         }
+    }
+
+    /** Picture Preview: the aircraft under its Entities tab, never under the mobs' or the players'. */
+    private void preview(ClientGameTestContext context) {
+        String wrong = context.computeOnClient(minecraft -> {
+            StringBuilder out = new StringBuilder();
+            int aircraft = 0;
+            for (ImpostorAtlas.Baked row : ImpostorAtlas.baked()) {
+                String type = row.key().type();
+                if (!type.startsWith("immersive_aircraft:")) continue;
+                aircraft++;
+                ImpostorScreen.Tab tab = ImpostorScreen.tabOf(row.key());
+                if (tab != ImpostorScreen.Tab.ENTITIES) out.append(' ').append(type).append(" is under ").append(tab).append(';');
+            }
+            if (aircraft == 0) out.append(" no picture of the aircraft;");
+            return out.toString();
+        });
+        context.runOnClient(minecraft -> minecraft.options.guiScale().set(2));
+        context.setScreen(() -> new ImpostorScreen(null));
+        context.clickScreenButton("livinghorizon.impostors.tab.entities");
+        context.getInput().setCursorPos(4, 4);
+        Scene.screenshot(context, this, "preview-entities");
+        context.clickScreenButton("livinghorizon.impostors.tab.mobs");
+        context.setScreen(() -> null);
+        context.runOnClient(minecraft -> minecraft.options.guiScale().set(1));
+        if (!wrong.isEmpty()) throw new AssertionError("vehicles: Picture Preview:" + wrong);
     }
 
     /**

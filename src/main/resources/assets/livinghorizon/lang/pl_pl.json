@@ -355,6 +355,7 @@
   "livinghorizon.impostors.title": "Podgląd obrazów",
   "livinghorizon.impostors.memory": "Pamięć wideo: %s z %s - obrazy: %s, oczekujące: %s",
   "livinghorizon.impostors.tab.mobs": "Stworzenia",
+  "livinghorizon.impostors.tab.entities": "Byty",
   "livinghorizon.impostors.tab.players": "Gracze",
   "livinghorizon.impostors.off": "Uproszczone stworzenia, byty i gracze są wyłączone: włącz jedno z nich w ustawieniach, aby tworzyć i używać obrazów.",
   "livinghorizon.impostors.empty": "Brak obrazów: obrazy odległych graczy i stworzeń w pobliżu powstaną w ciągu kilku sekund.",
