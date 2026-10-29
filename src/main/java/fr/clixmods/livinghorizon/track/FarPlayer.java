@@ -332,8 +332,12 @@ public final class FarPlayer {
     private void mountFrom(ClientLevel level, PositionsMessage.Mount shared, @Nullable UUID vehicle) {
         Entity mount = RestingMount.copy(level, RestingPlayers.Mount.of(shared));
         if (mount == null) return;
+        // A server of an older version names only the mobs it shares, never a plane: the mount
+        // known so far stays theirs while the server's copy is of its kind, so that its
+        // remembered copy is not drawn beside them again.
+        boolean same = mountPuppet != null && mountPuppet.getType() == mount.getType();
         mountPuppet = mount;
-        mountId = vehicle;
+        if (vehicle != null || !same) mountId = vehicle;
         mountGuessed = false;
         mountShared = true;
         riderOffset = new Vec3(shared.seatX(), shared.seatY(), shared.seatZ());

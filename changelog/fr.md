@@ -21,6 +21,7 @@
 #### Corrections
 - **Plantage en ouvrant Créatures et entités depuis l'écran titre** — ouvrir *Créatures et entités...* depuis l'écran titre ne fait plus planter le jeu (Minecraft 26.x).
 - **Véhicules d'autres mods qui deviennent noirs** — les véhicules et créatures lointains de certains autres mods, comme les avions d'Immersive Aircraft, ne deviennent plus noirs un instant quand on s'en approche.
+- **Montures dessinées deux fois** — la monture ou le véhicule d'un joueur lointain, comme l'avion d'un autre mod, n'est plus dessiné une seconde fois à côté de lui.
 
 ## 0.13.0 — 2026-10-28
 

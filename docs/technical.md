@@ -107,8 +107,11 @@ checks it.
 ### What is sent, and when
 
 - **Five times a second**, to every player online: each player's position, yaw, dimension
-  and which mob they ride (a vehicle not in `track/MobKinds.TYPES` only as "riding"), so that
-  a far player is drawn on their own mount.
+  and the id of what they ride, whatever it is, so that a far player is drawn on their own
+  mount, and a client that remembers that mount or vehicle (shared by the server, or met) does
+  not draw it a second time on its own. A server of an older version names only the kinds of
+  `track/MobKinds.TYPES`: the client then keeps the mount it knew while the server's copy is of
+  its kind (`FarPlayer.mountFrom`).
 - **Every five seconds**, to every player online:
   - how the 64 players nearest them look, online or logged off (skin, armour and what they
     hold, read every second), and what they ride, as the server saves it;

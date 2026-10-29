@@ -497,6 +497,9 @@ come back, add it here in the same pull request: this file is what the next sess
   the server's copy of the mount (`PositionsMessage.Mount`, kept by `PositionPublisher` with
   their last position) unless this client saw it itself. `CarriedMountTest`,
   `SharedPositionsTest` and the `lanshare`, `dedicated` and `restingmount` scenarios check it.
+  The server names what each player rides by its id, whatever it is (a plane, a modded mount):
+  named only for the shared kinds, a plane taken out of this client's sight had no id, and its
+  remembered copy was drawn on its own as well as under the rider (`FarPlayer.mountFrom`).
 - **A far player in an old skin** (they changed it, the puppet did not): a `RemotePlayer` finds its
   `PlayerInfo` by id once and keeps it. A new tab list entry means a new skin, so
   `FarPlayer.observeRemote` makes a new puppet when the entry changes (`newSkin`). The server's

@@ -21,6 +21,7 @@
 #### Fixed
 - **Crash opening Mobs & Entities from the title screen** — opening *Mobs & Entities...* from the title screen no longer crashes the game (Minecraft 26.x).
 - **Other mods' vehicles turning black** — far vehicles and mobs from some other mods, such as Immersive Aircraft's planes, no longer turn black for a moment as you travel towards them.
+- **Mounts drawn twice** — the mount or vehicle a far player rides, such as another mod's plane, is no longer drawn a second time beside them.
 
 ## 0.13.0 — 2026-10-28
 
