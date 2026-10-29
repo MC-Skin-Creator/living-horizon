@@ -4,6 +4,7 @@ import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.PositionsMessage;
+import fr.clixmods.livinghorizon.track.Puppets;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
 import fr.clixmods.livinghorizon.track.RestingPuppet;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -51,6 +52,7 @@ public final class RestingScenario implements Scenario {
             Scene.command(world, "tp @a 0.5 " + GROUND + " 0.5 0 0");
             wait(context, world, 60);
             check(context, "pillar", GROUND + 3, false);
+            numbered(context);
             Scene.screenshot(context, this, "pillar");
 
             Scene.command(world, "fill 0 " + GROUND + " 8 0 " + (GROUND + 2) + " 8 air");
@@ -292,6 +294,21 @@ public final class RestingScenario implements Scenario {
             if (spot.name().equals(NAME) && level != null) return resting.puppet(level, spot);
         }
         throw new AssertionError("resting: no sleeper");
+    }
+
+    /**
+     * Fails the run unless the sleeper has a number of the mod's own, which no entity of the
+     * level has: Figura and Epic Fight tell the copies apart by it.
+     */
+    private static void numbered(ClientGameTestContext context) {
+        @Nullable String wrong = context.computeOnClient(minecraft -> {
+            RestingPuppet puppet = puppet(minecraft);
+            int id = puppet.getId();
+            Scene.log("resting number " + id);
+            if (!Puppets.is(puppet)) return "number " + id + " is not a copy's";
+            return minecraft.level.getEntity(id) == null ? null : "number " + id + " is " + minecraft.level.getEntity(id);
+        });
+        if (wrong != null) throw new AssertionError("resting: " + wrong);
     }
 
     /** Something about the sleeper, read on the client. */

@@ -11,6 +11,10 @@
 - **Phantoms and ghasts seen from below** — as *Simplified Entities* (flat pictures of far mobs), phantoms and ghasts are now pictured from below and from above too, like birds, not only from the side.
 - **Smoother with many distant mobs on Vulkan** — the game no longer loses time on every distant mob, every frame, when it draws with Vulkan (Minecraft 26.2 and later) or over Distant Horizons (Minecraft 26.3).
 
+#### Fixed
+- **Distant players frozen with Epic Fight** — with Epic Fight installed, players who logged off, far players and distant mobs are no longer drawn frozen in one pose: they keep Minecraft's own model (Minecraft 1.20.1 and 1.21.1).
+- **Wrong Figura avatars far away** — with Figura installed, players who logged off and far players no longer wear another player's avatar or a broken one: they are shown in their skin.
+
 ## 0.12.0 — 2026-10-23
 
 ### Server

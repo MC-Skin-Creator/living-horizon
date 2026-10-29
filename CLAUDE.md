@@ -429,6 +429,13 @@ come back, add it here in the same pull request: this file is what the next sess
   GeckoLib 4's `createRenderState()` returns null and its `render` draws the entity it was
   last handed. `GhostRenderer.drawable` leaves such types out (issue #67 is about drawing
   them), and a renderer that throws while extracting is left out too, logged once.
+- **Far players or remembered mobs broken under another mod** (Epic Fight's figure frozen in one
+  pose, a Figura avatar on the wrong player or a broken one): a mod that keeps data on an entity
+  as it joins a level and ticks has none, or its first, for a puppet, and a mod that finds an
+  entity by its number found a real one. Every puppet is numbered from -1,000,000 down on
+  every version (`Puppets.numbered`, `Puppets.is`); a mod's hook that reads its data is told
+  "none" for a puppet, drawn then with the game's model: `EpicFightCapabilitiesMixin`,
+  `FiguraAvatarManagerMixin` (before 1.21.2). The `resting` scenario checks the number.
 - **Perched birds darting to and fro, standing in the air or inside a block** (tits, robins,
   ducks): a move's progress is `timer / length`, so the rest after landing is `rest`, never
   added to `length` (which put an arrived bird back part of the way). Where a bird lands comes

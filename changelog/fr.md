@@ -11,6 +11,10 @@
 - **Phantoms et ghasts vus d'en dessous** — en *Entités simplifiées* (des images plates des mobs lointains), les phantoms et les ghasts sont maintenant dessinés vus d'en dessous et d'au-dessus aussi, comme les oiseaux, et plus seulement de côté.
 - **Plus fluide avec beaucoup de mobs lointains sous Vulkan** — le jeu ne perd plus de temps sur chaque mob lointain, à chaque image, quand il dessine avec Vulkan (Minecraft 26.2 et plus) ou sur Distant Horizons (Minecraft 26.3).
 
+#### Corrections
+- **Joueurs lointains figés avec Epic Fight** — avec Epic Fight installé, les joueurs déconnectés, les joueurs lointains et les mobs lointains ne sont plus dessinés figés dans une pose : ils gardent le modèle de Minecraft (Minecraft 1.20.1 et 1.21.1).
+- **Mauvais avatars Figura au loin** — avec Figura installé, les joueurs déconnectés et les joueurs lointains ne portent plus l'avatar d'un autre joueur ni un avatar cassé : ils sont montrés avec leur skin.
+
 ## 0.12.0 — 2026-10-23
 
 ### Serveur

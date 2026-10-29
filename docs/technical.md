@@ -39,7 +39,13 @@ positions with the clients that have it.
 | [Far terrain depth](#far-terrain-depth) | Nothing of its own: hides our figures behind the far terrain | Voxy's or Distant Horizons' depth |
 
 The figures are **puppets**: entities the mod makes and draws with the game's own renderers,
-never added to a level (`track/Puppets`).
+never added to a level (`track/Puppets`). Each has a number of its own, from -1,000,000
+down (`Puppets.numbered`), which no entity of a level has: `Puppets.is` tells them apart.
+Mods that keep data of their own on an entity as it joins a level and ticks get none for a
+puppet: Epic Fight's skeleton (`EpicFightCapabilitiesMixin`) and, before 1.21.2, Figura's
+avatars (`FiguraAvatarManagerMixin`) are left out of puppets, drawn with the game's model
+and their skin. From 1.21.2 Figura finds an avatar by the number in the render state, which
+no entity of the level answers for a puppet.
 
 ### Code map
 

@@ -103,6 +103,10 @@ extra["lhMixins"] = buildList {
     add("DhClientApiMixin")
     add("EntityMixin")
     add("EntityRenderDispatcherMixin")
+    // Epic Fight's skeleton, which a copy never animates: copies keep the game's model.
+    add("EpicFightCapabilitiesMixin")
+    // Before 1.21.2 Figura runs a player's avatar on whatever entity it is handed, copies too.
+    if (!atLeast("1.21.2")) add("FiguraAvatarManagerMixin")
     // The far plane: the game renderer's before 26.1, the camera's from there.
     add(if (atLeast("26.1")) "CameraMixin" else "GameRendererMixin")
     // From 26.1 the projection with view bobbing in it only goes to the GPU: read on its way.

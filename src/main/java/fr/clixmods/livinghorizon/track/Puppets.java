@@ -23,23 +23,34 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * The entities the mod makes to draw what is not loaded (distant players, remembered mobs,
- * birds, the saucer's cow) are never added to a level. Up to 26.1 every entity numbered
- * itself when it was made; from 26.2 only the level numbers it, and drawing one without a
- * number fails. Each gets its own, counting down from far below the numbers the server
- * hands out, so that none is ever taken for a real entity.
+ * birds, the saucer's cow) are never added to a level. Each gets a number of its own,
+ * counting down from far below the numbers the server hands out, so that none is ever taken
+ * for a real entity. From 26.2 only the level numbers an entity, and drawing one without a
+ * number fails. Up to 26.1 every entity numbers itself when it is made, from a counter the
+ * client keeps apart from the server's: on a server, a copy took the number of one of the
+ * server's entities, and a mod that finds an entity by its number (Figura, for an avatar)
+ * found that one instead.
  */
 public final class Puppets {
-    private static int next = -1_000_000;
+    /** The first number handed out; every puppet's is this or lower. */
+    private static final int FIRST = -1_000_000;
+    private static int next = FIRST;
 
     private Puppets() {
     }
 
-    /** The entity, numbered if the game no longer does it. Render thread only. */
+    /** The entity, numbered. Render thread only. */
     public static <T extends Entity> @Nullable T numbered(@Nullable T entity) {
-        //? if >=26.2 {
-        /*if (entity != null) entity.setId(next--);
-        *///?}
+        if (entity != null) entity.setId(next--);
         return entity;
+    }
+
+    /**
+     * Whether this entity is one of the mod's, in no level: another mod's hook that would
+     * treat it as a real entity (one that ticks, with data of its own) can tell it apart.
+     */
+    public static boolean is(@Nullable Entity entity) {
+        return entity != null && entity.getId() <= FIRST;
     }
 
     /** A new entity of this type, as if loaded from a save, numbered. Render thread only. */
