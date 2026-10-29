@@ -25,6 +25,7 @@ import fr.clixmods.livinghorizon.track.MobMemory;
 import fr.clixmods.livinghorizon.track.Puppets;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
 import fr.clixmods.livinghorizon.track.RestingPuppet;
+import fr.clixmods.livinghorizon.track.SeedDraws;
 import fr.clixmods.livinghorizon.track.SharedPositions;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -576,7 +577,9 @@ public final class GhostRenderer {
                 if (debug && mob.waiting()) markRemembered(mob, Mark.WAITING);
                 continue;
             }
-            if (!config.shows(creature(puppet)) || tooFar(puppet, eye, maxDistance(puppet, config))) continue;
+            // Where the spyglass looks, as far as it looks.
+            if (!config.shows(creature(puppet)) || tooFar(puppet, eye, maxDistance(puppet, config))
+                    && !memory.foresight().inScope(puppet.getX(), puppet.getY() + puppet.getBbHeight() / 2, puppet.getZ())) continue;
             // A copy walking up to its real mob stands for it, however close.
             if (!memory.handingOver(mob) && tooClose(puppet, eye, memory.nearRange(mob))) {
                 if (debug) DebugMarks.mark(puppet, Mark.NEAR);
@@ -585,14 +588,15 @@ public final class GhostRenderer {
             if (overVoid(minecraft, eye, mob.id(), puppet, config)) continue;
             if (skipped(puppet, true)) continue;
             if (occluded(mob.id(), puppet, config)) continue;
-            if (debug) DebugMarks.mark(puppet, Mark.FAKE);
+            Mark copy = SeedDraws.foreseen(mob.id()) ? Mark.FORESEEN : Mark.FAKE;
+            if (debug) DebugMarks.mark(puppet, copy);
             mob.drawn();
             if (impostor(minecraft, eye, puppet, partialTick, config)) continue;
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
             // A puppet is in no world, so never in water: fish would be drawn flopping on
             // their side, as on land. Water mobs were in water when last seen.
             if (body instanceof LivingEntityRenderState living && livesInWater(puppet)) living.isInWater = true;
-            add(frame, minecraft, eye, body, null, true, Mark.FAKE, config, mob.id());
+            add(frame, minecraft, eye, body, null, true, copy, config, mob.id());
         }
         DrawnGround.ask();
         if (debug && DebugMarks.drawing() && minecraft.level != null) {

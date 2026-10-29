@@ -22,6 +22,7 @@ import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.LastSeen;
 import fr.clixmods.livinghorizon.track.Profiles;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
+import fr.clixmods.livinghorizon.track.Foresight;
 import fr.clixmods.livinghorizon.track.Gear;
 import fr.clixmods.livinghorizon.track.MobScan;
 import fr.clixmods.livinghorizon.track.PositionsMessage;
@@ -124,6 +125,11 @@ public final class LivingHorizonCommand {
                             return 1;
                         })
                                 .then(offlineTests(source)))
+                        .then(LiteralArgumentBuilder.<S>literal("foresee")
+                                .executes(c -> foresee(source.apply(c.getSource()), FarConfig.get().foreseeRadius))
+                                .then(RequiredArgumentBuilder.<S, Integer>argument("radius",
+                                                IntegerArgumentType.integer(Foresight.MIN_RADIUS, Foresight.MAX_RADIUS))
+                                        .executes(c -> foresee(source.apply(c.getSource()), IntegerArgumentType.getInteger(c, "radius")))))
                         .then(LiteralArgumentBuilder.<S>literal("scan")
                                 .executes(c -> scan(source.apply(c.getSource()), FarConfig.get().scanRadius))
                                 .then(RequiredArgumentBuilder.<S, Integer>argument("radius",
@@ -416,6 +422,16 @@ public final class LivingHorizonCommand {
         // After the command has run, outside the command dispatcher.
         client.execute(() -> MobScan.start(client, radius));
         return MobScan.available(client) ? 1 : 0;
+    }
+
+    /**
+     * {@code /livinghorizon foresee [radius]}: the first animals of the land nobody explored within
+     * that many chunks, foreseen from the seed (a world played here, or a server sharing it).
+     */
+    private static int foresee(Source source, int radius) {
+        Minecraft client = source.client();
+        client.execute(() -> FarPlayerTracker.get().mobs().foresight().start(client, radius));
+        return FarPlayerTracker.get().mobs().foresight().available(client) ? 1 : 0;
     }
 
     /**

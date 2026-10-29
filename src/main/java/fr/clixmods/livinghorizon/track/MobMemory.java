@@ -51,6 +51,7 @@ import java.util.HashMap;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -101,6 +102,8 @@ public final class MobMemory {
         boolean fromPack;
         /** Wore a name tag when last seen. */
         boolean named;
+        /** Foreseen by this client ({@link Foresight}), not shared by the server: it lets it go. */
+        transient boolean foreseenHere;
         /**
          * Built from what the server said of it alone (kind, variant, age, what it wears), as that
          * text: rebuilt when the server says something else. Null for a mob this client saw.
@@ -214,9 +217,17 @@ public final class MobMemory {
     private long builtNow;
     /** In a single player world, where the server has the remembered mobs. */
     private final ServerMobs serverMobs = new ServerMobs();
+    /** The first animals of the land nobody explored, foreseen by this client. */
+    private final Foresight foresight = new Foresight();
+    private boolean scoping;
 
     public List<Remembered> shown() {
         return shown;
+    }
+
+    /** The first animals of the land nobody explored, foreseen by this client: the scan, the spyglass. */
+    public Foresight foresight() {
+        return foresight;
     }
 
     public int size() {
@@ -346,6 +357,7 @@ public final class MobMemory {
 
     void close() {
         save();
+        foresight.reset(Long.MIN_VALUE, null);
         firstVisit = false;
         mobs.clear();
         live.clear();
@@ -588,16 +600,21 @@ public final class MobMemory {
         dirty = true;
     }
 
+    /**
+     * The mobs met, the oldest first, past {@link #MAX_REMEMBERED}. The animals foreseen from the
+     * seed are not counted: there are as many as the server shares and this client foresees
+     * ({@link Foresight#MAX_SHOWN}), and they are never saved.
+     */
     private void trim() {
-        if (mobs.size() > MAX_REMEMBERED) {
-            // The animals foreseen from the seed go first: the server shares them again whenever they are near.
-            List<UUID> foreseen = new ArrayList<>();
-            for (Remembered mob : mobs.values()) {
-                if (SeedMobs.foreseen(mob.id)) foreseen.add(mob.id);
-            }
-            for (int i = 0; i < foreseen.size() && mobs.size() > MAX_REMEMBERED; i++) forget(foreseen.get(i));
+        int met = 0;
+        for (Remembered mob : mobs.values()) {
+            if (!SeedDraws.foreseen(mob.id)) met++;
         }
-        while (mobs.size() > MAX_REMEMBERED) mobs.remove(mobs.keySet().iterator().next());
+        for (Iterator<Remembered> it = mobs.values().iterator(); met > MAX_REMEMBERED && it.hasNext(); ) {
+            if (SeedDraws.foreseen(it.next().id)) continue;
+            it.remove();
+            met--;
+        }
     }
 
     /**
@@ -694,6 +711,12 @@ public final class MobMemory {
             return;
         }
         String dimension = level.dimension().identifier().toString();
+        foresight.tick(Minecraft.getInstance(), level, self, world, config, pack);
+        // Through a spyglass and back: the mobs where it looks are chosen first, and then no longer.
+        if (self.isScoping() != scoping) {
+            scoping = self.isScoping();
+            chooseSoon = true;
+        }
         long following = Profile.begin(Profile.Section.TICK_MOBS_FOLLOW);
         try {
             followServer(level, dimension);
@@ -707,6 +730,7 @@ public final class MobMemory {
                 if (clock % 20 == 0) {
                     lastPack = pack;
                     if (pack != null) sync(pack);
+                    foreseen(foresight.wanted(selfX, selfY, selfZ, config), dimension);
                     learnReach();
                     reconcile(level, dimension, renderDistanceBlocks);
                 }
@@ -893,7 +917,7 @@ public final class MobMemory {
             // Followed on the single player server, which knows better than the last report.
             if (mob != null && mob.simulated) continue;
             // An animal foreseen from the seed, which would not be drawn: not taken at all.
-            if (mob == null && SeedMobs.foreseen(id) && !wantsForeseen(report, config)) continue;
+            if (mob == null && SeedDraws.foreseen(id) && !wantsForeseen(report, config)) continue;
             String look = packLook(report);
             if (mob == null) {
                 mob = new Remembered();
@@ -931,6 +955,44 @@ public final class MobMemory {
                     && pack.covers(mob.dimension, mob.x, mob.z)) dead.add(mob.id);
         }
         dead.forEach(this::forget);
+    }
+
+    /**
+     * The animals this client foresees that are worth remembering now ({@link Foresight#wanted}):
+     * those not remembered yet become remembered mobs, built from their kind, variant and age as
+     * the server's are; those it foresaw and no longer wants are forgotten. The server's own stay
+     * as it says.
+     */
+    private void foreseen(List<PositionsMessage.Mob> wanted, String dimension) {
+        Set<UUID> kept = new HashSet<>();
+        for (PositionsMessage.Mob found : wanted) {
+            UUID id = found.id();
+            kept.add(id);
+            if (mobs.containsKey(id) || live.containsKey(id) || dismissed.containsKey(id)) continue;
+            String type = MobKinds.type(found.kind());
+            if (type == null) continue;
+            SharedPositions.MobReport report = new SharedPositions.MobReport(id, found.x(), found.y(), found.z(),
+                    found.kind(), found.dimension(), found.baby(), found.variant(), null);
+            Remembered mob = new Remembered();
+            mob.id = id;
+            mob.type = type;
+            mob.nbt = packNbt(type, report);
+            mob.packLook = packLook(report);
+            mob.seenAt = System.currentTimeMillis();
+            mob.world = world;
+            mob.dimension = dimension;
+            mob.x = found.x();
+            mob.y = found.y();
+            mob.z = found.z();
+            mob.foreseenHere = true;
+            mobs.put(id, mob);
+            chooseSoon = true;
+        }
+        List<UUID> dropped = new ArrayList<>();
+        for (Remembered mob : mobs.values()) {
+            if (mob.foreseenHere && !mob.fromPack && !kept.contains(mob.id)) dropped.add(mob.id);
+        }
+        dropped.forEach(this::forget);
     }
 
     /**
@@ -1128,13 +1190,20 @@ public final class MobMemory {
             if (!wanted.contains(mob.type) && !(config.rememberNamedMobs && mob.named)) continue;
             boolean creature = creature(mob);
             if (!config.shows(creature)) continue;
-            if (SeedMobs.foreseen(mob.id) && (!config.seedMobs || generated(mob))) continue;
+            if (SeedDraws.foreseen(mob.id) && (!config.seedMobs || generated(mob))) continue;
             mob.distance = distance(mob.x, mob.y, mob.z);
             (creature ? creatures : others).add(mob);
         }
         List<Remembered> chosen = new ArrayList<>();
         for (List<Remembered> here : List.of(creatures, others)) {
+            // Where the spyglass looks first, however far: the player is looking for them there.
+            for (Remembered mob : here) {
+                if (foresight.inScope(mob.x, mob.y + 0.5, mob.z)) mob.distance -= 1e9;
+            }
             here.sort(Comparator.comparingDouble(mob -> mob.distance));
+            for (Remembered mob : here) {
+                if (mob.distance < 0) mob.distance += 1e9;
+            }
             chosen.addAll(here.subList(0, config.most(here == creatures, here.size())));
         }
         Set<Remembered> kept = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -1265,7 +1334,7 @@ public final class MobMemory {
             // Those foreseen from the seed are the server's to share again, not this client's to keep.
             Collection<Remembered> kept = new ArrayList<>();
             for (Remembered mob : mobs.values()) {
-                if (!SeedMobs.foreseen(mob.id)) kept.add(mob);
+                if (!SeedDraws.foreseen(mob.id)) kept.add(mob);
             }
             JsonStore.write(file, writer -> write(kept, writer));
             bytes = Files.size(file);

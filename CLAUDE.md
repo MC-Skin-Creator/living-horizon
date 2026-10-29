@@ -611,12 +611,20 @@ come back, add it here in the same pull request: this file is what the next sess
   jars that do not open before trying again. What Forge's Maven served is kept in each Forge
   node's cache entry (`mavenizer/caches/maven/forge`), so a build only asks it for what changed.
 - **Animals of unexplored land missing or drawn twice** (none far off in a world never explored,
-  or one beside the real herd as a chunk loads): `SeedMobs` foresees them on the server, around
-  players with the mod only, in a dimension of the usual terrain (a flat world has none, the
-  client game tests' consistent settings included). A chunk is left out once loaded or saved past
-  the step that puts its animals there. The client never draws one in a chunk it holds: ask its
-  chunk source (`level.getChunkSource().hasChunk`), never `ClientLevel.hasChunk`, which always
-  says yes. The `seedmobs` scenario checks it and how many stand where the game puts them.
+  or one beside the real herd as a chunk loads): they are drawn by `SeedDraws`, foreseen by the
+  server around players with the mod (`SeedMobs`) and by the client within *Mob Render Distance*,
+  through a spyglass and by *Guess Nearby Mobs* (`Foresight`: in a world played here, or from the
+  seed a server shares with `shareSeed`), in a dimension of the usual terrain only (a flat world
+  has none, the client game tests' consistent settings included). A chunk is left out once loaded
+  or saved past the step that puts its animals there; one generated with the mod off, explored,
+  or pregenerated (Chunky, Distant Horizons' `INTERNAL_SERVER` mode) has its real ones instead,
+  which only the scan or the server's memory shows. The client never draws one in a chunk it
+  holds: ask its chunk source (`level.getChunkSource().hasChunk`), never `ClientLevel.hasChunk`,
+  which always says yes. The generator a client builds from a shared seed (`SeedDraws.vanilla`,
+  the game's registries) has no biome tags: a tag is read from the client level's registries
+  (`SeedDraws.Tags`); asked of the built biome, it threw and the chunk was left out, logged once.
+  The `seedmobs` scenario checks it all, the generator built from the seed against the server's,
+  and how many stand where the game puts them; the boxes and outlines show them in pink.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

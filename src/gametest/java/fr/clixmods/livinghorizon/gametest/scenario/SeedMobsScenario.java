@@ -1,11 +1,15 @@
 package fr.clixmods.livinghorizon.gametest.scenario;
 
+import fr.clixmods.livinghorizon.ServerConfig;
 import fr.clixmods.livinghorizon.debug.DebugMarks;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
+import fr.clixmods.livinghorizon.platform.Platform;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobKinds;
 import fr.clixmods.livinghorizon.track.MobMemory;
+import fr.clixmods.livinghorizon.track.PositionsMessage;
+import fr.clixmods.livinghorizon.track.SeedDraws;
 import fr.clixmods.livinghorizon.track.SeedMobs;
 import fr.clixmods.livinghorizon.track.SharedPositions;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -15,6 +19,10 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -65,7 +73,7 @@ public final class SeedMobsScenario implements Scenario {
                 SharedPositions shared = FarPlayerTracker.get().shared();
                 for (UUID id : shared.mobs()) {
                     SharedPositions.MobReport mob = shared.readMob(id);
-                    if (mob != null && SeedMobs.foreseen(id)) foreseen.add(mob);
+                    if (mob != null && SeedDraws.foreseen(id)) foreseen.add(mob);
                 }
                 if (foreseen.isEmpty()) throw new AssertionError("the server foresees no animal around");
                 // A chunk loaded since the last share: never drawn, and no longer shared at the next.
@@ -73,12 +81,12 @@ public final class SeedMobsScenario implements Scenario {
                     if (minecraft.level.getChunkSource().hasChunk((int) Math.floor(mob.x()) >> 4, (int) Math.floor(mob.z()) >> 4)) loaded.add(mob);
                 }
                 for (MobMemory.Remembered mob : FarPlayerTracker.get().mobs().shown()) {
-                    if (SeedMobs.foreseen(mob.id()) && minecraft.level.getChunkSource().hasChunk((int) Math.floor(mob.x()) >> 4,
+                    if (SeedDraws.foreseen(mob.id()) && minecraft.level.getChunkSource().hasChunk((int) Math.floor(mob.x()) >> 4,
                             (int) Math.floor(mob.z()) >> 4)) {
                         throw new AssertionError("a foreseen mob drawn in a chunk already there: " + mob.type());
                     }
                 }
-                long drawn = FarPlayerTracker.get().mobs().shown().stream().filter(m -> SeedMobs.foreseen(m.id())).count();
+                long drawn = FarPlayerTracker.get().mobs().shown().stream().filter(m -> SeedDraws.foreseen(m.id())).count();
                 if (drawn == 0) {
                     throw new AssertionError("no foreseen mob among those drawn: remembered " + FarPlayerTracker.get().mobs().size()
                             + ", drawn " + FarPlayerTracker.get().mobs().shown().size() + ", player at " + minecraft.player.position()
@@ -86,8 +94,9 @@ public final class SeedMobsScenario implements Scenario {
                 }
                 Scene.log("seedmobs foreseen=" + foreseen.size() + " drawn=" + drawn + " in chunks loaded since=" + loaded.size());
             });
-            // Past the render distance the game's fog hides them without Voxy or Distant Horizons: their
-            // boxes show where they stand, the camera turned to the nearest herd.
+            // Past the render distance the game's fog hides them without Voxy or Distant Horizons, and
+            // their boxes too (the lines are fogged): the pink marks of the frame are counted instead,
+            // the camera turned to the nearest herd.
             float[] look = context.computeOnClient(minecraft -> {
                 SharedPositions.MobReport herd = foreseen.stream()
                         .min(java.util.Comparator.comparingDouble(mob -> Math.hypot(mob.x() - minecraft.player.getX(),
@@ -102,9 +111,10 @@ public final class SeedMobsScenario implements Scenario {
             Scene.configure(context, config -> config.debugBoxes = config.debugLabels = true);
             context.waitTicks(20);
             Scene.screenshot(context, this, "foreseen");
-            int copies = context.computeOnClient(minecraft -> DebugMarks.count(DebugMarks.Mark.FAKE));
-            if (copies == 0) throw new AssertionError("no foreseen herd drawn in front of the camera");
-            Scene.log("seedmobs copies drawn in view: " + copies);
+            int[] marks = context.computeOnClient(minecraft -> new int[]{DebugMarks.count(DebugMarks.Mark.FORESEEN),
+                    DebugMarks.count(DebugMarks.Mark.FAKE)});
+            Scene.log("seedmobs in view: " + marks[0] + " foreseen (pink), " + marks[1] + " other copies");
+            if (marks[0] == 0) throw new AssertionError("no foreseen herd drawn in front of the camera");
             Scene.configure(context, config -> config.debugBoxes = config.debugLabels = false);
 
             // The client's setting off: none drawn, though the server still shares them.
@@ -112,11 +122,78 @@ public final class SeedMobsScenario implements Scenario {
             context.waitTicks(40);
             context.runOnClient(minecraft -> {
                 for (MobMemory.Remembered mob : FarPlayerTracker.get().mobs().shown()) {
-                    if (SeedMobs.foreseen(mob.id())) throw new AssertionError("a foreseen mob drawn with the setting off");
+                    if (SeedDraws.foreseen(mob.id())) throw new AssertionError("a foreseen mob drawn with the setting off");
                 }
                 Scene.log("seedmobs setting off: none drawn");
             });
             Scene.configure(context, config -> config.seedMobs = true);
+
+            // This client foresees them too, by itself, as far as mobs are drawn.
+            context.waitTicks(100);
+            int auto = context.computeOnClient(minecraft -> FarPlayerTracker.get().mobs().foresight().size());
+            if (auto == 0) throw new AssertionError("the client foresaw nothing by itself");
+            Scene.log("seedmobs foreseen by the client itself: " + auto);
+
+            // The game's generator built again from the seed, as a client does when a server shares it: the same animals.
+            context.runOnClient(minecraft -> {
+                ServerLevel level = minecraft.getSingleplayerServer().getLevel(Level.OVERWORLD);
+                SeedDraws.Source server = SeedDraws.Source.of(level);
+                String[] keys = SeedDraws.vanillaKeys(level);
+                if (server == null || keys == null) throw new AssertionError("the overworld is not the game's own generator");
+                SeedDraws.Source built = SeedDraws.vanilla("minecraft:overworld", level.getSeed(), keys[0], keys[1],
+                        minecraft.level, minecraft.level.dimensionType(), minecraft.level.registryAccess());
+                if (built == null) throw new AssertionError("could not build the generator from " + keys[0] + ", " + keys[1]);
+                // Where the server foresaw some, and the chunks round them.
+                it.unimi.dsi.fastutil.longs.LongOpenHashSet around = new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
+                for (SharedPositions.MobReport mob : foreseen) {
+                    int cx = (int) Math.floor(mob.x()) >> 4, cz = (int) Math.floor(mob.z()) >> 4;
+                    for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) around.add(SeedDraws.chunk(cx + dx, cz + dz));
+                }
+                long[] chunks = around.toLongArray();
+                var expected = SeedMobs.draw(server, chunks, null);
+                var drawn = SeedMobs.draw(built, chunks, null);
+                if (expected.isEmpty()) throw new AssertionError("the server's generator draws nothing where it foresaw animals");
+                if (!expected.equals(drawn)) {
+                    throw new AssertionError("the generator built from the seed draws other animals: " + drawn.size()
+                            + " chunks with some, the server's " + expected.size());
+                }
+                Scene.log("seedmobs the generator built from the seed draws the server's animals: " + expected.size() + " of "
+                        + chunks.length + " chunks with some");
+            });
+
+            // Through a spyglass: where it looks, however far, is foreseen too.
+            Scene.command(world, "item replace entity @p weapon.mainhand with minecraft:spyglass");
+            context.waitTicks(5);
+            context.getInput().holdKey(options -> options.keyUse);
+            context.waitTicks(100);
+            boolean scoping = context.computeOnClient(minecraft -> minecraft.player.isScoping());
+            int looked = context.computeOnClient(minecraft -> FarPlayerTracker.get().mobs().foresight().size());
+            context.getInput().releaseKey(options -> options.keyUse);
+            if (!scoping) throw new AssertionError("the player does not look through the spyglass");
+            if (looked <= auto) throw new AssertionError("nothing more foreseen through the spyglass: " + looked);
+            Scene.log("seedmobs through the spyglass: " + looked);
+
+            // By hand, farther.
+            context.runOnClient(minecraft -> FarPlayerTracker.get().mobs().foresight().start(minecraft, 64));
+            for (int i = 0; i < 90 && context.computeOnClient(minecraft -> FarPlayerTracker.get().mobs().foresight().scanning()); i++) {
+                context.waitTicks(20);
+            }
+            int scanned = context.computeOnClient(minecraft -> FarPlayerTracker.get().mobs().foresight().size());
+            if (scanned <= looked) throw new AssertionError("the guess found nothing more: " + scanned);
+            Scene.log("seedmobs after a guess within 64 chunks: " + scanned);
+
+            // The owner shares the seed: the client hears it.
+            Path settings = Platform.configDir().resolve(ServerConfig.FILE);
+            share(settings, true);
+            context.waitTicks(160);
+            context.runOnClient(minecraft -> {
+                PositionsMessage.Seed seed = FarPlayerTracker.get().shared().seed();
+                if (seed == null || seed.dimensions().stream().noneMatch(ground -> ground.dimension().equals("minecraft:overworld"))) {
+                    throw new AssertionError("the seed is not shared: " + seed);
+                }
+                Scene.log("seedmobs seed shared for " + seed.dimensions());
+            });
+            share(settings, false);
 
             // A square of the chunks generated, as a player walking there would: the game's own animals.
             // Around a foreseen herd past the render distance, so that the square has some.
@@ -176,6 +253,17 @@ public final class SeedMobsScenario implements Scenario {
                         + near[0] + " of " + inSquare.size());
             }
             Scene.command(world, "forceload remove all");
+        }
+    }
+
+    /** The server's shareSeed setting, written in its file as an owner would. */
+    private static void share(Path settings, boolean on) {
+        try {
+            String text = Files.readString(settings).replace("\"shareSeed\": " + !on, "\"shareSeed\": " + on);
+            Files.writeString(settings, text);
+            Files.setLastModifiedTime(settings, FileTime.fromMillis(System.currentTimeMillis() + (on ? 5000 : 10000)));
+        } catch (IOException e) {
+            throw new AssertionError("could not change " + settings, e);
         }
     }
 }

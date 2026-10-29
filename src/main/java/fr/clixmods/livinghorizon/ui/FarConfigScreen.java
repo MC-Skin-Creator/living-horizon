@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.QualityPreset;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
+import fr.clixmods.livinghorizon.track.Foresight;
 import fr.clixmods.livinghorizon.track.MobScan;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.OptionInstance;
@@ -111,6 +112,8 @@ public final class FarConfigScreen extends SideOptionsScreen {
                         .tooltip(Tooltip.create(Component.translatable(KEY + "forgetMobs.tooltip"))).build());
         list.addSmall(scanButton(), chunks("scanRadius", MobScan.MIN_RADIUS, MobScan.MAX_RADIUS, c.scanRadius,
                 v -> c.scanRadius = v).createButton(minecraft.options, 0, 0, 150));
+        list.addSmall(foreseeButton(), chunks("foreseeRadius", Foresight.MIN_RADIUS, Foresight.MAX_RADIUS, c.foreseeRadius,
+                v -> c.foreseeRadius = v).createButton(minecraft.options, 0, 0, 150));
         subheader(Component.translatable(KEY + "mobs.creatures"));
         list.addSmall(
                 bool("distantMobs", c.distantMobs, v -> c.distantMobs = v),
@@ -199,6 +202,21 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 })
                 .tooltip(Tooltip.create(Component.translatable(
                         KEY + (available ? "scanMobs.tooltip" : "scanMobs.unavailable"))))
+                .build();
+        button.active = available;
+        return button;
+    }
+
+    /** <i>Guess Nearby Mobs</i>: in a world played here, or on a server that shares its seed. */
+    private Button foreseeButton() {
+        boolean available = FarPlayerTracker.get().mobs().foresight().available(minecraft);
+        Button button = Button.builder(Component.translatable(KEY + "foreseeMobs"), b -> {
+                    FarConfig.save();
+                    minecraft.setScreen(null);
+                    FarPlayerTracker.get().mobs().foresight().start(minecraft, FarConfig.get().foreseeRadius);
+                })
+                .tooltip(Tooltip.create(Component.translatable(
+                        KEY + (available ? "foreseeMobs.tooltip" : "foreseeMobs.unavailable"))))
                 .build();
         button.active = available;
         return button;

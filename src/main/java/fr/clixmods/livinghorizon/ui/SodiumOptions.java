@@ -5,6 +5,7 @@ import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.QualityPreset;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
+import fr.clixmods.livinghorizon.track.Foresight;
 import fr.clixmods.livinghorizon.track.MobScan;
 import net.caffeinemc.mods.sodium.api.config.ConfigEntryPoint;
 import net.caffeinemc.mods.sodium.api.config.ConfigState;
@@ -197,7 +198,32 @@ public final class SodiumOptions implements ConfigEntryPoint {
                             FarConfig.save();
                             minecraft.setScreen(null);
                             MobScan.start(minecraft, FarConfig.get().scanRadius);
+                        }))
+                .addOption(b.createIntegerOption(id("foreseeRadius"))
+                        .setName(Component.translatable(KEY + "foreseeRadius"))
+                        .setTooltip(tooltip("foreseeRadius"))
+                        .setRange(Foresight.MIN_RADIUS, Foresight.MAX_RADIUS, 1)
+                        .setValueFormatter(v -> Component.translatable(KEY + "scanRadius.value", v))
+                        .setDefaultValue(d.foreseeRadius)
+                        .setStorageHandler(storage)
+                        .setBinding(v -> FarConfig.get().foreseeRadius = v,
+                                () -> Math.clamp(FarConfig.get().foreseeRadius, Foresight.MIN_RADIUS, Foresight.MAX_RADIUS)))
+                .addOption(b.createExternalButtonOption(id("foreseeMobs"))
+                        .setName(Component.translatable(KEY + "foreseeMobs"))
+                        .setTooltip(Component.translatable(KEY + "foreseeMobs.tooltip"))
+                        .setEnabledProvider(s -> foreseeable(), ConfigState.UPDATE_ON_REBUILD)
+                        .setScreenConsumer(parent -> {
+                            Minecraft minecraft = Minecraft.getInstance();
+                            if (!foreseeable()) return;
+                            FarConfig.save();
+                            minecraft.setScreen(null);
+                            FarPlayerTracker.get().mobs().foresight().start(minecraft, FarConfig.get().foreseeRadius);
                         }));
+    }
+
+    /** Whether <i>Guess Nearby Mobs</i> can run here: a world played here, or a server sharing its seed. */
+    private static boolean foreseeable() {
+        return FarPlayerTracker.get().mobs().foresight().available(Minecraft.getInstance());
     }
 
     private OptionPageBuilder birds(ConfigBuilder b, FarConfig d) {

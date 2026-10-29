@@ -42,6 +42,8 @@ public final class SharedPositions {
     /** The last word on each player that came with their look and mount, which come every few seconds only. */
     private final Map<String, PositionsMessage.Player> dressed = new HashMap<>();
     private PositionsMessage.@Nullable Mobs lastMobs;
+    /** The world's seed, when the server shares it, for this client to foresee the first animals itself. */
+    private PositionsMessage.@Nullable Seed seed;
     private int ticksSinceNews = STALE_TICKS;
     private boolean active;
     /** The format of the last message from a version of the mod this one cannot read; null when none came. */
@@ -70,6 +72,7 @@ public final class SharedPositions {
         if (message.kind() == PositionsMessage.OFFLINE && message.players() != null && message.part() != null) {
             offlinePart(message.players(), message.part());
         }
+        if (message.seed() != null) seed = message.seed().dimensions().isEmpty() ? null : message.seed();
         if (message.mobs() != null) {
             mobs.clear();
             for (PositionsMessage.Mob mob : message.mobs().mobs()) {
@@ -116,6 +119,7 @@ public final class SharedPositions {
         mobs.clear();
         dressed.clear();
         lastMobs = null;
+        seed = null;
         comingOffline = null;
         ticksSinceNews = STALE_TICKS;
         active = false;
@@ -173,6 +177,11 @@ public final class SharedPositions {
     }
 
     /** Every mob the server last published around this client. */
+    /** The seed the server shares, and where its generator is the game's own; null when it shares none. */
+    public PositionsMessage.@Nullable Seed seed() {
+        return active ? seed : null;
+    }
+
     public List<UUID> mobs() {
         return new ArrayList<>(mobs.keySet());
     }

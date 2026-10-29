@@ -35,6 +35,7 @@ class ServerConfigTest {
         assertTrue(written.get("shareMobs").getAsBoolean());
         assertTrue(written.get("seedMobs").getAsBoolean());
         assertEquals(512, written.get("seedMobRange").getAsInt());
+        assertFalse(written.get("shareSeed").getAsBoolean());
         assertFalse(watched.refresh());
     }
 

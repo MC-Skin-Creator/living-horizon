@@ -196,6 +196,12 @@ public final class FarConfig {
     public int scanRadius = 32;
 
     /**
+     * Chunks around the player <i>Guess Nearby Mobs</i> foresees the first animals of, in land
+     * nobody explored ({@code track/Foresight}): up to 1024.
+     */
+    public int foreseeRadius = 64;
+
+    /**
      * Birds and bats: flocks, birds of prey, gulls, pigeons, robins, tits, bats at night.
      * Only a picture, on this client.
      */
@@ -376,6 +382,17 @@ public final class FarConfig {
     public boolean debugLabels = false;
     /** Boxes around the mobs the game draws itself, too. */
     public boolean debugGameMobs = false;
+    // Which other kinds get their box and label, in the Boxes screen.
+    /** Around the real mobs the server sends that the mod draws. */
+    public boolean boxLiveMobs = true;
+    /** Around the copies of mobs met. */
+    public boolean boxCopies = true;
+    /** Around the animals foreseen from the seed, in land nobody explored. */
+    public boolean boxForeseen = true;
+    /** Around the distant players. */
+    public boolean boxPlayers = true;
+    /** Around the mobs left out of the frame (too small, hidden, over the void, outside the view...). */
+    public boolean boxLeftOut = true;
     // Outlines, seen through terrain, in the colours of the debug boxes: what draws each figure.
     /** Around the mobs the game draws itself: white. */
     public boolean outlineGameMobs = false;
@@ -383,6 +400,8 @@ public final class FarConfig {
     public boolean outlineLiveMobs = false;
     /** Around the 3D copies of mobs the server no longer sends: green. */
     public boolean outlineCopies = false;
+    /** Around the copies of animals foreseen from the seed, in land nobody explored: pink. */
+    public boolean outlineForeseen = false;
     /** Around the distant players the mod draws: blue. */
     public boolean outlinePlayers = false;
     /** Around impostors, whatever they stand for: magenta. */

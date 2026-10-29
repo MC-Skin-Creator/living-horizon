@@ -175,6 +175,7 @@ public final class PositionPublisher {
         Set<UUID> sent = new HashSet<>();
         List<PositionsMessage.Player> shown = onlinePlayers();
         byte[] plain = null;
+        byte[] seed = null;
         for (ServerPlayer player : online) {
             if (!Network.canSend(player)) continue;
             sent.add(player.getUUID());
@@ -193,6 +194,9 @@ public final class PositionPublisher {
                     Network.send(player, part);
                 }
                 Network.send(player, around);
+                if (seed == null) seed = PositionsMessage.seed(seed(config, rules));
+                sentBytes[0] += seed.length;
+                Network.send(player, seed);
             } else if (rules.sameForAll()) {
                 if (plain == null) plain = PositionsMessage.players(rules.online(shown, null));
                 sentBytes[0] += plain.length;
@@ -437,6 +441,30 @@ public final class PositionPublisher {
             seeded.addAround((ServerLevel) player.level(), player.getX(), player.getZ(), config.seedMobRange, around.mobs());
         }
         return around;
+    }
+
+    /**
+     * The world's seed, when the owner shares it ({@code shareSeed}), with the dimensions whose
+     * generator a client can build again: the game's own, where mobs are shared.
+     */
+    private PositionsMessage.Seed seed(ServerConfig config, ShareRules rules) {
+        if (!config.shareSeed || !config.seedMobs) return PositionsMessage.Seed.NONE;
+        List<PositionsMessage.SeedGround> grounds = new ArrayList<>();
+        long seed = 0;
+        for (ServerLevel level : server.getAllLevels()) {
+            String dimension = SharedPositions.dimensionId(level.dimension());
+            if (!rules.mobs(dimension)) continue;
+            String[] keys;
+            try {
+                keys = SeedDraws.vanillaKeys(level);
+            } catch (RuntimeException e) {
+                keys = null;
+            }
+            if (keys == null) continue;
+            grounds.add(new PositionsMessage.SeedGround(dimension, keys[0], keys[1]));
+            seed = level.getSeed();
+        }
+        return grounds.isEmpty() ? PositionsMessage.Seed.NONE : new PositionsMessage.Seed(seed, grounds);
     }
 
     /** The animals of the chunks not generated yet, worked out around the players they are shared with. */

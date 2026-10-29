@@ -63,6 +63,13 @@ public final class ServerConfig {
     public boolean seedMobs = true;
     /** How far from a player those animals are worked out and shared, in blocks: 0 to 2048. */
     public int seedMobRange = 512;
+    /**
+     * The world's seed sent to the players with the mod, for their game to foresee those animals
+     * anywhere itself (where they look, where their far terrain reaches, a scan), where the
+     * dimension's generator is the game's own. Off by default: the seed tells everything about
+     * the world to whoever has it.
+     */
+    public boolean shareSeed = false;
 
     /** {@link #hiddenPlayers}, lower case. */
     public Set<String> hiddenNames() {

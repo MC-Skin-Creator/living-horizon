@@ -2,8 +2,10 @@ package fr.clixmods.livinghorizon.gametest.scenario;
 
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
+import fr.clixmods.livinghorizon.ui.BoxesScreen;
 import fr.clixmods.livinghorizon.ui.DebugScreen;
 import fr.clixmods.livinghorizon.ui.FarConfigScreen;
+import fr.clixmods.livinghorizon.ui.OutlinesScreen;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
@@ -41,6 +43,8 @@ public final class OptionsScreenScenario implements Scenario {
                     setLanguage(context, language);
                     look(context, language + "-settings", () -> new FarConfigScreen(null), problems);
                     look(context, language + "-debug", () -> new DebugScreen(null), problems);
+                    look(context, language + "-boxes", () -> new BoxesScreen(null), problems);
+                    look(context, language + "-outlines", () -> new OutlinesScreen(null), problems);
                 }
             } finally {
                 setLanguage(context, "en_us");

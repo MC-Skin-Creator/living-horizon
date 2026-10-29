@@ -6,6 +6,7 @@
 
 #### Nouveautés
 - **Animaux des terres inexplorées** — un serveur avec le mod montre désormais à ses joueurs les animaux que le monde place dans les terres que personne n'a encore explorées, à peu près là où on les trouvera ; `seedMobs` et `seedMobRange`, dans les réglages du serveur, le coupent ou changent sa portée.
+- **Partage de la graine** — `shareSeed`, dans les réglages du serveur, désactivé par défaut, laisse le jeu des joueurs deviner lui-même ces animaux partout, à la longue-vue ou avec *Deviner les créatures* ; qui a la graine sait tout du monde.
 
 ### Client
 
@@ -14,7 +15,9 @@
 - **Réglages des entités** — les bateaux, véhicules et mannequins ont maintenant leurs propres réglages, à part des créatures : *Afficher les entités*, *Entités max* et *Distance d'affichage des entités*, illimitée par défaut.
 - **Créatures simplifiées et Entités simplifiées** — *Entités simplifiées* devient deux options : *Créatures simplifiées*, et *Entités simplifiées* pour les bateaux, véhicules et mannequins, qui deviennent eux aussi des images plates au loin, vus aussi d'au-dessus et d'en dessous ; *Joueurs simplifiés* ne dépend plus d'aucune des deux, et le bouton qui montre les images devient *Aperçu des images...*, avec un onglet pour les images des entités.
 - **Bouton du journal des modifications** — les réglages du mod ont maintenant un bouton du journal des modifications à côté du logo Discord, pour lire ce qui a changé à chaque version (un bouton *Lire le journal des modifications* sur la page de Sodium).
-- **Créatures à découvrir** — les terres lointaines que personne n'a encore explorées ne sont plus vides d'animaux, en solo ou sur un serveur avec le mod ; un nouveau réglage les cache.
+- **Créatures à découvrir** — les terres lointaines que personne n'a encore explorées ne sont plus vides d'animaux, aussi loin que va la *Distance d'affichage des créatures*, en solo ou sur un serveur avec le mod ; un nouveau réglage les cache.
+- **Animaux à la longue-vue** — regarder dans une longue-vue montre maintenant les animaux des terres inexplorées là où elle vise, aussi loin soit-il, en solo ou sur un serveur qui partage sa graine.
+- **Deviner les créatures** — un nouveau bouton affiche d'un coup les animaux des terres inexplorées jusqu'à 1024 chunks autour, en solo ou sur un serveur qui partage sa graine.
 
 #### Améliorations
 - **Serveurs sans le mod** — en rejoignant un serveur sans Living Horizon, ou avec une version trop ancienne ou trop récente du mod, le tchat dit maintenant que les joueurs lointains n'y sont pas affichés ; avec *Afficher les joueurs* désactivé, rien n'est dit.
