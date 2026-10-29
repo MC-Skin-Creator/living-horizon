@@ -27,7 +27,7 @@ class FarConfigTest {
         FarConfig fresh = new FarConfig();
         fresh.version = migrated.version;
         assertEquals(GSON.toJson(fresh), GSON.toJson(migrated));
-        assertEquals(12, migrated.version);
+        assertEquals(13, migrated.version);
     }
 
     @Test
@@ -100,6 +100,17 @@ class FarConfigTest {
         FarConfig kept = migrated("{\"version\": 7, " + old);
         assertEquals(200, kept.maxDistantMobs);
         assertFalse(kept.impostors);
+    }
+
+    @Test
+    void version13KeepsNoLimitPastTheOldTop() {
+        FarConfig unlimited = migrated("{\"version\": 12, \"maxDistantMobs\": 1000, \"maxDistantEntities\": 1000}");
+        assertEquals(FarConfig.UNLIMITED_MOBS, unlimited.maxDistantMobs);
+        assertEquals(FarConfig.UNLIMITED_MOBS, unlimited.maxDistantEntities);
+        assertEquals(9000, unlimited.most(true, 9000));
+        FarConfig chosen = migrated("{\"version\": 12, \"maxDistantMobs\": 999}");
+        assertEquals(999, chosen.maxDistantMobs);
+        assertEquals(1000, migrated("{\"version\": 13, \"maxDistantMobs\": 1000}").maxDistantMobs);
     }
 
     @Test

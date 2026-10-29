@@ -136,6 +136,7 @@
   "livinghorizon.options.foreseeMobs.tooltip": "Works out from the seed the animals the world puts in the land nobody has explored around you, as far as the radius beside, and shows them on the horizon. A large radius takes a few minutes.",
   "livinghorizon.options.foreseeMobs.unavailable": "Only in single player, or on a server with the mod that shares its seed.",
   "livinghorizon.options.foreseeRadius": "Guess Radius",
+  "livinghorizon.options.foreseeRadius.value": "%s Chunks",
   "livinghorizon.options.foreseeRadius.tooltip": "How far around Guess Nearby Mobs looks, in chunks, up to 1024. Also /livinghorizon foresee <distance>.",
   "livinghorizon.scan.started": "Reading the mobs of the chunks within %s chunks...",
   "livinghorizon.scan.done": "Scan done: %s mobs found within %s chunks.",

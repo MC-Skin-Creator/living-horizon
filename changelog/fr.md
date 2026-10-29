@@ -17,7 +17,7 @@
 - **Bouton du journal des modifications** — les réglages du mod ont maintenant un bouton du journal des modifications à côté du logo Discord, pour lire ce qui a changé à chaque version (un bouton *Lire le journal des modifications* sur la page de Sodium).
 - **Créatures à découvrir** — les terres lointaines que personne n'a encore explorées ne sont plus vides d'animaux, aussi loin que va la *Distance d'affichage des créatures*, en solo ou sur un serveur avec le mod ; un nouveau réglage les cache.
 - **Animaux à la longue-vue** — regarder dans une longue-vue montre maintenant les animaux des terres inexplorées là où elle vise, aussi loin soit-il, en solo ou sur un serveur qui partage sa graine.
-- **Deviner les créatures** — un nouveau bouton affiche d'un coup les animaux des terres inexplorées jusqu'à 1024 chunks autour, en solo ou sur un serveur qui partage sa graine.
+- **Deviner les créatures** — un nouveau bouton affiche d'un coup les animaux des terres inexplorées jusqu'à 1024 chunks autour, et les garde pour la partie suivante, en solo ou sur un serveur qui partage sa graine.
 
 #### Améliorations
 - **Serveurs sans le mod** — en rejoignant un serveur sans Living Horizon, ou avec une version trop ancienne ou trop récente du mod, le tchat dit maintenant que les joueurs lointains n'y sont pas affichés ; avec *Afficher les joueurs* désactivé, rien n'est dit.
@@ -28,6 +28,8 @@
 - **Avions laissés en l'air** — un joueur qui se déconnecte en vol reste en l'air dans son avion, qui reste sur place s'il était immobile, ou tourne en rond s'il volait.
 - **Images sauvegardées affichées** — l'écran *Aperçu des images* indique maintenant sous chaque créature si son image est partagée, relue d'une partie précédente, nouvelle et sauvegardée pour les suivantes, ou non sauvegardée, avec quand et dans quel monde elle a été faite.
 - **Animaux assis qui le restent** — les chats, les loups et les perroquets à qui tu as dit de s'asseoir restent maintenant assis au loin, au lieu de se lever et de partir se balader.
+- **Plus de créatures lointaines** — *Créatures max* va maintenant jusqu'à 4000 avant *Illimité*.
+- **Illimité au bout du curseur** — *Illimitée* est maintenant tout à droite des curseurs de distance d'affichage, après 4000 blocs, au lieu de tout à gauche.
 
 #### Corrections
 - **Plantage en ouvrant Créatures et entités depuis l'écran titre** — ouvrir *Créatures et entités...* depuis l'écran titre ne fait plus planter le jeu (Minecraft 26.x).

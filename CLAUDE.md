@@ -623,6 +623,10 @@ come back, add it here in the same pull request: this file is what the next sess
   which always says yes. The generator a client builds from a shared seed (`SeedDraws.vanilla`,
   the game's registries) has no biome tags: a tag is read from the client level's registries
   (`SeedDraws.Tags`); asked of the built biome, it threw and the chunk was left out, logged once.
+  What the client foresaw is kept in `config/livinghorizon/foreseen/<server>/` (`Foresight.write`,
+  a few bytes a mob: an id is drawn again from the seed and its draw's place, the last 16 bits of
+  `SeedDraws.id`), read back on coming back; in a world played here the server first leaves out
+  the chunks generated since (`SeedMobs.unexplored`); *Forget All* deletes it.
   The `seedmobs` scenario checks it all, the generator built from the seed against the server's,
   and how many stand where the game puts them; the boxes and outlines show them in pink.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the

@@ -115,7 +115,8 @@ public final class SodiumControlsScenario implements Scenario {
 
             // 4. The buttons: each opens its screen, which goes back to Sodium's when closed with Escape.
             for (String name : names(context, "button")) {
-                if (name.equals("scanMobs") || name.equals("restoreDefaults")) continue;
+                // These close the screen and start their work: no screen to come back from.
+                if (name.equals("scanMobs") || name.equals("foreseeMobs") || name.equals("restoreDefaults")) continue;
                 click(context, name);
                 context.waitTicks(5);
                 String opened = context.computeOnClient(minecraft -> minecraft.screen == null ? "none" : minecraft.screen.getClass().getSimpleName());

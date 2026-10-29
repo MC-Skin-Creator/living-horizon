@@ -86,15 +86,14 @@ public final class SeedMobs {
     private static final ExecutorService WORKER = thread("Living Horizon seed mobs");
     /** One request at a time, in the order asked. */
     private static final ExecutorService REQUESTS = thread("Living Horizon foresight");
+    /** The urgent ones (where the spyglass looks), never behind a scan: on threads of their own. */
+    private static final ExecutorService URGENT = thread("Living Horizon foresight (urgent)");
     /** The draws of a request, on every core but one. */
-    private static final ForkJoinPool DRAWS = new ForkJoinPool(Math.max(1, Runtime.getRuntime().availableProcessors() - 1),
-            pool -> {
-                var thread = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
-                thread.setName("Living Horizon foresight draws");
-                thread.setDaemon(true);
-                thread.setPriority(Thread.MIN_PRIORITY);
-                return thread;
-            }, null, false);
+    private static final ForkJoinPool DRAWS = pool("Living Horizon foresight draws",
+            Math.max(1, Runtime.getRuntime().availableProcessors() - 1), Thread.MIN_PRIORITY);
+    /** Those of an urgent one, on half the cores, ahead of the others. */
+    private static final ForkJoinPool URGENT_DRAWS = pool("Living Horizon foresight draws (urgent)",
+            Math.max(1, Runtime.getRuntime().availableProcessors() / 2), Thread.NORM_PRIORITY);
     private static volatile boolean failed;
 
     /** What the last pass found, per dimension: the chunks not generated yet that have animals. */
@@ -105,6 +104,16 @@ public final class SeedMobs {
 
     // The worker's own.
     private final Map<String, Dimension> dimensions = new HashMap<>();
+
+    private static ForkJoinPool pool(String name, int threads, int priority) {
+        return new ForkJoinPool(threads, pool -> {
+            var thread = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
+            thread.setName(name);
+            thread.setDaemon(true);
+            thread.setPriority(priority);
+            return thread;
+        }, null, false);
+    }
 
     private static ExecutorService thread(String name) {
         return Executors.newSingleThreadExecutor(task -> {
@@ -412,16 +421,36 @@ public final class SeedMobs {
      * The animals foreseen in the chunks given (the nearest first is best), those generated left
      * out: for the game of a player alone in their world or hosting it on LAN, which asks where it
      * looks, where the far terrain reaches, or for a scan. Called on any thread; the work is done on
-     * threads of their own, one request at a time, and {@code progress} hears how many chunks are
-     * done now and then. The map holds the chunks with animals only.
+     * threads of their own, one request at a time, an {@code urgent} one ahead of the others, and
+     * {@code progress} hears how many chunks are done now and then. The map holds the chunks with
+     * animals only.
      */
     public static CompletableFuture<Long2ObjectMap<List<PositionsMessage.Mob>>> foresee(MinecraftServer server,
-            ResourceKey<Level> dimension, long[] chunks, @Nullable IntConsumer progress) {
+            ResourceKey<Level> dimension, long[] chunks, @Nullable IntConsumer progress, boolean urgent) {
+        return free(server, dimension, chunks, urgent, (source, free) -> source == null
+                ? new Long2ObjectOpenHashMap<>() : draw(source.draws(), free, progress, urgent));
+    }
+
+    /**
+     * Those of the chunks given that are still not generated, no animal drawn: for foreseen mobs
+     * kept from an earlier game, whose land may have been explored since. In the order given.
+     */
+    public static CompletableFuture<long[]> unexplored(MinecraftServer server, ResourceKey<Level> dimension, long[] chunks) {
+        return free(server, dimension, chunks, false, (source, free) -> free);
+    }
+
+    /** What to do with the chunks still free, on the thread of the request; no source where nothing is foreseen. */
+    private interface Then<T> {
+        T apply(@Nullable Source source, long[] free);
+    }
+
+    private static <T> CompletableFuture<T> free(MinecraftServer server, ResourceKey<Level> dimension, long[] chunks,
+                                                 boolean urgent, Then<T> then) {
         // What is loaded is the server's thread's to tell: only near the players and the chunks kept loaded.
         return server.submit(() -> {
             ServerLevel level = server.getLevel(dimension);
             Source source = level == null ? null : Source.of(server, level);
-            if (source == null) return CompletableFuture.completedFuture((Long2ObjectMap<List<PositionsMessage.Mob>>) new Long2ObjectOpenHashMap<List<PositionsMessage.Mob>>());
+            if (source == null) return CompletableFuture.completedFuture(then.apply(null, new long[0]));
             LongOpenHashSet loadedNow = new LongOpenHashSet();
             int reach = server.getPlayerList().getViewDistance() + 3;
             List<int[]> players = new ArrayList<>();
@@ -432,12 +461,13 @@ public final class SeedMobs {
                 for (int[] at : players) near |= Math.max(Math.abs(at[0] - cx), Math.abs(at[1] - cz)) <= reach;
                 if (near && (level.getChunkSource().hasChunk(cx, cz) || level.areEntitiesLoaded(chunk))) loadedNow.add(chunk);
             }
-            return CompletableFuture.supplyAsync(() -> request(source, chunks, loadedNow, progress), REQUESTS);
+            return CompletableFuture.supplyAsync(() -> then.apply(source, free(source, chunks, loadedNow)),
+                    urgent ? URGENT : REQUESTS);
         }).thenCompose(future -> future);
     }
 
-    private static Long2ObjectMap<List<PositionsMessage.Mob>> request(Source source, long[] chunks, LongOpenHashSet loadedNow,
-                                                                      @Nullable IntConsumer progress) {
+    /** The chunks given that are neither loaded now nor saved past the step that puts their animals. */
+    private static long[] free(Source source, long[] chunks, LongOpenHashSet loadedNow) {
         Generated generated = new Generated();
         generated.known.addAll(loadedNow);
         generated.nextRound();
@@ -465,7 +495,7 @@ public final class SeedMobs {
                 if (generated.status.get(chunk) == Generated.BEGUN) free.add(chunk);
             }
         }
-        return draw(source.draws(), free.toLongArray(), progress);
+        return free.toLongArray();
     }
 
     /**
@@ -475,6 +505,13 @@ public final class SeedMobs {
      */
     public static Long2ObjectMap<List<PositionsMessage.Mob>> draw(SeedDraws.Source source, long[] chunks,
                                                                    @Nullable IntConsumer progress) {
+        return draw(source, chunks, progress, false);
+    }
+
+    /** The same, an {@code urgent} request on threads of its own, ahead of any scan. */
+    public static Long2ObjectMap<List<PositionsMessage.Mob>> draw(SeedDraws.Source source, long[] chunks,
+                                                                   @Nullable IntConsumer progress, boolean urgent) {
+        ForkJoinPool pool = urgent ? URGENT_DRAWS : DRAWS;
         Map<Long, List<PositionsMessage.Mob>> found = new ConcurrentHashMap<>();
         AtomicInteger done = new AtomicInteger();
         ThreadLocal<BiomeManager> biomes = ThreadLocal.withInitial(source::biomes);
@@ -482,7 +519,7 @@ public final class SeedMobs {
         List<java.util.concurrent.ForkJoinTask<?>> tasks = new ArrayList<>();
         for (int from = 0; from < chunks.length; from += slice) {
             int start = from, end = Math.min(chunks.length, from + slice);
-            tasks.add(DRAWS.submit(() -> {
+            tasks.add(pool.submit(() -> {
                 for (int i = start; i < end; i++) {
                     List<PositionsMessage.Mob> mobs = draw(source, biomes.get(), chunks[i]);
                     if (!mobs.isEmpty()) found.put(chunks[i], mobs);

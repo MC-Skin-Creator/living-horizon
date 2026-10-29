@@ -136,6 +136,7 @@
   "livinghorizon.options.foreseeMobs.tooltip": "Calcola dal seme gli animali che il mondo mette nelle terre che nessuno ha esplorato intorno a te, fino al raggio accanto, e li mostra all'orizzonte. Un raggio grande richiede qualche minuto.",
   "livinghorizon.options.foreseeMobs.unavailable": "Solo in giocatore singolo, o su un server con la mod che condivide il suo seme.",
   "livinghorizon.options.foreseeRadius": "Raggio di stima",
+  "livinghorizon.options.foreseeRadius.value": "%s chunk",
   "livinghorizon.options.foreseeRadius.tooltip": "Fin dove guarda Indovina creature, in chunk, fino a 1024. Anche /livinghorizon foresee <distance>.",
   "livinghorizon.scan.started": "Lettura delle creature dei chunk entro %s chunk...",
   "livinghorizon.scan.done": "Ricerca completata: %s creature trovate entro %s chunk.",

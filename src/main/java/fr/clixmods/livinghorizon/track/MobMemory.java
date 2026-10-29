@@ -305,6 +305,7 @@ public final class MobMemory {
         close();
         file = Platform.configDir()
                 .resolve("livinghorizon").resolve("mobs").resolve(RestingPlayers.safe(server) + ".json");
+        foresight.open(Platform.configDir().resolve("livinghorizon").resolve("foreseen").resolve(RestingPlayers.safe(server)));
         // No file yet: the mod has never been in this world.
         firstVisit = !Files.exists(file);
         if (firstVisit) return;
@@ -357,7 +358,7 @@ public final class MobMemory {
 
     void close() {
         save();
-        foresight.reset(Long.MIN_VALUE, null);
+        foresight.close();
         firstVisit = false;
         mobs.clear();
         live.clear();
@@ -602,8 +603,9 @@ public final class MobMemory {
 
     /**
      * The mobs met, the oldest first, past {@link #MAX_REMEMBERED}. The animals foreseen from the
-     * seed are not counted: there are as many as the server shares and this client foresees
-     * ({@link Foresight#MAX_SHOWN}), and they are never saved.
+     * seed are not counted: there are as many as the server shares and this client foresees,
+     * <i>Max Mobs</i> at most ({@link Foresight#wanted}), and this file never holds them
+     * ({@link Foresight} keeps its own).
      */
     private void trim() {
         int met = 0;
@@ -717,6 +719,8 @@ public final class MobMemory {
             scoping = self.isScoping();
             chooseSoon = true;
         }
+        // New ones found, or the spyglass moving: those where it looks are taken at once.
+        boolean foreseeNow = foresight.takeFresh() || scoping && clock % 5 == 0;
         long following = Profile.begin(Profile.Section.TICK_MOBS_FOLLOW);
         try {
             followServer(level, dimension);
@@ -724,7 +728,7 @@ public final class MobMemory {
             Profile.end(Profile.Section.TICK_MOBS_FOLLOW, following);
         }
 
-        if (clock % 20 == 0 || chooseSoon) {
+        if (clock % 20 == 0 || chooseSoon || foreseeNow) {
             long choosing = Profile.begin(Profile.Section.TICK_MOBS_CHOOSE);
             try {
                 if (clock % 20 == 0) {
@@ -733,6 +737,8 @@ public final class MobMemory {
                     foreseen(foresight.wanted(selfX, selfY, selfZ, config), dimension);
                     learnReach();
                     reconcile(level, dimension, renderDistanceBlocks);
+                } else if (foreseeNow) {
+                    foreseen(foresight.wanted(selfX, selfY, selfZ, config), dimension);
                 }
                 choose(dimension, config);
             } finally {
@@ -1313,6 +1319,7 @@ public final class MobMemory {
 
     /** Forgets every mob, here and in the file. */
     public void forgetAll() {
+        foresight.forgetAll();
         for (Remembered mob : mobs.values()) mob.gone = true;
         mobs.clear();
         joining.clear();

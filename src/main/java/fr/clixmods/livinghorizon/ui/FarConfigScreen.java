@@ -88,7 +88,7 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(
                 bool("enabled", c.enabled, v -> c.enabled = v),
                 bool("showVehicles", c.showVehicles, v -> c.showVehicles = v));
-        list.addBig(blocks("playerMaxDistance", 0, 4000, c.playerMaxDistance, v -> c.playerMaxDistance = v));
+        list.addBig(reach("playerMaxDistance", c.playerMaxDistance, v -> c.playerMaxDistance = v));
         list.addSmall(
                 bool("offlinePlayers", c.offlinePlayers, v -> c.offlinePlayers = v),
                 integer("maxOfflinePlayers", 0, FarConfig.UNLIMITED_OFFLINE, c.maxOfflinePlayers,
@@ -118,18 +118,18 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(
                 bool("distantMobs", c.distantMobs, v -> c.distantMobs = v),
                 integer("maxDistantMobs", 0, FarConfig.UNLIMITED_MOBS, c.maxDistantMobs, v -> c.maxDistantMobs = v, true));
-        list.addBig(blocks("mobMaxDistance", 0, 4000, c.mobMaxDistance, v -> c.mobMaxDistance = v));
+        list.addBig(reach("mobMaxDistance", c.mobMaxDistance, v -> c.mobMaxDistance = v));
         list.addSmall(
                 bool("rememberNamedMobs", c.rememberNamedMobs, v -> c.rememberNamedMobs = v),
                 bool("seedMobs", c.seedMobs, v -> c.seedMobs = v));
         list.addBig(unit("animationMinPixels", "pixels", 0, 40, c.animationMinPixels, v -> c.animationMinPixels = v));
-        list.addBig(blocks("animationMaxDistance", 0, 4000, c.animationMaxDistance, v -> c.animationMaxDistance = v));
+        list.addBig(reach("animationMaxDistance", c.animationMaxDistance, v -> c.animationMaxDistance = v));
         subheader(Component.translatable(KEY + "mobs.entities"));
         list.addSmall(
                 bool("distantEntities", c.distantEntities, v -> c.distantEntities = v),
                 integer("maxDistantEntities", 0, FarConfig.UNLIMITED_MOBS, c.maxDistantEntities,
                         v -> c.maxDistantEntities = v, true));
-        list.addBig(blocks("entityMaxDistance", 0, 4000, c.entityMaxDistance, v -> c.entityMaxDistance = v));
+        list.addBig(reach("entityMaxDistance", c.entityMaxDistance, v -> c.entityMaxDistance = v));
 
         header(Component.translatable(KEY + "birds"));
         list.addSmall(
@@ -262,6 +262,20 @@ public final class FarConfigScreen extends SideOptionsScreen {
     /** A distance in blocks, said so: "512 Blocks"; zero reads as the {@code .zero} text. */
     static OptionInstance<Integer> blocks(String name, int min, int max, int value, Consumer<Integer> set) {
         return unit(name, "blocks", min, max, value, set);
+    }
+
+    /**
+     * A distance in blocks up to {@link FarConfig#MAX_DISTANCE}, then no limit at the right end, read
+     * as the {@code .zero} text: the settings keep no limit as 0.
+     */
+    static OptionInstance<Integer> reach(String name, int value, Consumer<Integer> set) {
+        int top = FarConfig.MAX_DISTANCE + 1;
+        return new OptionInstance<>(KEY + name, tooltip(name),
+                (caption, v) -> v >= top
+                        ? Options.genericValueLabel(caption, Component.translatable(KEY + name + ".zero"))
+                        : Options.genericValueLabel(caption, Component.translatable(KEY + "blocks", v)),
+                new OptionInstance.IntRange(1, top), value <= 0 ? top : Math.clamp(value, 1, FarConfig.MAX_DISTANCE),
+                v -> set.accept(v >= top ? 0 : v));
     }
 
     /** A number in a unit, the way the game writes it ("30s", "6px", "2x", "100%"); zero reads as the {@code .zero} text. */

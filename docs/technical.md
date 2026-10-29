@@ -460,7 +460,11 @@ Three ways in, all of them the same draws:
 2. **This client, by itself** (`track/Foresight`): within *Mob Render Distance* plus 64 blocks
    (4096 blocks without a limit), so that the far terrain of Voxy or Distant Horizons has its
    animals as it is drawn; and through a spyglass, along where it looks, up to 256 chunks, where
-   they are then drawn whatever *Mob Render Distance* says and chosen before any other.
+   they are then drawn whatever *Mob Render Distance* says and chosen before any other. The
+   spyglass asks every four ticks for 256 chunks, the line of sight first and then wider, half a
+   degree at a time (`Foresight.coneChunks`, only the chunks in view), on threads of its own that
+   never wait behind a scan (`SeedMobs` `URGENT`, `URGENT_DRAWS`); what it finds is made into
+   remembered mobs at once, and again every five ticks while it moves.
 3. **By hand**: *Guess Nearby Mobs* (a button next to *Scan Nearby Mobs*, or
    `/livinghorizon foresee [radius]`), every chunk within `foreseeRadius` (64 chunks, up to
    1024), in parts of 65536 chunks, saying in the chat how far it got.
@@ -479,10 +483,20 @@ Who works out what this client asks for:
   The `seedmobs` game test checks that the generator built again draws exactly the server's.
 - **Any other server**: none but what the server shares around its players.
 
-What this client foresees is kept per chunk, four numbers a mob (`Foresight.index`): a guess of
-1024 chunks around finds about a million animals. Only the nearest 1500 (those where the
-spyglass looks first) become remembered mobs, every second; the others wait in the index, for
-the world and dimension the player is in, never saved.
+What this client foresees is kept per chunk, four numbers a mob (`Foresight.index`, 32 bytes): a
+guess of 1024 chunks around finds about a million animals, some 40 MB. Only the nearest become
+remembered mobs, every second (those where the spyglass looks first), as many as `maxDistantMobs`
+lets be drawn, since no other could be; the others wait in the index.
+
+The index is saved per world and dimension, apart from the mobs met
+(`config/livinghorizon/foreseen/<server>/<world>-<dimension>.bin`, `Foresight.write`): on
+leaving the world or the dimension, every five minutes, and once a guess is done. Gzipped, with
+the chunks asked for (a bit each) and, per mob, its place among its chunk's draws (its id is
+drawn again from the seed: `SeedDraws.id` keeps that place in its last 16 bits), where it stands
+in the chunk to a 256th of a block, its height, kind, age and variant: about five bytes a mob,
+some 5 MB for a guess of 1024 chunks around (a mob in the memory file takes a kilobyte). Read
+again on coming back; in a world played here, the server first leaves out the chunks generated
+since (`SeedMobs.unexplored`). *Forget All* deletes this server's files.
 
 - **Generated.** A chunk is left out once it has its animals. On the server: loaded, or saved in
   its region file past the step that puts them there. The region's header says which chunks are
@@ -493,7 +507,7 @@ the world and dimension the player is in, never saved.
   like any other, and the client forgets those foreseen as it forgets a mob the server stopped
   sharing. The client never draws one in a chunk it holds, and drops those chunks from its index.
 - **On the client.** *Unexplored Land Mobs* (`seedMobs`, on) hides them and stops foreseeing.
-  They are never saved in the client's file, those the server shares are taken only within
+  They are never saved in the memory file (the index has its own), those the server shares are taken only within
   *Mob Render Distance* plus 64 blocks, and they do not count in its 2000 mobs. The debug boxes
   and outlines show them in pink (*Foreseen Mobs*).
 
@@ -587,7 +601,7 @@ below), and other flyers and swimmers get a flat disc at their own height.
 
 ### How many are drawn and animated
 
-- `maxDistantMobs` of them are drawn at once (512; 1000 is no limit): the nearest remembered
+- `maxDistantMobs` of them are drawn at once (512, up to 4000; 4001, the slider's right end, is no limit): the nearest remembered
   ones. Past `mobMaxDistance` (512 blocks) none are drawn. Both that distance and the near zone
   are applied after the choice, so copies there still take places and fewer may show.
 - With `onlyOverTerrain` (*Only Over Terrain*, in *Debug Options...*, on), a mob is drawn only where terrain is drawn
@@ -1238,7 +1252,7 @@ cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 |---|---|---|---|---|
 | `enabled` | Show Players | `true` | | Distant players are drawn at all. The *Toggle Distant Players* key flips it |
 | `showVehicles` | Mounts & Vehicles | `true` | | Draw the mount they were last seen on |
-| `playerMaxDistance` | Player Render Distance | `0` blocks | 0 to 4000 | Past this, distant players are not drawn (`0`: no limit) |
+| `playerMaxDistance` | Player Render Distance | `0` blocks | 1 to 4000, or no limit | Past this, distant players are not drawn (`0`: no limit, the right end of the slider) |
 | `offlinePlayers` | Offline Players | `true` | | Players who logged off are shown and remembered; off, neither |
 | `maxOfflinePlayers` | Max Offline | `256` | 0 to 1000 | How many players who logged off are drawn at once, nearest first (`0`: none, `1000`: no limit) |
 | `offlineLife` | Offline Player Activity | `true` | | They live their life around their spot; off, they sit on it |
@@ -1260,15 +1274,15 @@ In three parts, on both screens: *General*, *Mobs* (the living kinds, mannequins
 | `scanRadius` | General: Scan Radius | `32` chunks | 4 to 1024 | Chunks around you read by a scan, in single player (32 chunks = 512 blocks) |
 | `foreseeRadius` | General: Guess Radius | `64` chunks | 4 to 1024 | Chunks around you *Guess Nearby Mobs* foresees the animals of the land nobody explored in |
 | `distantMobs` | Mobs: Show Mobs | `true` | | Remembered mobs stay visible far away |
-| `maxDistantMobs` | Mobs: Max Mobs | `512` | 0 to 1000 | How many are drawn at once, nearest first (`0`: none, `1000`: no limit). No limit here and in `mobMaxDistance` together can crash the game |
-| `mobMaxDistance` | Mobs: Mob Render Distance | `512` blocks | 0 to 4000 | Past this, distant mobs are not drawn (`0`: no limit) |
+| `maxDistantMobs` | Mobs: Max Mobs | `512` | 0 to 4001 | How many are drawn at once, nearest first, the animals foreseen from the seed included (`0`: none, `4001`: no limit, which 1000 in an older settings file becomes). No limit here and in `mobMaxDistance` together can crash the game |
+| `mobMaxDistance` | Mobs: Mob Render Distance | `512` blocks | 1 to 4000, or no limit | Past this, distant mobs are not drawn (`0`: no limit, the right end of the slider) |
 | `rememberNamedMobs` | Mobs: Name-Tagged Mobs | `true` | | A mob with a name tag is shown whatever its type |
 | `seedMobs` | Mobs: Unexplored Land Mobs | `true` | | The animals a server with the mod foresees in land nobody has explored, from the seed, are shown |
 | `animationMinPixels` | Mobs: Min. Animated Size | `10` pixels | 0 to 40 | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
-| `animationMaxDistance` | Mobs: Animation Distance | `0` blocks | 0 to 4000 | Past this, no distant mob plays an animation (`0`: no limit) |
+| `animationMaxDistance` | Mobs: Animation Distance | `0` blocks | 1 to 4000, or no limit | Past this, no distant mob plays an animation (`0`: no limit, the right end of the slider) |
 | `distantEntities` | Entities: Show Entities | `true` | | Remembered boats, vehicles and mannequins stay visible far away |
-| `maxDistantEntities` | Entities: Max Entities | `256` | 0 to 1000 | How many of them are drawn at once, nearest first, apart from the mobs: a crowd of mobs never pushes an aircraft out (`1000`: no limit) |
-| `entityMaxDistance` | Entities: Entity Render Distance | `0` blocks | 0 to 4000 | Past this, distant boats, vehicles and mannequins are not drawn (`0`: no limit; few, and an aircraft is seen from afar) |
+| `maxDistantEntities` | Entities: Max Entities | `256` | 0 to 4001 | How many of them are drawn at once, nearest first, apart from the mobs: a crowd of mobs never pushes an aircraft out (`4001`: no limit) |
+| `entityMaxDistance` | Entities: Entity Render Distance | `0` blocks | 1 to 4000, or no limit | Past this, distant boats, vehicles and mannequins are not drawn (`0`: no limit, the right end of the slider; few, and an aircraft is seen from afar) |
 | `knownMobTypes` | (not shown) | Those met so far | | Mob types already offered once, the game's and other mods': a new one is shown from the start, then left as you set it |
 | `knownVehicles` | (not shown) | Empty | | Vehicles that are neither mobs nor boats, as found from their renderer or met, listed in *Mobs & Entities...* |
 | `seatedVehicles` | (not shown) | Empty | | Those of them that only seat their riders (a minecart): listed, never shown by default |

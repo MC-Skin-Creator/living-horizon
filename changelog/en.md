@@ -17,7 +17,7 @@
 - **Changelog button** — the mod's settings now have a changelog button beside the Discord logo, to read what changed in each version (a *Read the changelog* button on Sodium's page).
 - **Unexplored Land Mobs** — far land nobody has explored yet is no longer empty of animals, as far as *Mob Render Distance* reaches, in single player or on a server with the mod; a new setting hides them.
 - **Animals through a spyglass** — looking through a spyglass now shows the animals of unexplored land where it looks, however far, in single player or on a server that shares its seed.
-- **Guess Nearby Mobs** — a new button shows the animals of unexplored land up to 1024 chunks around at once, in single player or on a server that shares its seed.
+- **Guess Nearby Mobs** — a new button shows the animals of unexplored land up to 1024 chunks around at once, and keeps them for the next game, in single player or on a server that shares its seed.
 
 #### Improved
 - **Servers without the mod** — joining a server without Living Horizon, or with a version of it too old or too new, now says in the chat that distant players are not shown there; with *Show Players* off, nothing is said.
@@ -28,6 +28,8 @@
 - **Planes left in the air** — a player who logs off while flying stays in the air on their plane, which hovers where it was, or flies round in circles if it was flying along.
 - **Saved pictures shown** — the *Picture Preview* screen now says under each mob whether its picture is shared, read back from an earlier game, new and saved for the next ones, or not saved, with when and in which world it was made.
 - **Sitting pets stay put** — cats, wolves and parrots told to sit now stay sitting far away, instead of standing up and wandering off.
+- **More distant mobs** — *Max Mobs* now goes up to 4000 before *Unlimited*.
+- **Unlimited at the end of the slider** — *Unlimited* now sits at the right end of the render distance sliders, after 4000 blocks, instead of the left.
 
 #### Fixed
 - **Crash opening Mobs & Entities from the title screen** — opening *Mobs & Entities...* from the title screen no longer crashes the game (Minecraft 26.x).

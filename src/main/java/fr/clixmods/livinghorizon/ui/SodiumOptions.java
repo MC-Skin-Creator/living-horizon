@@ -118,7 +118,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 () -> FarConfig.get().enabled))
                         .addOption(bool(b, "showVehicles", d.showVehicles, v -> FarConfig.get().showVehicles = v,
                                 () -> FarConfig.get().showVehicles))
-                        .addOption(blocks(b, "playerMaxDistance", 0, 4000, d.playerMaxDistance,
+                        .addOption(reach(b, "playerMaxDistance", d.playerMaxDistance,
                                 v -> FarConfig.get().playerMaxDistance = v, () -> FarConfig.get().playerMaxDistance)))
                 .addOptionGroup(b.createOptionGroup()
                         .addOption(bool(b, "offlinePlayers", d.offlinePlayers, v -> FarConfig.get().offlinePlayers = v,
@@ -154,7 +154,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                         .addOption(integer(b, "maxDistantMobs", 0, FarConfig.UNLIMITED_MOBS, d.maxDistantMobs,
                                 v -> FarConfig.get().maxDistantMobs = v, () -> FarConfig.get().maxDistantMobs,
                                 plain("maxDistantMobs", 0, true)))
-                        .addOption(blocks(b, "mobMaxDistance", 0, 4000, d.mobMaxDistance,
+                        .addOption(reach(b, "mobMaxDistance", d.mobMaxDistance,
                                 v -> FarConfig.get().mobMaxDistance = v, () -> FarConfig.get().mobMaxDistance))
                         .addOption(bool(b, "rememberNamedMobs", d.rememberNamedMobs,
                                 v -> FarConfig.get().rememberNamedMobs = v, () -> FarConfig.get().rememberNamedMobs))
@@ -163,7 +163,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                         .addOption(integer(b, "animationMinPixels", 0, 40, d.animationMinPixels,
                                 v -> FarConfig.get().animationMinPixels = v, () -> FarConfig.get().animationMinPixels,
                                 unit("animationMinPixels", "pixels", 0)))
-                        .addOption(blocks(b, "animationMaxDistance", 0, 4000, d.animationMaxDistance,
+                        .addOption(reach(b, "animationMaxDistance", d.animationMaxDistance,
                                 v -> FarConfig.get().animationMaxDistance = v, () -> FarConfig.get().animationMaxDistance)))
                 .addOptionGroup(b.createOptionGroup().setName(Component.translatable(KEY + "mobs.entities"))
                         .addOption(bool(b, "distantEntities", d.distantEntities, v -> FarConfig.get().distantEntities = v,
@@ -171,7 +171,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                         .addOption(integer(b, "maxDistantEntities", 0, FarConfig.UNLIMITED_MOBS, d.maxDistantEntities,
                                 v -> FarConfig.get().maxDistantEntities = v, () -> FarConfig.get().maxDistantEntities,
                                 plain("maxDistantEntities", 0, true)))
-                        .addOption(blocks(b, "entityMaxDistance", 0, 4000, d.entityMaxDistance,
+                        .addOption(reach(b, "entityMaxDistance", d.entityMaxDistance,
                                 v -> FarConfig.get().entityMaxDistance = v, () -> FarConfig.get().entityMaxDistance)));
     }
 
@@ -203,7 +203,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                         .setName(Component.translatable(KEY + "foreseeRadius"))
                         .setTooltip(tooltip("foreseeRadius"))
                         .setRange(Foresight.MIN_RADIUS, Foresight.MAX_RADIUS, 1)
-                        .setValueFormatter(v -> Component.translatable(KEY + "scanRadius.value", v))
+                        .setValueFormatter(v -> Component.translatable(KEY + "foreseeRadius.value", v))
                         .setDefaultValue(d.foreseeRadius)
                         .setStorageHandler(storage)
                         .setBinding(v -> FarConfig.get().foreseeRadius = v,
@@ -311,6 +311,23 @@ public final class SodiumOptions implements ConfigEntryPoint {
     private OptionBuilder blocks(ConfigBuilder b, String name, int min, int max, int fallback, IntConsumer set,
                                  IntSupplier get) {
         return integer(b, name, min, max, fallback, set, get, unit(name, "blocks", min));
+    }
+
+    /** A distance up to {@link FarConfig#MAX_DISTANCE}, then no limit at the right end, as {@link FarConfigScreen#reach}. */
+    private OptionBuilder reach(ConfigBuilder b, String name, int fallback, IntConsumer set, IntSupplier get) {
+        int top = FarConfig.MAX_DISTANCE + 1;
+        return b.createIntegerOption(id(name))
+                .setName(Component.translatable(KEY + name))
+                .setTooltip(tooltip(name))
+                .setRange(1, top, 1)
+                .setValueFormatter(v -> v >= top ? Component.translatable(KEY + name + ".zero")
+                        : Component.translatable(KEY + "blocks", v))
+                .setDefaultValue(fallback <= 0 ? top : Math.clamp(fallback, 1, FarConfig.MAX_DISTANCE))
+                .setStorageHandler(storage)
+                .setBinding(v -> set.accept(v >= top ? 0 : v), () -> {
+                    int value = get.getAsInt();
+                    return value <= 0 ? top : Math.clamp(value, 1, FarConfig.MAX_DISTANCE);
+                });
     }
 
     /** A number in a unit, as {@link FarConfigScreen} writes it ("30s", "6px", "100%"); the zero of a range from 0 as its text. */

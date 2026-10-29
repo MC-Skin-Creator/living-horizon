@@ -136,6 +136,7 @@
   "livinghorizon.options.foreseeMobs.tooltip": "Berechnet aus dem Startwert die Tiere, die die Welt in unerkundetem Land um dich herum platziert, bis zum Radius daneben, und zeigt sie am Horizont. Ein großer Radius dauert ein paar Minuten.",
   "livinghorizon.options.foreseeMobs.unavailable": "Nur im Einzelspielermodus oder auf einem Server mit der Mod, der seinen Startwert teilt.",
   "livinghorizon.options.foreseeRadius": "Raterradius",
+  "livinghorizon.options.foreseeRadius.value": "%s Chunks",
   "livinghorizon.options.foreseeRadius.tooltip": "Wie weit Kreaturen erraten ringsum reicht, in Chunks, bis 1024. Auch /livinghorizon foresee <distance>.",
   "livinghorizon.scan.started": "Kreaturen der Chunks im Umkreis von %s Chunks werden gelesen …",
   "livinghorizon.scan.done": "Scan abgeschlossen: %s Kreaturen im Umkreis von %s Chunks gefunden.",

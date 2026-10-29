@@ -10,6 +10,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractButton;
+import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.AbstractSelectionList;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.events.ContainerEventHandler;
@@ -22,8 +23,8 @@ import java.util.function.Supplier;
 
 /**
  * The settings screens in a world: everything, the rows of options included, sits in the
- * column on the left, so that the game stays in view on the right; and no button's text,
- * in any of the mod's languages, is wider than its button.
+ * column on the left, so that the game stays in view on the right; and no button's or
+ * slider's text, in any of the mod's languages, is wider than it or a key left untranslated.
  */
 public final class OptionsScreenScenario implements Scenario {
     /** The room a button leaves its text: the game scrolls whatever is wider, and that reads badly. */
@@ -36,6 +37,13 @@ public final class OptionsScreenScenario implements Scenario {
 
     @Override
     public void run(ClientGameTestContext context) {
+        // The widest numbers the sliders show: their text must fit then too.
+        Scene.configure(context, config -> {
+            config.scanRadius = fr.clixmods.livinghorizon.track.MobScan.MAX_RADIUS;
+            config.foreseeRadius = fr.clixmods.livinghorizon.track.Foresight.MAX_RADIUS;
+            config.maxDistantMobs = config.maxDistantEntities = fr.clixmods.livinghorizon.FarConfig.UNLIMITED_MOBS - 1;
+            config.maxOfflinePlayers = fr.clixmods.livinghorizon.FarConfig.UNLIMITED_OFFLINE - 1;
+        });
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
             List<String> problems = new ArrayList<>();
             try {
@@ -74,8 +82,10 @@ public final class OptionsScreenScenario implements Scenario {
         int overflow = overflow(minecraft.screen, panel);
         if (overflow > 0) problems.add(name + ": widgets " + overflow + " px past the left column");
         for (AbstractWidget widget : widgets(minecraft.screen, new ArrayList<>())) {
-            if (!(widget instanceof AbstractButton)) continue;
+            if (!(widget instanceof AbstractButton) && !(widget instanceof AbstractSliderButton)) continue;
             String text = widget.getMessage().getString();
+            // A key the language files do not have shows as itself.
+            if (text.contains("livinghorizon.")) problems.add(name + ": untranslated \"" + text + "\"");
             int width = minecraft.font.width(widget.getMessage());
             if (width > widget.getWidth() - TEXT_MARGIN) {
                 problems.add(name + ": \"" + text + "\" is " + width + " px wide, its button " + widget.getWidth());

@@ -165,13 +165,30 @@ public final class SeedMobsScenario implements Scenario {
             Scene.command(world, "item replace entity @p weapon.mainhand with minecraft:spyglass");
             context.waitTicks(5);
             context.getInput().holdKey(options -> options.keyUse);
-            context.waitTicks(100);
+            // How soon one shows where it looks, past where it foresees by itself: the spyglass's alone.
+            int soon = -1;
+            for (int tick = 0; tick < 100; tick++) {
+                context.waitTicks(1);
+                boolean seen = context.computeOnClient(minecraft -> {
+                    var memory = FarPlayerTracker.get().mobs();
+                    double far = fr.clixmods.livinghorizon.FarConfig.get().mobMaxDistance + 64.0;
+                    return memory.shown().stream().anyMatch(mob -> SeedDraws.foreseen(mob.id()) && mob.puppet() != null
+                            && memory.foresight().inScope(mob.x(), mob.y() + 0.5, mob.z())
+                            && Math.hypot(mob.x() - minecraft.player.getX(), mob.z() - minecraft.player.getZ()) > far);
+                });
+                if (seen) {
+                    soon = tick + 1;
+                    break;
+                }
+            }
+            context.waitTicks(Math.max(0, 100 - Math.max(soon, 0)));
             boolean scoping = context.computeOnClient(minecraft -> minecraft.player.isScoping());
             int looked = context.computeOnClient(minecraft -> FarPlayerTracker.get().mobs().foresight().size());
             context.getInput().releaseKey(options -> options.keyUse);
             if (!scoping) throw new AssertionError("the player does not look through the spyglass");
             if (looked <= auto) throw new AssertionError("nothing more foreseen through the spyglass: " + looked);
-            Scene.log("seedmobs through the spyglass: " + looked);
+            if (soon < 0) throw new AssertionError("nothing drawn where the spyglass looks within 100 ticks");
+            Scene.log("seedmobs through the spyglass: " + looked + ", the first drawn where it looks after " + soon + " ticks");
 
             // By hand, farther.
             context.runOnClient(minecraft -> FarPlayerTracker.get().mobs().foresight().start(minecraft, 64));
@@ -181,6 +198,18 @@ public final class SeedMobsScenario implements Scenario {
             int scanned = context.computeOnClient(minecraft -> FarPlayerTracker.get().mobs().foresight().size());
             if (scanned <= looked) throw new AssertionError("the guess found nothing more: " + scanned);
             Scene.log("seedmobs after a guess within 64 chunks: " + scanned);
+            // Kept in a file of their own, a few bytes each.
+            context.waitTicks(20);
+            Path kept = Platform.configDir().resolve("livinghorizon").resolve("foreseen");
+            long bytes;
+            try (var files = Files.walk(kept)) {
+                bytes = files.filter(Files::isRegularFile).filter(file -> file.toString().endsWith(".bin"))
+                        .mapToLong(file -> file.toFile().length()).sum();
+            } catch (java.io.IOException e) {
+                throw new AssertionError("no file of foreseen mobs in " + kept, e);
+            }
+            if (bytes == 0) throw new AssertionError("no foreseen mob saved in " + kept);
+            Scene.log("seedmobs saved: " + bytes + " bytes for " + scanned + " mobs");
 
             // The owner shares the seed: the client hears it.
             Path settings = Platform.configDir().resolve(ServerConfig.FILE);

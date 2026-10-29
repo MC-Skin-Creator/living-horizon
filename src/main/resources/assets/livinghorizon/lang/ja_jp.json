@@ -136,6 +136,7 @@
   "livinghorizon.options.foreseeMobs.tooltip": "シード値から、周囲の誰も探索していない土地にワールドが配置する動物を、横の範囲まで計算し、地平線に表示します。範囲が広いと数分かかります。",
   "livinghorizon.options.foreseeMobs.unavailable": "シングルプレイか、シード値を共有するMOD入りのサーバーでのみ使えます。",
   "livinghorizon.options.foreseeRadius": "推測範囲",
+  "livinghorizon.options.foreseeRadius.value": "%sチャンク",
   "livinghorizon.options.foreseeRadius.tooltip": "「周辺のMobを推測」が調べる範囲です（チャンク単位、最大1024）。/livinghorizon foresee <distance> でも実行できます。",
   "livinghorizon.scan.started": "%sチャンク以内のチャンクにいるMobを読み取っています…",
   "livinghorizon.scan.done": "スキャン完了：%s体のMobが見つかりました（%sチャンク以内）。",

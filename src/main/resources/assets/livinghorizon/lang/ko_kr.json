@@ -136,6 +136,7 @@
   "livinghorizon.options.foreseeMobs.tooltip": "시드로부터 주변의 아무도 탐험하지 않은 땅에 월드가 배치하는 동물을 옆의 반지름까지 계산해 지평선에 표시합니다. 반지름이 크면 몇 분이 걸립니다.",
   "livinghorizon.options.foreseeMobs.unavailable": "싱글플레이나 시드를 공유하는, 모드가 있는 서버에서만 가능합니다.",
   "livinghorizon.options.foreseeRadius": "추측 반지름",
+  "livinghorizon.options.foreseeRadius.value": "청크 %s개",
   "livinghorizon.options.foreseeRadius.tooltip": "주변 몹 추측이 살펴보는 범위입니다(청크 단위, 최대 1024). /livinghorizon foresee <distance>로도 실행할 수 있습니다.",
   "livinghorizon.scan.started": "%s청크 이내 청크의 몹을 읽는 중...",
   "livinghorizon.scan.done": "스캔 완료: 몹 %s마리를 찾았습니다 (%s청크 이내).",

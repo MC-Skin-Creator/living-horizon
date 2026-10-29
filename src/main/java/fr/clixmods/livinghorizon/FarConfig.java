@@ -51,7 +51,7 @@ public final class FarConfig {
     @SerializedName(value = "depthOcclusion", alternate = "voxyOcclusion")
     public boolean depthOcclusion = true;
 
-    private static final int CURRENT = 12;
+    private static final int CURRENT = 13;
 
     /** Skinned figures, which Distant Friends uses as its fake players: shown, standing still. */
     private static final String MANNEQUIN = "minecraft:mannequin";
@@ -113,8 +113,11 @@ public final class FarConfig {
      */
     public boolean distantMobs = true;
 
-    /** The value of {@link #maxDistantMobs} (and above) that means no limit. */
-    public static final int UNLIMITED_MOBS = 1000;
+    /** The value of {@link #maxDistantMobs} (and above) that means no limit: one past the highest number. */
+    public static final int UNLIMITED_MOBS = 4001;
+
+    /** Blocks: the highest distance the sliders give before no limit, which the settings keep as 0. */
+    public static final int MAX_DISTANCE = 4000;
 
     /** How many remembered mobs are drawn at once: the nearest ones. {@link #UNLIMITED_MOBS}: all. */
     public int maxDistantMobs = 512;
@@ -537,6 +540,11 @@ public final class FarConfig {
         if (config.version < 12) {
             // One switch for every figure but players became one for mobs and one for the rest.
             config.impostorEntities = config.impostors;
+        }
+        if (config.version < 13) {
+            // No limit was 1000; the slider goes to 4000 now, then no limit.
+            if (config.maxDistantMobs >= 1000) config.maxDistantMobs = UNLIMITED_MOBS;
+            if (config.maxDistantEntities >= 1000) config.maxDistantEntities = UNLIMITED_MOBS;
         }
         // Written by hand out of range: the nearest end.
         config.impostorMobMemory = Math.clamp(config.impostorMobMemory, MIN_MOB_MEMORY, MAX_MOB_MEMORY);

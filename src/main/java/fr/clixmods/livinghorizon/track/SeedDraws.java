@@ -394,11 +394,21 @@ public final class SeedDraws {
         }
     }
 
-    /** The id of a foreseen mob: always the same for the same mob of the same world, version 3. */
-    private static UUID id(long seed, String dimension, int cx, int cz, int index) {
-        ByteBuffer bytes = ByteBuffer.allocate(20 + dimension.length() * 3);
-        bytes.putLong(seed).putInt(cx).putInt(cz).putInt(index).put(dimension.getBytes(StandardCharsets.UTF_8));
-        return UUID.nameUUIDFromBytes(java.util.Arrays.copyOf(bytes.array(), bytes.position()));
+    /**
+     * The id of a foreseen mob: always the same for the same mob of the same world, version 3. The
+     * chunk's own, its last 16 bits its place among the chunk's draws ({@link #index}), so that a
+     * file can keep that place alone ({@code Foresight}).
+     */
+    static UUID id(long seed, String dimension, int cx, int cz, int index) {
+        ByteBuffer bytes = ByteBuffer.allocate(16 + dimension.length() * 3);
+        bytes.putLong(seed).putInt(cx).putInt(cz).put(dimension.getBytes(StandardCharsets.UTF_8));
+        UUID chunk = UUID.nameUUIDFromBytes(java.util.Arrays.copyOf(bytes.array(), bytes.position()));
+        return new UUID(chunk.getMostSignificantBits(), chunk.getLeastSignificantBits() & ~0xFFFFL | index & 0xFFFF);
+    }
+
+    /** A foreseen mob's place among its chunk's draws, from its id. */
+    static int index(UUID id) {
+        return (int) (id.getLeastSignificantBits() & 0xFFFF);
     }
 
     private static long mix(long seed, int cx, int cz, long salt) {

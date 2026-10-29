@@ -136,6 +136,7 @@
   "livinghorizon.options.foreseeMobs.tooltip": "依據種子計算世界在你周圍無人探索的土地上放置的動物，直到旁邊的半徑，並在地平線上顯示。半徑很大時需要幾分鐘。",
   "livinghorizon.options.foreseeMobs.unavailable": "僅限單人遊戲，或裝有本模組並分享種子的伺服器。",
   "livinghorizon.options.foreseeRadius": "推測半徑",
+  "livinghorizon.options.foreseeRadius.value": "%s 個區塊",
   "livinghorizon.options.foreseeRadius.tooltip": "推測附近生物的範圍，以區塊為單位，最多 1024。也可使用 /livinghorizon foresee <distance>。",
   "livinghorizon.scan.started": "正在讀取 %s 個區塊範圍內的生物...",
   "livinghorizon.scan.done": "掃描完成：找到 %s 個生物，範圍為 %s 個區塊。",

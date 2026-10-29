@@ -136,6 +136,7 @@
   "livinghorizon.options.foreseeMobs.tooltip": "Çevrendeki kimsenin keşfetmediği topraklara dünyanın yerleştirdiği hayvanları, yandaki yarıçapa kadar tohumdan hesaplar ve ufukta gösterir. Büyük bir yarıçap birkaç dakika sürer.",
   "livinghorizon.options.foreseeMobs.unavailable": "Yalnızca tek oyunculuda ya da tohumunu paylaşan, modlu bir sunucuda.",
   "livinghorizon.options.foreseeRadius": "Tahmin Yarıçapı",
+  "livinghorizon.options.foreseeRadius.value": "%s Yığın",
   "livinghorizon.options.foreseeRadius.tooltip": "Canlıları Tahmin Et'in ne kadar uzağa baktığı, chunk olarak, 1024'e kadar. Ayrıca /livinghorizon foresee <distance>.",
   "livinghorizon.scan.started": "%s yığın içindeki yığınların canlıları okunuyor...",
   "livinghorizon.scan.done": "Tarama tamamlandı: %s canlı bulundu (%s yığın içinde).",
