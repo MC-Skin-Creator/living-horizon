@@ -26,6 +26,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.TamableAnimal;
 //? if >=26.2 {
 /*import net.minecraft.world.entity.animal.bee.Bee;
 import net.minecraft.world.entity.animal.parrot.Parrot;
@@ -154,6 +155,8 @@ public final class MobMemory {
     }
 
     private static final Gson GSON = new GsonBuilder().create();
+    /** Where the game saves a pet's order to sit. */
+    private static final String SITTING = "Sitting";
     /** Layout of the file: 1 is the list under {@code "mobs"}, with its version; 0 the bare list before it. */
     static final int VERSION = 1;
     /** Bounds the file; the oldest sightings go first. */
@@ -492,6 +495,9 @@ public final class MobMemory {
         }
         CompoundTag tag = snapshot(mob, level);
         if (tag == null) return;
+        // The game saves a pet's order to sit, which only the server knows: on this client it
+        // always says no, and the copy would stand up. What the client sees goes in its place.
+        if (sitting(mob)) tag.putBoolean(SITTING, true);
         // The body as the game drew it: a mob standing still turns it, not its yaw.
         float body = mob instanceof LivingEntity living ? living.yBodyRot : mob.getYRot();
         remember(new MobScan.Found(mob.getUUID(), EntityType.getKey(mob.getType()).toString(),
@@ -633,6 +639,26 @@ public final class MobMemory {
         return false;
     }
 
+    /** A cat, wolf or parrot sitting where it was told to, as drawn. */
+    private static boolean sitting(Entity entity) {
+        return entity instanceof TamableAnimal pet && pet.isInSittingPose();
+    }
+
+    /**
+     * The pose the single player server has a pet in, given to its copy and to its saved data,
+     * which the copy is built from again next time. Nothing for any other mob, or no change.
+     */
+    private void sit(Remembered mob, @Nullable Boolean sitting) {
+        if (sitting == null || !(mob.puppet instanceof TamableAnimal pet) || pet.isInSittingPose() == sitting) return;
+        pet.setInSittingPose(sitting);
+        CompoundTag tag = parse(mob.nbt);
+        if (tag == null) return;
+        tag.putBoolean(SITTING, sitting);
+        mob.nbt = tag.toString();
+        mob.parsed = CompletableFuture.completedFuture(tag);
+        dirty = true;
+    }
+
     /** The mob as the game saves it: variants, colours, equipment, name, age. */
     private static @Nullable CompoundTag snapshot(Entity mob, ClientLevel level) {
         try {
@@ -692,6 +718,10 @@ public final class MobMemory {
             List<Remembered> arrived = new ArrayList<>();
             for (Map.Entry<Entity, Remembered> joined : joining.entrySet()) {
                 Remembered mob = joined.getValue();
+                // Sitting or standing as the real one is, which may have got up meanwhile.
+                if (mob.puppet() instanceof TamableAnimal pet && joined.getKey() instanceof TamableAnimal real) {
+                    pet.setInSittingPose(real.isInSittingPose());
+                }
                 if (joined.getKey().isRemoved() || !(mob.puppet() instanceof LivingEntity puppet)
                         || motion(mob).follow(puppet, mob, joined.getKey())) {
                     arrived.add(mob);
@@ -730,7 +760,8 @@ public final class MobMemory {
                     if (mob.simulated) mob.motion.jump(living, mob);
                     continue;
                 }
-                boolean roam = !still.contains(mob.type);
+                // A pet told to sit stays on its spot, as the real one does.
+                boolean roam = !still.contains(mob.type) && !sitting(living);
                 // A phantom or a ghast flies its own way, on no ground: nothing to read for it.
                 boolean grounded = roam && MobFlight.of(mob.type) == null;
                 long grounding = System.nanoTime();
@@ -949,6 +980,7 @@ public final class MobMemory {
                 }
                 mob.serverBody = where.body();
                 mob.serverHead = where.head();
+                sit(mob, where.sitting());
             }
             for (UUID id : answer.gone()) {
                 if (!live.containsKey(id)) forget(id);

@@ -527,6 +527,10 @@ come back, add it here in the same pull request: this file is what the next sess
   answers. Far, resting and logged-off player puppets are not ticked
   either, on every version (`Player.xCloak` before 1.21.9): not covered yet, and `cape` cannot
   just take any `ClientAvatarEntity`, since live players go through the same `extract` and tick.
+- **Distant pets standing up** (a cat or wolf told to sit, its copy far away standing and
+  strolling): the game saves the order to sit from `orderedToSit`, which only the server sets, so a
+  save made on the client says `Sitting:0b`. `MobMemory.onUnload` writes `isInSittingPose()` into
+  it; a sitting copy gets no stroll. The `sittingpets` scenario checks it.
 - **A rider turned sideways** (a player resting in a boat facing left or right of it): the seat's
   yaw is the rider's body (`yBodyRot`), which the boat keeps in line with itself, never the head
   (`getYRot`), which looks wherever the player looked as they left.

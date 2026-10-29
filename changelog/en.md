@@ -18,6 +18,7 @@
 - **Players riding far away** — with *Simplified Players*, a far player in a boat, a minecart, a plane or on a happy ghast is now pictured from above and below like what they ride, no longer seen side-on when you look down on them.
 - **Planes left in the air** — a player who logs off while flying stays in the air on their plane, which hovers where it was, or flies round in circles if it was flying along.
 - **Saved pictures shown** — the *Picture Preview* screen now says under each mob whether its picture is shared, read back from an earlier game, new and saved for the next ones, or not saved, with when and in which world it was made.
+- **Sitting pets stay put** — cats, wolves and parrots told to sit now stay sitting far away, instead of standing up and wandering off.
 
 #### Fixed
 - **Crash opening Mobs & Entities from the title screen** — opening *Mobs & Entities...* from the title screen no longer crashes the game (Minecraft 26.x).

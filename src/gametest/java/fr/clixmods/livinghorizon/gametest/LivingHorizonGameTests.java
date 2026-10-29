@@ -39,6 +39,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.RestingMountScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ServerWithoutModScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ShoreScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.SittingPetsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.SodiumControlsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.SodiumPagesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.UnloadScenario;
@@ -92,6 +93,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new OcclusionScenario(),
             new UnloadScenario(),
             new FollowedMobsScenario(),
+            new SittingPetsScenario(),
             new HeadTurnScenario(),
             new GaitsScenario(),
             new FlyersScenario(),

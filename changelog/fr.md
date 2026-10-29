@@ -18,6 +18,7 @@
 - **Joueurs montés au loin** — avec *Joueurs simplifiés*, un joueur lointain dans un bateau, un wagonnet, un avion ou sur un ghast joyeux est maintenant représenté vu d'au-dessus et d'en dessous comme ce qu'il monte, et plus de profil quand on le regarde d'en haut.
 - **Avions laissés en l'air** — un joueur qui se déconnecte en vol reste en l'air dans son avion, qui reste sur place s'il était immobile, ou tourne en rond s'il volait.
 - **Images sauvegardées affichées** — l'écran *Aperçu des images* indique maintenant sous chaque créature si son image est partagée, relue d'une partie précédente, nouvelle et sauvegardée pour les suivantes, ou non sauvegardée, avec quand et dans quel monde elle a été faite.
+- **Animaux assis qui le restent** — les chats, les loups et les perroquets à qui tu as dit de s'asseoir restent maintenant assis au loin, au lieu de se lever et de partir se balader.
 
 #### Corrections
 - **Plantage en ouvrant Créatures et entités depuis l'écran titre** — ouvrir *Créatures et entités...* depuis l'écran titre ne fait plus planter le jeu (Minecraft 26.x).
