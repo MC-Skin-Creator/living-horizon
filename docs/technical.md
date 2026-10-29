@@ -921,7 +921,10 @@ squares fit over two render distances for the others (off by 0.12 at most for th
 squared, 0.2 for the exponential, which thickens fastest at its start). Fitted again when its
 settings change, read once a second. Left out: its height fog, and its *sky colour* fog colour
 (the world's stays). *DH Fog Fix* (`optDhFog`, debug screen, on) turns it off. `DhFogTest`
-checks the fit against Distant Horizons' formula; Distant Horizons cannot run in the game tests.
+checks the fit against Distant Horizons' formula, and the `dhfog` scenario the mobs in the real
+game with Distant Horizons (26.3, `--with distanthorizons`), its fog made thick from 0 to 205
+blocks. `/livinghorizon lod` says whose fog the figures get, its ramps in blocks, and how many
+frames it was bound (`FarFog.status`, the *Fog on distant figures* line).
 
 ## Skipping hidden mobs
 

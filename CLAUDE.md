@@ -253,8 +253,9 @@ distant mobs or players, birds, impostors or a screen is checked in the real cli
 `.claude/skills/game-test/` runs it headless (Xvfb, software OpenGL), drives it with the
 scenarios in `src/gametest/java` and takes screenshots to look at. Run
 `.claude/skills/game-test/run.sh [scenario]`, read `SKILL.md` there first, add a scenario
-for what the change touches, and show the user the screenshots. Voxy and Distant Horizons
-cannot run there: say so when a check depends on them.
+for what the change touches, and show the user the screenshots. Voxy cannot run there: say so
+when a check depends on it. Distant Horizons runs there on 26.3 (`--with distanthorizons`,
+Fabric Loader 0.19.5 for the run: see the skill).
 
 ## Debugging checklist
 

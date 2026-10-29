@@ -47,22 +47,66 @@ public final class FarFog {
      */
     public static DhFog.@Nullable Ramps capped(float environmentalStart, float environmentalEnd,
                                               float renderDistanceStart, float renderDistanceEnd) {
+        DhFog.Ramps ramps = choose(environmentalStart, environmentalEnd, renderDistanceStart, renderDistanceEnd);
+        written = ramps;
+        return ramps;
+    }
+
+    private static DhFog.@Nullable Ramps choose(float environmentalStart, float environmentalEnd,
+                                               float renderDistanceStart, float renderDistanceEnd) {
         FarConfig config = FarConfig.get();
         if (!Float.isNaN(limitForTests)) {
-            if (!config.optVoxyFog) return null;
+            if (!config.optVoxyFog) return game("Voxy Fog Fix off");
             float[] far = environmentalEnd - environmentalStart > 1 ? limited(environmentalStart, environmentalEnd, limitForTests) : null;
+            source = "a limit for the tests";
             return far == null ? null : new DhFog.Ramps(environmentalStart, far[0], renderDistanceStart, renderDistanceEnd, far[1]);
         }
-        if (!config.anyDistant() || IrisLink.shaderPackOn()) return null;
+        if (!config.anyDistant()) return game("no distant figure shown");
+        if (IrisLink.shaderPackOn()) return game("a shader pack fogs them");
         // Distant Horizons takes the game's fog away altogether, both ramps; Voxy only the render distance's.
         if (environmentalStart >= NO_RENDER_DISTANCE_FOG && renderDistanceStart >= NO_RENDER_DISTANCE_FOG) {
-            return config.optDhFog ? DhFog.now() : null;
+            if (!config.optDhFog) return game("DH Fog Fix off, no fog at all");
+            DhFog.Ramps ramps = DhFog.now();
+            source = ramps == null ? "the game's: none, Distant Horizons' fog unread or off (" + DhFog.why() + ")"
+                    : "Distant Horizons' (" + DhFog.describe() + ")";
+            return ramps;
         }
         // A fog that ends close (water, lava, blindness) is left alone, as Voxy leaves it.
-        if (!config.optVoxyFog || renderDistanceStart < NO_RENDER_DISTANCE_FOG || environmentalEnd < 10
-                || environmentalEnd - environmentalStart <= 1) return null;
+        if (!config.optVoxyFog) return game("Voxy Fog Fix off");
+        if (renderDistanceStart < NO_RENDER_DISTANCE_FOG || environmentalEnd < 10
+                || environmentalEnd - environmentalStart <= 1) return game("its own fog is on");
         float[] far = limited(environmentalStart, environmentalEnd, voxyLimit());
-        return far == null ? null : new DhFog.Ramps(environmentalStart, far[0], renderDistanceStart, renderDistanceEnd, far[1]);
+        if (far == null) return game("neither Voxy's nor Distant Horizons' fog");
+        source = "Voxy's, stopping at " + Math.round(far[0]) + " blocks";
+        return new DhFog.Ramps(environmentalStart, far[0], renderDistanceStart, renderDistanceEnd, far[1]);
+    }
+
+    private static DhFog.@Nullable Ramps game(String why) {
+        source = "the game's: " + why;
+        return null;
+    }
+
+    // --- What /livinghorizon lod says --------------------------------------------------------
+
+    /** Whose fog the figures got last, and why. */
+    private static volatile String source = "not written yet";
+    private static volatile DhFog.@Nullable Ramps written;
+    /** Frames ours was bound, and frames it was not though written, and why the last one. */
+    private static volatile long bound, missed;
+    private static volatile String missedWhy = "";
+
+    /** The fog the distant figures get, for {@code /livinghorizon lod}. */
+    public static String status() {
+        StringBuilder text = new StringBuilder(source);
+        DhFog.Ramps ramps = written;
+        if (ramps != null) {
+            text.append(String.format(java.util.Locale.ROOT, "; every way %.0f..%.0f, across %.0f..%.0f blocks, at most %.2f",
+                    ramps.environmentalStart(), ramps.environmentalEnd(), ramps.renderDistanceStart(),
+                    ramps.renderDistanceEnd(), ramps.alpha()));
+        }
+        text.append("; bound ").append(bound).append(" frames");
+        if (missed > 0) text.append(", not ").append(missed).append(" (").append(missedWhy).append(')');
+        return text.toString();
     }
 
     /**
@@ -191,7 +235,12 @@ public final class FarFog {
         if (far == null || saved != null) return null;
         GpuBufferSlice current = RenderSystem.getShaderFog();
         // The fog turned off (F3 + F), or this frame's fog not written yet.
-        if (current == null || !current.equals(world)) return null;
+        if (current == null || !current.equals(world)) {
+            missed++;
+            missedWhy = current == null ? "no fog bound" : "another fog bound than the game's";
+            return null;
+        }
+        bound++;
         saved = current;
         RenderSystem.setShaderFog(far);
         return far;

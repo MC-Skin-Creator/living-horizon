@@ -49,6 +49,8 @@ public final class DhFog {
 
     private static long readAt;
     private static @Nullable Settings read;
+    /** Why there is none, when there is none. */
+    private static String why = "not read yet";
     private static @Nullable Settings fitted;
     private static @Nullable Ramps ramps;
     private static boolean broken;
@@ -148,21 +150,48 @@ public final class DhFog {
         return Math.min(1, Math.max(0, t));
     }
 
+    /** Why {@link #now} has none, for {@code /livinghorizon lod}. */
+    static String why() {
+        return why;
+    }
+
+    /** Distant Horizons' fog as read, for {@code /livinghorizon lod}. */
+    static String describe() {
+        Settings s = read;
+        if (s == null) return why;
+        return String.format(java.util.Locale.ROOT, "render distance %.0f blocks, %s from %.2f to %.2f of it, %.2f to %.2f thick, density %.2f, %s",
+                s.radius(), new String[]{"linear", "exponential", "exponential squared"}[s.falloff()], s.start(), s.end(),
+                s.min(), s.max(), s.density(), s.spherical() ? "every way" : "across the ground");
+    }
+
     /** Distant Horizons' far fog settings through its API; null without it, its rendering or its fog. */
     private static @Nullable Settings settings() {
-        if (broken || !Platform.isModLoaded("distanthorizons")) return null;
+        if (broken) return null;
+        if (!Platform.isModLoaded("distanthorizons")) {
+            why = "Distant Horizons not installed";
+            return null;
+        }
         String api = DhLink.API, config = api + "interfaces.config.", client = config + "client.";
         try {
             Object configs = Class.forName(api + "DhApi$Delayed").getField("configs").get(null);
-            if (configs == null) return null;
+            if (configs == null) {
+                why = "Distant Horizons not started yet";
+                return null;
+            }
             Object graphics = call(config + "IDhApiConfig", configs, "graphics");
             String graphicsType = client + "IDhApiGraphicsConfig";
-            if (!(Boolean) value(call(graphicsType, graphics, "renderingEnabled"))) return null;
+            if (!(Boolean) value(call(graphicsType, graphics, "renderingEnabled"))) {
+                why = "its rendering is off";
+                return null;
+            }
             double radius = ((Number) value(call(graphicsType, graphics, "chunkRenderDistance"))).doubleValue() * 16;
             Object fog = call(graphicsType, graphics, "fog");
             String fogType = client + "IDhApiFogConfig";
-            if (!(Boolean) value(call(fogType, fog, "enableDhFog"))) return null;
-            if ("FOG_DISABLED".equals(String.valueOf(value(call(fogType, fog, "drawMode"))))) return null;
+            if (!(Boolean) value(call(fogType, fog, "enableDhFog"))
+                    || "FOG_DISABLED".equals(String.valueOf(value(call(fogType, fog, "drawMode"))))) {
+                why = "its fog is off";
+                return null;
+            }
             Object far = call(fogType, fog, "farFog");
             String farType = client + "IDhApiFarFogConfig";
             Object falloff = value(call(farType, far, "farFogFalloff"));
@@ -187,6 +216,7 @@ public final class DhFog {
                     spherical);
         } catch (ReflectiveOperationException | RuntimeException e) {
             broken = true;
+            why = "its fog settings could not be read: " + e;
             LivingHorizonClient.LOGGER.warn("Distant Horizons found, but not its fog settings: distant mobs get no fog over its terrain", e);
             return null;
         }
