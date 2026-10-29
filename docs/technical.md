@@ -875,7 +875,8 @@ that a mob met in an earlier game is read back rather than baked.
   above: `ImpostorViews.HEIGHTS`, part of the key through `ImpostorKey.seenFrom`), baked
   turned round their middle (`ImpostorAtlas.MIDDLE`), facing the camera entirely when drawn.
   All four are asked for together; kept on disk like any mob's. Boats and vehicles are
-  pictured the same way. A picture turned up to the camera round the middle shows what is
+  pictured the same way, and so are Ice and Fire's flying mobs (dragons, amphitheres,
+  hippogryphs: its `IFlyingMount`, looked up by name in `compat/IceAndFire`). A picture turned up to the camera round the middle shows what is
   nearer than that middle (an aircraft's nose, the wheels under it) farther along the line of
   sight, under the ground the figure stands on when seen from above: `GhostRenderer.picture`
   moves it nearer by half its size and makes it as much smaller, the same on screen.

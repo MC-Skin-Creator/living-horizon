@@ -35,10 +35,11 @@
 - **Distant Horizons' fog on mobs** — Distant mobs now get the same fog as Distant Horizons' terrain and fade with it, instead of standing out sharply against the landscape. (Minecraft 1.21.6 and later, without shaders.)
 
 #### Improved
-- **Huge mobs sharp in the distance** — very large mobs just past the *Simplification Distance* keep their full model until they are small enough on screen, instead of a blocky flat picture.
+- **Ice and Fire flying mobs seen from every angle** — Ice and Fire's dragons, amphitheres and hippogryphs now have simplified images seen from below and from above, like phantoms and planes, instead of from the side only. They look right as they fly overhead or when you look down on them.
+- **Sharper huge mobs in the distance** — Very large mobs now keep their full 3D model while they still look large on screen, instead of turning into a blocky simplified image.
 
 #### Fixed
-- **Strange flat pictures of Ice and Fire mobs** — as *Simplified Mobs* (flat pictures of far mobs), grown Ice and Fire dragons are no longer a close-up of their legs or a wing, dragons of different ages no longer share one picture, and sea serpents keep their model instead of a cut-off picture.
+- **Ice and Fire mobs correctly simplified** — Distant Ice and Fire dragons now have whole simplified images at their real size, instead of a close-up of their legs or a wing. Dragons of different ages no longer share one image, and sea serpents keep their 3D model instead of a cut-off image.
 
 ## 0.14.0 — 2026-10-29
 

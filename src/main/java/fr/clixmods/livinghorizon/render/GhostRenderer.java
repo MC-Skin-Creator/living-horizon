@@ -8,6 +8,7 @@ import fr.clixmods.livinghorizon.ambient.Ambience;
 import fr.clixmods.livinghorizon.compat.DrawnGround;
 import fr.clixmods.livinghorizon.compat.EntityCulling;
 import fr.clixmods.livinghorizon.compat.FarDepth;
+import fr.clixmods.livinghorizon.compat.IceAndFire;
 import fr.clixmods.livinghorizon.compat.OcclusionQueries;
 import fr.clixmods.livinghorizon.debug.DebugMarks;
 import fr.clixmods.livinghorizon.debug.DebugMarks.Mark;
@@ -537,11 +538,11 @@ public final class GhostRenderer {
     }
 
     /**
-     * Pictured from several heights, not only level with it: a phantom or a ghast, and a boat or
-     * a vehicle, which an aircraft is, flying overhead or seen from a cliff.
+     * Pictured from several heights, not only level with it: a phantom or a ghast, Ice and Fire's
+     * dragons, and a boat or a vehicle, which an aircraft is, flying overhead or seen from a cliff.
      */
     private static boolean fromHeights(Entity entity) {
-        return MobFlight.pictured(entity) || !(entity instanceof LivingEntity);
+        return MobFlight.pictured(entity) || !(entity instanceof LivingEntity) || IceAndFire.flies(entity);
     }
 
     /** Past the distance set in the options; 0 is no limit. */
@@ -940,7 +941,7 @@ public final class GhostRenderer {
                 ImpostorAtlas.request(key, puppet);
                 continue;
             }
-            // A phantom, a ghast, an aircraft: seen from every height, as it flies about.
+            // A phantom, a ghast, a dragon, an aircraft: seen from every height, as it flies about.
             for (int height = 0; height < ImpostorViews.HEIGHTS.length; height++) {
                 ImpostorAtlas.request(ImpostorKey.seenFrom(key, height), puppet);
             }
@@ -998,7 +999,7 @@ public final class GhostRenderer {
                 : Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
         boolean aloft = fromHeights(entity);
         if (aloft) {
-            // A phantom, a ghast, an aircraft, often seen from below: the picture baked from the nearest
+            // A phantom, a ghast, a dragon, an aircraft, often seen from below: the picture baked from the nearest
             // height, round its middle, turned to the camera up and down as a bird's is.
             dy += ImpostorAtlas.middle(entity);
             key = seenFrom(key, entity, eye, partialTick, dx, dy, dz);
