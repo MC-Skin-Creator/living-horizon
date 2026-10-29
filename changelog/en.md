@@ -11,6 +11,9 @@
 - **Phantoms and ghasts seen from below** — as *Simplified Entities* (flat pictures of far mobs), phantoms and ghasts are now pictured from below and from above too, like birds, not only from the side.
 - **Smoother with many distant mobs on Vulkan** — the game no longer loses time on every distant mob, every frame, when it draws with Vulkan (Minecraft 26.2 and later) or over Distant Horizons (Minecraft 26.3).
 
+#### Fixed
+- **Distant mobs vanishing on LAN** — distant mobs no longer disappear for good, or for a stretch as you walk up to them, after the player hosting the world lowers their *Entity Distance*.
+
 ## 0.12.0 — 2026-10-23
 
 ### Server

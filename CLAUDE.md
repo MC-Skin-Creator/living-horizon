@@ -378,6 +378,13 @@ come back, add it here in the same pull request: this file is what the next sess
   simulation distance, a square of chunks that reaches farther on its diagonals. In single
   player `ServerMobs` asks the server where those are and the copies follow; on a server only
   the mod on the server closes that gap.
+- **Distant mobs gone between two distances on another player's server or LAN** (the copies
+  hidden as "too close for a copy" past where the real mobs stop being sent, then forgotten): the
+  reach the mod learnt for that kind of mob (`MobMemory.reach`, the debug panel's reach line) is
+  farther than the server sends now. A LAN host's game sends as far as the host's *Entity
+  Distance* says; it comes down when several mobs stop being sent well inside it
+  (`MobMemory.unlearnReach`). The client's own *Entity Distance* only changes who draws a real
+  mob, the game or the mod. The `handover` scenario checks both.
 - **Distant mobs only turning on the spot**, never walking, after the world was opened, while
   those met since walk: their ground was read (`MobPaths.plan`) where the far world had nothing
   (Voxy or Distant Horizons not open yet, or Voxy turned off for the session by one failed

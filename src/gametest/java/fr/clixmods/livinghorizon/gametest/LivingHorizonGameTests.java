@@ -10,6 +10,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.EasterEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FarFogScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FollowedMobsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.HandoverScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FlyersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.GaitsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.HeadTurnScenario;
@@ -98,6 +99,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new BirdCommandScenario(),
             new LanShareScenario(),
             new DedicatedServerScenario(),
+            new HandoverScenario(),
             new PerfScenario(),
             new BenchmarkScenario(),
             new BenchmarkWorldScenario());

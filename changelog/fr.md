@@ -11,6 +11,9 @@
 - **Phantoms et ghasts vus d'en dessous** — en *Entités simplifiées* (des images plates des mobs lointains), les phantoms et les ghasts sont maintenant dessinés vus d'en dessous et d'au-dessus aussi, comme les oiseaux, et plus seulement de côté.
 - **Plus fluide avec beaucoup de mobs lointains sous Vulkan** — le jeu ne perd plus de temps sur chaque mob lointain, à chaque image, quand il dessine avec Vulkan (Minecraft 26.2 et plus) ou sur Distant Horizons (Minecraft 26.3).
 
+#### Corrections
+- **Mobs lointains qui disparaissent en LAN** — les mobs lointains ne disparaissent plus pour de bon, ni sur une partie du chemin quand tu t'en approches, après que le joueur qui héberge le monde a baissé sa *Distance des entités*.
+
 ## 0.12.0 — 2026-10-23
 
 ### Serveur
