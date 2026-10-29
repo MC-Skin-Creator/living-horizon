@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Client
+
+#### New
+- **Links to the mod's pages** — beside the Discord logo, the mod's settings now have the logos of Modrinth, CurseForge, Nexus Mods and the mod's website, to open its pages in one click.
+
 ## 0.14.0 — 2026-10-29
 
 ### Client

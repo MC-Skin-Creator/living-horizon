@@ -2,6 +2,11 @@
 
 ## Prochaine version
 
+### Client
+
+#### Nouveautés
+- **Liens vers les pages du mod** — à côté du logo Discord, les réglages du mod ont maintenant les logos de Modrinth, CurseForge, Nexus Mods et du site web du mod, pour ouvrir ses pages en un clic.
+
 ## 0.14.0 — 2026-10-29
 
 ### Client
