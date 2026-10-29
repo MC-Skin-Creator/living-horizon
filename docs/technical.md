@@ -378,6 +378,11 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
   over, since the game only does it in a tick a copy never runs. Its cape is hung from where it
   stands (`Puppets.cape`), where the tick would move it over time, or it would reach out
   towards 0, 0, 0.
+- **Sitting pets.** A cat, wolf or parrot sitting when it was last seen sits in its copy and stays
+  on its spot. The game saves a pet's order to sit from a field only the server has, so a save
+  made on the client always stands it up: `MobMemory.onUnload` writes the pose the client sees
+  (`isInSittingPose`) into the save's `Sitting` instead. In single player the server's pose is
+  taken with each answer (below), and a copy walking up to its real pet sits or stands as it does.
 
 ### Scanning nearby mobs
 
@@ -399,6 +404,7 @@ the remembered mobs are (`track/ServerMobs`).
 - The ones it still moves (past the distance it sends them at, but inside the simulation
   distance) are followed by their copies, at its pace and facing the way they face, with no
   animation of their own.
+- A pet sits or stands as it does there, which the client is never told once it is far.
 - One that dies there is forgotten.
 
 Without this, the copy would stand where the mob was last seen while the real one wandered
