@@ -16,6 +16,7 @@ the *Debugging checklist* of [CLAUDE.md](../CLAUDE.md).
 - [Distant mobs](#distant-mobs)
 - [Birds](#birds)
 - [Impostors](#impostors)
+- [Levels of detail](#levels-of-detail)
 - [Far terrain depth](#far-terrain-depth)
 - [Fog on distant figures](#fog-on-distant-figures)
 - [Skipping hidden mobs](#skipping-hidden-mobs)
@@ -707,6 +708,131 @@ its eight views, and its front view at 32, 16 and 8 screen pixels, as it looks f
 *Rebuild* throws every picture away, on disk too, and bakes the figures on hand anew, even
 after a failed bake.
 
+## Levels of detail
+
+Between a figure's full model and its impostor, simpler models: fewer triangles for figures too
+far to show the difference, the Mob LOD Lab's "voxel remesh and decimation". They are made at run
+time from the model's own tree of parts (`render/lod/ModelReader`: every part at its initial pose,
+every cube with its quads and texture coordinates, its box taken from its corners so that a grown
+cube, wool or armour, keeps its thickness), so that a mob of any mod gets them, once per model.
+`LodLevels` and `LodBake` ask the game nothing but that tree, and are tested without it.
+
+**Levels** (`LodLevels`): level 0 is the full model; level `i` keeps `max(4, round(T0 × 0.5^i))`
+of its `T0` triangles (two a quad), for levels 1 to 3; the impostor comes after them.
+
+1. *Rigid groups.* One group per animated part (a leg, an arm, the head, told by the part's name),
+   with the cubes of the parts under it that do not move on their own (ears, horns, nose); the
+   rest of the model is the root's group. A group is made in its part's space at rest and drawn
+   with that part's pose, so it follows its animation.
+2. *Voxels.* Each group fills a grid aligned on its part, centred on its cubes' box, one model
+   pixel a cell or more so that the longest side has at most 32 cells. A cell is solid when 3 of
+   its 8 samples (at the quarters and three quarters of the cell) fall in a cube; a flat cube is
+   one pixel thick.
+3. *Closed surface.* Every side of a solid cell against an empty one gives two triangles facing
+   out, their corners shared: one welded surface per group, nothing loose, nothing hollow; cubes
+   that touch or overlap (a hat on a head) are one surface.
+4. *Decimation* (Garland-Heckbert quadrics, as Blender's Decimate, Unity's and Unreal's automatic
+   levels): every vertex carries the area-weighted quadrics of its triangles' planes; edges are
+   collapsed cheapest first, the new vertex at the quadric's minimum when it stays within twice
+   the edge's length and half a pixel of its middle, else the best of its two ends and its middle.
+   A collapse that would turn a triangle over (its normal turned by more than about 78 degrees) or
+   flatten it waits behind every other with 10 000 more cost. Groups are never merged into one
+   another; each level goes on from the one before.
+
+The cow gives 120, 60, 30 and 14 triangles (`LodLevelsTest`), as the lab did. Level 1 keeps the
+shape well; at level 2 the shapes round off and legs thin; at level 3 the shape turns pointed.
+Mobs of few cubes (a sheep's wool, a pig) are pointed sooner: their budgets are a few triangles a
+group. What was tried in the lab and refused: welded boxes cut out (hollow, loose faces), welded
+boxes solid (blocks from level 2), decimation straight on the cubes and vertex clustering (legs
+turned to spikes or gone at level 1).
+
+**Quads for the game** (`LodLevels.pair`): the game draws entities in quads, and a lone triangle
+handed to it costs a whole quad. Two triangles of a group that share an edge and the same view
+are exactly one quad (the game splits a quad along its first and third corners), so they are
+handed over as one; a triangle left alone is a quad whose last corner repeats its third. The
+levels go through the game's own entity render type, so lighting, fog, Iris and shader packs
+treat them as any entity; a render type of our own drawing triangles would differ on every
+version and is unknown to Iris.
+
+**Baked views** (`LodBake`): each group has six views, one per side of its box, its cubes seen
+from outside, straight on, at 3 texels per model pixel (256 at most a side), drawn on the CPU from
+the model's texture so that it can run away from the render thread. Empty texels take their
+neighbours' colour and stay opaque, so that a surface reaching past the cubes shows no hole; a
+texel only a face the texture leaves clear covers (a helmet's eye holes) stays clear.
+Only a layer drawn over a model's first one (a villager's clothes, on the same triangles) keeps
+its texture's holes, or it would hide the layer under it. Each triangle takes the view its normal
+faces most; its corners' texture coordinates are their projection onto it, kept on the view and
+a quarter texel inside, so that nothing next to it on the page bleeds in. Triangles are drawn from
+both sides: a decimated surface may fold.
+
+**In game** (`LodRenderer`, *Levels of Detail* in the settings, a section and a Sodium page of
+its own, [below](#levels-of-detail-1)). The mod's own figures, mobs and players (who logged off or
+far away), and from 1.21.9, with *Nearby Entities* (`lodNearby`), the entities the game draws
+itself inside the render distance (`GhostRenderer.extracted` hands their states to
+`LodRenderer.chooseGame`; the camera position is the frame before's, a step off at most). Those
+stay animated at every level. With the defaults:
+
+| Level | From | What is drawn |
+|---|---|---|
+| 0 | | The full model |
+| 1 | 18 blocks (`lodDistance`) | Half the triangles (`lodKeep`) |
+| 2 | 36 blocks (`lodSpacing` 200%) | A quarter |
+| 3 | 72 blocks, to the end without impostors (`lodLevels` 3) | An eighth, standing still |
+| Impostor | `impostorDistance` | The flat picture (see [Impostors](#impostors)) |
+
+With `lodPixels` above 0, a figure shorter than that on screen takes level 1 even closer, and one
+more level each time it is `lodSpacing` smaller again; the larger of the two levels is drawn.
+With `lodDistance` at 0 (OFF) the size on screen alone chooses; both off, the full model is
+always drawn.
+Changing `lodKeep` makes every level again.
+
+- *Choosing.* `GhostRenderer.place` hands each figure's distance to `LodRenderer.choose`. A
+  figure takes its level only once every model and layer it was drawn with in its last frame
+  has that level ready; until then it keeps its full model. What a figure was drawn with is kept on its
+  entity (`LodHolder`, a slot `EntityMixin` adds), in arrays of a model or three: with Sodium a
+  full model costs little to draw, and the levels' own work each frame must cost less than it.
+  The `lodcost` game test measures both with Sodium. A layer of a kind not known (an
+  unusual render type) keeps its figure whole for good.
+- *What a model is made of.* A model is read when the game draws it (`ModelPartMixin`, the
+  first `render` of a figure's model is its root), with the parts the game draws then. Its
+  levels are made for the textures its layers were drawn with the frame before: a cube none of
+  them shows is left out (a villager's hat rim, painted by some professions only), so that every
+  layer of a figure shares the same triangles. A second model (a sheep's wool, armour) has levels
+  of its own. One set per root, parts drawn and textures, made on a thread of its own; its views
+  are baked there too, once per layer texture, then put on shared pages of 1024 texels a side
+  (eyes on pages of their own), a few a frame, each written into its spot on the page alone.
+- *Layers.* The texture of a layer is read from its render type's description (the
+  `textures/...` or `skins/...` it names): from the feature renderer's call from 1.21.9, from the
+  buffer its renderer asks for before (`GhostRenderer.draw` wraps them). Each layer is drawn at a
+  simpler level by its kind (`LodRenderer.CUTOUT` to `SKIP`):
+  - cut-out, solid and eyes layers are baked, on pages of their kind;
+  - a translucent one whose texture is see-through (a slime's outside) is baked keeping its
+    transparency, on pages drawn translucent;
+  - an effect (a glint, a charged creeper's swirl, a breeze's wind) is drawn with its own render
+    type over the shape of its model's first layer, its texture coordinates put back to that
+    model's 0 to 1 so that its pattern keeps its size; a model with only an effect on it (the
+    swirl's) is drawn as the game draws it;
+  - a layer drawn from a sheet of textures (an armour trim) is left out.
+  A player's skin is in no resource pack: it is copied from the game's memory on the render thread
+  (`LodRenderer.snapshot`; a `DynamicTexture` from 1.21.4, read back from the graphics card
+  before) for the worker to bake.
+- *Drawing.* While a figure at level 1 or 2 is drawn, each part's `compile` draws none of its
+  cubes and queues the groups anchored to it with its pose, light, overlay and colour. At level
+  3 the figure stands still, as its impostor does: its root's `render` queues every group at
+  once, each where its anchor stands at rest (`LodSet.rest`), and the game walks none of its
+  parts (`LodRenderer.enterRoot`, `STANDING`). Walking the parts and the hook on each cost more
+  than the simpler shape saved, with Sodium. They are
+  drawn with the impostors (`LodRenderer.submit`, through `Sink`), one batch per page, so that
+  every simpler mob costs a draw or two, not one per model and layer. Each vertex goes to the game
+  in one call (`addVertex` with every attribute, as its cubes are written), which its buffer
+  writes at once rather than attribute by attribute. From 1.21.9 the game draws that geometry
+  after the models, so the poses are this frame's. From 26.2 the frame may be prepared in
+  another order: they go into the model's own group once the group is prepared
+  (`ModelFeatureRendererMixin`, `buildGroup`).
+- *Counting.* `PolygonStats` counts the triangles each figure draws, the quads the game is
+  handed for them, and what its full models would cost, so the debug panel's gain and figures
+  per level include the levels of detail.
+
 ## Far terrain depth
 
 Our figures must hide behind the far terrain pixel by pixel, like any mob behind any block.
@@ -906,17 +1032,29 @@ debug options. `/livinghorizon debug` turns the panel and the boxes on or off to
 
 | Tool | Switch | What it shows |
 |---|---|---|
-| Panel | `debugHud` | Top left: cost per tick and frame, what became of every distant mob in the last frame, far terrain reads and depth, how far this server sends mobs, which optimisations are on |
+| Panel | `debugHud` | Top left: cost per tick and frame, the triangles of the mod's figures (below), what became of every distant mob in the last frame, far terrain reads and depth, how far this server sends mobs, which optimisations are on |
 | Cost per section | `debugHud` | A second column of the panel, and `/livinghorizon`: for each part of the mod the last time, a smoothed average and the worst of the last 5 seconds, which an average alone hides (a save of 100 ms once a minute). Sections: the client tick (following the server's mobs, choosing, building copies, reading the ground, motion, resting players, birds, hidden mobs), the frame (extraction, each step of the far terrain's depth, the occlusion queries, baking and storing the flat pictures, submitting birds and flat pictures), the saves with their size in bytes, and the server's publication. Over 2 ms shows yellow, over 8 ms red. With OpenGL the GPU's time is shown too for the depth steps, the occlusion boxes and the baking (`GL_TIME_ELAPSED` queries read a few frames later, never waited for), and so is what the game's thread allocates per tick; both are measured only while the panel or the command was asked for in the last 10 seconds. Each section is named `livinghorizon:<section>` in the game's profiler (F3 pie chart, spark). Code: `Profile`, `debug/ProfileHook`, `debug/GpuTimer` |
 | Panel in F3 | `living_horizon` in the game's debug options (F3 + F6, from 1.21.9) | The panel's lines in the F3 screen. `/livinghorizon debug` turns it on too |
-| Polygons in F3 | `fake_entities` in the game's debug options (F3 + F6, from 1.21.9) | The polygons of the mod's own entities (distant players and mobs, never the game's), split into full models and impostors (one quad each), and a line of impostor sheets baked and waiting |
+| Polygons in F3 | `fake_entities` in the game's debug options (F3 + F6, from 1.21.9) | The polygons of the mod's own entities (distant players and mobs, never the game's), split into full models and impostors (one quad each), the triangles they cost (below), and a line of impostor sheets baked and waiting |
 | Boxes (from 1.21.11) | `debugBoxes` | A box around every distant mob and player, seen through terrain, coloured by what became of it (below). A dot in the middle keeps it visible when the box is smaller than its lines |
 | Game's mobs | `debugGameMobs` | Boxes around the mobs the game draws itself too |
+| LOD colours | `debugLodColors` | Each of the mod's figures tinted by its level of detail: none for `LOD 0` (the full model), green `#7dff6a` for `LOD 1`, yellow `#ffe14a` for `LOD 2`, orange `#ff9c3a` for `LOD 3`, red `#ff4a4a` for impostors. The game's own mobs are never tinted |
 | Labels (from 1.21.11) | `debugLabels` | State, kind, distance and size on screen above each box, at a constant size |
 | Outlines | `outline*`, in *Outlines...* | An outline around each kind of figure, and a cross where a mob is not drawn (below) |
 | Depth view | `debugDepthView` | Bottom right: the game's depth alone, with the far terrain merged in, or after the entities. Near is white, far black, sky blue |
 | Far terrain | `/livinghorizon lod` (or `voxy`) | Which far terrain mod is read (Voxy or Distant Horizons), whether reading it failed, and the state of its depth |
 | Optimisations | `opt*`, `depthOcclusion`, `hideOccludedMobs` | Every optimisation has its own switch, to compare the cost (see [Optimizations](#optimizations)) |
+
+### Triangles and levels of detail
+
+The panel and the `fake_entities` line count what the mod's own figures cost last frame
+(`render/impostor/PolygonStats`): the triangles drawn, the triangles *without LOD* (the same
+figures, each drawn as its full model), the share saved, the quads drawn, and how many figures
+were drawn at each level, `LOD 0` (the full model) to the impostors. An impostor counts as the
+model it stands for: what that figure cost when last drawn as a model, or one of its kind (adult
+or baby), or before either the visible cubes of its renderer's model, without its layers; a
+bird's picture counts as one quad, since the birds' own models are not counted. A figure's cost
+is all its layers together (armour, saddle, a villager's clothes).
 
 ### Box colours
 
@@ -973,7 +1111,7 @@ there only in a game started with `-Dlh.benchmark=true` (`Benchmark.ON`, a JVM a
 launcher), and without it they are not even suggested. The player stands still; the settings go through phases:
 a warm-up of 20 seconds that is not measured, the mod off, the player's settings, each preset,
 the mod off again, distant players, mobs and birds each on their own, then mobs with
-*Simplified Entities*, *Skip Hidden Mobs* and *Hide Behind Far Terrain* off in turn, and the mod
+*Simplified Entities*, *Detail Levels*, *Skip Hidden Mobs* and *Hide Behind Far Terrain* off in turn, and the mod
 off a third time. Each phase settles for 4 seconds, then is measured for `seconds` (8 by
 default, 3 to 60): about three minutes in all. `/livinghorizon benchmark stop` ends it early,
 and it stops by itself if the world closes or the game pauses.
@@ -1091,6 +1229,19 @@ cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 | `impostorMobMemory` | Mob Picture Memory | `1024` MB | 64 to 4096 | Video memory the mobs' pictures may take, apart from the players' |
 | `impostorPlayerMemory` | Player Picture Memory | `512` MB | 32 to 2048 | Video memory the players' pictures may take (riders with what they ride), apart from the mobs' |
 
+#### Levels of Detail
+
+| Setting | In game | Default | Range | What it does |
+|---|---|---|---|---|
+| `mobLods` | Detail Levels | `true` | | Distant mobs drawn with simpler models the farther they are, before the impostor (see [Levels of detail](#levels-of-detail)) |
+| `lodLevels` | Simpler Models | `3` | 1 to 3 | How many simpler models a mob goes through before its impostor |
+| `lodNearby` | Nearby Entities | on | | The game's own entities, inside the render distance, take simpler models too (from 1.21.9) |
+| `lodDistance` | Detail Distance | `18` blocks | OFF, 1 to 256 | Where the first simpler model begins; OFF leaves *Detail Size* alone |
+| `lodSpacing` | Detail Spacing | `200` percent | 125 to 400 | Each next simpler model begins this much farther than the one before |
+| `lodPixels` | Detail Size | `0` pixels | 0 to 256 | A mob shorter than this on screen takes a simpler model even closer (`0`: the distance alone) |
+| `lodKeep` | Polygons Kept | `50` percent | 20 to 80 | Share of the triangles each simpler model keeps from the one before; a change makes every level again |
+| | Detail Levels... | | | The preview (`ui/LodScreen`): each model the mod has made levels for, its full model and every level side by side, turning, with their triangles and the distance each begins at, drawn on the CPU by `LodPreview` |
+
 #### Distant Players
 
 | Setting | In game | Default | Range | What it does |
@@ -1147,6 +1298,7 @@ come back by themselves. *Scan Nearby Mobs* runs a scan.
 | `debugBoxes` | Boxes on Mobs | `false` | A coloured box around every distant mob and player, seen through terrain |
 | `debugLabels` | Labels on Mobs | `false` | State, kind, distance and size on screen above each box |
 | `debugGameMobs` | Game's Mobs Too | `false` | Boxes around the mobs the game draws itself too |
+| `debugLodColors` | LOD Colours | `false` | Each of the mod's figures tinted by its level of detail |
 | `debugDepthView` | Depth View | `0` | `0` off; `1` the game's depth; `2` with the far terrain merged in; `3` after the entities |
 | `outline*` | Outlines... | `false` | See [Outlines](#outlines) |
 

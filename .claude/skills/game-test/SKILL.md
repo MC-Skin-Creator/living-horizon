@@ -63,13 +63,21 @@ the result (before and after, model and impostor) with `SendUserFile`.
 
 ## Measure what the mod costs
 
+`run.sh lodcost --sodium` measures what *Detail Levels* costs the game's thread: about 150
+far mobs drawn as models, the CPU time of the game's thread per frame with the levels on and
+off, four times each in turn. The client game tests draw one frame a tick, so frame times
+cannot show it; with Sodium the full models are cheap, and the levels must cost less than
+they save. For a profile, start it with `JAVA_TOOL_OPTIONS="-Dlodcost.only=true
+-XX:StartFlightRecording=filename=build/lod.jfr,settings=profile"` and read the samples of the
+game's thread (`main` from 26.3, `Render thread` before) with `jfr print`.
+
 `LH_NODE=1.21.11 run.sh perf` builds a scene far from the player (about 500 remembered
 mobs, 40 test players who logged off, birds), turns the camera once round per measure and
 prints two parts in words:
 
 - **What the mod costs:** the frame time without the mod and with its defaults, the mod's
   own code per frame (average and worst), and the memory it allocates per frame.
-- **What each setting does:** every `opt*` switch and *Simplified Entities*, changed alone
+- **What each setting does:** every `opt*` switch, *Simplified Entities* and *Detail Levels*, changed alone
   and compared with the defaults measured just before and after it, so a slow drift of the
   game cancels out. `+` is slower once changed. The verdict reads the frame time when it
   moved more than the noise, else the mod's own code, else says "no difference".

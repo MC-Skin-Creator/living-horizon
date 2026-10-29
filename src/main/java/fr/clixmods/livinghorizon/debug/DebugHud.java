@@ -8,6 +8,7 @@ import fr.clixmods.livinghorizon.compat.OcclusionQueries;
 import fr.clixmods.livinghorizon.compat.LodWorld;
 import fr.clixmods.livinghorizon.debug.DebugMarks.Mark;
 import fr.clixmods.livinghorizon.render.Occlusion;
+import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobMemory;
 import net.minecraft.client.Minecraft;
@@ -24,7 +25,7 @@ import java.util.Map;
 
 /**
  * The debug panel, top left, and the same lines in the F3 screen through the "Living Horizon"
- * debug option: what the mod costs, what became of every distant mob in the last frame (in the colours of their boxes), how Voxy is read and merged, how far
+ * debug option: what the mod costs, what the mod's figures cost in triangles at each level of detail, what became of every distant mob in the last frame (in the colours of their boxes), how Voxy is read and merged, how far
  * this server sends mobs, and which optimisations are on. Also draws the depth view.
  */
 public final class DebugHud {
@@ -147,6 +148,9 @@ public final class DebugHud {
         }
         lines.add(new Line(I18n.get("livinghorizon.debug.hud.mobs", mobs.size(), mobs.shown().size(), built, waiting,
                 mobs.live().size()), GREY));
+        lines.add(new Line(I18n.get("livinghorizon.debug.hud.lod", PolygonStats.triangles(), PolygonStats.fullTriangles(),
+                PolygonStats.gain(), PolygonStats.polygons()), GREY));
+        lines.add(new Line(I18n.get("livinghorizon.debug.hud.levels", levels()), GREY));
         for (Mark mark : Mark.values()) {
             lines.add(new Line("■ " + mark.label() + " : " + DebugMarks.count(mark), mark.color));
         }
@@ -180,6 +184,16 @@ public final class DebugHud {
         }
 
         return lines;
+    }
+
+    /** The figures drawn at each level of detail last frame: "LOD 0: 36, LOD 1: 85, ..., impostors: 12". */
+    static String levels() {
+        StringBuilder out = new StringBuilder();
+        for (int level = 0; level < PolygonStats.IMPOSTOR; level++) {
+            out.append(I18n.get("livinghorizon.debug.lod.level", level, PolygonStats.figures(level))).append(", ");
+        }
+        return out.append(I18n.get("livinghorizon.debug.lod.impostors", PolygonStats.figures(PolygonStats.IMPOSTOR)))
+                .toString();
     }
 
     private record Line(String text, int color) {

@@ -82,6 +82,26 @@ public final class FarConfigScreen extends SideOptionsScreen {
                         .tooltip(Tooltip.create(Component.translatable(KEY + "impostorPreview.tooltip"))).build(),
                 null);
 
+        // The simpler models before the impostor: a section of their own.
+        header(Component.translatable(KEY + "lodSection"));
+        list.addSmall(
+                bool("mobLods", c.mobLods, v -> c.mobLods = v),
+                integer("lodLevels", 1, FarConfig.MAX_LOD_LEVELS, c.lodLevels, v -> c.lodLevels = v, false));
+        // The game draws its own entities through the feature renderers from 1.21.9 only.
+        //? if >=1.21.9
+        list.addSmall(bool("lodNearby", c.lodNearby, v -> c.lodNearby = v), null);
+        list.addBig(blocks("lodDistance", FarConfig.MIN_LOD_DISTANCE, FarConfig.MAX_LOD_DISTANCE, c.lodDistance,
+                v -> c.lodDistance = v));
+        list.addBig(unit("lodSpacing", "percent", FarConfig.MIN_LOD_SPACING, FarConfig.MAX_LOD_SPACING, c.lodSpacing,
+                v -> c.lodSpacing = v));
+        list.addBig(unit("lodPixels", "pixels", 0, FarConfig.MAX_LOD_PIXELS, c.lodPixels, v -> c.lodPixels = v));
+        list.addBig(unit("lodKeep", "percent", FarConfig.MIN_LOD_KEEP, FarConfig.MAX_LOD_KEEP, c.lodKeep,
+                v -> c.lodKeep = v));
+        list.addSmall(
+                Button.builder(Component.translatable(KEY + "lodPreview"), b -> minecraft.setScreen(new LodScreen(this)))
+                        .tooltip(Tooltip.create(Component.translatable(KEY + "lodPreview.tooltip"))).build(),
+                null);
+
         header(Component.translatable(KEY + "players"));
         list.addSmall(
                 bool("enabled", c.enabled, v -> c.enabled = v),

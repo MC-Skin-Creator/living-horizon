@@ -5,6 +5,7 @@
 ### Client
 
 #### Nouveautés
+- **Mobs et joueurs lointains aux formes simplifiées** — plus les mobs et les joueurs lointains sont loin, plus leur forme est simple et lisse, les plus loin immobiles, avant de devenir des images plates : les foules lointaines coûtent bien moins à dessiner ; *Entités proches* fait de même pour les mobs que le jeu dessine lui-même (Minecraft 1.21.9 et suivants), *Niveaux de détail* dans les réglages choisit à quelle distance et à quel point, et *Niveaux de détail...* montre l'allure de chaque mob.
 - **Bouton du journal des modifications** — les réglages du mod ont maintenant un bouton du journal des modifications à côté du logo Discord, pour lire ce qui a changé à chaque version (un bouton *Lire le journal des modifications* sur la page de Sodium).
 
 #### Améliorations

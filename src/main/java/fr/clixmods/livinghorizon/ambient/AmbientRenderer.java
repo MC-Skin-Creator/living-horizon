@@ -160,8 +160,9 @@ public final class AmbientRenderer {
             return false;
         }
         bird.view = ImpostorViews.view(yaw, -x, -z, bird.view);
+        // A bird's model is not counted in PolygonStats, so its picture claims no saving: one quad for one.
         ImpostorRenderer.add(x * pull, y * pull, z * pull,
-                sheet.worldSize() * bird.span * bird.scale * pull, sheet, bird.view, LIGHT, 0, true);
+                sheet.worldSize() * bird.span * bird.scale * pull, sheet, bird.view, LIGHT, 0, true, 1);
         return true;
     }
 

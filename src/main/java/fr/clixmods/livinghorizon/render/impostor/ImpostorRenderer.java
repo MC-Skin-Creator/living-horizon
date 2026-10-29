@@ -1,5 +1,6 @@
 package fr.clixmods.livinghorizon.render.impostor;
 
+import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.Profile;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -36,6 +37,8 @@ public final class ImpostorRenderer {
         int outline;
         /** Turned to the camera up and down too, not only round: for a picture baked as seen from that height. */
         boolean facing;
+        /** Quads of the model the picture stands for, for {@link PolygonStats}. */
+        int full;
         /** The camera's right along the ground, and the picture's up, as it is submitted. */
         float rightX, rightZ;
         final float[] up = new float[3];
@@ -111,9 +114,10 @@ public final class ImpostorRenderer {
      * @param outline the colour of its outline, 0 for none
      * @param facing  turned to the camera up and down too, not only round: for a picture baked
      *                as seen from that height
+     * @param full    quads of the model the picture stands for
      */
     public static void add(double x, double y, double z, double size, ImpostorAtlas.Sheet sheet, int view, int light,
-                           int outline, boolean facing) {
+                           int outline, boolean facing, int full) {
         if (count == FRAME.size()) FRAME.add(new Billboard());
         Billboard board = FRAME.get(count++);
         board.x = x;
@@ -125,6 +129,7 @@ public final class ImpostorRenderer {
         board.light = light;
         board.outline = outline;
         board.facing = facing;
+        board.full = full;
     }
 
     /** From the entity submission, with the pose at the camera. */
@@ -138,6 +143,8 @@ public final class ImpostorRenderer {
     }
 
     private static void submitImpostors(PoseStack pose, Sink collector) {
+        // With LOD Colours on, every picture in the impostor level's colour.
+        tint = FarConfig.get().debugLodColors ? PolygonStats.tint(PolygonStats.IMPOSTOR) : 0xFFFFFF;
         int first = batches;
         PoseStack.Pose outlinePose = null;
         for (int i = 0; i < count; i++) {
@@ -162,7 +169,7 @@ public final class ImpostorRenderer {
                 OUTLINED.add(new Outlined(outlinePose, board));
             }
             //?}
-            PolygonStats.impostor();
+            PolygonStats.impostor(board.full);
         }
         for (int i = first; i < batches; i++) {
             PageBatch batch = BATCHES.get(i);
@@ -208,6 +215,9 @@ public final class ImpostorRenderer {
         up[1] = (float) (uy / u);
         up[2] = (float) (uz / u);
     }
+
+    /** The colour every picture is multiplied by this frame, RGB: white but for LOD Colours. */
+    private static int tint = 0xFFFFFF;
 
     /** The corners of the quad being written, x, y, z each: one quad at a time, on the render thread. */
     private static final float[] CORNERS = new float[12];
@@ -259,7 +269,7 @@ public final class ImpostorRenderer {
         // figure stands (sky, torches, night) is applied on top. Shader packs never see this
         // normal: Iris takes the quad's own, which ImpostorLean turns up.
         out.addVertex(at, x, y, z)
-                .setColor(255, 255, 255, 255)
+                .setColor((tint >> 16) & 0xFF, (tint >> 8) & 0xFF, tint & 0xFF, 255)
                 .setUv(u, v)
                 .setOverlay(OverlayTexture.NO_OVERLAY)
                 .setLight(light)

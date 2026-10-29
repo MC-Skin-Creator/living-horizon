@@ -12,6 +12,7 @@ import fr.clixmods.livinghorizon.compat.FarFog;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
+import fr.clixmods.livinghorizon.render.lod.LodRenderer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -130,6 +131,7 @@ abstract class LevelRendererMixin {
         Sink sink = new Sink(collector);
         AmbientRenderer.submit(pose, frame.cameraRenderState.pos, sink);
         ImpostorRenderer.submit(pose, sink);
+        LodRenderer.submit(pose, sink);
     }
 
     /** Moves a distant player's state closer along the line of sight, and scales it to match. */
@@ -164,6 +166,7 @@ import fr.clixmods.livinghorizon.compat.FarFog;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
+import fr.clixmods.livinghorizon.render.lod.LodRenderer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -226,6 +229,7 @@ abstract class LevelRendererMixin {
         Sink sink = new Sink(buffers);
         AmbientRenderer.submit(pose, camera.position(), sink);
         ImpostorRenderer.submit(pose, sink);
+        LodRenderer.submit(pose, sink);
         buffers.endBatch();
         FarDepth.after();
         FarFog.end();
@@ -239,6 +243,7 @@ import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
+import fr.clixmods.livinghorizon.render.lod.LodRenderer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -304,6 +309,7 @@ abstract class LevelRendererMixin {
         Sink sink = new Sink(buffers);
         AmbientRenderer.submit(pose, camera.position(), sink);
         ImpostorRenderer.submit(pose, sink);
+        LodRenderer.submit(pose, sink);
         buffers.endBatch();
         FarDepth.after();
     }

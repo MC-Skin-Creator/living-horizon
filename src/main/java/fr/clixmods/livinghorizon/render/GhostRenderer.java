@@ -17,6 +17,7 @@ import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorThreshold;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorViews;
 import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
+import fr.clixmods.livinghorizon.render.lod.LodRenderer;
 import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobFlight;
@@ -235,6 +236,7 @@ public final class GhostRenderer {
         /*RENDERERS.clear();*/
         ImpostorRenderer.beginFrame();
         PolygonStats.beginFrame();
+        LodRenderer.beginFrame();
         forgetShown();
         neededFar = farthest > 0 ? (float) Math.min(MAX_FAR, farthest * 1.1 + 64) : 0f;
         farthest = 0;
@@ -256,8 +258,16 @@ public final class GhostRenderer {
     }
 
     //? if >=1.21.9 {
-    /** The state the game made of an entity it draws itself: its outline, when asked for. */
+    /** The state the game made of an entity it draws itself: its level of detail, and its outline when asked for. */
     public static void extracted(Entity entity, EntityRenderState state) {
+        if (!(entity instanceof LocalPlayer)) {
+            // The view of the frame before (view() runs once the game's entities are extracted): a step off at most.
+            double dx = state.x - eyeX, dy = state.y - eyeY, dz = state.z - eyeZ;
+            double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            double pixels = distance < 1e-3 ? Double.MAX_VALUE
+                    : Apparent.extent(state.boundingBoxHeight, state.boundingBoxWidth) / distance * pixelsPerRadian;
+            LodRenderer.chooseGame(state, entity, distance, pixels);
+        }
         if (!(entity instanceof LivingEntity) || entity instanceof LocalPlayer) return;
         int outline = DebugMarks.outline(FarConfig.get(), Mark.GAME);
         if (outline == 0) return;
@@ -283,12 +293,14 @@ public final class GhostRenderer {
         Puppets.cape(entity);
         try {
             //? if >=1.21.9 {
-            return dispatcher.extractEntity(entity, partialTick);
+            EntityRenderState state = dispatcher.extractEntity(entity, partialTick);
             //?} elif >=1.21.2 {
-            /*return state(renderer(dispatcher, entity), entity, partialTick);
+            /*EntityRenderState state = state(renderer(dispatcher, entity), entity, partialTick);
             *///?} else {
-            /*return EntityRenderState.of(entity, partialTick);
+            /*EntityRenderState state = EntityRenderState.of(entity, partialTick);
             *///?}
+            if (state != null) PolygonStats.owner(state, entity);
+            return state;
         } catch (RuntimeException | LinkageError error) {
             // Another mod's renderer, called for an entity in no world: never worth a crash.
             leaveOut(entity.getType(), error);
@@ -402,7 +414,13 @@ public final class GhostRenderer {
      * Draws this frame's figures into the world's buffers, right after the game's own
      * entities: moved and scaled as {@link #transform} says, in the light worked out for them.
      ^/
-    public static void draw(PoseStack pose, MultiBufferSource buffers, Vec3 camera) {
+    public static void draw(PoseStack pose, MultiBufferSource world, Vec3 camera) {
+        // Each layer asks for its buffer just before its model is drawn: the levels of detail
+        // learn what it is textured with from that.
+        MultiBufferSource buffers = type -> {
+            LodRenderer.layer(type, false);
+            return world.getBuffer(type);
+        };
         for (EntityRenderState state : CLASSIC) {
             double x = state.x - camera.x, y = state.y - camera.y, z = state.z - camera.z;
             int light = LIGHTS.getOrDefault(state, LightTexture.pack(0, 15));
@@ -774,6 +792,11 @@ public final class GhostRenderer {
     private static void place(List<EntityRenderState> frame, EntityRenderState state, Transform transform, boolean puppet,
                               Mark kind, FarConfig config, @Nullable LocalPlayer self, @Nullable ClientLevel level) {
         TRANSFORMS.put(state, transform);
+        double distance = Math.sqrt(transform.anchorX * transform.anchorX + transform.anchorY * transform.anchorY
+                + transform.anchorZ * transform.anchorZ);
+        double pixels = distance < 1e-3 ? Double.MAX_VALUE
+                : Apparent.extent(state.boundingBoxHeight, state.boundingBoxWidth) / distance * pixelsPerRadian;
+        LodRenderer.choose(state, distance, pixels);
         // A boat hides the water inside its hull with a patch that the water then fails to
         // draw over. Drawn bigger or nearer than it is, that patch hides the water around
         // it; under a shader pack (Photon), drawn with our figures, it turns the game's
@@ -1030,8 +1053,10 @@ public final class GhostRenderer {
         int light = light(minecraft.level, x, y, z);
         int outline = minecraft.player == null ? 0 : DebugMarks.impostorOutline(config);
         if (outline != 0 && ImpostorRenderer.OUTLINES) glowing = true;
+        // What the picture saves: the model of the figure, and of its mount when it rides.
+        int full = PolygonStats.fullQuads(shown) + (ridden ? PolygonStats.fullQuads(at) : 0);
         ImpostorRenderer.add(ax * pull, ay * pull, az * pull, sheet.worldSize() * pull * boost, sheet, view, light,
-                outline, facing);
+                outline, facing, full);
         if (distance > drawnRange) {
             double extent = sheet.worldSize() * boost;
             // Round its feet, or round its middle for a picture seen from a height.
