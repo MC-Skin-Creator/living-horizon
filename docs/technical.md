@@ -459,7 +459,10 @@ Three ways in, all of them the same draws:
    the one in a world played alone included.
 2. **This client, by itself** (`track/Foresight`): within *Mob Render Distance* plus 64 blocks
    (4096 blocks without a limit), so that the far terrain of Voxy or Distant Horizons has its
-   animals as it is drawn; and through a spyglass, along where it looks, up to 256 chunks, where
+   animals as it is drawn: 1024 chunks at a time, as soon as the last are done (every five ticks
+   at most), those within 75° of where the player looks first, then the rest, each the nearest
+   first (`Foresight.around`), so that a wider *Mob Render Distance* fills in where they look
+   within seconds; and through a spyglass, along where it looks, up to 256 chunks, where
    they are then drawn whatever *Mob Render Distance* says and chosen before any other. The
    spyglass asks every four ticks for 256 chunks, the line of sight first and then wider, half a
    degree at a time (`Foresight.coneChunks`, only the chunks in view), on threads of its own that
@@ -472,7 +475,8 @@ Three ways in, all of them the same draws:
 Who works out what this client asks for:
 
 - **A world played here or hosted on LAN**: the server in this game (`SeedMobs.foresee`), one
-  request at a time on a thread of its own, the draws on every core but one.
+  request at a time on a thread of its own, the draws on half the cores (the game and its server
+  keep the others).
 - **Another server with the mod whose owner shares the seed** (`shareSeed`, off by default): the
   server sends it (a `SEED` message, every five seconds) with, for each dimension whose generator
   is the game's own, its noise settings and biome preset (`SeedDraws.vanillaKeys`: the overworld,

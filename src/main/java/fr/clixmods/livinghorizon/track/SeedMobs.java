@@ -88,9 +88,9 @@ public final class SeedMobs {
     private static final ExecutorService REQUESTS = thread("Living Horizon foresight");
     /** The urgent ones (where the spyglass looks), never behind a scan: on threads of their own. */
     private static final ExecutorService URGENT = thread("Living Horizon foresight (urgent)");
-    /** The draws of a request, on every core but one. */
+    /** The draws of a request, on half the cores: the game and its server keep the others. */
     private static final ForkJoinPool DRAWS = pool("Living Horizon foresight draws",
-            Math.max(1, Runtime.getRuntime().availableProcessors() - 1), Thread.MIN_PRIORITY);
+            Math.max(1, Runtime.getRuntime().availableProcessors() / 2), Thread.MIN_PRIORITY);
     /** Those of an urgent one, on half the cores, ahead of the others. */
     private static final ForkJoinPool URGENT_DRAWS = pool("Living Horizon foresight draws (urgent)",
             Math.max(1, Runtime.getRuntime().availableProcessors() / 2), Thread.NORM_PRIORITY);
@@ -499,7 +499,7 @@ public final class SeedMobs {
     }
 
     /**
-     * The first animals of many chunks, on every core but one, each thread with its own biomes;
+     * The first animals of many chunks, on half the cores, each thread with its own biomes;
      * the map holds the chunks with animals only. Also for a client's own generator, built from the
      * seed a server shares.
      */

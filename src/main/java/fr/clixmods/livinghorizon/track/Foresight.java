@@ -66,9 +66,11 @@ public final class Foresight {
     /** The top of the settings slider and the command. */
     public static final int MAX_RADIUS = 1024;
     /** Ticks between two automatic requests, two through the spyglass, two saves. */
-    private static final int AUTO_EVERY = 20, SCOPE_EVERY = 4, SAVE_EVERY = 6000;
+    private static final int AUTO_EVERY = 5, SCOPE_EVERY = 4, SAVE_EVERY = 6000;
     /** Chunks in an automatic request; through the spyglass; in one part of a scan. */
-    private static final int BATCH = 2048, SCOPE_BATCH = 256, SCAN_BATCH = 65536;
+    private static final int BATCH = 1024, SCOPE_BATCH = 256, SCAN_BATCH = 65536;
+    /** What the player sees by itself, asked for first: this far either side of where they look. */
+    private static final double VIEW_COS = Math.cos(Math.toRadians(75));
     /** How far the spyglass looks, in chunks, and how wide: about what it shows. */
     private static final int SCOPE_REACH = 256;
     private static final double SCOPE_COS = Math.cos(Math.toRadians(8));
@@ -186,7 +188,7 @@ public final class Foresight {
             if (chunks.length > 0 && (seer = seer(minecraft, level, pack)) != null) scoping = ask(minecraft, seer, chunks, true);
         }
         if (clock % AUTO_EVERY == 0 && (asking == null || asking.isDone())) {
-            long[] chunks = around(self.getX(), self.getZ(), reach(config) / 16 + 1, BATCH);
+            long[] chunks = around(self.getX(), self.getZ(), look.x, look.z, reach(config) / 16 + 1, BATCH);
             if (chunks.length > 0 && (seer != null || (seer = seer(minecraft, level, pack)) != null)) {
                 asking = ask(minecraft, seer, chunks, false);
             }
@@ -358,10 +360,25 @@ public final class Foresight {
         return chunks.toLongArray();
     }
 
-    /** Chunks within {@code reach} chunks of a point not asked for yet, the nearest first, {@code most} at most. */
-    private long[] around(double x, double z, int reach, int most) {
-        return rings(Mth.floor(x) >> 4, Mth.floor(z) >> 4, reach, most,
-                (cx, cz) -> !worked.contains(SeedDraws.chunk(cx, cz)));
+    /**
+     * Chunks within {@code reach} chunks of a point not asked for yet, {@code most} at most: those
+     * the player sees first (where they look, and right round them), then the others, each the
+     * nearest first. A wider <i>Mob Render Distance</i> fills in where they look before behind them.
+     */
+    private long[] around(double x, double z, double lookX, double lookZ, int reach, int most) {
+        int cx = Mth.floor(x) >> 4, cz = Mth.floor(z) >> 4;
+        double flat = Math.sqrt(lookX * lookX + lookZ * lookZ);
+        Filter seen = (a, b) -> {
+            double dx = (a << 4) + 8 - x, dz = (b << 4) + 8 - z, length = Math.sqrt(dx * dx + dz * dz);
+            return length < 64 || flat < 1e-3 || (dx * lookX + dz * lookZ) / (length * flat) >= VIEW_COS;
+        };
+        long[] first = rings(cx, cz, reach, most, (a, b) -> !worked.contains(SeedDraws.chunk(a, b)) && seen.keep(a, b));
+        if (first.length >= most) return first;
+        long[] then = rings(cx, cz, reach, most - first.length,
+                (a, b) -> !worked.contains(SeedDraws.chunk(a, b)) && !seen.keep(a, b));
+        long[] both = java.util.Arrays.copyOf(first, first.length + then.length);
+        System.arraycopy(then, 0, both, first.length, then.length);
+        return both;
     }
 
     /**

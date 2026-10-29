@@ -134,6 +134,45 @@ public final class SeedMobsScenario implements Scenario {
             if (auto == 0) throw new AssertionError("the client foresaw nothing by itself");
             Scene.log("seedmobs foreseen by the client itself: " + auto);
 
+            // Mob Render Distance raised: where the player looks fills in within seconds, far out.
+            Scene.configure(context, config -> {
+                config.mobMaxDistance = 2000;
+                config.maxDistantMobs = fr.clixmods.livinghorizon.FarConfig.UNLIMITED_MOBS;
+            });
+            for (int second = 1; second <= 5; second++) {
+                context.waitTicks(20);
+                int at = second;
+                Scene.log("seedmobs after " + at + " s: " + context.computeOnClient(minecraft -> {
+                    var memory = FarPlayerTracker.get().mobs();
+                    var self = minecraft.player;
+                    long remembered = memory.remembered(minecraft.level.dimension().identifier().toString()).stream()
+                            .filter(mob -> SeedDraws.foreseen(mob.id()) && Math.hypot(mob.x() - self.getX(), mob.z() - self.getZ()) > 640).count();
+                    long shown = memory.shown().stream()
+                            .filter(mob -> SeedDraws.foreseen(mob.id()) && Math.hypot(mob.x() - self.getX(), mob.z() - self.getZ()) > 640).count();
+                    return "index " + memory.foresight().size() + ", past 640 blocks remembered " + remembered + ", shown " + shown
+                            + " of " + memory.shown().size();
+                }));
+            }
+            int[] filled = context.computeOnClient(minecraft -> {
+                var self = minecraft.player;
+                var sight = self.getViewVector(1f);
+                int ahead = 0, behind = 0;
+                for (var mob : FarPlayerTracker.get().mobs().shown()) {
+                    double dx = mob.x() - self.getX(), dz = mob.z() - self.getZ(), length = Math.hypot(dx, dz);
+                    if (!SeedDraws.foreseen(mob.id()) || length < 640) continue;
+                    if ((dx * sight.x + dz * sight.z) / (length * Math.hypot(sight.x, sight.z)) > 0.5) ahead++;
+                    else behind++;
+                }
+                return new int[]{ahead, behind};
+            });
+            if (filled[0] == 0) throw new AssertionError("nothing foreseen past 640 blocks where the player looks, 5 s after");
+            Scene.log("seedmobs Mob Render Distance 2000: past 640 blocks, " + filled[0] + " ahead and " + filled[1] + " elsewhere after 5 s");
+            Scene.configure(context, config -> {
+                config.mobMaxDistance = new fr.clixmods.livinghorizon.FarConfig().mobMaxDistance;
+                config.maxDistantMobs = new fr.clixmods.livinghorizon.FarConfig().maxDistantMobs;
+            });
+            int beforeScope = context.computeOnClient(minecraft -> FarPlayerTracker.get().mobs().foresight().size());
+
             // The game's generator built again from the seed, as a client does when a server shares it: the same animals.
             context.runOnClient(minecraft -> {
                 ServerLevel level = minecraft.getSingleplayerServer().getLevel(Level.OVERWORLD);
@@ -186,7 +225,7 @@ public final class SeedMobsScenario implements Scenario {
             int looked = context.computeOnClient(minecraft -> FarPlayerTracker.get().mobs().foresight().size());
             context.getInput().releaseKey(options -> options.keyUse);
             if (!scoping) throw new AssertionError("the player does not look through the spyglass");
-            if (looked <= auto) throw new AssertionError("nothing more foreseen through the spyglass: " + looked);
+            if (looked <= beforeScope) throw new AssertionError("nothing more foreseen through the spyglass: " + looked);
             if (soon < 0) throw new AssertionError("nothing drawn where the spyglass looks within 100 ticks");
             Scene.log("seedmobs through the spyglass: " + looked + ", the first drawn where it looks after " + soon + " ticks");
 

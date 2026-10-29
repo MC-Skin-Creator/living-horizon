@@ -720,7 +720,7 @@ public final class MobMemory {
             chooseSoon = true;
         }
         // New ones found, or the spyglass moving: those where it looks are taken at once.
-        boolean foreseeNow = foresight.takeFresh() || scoping && clock % 5 == 0;
+        boolean foreseeNow = clock % 5 == 0 && (foresight.takeFresh() || scoping);
         long following = Profile.begin(Profile.Section.TICK_MOBS_FOLLOW);
         try {
             followServer(level, dimension);
