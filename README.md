@@ -152,7 +152,9 @@ page, one file per game version and loader:
 |---|---|
 | [Voxy](https://modrinth.com/mod/voxy) | Mobs and players are visible on its terrain. |
 | [Distant Horizons](https://modrinth.com/mod/distanthorizons) | From 2.3 on. Mobs and players are visible on its terrain. |
-| Iris and shader packs | Photon and Complementary checked. |
+| [Iris](https://modrinth.com/mod/iris) | Shader packs work, such as the two below. |
+| [Photon](https://modrinth.com/shader/photon-shader) | Shader pack. Checked: it works. |
+| [Complementary Unbound](https://modrinth.com/shader/complementary-unbound) | Shader pack. Checked: it works. |
 | [Sodium](https://modrinth.com/mod/sodium) | From 0.8, the settings are also in Sodium's *Video Settings*. |
 | GeckoLib | Works. From 1.21.2 to 1.21.8 its mobs are not drawn far away yet ([#67](https://github.com/MC-Skin-Creator/living-horizon/issues/67)). |
 | [Immersive Aircraft](https://modrinth.com/mod/immersive-aircraft) | Its aircraft stay visible far away, where you left them. |
