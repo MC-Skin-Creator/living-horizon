@@ -757,7 +757,8 @@ version and is unknown to Iris.
 **Baked views** (`LodBake`): each group has six views, one per side of its box, its cubes seen
 from outside, straight on, at 3 texels per model pixel (256 at most a side), drawn on the CPU from
 the model's texture so that it can run away from the render thread. Empty texels take their
-neighbours' colour and stay opaque, so that a surface reaching past the cubes shows no hole.
+neighbours' colour and stay opaque, so that a surface reaching past the cubes shows no hole; a
+texel only a face the texture leaves clear covers (a helmet's eye holes) stays clear.
 Only a layer drawn over a model's first one (a villager's clothes, on the same triangles) keeps
 its texture's holes, or it would hide the layer under it. Each triangle takes the view its normal
 faces most; its corners' texture coordinates are their projection onto it, kept on the view and
@@ -765,8 +766,11 @@ a quarter texel inside, so that nothing next to it on the page bleeds in. Triang
 both sides: a decimated surface may fold.
 
 **In game** (`LodRenderer`, *Levels of Detail* in the settings, a section and a Sodium page of
-its own, [below](#levels-of-detail-1)). Only the mod's own mobs, never a player yet, never what the
-game draws itself. With the defaults:
+its own, [below](#levels-of-detail-1)). The mod's own figures, mobs and players (who logged off or
+far away), and from 1.21.9, with *Nearby Entities* (`lodNearby`), the entities the game draws
+itself inside the render distance (`GhostRenderer.extracted` hands their states to
+`LodRenderer.chooseGame`; the camera position is the frame before's, a step off at most). Those
+stay animated at every level. With the defaults:
 
 | Level | From | What is drawn |
 |---|---|---|
@@ -787,9 +791,8 @@ Changing `lodKeep` makes every level again.
   has that level ready; until then it keeps its full model. What a figure was drawn with is kept on its
   entity (`LodHolder`, a slot `EntityMixin` adds), in arrays of a model or three: with Sodium a
   full model costs little to draw, and the levels' own work each frame must cost less than it.
-  The `lodcost` game test measures both with Sodium. A layer whose texture cannot be
-  told (an atlas sprite, a glint) or is half see-through (a slime's outside) keeps its figure
-  whole for good.
+  The `lodcost` game test measures both with Sodium. A layer of a kind not known (an
+  unusual render type) keeps its figure whole for good.
 - *What a model is made of.* A model is read when the game draws it (`ModelPartMixin`, the
   first `render` of a figure's model is its root), with the parts the game draws then. Its
   levels are made for the textures its layers were drawn with the frame before: a cube none of
@@ -799,9 +802,20 @@ Changing `lodKeep` makes every level again.
   are baked there too, once per layer texture, then put on shared pages of 1024 texels a side
   (eyes on pages of their own), a few a frame, each written into its spot on the page alone.
 - *Layers.* The texture of a layer is read from its render type's description (the
-  `textures/...png` it names): from the feature renderer's call from 1.21.9, from the buffer its
-  renderer asks for before (`GhostRenderer.draw` wraps them). Render types other than the
-  entity cut-out, solid, translucent and eyes kinds keep the figure whole.
+  `textures/...` or `skins/...` it names): from the feature renderer's call from 1.21.9, from the
+  buffer its renderer asks for before (`GhostRenderer.draw` wraps them). Each layer is drawn at a
+  simpler level by its kind (`LodRenderer.CUTOUT` to `SKIP`):
+  - cut-out, solid and eyes layers are baked, on pages of their kind;
+  - a translucent one whose texture is see-through (a slime's outside) is baked keeping its
+    transparency, on pages drawn translucent;
+  - an effect (a glint, a charged creeper's swirl, a breeze's wind) is drawn with its own render
+    type over the shape of its model's first layer, its texture coordinates put back to that
+    model's 0 to 1 so that its pattern keeps its size; a model with only an effect on it (the
+    swirl's) is drawn as the game draws it;
+  - a layer drawn from a sheet of textures (an armour trim) is left out.
+  A player's skin is in no resource pack: it is copied from the game's memory on the render thread
+  (`LodRenderer.snapshot`; a `DynamicTexture` from 1.21.4, read back from the graphics card
+  before) for the worker to bake.
 - *Drawing.* While a figure at level 1 or 2 is drawn, each part's `compile` draws none of its
   cubes and queues the groups anchored to it with its pose, light, overlay and colour. At level
   3 the figure stands still, as its impostor does: its root's `render` queues every group at
@@ -1221,6 +1235,7 @@ cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 |---|---|---|---|---|
 | `mobLods` | Detail Levels | `true` | | Distant mobs drawn with simpler models the farther they are, before the impostor (see [Levels of detail](#levels-of-detail)) |
 | `lodLevels` | Simpler Models | `3` | 1 to 3 | How many simpler models a mob goes through before its impostor |
+| `lodNearby` | Nearby Entities | on | | The game's own entities, inside the render distance, take simpler models too (from 1.21.9) |
 | `lodDistance` | Detail Distance | `18` blocks | OFF, 1 to 256 | Where the first simpler model begins; OFF leaves *Detail Size* alone |
 | `lodSpacing` | Detail Spacing | `200` percent | 125 to 400 | Each next simpler model begins this much farther than the one before |
 | `lodPixels` | Detail Size | `0` pixels | 0 to 256 | A mob shorter than this on screen takes a simpler model even closer (`0`: the distance alone) |

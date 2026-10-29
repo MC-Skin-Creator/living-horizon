@@ -248,6 +248,8 @@
   "livinghorizon.options.lodSection": "Levels of Detail",
   "livinghorizon.options.lodLevels": "Simpler Models",
   "livinghorizon.options.lodLevels.tooltip": "How many simpler models a distant mob goes through, each simpler than the one before, before it turns into a flat picture.",
+  "livinghorizon.options.lodNearby": "Nearby Entities",
+  "livinghorizon.options.lodNearby.tooltip": "Also gives simpler models to the entities the game draws itself, inside the render distance, by the same distances and sizes. They keep moving.",
   "livinghorizon.options.lodDistance": "Detail Distance",
   "livinghorizon.options.lodDistance.tooltip": "From this distance a distant mob takes its first simpler model. OFF: Detail Size alone.",
   "livinghorizon.options.lodDistance.zero": "OFF",

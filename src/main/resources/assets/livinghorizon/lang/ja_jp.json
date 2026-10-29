@@ -248,6 +248,8 @@
   "livinghorizon.options.lodSection": "詳細レベル",
   "livinghorizon.options.lodLevels": "簡略モデル",
   "livinghorizon.options.lodLevels.tooltip": "遠くのMobが平面の画像になる前に通る簡略モデルの数。それぞれ前のものより単純です。",
+  "livinghorizon.options.lodNearby": "近くのエンティティ",
+  "livinghorizon.options.lodNearby.tooltip": "描画距離内でゲーム自身が描画するエンティティにも、同じ距離とサイズで簡略モデルを使います。動きはそのままです。",
   "livinghorizon.options.lodDistance": "詳細の距離",
   "livinghorizon.options.lodDistance.tooltip": "この距離から、遠くのMobは最初の簡略モデルになります。オフ：詳細のサイズのみ。",
   "livinghorizon.options.lodDistance.zero": "オフ",

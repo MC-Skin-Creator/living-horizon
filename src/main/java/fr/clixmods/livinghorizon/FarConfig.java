@@ -221,6 +221,8 @@ public final class FarConfig {
      * boxes before the impostor, which {@link #impostorDistance} still starts.
      */
     public boolean mobLods = true;
+    /** The game's own entities, inside the render distance, take simpler models too (from 1.21.9). */
+    public boolean lodNearby = true;
     /** Blocks from which a mob takes its first simpler model; 0: off, {@link #lodPixels} alone. */
     public int lodDistance = 18;
     /** Percent: each next simpler model begins this much farther than the one before (200: twice). */

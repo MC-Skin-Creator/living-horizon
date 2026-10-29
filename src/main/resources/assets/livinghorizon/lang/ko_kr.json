@@ -248,6 +248,8 @@
   "livinghorizon.options.lodSection": "세부 수준",
   "livinghorizon.options.lodLevels": "단순화 모델",
   "livinghorizon.options.lodLevels.tooltip": "멀리 있는 몹이 평평한 그림이 되기 전에 거치는 단순화 모델의 수. 각각 이전보다 더 단순합니다.",
+  "livinghorizon.options.lodNearby": "가까운 개체",
+  "livinghorizon.options.lodNearby.tooltip": "렌더링 거리 안에서 게임이 직접 그리는 개체에도 같은 거리와 크기로 단순화 모델을 사용합니다. 움직임은 그대로입니다.",
   "livinghorizon.options.lodDistance": "세부 거리",
   "livinghorizon.options.lodDistance.tooltip": "이 거리부터 멀리 있는 몹이 첫 번째 단순화 모델을 사용합니다. 꺼짐: 세부 크기만 사용합니다.",
   "livinghorizon.options.lodDistance.zero": "꺼짐",

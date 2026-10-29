@@ -248,6 +248,8 @@
   "livinghorizon.options.lodSection": "Рівні деталізації",
   "livinghorizon.options.lodLevels": "Спрощені моделі",
   "livinghorizon.options.lodLevels.tooltip": "Скільки спрощених моделей проходить далекий моб, кожна простіша за попередню, перш ніж стати пласким зображенням.",
+  "livinghorizon.options.lodNearby": "Близькі сутності",
+  "livinghorizon.options.lodNearby.tooltip": "Також дає спрощені моделі сутностям, які гра малює сама, у межах відстані промальовування, на тих самих відстанях і розмірах. Вони й далі рухаються.",
   "livinghorizon.options.lodDistance": "Відстань деталізації",
   "livinghorizon.options.lodDistance.tooltip": "З цієї відстані далекий моб отримує першу спрощену модель. ВИМК.: лише Розмір деталізації.",
   "livinghorizon.options.lodDistance.zero": "ВИМК.",

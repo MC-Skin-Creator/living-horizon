@@ -248,6 +248,8 @@
   "livinghorizon.options.lodSection": "Ayrıntı Seviyeleri",
   "livinghorizon.options.lodLevels": "Basit Modeller",
   "livinghorizon.options.lodLevels.tooltip": "Uzaktaki bir canlının düz bir resme dönüşmeden önce geçtiği, her biri öncekinden basit olan model sayısı.",
+  "livinghorizon.options.lodNearby": "Yakın Varlıklar",
+  "livinghorizon.options.lodNearby.tooltip": "Oyunun kendi çizdiği varlıklara da, görüş mesafesi içinde, aynı mesafe ve boyutlarla basit modeller verir. Hareket etmeye devam ederler.",
   "livinghorizon.options.lodDistance": "Ayrıntı Mesafesi",
   "livinghorizon.options.lodDistance.tooltip": "Bu mesafeden itibaren uzaktaki bir canlı ilk basit modelini alır. KAPALI: yalnızca Ayrıntı Boyutu.",
   "livinghorizon.options.lodDistance.zero": "KAPALI",

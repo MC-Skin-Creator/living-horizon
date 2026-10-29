@@ -248,6 +248,8 @@
   "livinghorizon.options.lodSection": "Уровни детализации",
   "livinghorizon.options.lodLevels": "Упрощённые модели",
   "livinghorizon.options.lodLevels.tooltip": "Сколько упрощённых моделей проходит далёкий моб, каждая проще предыдущей, прежде чем стать плоской картинкой.",
+  "livinghorizon.options.lodNearby": "Ближние сущности",
+  "livinghorizon.options.lodNearby.tooltip": "Также даёт упрощённые модели сущностям, которые игра рисует сама, в пределах дальности прорисовки, на тех же расстояниях и размерах. Они продолжают двигаться.",
   "livinghorizon.options.lodDistance": "Дистанция детализации",
   "livinghorizon.options.lodDistance.tooltip": "С этого расстояния далёкий моб получает первую упрощённую модель. Выкл: только Размер детализации.",
   "livinghorizon.options.lodDistance.zero": "Выкл",

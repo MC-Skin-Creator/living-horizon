@@ -31,9 +31,9 @@ import net.minecraft.client.renderer.rendertype.RenderType;
         PolygonStats.enter(submit.state());
         // An atlas sprite's texture coordinates (a uv mapping from 26.3) are not the texture's own.
         //? if >=26.3 {
-        /^if (PolygonStats.counting()) LodRenderer.layer(submit.renderType(), submit.uvMapping() != null);
+        /^if (LodRenderer.active()) LodRenderer.layer(submit.renderType(), submit.uvMapping() != null);
         ^///?} else
-        if (PolygonStats.counting()) LodRenderer.layer(submit.renderType(), submit.sprite() != null);
+        if (LodRenderer.active()) LodRenderer.layer(submit.renderType(), submit.sprite() != null);
     }
 
     @Inject(method = "prepareModel", at = @At("TAIL"))
@@ -57,7 +57,7 @@ abstract class ModelFeatureRendererMixin {
     private void livinghorizon$enter(SubmitNodeStorage.ModelSubmit<?> submit, RenderType type, VertexConsumer consumer,
                                      OutlineBufferSource outline, MultiBufferSource.BufferSource buffers, CallbackInfo ci) {
         PolygonStats.enter(submit.state());
-        if (PolygonStats.counting()) LodRenderer.layer(type, submit.sprite() != null);
+        if (LodRenderer.active()) LodRenderer.layer(type, submit.sprite() != null);
     }
 
     @Inject(method = "renderModel", at = @At("TAIL"))

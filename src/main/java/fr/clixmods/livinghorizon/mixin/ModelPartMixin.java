@@ -45,7 +45,7 @@ abstract class ModelPartMixin implements PartTree {
             at = @At("HEAD"), cancellable = true)
     private void livinghorizon$enter(PoseStack poses, VertexConsumer out, int light, int overlay, int color,
                                      CallbackInfo ci) {
-        if (PolygonStats.counting() && LodRenderer.enterRoot((ModelPart) (Object) this, poses.last(), light, overlay, color)) {
+        if (LodRenderer.active() && LodRenderer.enterRoot((ModelPart) (Object) this, poses.last(), light, overlay, color)) {
             ci.cancel();
         }
     }
@@ -55,7 +55,7 @@ abstract class ModelPartMixin implements PartTree {
     private void livinghorizon$enter(PoseStack poses, VertexConsumer out, int light, int overlay, float red, float green,
                                      float blue, float alpha, CallbackInfo ci) {
         int color = (int) (alpha * 255) << 24 | (int) (red * 255) << 16 | (int) (green * 255) << 8 | (int) (blue * 255);
-        if (PolygonStats.counting() && LodRenderer.enterRoot((ModelPart) (Object) this, poses.last(), light, overlay, color)) {
+        if (LodRenderer.active() && LodRenderer.enterRoot((ModelPart) (Object) this, poses.last(), light, overlay, color)) {
             ci.cancel();
         }
     }
@@ -67,14 +67,14 @@ abstract class ModelPartMixin implements PartTree {
     //?} else
     /*@Inject(method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;IIFFFF)V", at = @At("RETURN"))*/
     private void livinghorizon$leave(CallbackInfo ci) {
-        if (PolygonStats.counting()) LodRenderer.leavePart();
+        if (LodRenderer.active()) LodRenderer.leavePart();
     }
 
     //? if >=1.21 {
     @Inject(method = "compile", at = @At("HEAD"), cancellable = true)
     private void livinghorizon$compile(PoseStack.Pose pose, VertexConsumer out, int light, int overlay, int color,
                                        CallbackInfo ci) {
-        if (!PolygonStats.counting()) return;
+        if (!PolygonStats.counting() && !LodRenderer.active()) return;
         LodSet.PartDraw draw = level(ci);
         if (draw == null) return;
         LodRenderer.queue(draw, pose, light, overlay, LodRenderer.tint(color));
@@ -83,7 +83,7 @@ abstract class ModelPartMixin implements PartTree {
     /*@Inject(method = "compile", at = @At("HEAD"), cancellable = true)
     private void livinghorizon$compile(PoseStack.Pose pose, VertexConsumer out, int light, int overlay, float red,
                                        float green, float blue, float alpha, CallbackInfo ci) {
-        if (!PolygonStats.counting()) return;
+        if (!PolygonStats.counting() && !LodRenderer.active()) return;
         LodSet.PartDraw draw = level(ci);
         if (draw == null) return;
         LodRenderer.queue(draw, pose, light, overlay, LodRenderer.tint((int) (alpha * 255) << 24
@@ -103,10 +103,12 @@ abstract class ModelPartMixin implements PartTree {
             for (ModelPart.Cube cube : cubes) polygons += cube.polygons.length;
             livinghorizon$polygons = polygons;
         }
-        PolygonStats.full(polygons);
+        // Counted for the mod's figures only; the game's own entities only take their levels.
+        boolean counting = PolygonStats.counting();
+        if (counting) PolygonStats.full(polygons);
         LodSet.PartDraw draw = LodRenderer.part((ModelPart) (Object) this);
         if (draw == null) {
-            PolygonStats.model(polygons);
+            if (counting) PolygonStats.model(polygons);
             return null;
         }
         // Its simplified groups stand for every cube: none of them is drawn.

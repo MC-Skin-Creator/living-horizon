@@ -248,6 +248,8 @@
   "livinghorizon.options.lodSection": "Poziomy szczegółów",
   "livinghorizon.options.lodLevels": "Uproszczone modele",
   "livinghorizon.options.lodLevels.tooltip": "Ile uproszczonych modeli przechodzi odległe stworzenie, każdy prostszy od poprzedniego, zanim stanie się płaskim obrazem.",
+  "livinghorizon.options.lodNearby": "Pobliskie byty",
+  "livinghorizon.options.lodNearby.tooltip": "Daje uproszczone modele także bytom, które gra rysuje sama, w zasięgu renderowania, przy tych samych odległościach i rozmiarach. Nadal się poruszają.",
   "livinghorizon.options.lodDistance": "Odległość szczegółów",
   "livinghorizon.options.lodDistance.tooltip": "Od tej odległości odległe stworzenie przyjmuje pierwszy uproszczony model. Wył.: tylko Rozmiar szczegółów.",
   "livinghorizon.options.lodDistance.zero": "Wył.",

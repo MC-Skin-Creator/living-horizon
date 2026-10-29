@@ -258,8 +258,16 @@ public final class GhostRenderer {
     }
 
     //? if >=1.21.9 {
-    /** The state the game made of an entity it draws itself: its outline, when asked for. */
+    /** The state the game made of an entity it draws itself: its level of detail, and its outline when asked for. */
     public static void extracted(Entity entity, EntityRenderState state) {
+        if (!(entity instanceof LocalPlayer)) {
+            // The view of the frame before (view() runs once the game's entities are extracted): a step off at most.
+            double dx = state.x - eyeX, dy = state.y - eyeY, dz = state.z - eyeZ;
+            double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            double pixels = distance < 1e-3 ? Double.MAX_VALUE
+                    : Apparent.extent(state.boundingBoxHeight, state.boundingBoxWidth) / distance * pixelsPerRadian;
+            LodRenderer.chooseGame(state, entity, distance, pixels);
+        }
         if (!(entity instanceof LivingEntity) || entity instanceof LocalPlayer) return;
         int outline = DebugMarks.outline(FarConfig.get(), Mark.GAME);
         if (outline == 0) return;

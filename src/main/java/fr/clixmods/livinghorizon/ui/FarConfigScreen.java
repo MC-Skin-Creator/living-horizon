@@ -87,6 +87,9 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(
                 bool("mobLods", c.mobLods, v -> c.mobLods = v),
                 integer("lodLevels", 1, FarConfig.MAX_LOD_LEVELS, c.lodLevels, v -> c.lodLevels = v, false));
+        // The game draws its own entities through the feature renderers from 1.21.9 only.
+        //? if >=1.21.9
+        list.addSmall(bool("lodNearby", c.lodNearby, v -> c.lodNearby = v), null);
         list.addBig(blocks("lodDistance", FarConfig.MIN_LOD_DISTANCE, FarConfig.MAX_LOD_DISTANCE, c.lodDistance,
                 v -> c.lodDistance = v));
         list.addBig(unit("lodSpacing", "percent", FarConfig.MIN_LOD_SPACING, FarConfig.MAX_LOD_SPACING, c.lodSpacing,

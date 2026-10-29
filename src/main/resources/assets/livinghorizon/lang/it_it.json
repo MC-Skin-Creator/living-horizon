@@ -248,6 +248,8 @@
   "livinghorizon.options.lodSection": "Livelli di dettaglio",
   "livinghorizon.options.lodLevels": "Modelli semplificati",
   "livinghorizon.options.lodLevels.tooltip": "Quanti modelli semplificati attraversa un mob lontano, ognuno più semplice del precedente, prima di diventare un'immagine piatta.",
+  "livinghorizon.options.lodNearby": "Entità vicine",
+  "livinghorizon.options.lodNearby.tooltip": "Dà modelli semplificati anche alle entità che il gioco disegna da sé, entro la distanza di rendering, con le stesse distanze e dimensioni. Continuano a muoversi.",
   "livinghorizon.options.lodDistance": "Distanza di dettaglio",
   "livinghorizon.options.lodDistance.tooltip": "Da questa distanza un mob lontano prende il suo primo modello semplificato. No: solo la Dimensione di dettaglio.",
   "livinghorizon.options.lodDistance.zero": "No",

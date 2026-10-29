@@ -91,6 +91,9 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 v -> FarConfig.get().lodLevels = v, () -> FarConfig.get().lodLevels,
                                 plain("lodLevels", 1, false))
                                 .setEnabledProvider(on("mobLods"), id("mobLods")))
+                        .addOption(bool(b, "lodNearby", d.lodNearby, v -> FarConfig.get().lodNearby = v,
+                                () -> FarConfig.get().lodNearby)
+                                .setEnabledProvider(on("mobLods"), id("mobLods")))
                         .addOption(blocks(b, "lodDistance", FarConfig.MIN_LOD_DISTANCE, FarConfig.MAX_LOD_DISTANCE,
                                 d.lodDistance, v -> FarConfig.get().lodDistance = v, () -> FarConfig.get().lodDistance)
                                 .setEnabledProvider(on("mobLods"), id("mobLods")))

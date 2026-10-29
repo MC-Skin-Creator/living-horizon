@@ -16,7 +16,6 @@ import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Player;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
@@ -59,8 +58,14 @@ public final class LodRenderer {
     private static final int PAGE = 1024;
     /** The texels handed to the graphics card a frame at most: a few baked models. */
     private static final int UPLOAD_TEXELS = 512 * 512;
-    /** Share of a texture's visible texels that may be half transparent: more, and it is not cut out. */
-    private static final double TRANSLUCENT = 0.02;
+    /** Share of a texture's visible texels that may be half transparent: more, and it is see-through. */
+    private static final double SEE_THROUGH = 0.02;
+    /**
+     * How a layer is drawn at a simpler level: baked from its texture, cut out, glowing or
+     * see-through (the same kinds name the pages); its effect drawn over the model's first layer
+     * (a glint); or not at all (a layer from a sheet of textures, too small to see that far).
+     */
+    private static final int CUTOUT = 0, EYES = 1, TRANSLUCENT = 2, EFFECT = 3, SKIP = 4;
     private static final int WORKING = 0, PIXELS = 1, READY = 2, FAILED = -1;
     /** Floats per baked face: four corners of x, y, z (in blocks), u, v, then its normal. */
     private static final int FACE = 23;
@@ -108,12 +113,12 @@ public final class LodRenderer {
 
     /** The level each of this frame's figures is drawn at, and the one it would be at once ready. */
     private static final Map<Object, Integer> LEVELS = new IdentityHashMap<>(), WANTED = new IdentityHashMap<>();
-    /** The pages this frame's figures were chosen with: one batch each, each once ({@link Page#active}). */
-    private static final List<Page> ACTIVE = new ArrayList<>();
-    /** The pages given boxes this frame. */
-    private static final List<Page> DRAWING = new ArrayList<>();
-    /** The pages given boxes since the last {@link #flush}. */
-    private static final List<Page> PENDING = new ArrayList<>();
+    /** The batches this frame's figures were chosen with, each once ({@link Batch#active}). */
+    private static final List<Batch> ACTIVE = new ArrayList<>();
+    /** The batches given boxes this frame. */
+    private static final List<Batch> DRAWING = new ArrayList<>();
+    /** The batches given boxes since the last {@link #flush}. */
+    private static final List<Batch> PENDING = new ArrayList<>();
     private static int frame;
     private static boolean dirty;
     /** The share of polygons the levels made so far keep, {@code lodKeep}. */
@@ -128,10 +133,13 @@ public final class LodRenderer {
         frame++;
         LEVELS.clear();
         WANTED.clear();
+        GAME.clear();
+        lastGameFigures = gameFigures;
+        gameFigures = 0;
         ACTIVE.clear();
-        for (Page page : DRAWING) {
-            page.count = 0;
-            page.drawing = false;
+        for (Batch batch : DRAWING) {
+            batch.count = 0;
+            batch.drawing = false;
         }
         DRAWING.clear();
         PENDING.clear();
@@ -150,8 +158,33 @@ public final class LodRenderer {
      */
     public static void choose(Object state, double distance, double pixels) {
         Entity owner = PolygonStats.ownerOf(state);
+        if (owner != null) choose(state, owner, distance, pixels);
+    }
+
+    /**
+     * One of the game's own entities is in this frame, inside the render distance: it takes
+     * simpler models too with <i>Nearby Entities</i>, from 1.21.9, where the game draws it through
+     * the same feature renderers as the mod's figures.
+     */
+    public static void chooseGame(Object state, Entity entity, double distance, double pixels) {
         FarConfig config = FarConfig.get();
-        if (owner == null || owner instanceof Player || !config.mobLods) return;
+        if (!config.mobLods || !config.lodNearby) return;
+        GAME.put(state, entity);
+        choose(state, entity, distance, pixels);
+    }
+
+    /** The game's own entities chosen this frame, by their state: they stay animated at every level. */
+    private static final Map<Object, Entity> GAME = new IdentityHashMap<>();
+    private static int gameFigures, lastGameFigures;
+
+    /** The game's own entities drawn at a simpler level last frame. */
+    public static int gameFigures() {
+        return lastGameFigures;
+    }
+
+    private static void choose(Object state, Entity owner, double distance, double pixels) {
+        FarConfig config = FarConfig.get();
+        if (!config.mobLods) return;
         int wanted = forced >= 0 ? forced : levelFor(distance, pixels, config);
         if (wanted == 0) return;
         WANTED.put(state, wanted);
@@ -163,25 +196,38 @@ public final class LodRenderer {
         int count = rolled ? layers.lastCount : layers.nowCount;
         boolean failed = rolled ? layers.lastFailed : layers.failed;
         if (failed || count == 0) return;
-        Bake[] bakes = CHOSEN;
+        Batch[] batches = CHOSEN;
         int chosen = 0;
         for (int m = 0; m < count; m++) {
             Seen model = seen[m];
+            // A model with only an effect on it (a charged creeper's swirl) is drawn as the game draws it.
+            if (!model.baked()) continue;
             LodSet set = set(model.root, model);
             if (set == null || !set.ready(wanted)) return;
             for (int i = 0; i < model.layers.size(); i++) {
-                Bake bake = bake(set, model.layers.get(i));
-                if (bake.state != READY) return;
-                if (chosen == bakes.length) CHOSEN = bakes = java.util.Arrays.copyOf(bakes, chosen * 2);
-                bakes[chosen++] = bake;
+                Layer layer = model.layers.get(i);
+                Batch batch;
+                if (layer.kind() == SKIP) {
+                    continue;
+                } else if (layer.kind() == EFFECT) {
+                    if (base(set, model) == null) return;
+                    batch = effect(layer.type());
+                } else {
+                    Bake bake = bake(set, layer);
+                    if (bake.state != READY) return;
+                    batch = bake.page;
+                }
+                if (chosen == batches.length) CHOSEN = batches = java.util.Arrays.copyOf(batches, chosen * 2);
+                batches[chosen++] = batch;
             }
         }
         LEVELS.put(state, wanted);
+        if (GAME.containsKey(state)) gameFigures++;
         for (int i = 0; i < chosen; i++) {
-            Page page = bakes[i].page;
-            if (page != null && page.active != frame) {
-                page.active = frame;
-                ACTIVE.add(page);
+            Batch batch = batches[i];
+            if (batch != null && batch.active != frame) {
+                batch.active = frame;
+                ACTIVE.add(batch);
             }
         }
     }
@@ -208,25 +254,31 @@ public final class LodRenderer {
         void add(Layer layer) {
             if (layers.contains(layer)) return;
             layers.add(layer);
-            // A sum: the same textures in any order give the same key.
-            key += mix(layer.texture().hashCode() * 0x9E3779B97F4A7C15L);
+            // A sum: the same textures in any order give the same key. A glint or a layer left
+            // out at a distance makes no other shape: not in the key.
+            Identifier texture = layer.texture();
+            if (texture != null) key += mix(texture.hashCode() * 0x9E3779B97F4A7C15L);
         }
 
-        /** Its textures in the order its layers are drawn, each once. */
+        /** Whether one of its layers is baked: a model with only effects on it is drawn as the game draws it. */
+        boolean baked() {
+            for (int i = 0; i < layers.size(); i++) if (layers.get(i).texture() != null) return true;
+            return false;
+        }
+
+        /** Its baked textures in the order its layers are drawn, each once. */
         List<Identifier> drawOrder() {
             List<Identifier> textures = new ArrayList<>();
             for (Layer layer : layers) {
-                if (!textures.contains(layer.texture())) textures.add(layer.texture());
+                Identifier texture = layer.texture();
+                if (texture != null && !textures.contains(texture)) textures.add(texture);
             }
             return textures;
         }
 
-        /** Its textures, in a set order: when its levels are made. */
+        /** Its baked textures, in a set order: when its levels are made. */
         List<Identifier> textures() {
-            List<Identifier> textures = new ArrayList<>();
-            for (Layer layer : layers) {
-                if (!textures.contains(layer.texture())) textures.add(layer.texture());
-            }
+            List<Identifier> textures = drawOrder();
             textures.sort(Comparator.comparing(Identifier::toString));
             return textures;
         }
@@ -288,40 +340,68 @@ public final class LodRenderer {
         return layers;
     }
 
-    /** What the layer being drawn is textured with, and whether it glows. */
-    private record Layer(Identifier texture, boolean eyes) {
+    /**
+     * What a layer is textured with and how it is drawn at a simpler level ({@link #CUTOUT} to
+     * {@link #SKIP}); the texture of a baked one only, the render type of an effect only.
+     */
+    private record Layer(@Nullable Identifier texture, int kind, @Nullable RenderType type) {
     }
 
+    /** A layer drawn from a sheet of textures: left out at a simpler level. */
+    private static final Layer SHEET = new Layer(null, SKIP, null);
     private static @Nullable Layer layer;
     private static final Map<RenderType, Optional<Layer>> LAYER_OF = new IdentityHashMap<>();
-    private static final Pattern TEXTURE = Pattern.compile("([a-z0-9_.-]+):(textures/[a-z0-9_./-]+\\.png)");
+    /** A texture as a render type names it: one of the game's or a pack's, or a player's downloaded skin or cape. */
+    private static final Pattern TEXTURE = Pattern.compile("([a-z0-9_.-]+):((?:textures|skins)/[a-z0-9_./-]+)");
 
-    /** A figure of the mod starts being drawn: what its layers are is not known yet. */
-    public static void figure() {
+    /** The state of the figure being drawn, while it is one whose level was chosen; null otherwise. */
+    private static @Nullable Object current;
+
+    /** A figure starts being drawn, the mod's or the game's: what its layers are is not known yet. */
+    public static void enter(Object state) {
+        current = WANTED.containsKey(state) ? state : null;
         layer = null;
         depth = 0;
         drawing = null;
     }
 
+    public static void leave() {
+        current = null;
+        layer = null;
+        depth = 0;
+        drawing = null;
+    }
+
+    /** Whether the figure being drawn may be drawn at a simpler level: its parts are watched. */
+    public static boolean active() {
+        return current != null;
+    }
+
     /**
      * The next model is drawn with this render type, through an atlas sprite or not. A layer
-     * whose texture cannot be read from its type (an atlas, a glint) keeps its figure whole.
+     * drawn from a sheet of textures (an armour trim) is left out at a simpler level; one whose
+     * kind is not known keeps its figure whole.
      */
     public static void layer(RenderType type, boolean sprite) {
-        layer = sprite ? null : LAYER_OF.computeIfAbsent(type, LodRenderer::read).orElse(null);
+        layer = sprite ? SHEET : LAYER_OF.computeIfAbsent(type, LodRenderer::read).orElse(null);
     }
 
     /** The texture and the kind of layer a render type draws, as its description names them. */
     private static Optional<Layer> read(RenderType type) {
         String text = type.toString();
         String name = text.toLowerCase(Locale.ROOT);
+        // An effect over the model (a glint, a charged creeper's swirl): drawn as it is, over the simpler shape.
+        if (name.contains("glint") || name.contains("energy_swirl") || name.contains("breeze_wind")) {
+            return Optional.of(new Layer(null, EFFECT, type));
+        }
         boolean eyes = name.contains("eyes");
+        boolean translucent = name.contains("entity_translucent") && !name.contains("emissive");
         boolean plain = name.contains("entity_cutout") || name.contains("entity_solid") || name.contains("armor_cutout")
-                || name.contains("entity_smooth_cutout") || name.contains("entity_translucent") && !name.contains("emissive");
+                || name.contains("entity_smooth_cutout") || translucent;
         Matcher texture = TEXTURE.matcher(text);
         if ((eyes || plain) && texture.find()) {
             Identifier id = Identifier.tryParse(texture.group(1) + ":" + texture.group(2));
-            if (id != null) return Optional.of(new Layer(id, eyes));
+            if (id != null) return Optional.of(new Layer(id, eyes ? EYES : translucent ? TRANSLUCENT : CUTOUT, null));
         }
         LivingHorizonClient.LOGGER.debug("Levels of detail: a layer drawn as {} keeps its figure whole", text);
         return Optional.empty();
@@ -341,7 +421,10 @@ public final class LodRenderer {
     private static int depth;
     /** What the model being drawn draws at its level; null while it draws its full model. */
     private static @Nullable LodSet drawing;
-    private static @Nullable Bake drawingBake;
+    /** The faces of every level the model being drawn takes them from, and the batch they go to; null for none. */
+    private static float @Nullable [][][] drawingFaces;
+    private static @Nullable Batch drawingBatch;
+    private static float drawingFromU, drawingFromV, drawingScaleU = 1, drawingScaleV = 1;
     private static int drawingLevel;
 
     /** The game starts drawing a part of one of the mod's figures, and the parts under it. */
@@ -360,11 +443,12 @@ public final class LodRenderer {
         }
         enterPart(root);
         LodSet set = drawing;
-        if (set == null || drawingLevel < STANDING || !root.visible) return false;
+        // The game's own entities stay animated: they are near enough to be watched.
+        if (set == null || drawingLevel < STANDING || !root.visible || GAME.containsKey(current)) return false;
         // Its parts at rest, each group in one go: none of the game's parts is walked.
         LodSet.Plan plan = set.plan();
         if (plan == null) return false;
-        PolygonStats.full(set.fullQuads());
+        if (PolygonStats.counting()) PolygonStats.full(set.fullQuads());
         int tinted = tint(argb);
         List<LodLevels.Group> groups = plan.levels().groups();
         for (int g = 0; g < groups.size(); g++) {
@@ -389,9 +473,11 @@ public final class LodRenderer {
 
     private static void beginModel(ModelPart root) {
         drawing = null;
-        Object state = PolygonStats.current();
-        Entity owner = state == null ? null : PolygonStats.ownerOf(state);
-        if (owner == null || !WANTED.containsKey(state)) return;
+        Object state = current;
+        if (state == null) return;
+        Entity owner = PolygonStats.ownerOf(state);
+        if (owner == null) owner = GAME.get(state);
+        if (owner == null) return;
         Layers layers = layers(owner, true);
         layers.roll();
         Layer drawn = layer;
@@ -405,7 +491,7 @@ public final class LodRenderer {
         if (seen.shown != shown) layers.failed = true;
         seen.add(drawn);
         Seen before = layers.last(root);
-        if (before == null || before.shown != shown) return;
+        if (before == null || before.shown != shown || !before.baked()) return;
         LodSet set = set(root, before);
         if (set == null) {
             // Made for the textures it was drawn with last frame, the parts as the game draws them now.
@@ -413,6 +499,7 @@ public final class LodRenderer {
                     before.drawOrder());
             SETS.computeIfAbsent(root, part -> new Long2ObjectOpenHashMap<>()).put(before.key, made);
             List<Identifier> textures = before.textures();
+            for (Identifier texture : textures) snapshot(texture);
             double ratio = FarConfig.get().lodKeep / 100.0;
             WORKER.execute(() -> generate(made, textures, ratio));
             set = made;
@@ -423,10 +510,31 @@ public final class LodRenderer {
         }
         int level = level(state);
         if (level == 0 || !set.ready(level)) return;
-        Bake bake = bake(set, drawn);
-        if (bake.state != READY) return;
+        float[][][] faces = null;
+        Batch batch = null;
+        drawingFromU = drawingFromV = 0;
+        drawingScaleU = drawingScaleV = 1;
+        if (drawn.kind() == EFFECT) {
+            // Over the shape of the model's first layer, drawn just before in this frame.
+            Bake base = base(set, seen);
+            if (base == null) return;
+            faces = base.faces;
+            batch = effect(drawn.type());
+            // The effect's own texture over the model's spot on its page, as over its whole texture.
+            drawingFromU = base.fromU;
+            drawingFromV = base.fromV;
+            drawingScaleU = 1 / base.scaleU;
+            drawingScaleV = 1 / base.scaleV;
+        } else if (drawn.kind() != SKIP) {
+            Bake bake = bake(set, drawn);
+            if (bake.state != READY) return;
+            faces = bake.faces;
+            batch = bake.page;
+        }
+        // A layer left out still draws none of its cubes: drawing is set, with no faces.
         drawing = set;
-        drawingBake = bake;
+        drawingFaces = faces;
+        drawingBatch = batch;
         drawingLevel = level;
     }
 
@@ -470,27 +578,31 @@ public final class LodRenderer {
 
     /** One group of the model being drawn, where its anchor stands. */
     private static void queue(int group, Matrix4f pose, Matrix3f normal, int light, int overlay, int argb) {
-        Bake bake = drawingBake;
+        float[][][] levels = drawingFaces;
+        Batch batch = drawingBatch;
         LodSet set = drawing;
         LodSet.Plan plan = set == null ? null : set.plan();
-        Page page = bake == null ? null : bake.page;
-        if (bake == null || bake.faces == null || plan == null || page == null) return;
-        float[] faces = bake.faces[drawingLevel][group];
+        if (levels == null || batch == null || plan == null) return;
+        float[] faces = levels[drawingLevel][group];
         if (faces == null || faces.length == 0) return;
-        if (!page.drawing) {
-            page.drawing = true;
-            DRAWING.add(page);
+        if (!batch.drawing) {
+            batch.drawing = true;
+            DRAWING.add(batch);
         }
-        if (page.count == 0) PENDING.add(page);
-        if (page.count == page.entries.size()) page.entries.add(new Entry());
-        Entry entry = page.entries.get(page.count++);
+        if (batch.count == 0) PENDING.add(batch);
+        if (batch.count == batch.entries.size()) batch.entries.add(new Entry());
+        Entry entry = batch.entries.get(batch.count++);
         entry.pose.set(pose);
         entry.normal.set(normal);
         entry.faces = faces;
         entry.light = light;
         entry.overlay = overlay;
         entry.argb = argb;
-        PolygonStats.lod(plan.triangles()[drawingLevel][group], faces.length / FACE);
+        entry.fromU = drawingFromU;
+        entry.fromV = drawingFromV;
+        entry.scaleU = drawingScaleU;
+        entry.scaleV = drawingScaleV;
+        if (PolygonStats.counting()) PolygonStats.lod(plan.triangles()[drawingLevel][group], faces.length / FACE);
     }
 
     // ---------------------------------------------------------------- the boxes
@@ -501,6 +613,8 @@ public final class LodRenderer {
         final Matrix3f normal = new Matrix3f();
         float[] faces;
         int light, overlay, argb;
+        /** Texture coordinates as drawn: {@code (u - fromU) * scaleU}; the page's as they are, an effect's back to its model's 0 to 1. */
+        float fromU, fromV, scaleU = 1, scaleV = 1;
     }
 
     /** The corner and normal being written: one at a time, on the render thread. */
@@ -519,6 +633,10 @@ public final class LodRenderer {
         float @Nullable [][][] faces;
         /** The page its texels were put on, once ready. */
         @Nullable Page page;
+        /** The kind of page it goes on: {@link #CUTOUT}, {@link #EYES} or {@link #TRANSLUCENT} when its texture is see-through. */
+        int pageKind = CUTOUT;
+        /** Where its texels sit on its page, as a share of the page: an effect drawn over it reads its own 0 to 1. */
+        float fromU, fromV, scaleU = 1, scaleV = 1;
 
         Bake(LodSet set, Layer layer, int generation) {
             this.set = set;
@@ -527,18 +645,9 @@ public final class LodRenderer {
         }
     }
 
-    /**
-     * A texture the baked models share, and their batch this frame: one draw for every box
-     * drawn from it, rather than one per model and layer.
-     */
-    private static final class Page {
-        final Identifier id;
-        final DynamicTexture texture;
+    /** Boxes drawn with one render type this frame: a page's, or an effect's over the simpler shapes. */
+    private static class Batch {
         final RenderType type;
-        final boolean eyes;
-        final int width, height;
-        /** Where the next baked model goes: shelves, left to right, top to bottom. */
-        private int x, y, row;
         final List<Entry> entries = new ArrayList<>();
         int count;
         /** Given boxes this frame, so in {@link #DRAWING}. */
@@ -547,40 +656,8 @@ public final class LodRenderer {
         int active = -1, submitted = -1;
         final Sink.Geometry geometry = (at, out) -> draw(out);
 
-        Page(boolean eyes, int width, int height) {
-            this.eyes = eyes;
-            this.width = width;
-            this.height = height;
-            Identifier page = Identifier.fromNamespaceAndPath(LivingHorizonClient.MOD_ID, "lod/" + pages++);
-            id = page;
-            //? if >=1.21.5 {
-            texture = new DynamicTexture(() -> "living horizon level of detail " + page, width, height, true);
-            //?} else
-            /*texture = new DynamicTexture(width, height, true);*/
-            // Cleared once: the rest is written a baked model at a time.
-            texture.upload();
-            Minecraft.getInstance().getTextureManager().register(page, texture);
-            // Drawn from both sides: a simplified surface may fold.
-            //? if >=26.1 {
-            /*type = eyes ? RenderTypes.eyes(page) : RenderTypes.entityCutout(page);
-            *///?} else {
-            type = eyes ? RenderTypes.eyes(page) : RenderTypes.entityCutoutNoCull(page);
-            //?}
-        }
-
-        /** Room for a baked model, its corner; null when the page is full. */
-        int @Nullable [] place(int wide, int tall) {
-            int atX = x, atY = y, shelf = row;
-            if (atX + wide > width) {
-                atX = 0;
-                atY += shelf + 1;
-                shelf = 0;
-            }
-            if (wide > width || atY + tall > height) return null;
-            x = atX + wide + 1;
-            y = atY;
-            row = Math.max(shelf, tall);
-            return new int[]{atX, atY};
+        Batch(RenderType type) {
+            this.type = type;
         }
 
         /** This frame's boxes, from where their parts were drawn: the pose they are handed is not theirs. */
@@ -599,12 +676,13 @@ public final class LodRenderer {
                     for (int k = 0; k < 4; k++) {
                         int v = f + k * 5;
                         entry.pose.transformPosition(point.set(faces[v], faces[v + 1], faces[v + 2]));
+                        float u = (faces[v + 3] - entry.fromU) * entry.scaleU, w = (faces[v + 4] - entry.fromV) * entry.scaleV;
                         // The whole vertex in one call, as the game writes its cubes: its buffers write it at once.
                         //? if >=1.21 {
-                        out.addVertex(point.x, point.y, point.z, argb, faces[v + 3], faces[v + 4], entry.overlay,
+                        out.addVertex(point.x, point.y, point.z, argb, u, w, entry.overlay,
                                 entry.light, normal.x, normal.y, normal.z);
                         //?} else {
-                        /*out.vertex(point.x, point.y, point.z, r, g, b, a, faces[v + 3], faces[v + 4], entry.overlay,
+                        /*out.vertex(point.x, point.y, point.z, r, g, b, a, u, w, entry.overlay,
                                 entry.light, normal.x, normal.y, normal.z);
                         *///?}
                     }
@@ -614,28 +692,112 @@ public final class LodRenderer {
         }
     }
 
+    /** The batch of an effect's render type (a glint), drawn over the simpler shapes. */
+    private static Batch effect(@Nullable RenderType type) {
+        return EFFECTS.computeIfAbsent(java.util.Objects.requireNonNull(type), Batch::new);
+    }
+
+    private static final Map<RenderType, Batch> EFFECTS = new IdentityHashMap<>();
+
+    /**
+     * A texture the baked models share, and their batch this frame: one draw for every box
+     * drawn from it, rather than one per model and layer.
+     */
+    private static final class Page extends Batch {
+        final Identifier id;
+        final DynamicTexture texture;
+        final int kind;
+        final int width, height;
+        /** Where the next baked model goes: shelves, left to right, top to bottom. */
+        private int x, y, row;
+
+        Page(int kind, int width, int height) {
+            this(kind, width, height, Identifier.fromNamespaceAndPath(LivingHorizonClient.MOD_ID, "lod/" + pages++));
+        }
+
+        private Page(int kind, int width, int height, Identifier page) {
+            super(type(kind, page));
+            this.kind = kind;
+            this.width = width;
+            this.height = height;
+            id = page;
+            //? if >=1.21.5 {
+            texture = new DynamicTexture(() -> "living horizon level of detail " + page, width, height, true);
+            //?} else
+            /*texture = new DynamicTexture(width, height, true);*/
+            // Cleared once: the rest is written a baked model at a time.
+            texture.upload();
+            Minecraft.getInstance().getTextureManager().register(page, texture);
+        }
+
+        /** Drawn from both sides: a simplified surface may fold. */
+        private static RenderType type(int kind, Identifier page) {
+            if (kind == EYES) return RenderTypes.eyes(page);
+            if (kind == TRANSLUCENT) return RenderTypes.entityTranslucent(page);
+            //? if >=26.1 {
+            /*return RenderTypes.entityCutout(page);
+            *///?} else
+            return RenderTypes.entityCutoutNoCull(page);
+        }
+
+        /** Room for a baked model, its corner; null when the page is full. */
+        int @Nullable [] place(int wide, int tall) {
+            int atX = x, atY = y, shelf = row;
+            if (atX + wide > width) {
+                atX = 0;
+                atY += shelf + 1;
+                shelf = 0;
+            }
+            if (wide > width || atY + tall > height) return null;
+            x = atX + wide + 1;
+            y = atY;
+            row = Math.max(shelf, tall);
+            return new int[]{atX, atY};
+        }
+
+    }
+
     /** The boxes of a model baked with a layer's texture, asked for the first time it is needed. */
     private static Bake bake(LodSet set, Layer layer) {
         List<Object> bakes = set.bakes;
         Bake bake = null;
         for (int i = 0; i < bakes.size() && bake == null; i++) {
             Bake kept = (Bake) bakes.get(i);
-            if (kept.layer.texture().equals(layer.texture())) bake = kept;
+            if (java.util.Objects.equals(kept.layer.texture(), layer.texture())) bake = kept;
         }
         if (bake == null) {
             Bake made = new Bake(set, layer, generation);
             bakes.add(made);
+            Identifier texture = layer.texture();
+            if (texture != null) snapshot(texture);
             WORKER.execute(() -> bakeAway(made));
             bake = made;
         }
         return bake;
     }
 
+    /**
+     * The bake of the model's first layer, whose shape an effect is drawn over; null while it is
+     * not ready.
+     */
+    private static @Nullable Bake base(LodSet set, Seen model) {
+        if (set.layers.isEmpty()) return null;
+        Identifier first = set.layers.get(0);
+        for (int i = 0; i < model.layers.size(); i++) {
+            Layer layer = model.layers.get(i);
+            if (!first.equals(layer.texture())) continue;
+            Bake bake = bake(set, layer);
+            return bake.state == READY ? bake : null;
+        }
+        return null;
+    }
+
     /** Bakes every merged box of every level from the texture, and packs them on one; away from the render thread. */
     private static void bakeAway(Bake bake) {
         try {
             LodSet.Plan plan = bake.set.plan();
-            LodBake.Pixels texture = pixels(bake.layer.texture());
+            Identifier id = bake.layer.texture();
+            LodBake.Pixels texture = id == null ? null : pixels(id);
             if (plan == null || texture == null) {
                 bake.state = FAILED;
                 return;
@@ -644,11 +806,14 @@ public final class LodRenderer {
             }
             // Solid views for the model's first layer; those drawn over it keep their holes.
             boolean overlay = !bake.set.layers.isEmpty() && !bake.set.layers.get(0).equals(bake.layer.texture());
+            // A see-through layer drawn see-through (a slime's outside) keeps its transparency.
+            boolean seeThrough = bake.layer.kind() == TRANSLUCENT && seeThrough(texture);
+            bake.pageKind = bake.layer.kind() == EYES ? EYES : seeThrough ? TRANSLUCENT : CUTOUT;
             List<LodLevels.Group> groups = plan.levels().groups();
             List<Placed> placed = new ArrayList<>();
             List<List<LodBake.Face>> views = new ArrayList<>();
             for (int g = 0; g < groups.size(); g++) {
-                List<LodBake.Face> sides = LodBake.bake(plan.model(), groups.get(g), texture, overlay);
+                List<LodBake.Face> sides = LodBake.bake(plan.model(), groups.get(g), texture, overlay, seeThrough);
                 views.add(sides);
                 for (LodBake.Face face : sides) placed.add(new Placed(g, face));
             }
@@ -783,14 +948,19 @@ public final class LodRenderer {
         return out;
     }
 
-    /** A texture's pixels, ARGB, from the resource packs; null when it cannot be read or is not cut out. */
+    /**
+     * A texture's pixels, ARGB: from the resource packs, or as copied from the game's memory
+     * ({@link #snapshot}, a player's skin); null when it cannot be read or shows nothing.
+     */
     public static LodBake.@Nullable Pixels pixels(Identifier id) {
+        LodBake.Pixels copied = SNAPSHOTS.get(id);
+        if (copied != null) return copied;
         Optional<Resource> resource = Minecraft.getInstance().getResourceManager().getResource(id);
         if (resource.isEmpty()) return null;
         try (InputStream in = resource.get().open(); NativeImage image = NativeImage.read(in)) {
             int width = image.getWidth(), height = image.getHeight();
             int[] argb = new int[width * height];
-            int seen = 0, half = 0;
+            boolean shows = false;
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
                     //? if >=1.21.2 {
@@ -800,15 +970,75 @@ public final class LodRenderer {
                     int pixel = (abgr & 0xFF00FF00) | ((abgr >> 16) & 0xFF) | ((abgr & 0xFF) << 16);
                     *///?}
                     argb[y * width + x] = pixel;
-                    int alpha = pixel >>> 24;
-                    if (alpha > 8) seen++;
-                    if (alpha > 8 && alpha < 247) half++;
+                    shows |= (pixel >>> 24) > 8;
                 }
             }
-            // Glass-like layers (a slime's outside) would lose what makes them see-through.
-            if (seen == 0 || half > seen * TRANSLUCENT) return null;
-            return new LodBake.Pixels(width, height, argb);
+            return shows ? new LodBake.Pixels(width, height, argb) : null;
         } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** Whether a texture is see-through: more than a few of its visible texels are half transparent. */
+    private static boolean seeThrough(LodBake.Pixels texture) {
+        int seen = 0, half = 0;
+        for (int pixel : texture.argb()) {
+            int alpha = pixel >>> 24;
+            if (alpha > 8) seen++;
+            if (alpha > 8 && alpha < 247) half++;
+        }
+        return half > seen * SEE_THROUGH;
+    }
+
+    /** Textures that are in no resource pack (a player's downloaded skin), as copied from the game's memory. */
+    private static final Map<Identifier, LodBake.Pixels> SNAPSHOTS = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * Copies a texture that no resource pack holds (a player's downloaded skin) from the game's
+     * memory, for the worker to bake; on the render thread, once.
+     */
+    private static void snapshot(Identifier id) {
+        if (SNAPSHOTS.containsKey(id) || Minecraft.getInstance().getResourceManager().getResource(id).isPresent()) return;
+        LodBake.Pixels read = loaded(id);
+        if (read != null) SNAPSHOTS.put(id, read);
+    }
+
+    /** A texture the game has loaded, read back: a skin is kept in memory from 1.21.4, on the graphics card before. */
+    private static LodBake.@Nullable Pixels loaded(Identifier id) {
+        try {
+            net.minecraft.client.renderer.texture.AbstractTexture texture = Minecraft.getInstance().getTextureManager().getTexture(id);
+            //? if >=1.21.4 {
+            if (!(texture instanceof DynamicTexture dynamic) || dynamic.getPixels() == null) return null;
+            NativeImage image = dynamic.getPixels();
+            int width = image.getWidth(), height = image.getHeight();
+            int[] argb = new int[width * height];
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) argb[y * width + x] = image.getPixel(x, y);
+            }
+            return new LodBake.Pixels(width, height, argb);
+            //?} else {
+            /*texture.bind();
+            int width = org.lwjgl.opengl.GL11.glGetTexLevelParameteri(org.lwjgl.opengl.GL11.GL_TEXTURE_2D, 0,
+                    org.lwjgl.opengl.GL11.GL_TEXTURE_WIDTH);
+            int height = org.lwjgl.opengl.GL11.glGetTexLevelParameteri(org.lwjgl.opengl.GL11.GL_TEXTURE_2D, 0,
+                    org.lwjgl.opengl.GL11.GL_TEXTURE_HEIGHT);
+            if (width <= 0 || height <= 0 || (long) width * height > 1 << 22) return null;
+            java.nio.IntBuffer read = org.lwjgl.system.MemoryUtil.memAllocInt(width * height);
+            try {
+                org.lwjgl.opengl.GL11.glPixelStorei(org.lwjgl.opengl.GL11.GL_PACK_ALIGNMENT, 4);
+                org.lwjgl.opengl.GL11.glGetTexImage(org.lwjgl.opengl.GL11.GL_TEXTURE_2D, 0, org.lwjgl.opengl.GL11.GL_RGBA,
+                        org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE, read);
+                int[] argb = new int[width * height];
+                for (int i = 0; i < argb.length; i++) {
+                    int abgr = read.get(i);
+                    argb[i] = (abgr & 0xFF00FF00) | ((abgr >> 16) & 0xFF) | ((abgr & 0xFF) << 16);
+                }
+                return new LodBake.Pixels(width, height, argb);
+            } finally {
+                org.lwjgl.system.MemoryUtil.memFree(read);
+            }
+            *///?}
+        } catch (RuntimeException e) {
             return null;
         }
     }
@@ -844,7 +1074,7 @@ public final class LodRenderer {
         Page page = null;
         int[] at = null;
         for (Page open : PAGES) {
-            if (open.eyes != bake.layer.eyes()) continue;
+            if (open.kind != bake.pageKind) continue;
             at = open.place(bake.width, bake.height);
             if (at != null) {
                 page = open;
@@ -852,7 +1082,7 @@ public final class LodRenderer {
             }
         }
         if (page == null || at == null) {
-            page = new Page(bake.layer.eyes(), Math.max(PAGE, bake.width), Math.max(PAGE, bake.height));
+            page = new Page(bake.pageKind, Math.max(PAGE, bake.width), Math.max(PAGE, bake.height));
             PAGES.add(page);
             at = page.place(bake.width, bake.height);
             if (at == null) throw new IllegalStateException("a baked model larger than its page");
@@ -876,6 +1106,10 @@ public final class LodRenderer {
                 }
             }
         }
+        bake.fromU = fromU;
+        bake.fromV = fromV;
+        bake.scaleU = scaleU;
+        bake.scaleV = scaleV;
         bake.page = page;
     }
 
@@ -911,7 +1145,7 @@ public final class LodRenderer {
 
     private static int pages;
     /** Kept from frame to frame, so that a frame makes no new list. */
-    private static Bake[] CHOSEN = new Bake[8];
+    private static Batch[] CHOSEN = new Batch[8];
 
     /** The boxes queued this frame, one batch per page, with the impostors. */
     public static void submit(PoseStack pose, Sink sink) {
@@ -922,11 +1156,11 @@ public final class LodRenderer {
         for (int i = 0; i < DRAWING.size(); i++) batch(DRAWING.get(i), pose, sink);
     }
 
-    /** A page's batch, once a frame however many lists it is in. */
-    private static void batch(Page page, PoseStack pose, Sink sink) {
-        if (page.submitted == frame) return;
-        page.submitted = frame;
-        sink.draw(pose, page.type, page.geometry);
+    /** A batch, once a frame however many lists it is in. */
+    private static void batch(Batch batch, PoseStack pose, Sink sink) {
+        if (batch.submitted == frame) return;
+        batch.submitted = frame;
+        sink.draw(pose, batch.type, batch.geometry);
     }
 
     /**
@@ -935,8 +1169,8 @@ public final class LodRenderer {
      * they go into it.
      */
     public static void flush(java.util.function.Function<RenderType, VertexConsumer> builder) {
-        for (Page page : PENDING) {
-            if (page.count > 0) page.draw(builder.apply(page.type));
+        for (Batch batch : PENDING) {
+            if (batch.count > 0) batch.draw(builder.apply(batch.type));
         }
         PENDING.clear();
     }
@@ -954,6 +1188,8 @@ public final class LodRenderer {
         BAKED.clear();
         for (Page page : PAGES) Minecraft.getInstance().getTextureManager().release(page.id);
         PAGES.clear();
+        EFFECTS.clear();
+        SNAPSHOTS.clear();
         ACTIVE.clear();
         DRAWING.clear();
         PENDING.clear();

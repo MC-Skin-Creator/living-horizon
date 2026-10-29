@@ -248,6 +248,8 @@
   "livinghorizon.options.lodSection": "Detailstufen",
   "livinghorizon.options.lodLevels": "Vereinfachte Modelle",
   "livinghorizon.options.lodLevels.tooltip": "Wie viele vereinfachte Modelle eine ferne Kreatur durchläuft, jedes einfacher als das vorige, bevor sie zu einem flachen Bild wird.",
+  "livinghorizon.options.lodNearby": "Nahe Objekte",
+  "livinghorizon.options.lodNearby.tooltip": "Gibt auch den Objekten, die das Spiel selbst zeichnet, innerhalb der Sichtweite vereinfachte Modelle, nach denselben Entfernungen und Größen. Sie bewegen sich weiter.",
   "livinghorizon.options.lodDistance": "Detailentfernung",
   "livinghorizon.options.lodDistance.tooltip": "Ab dieser Entfernung nimmt eine ferne Kreatur ihr erstes vereinfachtes Modell. Aus: nur die Detailgröße.",
   "livinghorizon.options.lodDistance.zero": "Aus",

@@ -137,7 +137,8 @@ public final class LodSet {
             int y1 = clamp((int) Math.ceil(v1 * texture.height()) - 1, texture.height());
             for (int y = y0; y <= y1; y++) {
                 for (int x = x0; x <= x1; x++) {
-                    if ((texture.argb(x, y) >>> 24) >= 128) return true;
+                    // Faint texels count: a see-through layer (a slime's outside) is little else.
+                    if ((texture.argb(x, y) >>> 24) >= 8) return true;
                 }
             }
         }

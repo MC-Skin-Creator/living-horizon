@@ -248,6 +248,8 @@
   "livinghorizon.options.lodSection": "細節層次",
   "livinghorizon.options.lodLevels": "簡化模型",
   "livinghorizon.options.lodLevels.tooltip": "遠處的生物在變成平面圖片之前要經過多少個簡化模型，每個都比上一個更簡單。",
+  "livinghorizon.options.lodNearby": "附近實體",
+  "livinghorizon.options.lodNearby.tooltip": "也讓遊戲自己繪製的實體在顯示距離內依相同的距離和尺寸使用簡化模型。它們仍會活動。",
   "livinghorizon.options.lodDistance": "細節距離",
   "livinghorizon.options.lodDistance.tooltip": "從這個距離開始，遠處的生物使用第一個簡化模型。關閉：僅依細節尺寸。",
   "livinghorizon.options.lodDistance.zero": "關閉",

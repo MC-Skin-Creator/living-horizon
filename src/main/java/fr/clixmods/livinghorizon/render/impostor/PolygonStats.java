@@ -111,10 +111,10 @@ public final class PolygonStats {
 
     /** The renderer starts drawing the model of this state (any object the game gives it). */
     public static void enter(Object state) {
+        LodRenderer.enter(state);
         counting = state instanceof EntityRenderState entity && GhostRenderer.transform(entity) != null;
         if (!counting) return;
         current = state;
-        LodRenderer.figure();
         int[] figure = FIGURES.get(state);
         if (figure == null) {
             FIGURES.put(state, figure = new int[2]);
@@ -127,7 +127,7 @@ public final class PolygonStats {
         counting = false;
         current = null;
         counts = null;
-        LodRenderer.figure();
+        LodRenderer.leave();
     }
 
     /** Whether the model being drawn is one of the mod's. */

@@ -82,6 +82,15 @@ public final class LodBake {
      *                transparent, so that the layer under it shows there
      */
     public static List<Face> bake(LodModel model, LodLevels.Group group, Texture texture, boolean overlay) {
+        return bake(model, group, texture, overlay, false);
+    }
+
+    /**
+     * @param seeThrough a layer drawn see-through (a slime's outside): its texels keep their own
+     *                   transparency, half see-through ones included, and the empty ones stay empty
+     */
+    public static List<Face> bake(LodModel model, LodLevels.Group group, Texture texture, boolean overlay,
+                                  boolean seeThrough) {
         List<float[]> triangles = triangles(model, group);
         double[] box = group.box();
         Vector3d middle = new Vector3d((box[0] + box[3]) / 2, (box[1] + box[4]) / 2, (box[2] + box[5]) / 2);
@@ -97,8 +106,9 @@ public final class LodBake {
             int pw = Math.min(MAX_SIDE, Math.max(1, (int) Math.ceil(width * TEXELS - 1e-6)));
             int ph = Math.min(MAX_SIDE, Math.max(1, (int) Math.ceil(height * TEXELS - 1e-6)));
             Vector3d center = new Vector3d(middle).fma(depth / 2, out);
-            int[] argb = draw(triangles, texture, center, right, up, out, width, height, depth, pw, ph);
-            fill(argb, pw, ph, overlay);
+            boolean[] holes = new boolean[pw * ph];
+            int[] argb = draw(triangles, texture, center, right, up, out, width, height, depth, pw, ph, seeThrough, holes);
+            fill(argb, pw, ph, overlay, seeThrough, holes);
             faces.add(new Face(center, right, up, width, height, new Pixels(pw, ph, argb), index));
         }
         return faces;
@@ -146,7 +156,9 @@ public final class LodBake {
      * transparent are not drawn. Seen from 1 pixel out to 1 pixel past the far side.
      */
     private static int[] draw(List<float[]> triangles, Texture texture, Vector3d center, Vector3d right, Vector3d up,
-                              Vector3d out, double width, double height, double depth, int pw, int ph) {
+                              Vector3d out, double width, double height, double depth, int pw, int ph,
+                              boolean seeThrough, boolean[] holes) {
+        int least = seeThrough ? 8 : 128;
         int[] argb = new int[pw * ph];
         double[] nearest = new double[pw * ph];
         Arrays.fill(nearest, Double.NEGATIVE_INFINITY);
@@ -181,7 +193,11 @@ public final class LodBake {
                     double u = w0 * triangle[3] + w1 * triangle[8] + w2 * triangle[13];
                     double v = w0 * triangle[4] + w1 * triangle[9] + w2 * triangle[14];
                     int texel = sample(texture, u, v);
-                    if ((texel >>> 24) < 128) continue;
+                    // A face the texture leaves clear there (a helmet's eye holes): a hole, unless something is behind.
+                    if ((texel >>> 24) < least) {
+                        holes[at] = true;
+                        continue;
+                    }
                     nearest[at] = distance;
                     argb[at] = texel;
                 }
@@ -202,9 +218,22 @@ public final class LodBake {
      * Every texel is opaque, but for the empty ones of an {@code overlay}, which stay transparent.
      */
     static void fill(int[] argb, int width, int height, boolean overlay) {
+        fill(argb, width, height, overlay, false, new boolean[width * height]);
+    }
+
+    /**
+     * As {@link #fill(int[], int, int, boolean)}; a see-through layer's texels keep their alpha,
+     * the empty ones none; and a texel only a face the texture leaves clear covers ({@code holes},
+     * a helmet's eye holes) stays clear on any layer, the model under it showing through.
+     */
+    static void fill(int[] argb, int width, int height, boolean overlay, boolean seeThrough, boolean[] holes) {
         int count = width * height;
         boolean[] solid = new boolean[count], drawn = new boolean[count];
-        for (int i = 0; i < count; i++) solid[i] = drawn[i] = (argb[i] >>> 24) >= 128;
+        int[] alpha = new int[count];
+        for (int i = 0; i < count; i++) {
+            alpha[i] = argb[i] >>> 24;
+            solid[i] = drawn[i] = alpha[i] >= (seeThrough ? 8 : 128);
+        }
         int[] dx = {1, -1, 0, 0}, dy = {0, 0, 1, -1};
         for (int round = 0; round < FILL_ROUNDS; round++) {
             boolean[] next = solid.clone();
@@ -235,7 +264,8 @@ public final class LodBake {
         }
         for (int i = 0; i < count; i++) {
             int rgb = solid[i] ? argb[i] & 0xFFFFFF : 0x808080;
-            argb[i] = (drawn[i] || !overlay ? 0xFF000000 : 0) | rgb;
+            int a = seeThrough ? (drawn[i] ? alpha[i] : 0) : drawn[i] || !overlay && !holes[i] ? 0xFF : 0;
+            argb[i] = a << 24 | rgb;
         }
     }
 
