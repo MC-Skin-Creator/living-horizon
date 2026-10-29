@@ -78,6 +78,41 @@ public final class FarConfig {
         return (colon < 0 ? Identifier.DEFAULT_NAMESPACE : type.substring(0, colon)) + ":*";
     }
 
+    /** Hidden for its whole mod ({@code "cobblemon:*"}): no switch can show it, only the file. */
+    public boolean locksMob(String type) {
+        return hiddenMobs.contains(wholeMod(type));
+    }
+
+    /**
+     * A kind switched on or off in game. One shown until now and switched off goes into
+     * {@link #hiddenMobs}, where a modpack finds it; one never shown (a vehicle waiting to be
+     * chosen) stays out of it. A kind its whole mod hides is left as it is.
+     */
+    public void setMobShown(String type, boolean shown) {
+        if (locksMob(type)) return;
+        boolean wasShown = mobTypes.contains(type) && !hidesMob(type);
+        boolean listed = hiddenMobs.removeIf(type::equals);
+        mobTypes.removeIf(type::equals);
+        if (shown) mobTypes.add(type);
+        else if (wasShown || listed) hiddenMobs.add(type);
+    }
+
+    /**
+     * {@link #hiddenMobs} as written by hand, tidied: no empty entry, ids in lower case, a bare
+     * name in the game's namespace as the game reads it ({@code "pig"}), each once. Ids of mobs
+     * the game does not have (a mod taken out, a typo) are kept: harmless, and back in use if
+     * the mod comes back.
+     */
+    private static List<String> tidy(List<String> entries) {
+        java.util.LinkedHashSet<String> tidy = new java.util.LinkedHashSet<>();
+        for (String entry : entries) {
+            if (entry == null || entry.isBlank()) continue;
+            String id = entry.trim().toLowerCase(java.util.Locale.ROOT);
+            tidy.add(id.indexOf(':') < 0 ? Identifier.DEFAULT_NAMESPACE + ":" + id : id);
+        }
+        return new ArrayList<>(tidy);
+    }
+
     /** Whether a mob of this type, with a name tag or not, is shown far away. */
     public boolean showsMob(String type, boolean named) {
         if (hidesMob(type)) return false;
@@ -480,7 +515,7 @@ public final class FarConfig {
             config.birdSize = 1;
         }
         if (config.hiddenBirds == null) config.hiddenBirds = new ArrayList<>();
-        if (config.hiddenMobs == null) config.hiddenMobs = new ArrayList<>();
+        config.hiddenMobs = config.hiddenMobs == null ? new ArrayList<>() : tidy(config.hiddenMobs);
         if (config.birdStyle == null) config.birdStyle = "3d";
         if (config.knownMobTypes == null) config.knownMobTypes = defaultMobTypes();
         if (config.knownVehicles == null) config.knownVehicles = new ArrayList<>();
@@ -543,6 +578,7 @@ public final class FarConfig {
             // The kinds switched off by hand become the list of hidden ones, where a modpack finds
             // them; vehicles that only seat their riders were never shown, and are not listed.
             for (String type : config.knownMobTypes) {
+                if (type == null) continue;
                 if (!config.mobTypes.contains(type) && !config.seatedVehicles.contains(type)
                         && !config.hiddenMobs.contains(type)) config.hiddenMobs.add(type);
             }

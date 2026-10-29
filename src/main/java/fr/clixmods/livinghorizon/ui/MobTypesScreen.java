@@ -177,7 +177,7 @@ public final class MobTypesScreen extends SideOptionsScreen {
 
     /** Hidden for its whole mod in the file ({@code "cobblemon:*"}): a switch cannot show it. */
     private static boolean locked(String id) {
-        return FarConfig.get().hiddenMobs.contains(FarConfig.wholeMod(id));
+        return FarConfig.get().locksMob(id);
     }
 
     /** A switch leaves 20 pixels of its 150-wide cell for the icon. */
@@ -247,19 +247,11 @@ public final class MobTypesScreen extends SideOptionsScreen {
             return config.stillMobTypes.contains(id) ? STILL : ANIMATED;
         }
 
-        /**
-         * A kind shown until now and switched off goes into {@link FarConfig#hiddenMobs}, where a
-         * modpack finds it; one never shown (a vehicle waiting to be chosen) stays out of it.
-         */
         void apply(String id) {
             FarConfig config = FarConfig.get();
             if (locked(id)) return;
-            boolean wasShown = config.mobTypes.contains(id) && !config.hidesMob(id);
-            config.mobTypes.remove(id);
+            config.setMobShown(id, this != HIDDEN);
             config.stillMobTypes.remove(id);
-            boolean listed = config.hiddenMobs.remove(id);
-            if (this == HIDDEN && (wasShown || listed)) config.hiddenMobs.add(id);
-            if (this != HIDDEN) config.mobTypes.add(id);
             if (this == STILL) config.stillMobTypes.add(id);
         }
     }

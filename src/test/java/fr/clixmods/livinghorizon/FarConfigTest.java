@@ -159,6 +159,87 @@ class FarConfigTest {
     }
 
     @Test
+    void version13HidesWhatAFileFromBeforeTheListLeftOut() {
+        // A file from before every kind was offered: the old defaults and other mods' mobs it knew.
+        FarConfig config = migrated("{\"version\": 10, \"mobTypes\": [\"minecraft:cow\", \"othermod:deer\"],"
+                + " \"knownModdedMobs\": [\"othermod:zombie\", \"othermod:deer\", \"removedmod:ghost\"]}");
+        assertTrue(config.hiddenMobs.contains("minecraft:horse"));
+        assertTrue(config.hiddenMobs.contains(MANNEQUIN));
+        assertTrue(config.hiddenMobs.contains("othermod:zombie"));
+        // A mod taken out since: its id stays, harmless.
+        assertTrue(config.hiddenMobs.contains("removedmod:ghost"));
+        assertFalse(config.hiddenMobs.contains("minecraft:cow"));
+        assertFalse(config.hiddenMobs.contains("othermod:deer"));
+        // Never offered before: shown once the game offers it, as before this list.
+        assertFalse(config.hiddenMobs.contains("minecraft:enderman"));
+        assertFalse(config.showsMob("minecraft:horse", true));
+        assertTrue(config.showsMob("minecraft:cow", false));
+    }
+
+    @Test
+    void version13KeepsWhatTheFileAlreadyHid() {
+        FarConfig config = migrated("{\"version\": 12, \"mobTypes\": [\"minecraft:cow\"],"
+                + " \"knownMobTypes\": [\"minecraft:cow\", \"minecraft:horse\"],"
+                + " \"hiddenMobs\": [\"minecraft:horse\", \"cobblemon:*\"]}");
+        assertEquals(java.util.List.of("minecraft:horse", "cobblemon:*"), config.hiddenMobs);
+        // An old file shown every kind it knew: nothing to hide.
+        assertTrue(migrated("{\"version\": 1}").hiddenMobs.isEmpty());
+    }
+
+    @Test
+    void keepsIdsTheGameDoesNotHave() {
+        FarConfig config = migrated("{\"version\": 13, \"hiddenMobs\": [\"removedmod:ghost\", \"removedmod:*\","
+                + " \"not a mob at all\"]}");
+        assertEquals(java.util.List.of("removedmod:ghost", "removedmod:*", "minecraft:not a mob at all"), config.hiddenMobs);
+        assertFalse(config.showsMob("removedmod:ghost", true));
+        assertFalse(config.showsMob("removedmod:anything", true));
+        assertTrue(config.showsMob("minecraft:horse", false));
+        // Read again, written again: the same list.
+        assertEquals(config.hiddenMobs, migrated(GSON.toJson(config)).hiddenMobs);
+    }
+
+    @Test
+    void tidiesTheListWrittenByHand() {
+        FarConfig config = migrated("{\"version\": 13, \"hiddenMobs\": [null, \"\", \"   \", \" Minecraft:Pig \","
+                + " \"pig\", \"minecraft:pig\", \"Cobblemon:*\"]}");
+        assertEquals(java.util.List.of("minecraft:pig", "cobblemon:*"), config.hiddenMobs);
+        assertFalse(config.showsMob("minecraft:pig", true));
+        assertFalse(config.showsMob("cobblemon:pokemon", false));
+    }
+
+    @Test
+    void switchesWriteTheList() {
+        FarConfig config = migrated("{\"version\": 13, \"mobTypes\": [\"minecraft:cow\", \"minecraft:pig\"],"
+                + " \"hiddenMobs\": [\"cobblemon:*\", \"removedmod:ghost\"]}");
+        // Shown, switched off: listed.
+        config.setMobShown("minecraft:cow", false);
+        assertTrue(config.hiddenMobs.contains("minecraft:cow"));
+        assertFalse(config.mobTypes.contains("minecraft:cow"));
+        // Switched off twice: listed once.
+        config.setMobShown("minecraft:cow", false);
+        assertEquals(1, java.util.Collections.frequency(config.hiddenMobs, "minecraft:cow"));
+        // Back on: out of the list.
+        config.setMobShown("minecraft:cow", true);
+        assertFalse(config.hiddenMobs.contains("minecraft:cow"));
+        assertTrue(config.showsMob("minecraft:cow", false));
+        // Never shown (a vehicle waiting to be chosen), switched off: not listed.
+        config.setMobShown("minecraft:minecart", false);
+        assertFalse(config.hiddenMobs.contains("minecraft:minecart"));
+        // Its whole mod hidden: the switch does nothing.
+        config.setMobShown("cobblemon:pokemon", true);
+        assertFalse(config.mobTypes.contains("cobblemon:pokemon"));
+        assertFalse(config.showsMob("cobblemon:pokemon", false));
+        // A mob of a mod taken out: listed, and shown again like any other.
+        config.setMobShown("removedmod:ghost", true);
+        assertFalse(config.hiddenMobs.contains("removedmod:ghost"));
+        assertTrue(config.showsMob("removedmod:ghost", false));
+        // Defaults: whole mods stay hidden, single kinds are shown again.
+        config.setMobShown("minecraft:pig", false);
+        config.resetMobs(java.util.List.of());
+        assertEquals(java.util.List.of("cobblemon:*"), config.hiddenMobs);
+    }
+
+    @Test
     void hiddenMobsBeatEveryOtherChoice() {
         FarConfig config = migrated("{\"version\": 13, \"mobTypes\": [\"minecraft:cow\", \"cobblemon:pokemon\","
                 + " \"minecraft:pig\"], \"hiddenMobs\": [\"minecraft:pig\", \"cobblemon:*\"]}");
