@@ -19,12 +19,13 @@ import java.util.function.Function;
 import java.util.function.IntConsumer;
 
 /**
- * A slider of whole numbers that also takes a typed value: a right click turns it into a text
- * field of digits only (Enter keeps the value, Escape or a click elsewhere leaves it), and the
- * arrow keys move it one step, ten with Shift. Where the right end means no limit, any number can
- * be typed, past the slider's last one too, which the slider shows at that last place; no limit
- * itself is only its right end, and with {@link Range#warns} the player is asked before it is
- * kept, however it was reached: dragged or stepped onto.
+ * A slider of whole numbers, which the arrow keys move one step, ten with Shift. Where the right
+ * end means no limit, it also takes a typed value: a right click turns it into a text field of
+ * digits only (Enter keeps the value, Escape or a click elsewhere leaves it), and any number can be
+ * typed, past the slider's last one too, which the slider shows at that last place. A slider with
+ * bounds takes no typing: its ends are what the mod can do. No limit itself is only the right end,
+ * and with {@link Range#warns} the player is asked before it is kept, however it was reached:
+ * dragged or stepped onto.
  *
  * <p>Built by the game's own option list through {@link Range}, the values of an
  * {@link OptionInstance}, so that the screens add it as any other option. The screen around it
@@ -74,6 +75,11 @@ public final class NumberSlider extends AbstractSliderButton {
 
     static void nextFrame() {
         frame++;
+    }
+
+    /** Whether a value can be typed in: only where the right end is no limit, never within bounds. */
+    public boolean typable() {
+        return range.unlimited;
     }
 
     /** Whether it was drawn in this frame: one scrolled out of the list keeps an old place. */

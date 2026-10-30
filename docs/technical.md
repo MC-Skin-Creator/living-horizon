@@ -1244,15 +1244,16 @@ distances (players, animation, entities) to the new values, and keeps a no limit
 
 The sliders of whole numbers on the mod's screens are `ui/NumberSlider`, which the game's own
 option lists build through its `OptionInstance.ValueSet` (made public by the access widener
-before 26.2, where the game made it so). A right click turns one into a text field, which
+before 26.2, where the game made it so). Only a slider with no limit at its end (the counts and
+the render distances, `NumberSlider.typable`) takes a typed value; one within bounds does not,
+its ends being what the mod can do. A right click turns it into a text field, which
 `SideOptionsScreen` hands the keys until Enter (kept when it reads as a value), Escape or a
 click. It takes digits only, and shows the slider's last number on no limit. A number below the
-range is brought up to it; past the last number, a slider with no limit at its end keeps the
-number as typed (shown at that last place, `NumberSlider.beyond`), any other is brought down to
-it. No limit is a value of its own (`NumberSlider.UNLIMITED`, `FarConfig.UNLIMITED_MOBS` and
+range is brought up to it; past the last number it is kept as typed (shown at that last place,
+`NumberSlider.beyond`). No limit is a value of its own (`NumberSlider.UNLIMITED`, `FarConfig.UNLIMITED_MOBS` and
 `UNLIMITED_OFFLINE` for the counts, 0 for the distances), reached only at the slider's right
-end, never typed. Sodium's rows show a typed number past their end at their last place and
-leave it as it is when saved there. The arrow keys move it one value, ten with Shift, where the
+end, never typed. Sodium's rows show a typed number past their end as their last place's value
+(`SodiumOptions.typedPast`) and leave it as it is when saved there. The arrow keys move it one value, ten with Shift, where the
 game moves it a pixel. `NumberSlider.asksBeforeUnlimited` names every
 setting whose right end is no limit (the three counts and the four distances), none of them
 safe without one: dragged there, the slider shows it and keeps it on release once the player

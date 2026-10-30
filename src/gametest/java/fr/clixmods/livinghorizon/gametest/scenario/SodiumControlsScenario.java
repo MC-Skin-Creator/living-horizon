@@ -136,6 +136,18 @@ public final class SodiumControlsScenario implements Scenario {
                 Scene.log("sodiumcontrols: Unlimited asked at Apply, no kept " + kept + ", yes set " + unlimited);
             }
 
+            // 3c. A number typed past the end on the mod's screen: the row shows it at its last place,
+            // and saving another row leaves it as it is.
+            context.runOnClient(minecraft -> FarConfig.get().maxDistantMobs = 10000);
+            openSodium(context, firstPage);
+            reveal(context, "maxDistantMobs");
+            screenshot(context, "typed-past");
+            drag(context, "maxDistantEntities", 0.3);
+            apply(context);
+            int typedPast = context.computeOnClient(minecraft -> FarConfig.get().maxDistantMobs);
+            if (typedPast != 10000) failures.add("maxDistantMobs: typed 10000 became " + typedPast + " once Sodium saved");
+            Scene.log("sodiumcontrols: typed 10000 past the end, kept " + typedPast);
+
             // 4. The buttons: each opens its screen, which goes back to Sodium's when closed with Escape.
             for (String name : names(context, "button")) {
                 // These close the screen and start their work: no screen to come back from.

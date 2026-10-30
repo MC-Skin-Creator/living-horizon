@@ -123,26 +123,38 @@ public final class TypedValuesScenario implements Scenario {
                 wrong.add("dragging Player Render Distance to the end did not ask");
             }
 
-            // 6. The arrow keys: one value, ten with Shift, on a slider that never asks.
-            type(context, "impostorDistance", "500");
+            // 6. A slider within bounds takes no typing: a right click opens nothing.
+            type(context, "impostorDistance", "9999");
+            String bounded = context.computeOnClient(minecraft -> slider(minecraft, "impostorDistance").typedText());
+            if (bounded != null) wrong.add("Simplification Distance, within bounds, took typing: \"" + bounded + "\"");
+            context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+            context.waitTicks(2);
+            expect(wrong, "right click on a bounded slider", context, c -> c.impostorDistance, 256);
+            if (!context.computeOnClient(minecraft -> minecraft.screen instanceof FarConfigScreen)) {
+                context.setScreen(() -> new FarConfigScreen(null));
+                context.waitTicks(3);
+            }
+
+            // 7. The arrow keys: one value, ten with Shift.
+            type(context, "mobMaxDistance", "500");
             context.getInput().pressKey(InputConstants.KEY_RETURN);
             context.waitTicks(2);
-            expect(wrong, "typed 500", context, c -> c.impostorDistance, 500);
-            focus(context, "impostorDistance");
+            expect(wrong, "typed 500", context, c -> c.mobMaxDistance, 500);
+            focus(context, "mobMaxDistance");
             context.getInput().pressKey(InputConstants.KEY_RIGHT);
             context.waitTicks(2);
-            if (context.computeOnClient(minecraft -> FarConfig.get().impostorDistance) == 500) {
+            if (context.computeOnClient(minecraft -> FarConfig.get().mobMaxDistance) == 500) {
                 // The game's slider takes the arrows once Enter is pressed on it.
                 context.getInput().pressKey(InputConstants.KEY_RETURN);
                 context.getInput().pressKey(InputConstants.KEY_RIGHT);
                 context.waitTicks(2);
             }
-            expect(wrong, "right arrow", context, c -> c.impostorDistance, 501);
+            expect(wrong, "right arrow", context, c -> c.mobMaxDistance, 501);
             context.getInput().holdKey(InputConstants.KEY_LSHIFT);
             context.getInput().pressKey(InputConstants.KEY_LEFT);
             context.getInput().releaseKey(InputConstants.KEY_LSHIFT);
             context.waitTicks(2);
-            expect(wrong, "Shift and left arrow", context, c -> c.impostorDistance, 491);
+            expect(wrong, "Shift and left arrow", context, c -> c.mobMaxDistance, 491);
             Scene.screenshot(context, this, "arrows");
 
             context.setScreen(() -> null);
@@ -167,7 +179,7 @@ public final class TypedValuesScenario implements Scenario {
     /** A left click on the slider, which gives it the keys; the value it lands on is typed back. */
     private static void focus(ClientGameTestContext context, String setting) {
         double[] at = middle(context, setting);
-        int before = context.computeOnClient(minecraft -> FarConfig.get().impostorDistance);
+        int before = context.computeOnClient(minecraft -> FarConfig.get().mobMaxDistance);
         context.getInput().setCursorPos(at[0], at[1]);
         context.getInput().pressMouse(LEFT);
         context.waitTicks(2);

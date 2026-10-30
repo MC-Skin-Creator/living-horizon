@@ -101,8 +101,8 @@ the `sodiumcontrols` scenario finds rows by that name and checks that each one w
 field. Run it (`run.sh sodium,sodiumcontrols --sodium`) after any change to the settings.
 
 A slider of whole numbers on the mod's screens goes through `FarConfigScreen`'s helpers
-(`ui/NumberSlider`: typed with a right click, digits only, past the end where no limit follows;
-one step per arrow key), never a bare `IntRange`. No limit is a value of its own, never a number
+(`ui/NumberSlider`: one step per arrow key; where no limit follows its end, typed with a right
+click, digits only, past the end too; a slider within bounds takes no typing), never a bare `IntRange`. No limit is a value of its own, never a number
 past the slider's last one, which a player may type.
 No limit is never safe: every setting whose right end means no limit is named in
 `NumberSlider.asksBeforeUnlimited`, both screens ask before keeping it, and no preset or

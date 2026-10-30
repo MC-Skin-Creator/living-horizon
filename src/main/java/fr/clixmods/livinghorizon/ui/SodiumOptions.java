@@ -361,11 +361,20 @@ public final class SodiumOptions implements ConfigEntryPoint {
                 .setRange(0, top, 1)
                 .setValueFormatter(v -> v >= top ? Component.translatable(KEY + name + ".max")
                         : v == 0 ? Component.translatable(KEY + name + ".zero")
-                        : Component.literal(String.valueOf(v)))
+                        : Component.literal(String.valueOf(typedPast(v, last, unlimited, get))))
                 .setDefaultValue(fallback >= unlimited ? top : Math.clamp(fallback, 0, last))
                 .setStorageHandler(storage)
                 .setBinding(asking(name, top, beyond(last, unlimited, v -> set.accept(v >= top ? unlimited : v), get), shown)::accept,
                         shown::getAsInt);
+    }
+
+    /**
+     * What a row at its last place reads: the number the settings keep when one was typed past it
+     * on the mod's screen, which {@link #beyond} leaves as it is.
+     */
+    private static int typedPast(int v, int last, int unlimited, IntSupplier get) {
+        int kept = get.getAsInt();
+        return v == last && kept > last && kept < unlimited ? kept : v;
     }
 
     /**
@@ -398,7 +407,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                 .setTooltip(tooltip(name))
                 .setRange(1, top, 1)
                 .setValueFormatter(v -> v >= top ? Component.translatable(KEY + name + ".zero")
-                        : Component.translatable(KEY + "blocks", v))
+                        : Component.translatable(KEY + "blocks", typedPast(v, FarConfig.MAX_DISTANCE, Integer.MAX_VALUE, get)))
                 .setDefaultValue(fallback <= 0 ? top : Math.clamp(fallback, 1, FarConfig.MAX_DISTANCE))
                 .setStorageHandler(storage)
                 .setBinding(asking(name, top, beyond(FarConfig.MAX_DISTANCE, Integer.MAX_VALUE,

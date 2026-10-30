@@ -300,20 +300,22 @@ public final class FarConfigScreen extends SideOptionsScreen {
     }
 
     /**
-     * A slider of whole numbers that also takes a typed value ({@link NumberSlider}). With
-     * {@code unlimited}, its right end is no limit, which the settings named by
-     * {@link NumberSlider#asksBeforeUnlimited} keep only once the player says yes.
+     * A slider of whole numbers ({@link NumberSlider}). With {@code unlimited}, its right end is no
+     * limit, which the settings named by {@link NumberSlider#asksBeforeUnlimited} keep only once the
+     * player says yes, and it takes a typed value, past its last number too.
      */
     private static OptionInstance<Integer> slider(String name, int min, int max, int value,
                                                   OptionInstance.CaptionBasedToString<Integer> label,
                                                   boolean unlimited, Consumer<Integer> set) {
         NumberSlider.Range range = new NumberSlider.Range(Component.translatable(KEY + name), min, max, label, unlimited,
                 NumberSlider.asksBeforeUnlimited(name));
-        Component hint = Component.translatable(KEY + "typeValue").withStyle(net.minecraft.ChatFormatting.GRAY);
-        return new OptionInstance<>(KEY + name,
-                OptionInstance.cachedConstantTooltip(Component.translatable(KEY + name + ".tooltip").copy()
-                        .append("\n\n").append(hint)),
-                label, range, value, set::accept);
+        // Only a slider with no limit at its end takes a typed value, and says so.
+        Component tooltip = Component.translatable(KEY + name + ".tooltip");
+        if (unlimited) {
+            tooltip = tooltip.copy().append("\n\n")
+                    .append(Component.translatable(KEY + "typeValue").withStyle(net.minecraft.ChatFormatting.GRAY));
+        }
+        return new OptionInstance<>(KEY + name, OptionInstance.cachedConstantTooltip(tooltip), label, range, value, set::accept);
     }
 
     static OptionInstance<String> choice(String name, List<String> values, String value, Consumer<String> set) {

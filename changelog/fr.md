@@ -18,7 +18,7 @@
 - **Créatures à découvrir** — les terres lointaines que personne n'a encore explorées ne sont plus vides d'animaux, aussi loin que va la *Distance d'affichage des créatures*, en solo ou sur un serveur avec le mod ; un nouveau réglage les cache.
 - **Animaux à la longue-vue** — regarder dans une longue-vue montre maintenant les animaux des terres inexplorées là où elle vise, aussi loin soit-il, en solo ou sur un serveur qui partage sa graine.
 - **Deviner les créatures** — un nouveau bouton affiche d'un coup les animaux des terres inexplorées jusqu'à 1024 chunks autour, et les garde pour la partie suivante, en solo ou sur un serveur qui partage sa graine.
-- **Valeurs saisies** — les curseurs de l'écran de réglages du mod acceptent maintenant une valeur tapée à la main : clic droit dessus, saisissez un nombre et appuyez sur Entrée, même au-delà du bout d'un nombre max ou d'une distance d'affichage ; les flèches du clavier le déplacent d'un cran, ou de dix avec Maj.
+- **Valeurs saisies** — les nombres max et les distances d'affichage de l'écran de réglages du mod acceptent maintenant n'importe quel nombre tapé à la main, même au-delà du bout de leur curseur, que la page de Sodium affiche aussi : clic droit dessus, saisissez un nombre et appuyez sur Entrée ; les flèches du clavier déplacent chaque curseur d'un cran, ou de dix avec Maj.
 
 #### Améliorations
 - **Serveurs sans le mod** — en rejoignant un serveur sans Living Horizon, ou avec une version trop ancienne ou trop récente du mod, le tchat dit maintenant que les joueurs lointains n'y sont pas affichés ; avec *Afficher les joueurs* désactivé, rien n'est dit.

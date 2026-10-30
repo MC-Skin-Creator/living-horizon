@@ -176,7 +176,7 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
 
     /**
      * A click while typing keeps what is typed (and is spent on the field itself when it lands
-     * there); a right click on a slider of numbers opens its field.
+     * there); a right click on a slider that takes typing (one with no limit at its end) opens its field.
      */
     private boolean clicked(double x, double y, int button) {
         if (typing != null) {
@@ -188,7 +188,7 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
             return false;
         }
         NumberSlider slider = sliderAt(list, x, y);
-        if (slider == null) return false;
+        if (slider == null || !slider.typable()) return false;
         typing = slider;
         slider.startTyping();
         return true;
