@@ -72,7 +72,7 @@ public final class NumberSlider extends AbstractSliderButton {
     }
 
     /** Whether it was drawn in this frame: one scrolled out of the list keeps an old place. */
-    boolean shown() {
+    public boolean shown() {
         return drawnIn == frame && visible && active;
     }
 
@@ -211,7 +211,8 @@ public final class NumberSlider extends AbstractSliderButton {
 
     @Override
     public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
-        return arrows(event.key(), event.hasShiftDown(), () -> super.keyPressed(event));
+        // Shift as held now too: an event made by hand may not carry it.
+        return arrows(event.key(), event.hasShiftDown() || Minecraft.getInstance().hasShiftDown(), () -> super.keyPressed(event));
     }
     //?} else {
     /*@Override

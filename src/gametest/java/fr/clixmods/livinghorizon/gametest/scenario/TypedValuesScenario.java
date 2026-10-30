@@ -206,12 +206,19 @@ public final class TypedValuesScenario implements Scenario {
      * in view: the rows move when the next frame draws them.
      */
     private static double[] show(ClientGameTestContext context, String setting) {
-        for (int i = 0; i < 20; i++) {
+        // A row the list has not drawn yet keeps no place: the list is read from the top, half a
+        // page a frame, until the slider is drawn inside it.
+        context.runOnClient(minecraft -> {
+            AbstractSelectionList<?> list = list(minecraft.screen);
+            if (list != null) list.setScrollAmount(0);
+        });
+        context.waitTicks(2);
+        for (int i = 0; i < 60; i++) {
             double[] at = context.computeOnClient(minecraft -> {
                 NumberSlider slider = slider(minecraft, setting);
                 AbstractSelectionList<?> list = list(minecraft.screen);
-                if (list != null && (slider.getY() < list.getY() || slider.getY() + slider.getHeight() > list.getBottom())) {
-                    list.setScrollAmount(list.scrollAmount() + slider.getY() - list.getY() - 40);
+                if (!slider.shown() || list != null && (slider.getY() < list.getY() || slider.getY() + slider.getHeight() > list.getBottom())) {
+                    if (list != null) list.setScrollAmount(list.scrollAmount() + list.getHeight() / 2.0);
                     return null;
                 }
                 double scale = minecraft.getWindow().getGuiScale();
