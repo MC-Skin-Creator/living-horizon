@@ -2,6 +2,11 @@
 
 ## Prochaine version
 
+### Serveur
+
+#### Améliorations
+- **Joueurs en élytres partagés** — le serveur dit maintenant aux joueurs qui plane avec des élytres, pour qu'ils les voient voler de loin ; les joueurs avec une version plus ancienne les voient comme avant.
+
 ### Client
 
 #### Nouveautés
@@ -9,6 +14,7 @@
 
 #### Améliorations
 - **Distance de simplification désactivable** — la *Distance de simplification* peut maintenant être mise sur Non : les mobs, entités, joueurs et oiseaux lointains ne deviennent alors des images plates que quand ils paraissent plus petits à l'écran que la *Taille de simplification*.
+- **Joueurs lointains en vol plané** — les joueurs lointains qui volent avec des élytres planent maintenant dans le ciel, ailes déployées, au lieu de courir debout dans les airs (avec le mod sur le serveur).
 
 ## 0.14.0 — 2026-10-29
 

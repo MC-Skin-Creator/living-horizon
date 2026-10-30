@@ -533,6 +533,12 @@ come back, add it here in the same pull request: this file is what the next sess
   strolling): the game saves the order to sit from `orderedToSit`, which only the server sets, so a
   save made on the client says `Sitting:0b`. `MobMemory.onUnload` writes `isInSittingPose()` into
   it; a sitting copy gets no stroll. The `sittingpets` scenario checks it.
+- **Distant players running upright in the air with an elytra** (legs walking, wings folded):
+  the game tilts a glider and spreads its wings in the player's tick (`fallFlyTicks`, and
+  `ElytraAnimationState` from 1.21.2), which a puppet never runs, and only the server knows who
+  glides. It shares it (message version 4: the last flag bit, the pitch at the end of the record)
+  and `FarPlayer.glide` does the tick's part. A glider is never an impostor, nor baked into one:
+  the pictures are baked standing. The `gliders` scenario checks it.
 - **A rider turned sideways** (a player resting in a boat facing left or right of it): the seat's
   yaw is the rider's body (`yBodyRot`), which the boat keeps in line with itself, never the head
   (`getYRot`), which looks wherever the player looked as they left.

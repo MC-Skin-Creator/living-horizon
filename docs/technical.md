@@ -82,6 +82,12 @@ client class.
   picture, but in front of the terrain between.
 - **Mounts.** A player is drawn on the mob they ride (`FarPlayer.mountPuppet`), and the
   remembered mobs leave that mob out (`MobMemory.carried`), so it is never drawn twice.
+- **Elytras.** A player the server says is gliding flies: `FarPlayer.glide` sets the copy's
+  gliding flag, counts its `fallFlyTicks` (the body lies along the flight after ten) and, from
+  1.21.2, ticks its `ElytraAnimationState` (the wings spread), all of which the game does in
+  the player's tick, which a copy never runs; its pitch follows the server's, its legs hang
+  still. A glider is never an impostor, and never baked into one: the pictures are baked
+  standing. A copy made as a player leaves mid-flight keeps how long they glided and their pitch.
 
 What breaks it:
 
@@ -111,7 +117,7 @@ checks it.
   mount, and a client that remembers that mount or vehicle (shared by the server, or met) does
   not draw it a second time on its own. A server of an older version names only the kinds of
   `track/MobKinds.TYPES`: the client then keeps the mount it knew while the server's copy is of
-  its kind (`FarPlayer.mountFrom`).
+  its kind (`FarPlayer.mountFrom`). And whether they glide with an elytra, with their pitch then.
 - **Every five seconds**, to every player online:
   - how the 64 players nearest them look, online or logged off (skin, armour and what they
     hold, read every second), and what they ride, as the server saves it;
@@ -138,7 +144,9 @@ Their layout, from version 3:
   the table. Version 2 numbered them 0 to 2 and gave 3 to every other one, so players in two
   dimensions of mods were drawn in each other's; it is still read, those in 3 left out;
 - the records, each after its length (a varint). The players who logged off come after which
-  part of their list the message is and how many parts there are.
+  part of their list the message is and how many parts there are. Version 4 marks a gliding
+  player with the last bit of their flags, and writes their pitch at the end of the record:
+  version 3 leaves both unread, and reads the rest of the record as before.
 
 A message stays under 1 MiB, past which the game refuses it (`MAX_BYTES`). The players who
 logged off go in as many messages as it takes, none left out; the client takes the list once
@@ -146,7 +154,7 @@ its last part has come, and drops a list whose parts come out of order. Players 
 not fit are sent by their position alone, then left out, the first in the list kept, so the
 nearest come first. Mobs that do not fit leave out the farthest, and the circle they were
 chosen in shrinks so that the client does not take those left out for gone.
-`PositionsMessageTest` holds the exact bytes of two messages: a change to the layout fails
+`PositionsMessageTest` holds the exact bytes of three messages: a change to the layout fails
 it, and is a new version.
 
 ### Where it runs

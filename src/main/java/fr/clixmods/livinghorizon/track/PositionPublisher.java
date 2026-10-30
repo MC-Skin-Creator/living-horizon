@@ -254,9 +254,11 @@ public final class PositionPublisher {
             // met) draws it under them, and never on its own again.
             Entity root = player.getRootVehicle();
             UUID published = root != player ? root.getUUID() : null;
+            // Gliding with an elytra: their pitch too, which tilts the body along the flight.
+            boolean gliding = player.isFallFlying();
             players.put(name, new PositionsMessage.Player(name, player.getX(), player.getY(), player.getZ(),
                     player.getYRot(), SharedPositions.dimensionId(player.level().dimension()), true,
-                    vehicle != null, published));
+                    vehicle != null, published, null, null, 0, false, gliding, gliding ? player.getXRot() : 0f));
             dirty = true;
         }
         // Those who logged off stay where they were last, as they looked, on what they rode.
