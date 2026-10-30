@@ -11,6 +11,16 @@
 ### Client
 
 #### Nouveautés
+- **Liens vers les pages du mod** — à côté du logo Discord, les réglages du mod ont maintenant les logos de Modrinth, CurseForge, Nexus Mods et du site web du mod, pour ouvrir ses pages en un clic.
+
+#### Améliorations
+- **Distance de simplification désactivable** — la *Distance de simplification* peut maintenant être mise sur Non : les mobs, entités, joueurs et oiseaux lointains ne deviennent alors des images plates que quand ils paraissent plus petits à l'écran que la *Taille de simplification*.
+
+## 0.14.0 — 2026-10-29
+
+### Client
+
+#### Nouveautés
 - **Véhicules des autres mods au loin** — les véhicules des autres mods, comme les avions d'Immersive Aircraft, restent maintenant visibles au-delà de la distance de rendu là où on les a laissés, comme les bateaux ; ils sont listés dans l'onglet *Entités* de *Créatures et entités...* dès le départ, et ceux qu'on monte sans les diriger (wagonnets, véhicules de certains autres mods) restent désactivés tant qu'on ne les active pas.
 - **Réglages des entités** — les bateaux, véhicules et mannequins ont maintenant leurs propres réglages, à part des créatures : *Afficher les entités*, *Entités max* et *Distance d'affichage des entités*, de 4000 blocs par défaut.
 - **Créatures simplifiées et Entités simplifiées** — *Entités simplifiées* devient deux options : *Créatures simplifiées*, et *Entités simplifiées* pour les bateaux, véhicules et mannequins, qui deviennent eux aussi des images plates au loin, vus aussi d'au-dessus et d'en dessous ; *Joueurs simplifiés* ne dépend plus d'aucune des deux, et le bouton qui montre les images devient *Aperçu des images...*, avec un onglet pour les images des entités.

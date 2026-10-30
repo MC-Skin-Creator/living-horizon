@@ -782,7 +782,7 @@ frame. A boat or a vehicle is pictured from every height, as a phantom or a ghas
 
 - A figure becomes an impostor past `impostorDistance`, or shorter on screen than `impostorPixels`
   (its height or width, the larger, in the window's pixels), and a model again only 5% inside both
-  (`ImpostorThreshold`). Birds too.
+  (`ImpostorThreshold`). Birds too. Either may be 0, off: the other alone decides.
 - It keeps a picture until it has turned 8 degrees past the edge between it and the next one.
 - When its look changes, a player or a mob keeps its old picture until the new one is baked;
   a 3D bird is drawn as a model meanwhile.
@@ -1275,7 +1275,7 @@ says yes; stepped there, at once. Sodium's page cannot ask as its slider moves:
 | `impostors` | Simplified Mobs | `true` | | Far mobs and birds drawn as a flat picture of themselves (see [Impostors](#impostors)) |
 | `impostorEntities` | Simplified Entities | `true` | | Far boats, vehicles and mannequins drawn as pictures too, from every height; set from `impostors` when it came (layout 12) |
 | `impostorPlayers` | Simplified Players | `true` | | Distant players become impostors too; off, they keep their whole model at any distance |
-| `impostorDistance` | Simplification Distance | `128` blocks | 32 to 2000 | Past this distance an impostor stands in for the model |
+| `impostorDistance` | Simplification Distance | `128` blocks | 0 to 2000 | Past this distance an impostor stands in for the model (`0`: the size alone) |
 | `impostorPixels` | Simplification Size | `10` pixels | 0 to 64 | A figure shorter than this on screen is an impostor too, even closer than `impostorDistance` (`0`: the distance alone) |
 | `impostorMobMemory` | Mob Picture Memory | `1024` MB | 64 to 4096 | Video memory the mobs' pictures may take, apart from the players' |
 | `impostorPlayerMemory` | Player Picture Memory | `512` MB | 32 to 2048 | Video memory the players' pictures may take (riders with what they ride), apart from the mobs' |

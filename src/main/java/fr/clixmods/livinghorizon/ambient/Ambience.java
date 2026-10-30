@@ -265,7 +265,7 @@ public final class Ambience {
     private final Bigfoot bigfoot = new Bigfoot(calendar);
     private final GhostBoat ghostBoat = new GhostBoat(calendar);
 
-    /** When the easter eggs may come by chance, per world. */
+    /** When the easter eggs may come, per world. */
     public EggCalendar calendar() {
         return calendar;
     }
@@ -318,16 +318,15 @@ public final class Ambience {
             level = current;
         }
         // The easter eggs: by chance only on the days the calendar allows, one at a time. The
-        // watcher keeps his own nights, out of the others' way: he waits for them, not they for him.
+        // daily ones (3, 4, 5) keep days of their own, alongside the others: nobody waits for them.
         calendar.tick(current);
         boolean eggs = config.easterEggs && current.dimension() == Level.OVERWORLD;
-        boolean free = !ufo.busy() && !pass.busy() && !ghosts.busy()
-                && !waver.busy() && !bigfoot.busy() && !ghostBoat.busy();
+        boolean free = !ufo.busy() && !pass.busy() && !bigfoot.busy() && !ghostBoat.busy();
         ufo.tick(current, self, eggs, free && calendar.allows(1));
         pass.tick(current, self, eggs, free && calendar.allows(2));
-        ghosts.tick(current, self, eggs, free && calendar.allows(3));
-        herobrine.tick(current, self, eggs, free);
-        waver.tick(current, self, eggs, free && calendar.allows(5));
+        ghosts.tick(current, self, eggs);
+        herobrine.tick(current, self, eggs);
+        waver.tick(current, self, eggs);
         bigfoot.tick(current, self, eggs, free && calendar.allows(6));
         ghostBoat.tick(current, self, eggs, free && calendar.allows(7));
         flyers.clear();

@@ -236,13 +236,18 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
 
     /** The mod's version in grey, centred under the title of the screens of the mod's settings. */
     private void drawVersion(GuiGraphics graphics) {
-        if (showsVersion()) graphics.drawCenteredString(font, ModVersion.label(), columnWidth() / 2, 23, 0xFFAAAAAA);
+        if (showsVersion()) graphics.drawCenteredString(font, ModVersion.label(), titleCentre(), 23, 0xFFAAAAAA);
         drawOver(graphics);
     }
 
     /** Whether the version stands under the title: a screen with something else there says no. */
     protected boolean showsVersion() {
         return true;
+    }
+
+    /** Where the title is centred, and the version under it: the middle of the column. */
+    protected int titleCentre() {
+        return columnWidth() / 2;
     }
 
     /** Drawn over the widgets, after everything: a picture on a button. */

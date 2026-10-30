@@ -276,14 +276,18 @@ public final class FarConfig {
         return impostors || impostorEntities || impostorPlayers;
     }
 
-    /** Blocks: past this distance an impostor stands in for the model. */
+    /** Blocks: past this distance an impostor stands in for the model. 0 goes by the size alone. */
     public int impostorDistance = 128;
 
     /**
      * Pixels: a figure shorter than this on screen is an impostor too, even closer than
-     * {@link #impostorDistance} (its model back only a little above). 0 goes by the distance alone.
+     * {@link #impostorDistance} (its model back only a little above). 0 goes by the distance alone;
+     * with both 0, nothing is simplified.
      */
     public int impostorPixels = 10;
+
+    /** Top of {@link #impostorDistance}'s range, which starts at 0 (off). */
+    public static final int MAX_IMPOSTOR_DISTANCE = 2000;
 
     /** Range of {@link #impostorPixels}. */
     public static final int MAX_IMPOSTOR_PIXELS = 64;
@@ -566,6 +570,7 @@ public final class FarConfig {
         config.impostorMobMemory = Math.clamp(config.impostorMobMemory, MIN_MOB_MEMORY, MAX_MOB_MEMORY);
         config.impostorPlayerMemory = Math.clamp(config.impostorPlayerMemory, MIN_PLAYER_MEMORY, MAX_PLAYER_MEMORY);
         config.impostorPixels = Math.clamp(config.impostorPixels, 0, MAX_IMPOSTOR_PIXELS);
+        config.impostorDistance = Math.clamp(config.impostorDistance, 0, MAX_IMPOSTOR_DISTANCE);
         config.version = CURRENT;
     }
 
