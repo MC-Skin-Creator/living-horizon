@@ -20,10 +20,10 @@ All mobs are visible from far away, on the game's terrain and **on Voxy and Dist
 Horizons terrain**. This works for any entity Minecraft can draw, mobs and vehicles from
 other mods included. Choose which ones in *Mobs & Entities...*.
 
-Land nobody has explored yet has its animals too. The mod works out from the world's seed
-which animals the game will put there. This needs the mod on the server, and works in
-single player. Look through a spyglass to see them farther away, or press *Guess Nearby
-Mobs* to show them up to 1024 chunks around.
+Land nobody has explored yet has its mobs too. The mod guesses from the world's seed which
+mobs the game will put there, and where. A guessed mob may not be there when you arrive.
+This needs the mod on the server, and works in single player. Look through a spyglass to
+see them farther away, or press *Guess Nearby Mobs* to show them up to 1024 chunks around.
 
 ### Players at any distance
 
@@ -106,9 +106,9 @@ choose what it shares. Changes apply after a few seconds, without a restart.
 | `hiddenDimensions` | `[]` | Dimensions where nothing is shared, such as `["minecraft:the_nether"]` |
 | `shareOfflinePlayers` | `true` | Shares players who logged off where they left |
 | `shareMobs` | `true` | Shares the remembered mobs past the view distance |
-| `seedMobs` | `true` | Shares the animals of land nobody has explored yet, worked out from the seed |
-| `seedMobRange` | `512` | How far from a player those animals are shared, in blocks, up to `2048` |
-| `shareSeed` | `false` | Sends the world's seed to the players with the mod, so their game finds those animals anywhere. Whoever has the seed knows the whole world |
+| `seedMobs` | `true` | Shares the mobs of land nobody has explored yet, guessed from the seed |
+| `seedMobRange` | `512` | How far from a player those mobs are shared, in blocks, up to `2048` |
+| `shareSeed` | `false` | Sends the world's seed to the players with the mod, so their game guesses those mobs anywhere. Whoever has the seed knows the whole world |
 
 These settings only change what the server sends. Within the view distance, players see
 each other as usual. What a player's game saw on its own stays in its memory.

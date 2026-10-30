@@ -124,10 +124,10 @@ All mobs are visible from far away, on the game's terrain and **on Voxy and Dist
 Horizons terrain**. This works for any entity Minecraft can draw, mobs and vehicles from
 other mods included. Choose which ones in *Mobs & Entities...*.
 
-Land nobody has explored yet has its animals too. The mod works out from the world's seed
-which animals the game will put there. This needs the mod on the server, and works in
-single player. Look through a spyglass to see them farther away, or press *Guess Nearby
-Mobs* to show them up to 1024 chunks around.
+Land nobody has explored yet has its mobs too. The mod guesses from the world's seed which
+mobs the game will put there, and where. A guessed mob may not be there when you arrive.
+This needs the mod on the server, and works in single player. Look through a spyglass to
+see them farther away, or press *Guess Nearby Mobs* to show them up to 1024 chunks around.
 
 ### Players at any distance
 
