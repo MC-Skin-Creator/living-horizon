@@ -7,6 +7,9 @@
 #### Nouveautés
 - **Liens vers les pages du mod** — à côté du logo Discord, les réglages du mod ont maintenant les logos de Modrinth, CurseForge, Nexus Mods et du site web du mod, pour ouvrir ses pages en un clic.
 
+#### Améliorations
+- **Distance de simplification désactivable** — la *Distance de simplification* peut maintenant être mise sur Non : les mobs, entités, joueurs et oiseaux lointains ne deviennent alors des images plates que quand ils paraissent plus petits à l'écran que la *Taille de simplification*.
+
 ## 0.14.0 — 2026-10-29
 
 ### Client

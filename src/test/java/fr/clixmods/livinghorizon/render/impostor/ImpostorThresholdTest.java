@@ -32,6 +32,15 @@ class ImpostorThresholdTest {
     }
 
     @Test
+    void sizeAloneWhenNoDistance() {
+        assertFalse(ImpostorThreshold.pictured(5000, 200, false, 0, 20));
+        assertFalse(ImpostorThreshold.pictured(5000, 200, true, 0, 20));
+        assertTrue(ImpostorThreshold.pictured(60, 15, false, 0, 20));
+        // Both off: never a picture.
+        assertFalse(ImpostorThreshold.pictured(5000, 1, false, 0, 0));
+    }
+
+    @Test
     void neverAtTheEye() {
         assertFalse(ImpostorThreshold.pictured(0, 0, true, 128, 20));
     }

@@ -7,6 +7,9 @@
 #### New
 - **Links to the mod's pages** — beside the Discord logo, the mod's settings now have the logos of Modrinth, CurseForge, Nexus Mods and the mod's website, to open its pages in one click.
 
+#### Improved
+- **Simplification Distance can be turned off** — *Simplification Distance* now goes down to OFF, so far mobs, entities, players and birds become flat pictures only when they look smaller on screen than the *Simplification Size*.
+
 ## 0.14.0 — 2026-10-29
 
 ### Client
