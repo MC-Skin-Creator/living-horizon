@@ -3,21 +3,19 @@ package fr.clixmods.livinghorizon.render;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import fr.clixmods.livinghorizon.FarConfig;
+import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
-//? if <1.21.11 {
-/*import fr.clixmods.livinghorizon.LivingHorizonClient;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.resources.Identifier;
-*///?}
 
 /**
  * What a distance setting means, drawn in the world behind the mod's settings screen while
@@ -35,7 +33,7 @@ import net.minecraft.resources.Identifier;
  * </ul>
  *
  * <p>Submitted with the entities, like the birds, so that the terrain in front of it, the far
- * terrain's included, hides it. Its render type writes no depth ({@link #TYPE}): the water,
+ * terrain's included, hides it. Its render type writes no depth ({@link #type}): the water,
  * the clouds and whatever another mod draws after it are drawn exactly as without it.
  */
 public final class DistancePreview {
@@ -52,16 +50,18 @@ public final class DistancePreview {
     /**
      * Plain colour, see-through, writing no depth and never fogged: the game's fog would hide a
      * fence past a hundred blocks or so. The game's debug quads are all that from 1.21.11; before,
-     * they write depth, which would hide the water behind, and a glowing entity's type stands
-     * in, fogged as entities are.
+     * they write depth, which would hide the water behind.
      */
-    //? if >=1.21.11 {
-    private static final RenderType TYPE = RenderTypes.debugQuads();
-    //?} else {
-    /*private static final RenderType TYPE = RenderTypes.entityTranslucentEmissive(
+    //? if >=1.21.11
+    private static final RenderType PLAIN = RenderTypes.debugQuads();
+    /**
+     * A glowing entity's, which writes no depth either but is fogged as entities are. Iris gives
+     * it a program of the shader pack, as it gives none to the debug quads, which Photon's passes
+     * then paint over: under a pack, this one. Before 1.21.11, the only one.
+     */
+    private static final RenderType GLOWING = RenderTypes.entityTranslucentEmissive(
             Identifier.fromNamespaceAndPath(LivingHorizonClient.MOD_ID, "textures/misc/preview.png"));
     private static final int LIGHT = LightTexture.pack(15, 15);
-    *///?}
 
     /** The mod's orange, as on Sodium's page. */
     private static final int RED = 255, GREEN = 140, BLUE = 20;
@@ -155,6 +155,7 @@ public final class DistancePreview {
         LocalPlayer player = minecraft.player;
         if (level == null || player == null || FarDepth.irisShadowPass()) return;
         double reach = DepthFar.of(minecraft) * 0.95;
+        boolean plain = plain();
         switch (what) {
             case AROUND -> {
                 // 0 is no limit: nothing to show.
@@ -164,7 +165,8 @@ public final class DistancePreview {
                 // Past the far plane: closer by the same ratio everywhere, the same on screen.
                 double pull = radius > reach ? reach / radius : 1.0;
                 double top = fenceHeight(radius);
-                sink.draw(pose, TYPE, (at, out) -> sphere(at, out, radius * pull, top * pull, fade));
+                sink.draw(pose, type(plain), (at, out) -> sphere(new Pen(at, out, plain), radius * pull, top * pull,
+                        fade));
             }
             case CHUNKS -> {
                 int chunks = Math.max(1, value);
@@ -174,7 +176,8 @@ public final class DistancePreview {
                 double pull = far > reach ? reach / far : 1.0;
                 double bottom = level.getMinY() - camera.y;
                 double top = fenceHeight(chunks * 16.0);
-                sink.draw(pose, TYPE, (at, out) -> chunks(at, out, chunks, cx, cz, camera, bottom, top, pull, fade));
+                sink.draw(pose, type(plain), (at, out) -> chunks(new Pen(at, out, plain), chunks, cx, cz, camera,
+                        bottom, top, pull, fade));
             }
             case ABOVE -> {
                 double height = Math.max(player.getY(), level.getSeaLevel()) + Math.max(0, value) - camera.y;
@@ -182,7 +185,8 @@ public final class DistancePreview {
                 double far = Math.sqrt(radius * radius + height * height);
                 GhostRenderer.noteDistance(far);
                 double pull = far > reach ? reach / far : 1.0;
-                sink.draw(pose, TYPE, (at, out) -> ceiling(at, out, camera, height, radius, pull, fade));
+                sink.draw(pose, type(plain), (at, out) -> ceiling(new Pen(at, out, plain), camera, height, radius,
+                        pull, fade));
             }
         }
     }
@@ -190,24 +194,24 @@ public final class DistancePreview {
     // --- Around: a sphere ------------------------------------------------------------------
 
     /** The sphere, {@code radius} round the camera, up to {@code top} above it, then its rail. */
-    private static void sphere(PoseStack.Pose at, VertexConsumer out, double radius, double top, float fade) {
+    private static void sphere(Pen pen, double radius, double top, float fade) {
         for (int row = 0; row + 1 < BELOW.length; row++) {
-            band(at, out, radius, BELOW[row], BELOW[row + 1], BODY * fade, BODY * fade);
+            band(pen, radius, BELOW[row], BELOW[row + 1], BODY * fade, BODY * fade);
         }
         double highest = top >= radius ? HIGHEST : Math.min(HIGHEST, Math.toDegrees(Math.asin(top / radius)));
         // Rows no more than 8 degrees apart, the sphere round up to there.
         int rows = Math.max(1, (int) Math.ceil(highest / 8));
         for (int row = 0; row < rows; row++) {
             double low = highest * row / rows, high = highest * (row + 1) / rows;
-            band(at, out, radius, low, high, Mth.lerp((float) row / rows, BODY, BODY_TOP) * fade,
+            band(pen, radius, low, high, Mth.lerp((float) row / rows, BODY, BODY_TOP) * fade,
                     Mth.lerp((float) (row + 1) / rows, BODY, BODY_TOP) * fade);
         }
         double rail = Math.toDegrees(RAIL_ANGLE);
-        band(at, out, radius, highest, highest + rail, RAIL * fade, RAIL * fade);
+        band(pen, radius, highest, highest + rail, RAIL * fade, RAIL * fade);
     }
 
     /** One ring of the sphere between two elevations, in degrees, at these opacities. */
-    private static void band(PoseStack.Pose at, VertexConsumer out, double radius, double low, double high,
+    private static void band(Pen pen, double radius, double low, double high,
                              float lowAlpha, float highAlpha) {
         double lowRad = Math.toRadians(low), highRad = Math.toRadians(high);
         float lowY = (float) (Math.sin(lowRad) * radius), highY = (float) (Math.sin(highRad) * radius);
@@ -215,10 +219,10 @@ public final class DistancePreview {
         for (int step = 0; step < AROUND_STEPS; step++) {
             double a = step * Math.PI * 2 / AROUND_STEPS, b = (step + 1) * Math.PI * 2 / AROUND_STEPS;
             float sa = (float) Math.sin(a), ca = (float) Math.cos(a), sb = (float) Math.sin(b), cb = (float) Math.cos(b);
-            vertex(at, out, sa * lowRing, lowY, ca * lowRing, lowAlpha);
-            vertex(at, out, sb * lowRing, lowY, cb * lowRing, lowAlpha);
-            vertex(at, out, sb * highRing, highY, cb * highRing, highAlpha);
-            vertex(at, out, sa * highRing, highY, ca * highRing, highAlpha);
+            vertex(pen, sa * lowRing, lowY, ca * lowRing, lowAlpha);
+            vertex(pen, sb * lowRing, lowY, cb * lowRing, lowAlpha);
+            vertex(pen, sb * highRing, highY, cb * highRing, highAlpha);
+            vertex(pen, sa * highRing, highY, ca * highRing, highAlpha);
         }
     }
 
@@ -237,15 +241,15 @@ public final class DistancePreview {
         return dz;
     }
 
-    private static void chunks(PoseStack.Pose at, VertexConsumer out, int radius, int cx, int cz, Vec3 camera,
+    private static void chunks(Pen pen, int radius, int cx, int cz, Vec3 camera,
                                double bottom, double top, double pull, float fade) {
         // The north and south edges of each run of columns that reach as far.
         for (int dx = -radius; dx <= radius; ) {
             int dz = reach(radius, dx), end = dx;
             while (end + 1 <= radius && reach(radius, end + 1) == dz) end++;
             double x0 = (cx + dx) * 16.0, x1 = (cx + end + 1) * 16.0;
-            fence(at, out, x0, (cz + dz + 1) * 16.0, x1, (cz + dz + 1) * 16.0, camera, bottom, top, pull, fade);
-            fence(at, out, x0, (cz - dz) * 16.0, x1, (cz - dz) * 16.0, camera, bottom, top, pull, fade);
+            fence(pen, x0, (cz + dz + 1) * 16.0, x1, (cz + dz + 1) * 16.0, camera, bottom, top, pull, fade);
+            fence(pen, x0, (cz - dz) * 16.0, x1, (cz - dz) * 16.0, camera, bottom, top, pull, fade);
             dx = end + 1;
         }
         // The east and west edges, where a column reaches farther than the one beside it.
@@ -255,10 +259,10 @@ public final class DistancePreview {
             int low = Math.min(left, right), high = Math.max(left, right);
             double x = (cx + dx) * 16.0;
             if (low < 0) {
-                fence(at, out, x, (cz - high) * 16.0, x, (cz + high + 1) * 16.0, camera, bottom, top, pull, fade);
+                fence(pen, x, (cz - high) * 16.0, x, (cz + high + 1) * 16.0, camera, bottom, top, pull, fade);
             } else {
-                fence(at, out, x, (cz + low + 1) * 16.0, x, (cz + high + 1) * 16.0, camera, bottom, top, pull, fade);
-                fence(at, out, x, (cz - high) * 16.0, x, (cz - low) * 16.0, camera, bottom, top, pull, fade);
+                fence(pen, x, (cz + low + 1) * 16.0, x, (cz + high + 1) * 16.0, camera, bottom, top, pull, fade);
+                fence(pen, x, (cz - high) * 16.0, x, (cz - low) * 16.0, camera, bottom, top, pull, fade);
             }
         }
     }
@@ -267,7 +271,7 @@ public final class DistancePreview {
      * A fence from the bottom of the world to {@code top} above the camera, along a chunk edge
      * between two points (world coordinates), with its rail.
      */
-    private static void fence(PoseStack.Pose at, VertexConsumer out, double x0, double z0, double x1, double z1,
+    private static void fence(Pen pen, double x0, double z0, double x1, double z1,
                               Vec3 camera, double bottom, double top, double pull, float fade) {
         double ax = x0 - camera.x, az = z0 - camera.z, bx = x1 - camera.x, bz = z1 - camera.z;
         float pax = (float) (ax * pull), paz = (float) (az * pull), pbx = (float) (bx * pull), pbz = (float) (bz * pull);
@@ -277,23 +281,23 @@ public final class DistancePreview {
         float aRail = high + (float) (Math.sqrt(ax * ax + az * az) * RAIL_ANGLE * pull);
         float bRail = high + (float) (Math.sqrt(bx * bx + bz * bz) * RAIL_ANGLE * pull);
         float body = BODY * fade, under = BODY_TOP * fade, rail = RAIL * fade;
-        quad(at, out, pax, paz, pbx, pbz, low, low, horizon, horizon, body, body);
-        quad(at, out, pax, paz, pbx, pbz, horizon, horizon, high, high, body, under);
-        quad(at, out, pax, paz, pbx, pbz, high, high, aRail, bRail, rail, rail);
+        quad(pen, pax, paz, pbx, pbz, low, low, horizon, horizon, body, body);
+        quad(pen, pax, paz, pbx, pbz, horizon, horizon, high, high, body, under);
+        quad(pen, pax, paz, pbx, pbz, high, high, aRail, bRail, rail, rail);
     }
 
     /** An upright quad between two points of the ground, each with its own bottom and top. */
-    private static void quad(PoseStack.Pose at, VertexConsumer out, float ax, float az, float bx, float bz,
+    private static void quad(Pen pen, float ax, float az, float bx, float bz,
                              float aLow, float bLow, float aHigh, float bHigh, float lowAlpha, float highAlpha) {
-        vertex(at, out, ax, aLow, az, lowAlpha);
-        vertex(at, out, bx, bLow, bz, lowAlpha);
-        vertex(at, out, bx, bHigh, bz, highAlpha);
-        vertex(at, out, ax, aHigh, az, highAlpha);
+        vertex(pen, ax, aLow, az, lowAlpha);
+        vertex(pen, bx, bLow, bz, lowAlpha);
+        vertex(pen, bx, bHigh, bz, highAlpha);
+        vertex(pen, ax, aHigh, az, highAlpha);
     }
 
     // --- Above: a ceiling --------------------------------------------------------------------
 
-    private static void ceiling(PoseStack.Pose at, VertexConsumer out, Vec3 camera, double height, double radius,
+    private static void ceiling(Pen pen, Vec3 camera, double height, double radius,
                                 double pull, float fade) {
         float y = (float) (height * pull);
         for (int ring = 0; ring + 1 < CEILING_RINGS.length; ring++) {
@@ -302,26 +306,26 @@ public final class DistancePreview {
             for (int step = 0; step < AROUND_STEPS; step++) {
                 double a = step * Math.PI * 2 / AROUND_STEPS, b = (step + 1) * Math.PI * 2 / AROUND_STEPS;
                 float sa = (float) Math.sin(a), ca = (float) Math.cos(a), sb = (float) Math.sin(b), cb = (float) Math.cos(b);
-                vertex(at, out, sa * inner, y, ca * inner, innerAlpha);
-                vertex(at, out, sb * inner, y, cb * inner, innerAlpha);
-                vertex(at, out, sb * outer, y, cb * outer, outerAlpha);
-                vertex(at, out, sa * outer, y, ca * outer, outerAlpha);
+                vertex(pen, sa * inner, y, ca * inner, innerAlpha);
+                vertex(pen, sb * inner, y, cb * inner, innerAlpha);
+                vertex(pen, sb * outer, y, cb * outer, outerAlpha);
+                vertex(pen, sa * outer, y, ca * outer, outerAlpha);
             }
         }
         // The chunk lines, so that the ceiling reads as flat and its height can be judged.
         double grid = Math.min(radius, GRID_REACH);
         int first = Mth.floor((camera.x - grid) / 16), last = Mth.floor((camera.x + grid) / 16) + 1;
-        for (int line = first; line <= last; line++) gridLine(at, out, line * 16.0 - camera.x, height, grid, pull, fade, true);
+        for (int line = first; line <= last; line++) gridLine(pen, line * 16.0 - camera.x, height, grid, pull, fade, true);
         first = Mth.floor((camera.z - grid) / 16);
         last = Mth.floor((camera.z + grid) / 16) + 1;
-        for (int line = first; line <= last; line++) gridLine(at, out, line * 16.0 - camera.z, height, grid, pull, fade, false);
+        for (int line = first; line <= last; line++) gridLine(pen, line * 16.0 - camera.z, height, grid, pull, fade, false);
     }
 
     /**
      * One chunk line across the ceiling, {@code across} blocks from the camera, cut in pieces a
      * chunk long; as wide as a couple of pixels wherever it is, fading out with the ceiling.
      */
-    private static void gridLine(PoseStack.Pose at, VertexConsumer out, double across, double height, double grid,
+    private static void gridLine(Pen pen, double across, double height, double grid,
                                  double pull, float fade, boolean alongZ) {
         double half = grid * grid - across * across;
         if (half <= 0) return;
@@ -335,15 +339,15 @@ public final class DistancePreview {
             float toAlpha = ceilingAlpha(Math.hypot(across, to) / grid) * LINE * fade;
             if (fromAlpha <= 0f && toAlpha <= 0f) continue;
             if (alongZ) {
-                vertex(at, out, (float) ((across - fromWidth) * pull), y, (float) (from * pull), fromAlpha);
-                vertex(at, out, (float) ((across + fromWidth) * pull), y, (float) (from * pull), fromAlpha);
-                vertex(at, out, (float) ((across + toWidth) * pull), y, (float) (to * pull), toAlpha);
-                vertex(at, out, (float) ((across - toWidth) * pull), y, (float) (to * pull), toAlpha);
+                vertex(pen, (float) ((across - fromWidth) * pull), y, (float) (from * pull), fromAlpha);
+                vertex(pen, (float) ((across + fromWidth) * pull), y, (float) (from * pull), fromAlpha);
+                vertex(pen, (float) ((across + toWidth) * pull), y, (float) (to * pull), toAlpha);
+                vertex(pen, (float) ((across - toWidth) * pull), y, (float) (to * pull), toAlpha);
             } else {
-                vertex(at, out, (float) (from * pull), y, (float) ((across - fromWidth) * pull), fromAlpha);
-                vertex(at, out, (float) (from * pull), y, (float) ((across + fromWidth) * pull), fromAlpha);
-                vertex(at, out, (float) (to * pull), y, (float) ((across + toWidth) * pull), toAlpha);
-                vertex(at, out, (float) (to * pull), y, (float) ((across - toWidth) * pull), toAlpha);
+                vertex(pen, (float) (from * pull), y, (float) ((across - fromWidth) * pull), fromAlpha);
+                vertex(pen, (float) (from * pull), y, (float) ((across + fromWidth) * pull), fromAlpha);
+                vertex(pen, (float) (to * pull), y, (float) ((across + toWidth) * pull), toAlpha);
+                vertex(pen, (float) (to * pull), y, (float) ((across - toWidth) * pull), toAlpha);
             }
         }
     }
@@ -367,18 +371,42 @@ public final class DistancePreview {
 
     // --- Vertices ------------------------------------------------------------------------------
 
+    /** Whether this frame draws with {@code PLAIN}: from 1.21.11, without a shader pack. */
+    private static boolean plain() {
+        //? if >=1.21.11 {
+        return !FarDepth.shaderPack();
+        //?} else {
+        /*return false;
+        *///?}
+    }
+
+    /** {@code PLAIN} or {@link #GLOWING}. */
+    private static RenderType type(boolean plain) {
+        //? if >=1.21.11
+        if (plain) return PLAIN;
+        return GLOWING;
+    }
+
+    /** Where the vertices go, and whether they are {@code PLAIN}'s, a position and a colour only. */
+    private record Pen(PoseStack.Pose at, VertexConsumer out, boolean plain) {
+    }
+
     /** A vertex of the preview's colour at this opacity, 0 to 1. */
-    private static void vertex(PoseStack.Pose at, VertexConsumer out, float x, float y, float z, float alpha) {
+    private static void vertex(Pen pen, float x, float y, float z, float alpha) {
+        PoseStack.Pose at = pen.at();
+        VertexConsumer out = pen.out();
         int a = Math.round(Mth.clamp(alpha, 0f, 1f) * 255);
         //? if >=1.21.11 {
-        out.addVertex(at, x, y, z).setColor(RED, GREEN, BLUE, a);
-        //?} else {
-        /*out.addVertex(at, x, y, z)
+        if (pen.plain()) {
+            out.addVertex(at, x, y, z).setColor(RED, GREEN, BLUE, a);
+            return;
+        }
+        //?}
+        out.addVertex(at, x, y, z)
                 .setColor(RED, GREEN, BLUE, a)
                 .setUv(0.5f, 0.5f)
                 .setOverlay(OverlayTexture.NO_OVERLAY)
                 .setLight(LIGHT)
                 .setNormal(at, 0f, 1f, 0f);
-        *///?}
     }
 }

@@ -629,8 +629,11 @@ come back, add it here in the same pull request: this file is what the next sess
   fog had faded a 128-block fence out completely at the default render distance. From 1.21.11
   it is the game's debug quads (no fog, no depth written); before, their depth would hide the
   water behind, so the entity type stays, and past the fog it shows only with Voxy or Distant
-  Horizons. The screen asks for it every frame; a time limit instead made it vanish between
-  two frames of a slow game. The `distancepreview` scenario checks it.
+  Horizons. Under a shader pack Iris gives debug quads no program of the pack (`IrisPipelines`
+  leaves them out) and Photon's passes paint over them: with a pack on, the glowing
+  entity type draws it on every version. The screen asks for it every frame; a time limit
+  instead made it vanish between two frames of a slow game. The `distancepreview` scenario
+  checks it.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

@@ -1163,10 +1163,12 @@ changes from the keyboard, `render/DistancePreview` draws what it measures in th
   *Bird Distance*, with the chunk lines on it.
 
 It is submitted with the entities, like the birds, so that terrain in front of it hides it,
-the far terrain's included while its depth is merged. From 1.21.11 it is drawn as the game's
-debug quads: no fog, no depth written. Before, those write depth (water and clouds behind
-would be lost), so a glowing entity's render type draws it, fogged as entities are: past the
-game's fog it only shows with Voxy or Distant Horizons. The screen asks for it every frame
+the far terrain's included while its depth is merged. From 1.21.11, without a shader pack, it
+is drawn as the game's debug quads: no fog, no depth written. Before, those write depth (water
+and clouds behind would be lost), and under a shader pack Iris gives them no program of the
+pack (its `IrisPipelines` leaves them out), so Photon's passes paint over them: a glowing
+entity's render type draws it there, which Iris gives one, fogged as entities are (without a
+pack, past the game's fog it only shows with Voxy or Distant Horizons). The screen asks for it every frame
 and it fades out once it stops asking; it is gone as soon as no screen is open. Sodium's page
 does not show it.
 
