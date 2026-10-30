@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.render.impostor;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -8,6 +9,8 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -15,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * A mob's sheet saved on disk reads back the same, when and where it was baked included, a file of
@@ -116,5 +121,42 @@ class ImpostorDiskTest {
     void stopsAtTheEndOfACutFile() throws IOException {
         byte[] data = encoded(2.5, ImpostorDisk.SCALE, sheet());
         assertThrows(EOFException.class, () -> decoded(Arrays.copyOf(data, data.length / 2)));
+    }
+
+    /** A fingerprint's folder with one sheet in it, chosen {@code ago} milliseconds ago. */
+    private static Path folder(Path base, String name, long ago) throws IOException {
+        Path folder = base.resolve(name);
+        Files.createDirectories(folder.resolve("minecraft+cow"));
+        Files.write(folder.resolve("minecraft+cow").resolve("1.bin"), new byte[]{1});
+        assertTrue(folder.toFile().setLastModified(System.currentTimeMillis() - ago));
+        return folder;
+    }
+
+    @Test
+    void keepsTheFoldersChosenLast(@TempDir Path base) throws IOException {
+        Path current = folder(base, "current", 0);
+        Path last = folder(base, "last", 1000);
+        Path before = folder(base, "before", 2000);
+        Path oldest = folder(base, "oldest", 3000);
+        ImpostorDisk.tidy(base, current, ImpostorDisk.FOLDERS, 10);
+        assertTrue(Files.isDirectory(current));
+        assertTrue(Files.isDirectory(last));
+        assertTrue(Files.isDirectory(before));
+        assertFalse(Files.exists(oldest));
+    }
+
+    @Test
+    void keepsTheSheetsMetLast(@TempDir Path base) throws IOException {
+        Path current = base.resolve("current").resolve("minecraft+cow");
+        Files.createDirectories(current);
+        for (int sheet = 0; sheet < 5; sheet++) {
+            Path file = current.resolve(sheet + ".bin");
+            Files.write(file, new byte[]{1});
+            assertTrue(file.toFile().setLastModified(System.currentTimeMillis() - (5 - sheet) * 1000L));
+        }
+        ImpostorDisk.tidy(base, base.resolve("current"), ImpostorDisk.FOLDERS, 3);
+        assertFalse(Files.exists(current.resolve("0.bin")));
+        assertFalse(Files.exists(current.resolve("1.bin")));
+        for (int sheet = 2; sheet < 5; sheet++) assertTrue(Files.exists(current.resolve(sheet + ".bin")));
     }
 }

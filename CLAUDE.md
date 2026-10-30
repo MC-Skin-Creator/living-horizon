@@ -420,9 +420,9 @@ come back, add it here in the same pull request: this file is what the next sess
   `ImpostorKey` leaves out what never shows (positions, times, owners, names, sound variants,
   an item's damage), names variants by their registry key so that a sheet is found again in
   the next world, and learns per kind of mob the values seen changing again and again
-  (`RESTLESS`). `ImpostorAtlas` gives each kind of figure pages of its own (`Page`), keeps the
+  (`RESTLESS`). `SheetAllocator` gives each kind of figure pages of its own (`Page`), keeps the
   mobs' sheets, throws the players' away once unused, and never evicts a sheet drawn or asked
-  for within `IN_USE`. `ImpostorDisk` keeps the mobs' sheets on disk under a fingerprint
+  for within `IN_USE`; `SheetAllocatorTest` checks it without the game. `ImpostorDisk` keeps the mobs' sheets on disk under a fingerprint
   (game, resource packs, mods): a sheet never read back from disk means its key is not
   stable across games (an identity hash in `ImpostorKey.stable`). The `sharing` scenario
   checks all of it, except across games: the client game tests start from an empty run

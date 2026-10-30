@@ -39,7 +39,6 @@ import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.renderer.entity.state.BoatRenderState;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
-import net.minecraft.client.renderer.entity.state.HumanoidRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 //? if <1.21.9 {
 /*import com.mojang.blaze3d.vertex.PoseStack;
@@ -56,7 +55,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
-import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.phys.Vec3;
@@ -503,9 +501,7 @@ public final class GhostRenderer {
                 }
                 EntityRenderState body = extract(dispatcher, puppet, partialTick);
                 EntityRenderState mountState = mount == null ? null : extract(dispatcher, mount, partialTick);
-                if (mountState != null && body instanceof HumanoidRenderState humanoid) {
-                    humanoid.isPassenger = true;
-                }
+                if (mountState != null) Posture.seat(body);
                 add(frame, minecraft, eye, body, mountState, true, Mark.PLAYER, config, player.id());
             }
         }
@@ -739,29 +735,21 @@ public final class GhostRenderer {
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
             if (body == null) continue;
             EntityRenderState mountState = mount == null ? null : extract(dispatcher, mount, partialTick);
-            if (mountState != null && body instanceof HumanoidRenderState humanoid) {
-                humanoid.isPassenger = true;
-            }
+            if (mountState != null) Posture.seat(body);
             if (look != RestingPuppet.Look.STAND && look != RestingPuppet.Look.RIDE
                     && body instanceof LivingEntityRenderState living) {
                 living.yRot = 0;
                 living.xRot = 0;
                 living.walkAnimationSpeed = 0;
-                if (look == RestingPuppet.Look.BED) {
-                    // In the bed: its sleeping position, so the game lays it along the bed.
-                    living.pose = Pose.SLEEPING;
-                } else if (look == RestingPuppet.Look.LIE) {
-                    // Lying on the ground: the game lays a sleeper out along its body
-                    // rotation when there is no bed, a little lower than on a mattress.
-                    living.pose = Pose.SLEEPING;
-                    living.bedOrientation = null;
-                    body.y += LIE_LIFT;
-                }
             }
-            if (look == RestingPuppet.Look.SIT && body instanceof HumanoidRenderState humanoid) {
+            if (look == RestingPuppet.Look.BED) {
+                Posture.lie(body, true);
+            } else if (look == RestingPuppet.Look.LIE && Posture.lie(body, false)) {
+                // On the ground the game lays a sleeper a little lower than on a mattress.
+                body.y += Posture.LIE_LIFT;
+            } else if (look == RestingPuppet.Look.SIT && Posture.seat(body)) {
                 // The riding pose, without a mount: legs out in front, on the ground.
-                humanoid.isPassenger = true;
-                body.y -= SEAT_DROP;
+                body.y -= Posture.SEAT_DROP;
             }
             // Their name, marked offline, where the game would show it: close by, as for anyone.
             Component name = config.offlineNames ? body.nameTag : null;
@@ -1122,11 +1110,6 @@ public final class GhostRenderer {
         return true;
     }
 
-    /** Blocks a figure in the riding pose is lowered by to sit on the ground: the seat's height. */
-    private static final double SEAT_DROP = 0.6;
-    /** Blocks a figure lying on the ground is raised by: the game lays a sleeper a little low. */
-    private static final double LIE_LIFT = 0.13;
-
     /**
      * A player who logged off as a picture, in its posture: standing, seated on the ground,
      * lying on it or in a bed (laid along the bed, as the game lays a sleeper), or on its mount.
@@ -1135,20 +1118,20 @@ public final class GhostRenderer {
                                            RestingPuppet.Look look, float partialTick, FarConfig config) {
         return switch (look) {
             case STAND -> impostor(minecraft, eye, puppet, partialTick, config);
-            case SIT -> impostor(minecraft, eye, puppet, partialTick, config, 0, -SEAT_DROP, 0, Float.NaN);
-            // Lying pictures are baked raised (ImpostorAtlas.LYING_LIFT): lowered back here.
-            case LIE -> impostor(minecraft, eye, puppet, partialTick, config, 0, LIE_LIFT - ImpostorAtlas.LYING_LIFT, 0,
+            case SIT -> impostor(minecraft, eye, puppet, partialTick, config, 0, -Posture.SEAT_DROP, 0, Float.NaN);
+            // Lying pictures are baked raised (Posture.BAKED_LIFT): lowered back here.
+            case LIE -> impostor(minecraft, eye, puppet, partialTick, config, 0, Posture.LIE_LIFT - Posture.BAKED_LIFT, 0,
                     Float.NaN);
             case BED -> {
                 Direction bed = puppet.getBedOrientation();
                 if (bed == null) {
-                    yield impostor(minecraft, eye, puppet, partialTick, config, 0, LIE_LIFT - ImpostorAtlas.LYING_LIFT, 0,
+                    yield impostor(minecraft, eye, puppet, partialTick, config, 0, Posture.LIE_LIFT - Posture.BAKED_LIFT, 0,
                             Float.NaN);
                 }
                 // As the game lays one: its head on the pillow, its body along the bed.
                 double back = puppet.getEyeHeight() - 0.1;
                 yield impostor(minecraft, eye, puppet, partialTick, config, -bed.getStepX() * back,
-                        -ImpostorAtlas.LYING_LIFT, -bed.getStepZ() * back, sleeping(bed));
+                        -Posture.BAKED_LIFT, -bed.getStepZ() * back, sleeping(bed));
             }
             case RIDE -> mount != null && impostorRiding(minecraft, eye, puppet, mount, partialTick, config);
         };
