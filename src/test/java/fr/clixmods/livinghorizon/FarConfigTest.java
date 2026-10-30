@@ -114,6 +114,28 @@ class FarConfigTest {
     }
 
     @Test
+    void version13GivesLimitsToWhatWasNotChosenByHand() {
+        // The old High and Ultra presets go to the new ones, with limits.
+        FarConfig high = migrated("{\"version\": 12, \"impostorDistance\": 256, \"maxDistantMobs\": 1000,"
+                + " \"mobMaxDistance\": 1024, \"birdDensity\": 200, \"birdMaxDistance\": 1500}");
+        assertEquals(QualityPreset.HIGH, QualityPreset.of(high));
+        FarConfig ultra = migrated("{\"version\": 12, \"impostorDistance\": 512, \"maxDistantMobs\": 1000,"
+                + " \"mobMaxDistance\": 0, \"birdDensity\": 400, \"birdMaxDistance\": 3000}");
+        assertEquals(QualityPreset.ULTRA, QualityPreset.of(ultra));
+        // The distances whose default was no limit.
+        FarConfig distances = migrated("{\"version\": 12, \"playerMaxDistance\": 0, \"entityMaxDistance\": 0,"
+                + " \"animationMaxDistance\": 0}");
+        assertEquals(FarConfig.MAX_DISTANCE, distances.playerMaxDistance);
+        assertEquals(FarConfig.MAX_DISTANCE, distances.entityMaxDistance);
+        assertEquals(FarConfig.MAX_DISTANCE, distances.animationMaxDistance);
+        // No limit set by hand, outside a preset, is kept.
+        FarConfig chosen = migrated("{\"version\": 12, \"maxDistantMobs\": 1000, \"mobMaxDistance\": 0}");
+        assertEquals(FarConfig.UNLIMITED_MOBS, chosen.maxDistantMobs);
+        assertEquals(0, chosen.mobMaxDistance);
+        assertEquals(1200, migrated("{\"version\": 12, \"playerMaxDistance\": 1200}").playerMaxDistance);
+    }
+
+    @Test
     void version8SplitsTheOutlines() {
         FarConfig glow = migrated("{\"version\": 7, \"glowOutline\": true}");
         assertTrue(glow.outlineLiveMobs && glow.outlineCopies && glow.outlinePlayers && glow.outlineImpostors);

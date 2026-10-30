@@ -12,7 +12,7 @@
 
 #### Nouveautés
 - **Véhicules des autres mods au loin** — les véhicules des autres mods, comme les avions d'Immersive Aircraft, restent maintenant visibles au-delà de la distance de rendu là où on les a laissés, comme les bateaux ; ils sont listés dans l'onglet *Entités* de *Créatures et entités...* dès le départ, et ceux qu'on monte sans les diriger (wagonnets, véhicules de certains autres mods) restent désactivés tant qu'on ne les active pas.
-- **Réglages des entités** — les bateaux, véhicules et mannequins ont maintenant leurs propres réglages, à part des créatures : *Afficher les entités*, *Entités max* et *Distance d'affichage des entités*, illimitée par défaut.
+- **Réglages des entités** — les bateaux, véhicules et mannequins ont maintenant leurs propres réglages, à part des créatures : *Afficher les entités*, *Entités max* et *Distance d'affichage des entités*, de 4000 blocs par défaut.
 - **Créatures simplifiées et Entités simplifiées** — *Entités simplifiées* devient deux options : *Créatures simplifiées*, et *Entités simplifiées* pour les bateaux, véhicules et mannequins, qui deviennent eux aussi des images plates au loin, vus aussi d'au-dessus et d'en dessous ; *Joueurs simplifiés* ne dépend plus d'aucune des deux, et le bouton qui montre les images devient *Aperçu des images...*, avec un onglet pour les images des entités.
 - **Bouton du journal des modifications** — les réglages du mod ont maintenant un bouton du journal des modifications à côté du logo Discord, pour lire ce qui a changé à chaque version (un bouton *Lire le journal des modifications* sur la page de Sodium).
 - **Créatures à découvrir** — les terres lointaines que personne n'a encore explorées ne sont plus vides d'animaux, aussi loin que va la *Distance d'affichage des créatures*, en solo ou sur un serveur avec le mod ; un nouveau réglage les cache.
@@ -31,8 +31,8 @@
 - **Animaux assis qui le restent** — les chats, les loups et les perroquets à qui tu as dit de s'asseoir restent maintenant assis au loin, au lieu de se lever et de partir se balader.
 - **Plus de créatures lointaines** — *Créatures max* va maintenant jusqu'à 4000 avant *Illimité*.
 - **Illimité au bout du curseur** — *Illimitée* est maintenant tout à droite des curseurs de distance d'affichage, après 4000 blocs, au lieu de tout à gauche.
-- **Confirmation avant Illimité** — régler *Créatures max*, *Entités max* ou *Distance d'affichage des créatures* sur *Illimité* demande maintenant une confirmation, car cela peut faire chuter fortement les FPS et, dans le pire des cas, faire planter le jeu ; sur la page de Sodium, la question vient avec *Appliquer*.
-- **Préréglages avec des limites** — les préréglages *Élevé* et *Ultra* ne mettent plus rien sur *Illimité* : *Élevé* affiche jusqu'à 1500 créatures, *Ultra* jusqu'à 3000 et jusqu'à 2048 blocs.
+- **Confirmation avant Illimité** — mettre un curseur sur *Illimité*, un nombre de créatures, d'entités ou de joueurs déconnectés ou une distance d'affichage, demande maintenant une confirmation, car cela peut faire chuter fortement les FPS et, dans le pire des cas, faire planter le jeu ; sur la page de Sodium, la question vient avec *Appliquer*.
+- **Des limites par défaut** — plus rien n'est *Illimité* par défaut : *Distance d'affichage des joueurs* et *Distance des animations* s'arrêtent à 4000 blocs, *Élevé* affiche jusqu'à 1500 créatures et *Ultra* jusqu'à 3000 et jusqu'à 2048 blocs, et les réglages restés sur ces anciennes valeurs par défaut ou ces préréglages passent aux nouvelles.
 
 #### Corrections
 - **Plantage en ouvrant Créatures et entités depuis l'écran titre** — ouvrir *Créatures et entités...* depuis l'écran titre ne fait plus planter le jeu (Minecraft 26.x).

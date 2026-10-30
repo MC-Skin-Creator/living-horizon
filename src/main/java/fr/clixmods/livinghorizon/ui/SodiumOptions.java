@@ -128,7 +128,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 () -> FarConfig.get().offlinePlayers))
                         .addOption(integer(b, "maxOfflinePlayers", 0, FarConfig.UNLIMITED_OFFLINE, d.maxOfflinePlayers,
                                 v -> FarConfig.get().maxOfflinePlayers = v, () -> FarConfig.get().maxOfflinePlayers,
-                                plain("maxOfflinePlayers", 0, true))
+                                plain("maxOfflinePlayers", 0, FarConfig.UNLIMITED_OFFLINE))
                                 .setEnabledProvider(on("offlinePlayers"), id("offlinePlayers")))
                         .addOption(bool(b, "offlineLife", d.offlineLife, v -> FarConfig.get().offlineLife = v,
                                 () -> FarConfig.get().offlineLife)
@@ -156,7 +156,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 () -> FarConfig.get().distantMobs))
                         .addOption(integer(b, "maxDistantMobs", 0, FarConfig.UNLIMITED_MOBS, d.maxDistantMobs,
                                 v -> FarConfig.get().maxDistantMobs = v, () -> FarConfig.get().maxDistantMobs,
-                                plain("maxDistantMobs", 0, true)))
+                                plain("maxDistantMobs", 0, FarConfig.UNLIMITED_MOBS)))
                         .addOption(reach(b, "mobMaxDistance", d.mobMaxDistance,
                                 v -> FarConfig.get().mobMaxDistance = v, () -> FarConfig.get().mobMaxDistance))
                         .addOption(bool(b, "rememberNamedMobs", d.rememberNamedMobs,
@@ -173,7 +173,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 () -> FarConfig.get().distantEntities))
                         .addOption(integer(b, "maxDistantEntities", 0, FarConfig.UNLIMITED_MOBS, d.maxDistantEntities,
                                 v -> FarConfig.get().maxDistantEntities = v, () -> FarConfig.get().maxDistantEntities,
-                                plain("maxDistantEntities", 0, true)))
+                                plain("maxDistantEntities", 0, FarConfig.UNLIMITED_MOBS)))
                         .addOption(reach(b, "entityMaxDistance", d.entityMaxDistance,
                                 v -> FarConfig.get().entityMaxDistance = v, () -> FarConfig.get().entityMaxDistance)));
     }
@@ -375,10 +375,10 @@ public final class SodiumOptions implements ConfigEntryPoint {
         return v -> v == 0 && min == 0 ? Component.translatable(KEY + name + ".zero") : Component.translatable(KEY + unit, v);
     }
 
-    /** A bare number; the zero of a range from 0 and, with {@code maxIsUnlimited}, the top read as text. */
-    private static ControlValueFormatter plain(String name, int min, boolean maxIsUnlimited) {
+    /** A bare number; the zero of a range from 0, and from {@code unlimited} on (when above 0) the text for no limit. */
+    private static ControlValueFormatter plain(String name, int min, int unlimited) {
         return v -> v == 0 && min == 0 ? Component.translatable(KEY + name + ".zero")
-                : maxIsUnlimited && v >= FarConfig.UNLIMITED_MOBS ? Component.translatable(KEY + name + ".max")
+                : unlimited > 0 && v >= unlimited ? Component.translatable(KEY + name + ".max")
                 : Component.literal(String.valueOf(v));
     }
 

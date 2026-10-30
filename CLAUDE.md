@@ -102,8 +102,9 @@ field. Run it (`run.sh sodium,sodiumcontrols --sodium`) after any change to the 
 
 A slider of whole numbers on the mod's screens goes through `FarConfigScreen`'s helpers
 (`ui/NumberSlider`: typed with a right click, one step per arrow key), never a bare `IntRange`.
-A setting whose right end means no limit and costs frames or memory without one is named in
-`NumberSlider.asksBeforeUnlimited`: both screens ask before keeping it, and no preset sets it.
+No limit is never safe: every setting whose right end means no limit is named in
+`NumberSlider.asksBeforeUnlimited`, both screens ask before keeping it, and no preset or
+default sets it.
 
 Older Sodium (0.5 to 0.7: 1.20.x, 1.21.3 to 1.21.10) has no API for other mods' pages: there
 the settings stay on the mod's own screen, which the *Living Horizon...* button opens.

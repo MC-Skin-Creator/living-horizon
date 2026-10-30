@@ -1238,7 +1238,9 @@ The *Preset* button (*Low*, *Normal*, *High*, *Ultra*) sets only the settings th
 cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 `birdMaxDistance`. *Normal* is the defaults. Changing one of them by hand shows *Custom*.
 No preset goes without a limit: *High* is 1500 mobs to 1024 blocks, *Ultra* 3000 mobs to
-2048 blocks (`NumberSliderTest` checks every preset).
+2048 blocks (`NumberSliderTest` checks every preset and the defaults). No default goes without
+one either; settings version 13 moves the old High and Ultra and the old unlimited default
+distances (players, animation, entities) to the new values, and keeps a no limit set by hand.
 
 The sliders of whole numbers on the mod's screens are `ui/NumberSlider`, which the game's own
 option lists build through its `OptionInstance.ValueSet` (made public by the access widener
@@ -1246,9 +1248,9 @@ before 26.2, where the game made it so). A right click turns one into a text fie
 `SideOptionsScreen` hands the keys until Enter (kept when it reads as a value), Escape or a
 click: a number is brought into the range, one past the last number or the start of the word
 for no limit (any case, accents or spaces) is no limit. The arrow keys move it one value, ten
-with Shift, where the game moves it a pixel. `NumberSlider.asksBeforeUnlimited` names the
-settings whose right end asks first (`maxDistantMobs`, `maxDistantEntities`,
-`mobMaxDistance`): dragged there, the slider shows it and keeps it on release once the player
+with Shift, where the game moves it a pixel. `NumberSlider.asksBeforeUnlimited` names every
+setting whose right end is no limit (the three counts and the four distances), none of them
+safe without one: dragged there, the slider shows it and keeps it on release once the player
 says yes; typed or stepped there, at once. Sodium's page cannot ask as its slider moves:
 `SodiumOptions.asking` holds the value at *Apply* and asks then, and no reads the page back.
 
@@ -1278,7 +1280,7 @@ says yes; typed or stepped there, at once. Sodium's page cannot ask as its slide
 |---|---|---|---|---|
 | `enabled` | Show Players | `true` | | Distant players are drawn at all. The *Toggle Distant Players* key flips it |
 | `showVehicles` | Mounts & Vehicles | `true` | | Draw the mount they were last seen on |
-| `playerMaxDistance` | Player Render Distance | `0` blocks | 1 to 4000, or no limit | Past this, distant players are not drawn (`0`: no limit, the right end of the slider) |
+| `playerMaxDistance` | Player Render Distance | `4000` blocks | 1 to 4000, or no limit | Past this, distant players are not drawn (`0`: no limit, the right end of the slider) |
 | `offlinePlayers` | Offline Players | `true` | | Players who logged off are shown and remembered; off, neither |
 | `maxOfflinePlayers` | Max Offline | `256` | 0 to 1000 | How many players who logged off are drawn at once, nearest first (`0`: none, `1000`: no limit) |
 | `offlineLife` | Offline Player Activity | `true` | | They live their life around their spot; off, they sit on it |
@@ -1305,10 +1307,10 @@ In three parts, on both screens: *General*, *Mobs* (the living kinds, mannequins
 | `rememberNamedMobs` | Mobs: Name-Tagged Mobs | `true` | | A mob with a name tag is shown whatever its type |
 | `seedMobs` | Mobs: Unexplored Land Mobs | `true` | | The animals a server with the mod foresees in land nobody has explored, from the seed, are shown |
 | `animationMinPixels` | Mobs: Min. Animated Size | `10` pixels | 0 to 40 | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
-| `animationMaxDistance` | Mobs: Animation Distance | `0` blocks | 1 to 4000, or no limit | Past this, no distant mob plays an animation (`0`: no limit, the right end of the slider) |
+| `animationMaxDistance` | Mobs: Animation Distance | `4000` blocks | 1 to 4000, or no limit | Past this, no distant mob plays an animation (`0`: no limit, the right end of the slider) |
 | `distantEntities` | Entities: Show Entities | `true` | | Remembered boats, vehicles and mannequins stay visible far away |
 | `maxDistantEntities` | Entities: Max Entities | `256` | 0 to 4001 | How many of them are drawn at once, nearest first, apart from the mobs: a crowd of mobs never pushes an aircraft out (`4001`: no limit) |
-| `entityMaxDistance` | Entities: Entity Render Distance | `0` blocks | 1 to 4000, or no limit | Past this, distant boats, vehicles and mannequins are not drawn (`0`: no limit, the right end of the slider; few, and an aircraft is seen from afar) |
+| `entityMaxDistance` | Entities: Entity Render Distance | `4000` blocks | 1 to 4000, or no limit | Past this, distant boats, vehicles and mannequins are not drawn (`0`: no limit, the right end of the slider; few, and an aircraft is seen from afar) |
 | `knownMobTypes` | (not shown) | Those met so far | | Mob types already offered once, the game's and other mods': a new one is shown from the start, then left as you set it |
 | `knownVehicles` | (not shown) | Empty | | Vehicles that are neither mobs nor boats, as found from their renderer or met, listed in *Mobs & Entities...* |
 | `seatedVehicles` | (not shown) | Empty | | Those of them that only seat their riders (a minecart): listed, never shown by default |

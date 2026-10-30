@@ -151,10 +151,10 @@ public final class FarConfig {
 
     /**
      * Blocks: past this, distant boats, vehicles and mannequins are not drawn, apart from the
-     * mobs' limit. 0, the default, is no limit: there are few of them, and an aircraft is seen
-     * from afar.
+     * mobs' limit: far by default, since there are few of them and an aircraft is seen from
+     * afar. 0 is no limit, which the screens ask about first.
      */
-    public int entityMaxDistance = 0;
+    public int entityMaxDistance = MAX_DISTANCE;
 
     /**
      * Distant mobs are drawn only where terrain is drawn under them: a chunk the game draws, or
@@ -163,8 +163,8 @@ public final class FarConfig {
      */
     public boolean onlyOverTerrain = true;
 
-    /** Blocks: past this, distant players are not drawn. 0, the default, is no limit. */
-    public int playerMaxDistance = 0;
+    /** Blocks: past this, distant players are not drawn. 0 is no limit, which the screens ask about first. */
+    public int playerMaxDistance = MAX_DISTANCE;
 
     /**
      * The mobs shown far away, by type id ({@code "minecraft:horse"}). This client
@@ -372,8 +372,8 @@ public final class FarConfig {
      * resumes a little above, so it never flickers). 0 always animates. Needs {@link #optStillTiny}.
      */
     public int animationMinPixels = 10;
-    /** Blocks: past this, no distant mob plays an animation, however big it looks. 0 is no limit. */
-    public int animationMaxDistance = 0;
+    /** Blocks: past this, no distant mob plays an animation, however big it looks. 0 is no limit, which the screens ask about first. */
+    public int animationMaxDistance = MAX_DISTANCE;
     /** A copy that was not drawn for a moment (out of view, hidden, too small) stays where it is: no animation, no path read. */
     public boolean optFreezeHidden = false;
 
@@ -545,6 +545,17 @@ public final class FarConfig {
             // No limit was 1000; the slider goes to 4000 now, then no limit.
             if (config.maxDistantMobs >= 1000) config.maxDistantMobs = UNLIMITED_MOBS;
             if (config.maxDistantEntities >= 1000) config.maxDistantEntities = UNLIMITED_MOBS;
+            // No limit is never safe: the presets and defaults that went without one, which the
+            // player did not choose by hand, take the limits they have now.
+            boolean high = config.impostorDistance == 256 && config.maxDistantMobs == UNLIMITED_MOBS
+                    && config.mobMaxDistance == 1024 && config.birdDensity == 200 && config.birdMaxDistance == 1500;
+            boolean ultra = config.impostorDistance == 512 && config.maxDistantMobs == UNLIMITED_MOBS
+                    && config.mobMaxDistance == 0 && config.birdDensity == 400 && config.birdMaxDistance == 3000;
+            if (high) QualityPreset.HIGH.apply(config);
+            if (ultra) QualityPreset.ULTRA.apply(config);
+            if (config.playerMaxDistance <= 0) config.playerMaxDistance = MAX_DISTANCE;
+            if (config.entityMaxDistance <= 0) config.entityMaxDistance = MAX_DISTANCE;
+            if (config.animationMaxDistance <= 0) config.animationMaxDistance = MAX_DISTANCE;
         }
         // Written by hand out of range: the nearest end.
         config.impostorMobMemory = Math.clamp(config.impostorMobMemory, MIN_MOB_MEMORY, MAX_MOB_MEMORY);

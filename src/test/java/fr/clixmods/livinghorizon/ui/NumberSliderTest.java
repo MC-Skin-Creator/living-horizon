@@ -60,12 +60,25 @@ class NumberSliderTest {
     }
 
     @Test
-    void asksOnlyForTheCountsAndTheMobsDistance() {
-        assertTrue(NumberSlider.asksBeforeUnlimited("maxDistantMobs"));
-        assertTrue(NumberSlider.asksBeforeUnlimited("maxDistantEntities"));
-        assertTrue(NumberSlider.asksBeforeUnlimited("mobMaxDistance"));
-        assertFalse(NumberSlider.asksBeforeUnlimited("entityMaxDistance"));
-        assertFalse(NumberSlider.asksBeforeUnlimited("maxOfflinePlayers"));
+    void asksForEverySettingWithNoLimit() {
+        for (String setting : new String[]{"maxDistantMobs", "maxDistantEntities", "maxOfflinePlayers",
+                "playerMaxDistance", "mobMaxDistance", "animationMaxDistance", "entityMaxDistance"}) {
+            assertTrue(NumberSlider.asksBeforeUnlimited(setting), setting);
+        }
+        assertFalse(NumberSlider.asksBeforeUnlimited("impostorDistance"));
+        assertFalse(NumberSlider.asksBeforeUnlimited("foreseeRadius"));
+    }
+
+    @Test
+    void noDefaultGoesWithoutALimit() {
+        FarConfig defaults = new FarConfig();
+        assertTrue(defaults.maxDistantMobs < FarConfig.UNLIMITED_MOBS);
+        assertTrue(defaults.maxDistantEntities < FarConfig.UNLIMITED_MOBS);
+        assertTrue(defaults.maxOfflinePlayers < FarConfig.UNLIMITED_OFFLINE);
+        for (int distance : new int[]{defaults.playerMaxDistance, defaults.mobMaxDistance,
+                defaults.animationMaxDistance, defaults.entityMaxDistance}) {
+            assertTrue(distance > 0, "a distance with no limit by default");
+        }
     }
 
     @Test

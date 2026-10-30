@@ -103,6 +103,15 @@ public final class TypedValuesScenario implements Scenario {
                 wrong.add("dragging Mob Render Distance to the end did not ask");
             }
 
+            // 5b. Every slider with no limit asks: Player Render Distance too.
+            drag(context, "playerMaxDistance", 1.2);
+            if (answer(context, false)) {
+                int kept = context.computeOnClient(minecraft -> FarConfig.get().playerMaxDistance);
+                if (kept <= 0) wrong.add("playerMaxDistance kept no limit after no");
+            } else {
+                wrong.add("dragging Player Render Distance to the end did not ask");
+            }
+
             // 6. The arrow keys: one value, ten with Shift, on a slider that never asks.
             type(context, "impostorDistance", "500");
             context.getInput().pressKey(InputConstants.KEY_RETURN);

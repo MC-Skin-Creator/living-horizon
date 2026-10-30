@@ -55,14 +55,15 @@ public final class NumberSlider extends AbstractSliderButton {
     }
 
     /**
-     * The settings whose end with no limit asks first, here and on Sodium's page: how many mobs and
-     * other entities are kept and drawn, and how far mobs are looked for. Without a limit they grow
-     * with the world, which can take the frame rate and the memory with them. The other distances
-     * are bounded by these counts, and have no limit by default.
+     * The settings whose right end means no limit, here and on Sodium's page: every one asks
+     * first, since none is safe without a limit. How many mobs, entities and players who logged
+     * off are kept and drawn, and how far players, mobs, their animations and entities are drawn
+     * grow with the world, and the frame rate and the memory with them, up to a crash.
      */
     public static boolean asksBeforeUnlimited(String setting) {
         return switch (setting) {
-            case "maxDistantMobs", "maxDistantEntities", "mobMaxDistance" -> true;
+            case "maxDistantMobs", "maxDistantEntities", "maxOfflinePlayers",
+                 "playerMaxDistance", "mobMaxDistance", "animationMaxDistance", "entityMaxDistance" -> true;
             default -> false;
         };
     }
