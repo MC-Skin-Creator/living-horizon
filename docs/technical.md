@@ -47,7 +47,7 @@ never added to a level (`track/Puppets`).
 |---|---|
 | root | `LivingHorizonCommon` (entry point on both sides, opens the network channel), `LivingHorizonClient` (client entry point), `FarConfig` (the settings file), `QualityPreset`, `Stats` |
 | `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
-| `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`; `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
+| `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`, the distance settings drawn in the world (`DistancePreview`); `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
 | `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
 | `ambient/` | The birds (`Ambience`, `BirdModels`, `BirdFigure`, `AmbientRenderer`) and the easter eggs |
 | `platform/` | What differs between loaders: events, network, config folder |
@@ -1146,6 +1146,31 @@ In game, the settings are in the mod's screen: the *Living Horizon...* button of
 screen, Mod Menu (Fabric, Quilt) or the mods list (NeoForge, Forge), the settings key, or
 `/livinghorizon config`. From Sodium 0.8 the main screen's settings are on Sodium's video
 settings pages too, with the same names, and its sub-screens open from there.
+
+The mod's screens sit in a column on the left and leave the world in view. While a distance
+setting of the main screen is hovered or dragged, and for a moment and a half after it
+changes from the keyboard, `render/DistancePreview` draws what it measures in that world
+(`SideOptionsScreen.distance` marks the setting, with its shape):
+
+- blocks from the player (*Simplification Distance*, the render distances, *Roaming Radius*,
+  *Bird Distance*): a sphere of that radius round the camera, from its bottom up to a fence
+  of `16 + distance / 50` blocks above the camera, with a bright rail along the top. Where
+  the terrain meets it is that distance; the fence looks lower the farther it is. 0 (no
+  limit, or off) draws nothing;
+- *Scan Radius*: the same fence along the edge of the chunks a scan reads
+  (`dx² + dz² <= radius²`, as `MobScan`);
+- *Min. Flight Height*: a ceiling at that height above the player or the sea, as wide as
+  *Bird Distance*, with the chunk lines on it.
+
+It is submitted with the entities, like the birds, so that terrain in front of it hides it,
+the far terrain's included while its depth is merged. From 1.21.11, without a shader pack, it
+is drawn as the game's debug quads: no fog, no depth written. Before, those write depth (water
+and clouds behind would be lost), and under a shader pack Iris gives them no program of the
+pack (its `IrisPipelines` leaves them out), so Photon's passes paint over them: a glowing
+entity's render type draws it there, which Iris gives one, fogged as entities are (without a
+pack, past the game's fog it only shows with Voxy or Distant Horizons). The screen asks for it every frame
+and it fades out once it stops asking; it is gone as soon as no screen is open. Sodium's page
+does not show it.
 
 The *Preset* button (*Low*, *Normal*, *High*, *Ultra*) sets only the settings that scale the
 cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and

@@ -11,6 +11,7 @@
 
 #### Nouveautés
 - **Liens vers les pages du mod** — à côté du logo Discord, les réglages du mod ont maintenant les logos de Modrinth, CurseForge, Nexus Mods et du site web du mod, pour ouvrir ses pages en un clic.
+- **Distances affichées dans le monde** — survoler ou modifier une distance dans l'écran des réglages du mod la dessine maintenant dans le monde derrière : un mur lumineux à cette distance, la limite des chunks que lit le *Rayon du scan*, ou un plafond à l'*Altitude min.*
 
 #### Améliorations
 - **Distance de simplification désactivable** — la *Distance de simplification* peut maintenant être mise sur Non : les mobs, entités, joueurs et oiseaux lointains ne deviennent alors des images plates que quand ils paraissent plus petits à l'écran que la *Taille de simplification*.

@@ -11,6 +11,7 @@
 
 #### New
 - **Links to the mod's pages** — beside the Discord logo, the mod's settings now have the logos of Modrinth, CurseForge, Nexus Mods and the mod's website, to open its pages in one click.
+- **Distances shown in the world** — hovering or changing a distance on the mod's settings screen now draws it in the world behind: a glowing wall that far away, the edge of the chunks *Scan Radius* reads, or a ceiling at *Min. Flight Height*.
 
 #### Improved
 - **Simplification Distance can be turned off** — *Simplification Distance* now goes down to OFF, so far mobs, entities, players and birds become flat pictures only when they look smaller on screen than the *Simplification Size*.
