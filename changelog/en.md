@@ -6,6 +6,10 @@
 
 #### New
 - **Links to the mod's pages** — beside the Discord logo, the mod's settings now have the logos of Modrinth, CurseForge, Nexus Mods and the mod's website, to open its pages in one click.
+- **List of hidden mobs** — `config/livinghorizon.json` now has a `hiddenMobs` list of the mobs never shown far away, by id (`"minecraft:pig"`) or for a whole mod (`"cobblemon:*"`), easy to share in a modpack; mobs switched to *Hidden* under *Mobs & Entities...* are written there.
+
+#### Improved
+- **Other mods' monsters shown far away** — monsters from other mods that versions before 0.14 hid by default are now shown far away like every other mob; hide them again under *Mobs & Entities...* if you had turned them off.
 
 ## 0.14.0 — 2026-10-29
 

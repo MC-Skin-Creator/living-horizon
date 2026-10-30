@@ -6,6 +6,10 @@
 
 #### Nouveautés
 - **Liens vers les pages du mod** — à côté du logo Discord, les réglages du mod ont maintenant les logos de Modrinth, CurseForge, Nexus Mods et du site web du mod, pour ouvrir ses pages en un clic.
+- **Liste des mobs masqués** — `config/livinghorizon.json` a maintenant une liste `hiddenMobs` des mobs jamais affichés au loin, par identifiant (`"minecraft:pig"`) ou pour tout un mod (`"cobblemon:*"`), facile à partager dans un modpack ; les mobs passés en *Masqué* dans *Créatures et entités...* y sont écrits.
+
+#### Améliorations
+- **Monstres des autres mods affichés au loin** — les monstres des autres mods que les versions avant 0.14 masquaient par défaut sont maintenant affichés au loin comme toutes les autres créatures ; masque-les à nouveau dans *Créatures et entités...* si tu les avais désactivés.
 
 ## 0.14.0 — 2026-10-29
 
