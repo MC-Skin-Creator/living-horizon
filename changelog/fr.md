@@ -10,6 +10,9 @@
 #### Améliorations
 - **Distance de simplification désactivable** — la *Distance de simplification* peut maintenant être mise sur Non : les mobs, entités, joueurs et oiseaux lointains ne deviennent alors des images plates que quand ils paraissent plus petits à l'écran que la *Taille de simplification*.
 
+#### Corrections
+- **Créatures lointaines nettes dans le brouillard de Distant Horizons** — les créatures lointaines ne restent plus nettes devant le terrain de Distant Horizons dans le brouillard : elles s'y fondent comme le terrain autour d'elles, sans pack de shaders (Minecraft 1.21.6 et plus).
+
 ## 0.14.0 — 2026-10-29
 
 ### Client
@@ -34,7 +37,6 @@
 - **Plantage en ouvrant Créatures et entités depuis l'écran titre** — ouvrir *Créatures et entités...* depuis l'écran titre ne fait plus planter le jeu (Minecraft 26.x).
 - **Véhicules d'autres mods qui deviennent noirs** — les véhicules et créatures lointains de certains autres mods, comme les avions d'Immersive Aircraft, ne deviennent plus noirs un instant quand on s'en approche.
 - **Montures dessinées deux fois** — la monture ou le véhicule d'un joueur lointain, comme l'avion d'un autre mod, n'est plus dessiné une seconde fois à côté de lui.
-- **Mobs lointains nets dans le brouillard de Distant Horizons** — les mobs lointains ne restent plus nets devant le terrain de Distant Horizons dans le brouillard : ils s'y fondent comme le terrain autour d'eux, sans pack de shaders (Minecraft 1.21.6 et plus).
 
 ## 0.13.0 — 2026-10-28
 
