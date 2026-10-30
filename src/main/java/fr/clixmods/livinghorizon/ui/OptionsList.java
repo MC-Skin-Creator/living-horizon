@@ -11,7 +11,9 @@ import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import org.jspecify.annotations.Nullable;
 
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 
 /^*
  * The rows of the mod's option screens before 1.20.5, where the game's own list only held
@@ -19,6 +21,9 @@ import java.util.List;
  ^/
 public class OptionsList extends ContainerObjectSelectionList<OptionsList.Entry> {
     private static final int ROW_WIDTH = 310;
+
+    /^* The button made for each option added here. ^/
+    private final Map<OptionInstance<?>, AbstractWidget> buttons = new IdentityHashMap<>();
 
     public OptionsList(Minecraft minecraft, int width, int height, int y) {
         //? if >=1.20.3 {
@@ -50,11 +55,20 @@ public class OptionsList extends ContainerObjectSelectionList<OptionsList.Entry>
 
     /^* One option across the whole row. ^/
     public void addBig(OptionInstance<?> option) {
-        addSmall(option.createButton(minecraft.options, 0, 0, ROW_WIDTH), null);
+        AbstractWidget button = option.createButton(minecraft.options, 0, 0, ROW_WIDTH);
+        buttons.put(option, button);
+        addSmall(button, null);
     }
 
     private AbstractWidget button(OptionInstance<?> option) {
-        return option.createButton(minecraft.options, 0, 0, 150);
+        AbstractWidget button = option.createButton(minecraft.options, 0, 0, 150);
+        buttons.put(option, button);
+        return button;
+    }
+
+    /^* The button of an option added here, as the game's list finds it from 1.20.5. ^/
+    public @Nullable AbstractWidget findOption(OptionInstance<?> option) {
+        return buttons.get(option);
     }
 
     /^* Between the layout's header and footer, this wide. ^/

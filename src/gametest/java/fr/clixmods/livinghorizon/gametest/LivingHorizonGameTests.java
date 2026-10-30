@@ -6,6 +6,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.BirdCommandScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.BirdsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DedicatedServerScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.DistancePreviewScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EasterEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DhFogScenario;
@@ -88,6 +89,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new RestingCrowdScenario(),
             new ShoreScenario(),
             new OptionsScreenScenario(),
+            new DistancePreviewScenario(),
             new LinksScenario(),
             new SodiumPagesScenario(),
             new SodiumControlsScenario(),

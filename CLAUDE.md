@@ -624,6 +624,13 @@ come back, add it here in the same pull request: this file is what the next sess
   as a truncated jar (`zip END header not found` on the next attempt): `gradle.sh` deletes the
   jars that do not open before trying again. What Forge's Maven served is kept in each Forge
   node's cache entry (`mavenizer/caches/maven/forge`), so a build only asks it for what changed.
+- **Nothing drawn in the world while a distance setting is hovered** (the distance preview,
+  `render/DistancePreview`): an entity's render type is fogged like an entity, and the game's
+  fog had faded a 128-block fence out completely at the default render distance. From 1.21.11
+  it is the game's debug quads (no fog, no depth written); before, their depth would hide the
+  water behind, so the entity type stays, and past the fog it shows only with Voxy or Distant
+  Horizons. The screen asks for it every frame; a time limit instead made it vanish between
+  two frames of a slow game. The `distancepreview` scenario checks it.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
