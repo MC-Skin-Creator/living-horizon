@@ -255,8 +255,9 @@ distant mobs or players, birds, impostors or a screen is checked in the real cli
 `.claude/skills/game-test/` runs it headless (Xvfb, software OpenGL), drives it with the
 scenarios in `src/gametest/java` and takes screenshots to look at. Run
 `.claude/skills/game-test/run.sh [scenario]`, read `SKILL.md` there first, add a scenario
-for what the change touches, and show the user the screenshots. Voxy and Distant Horizons
-cannot run there: say so when a check depends on them.
+for what the change touches, and show the user the screenshots. Voxy cannot run there: say so
+when a check depends on it. Distant Horizons runs there on 26.3 (`--with distanthorizons`,
+Fabric Loader 0.19.5 for the run: see the skill).
 
 ## Debugging checklist
 
@@ -601,6 +602,11 @@ come back, add it here in the same pull request: this file is what the next sess
   the game's fog on entities does not know. `FarFog` gives the world's entities Voxy's curve, from
   a second fog `FogRendererMixin` writes next to the game's; a new Voxy that computes its limit
   otherwise (`NormalRenderPipeline.finish`, `javap`) needs `FarFog.voxyLimit` to follow.
+- **Distant mobs sharp against Distant Horizons' fogged terrain** (no fog on them at all, without a
+  shader pack): Distant Horizons pushes both of the game's fog ramps out to 4×10¹⁴ blocks and fogs
+  its terrain in a pass of its own. `DhFog` gives the entities its far fog through the game's two
+  ramps (one a floor at its thinnest, one the slope), fitted to its formula (`DhFogTest`); a new
+  Distant Horizons that fogs otherwise (`shaders/fog`, `GlDhFogShader.onApplyUniforms`) needs it to follow.
 - **Water gone under a shader pack whenever a distant figure is in view** (Photon with Distant
   Horizons on 26.3: the lake shows its bare, shadowed bed, with *Hide Behind Far Terrain* on; the
   depth view looks right): from 26.3 the game caches blending and the colour mask per draw

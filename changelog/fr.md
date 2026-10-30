@@ -16,6 +16,9 @@
 - **Distance de simplification désactivable** — la *Distance de simplification* peut maintenant être mise sur Non : les mobs, entités, joueurs et oiseaux lointains ne deviennent alors des images plates que quand ils paraissent plus petits à l'écran que la *Taille de simplification*.
 - **Joueurs lointains en vol plané** — les joueurs lointains qui volent avec des élytres planent maintenant dans le ciel, ailes déployées, au lieu de courir debout dans les airs (avec le mod sur le serveur).
 
+#### Corrections
+- **Créatures lointaines nettes dans le brouillard de Distant Horizons** — les créatures lointaines ne restent plus nettes devant le terrain de Distant Horizons dans le brouillard : elles s'y fondent comme le terrain autour d'elles, sans pack de shaders (Minecraft 1.21.6 et plus).
+
 ## 0.14.0 — 2026-10-29
 
 ### Client

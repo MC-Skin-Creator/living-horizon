@@ -31,7 +31,7 @@ public final class Links {
      */
     public static List<Report> report() {
         return List.of(new Report("Voxy", VoxyLink.status()), new Report("Distant Horizons", DhLink.status()),
-                new Report("Iris", IrisLink.status()));
+                new Report("Iris", IrisLink.status()), new Report("Fog on distant figures", FarFog.status()));
     }
 
     /** A class some versions do not have: null there. */

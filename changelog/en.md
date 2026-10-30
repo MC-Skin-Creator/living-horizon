@@ -16,6 +16,9 @@
 - **Simplification Distance can be turned off** — *Simplification Distance* now goes down to OFF, so far mobs, entities, players and birds become flat pictures only when they look smaller on screen than the *Simplification Size*.
 - **Distant players gliding** — distant players flying with an elytra now glide through the sky, wings spread, instead of running upright in the air (with the mod on the server).
 
+#### Fixed
+- **Distant mobs sharp in Distant Horizons' fog** — distant mobs no longer stay sharp against Distant Horizons' fogged terrain: they fade into its fog like the land around them, without a shader pack (Minecraft 1.21.6 and later).
+
 ## 0.14.0 — 2026-10-29
 
 ### Client
