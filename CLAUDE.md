@@ -686,6 +686,10 @@ someone who has never seen the code:
   and screens as the game shows them (impostors are *Simplified Mobs*, *Simplified Entities* and *Simplified Players*), and explain
   them in plain words (flat pictures of far mobs).
 - one bullet per problem: two causes of the same symptom share one bullet.
+- say *mobs* (*créatures* in French, the game's word for mobs in each language), never
+  *animals*, in the changelog, the translations, the README and the store text; only a list
+  of kinds may name animals (villagers, animals, golems). The mobs foreseen from the seed are
+  *guessed mobs* (*créatures devinées*).
 - nothing for CI, refactors, tooling, documentation or debug-only tools.
 
 ## Issues
