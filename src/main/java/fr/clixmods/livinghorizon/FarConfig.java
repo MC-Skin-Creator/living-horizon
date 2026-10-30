@@ -8,12 +8,15 @@ import fr.clixmods.livinghorizon.track.MobKinds;
 import fr.clixmods.livinghorizon.track.Vehicles;
 import fr.clixmods.livinghorizon.platform.Platform;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobCategory;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * {@code config/livinghorizon.json}. Read once at start, written back so that a player
@@ -241,6 +244,12 @@ public final class FarConfig {
      * switched to Hidden under "Mobs &amp; Entities..." is written here, so a modpack can ship the list.
      */
     public List<String> hiddenMobs = new ArrayList<>();
+
+    /**
+     * Other mods' kinds an older file did not show, to sort once the game has registered them
+     * ({@link #sortUnsure}): written as version 13 brought the file up to date, gone after.
+     */
+    private @Nullable List<String> unsortedMobs;
 
     /** A mob with a name tag is remembered and shown whatever its type, unless in {@link #hiddenMobs}. */
     public boolean rememberNamedMobs = true;
@@ -579,12 +588,16 @@ public final class FarConfig {
         }
         if (config.version < 13) {
             // The kinds switched off by hand become the list of hidden ones, where a modpack finds
-            // them; vehicles that only seat their riders were never shown, and are not listed.
+            // them; vehicles that only seat their riders were never shown, and are not listed. The
+            // game's kinds were all shown by default: one missing was taken out by hand. Other mods'
+            // monsters were hidden by default before 0.14, so the game is asked which are which.
+            List<String> unsure = new ArrayList<>();
             for (String type : config.knownMobTypes) {
-                if (type == null) continue;
-                if (!config.mobTypes.contains(type) && !config.seatedVehicles.contains(type)
-                        && !config.hiddenMobs.contains(type)) config.hiddenMobs.add(type);
+                if (type == null || config.mobTypes.contains(type) || config.seatedVehicles.contains(type)) continue;
+                if (!type.startsWith(GAME + ":")) unsure.add(type);
+                else if (!config.hiddenMobs.contains(type)) config.hiddenMobs.add(type);
             }
+            if (!unsure.isEmpty()) config.unsortedMobs = unsure;
         }
         // Written by hand out of range: the nearest end.
         config.impostorMobMemory = Math.clamp(config.impostorMobMemory, MIN_MOB_MEMORY, MAX_MOB_MEMORY);
@@ -598,7 +611,35 @@ public final class FarConfig {
      * Called once the game has registered them.
      */
     public static void adoptNewMobs(Iterable<EntityType<?>> types) {
-        if (instance.adopt(types)) save();
+        boolean sorted = false;
+        if (instance.unsortedMobs != null) {
+            Map<String, Boolean> monsters = new HashMap<>();
+            for (EntityType<?> type : types) {
+                monsters.put(EntityType.getKey(type).toString(), type.getCategory() == MobCategory.MONSTER);
+            }
+            sorted = instance.sortUnsure(monsters);
+        }
+        if (instance.adopt(types) | sorted) save();
+    }
+
+    /**
+     * {@link #unsortedMobs}, by whether the game calls each a monster. Any other kind was shown by
+     * default in every version, so missing it was taken out by hand: hidden. A monster may have
+     * been left out by default as well as by hand, and a kind the game no longer has cannot tell:
+     * shown, the player hides it again if they want. True when there was something to sort.
+     */
+    boolean sortUnsure(Map<String, Boolean> monsters) {
+        if (unsortedMobs == null) return false;
+        for (String type : unsortedMobs) {
+            if (type == null || mobTypes.contains(type)) continue;
+            if (Boolean.FALSE.equals(monsters.get(type))) {
+                if (!hiddenMobs.contains(type)) hiddenMobs.add(type);
+            } else {
+                mobTypes.add(type);
+            }
+        }
+        unsortedMobs = null;
+        return true;
     }
 
     private boolean adopt(Iterable<EntityType<?>> types) {

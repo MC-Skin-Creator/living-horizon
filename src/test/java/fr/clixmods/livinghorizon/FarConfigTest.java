@@ -159,21 +159,38 @@ class FarConfigTest {
     }
 
     @Test
-    void version13HidesWhatAFileFromBeforeTheListLeftOut() {
+    void version13HidesWhatWasTakenOutByHand() {
         // A file from before every kind was offered: the old defaults and other mods' mobs it knew.
         FarConfig config = migrated("{\"version\": 10, \"mobTypes\": [\"minecraft:cow\", \"othermod:deer\"],"
-                + " \"knownModdedMobs\": [\"othermod:zombie\", \"othermod:deer\", \"removedmod:ghost\"]}");
+                + " \"knownModdedMobs\": [\"othermod:zombie\", \"othermod:deer\", \"othermod:boar\","
+                + " \"removedmod:ghost\"]}");
+        // The game's kinds were all shown by default: one missing was taken out by hand.
         assertTrue(config.hiddenMobs.contains("minecraft:horse"));
         assertTrue(config.hiddenMobs.contains(MANNEQUIN));
-        assertTrue(config.hiddenMobs.contains("othermod:zombie"));
-        // A mod taken out since: its id stays, harmless.
-        assertTrue(config.hiddenMobs.contains("removedmod:ghost"));
         assertFalse(config.hiddenMobs.contains("minecraft:cow"));
-        assertFalse(config.hiddenMobs.contains("othermod:deer"));
         // Never offered before: shown once the game offers it, as before this list.
         assertFalse(config.hiddenMobs.contains("minecraft:enderman"));
-        assertFalse(config.showsMob("minecraft:horse", true));
-        assertTrue(config.showsMob("minecraft:cow", false));
+        // Other mods' kinds wait for the game to say which are monsters.
+        assertFalse(config.hiddenMobs.contains("othermod:boar"));
+        assertFalse(config.hiddenMobs.contains("othermod:zombie"));
+
+        // Saved and read again before the game has started: still to sort.
+        config = migrated(GSON.toJson(config));
+        assertTrue(config.sortUnsure(java.util.Map.of("othermod:zombie", true, "othermod:boar", false,
+                "othermod:deer", false)));
+        // Shown by default in every version: taken out by hand.
+        assertTrue(config.hiddenMobs.contains("othermod:boar"));
+        assertFalse(config.showsMob("othermod:boar", false));
+        // A monster, hidden by default before: no telling, so shown.
+        assertFalse(config.hiddenMobs.contains("othermod:zombie"));
+        assertTrue(config.showsMob("othermod:zombie", false));
+        // A mod taken out since: no telling either, shown, and harmless.
+        assertTrue(config.showsMob("removedmod:ghost", false));
+        // Shown already: left alone.
+        assertFalse(config.hiddenMobs.contains("othermod:deer"));
+        // Sorted once.
+        assertFalse(config.sortUnsure(java.util.Map.of()));
+        assertFalse(GSON.toJson(config).contains("unsortedMobs"));
     }
 
     @Test

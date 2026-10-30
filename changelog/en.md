@@ -13,6 +13,7 @@
 
 #### Improved
 - **Servers without the mod** — joining a server without Living Horizon, or with a version of it too old or too new, now says in the chat that distant players are not shown there; with *Show Players* off, nothing is said.
+- **Other mods' monsters shown far away** — monsters from other mods that versions before 0.14 hid by default are now shown far away like every other mob; hide them again under *Mobs & Entities...* if you had turned them off.
 - **Mobs & Entities in two tabs** — *Mobs & Entities...* now lists the mobs and the other entities (boats, vehicles, mannequins) under two tabs, where a boat or a vehicle is simply shown or hidden.
 - **Mobs & Entities changes seen at once** — turning a kind on or off in *Mobs & Entities...* now shows in the world behind it straight away, not once the screen is closed.
 - **Distant mobs settings in three parts** — the *Distant Mobs & Entities* settings are now split into *General*, *Mobs* and *Entities*, with the list, the scan and *Forget All* under *General*.
