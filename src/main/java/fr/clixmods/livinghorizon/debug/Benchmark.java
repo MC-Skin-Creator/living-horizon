@@ -354,6 +354,7 @@ public final class Benchmark {
         config.enabled = false;
         config.distantMobs = false;
         config.distantEntities = false;
+        config.distantStructures = false;
         config.skyBirds = false;
     }
 

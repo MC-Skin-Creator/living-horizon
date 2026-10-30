@@ -72,6 +72,8 @@
   "livinghorizon.options.entityMaxDistance": "Entity Render Distance",
   "livinghorizon.options.entityMaxDistance.tooltip": "How far away distant boats, vehicles and mannequins are shown, apart from mobs. Unlimited: as far as they are remembered.",
   "livinghorizon.options.entityMaxDistance.zero": "Unlimited",
+  "livinghorizon.options.distantStructures": "Show Airships",
+  "livinghorizon.options.distantStructures.tooltip": "Airships and other builds moved by Sable (Create: Aeronautics) stay visible once out of range, where they were last seen. \"Entity Render Distance\" applies to them too.",
   "livinghorizon.options.animationMinPixels": "Min. Animated Size",
   "livinghorizon.options.animationMinPixels.tooltip": "Mobs smaller than this on screen stop their walking and idle animations, which could not be seen anyway. Lower is livelier; higher improves performance.",
   "livinghorizon.options.animationMinPixels.zero": "Always",

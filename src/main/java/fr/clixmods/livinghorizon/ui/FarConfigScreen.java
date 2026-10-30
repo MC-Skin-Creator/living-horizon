@@ -116,8 +116,10 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "chooseMobs"), b -> minecraft.setScreen(new MobTypesScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "chooseMobs.tooltip"))).build(),
-                Button.builder(Component.translatable(KEY + "forgetMobs"), b -> confirm("forgetMobs",
-                                () -> FarPlayerTracker.get().mobs().forgetAll()))
+                Button.builder(Component.translatable(KEY + "forgetMobs"), b -> confirm("forgetMobs", () -> {
+                            FarPlayerTracker.get().mobs().forgetAll();
+                            FarPlayerTracker.get().structures().forgetAll();
+                        }))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "forgetMobs.tooltip"))).build());
         list.addSmall(scanButton(), chunks("scanRadius", MobScan.MIN_RADIUS, MobScan.MAX_RADIUS, c.scanRadius,
                 v -> c.scanRadius = v).createButton(minecraft.options, 0, 0, 150));
@@ -136,6 +138,7 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 integer("maxDistantEntities", 0, FarConfig.UNLIMITED_MOBS, c.maxDistantEntities,
                         v -> c.maxDistantEntities = v, true));
         list.addBig(blocks("entityMaxDistance", 0, 4000, c.entityMaxDistance, v -> c.entityMaxDistance = v));
+        list.addBig(bool("distantStructures", c.distantStructures, v -> c.distantStructures = v));
 
         header(Component.translatable(KEY + "birds"));
         list.addSmall(

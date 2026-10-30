@@ -72,6 +72,8 @@
   "livinghorizon.options.entityMaxDistance": "Zasięg render. bytów",
   "livinghorizon.options.entityMaxDistance.tooltip": "Jak daleko widoczne są odległe łódki, pojazdy i manekiny, niezależnie od stworzeń. Bez limitu: tak daleko, jak są zapamiętane.",
   "livinghorizon.options.entityMaxDistance.zero": "Bez limitu",
+  "livinghorizon.options.distantStructures": "Pokazuj sterowce",
+  "livinghorizon.options.distantStructures.tooltip": "Sterowce i inne budowle poruszane przez Sable (Create: Aeronautics) pozostają widoczne poza zasięgiem, tam gdzie widziano je ostatnio. „Zasięg render. bytów” dotyczy także ich.",
   "livinghorizon.options.animationMinPixels": "Min. rozmiar animacji",
   "livinghorizon.options.animationMinPixels.tooltip": "Stworzenia mniejsze na ekranie niż ta wartość przestają odtwarzać animacje chodzenia i spoczynku, których i tak nie byłoby widać. Niżej jest żywiej; wyżej poprawia wydajność.",
   "livinghorizon.options.animationMinPixels.zero": "Zawsze",

@@ -314,6 +314,13 @@ come back, add it here in the same pull request: this file is what the next sess
   tries both). Check a new version with `javap` on its jar from Modrinth, as for Distant
   Horizons, and read the links' lines in `/livinghorizon lod`: each says what it runs without,
   and how often the mixins into Voxy and Distant Horizons ran (0 while they draw: renamed).
+- **Airships not kept far away** (Create: Aeronautics, 1.21.1 only): Sable's sub-levels are not
+  entities. `SableLink` reaches them by reflection on Sable's own classes (`SubLevelContainer`,
+  `ClientSubLevelAccess.renderPose`, `LevelPlot.getBoundingBox`, `toLocal`, `getChunk`); a renamed
+  one turns it off ("Sable found, but not the version this mod knows", and the Sable line of
+  `/livinghorizon lod`). Check a new Sable with `javap` on its jar from Modrinth. Sable says
+  "removed" for a build out of range too, so `FarStructures` judges by distance: one gone within
+  48 blocks of the player is forgotten as taken apart.
 - **Steps out of order** (`/livinghorizon lod` or the log says so; the `depthview` game test
   fails): a hook before that step no longer runs, renamed by the game or another mod. The order
   is in `FarDepth.Frame` and `docs/technical.md` ("One frame").

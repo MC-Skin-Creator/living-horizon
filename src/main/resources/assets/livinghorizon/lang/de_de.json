@@ -72,6 +72,8 @@
   "livinghorizon.options.entityMaxDistance": "Objekt‐Sichtweite",
   "livinghorizon.options.entityMaxDistance.tooltip": "Wie weit entfernt ferne Boote, Fahrzeuge und Spielerpuppen angezeigt werden, unabhängig von Kreaturen. Unbegrenzt: so weit, wie sie gespeichert sind.",
   "livinghorizon.options.entityMaxDistance.zero": "Unbegrenzt",
+  "livinghorizon.options.distantStructures": "Luftschiffe anzeigen",
+  "livinghorizon.options.distantStructures.tooltip": "Luftschiffe und andere Bauten, die Sable bewegt (Create: Aeronautics), bleiben außer Reichweite dort sichtbar, wo sie zuletzt gesehen wurden. „Objekt‐Sichtweite“ gilt auch für sie.",
   "livinghorizon.options.animationMinPixels": "Min. Animationsgröße",
   "livinghorizon.options.animationMinPixels.tooltip": "Kreaturen, die auf dem Bildschirm kleiner sind, spielen keine Lauf‐ und Ruheanimationen mehr ab, die ohnehin nicht zu sehen wären. Niedriger ist lebendiger; höher verbessert die Leistung.",
   "livinghorizon.options.animationMinPixels.zero": "Immer",

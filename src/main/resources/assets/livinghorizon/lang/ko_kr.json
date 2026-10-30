@@ -72,6 +72,8 @@
   "livinghorizon.options.entityMaxDistance": "개체 렌더 거리",
   "livinghorizon.options.entityMaxDistance.tooltip": "멀리 있는 보트, 탈것, 마네킹이 표시되는 거리입니다(몹과 별도). 무제한: 기억된 곳까지 모두.",
   "livinghorizon.options.entityMaxDistance.zero": "무제한",
+  "livinghorizon.options.distantStructures": "비행선 표시",
+  "livinghorizon.options.distantStructures.tooltip": "Sable이 움직이는 비행선과 기타 건축물(Create: Aeronautics)은 범위를 벗어나도 마지막으로 본 자리에 계속 보입니다. '개체 렌더 거리'도 이들에게 적용됩니다.",
   "livinghorizon.options.animationMinPixels": "애니메이션 최소 크기",
   "livinghorizon.options.animationMinPixels.tooltip": "화면에서 이보다 작은 몹은 어차피 보이지 않을 걷기 및 대기 애니메이션을 멈춥니다. 낮을수록 생동감 있고, 높을수록 성능이 개선됩니다.",
   "livinghorizon.options.animationMinPixels.zero": "항상",

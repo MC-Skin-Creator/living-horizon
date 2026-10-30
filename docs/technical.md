@@ -14,6 +14,7 @@ the *Debugging checklist* of [CLAUDE.md](../CLAUDE.md).
 - [Sharing positions from the server](#sharing-positions-from-the-server)
 - [Players who logged off](#players-who-logged-off)
 - [Distant mobs](#distant-mobs)
+- [Moving builds](#moving-builds)
 - [Birds](#birds)
 - [Impostors](#impostors)
 - [Far terrain depth](#far-terrain-depth)
@@ -34,6 +35,7 @@ positions with the clients that have it.
 | [Distant players](#distant-players) | Online players past the server's view distance | Positions shared by a server with the mod |
 | [Players who logged off](#players-who-logged-off) | Players at the spot they left, living around it | This client's memory and the server's file |
 | [Distant mobs](#distant-mobs) | Mobs out of range, playing an animation in a loop | This client's memory, or the server's |
+| [Moving builds](#moving-builds) | Sable's airships and cars (Create: Aeronautics), where they were last seen | This client's memory |
 | [Birds](#birds) | Flocks, perched birds, ducks, bats, parrots | Made up on the client from the terrain |
 | [Impostors](#impostors) | Flat pictures in place of far models | Baked by the game's own renderers |
 | [Far terrain depth](#far-terrain-depth) | Nothing of its own: hides our figures behind the far terrain | Voxy's or Distant Horizons' depth |
@@ -46,9 +48,9 @@ never added to a level (`track/Puppets`).
 | Package | What is in it |
 |---|---|
 | root | `LivingHorizonCommon` (entry point on both sides, opens the network channel), `LivingHorizonClient` (client entry point), `FarConfig` (the settings file), `QualityPreset`, `Stats` |
-| `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
-| `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`; `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
-| `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
+| `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`), Sable's moving builds (`FarStructures`, `StructureBlocks`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
+| `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the moving builds' blocks (`StructureRenderer`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`; `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
+| `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `IrisLink`); Sable's moving builds (`SableLink`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
 | `ambient/` | The birds (`Ambience`, `BirdModels`, `BirdFigure`, `AmbientRenderer`) and the easter eggs |
 | `platform/` | What differs between loaders: events, network, config folder |
 | `ui/` | The settings screens (`FarConfigScreen` and its sub-screens, `SodiumOptions`), the impostor screen, the text under the crosshair (`OfflineHud`) |
@@ -528,6 +530,49 @@ below), and other flyers and swimmers get a flat disc at their own height.
 - With `optFreezeHidden` (*Debug Options...*, off by default), a copy not drawn for half a
   second (out of view, hidden, too small) is not ticked at all until it is drawn again: no
   animation, no ground read, only moved where the server says it is.
+
+## Moving builds
+
+Create: Aeronautics' airships and cars are moved by Sable, and are not entities: each is a
+*sub-level*, its blocks kept in a plot of their own around 20 million blocks out, drawn where
+its pose puts them, `world = position + orientation * ((plot - rotationPoint) * scale)`. Sable
+is only made for 1.21.1 (Fabric and NeoForge); everything below does nothing elsewhere, or
+without Sable.
+
+- **Reading them** (`compat/SableLink`): by reflection on Sable's own classes, once per tick,
+  the sub-levels of the client's level (`SubLevelContainer.getContainer(level).getAllSubLevels()`),
+  each with its UUID, its `renderPose()` (where Sable draws it this frame) and the box of its
+  plot (`LevelPlot.getBoundingBox()`, inclusive, in the plot grid). The plot's chunks are read
+  through `LevelPlot.toLocal` and `getChunk`. A renamed class turns the link off for the session,
+  said in the log and in `/livinghorizon lod`.
+- **Copying the blocks** (`track/FarStructures`): one build a tick, when first met, when its box
+  changes, and every 10 seconds while Sable sends it. The sections its box touches are copied on
+  the game's thread, as `BlockCopy` does; the blocks are read from them on a thread of their own
+  into `track/StructureBlocks`, a palette and an index per block. A box of more than 128 x 128 x
+  128 blocks is not kept. A copy whose blocks did not change is dropped.
+- **Remembering them**: the last pose and the blocks, in
+  `config/livinghorizon/structures/<server>.json`, the palette as the game writes block states
+  (`BlockState.CODEC`, which reads back on any version; a block a mod no longer has is air) and
+  the blocks as runs of the same index.
+- **Gone or left behind**: Sable never tells the client why it stops sending a build (it says
+  "removed" either way). Gone within 48 blocks of the player, past its own size, it was taken
+  apart or destroyed, and is forgotten; gone farther, it went out of range and its copy stays.
+  A copy whose whole box is more than 32 blocks inside the distance the client gets chunks at,
+  not sent for 10 seconds, was flown away, and is forgotten.
+- **Drawing them** (`render/StructureRenderer`, 1.21.1 only): only while Sable does not send
+  the build, the game's own drawing taking over as soon as it does, and never where Sable would
+  send it (the zone above), where the copy could stand where the build no longer is. Each copy of the blocks is
+  baked once, off the game's thread, the way the game bakes a chunk (`renderBatched`, faces
+  against another block of the build left out), tinted as the land under its middle, in full
+  daylight and the blocks' own light; block entities and fluids are left out. The quads go
+  with the birds into the world's buffers, in the kind of buffer the game draws a falling
+  block of that block in, inside the far terrain's depth bracket. The nearest builds are drawn
+  first, up to 600,000 vertices a frame; past the far plane a build is drawn closer and smaller
+  in proportion, as birds are. *Entity Render Distance* limits them.
+- **Not yet**: a server with the mod does not share them, so another player's airship stays
+  where this client last saw it while its pilot flies on; Create's own contraptions (trains,
+  elevators, windmills) are entities, whose blocks Create draws through Flywheel only for
+  entities in the level.
 
 ## Birds
 
@@ -1102,7 +1147,7 @@ load, one step per version (`FarConfig.migrate`, each step tested in `FarConfigT
 
 ### The client's files
 
-The settings, the remembered mobs and the players who logged off are written through
+The settings, the remembered mobs, the moving builds and the players who logged off are written through
 `JsonStore`:
 
 - into a temporary file beside the real one, then moved over it: a game that stops while
@@ -1178,6 +1223,7 @@ In three parts, on both screens: *General*, *Mobs* (the living kinds, mannequins
 | `distantEntities` | Entities: Show Entities | `true` | | Remembered boats, vehicles and mannequins stay visible far away |
 | `maxDistantEntities` | Entities: Max Entities | `256` | 0 to 1000 | How many of them are drawn at once, nearest first, apart from the mobs: a crowd of mobs never pushes an aircraft out (`1000`: no limit) |
 | `entityMaxDistance` | Entities: Entity Render Distance | `0` blocks | 0 to 4000 | Past this, distant boats, vehicles and mannequins are not drawn (`0`: no limit; few, and an aircraft is seen from afar) |
+| `distantStructures` | Entities: Show Airships | `true` | | Sable's moving builds (Create: Aeronautics' airships and cars) stay where they were last seen, as far as *Entity Render Distance* allows; nothing without Sable |
 | `knownMobTypes` | (not shown) | Those met so far | | Mob types already offered once, the game's and other mods': a new one is shown from the start, then left as you set it |
 | `knownVehicles` | (not shown) | Empty | | Vehicles that are neither mobs nor boats, as found from their renderer or met, listed in *Mobs & Entities...* |
 | `seatedVehicles` | (not shown) | Empty | | Those of them that only seat their riders (a minecart): listed, never shown by default |

@@ -238,6 +238,7 @@ import fr.clixmods.livinghorizon.ambient.AmbientRenderer;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
+import fr.clixmods.livinghorizon.render.StructureRenderer;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -303,6 +304,7 @@ abstract class LevelRendererMixin {
         GhostRenderer.draw(pose, buffers, camera.position());
         Sink sink = new Sink(buffers);
         AmbientRenderer.submit(pose, camera.position(), sink);
+        StructureRenderer.submit(pose, camera.position(), sink);
         ImpostorRenderer.submit(pose, sink);
         buffers.endBatch();
         FarDepth.after();

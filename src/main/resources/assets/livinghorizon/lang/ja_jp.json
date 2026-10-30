@@ -72,6 +72,8 @@
   "livinghorizon.options.entityMaxDistance": "エンティティの描画距離",
   "livinghorizon.options.entityMaxDistance.tooltip": "遠くのボート、乗り物、マネキンを表示する距離です（Mobとは別）。無制限：記憶されている限り遠くまで。",
   "livinghorizon.options.entityMaxDistance.zero": "無制限",
+  "livinghorizon.options.distantStructures": "飛行船を表示",
+  "livinghorizon.options.distantStructures.tooltip": "Sableが動かす飛行船などの建造物（Create: Aeronautics）は、範囲外に出ても最後に見た場所に表示されたままになります。「エンティティの描画距離」もこれらに適用されます。",
   "livinghorizon.options.animationMinPixels": "アニメの最小サイズ",
   "livinghorizon.options.animationMinPixels.tooltip": "画面上でこれより小さいMobは、どのみち見えない歩行や待機のアニメーションを止めます。低いほど生き生きとし、高いほどパフォーマンスが向上します。",
   "livinghorizon.options.animationMinPixels.zero": "常に",

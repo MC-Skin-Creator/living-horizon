@@ -72,6 +72,8 @@
   "livinghorizon.options.entityMaxDistance": "实体渲染距离",
   "livinghorizon.options.entityMaxDistance.tooltip": "远处的船、载具和玩家模型最远显示多远（与生物分开）。无限制：只要还记得就显示。",
   "livinghorizon.options.entityMaxDistance.zero": "无限制",
+  "livinghorizon.options.distantStructures": "显示飞艇",
+  "livinghorizon.options.distantStructures.tooltip": "由 Sable 移动的飞艇和其他建筑（Create: Aeronautics）离开范围后，仍会显示在最后看到它们的位置。“实体渲染距离”同样适用于它们。",
   "livinghorizon.options.animationMinPixels": "最小动画尺寸",
   "livinghorizon.options.animationMinPixels.tooltip": "在屏幕上小于此尺寸的生物会停止行走和待机动画，反正也看不出来。越低越生动；越高性能越好。",
   "livinghorizon.options.animationMinPixels.zero": "始终",

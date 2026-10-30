@@ -72,6 +72,8 @@
   "livinghorizon.options.entityMaxDistance": "Visibilità entità",
   "livinghorizon.options.entityMaxDistance.tooltip": "Fino a che distanza vengono mostrati barche, veicoli e manichini lontani, a parte le creature. Illimitata: fin dove sono ricordati.",
   "livinghorizon.options.entityMaxDistance.zero": "Illimitata",
+  "livinghorizon.options.distantStructures": "Mostra dirigibili",
+  "livinghorizon.options.distantStructures.tooltip": "I dirigibili e le altre costruzioni mosse da Sable (Create: Aeronautics) restano visibili fuori portata, dove sono stati visti l'ultima volta. Anche «Visibilità entità» vale per loro.",
   "livinghorizon.options.animationMinPixels": "Dim. min. animazione",
   "livinghorizon.options.animationMinPixels.tooltip": "Le creature più piccole di così sullo schermo smettono le animazioni di camminata e di riposo, che comunque non si vedrebbero. Più bassa è più vivace; più alta migliora le prestazioni.",
   "livinghorizon.options.animationMinPixels.zero": "Sempre",

@@ -72,6 +72,8 @@
   "livinghorizon.options.entityMaxDistance": "Прорисовка сущностей",
   "livinghorizon.options.entityMaxDistance.tooltip": "На каком расстоянии показываются далёкие лодки, транспорт и манекены, отдельно от мобов. «Без лимита»: так далеко, как они запомнены.",
   "livinghorizon.options.entityMaxDistance.zero": "Без лимита",
+  "livinghorizon.options.distantStructures": "Показывать дирижабли",
+  "livinghorizon.options.distantStructures.tooltip": "Дирижабли и другие постройки, которые двигает Sable (Create: Aeronautics), остаются видимыми вне зоны прорисовки, там, где их видели в последний раз. «Прорисовка сущностей» действует и на них.",
   "livinghorizon.options.animationMinPixels": "Мин. для анимации",
   "livinghorizon.options.animationMinPixels.tooltip": "Мобы меньше этого размера на экране перестают проигрывать анимации ходьбы и покоя, которых всё равно не видно. Меньше — живее; больше — выше производительность.",
   "livinghorizon.options.animationMinPixels.zero": "Всегда",
