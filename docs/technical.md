@@ -1237,6 +1237,20 @@ settings pages too, with the same names, and its sub-screens open from there.
 The *Preset* button (*Low*, *Normal*, *High*, *Ultra*) sets only the settings that scale the
 cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 `birdMaxDistance`. *Normal* is the defaults. Changing one of them by hand shows *Custom*.
+No preset goes without a limit: *High* is 1500 mobs to 1024 blocks, *Ultra* 3000 mobs to
+2048 blocks (`NumberSliderTest` checks every preset).
+
+The sliders of whole numbers on the mod's screens are `ui/NumberSlider`, which the game's own
+option lists build through its `OptionInstance.ValueSet` (made public by the access widener
+before 26.2, where the game made it so). A right click turns one into a text field, which
+`SideOptionsScreen` hands the keys until Enter (kept when it reads as a value), Escape or a
+click: a number is brought into the range, one past the last number or the start of the word
+for no limit (any case, accents or spaces) is no limit. The arrow keys move it one value, ten
+with Shift, where the game moves it a pixel. `NumberSlider.asksBeforeUnlimited` names the
+settings whose right end asks first (`maxDistantMobs`, `maxDistantEntities`,
+`mobMaxDistance`): dragged there, the slider shows it and keeps it on release once the player
+says yes; typed or stepped there, at once. Sodium's page cannot ask as its slider moves:
+`SodiumOptions.asking` holds the value at *Apply* and asks then, and no reads the page back.
 
 ### Main screen
 

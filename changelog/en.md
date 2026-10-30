@@ -18,6 +18,7 @@
 - **Unexplored Land Mobs** — far land nobody has explored yet is no longer empty of animals, as far as *Mob Render Distance* reaches, in single player or on a server with the mod; a new setting hides them.
 - **Animals through a spyglass** — looking through a spyglass now shows the animals of unexplored land where it looks, however far, in single player or on a server that shares its seed.
 - **Guess Nearby Mobs** — a new button shows the animals of unexplored land up to 1024 chunks around at once, and keeps them for the next game, in single player or on a server that shares its seed.
+- **Typed values** — the sliders of the mod's settings screen now take a value typed by hand: right-click one, type a number and press Enter; the arrow keys move it by one, or ten with Shift.
 
 #### Improved
 - **Servers without the mod** — joining a server without Living Horizon, or with a version of it too old or too new, now says in the chat that distant players are not shown there; with *Show Players* off, nothing is said.
@@ -30,6 +31,8 @@
 - **Sitting pets stay put** — cats, wolves and parrots told to sit now stay sitting far away, instead of standing up and wandering off.
 - **More distant mobs** — *Max Mobs* now goes up to 4000 before *Unlimited*.
 - **Unlimited at the end of the slider** — *Unlimited* now sits at the right end of the render distance sliders, after 4000 blocks, instead of the left.
+- **Asked before Unlimited** — setting *Max Mobs*, *Max Entities* or *Mob Render Distance* to *Unlimited* now asks first, since it can bring the frame rate down sharply and fill the memory; on Sodium's page the question comes with *Apply*.
+- **Presets with limits** — the *High* and *Ultra* presets no longer set anything to *Unlimited*: *High* shows up to 1500 mobs, *Ultra* up to 3000 as far as 2048 blocks.
 
 #### Fixed
 - **Crash opening Mobs & Entities from the title screen** — opening *Mobs & Entities...* from the title screen no longer crashes the game (Minecraft 26.x).

@@ -113,6 +113,29 @@ public final class SodiumControlsScenario implements Scenario {
             if (!distance.equals(saved)) failures.add("preset: impostor distance shown " + distance + ", saved " + saved);
             screenshot(context, "preset");
 
+            // 3b. Max Mobs dragged to its right end, no limit: Apply asks first. No keeps the value
+            // and the row reads it again; yes sets no limit.
+            int mobs = context.computeOnClient(minecraft -> FarConfig.get().maxDistantMobs);
+            drag(context, "maxDistantMobs", 1.0);
+            apply(context);
+            screenshot(context, "unlimited-asked");
+            if (!context.computeOnClient(minecraft -> minecraft.screen instanceof ConfirmScreen)) {
+                failures.add("maxDistantMobs: no limit kept without asking (" + context.computeOnClient(minecraft -> FarConfig.get().maxDistantMobs) + ")");
+            } else {
+                clickConfirm(context, false);
+                int kept = context.computeOnClient(minecraft -> FarConfig.get().maxDistantMobs);
+                Object shownBack = value(context, "maxDistantMobs");
+                if (kept != mobs) failures.add("maxDistantMobs: " + kept + " after no, not " + mobs);
+                if (!String.valueOf(shownBack).equals(String.valueOf(mobs))) failures.add("maxDistantMobs: the row reads " + shownBack + " after no");
+                if (!SodiumUi.isSodiumScreen(screen(context))) failures.add("maxDistantMobs: not back on Sodium's screen after no");
+                drag(context, "maxDistantMobs", 1.0);
+                apply(context);
+                if (context.computeOnClient(minecraft -> minecraft.screen instanceof ConfirmScreen)) clickConfirm(context, true);
+                int unlimited = context.computeOnClient(minecraft -> FarConfig.get().maxDistantMobs);
+                if (unlimited != FarConfig.UNLIMITED_MOBS) failures.add("maxDistantMobs: " + unlimited + " after yes");
+                Scene.log("sodiumcontrols: Unlimited asked at Apply, no kept " + kept + ", yes set " + unlimited);
+            }
+
             // 4. The buttons: each opens its screen, which goes back to Sodium's when closed with Escape.
             for (String name : names(context, "button")) {
                 // These close the screen and start their work: no screen to come back from.

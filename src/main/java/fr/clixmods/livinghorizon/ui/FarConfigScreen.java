@@ -250,13 +250,14 @@ public final class FarConfigScreen extends SideOptionsScreen {
     /** With {@code maxIsUnlimited}, the top of the slider reads as the {@code .max} text. */
     static OptionInstance<Integer> integer(String name, int min, int max, int value, Consumer<Integer> set,
                                            boolean maxIsUnlimited) {
-        return new OptionInstance<>(KEY + name, tooltip(name),
+        Component unlimited = maxIsUnlimited ? Component.translatable(KEY + name + ".max") : null;
+        return slider(name, min, max, Math.clamp(value, min, max),
                 (caption, v) -> v == 0 && min == 0
                         ? Options.genericValueLabel(caption, Component.translatable(KEY + name + ".zero"))
-                        : maxIsUnlimited && v >= max
-                        ? Options.genericValueLabel(caption, Component.translatable(KEY + name + ".max"))
+                        : unlimited != null && v >= max
+                        ? Options.genericValueLabel(caption, unlimited)
                         : Options.genericValueLabel(caption, v),
-                new OptionInstance.IntRange(min, max), Math.clamp(value, min, max), set::accept);
+                unlimited, set);
     }
 
     /** A distance in blocks, said so: "512 Blocks"; zero reads as the {@code .zero} text. */
@@ -270,28 +271,45 @@ public final class FarConfigScreen extends SideOptionsScreen {
      */
     static OptionInstance<Integer> reach(String name, int value, Consumer<Integer> set) {
         int top = FarConfig.MAX_DISTANCE + 1;
-        return new OptionInstance<>(KEY + name, tooltip(name),
+        Component unlimited = Component.translatable(KEY + name + ".zero");
+        return slider(name, 1, top, value <= 0 ? top : Math.clamp(value, 1, FarConfig.MAX_DISTANCE),
                 (caption, v) -> v >= top
-                        ? Options.genericValueLabel(caption, Component.translatable(KEY + name + ".zero"))
+                        ? Options.genericValueLabel(caption, unlimited)
                         : Options.genericValueLabel(caption, Component.translatable(KEY + "blocks", v)),
-                new OptionInstance.IntRange(1, top), value <= 0 ? top : Math.clamp(value, 1, FarConfig.MAX_DISTANCE),
-                v -> set.accept(v >= top ? 0 : v));
+                unlimited, v -> set.accept(v >= top ? 0 : v));
     }
 
     /** A number in a unit, the way the game writes it ("30s", "6px", "2x", "100%"); zero reads as the {@code .zero} text. */
     static OptionInstance<Integer> unit(String name, String unit, int min, int max, int value, Consumer<Integer> set) {
-        return new OptionInstance<>(KEY + name, tooltip(name),
+        return slider(name, min, max, Math.clamp(value, min, max),
                 (caption, v) -> v == 0 && min == 0
                         ? Options.genericValueLabel(caption, Component.translatable(KEY + name + ".zero"))
                         : Options.genericValueLabel(caption, Component.translatable(KEY + unit, v)),
-                new OptionInstance.IntRange(min, max), Math.clamp(value, min, max), set::accept);
+                null, set);
     }
 
     /** A distance in chunks, worded like the game's own render distance ("32 chunks"). */
     static OptionInstance<Integer> chunks(String name, int min, int max, int value, Consumer<Integer> set) {
-        return new OptionInstance<>(KEY + name, tooltip(name),
+        return slider(name, min, max, Math.clamp(value, min, max),
                 (caption, v) -> Options.genericValueLabel(caption, Component.translatable(KEY + name + ".value", v)),
-                new OptionInstance.IntRange(min, max), Math.clamp(value, min, max), set::accept);
+                null, set);
+    }
+
+    /**
+     * A slider of whole numbers that also takes a typed value ({@link NumberSlider}). With
+     * {@code unlimited}, its right end is no limit, which the settings named by
+     * {@link NumberSlider#asksBeforeUnlimited} keep only once the player says yes.
+     */
+    private static OptionInstance<Integer> slider(String name, int min, int max, int value,
+                                                  OptionInstance.CaptionBasedToString<Integer> label,
+                                                  @Nullable Component unlimited, Consumer<Integer> set) {
+        NumberSlider.Range range = new NumberSlider.Range(Component.translatable(KEY + name), min, max, label, unlimited,
+                NumberSlider.asksBeforeUnlimited(name));
+        Component hint = Component.translatable(KEY + "typeValue").withStyle(net.minecraft.ChatFormatting.GRAY);
+        return new OptionInstance<>(KEY + name,
+                OptionInstance.cachedConstantTooltip(Component.translatable(KEY + name + ".tooltip").copy()
+                        .append("\n\n").append(hint)),
+                label, range, value, set::accept);
     }
 
     static OptionInstance<String> choice(String name, List<String> values, String value, Consumer<String> set) {

@@ -46,6 +46,9 @@ public final class SodiumOptions implements ConfigEntryPoint {
 
     private final StorageEventHandler storage = this::afterSave;
 
+    /** Settings set to no limit on the page, kept once the player says yes: {@link #asking}. */
+    private final java.util.Map<String, Runnable> held = new java.util.LinkedHashMap<>();
+
     @Override
     public void registerConfigLate(ConfigBuilder builder) {
         FarConfig defaults = new FarConfig();
@@ -267,6 +270,41 @@ public final class SodiumOptions implements ConfigEntryPoint {
             reload();
         }
         FarConfig.save();
+        if (!held.isEmpty()) askUnlimited();
+    }
+
+    /**
+     * The right end of a slider that asks first ({@link NumberSlider#asksBeforeUnlimited}): Sodium's
+     * page cannot ask as the slider moves, so the value is held at "Apply" and set only once the
+     * player says yes. No puts the page back to what the settings keep.
+     */
+    private IntConsumer asking(String name, int top, IntConsumer set, IntSupplier shown) {
+        if (!NumberSlider.asksBeforeUnlimited(name)) return set;
+        return v -> {
+            held.remove(name);
+            if (v >= top && shown.getAsInt() < top) held.put(name, () -> set.accept(v));
+            else set.accept(v);
+        };
+    }
+
+    private void askUnlimited() {
+        java.util.List<Runnable> actions = new java.util.ArrayList<>(held.values());
+        net.minecraft.network.chat.MutableComponent names = Component.empty();
+        for (String name : held.keySet()) {
+            if (!names.getSiblings().isEmpty()) names.append(", ");
+            names.append(Component.translatable(KEY + name));
+        }
+        held.clear();
+        Minecraft minecraft = Minecraft.getInstance();
+        Screen back = minecraft.screen;
+        minecraft.setScreen(new Confirm(yes -> {
+            if (yes) {
+                actions.forEach(Runnable::run);
+                FarConfig.save();
+            }
+            reload();
+            minecraft.setScreen(back);
+        }, Component.translatable(KEY + "unlimited", names), Component.translatable(KEY + "unlimited.confirm")));
     }
 
     /**
@@ -296,6 +334,8 @@ public final class SodiumOptions implements ConfigEntryPoint {
 
     private OptionBuilder integer(ConfigBuilder b, String name, int min, int max, int fallback, IntConsumer set,
                                   IntSupplier get, ControlValueFormatter format) {
+        // A value out of range in the file would read as the default: shown at the nearest end instead.
+        IntSupplier shown = () -> Math.clamp(get.getAsInt(), min, max);
         return b.createIntegerOption(id(name))
                 .setName(Component.translatable(KEY + name))
                 .setTooltip(tooltip(name))
@@ -303,8 +343,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                 .setValueFormatter(format)
                 .setDefaultValue(Math.clamp(fallback, min, max))
                 .setStorageHandler(storage)
-                // A value out of range in the file would read as the default: shown at the nearest end instead.
-                .setBinding(set::accept, () -> Math.clamp(get.getAsInt(), min, max));
+                .setBinding(asking(name, max, set, shown)::accept, shown::getAsInt);
     }
 
     /** A distance in blocks, "512 Blocks", the zero of a range from 0 read as its {@code .zero} text. */
@@ -316,6 +355,10 @@ public final class SodiumOptions implements ConfigEntryPoint {
     /** A distance up to {@link FarConfig#MAX_DISTANCE}, then no limit at the right end, as {@link FarConfigScreen#reach}. */
     private OptionBuilder reach(ConfigBuilder b, String name, int fallback, IntConsumer set, IntSupplier get) {
         int top = FarConfig.MAX_DISTANCE + 1;
+        IntSupplier shown = () -> {
+            int value = get.getAsInt();
+            return value <= 0 ? top : Math.clamp(value, 1, FarConfig.MAX_DISTANCE);
+        };
         return b.createIntegerOption(id(name))
                 .setName(Component.translatable(KEY + name))
                 .setTooltip(tooltip(name))
@@ -324,10 +367,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                         : Component.translatable(KEY + "blocks", v))
                 .setDefaultValue(fallback <= 0 ? top : Math.clamp(fallback, 1, FarConfig.MAX_DISTANCE))
                 .setStorageHandler(storage)
-                .setBinding(v -> set.accept(v >= top ? 0 : v), () -> {
-                    int value = get.getAsInt();
-                    return value <= 0 ? top : Math.clamp(value, 1, FarConfig.MAX_DISTANCE);
-                });
+                .setBinding(asking(name, top, v -> set.accept(v >= top ? 0 : v), shown)::accept, shown::getAsInt);
     }
 
     /** A number in a unit, as {@link FarConfigScreen} writes it ("30s", "6px", "100%"); the zero of a range from 0 as its text. */

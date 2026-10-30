@@ -43,6 +43,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.ServerWithoutModScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ShoreScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.SittingPetsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.SodiumControlsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.TypedValuesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.SodiumPagesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.UnloadScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.VehiclesScenario;
@@ -91,6 +92,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new DiscordScenario(),
             new SodiumPagesScenario(),
             new SodiumControlsScenario(),
+            new TypedValuesScenario(),
             new DepthViewScenario(),
             new EntityDepthScenario(),
             new ResizeScenario(),

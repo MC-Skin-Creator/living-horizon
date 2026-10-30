@@ -18,6 +18,7 @@
 - **Créatures à découvrir** — les terres lointaines que personne n'a encore explorées ne sont plus vides d'animaux, aussi loin que va la *Distance d'affichage des créatures*, en solo ou sur un serveur avec le mod ; un nouveau réglage les cache.
 - **Animaux à la longue-vue** — regarder dans une longue-vue montre maintenant les animaux des terres inexplorées là où elle vise, aussi loin soit-il, en solo ou sur un serveur qui partage sa graine.
 - **Deviner les créatures** — un nouveau bouton affiche d'un coup les animaux des terres inexplorées jusqu'à 1024 chunks autour, et les garde pour la partie suivante, en solo ou sur un serveur qui partage sa graine.
+- **Valeurs saisies** — les curseurs de l'écran de réglages du mod acceptent maintenant une valeur tapée à la main : clic droit dessus, saisissez un nombre et appuyez sur Entrée ; les flèches du clavier le déplacent d'un cran, ou de dix avec Maj.
 
 #### Améliorations
 - **Serveurs sans le mod** — en rejoignant un serveur sans Living Horizon, ou avec une version trop ancienne ou trop récente du mod, le tchat dit maintenant que les joueurs lointains n'y sont pas affichés ; avec *Afficher les joueurs* désactivé, rien n'est dit.
@@ -30,6 +31,8 @@
 - **Animaux assis qui le restent** — les chats, les loups et les perroquets à qui tu as dit de s'asseoir restent maintenant assis au loin, au lieu de se lever et de partir se balader.
 - **Plus de créatures lointaines** — *Créatures max* va maintenant jusqu'à 4000 avant *Illimité*.
 - **Illimité au bout du curseur** — *Illimitée* est maintenant tout à droite des curseurs de distance d'affichage, après 4000 blocs, au lieu de tout à gauche.
+- **Confirmation avant Illimité** — régler *Créatures max*, *Entités max* ou *Distance d'affichage des créatures* sur *Illimité* demande maintenant une confirmation, car cela peut faire chuter fortement les FPS et remplir la mémoire ; sur la page de Sodium, la question vient avec *Appliquer*.
+- **Préréglages avec des limites** — les préréglages *Élevé* et *Ultra* ne mettent plus rien sur *Illimité* : *Élevé* affiche jusqu'à 1500 créatures, *Ultra* jusqu'à 3000 et jusqu'à 2048 blocs.
 
 #### Corrections
 - **Plantage en ouvrant Créatures et entités depuis l'écran titre** — ouvrir *Créatures et entités...* depuis l'écran titre ne fait plus planter le jeu (Minecraft 26.x).

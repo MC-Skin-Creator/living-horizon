@@ -102,3 +102,8 @@ accessible field net/minecraft/world/entity/animal/Rabbit jumpDuration I
 
 # Each kind's renderer, whose declared entity class tells a vehicle kind before one is met.
 accessible field net/minecraft/client/renderer/entity/EntityRenderDispatcher renderers Ljava/util/Map;
+
+# The values of an option, which the mod's sliders implement to be built by the game's own
+# option lists (ui/NumberSlider). Public from 26.2.
+# @until 26.1.2
+accessible class net/minecraft/client/OptionInstance$ValueSet
