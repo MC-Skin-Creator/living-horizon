@@ -318,7 +318,7 @@ public final class Ambience {
             level = current;
         }
         // The easter eggs: by chance only on the days the calendar allows, one at a time. The
-        // watcher keeps his own nights, out of the others' way: he waits for them, not they for him.
+        // watcher keeps his own days, out of the others' way: he waits for them, not they for him.
         calendar.tick(current);
         boolean eggs = config.easterEggs && current.dimension() == Level.OVERWORLD;
         boolean free = !ufo.busy() && !pass.busy() && !ghosts.busy()

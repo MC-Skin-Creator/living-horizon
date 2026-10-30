@@ -76,7 +76,8 @@ public final class EasterEggsScenario implements Scenario {
 
     /**
      * The calendar: a day for each dawn; from the second or third, the watcher (4) comes on his
-     * own a while into the night, and goes once he is looked in the eyes.
+     * own once a day, by day as well as by night (his moment hurried here), and goes once he is
+     * looked in the eyes.
      */
     private void calendar(ClientGameTestContext context, TestSingleplayerContext world) {
         int before = context.computeOnClient(minecraft -> ambience().calendar().days());
@@ -89,7 +90,8 @@ public final class EasterEggsScenario implements Scenario {
         int after = context.computeOnClient(minecraft -> ambience().calendar().days());
         Scene.log("eggs calendar " + before + " -> " + after + " days");
         if (after != before + 3) throw new AssertionError("the calendar counted " + (after - before) + " dawns, not 3");
-        Scene.command(world, "time set 14000");
+        // By day: he no longer waits for the night.
+        context.runOnClient(minecraft -> ambience().herobrine().soon());
         Vec3 at = null;
         for (int i = 0; i < 2400 && at == null; i += 20) {
             context.waitTicks(20);
@@ -98,15 +100,15 @@ public final class EasterEggsScenario implements Scenario {
                 return him == null ? null : him.position();
             });
         }
-        if (at == null) throw new AssertionError("ee4 did not come by night");
-        drawn(context, at, "ee4 by night");
+        if (at == null) throw new AssertionError("ee4 did not come by day");
+        drawn(context, at, "ee4 by day");
         Vec3 him = at;
         context.runOnClient(minecraft -> {
-            Scene.log("eggs ee4 by night at " + him + ", " + (int) him.distanceTo(minecraft.player.position()) + " blocks");
+            Scene.log("eggs ee4 by day at " + him + ", " + (int) him.distanceTo(minecraft.player.position()) + " blocks");
             lookAt(minecraft.player, him.x, him.y + 1.6, him.z);
             minecraft.options.fov().set(30);
         });
-        Scene.screenshot(context, this, "ee4-night");
+        Scene.screenshot(context, this, "ee4-day");
         context.waitTicks(110);
         if (context.computeOnClient(minecraft -> ambience().herobrine().busy())) {
             throw new AssertionError("ee4 still there 5 seconds after being looked in the eyes");

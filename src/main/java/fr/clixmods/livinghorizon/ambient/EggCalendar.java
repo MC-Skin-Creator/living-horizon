@@ -20,7 +20,7 @@ import java.nio.file.Path;
 /**
  * When the easter eggs may come by chance, in days of the game this player has lived in a
  * world: each from a day of its own on, never two within a few days of each other; the
- * watcher ({@link Herobrine}) on nights of his own. A day is a dawn seen in the overworld,
+ * watcher ({@link Herobrine}) on days of his own. A day is a dawn seen in the overworld,
  * a night slept through included.
  *
  * <p>Kept per server, in {@code config/livinghorizon/calendar/<server>.json}. Calling an
@@ -37,12 +37,12 @@ public final class EggCalendar {
         /** No easter egg comes by chance before this day: the last one was not long ago. */
         @SerializedName("next")
         int quietUntil;
-        /** The watcher comes every night from this day on, until he is looked in the eyes; -1 until drawn. */
+        /** The watcher comes every day from this one on, until he is looked in the eyes; -1 until drawn. */
         @SerializedName("next4")
         int watcherFrom = -1;
-        /** The night he last came, by the day it belongs to; -1 if never. */
+        /** The day he last came; -1 if never. */
         @SerializedName("last4")
-        int watcherNight = -1;
+        int watcherDay = -1;
     }
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -108,14 +108,14 @@ public final class EggCalendar {
         save();
     }
 
-    /** Whether the watcher is due tonight: his day has come and he has not come yet this night. */
-    boolean watcherTonight() {
-        return state.watcherFrom >= 0 && state.days >= state.watcherFrom && state.watcherNight != state.days;
+    /** Whether the watcher is due today: his day has come and he has not come yet this day. */
+    boolean watcherToday() {
+        return state.watcherFrom >= 0 && state.days >= state.watcherFrom && state.watcherDay != state.days;
     }
 
-    /** He came tonight. */
+    /** He came today. */
     void watcherCame() {
-        state.watcherNight = state.days;
+        state.watcherDay = state.days;
         save();
     }
 
