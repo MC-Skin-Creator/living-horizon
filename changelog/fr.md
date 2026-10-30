@@ -50,6 +50,9 @@
 
 ### Client
 
+#### Nouveautés
+- **Fork de Voxy de NHblock714** — les mobs et les oiseaux lointains trouvent maintenant leur sol sur le terrain lointain du fork NeoForge de Voxy par NHblock714, et y marchent et s'y posent comme sur celui de Voxy (NeoForge, Minecraft 1.21.1).
+
 #### Améliorations
 - **Jeu plus fluide parmi les mobs lointains et les joueurs déconnectés** — chercher où les mobs lointains et les joueurs déconnectés peuvent marcher ne prend plus de temps au jeu : c'est fait en arrière-plan.
 - **Images plus fluides avec les mobs lointains** — le jeu attend moins le pilote graphique à chaque image avec des mobs lointains sur Voxy ou Distant Horizons, surtout sur les cartes NVIDIA avec l'*Optimisation threadée* activée.

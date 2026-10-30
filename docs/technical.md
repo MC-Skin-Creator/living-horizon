@@ -806,6 +806,13 @@ one line per link: linked, not installed or off and why, the fallbacks in use, a
 mixins into Voxy (`renderOpaque`) and Distant Horizons (its fades) ran. Those two may find nothing
 to hook (`require = 0`): a count that stays at 0 while the mod draws is a renamed method.
 
+NHblock714's NeoForge fork of Voxy (Minecraft 1.21.1) is Voxy to the links: the same mod id,
+classes and members, but for one thing. A section made of one voxel (air above the ground,
+stone under it) keeps that voxel alone, without its array (`_rawOrNull` is null, and
+`_unsafeGetRawDataArray` is gone), and gets an array when a block in it changes.
+`VoxySource.Voxels` reads a voxel from the array where there is one, from that one voxel
+otherwise, and asks again at every voxel.
+
 ### One frame
 
 `FarDepth`'s steps run in this order, each frame: `noteView` (the matrices; everything kept for

@@ -19,7 +19,9 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Voxy's world, one block per voxel, in sections of 32 blocks a side at level 0. Voxy has
  * no API for this: its classes are reached by reflection so that the mod still loads
- * without it, and any failure turns this source off for the session.
+ * without it, and any failure turns this source off for the session. NHblock714's NeoForge
+ * fork of Voxy keeps a section made of one voxel as that voxel alone, without its array:
+ * {@link Voxels} reads both.
  */
 final class VoxySource implements LodSource {
     private static final double STEP = 0.75;
@@ -37,7 +39,8 @@ final class VoxySource implements LodSource {
     /** After a failed read, nothing is read until then: Voxy's world may only have been closing or opening. */
     private volatile long pausedUntil;
     private volatile @Nullable String failure;
-    private MethodHandle renderSystem, engine, acquire, data, release, mapper, opacity, isAir, isLive;
+    private MethodHandle renderSystem, engine, acquire, release, mapper, opacity, isAir, isLive;
+    private Voxels voxels;
     private MethodHandle biomeId, biomeEntries, biomeName, blockState, blockId;
 
     @Override
@@ -94,13 +97,13 @@ final class VoxySource implements LodSource {
     public LodWorld.@Nullable Surface column(Object world, int x, int z) throws Throwable {
         Object types = (Object) mapper.invokeExact(world);
         for (int y = 319; y >= -64; y--) {
-            long[] voxels = section(world, x >> 5, y >> 5, z >> 5,
+            Object section = section(world, x >> 5, y >> 5, z >> 5,
                     ((long) (x >> 5) & 0xFFFFFFL) | ((long) (z >> 5) & 0xFFFFFFL) << 24 | ((long) (y >> 5) & 0xFFL) << 48);
-            if (voxels == null) {
+            if (section == null) {
                 y -= y & 31; // a whole empty section: on to the one below
                 continue;
             }
-            long id = voxels[(y & 31) << 10 | (z & 31) << 5 | (x & 31)];
+            long id = voxels.at(section, (y & 31) << 10 | (z & 31) << 5 | (x & 31));
             if ((boolean) isAir.invokeExact(id)) continue;
             Object[] biomes = (Object[]) biomeEntries.invokeExact(types);
             int b = (int) biomeId.invokeExact(id);
@@ -204,8 +207,7 @@ final class VoxySource implements LodSource {
         acquire = lookup.findVirtual(worldEngine, "acquireIfExists",
                         MethodType.methodType(section, int.class, int.class, int.class, int.class))
                 .asType(MethodType.methodType(Object.class, Object.class, int.class, int.class, int.class, int.class));
-        data = lookup.findVirtual(section, "_unsafeGetRawDataArray", MethodType.methodType(long[].class))
-                .asType(MethodType.methodType(long[].class, Object.class));
+        voxels = Voxels.of(lookup, section);
         release = lookup.findVirtual(section, "release", MethodType.methodType(int.class))
                 .asType(MethodType.methodType(int.class, Object.class));
         mapper = lookup.findVirtual(worldEngine, "getMapper", MethodType.methodType(mapperClass))
@@ -247,7 +249,7 @@ final class VoxySource implements LodSource {
                                    double from, double to) throws Throwable {
         Object types = (Object) mapper.invokeExact(world);
         long key = Long.MIN_VALUE;
-        long[] voxels = null;
+        Object section = null;
         for (double t = from; t < to; t += STEP) {
             int x = (int) Math.floor(ax + dx * t);
             int y = (int) Math.floor(ay + dy * t);
@@ -255,10 +257,10 @@ final class VoxySource implements LodSource {
             long k = ((long) (x >> 5) & 0xFFFFFFL) | ((long) (z >> 5) & 0xFFFFFFL) << 24 | ((long) (y >> 5) & 0xFFL) << 48;
             if (k != key) {
                 key = k;
-                voxels = section(world, x >> 5, y >> 5, z >> 5, k);
+                section = section(world, x >> 5, y >> 5, z >> 5, k);
             }
-            if (voxels == null) continue;
-            long id = voxels[(y & 31) << 10 | (z & 31) << 5 | (x & 31)];
+            if (section == null) continue;
+            long id = voxels.at(section, (y & 31) << 10 | (z & 31) << 5 | (x & 31));
             if (!(boolean) isAir.invokeExact(id) && (int) opacity.invokeExact(types, id) > 0) return t;
         }
         return Double.NaN;
@@ -273,12 +275,12 @@ final class VoxySource implements LodSource {
         boolean any = false;
         for (int k = 0; k < height; k++) {
             int y = bottom + k;
-            long[] voxels = section(world, x >> 5, y >> 5, z >> 5,
+            Object section = section(world, x >> 5, y >> 5, z >> 5,
                     ((long) (x >> 5) & 0xFFFFFFL) | ((long) (z >> 5) & 0xFFFFFFL) << 24 | ((long) (y >> 5) & 0xFFL) << 48);
             slice[k] = air;
-            if (voxels == null) continue;
+            if (section == null) continue;
             any = true;
-            long id = voxels[(y & 31) << 10 | (z & 31) << 5 | (x & 31)];
+            long id = voxels.at(section, (y & 31) << 10 | (z & 31) << 5 | (x & 31));
             if ((boolean) isAir.invokeExact(id)) continue;
             BlockState state = (BlockState) blockState.invokeExact(types, (int) blockId.invokeExact(id));
             if (state != null) slice[k] = state;
@@ -286,8 +288,8 @@ final class VoxySource implements LodSource {
         return any ? slice : null;
     }
 
-    /** A level 0 section's voxels, from this reader's cache or from Voxy; null where Voxy has nothing. */
-    private long @Nullable [] section(Object world, int sx, int sy, int sz, long key) throws Throwable {
+    /** A level 0 section held, from this reader's cache or from Voxy; null where Voxy has nothing. */
+    private @Nullable Object section(Object world, int sx, int sy, int sz, long key) throws Throwable {
         LinkedHashMap<Long, Object> sections = CACHES.get().sections;
         Object section = sections.get(key);
         if (section == null || section instanceof Miss miss && System.nanoTime() - miss.at() > MISS_NANOS) {
@@ -303,7 +305,35 @@ final class VoxySource implements LodSource {
                 }
             }
         }
-        return section instanceof Miss ? null : (long[]) data.invokeExact(section);
+        return section instanceof Miss ? null : section;
+    }
+
+    /**
+     * A section's voxels, read one at a time: from its array, or where it has none, the one
+     * voxel it is made of. Voxy gives every section an array; NHblock714's NeoForge fork only
+     * a section with more than one kind of voxel ({@code _rawOrNull} is null otherwise), and
+     * gives it one when a block in it changes, so the array is asked for at every voxel.
+     */
+    record Voxels(MethodHandle array, MethodHandle uniform) {
+        static Voxels of(MethodHandles.Lookup lookup, Class<?> section) throws ReflectiveOperationException {
+            MethodHandle array = Links.optional(lookup, section, "_rawOrNull", MethodType.methodType(long[].class));
+            MethodHandle uniform;
+            if (array != null) {
+                uniform = lookup.findVirtual(section, "getUniformValue", MethodType.methodType(long.class));
+            } else {
+                array = lookup.findVirtual(section, "_unsafeGetRawDataArray", MethodType.methodType(long[].class));
+                // Never called: every section has its array.
+                uniform = MethodHandles.dropArguments(MethodHandles.constant(long.class, 0L), 0, section);
+            }
+            return new Voxels(array.asType(MethodType.methodType(long[].class, Object.class)),
+                    uniform.asType(MethodType.methodType(long.class, Object.class)));
+        }
+
+        /** The voxel at {@code index} (y, then z, then x, 5 bits each) of a section held. */
+        long at(Object section, int index) throws Throwable {
+            long[] voxels = (long[]) array.invokeExact(section);
+            return voxels != null ? voxels[index] : (long) uniform.invokeExact(section);
+        }
     }
 
     private void releaseAll(Cache cache) {

@@ -317,6 +317,9 @@ come back, add it here in the same pull request: this file is what the next sess
   tries both). Check a new version with `javap` on its jar from Modrinth, as for Distant
   Horizons, and read the links' lines in `/livinghorizon lod`: each says what it runs without,
   and how often the mixins into Voxy and Distant Horizons ran (0 while they draw: renamed).
+  NHblock714's NeoForge fork (github.com/NHblock714/voxy, 1.21.1) keeps Voxy's mod id and
+  classes, but a section of one voxel has no array there (`_rawOrNull` null, no
+  `_unsafeGetRawDataArray`): `VoxySource.Voxels` reads both kinds of section.
 - **Steps out of order** (`/livinghorizon lod` or the log says so; the `depthview` game test
   fails): a hook before that step no longer runs, renamed by the game or another mod. The order
   is in `FarDepth.Frame` and `docs/technical.md` ("One frame").

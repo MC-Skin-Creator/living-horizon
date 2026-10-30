@@ -50,6 +50,9 @@
 
 ### Client
 
+#### New
+- **NHblock714's Voxy fork** — distant mobs and birds now find their ground on the far terrain of NHblock714's NeoForge fork of Voxy, and walk and land on it as they do on Voxy's (NeoForge, Minecraft 1.21.1).
+
 #### Improved
 - **Smoother game among distant mobs and offline players** — working out where distant mobs and players who logged off can walk no longer takes time from the game: it is done in the background.
 - **Smoother frames with distant mobs** — the game waits less on the graphics driver each frame with distant mobs over Voxy or Distant Horizons, most of all on NVIDIA cards with *Threaded optimization* on.
