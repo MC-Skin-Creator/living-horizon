@@ -264,7 +264,7 @@ public final class FarDepth {
      * the same steps as the world's, after the world's are submitted: left alone, it took the
      * bracket meant for the world's entities, and the world's were drawn without it.
      */
-    private static boolean irisShadowPass() {
+    public static boolean irisShadowPass() {
         return IrisLink.shadowPass();
     }
 

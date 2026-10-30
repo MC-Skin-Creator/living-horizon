@@ -9,6 +9,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import fr.clixmods.livinghorizon.ambient.AmbientRenderer;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.FarFog;
+import fr.clixmods.livinghorizon.render.DistancePreview;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
@@ -123,13 +124,14 @@ abstract class LevelRendererMixin {
         FarFog.arm();
     }
 
-    /** The silhouette birds and the impostors, with the entities so that shader packs treat them alike. */
+    /** The silhouette birds, the impostors and a distance being set, with the entities so that shader packs treat them alike. */
     @Inject(method = "submitEntities", at = @At("TAIL"))
     private void livinghorizon$submitFlat(PoseStack pose, LevelRenderState frame, SubmitNodeCollector collector,
                                          CallbackInfo ci) {
         Sink sink = new Sink(collector);
         AmbientRenderer.submit(pose, frame.cameraRenderState.pos, sink);
         ImpostorRenderer.submit(pose, sink);
+        DistancePreview.submit(pose, frame.cameraRenderState.pos, sink);
     }
 
     /** Moves a distant player's state closer along the line of sight, and scales it to match. */
@@ -161,6 +163,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import fr.clixmods.livinghorizon.ambient.AmbientRenderer;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.FarFog;
+import fr.clixmods.livinghorizon.render.DistancePreview;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
@@ -218,7 +221,7 @@ abstract class LevelRendererMixin {
         FarFog.begin(null);
     }
 
-    /^* The figures, the silhouette birds and the impostors, with the entities; then all of them drawn. ^/
+    /^* The figures, the silhouette birds, the impostors and a distance being set, with the entities; then all of them drawn. ^/
     @Inject(method = "renderEntities", at = @At("TAIL"))
     private void livinghorizon$drawDistant(PoseStack pose, MultiBufferSource.BufferSource buffers, Camera camera,
                                           DeltaTracker deltaTracker, List<Entity> entities, CallbackInfo ci) {
@@ -226,6 +229,7 @@ abstract class LevelRendererMixin {
         Sink sink = new Sink(buffers);
         AmbientRenderer.submit(pose, camera.position(), sink);
         ImpostorRenderer.submit(pose, sink);
+        DistancePreview.submit(pose, camera.position(), sink);
         buffers.endBatch();
         FarDepth.after();
         FarFog.end();
@@ -236,6 +240,7 @@ abstract class LevelRendererMixin {
 import com.mojang.blaze3d.vertex.PoseStack;
 import fr.clixmods.livinghorizon.ambient.AmbientRenderer;
 import fr.clixmods.livinghorizon.compat.FarDepth;
+import fr.clixmods.livinghorizon.render.DistancePreview;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
@@ -286,7 +291,7 @@ abstract class LevelRendererMixin {
         GhostRenderer.extracted(entity);
     }
 
-    /^* The game has drawn what it chose: the figures, the silhouette birds and the impostors, then all of them. ^/
+    /^* The game has drawn what it chose: the figures, the silhouette birds, the impostors and a distance being set, then all of them. ^/
     @Inject(method = "renderLevel", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/MultiBufferSource$BufferSource;endLastBatch()V", ordinal = 0))
     private void livinghorizon$drawDistant(CallbackInfo ci, @Local(argsOnly = true) Camera camera
@@ -304,6 +309,7 @@ abstract class LevelRendererMixin {
         Sink sink = new Sink(buffers);
         AmbientRenderer.submit(pose, camera.position(), sink);
         ImpostorRenderer.submit(pose, sink);
+        DistancePreview.submit(pose, camera.position(), sink);
         buffers.endBatch();
         FarDepth.after();
     }

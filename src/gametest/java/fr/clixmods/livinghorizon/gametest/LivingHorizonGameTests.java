@@ -6,12 +6,15 @@ import fr.clixmods.livinghorizon.gametest.scenario.BirdCommandScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.BirdsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DedicatedServerScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.DistancePreviewScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EasterEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.DhFogScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FarFogScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FollowedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FlyersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.GaitsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.GlidersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.HeadTurnScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorCrowdScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorEdgesScenario;
@@ -75,12 +78,14 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new ImpostorScreenScenario(),
             new LightingScenario(),
             new FarFogScenario(),
+            new DhFogScenario(),
             new RememberedMobsScenario(),
             new SeedMobsScenario(),
             new SeedCrowdScenario(),
             new OverVoidScenario(),
             new MannequinsScenario(),
             new VehiclesScenario(),
+            new GlidersScenario(),
             new OutlinesScenario(),
             new RestingScenario(),
             new RestingMountScenario(),
@@ -89,6 +94,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new RestingCrowdScenario(),
             new ShoreScenario(),
             new OptionsScreenScenario(),
+            new DistancePreviewScenario(),
             new LinksScenario(),
             new SodiumPagesScenario(),
             new SodiumControlsScenario(),

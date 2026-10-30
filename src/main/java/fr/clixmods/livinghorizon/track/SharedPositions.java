@@ -22,12 +22,14 @@ public final class SharedPositions {
 
     /**
      * Where a player is, as the server last said. {@code lastSeen} is when they logged off (0
-     * when online or not known); {@code test} marks a test player the host placed.
+     * when online or not known); {@code test} marks a test player the host placed;
+     * {@code gliding} a player flying with an elytra, {@code pitch} the way they look up or down
+     * then (0 otherwise, and from a server that does not say).
      */
     public record Report(double x, double y, double z, float yaw, String dimension, boolean riding, long lastSeen,
-                         boolean test) {
+                         boolean test, boolean gliding, float pitch) {
         public Report(double x, double y, double z, float yaw, String dimension, boolean riding) {
-            this(x, y, z, yaw, dimension, riding, 0, false);
+            this(x, y, z, yaw, dimension, riding, 0, false, false, 0f);
         }
     }
 
@@ -143,7 +145,7 @@ public final class SharedPositions {
         PositionsMessage.Player player = active ? players.getOrDefault(name, offline.get(name)) : null;
         return player == null ? null
                 : new Report(player.x(), player.y(), player.z(), player.yaw(), player.dimension(), player.riding(),
-                        player.lastSeen(), player.test());
+                        player.lastSeen(), player.test(), player.gliding(), player.pitch());
     }
 
     /** Every player the server has a position for, online or not. */

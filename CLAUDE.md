@@ -263,8 +263,9 @@ distant mobs or players, birds, impostors or a screen is checked in the real cli
 `.claude/skills/game-test/` runs it headless (Xvfb, software OpenGL), drives it with the
 scenarios in `src/gametest/java` and takes screenshots to look at. Run
 `.claude/skills/game-test/run.sh [scenario]`, read `SKILL.md` there first, add a scenario
-for what the change touches, and show the user the screenshots. Voxy and Distant Horizons
-cannot run there: say so when a check depends on them.
+for what the change touches, and show the user the screenshots. Voxy cannot run there: say so
+when a check depends on it. Distant Horizons runs there on 26.3 (`--with distanthorizons`,
+Fabric Loader 0.19.5 for the run: see the skill).
 
 ## Debugging checklist
 
@@ -427,9 +428,9 @@ come back, add it here in the same pull request: this file is what the next sess
   `ImpostorKey` leaves out what never shows (positions, times, owners, names, sound variants,
   an item's damage), names variants by their registry key so that a sheet is found again in
   the next world, and learns per kind of mob the values seen changing again and again
-  (`RESTLESS`). `ImpostorAtlas` gives each kind of figure pages of its own (`Page`), keeps the
+  (`RESTLESS`). `SheetAllocator` gives each kind of figure pages of its own (`Page`), keeps the
   mobs' sheets, throws the players' away once unused, and never evicts a sheet drawn or asked
-  for within `IN_USE`. `ImpostorDisk` keeps the mobs' sheets on disk under a fingerprint
+  for within `IN_USE`; `SheetAllocatorTest` checks it without the game. `ImpostorDisk` keeps the mobs' sheets on disk under a fingerprint
   (game, resource packs, mods): a sheet never read back from disk means its key is not
   stable across games (an identity hash in `ImpostorKey.stable`). The `sharing` scenario
   checks all of it, except across games: the client game tests start from an empty run
@@ -541,6 +542,12 @@ come back, add it here in the same pull request: this file is what the next sess
   strolling): the game saves the order to sit from `orderedToSit`, which only the server sets, so a
   save made on the client says `Sitting:0b`. `MobMemory.onUnload` writes `isInSittingPose()` into
   it; a sitting copy gets no stroll. The `sittingpets` scenario checks it.
+- **Distant players running upright in the air with an elytra** (legs walking, wings folded):
+  the game tilts a glider and spreads its wings in the player's tick (`fallFlyTicks`, and
+  `ElytraAnimationState` from 1.21.2), which a puppet never runs, and only the server knows who
+  glides. It shares it (message version 4: the last flag bit, the pitch at the end of the record)
+  and `FarPlayer.glide` does the tick's part. A glider is never an impostor, nor baked into one:
+  the pictures are baked standing. The `gliders` scenario checks it.
 - **A rider turned sideways** (a player resting in a boat facing left or right of it): the seat's
   yaw is the rider's body (`yBodyRot`), which the boat keeps in line with itself, never the head
   (`getYRot`), which looks wherever the player looked as they left.
@@ -603,6 +610,11 @@ come back, add it here in the same pull request: this file is what the next sess
   the game's fog on entities does not know. `FarFog` gives the world's entities Voxy's curve, from
   a second fog `FogRendererMixin` writes next to the game's; a new Voxy that computes its limit
   otherwise (`NormalRenderPipeline.finish`, `javap`) needs `FarFog.voxyLimit` to follow.
+- **Distant mobs sharp against Distant Horizons' fogged terrain** (no fog on them at all, without a
+  shader pack): Distant Horizons pushes both of the game's fog ramps out to 4×10¹⁴ blocks and fogs
+  its terrain in a pass of its own. `DhFog` gives the entities its far fog through the game's two
+  ramps (one a floor at its thinnest, one the slope), fitted to its formula (`DhFogTest`); a new
+  Distant Horizons that fogs otherwise (`shaders/fog`, `GlDhFogShader.onApplyUniforms`) needs it to follow.
 - **Water gone under a shader pack whenever a distant figure is in view** (Photon with Distant
   Horizons on 26.3: the lake shows its bare, shadowed bed, with *Hide Behind Far Terrain* on; the
   depth view looks right): from 26.3 the game caches blending and the colour mask per draw
@@ -648,6 +660,16 @@ come back, add it here in the same pull request: this file is what the next sess
   spyglass is up, and the guessed mobs are worked out again only when what they depend on
   changed (`Foresight.wantedIfChanged`). The `seedcrowd` scenario measures it all; the
   *Statistics...* screen counts what is kept.
+- **Nothing drawn in the world while a distance setting is hovered** (the distance preview,
+  `render/DistancePreview`): an entity's render type is fogged like an entity, and the game's
+  fog had faded a 128-block fence out completely at the default render distance. From 1.21.11
+  it is the game's debug quads (no fog, no depth written); before, their depth would hide the
+  water behind, so the entity type stays, and past the fog it shows only with Voxy or Distant
+  Horizons. Under a shader pack Iris gives debug quads no program of the pack (`IrisPipelines`
+  leaves them out) and Photon's passes paint over them: with a pack on, the glowing
+  entity type draws it on every version. The screen asks for it every frame; a time limit
+  instead made it vanish between two frames of a slow game. The `distancepreview` scenario
+  checks it.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

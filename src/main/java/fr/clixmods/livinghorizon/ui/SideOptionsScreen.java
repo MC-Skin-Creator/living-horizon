@@ -1,9 +1,12 @@
 package fr.clixmods.livinghorizon.ui;
 
 import fr.clixmods.livinghorizon.ModVersion;
+import fr.clixmods.livinghorizon.render.DistancePreview;
+import net.minecraft.client.OptionInstance;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.StringWidget;
+import net.minecraft.client.gui.components.events.ContainerEventHandler;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 //? if >=1.21 {
@@ -21,10 +24,14 @@ import net.minecraft.client.Options;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * An options screen that keeps the game in view: everything sits in a column on the left,
  * and in a world there is no blur or darkening behind it, so that a change can be judged
- * as it is made.
+ * as it is made. A setting that is a distance is drawn in that world while it is hovered or
+ * changed ({@link #distance}).
  */
 public abstract class SideOptionsScreen extends OptionsSubScreen {
     private static final int PANEL_WIDTH = 360;
@@ -39,6 +46,7 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
 
     @Override
     protected void init() {
+        forgetDistances();
         addTitle();
         //? if >=1.20.5 {
         list = layout.addToContents(new OptionsList(minecraft, width, height, this));
@@ -205,6 +213,117 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
         return null;
     }
 
+    // --- Distances shown in the world ----------------------------------------------------
+
+    /** How long a distance changed from the keyboard stays drawn, in ns, though the mouse is elsewhere. */
+    private static final long CHANGE_HOLD = 1_500_000_000L;
+
+    /** A setting of this screen that is a distance, and when it was last changed or hovered. */
+    private static final class Distance {
+        final OptionInstance<Integer> option;
+        final DistancePreview.Shape shape;
+        /** The button made here for it; null when the list made it, which finds it again. */
+        final @Nullable AbstractWidget button;
+        int value;
+        /** When it last changed, by {@link System#nanoTime()}, once it has. */
+        long changed;
+        boolean changedOnce;
+
+        Distance(OptionInstance<Integer> option, DistancePreview.Shape shape, @Nullable AbstractWidget button) {
+            this.option = option;
+            this.shape = shape;
+            this.button = button;
+            this.value = option.get();
+        }
+    }
+
+    private final List<Distance> distances = new ArrayList<>();
+    /** The distance under the mouse, and since when: what came last, it or a change, is drawn. */
+    private @Nullable Distance hovered;
+    private long hoveredSince;
+
+    //? if >=1.21 {
+    @Override
+    protected void init() {
+        forgetDistances();
+        super.init();
+    }
+    //?}
+
+    /** The screen is made again (on a resize, in older versions): its settings are marked anew as it is. */
+    private void forgetDistances() {
+        distances.clear();
+        hovered = null;
+    }
+
+    /**
+     * Marks a setting as a distance: what it measures is drawn in the world while its slider is
+     * hovered or dragged, and for a moment after it changes ({@link DistancePreview}).
+     */
+    protected final OptionInstance<Integer> distance(DistancePreview.Shape shape, OptionInstance<Integer> option) {
+        distances.add(new Distance(option, shape, null));
+        return option;
+    }
+
+    /** {@link #distance}, for a setting whose button is made here, {@code width} wide, rather than by the list. */
+    protected final AbstractWidget distanceButton(DistancePreview.Shape shape, OptionInstance<Integer> option, int width) {
+        AbstractWidget button = option.createButton(minecraft.options, 0, 0, width);
+        distances.add(new Distance(option, shape, button));
+        return button;
+    }
+
+    /**
+     * Hands the world the distance to draw this frame: the one under the mouse, or one just
+     * changed from the keyboard while the mouse rests on another, whichever came last.
+     */
+    private void previewDistance(int mouseX, int mouseY) {
+        if (distances.isEmpty() || minecraft.level == null) return;
+        long now = System.nanoTime();
+        AbstractWidget under = optionUnder(mouseX, mouseY);
+        Distance pointed = null;
+        for (Distance distance : distances) {
+            // No limit draws nothing, as the preview reads 0.
+            int value = distance.option.get() == NumberSlider.UNLIMITED ? 0 : distance.option.get();
+            if (value != distance.value) {
+                distance.value = value;
+                distance.changed = now;
+                distance.changedOnce = true;
+            }
+            if (under != null && under == button(distance)) pointed = distance;
+        }
+        if (pointed != hovered) {
+            hovered = pointed;
+            hoveredSince = now;
+        }
+        Distance shown = hovered;
+        for (Distance distance : distances) {
+            if (!distance.changedOnce || now - distance.changed >= CHANGE_HOLD) continue;
+            if (shown == null || distance.changed - (shown == hovered ? hoveredSince : shown.changed) > 0) shown = distance;
+        }
+        if (shown != null) DistancePreview.show(shown.shape, shown.value);
+    }
+
+    private @Nullable AbstractWidget button(Distance distance) {
+        if (distance.button != null || list == null) return distance.button;
+        return list.findOption(distance.option);
+    }
+
+    /**
+     * The widget of the list under the mouse: in the row under it, which the list has placed
+     * this frame. Asked of every widget, a row scrolled out of view would answer from where
+     * it was last drawn.
+     */
+    private @Nullable AbstractWidget optionUnder(double mouseX, double mouseY) {
+        if (list == null || !list.isMouseOver(mouseX, mouseY)) return null;
+        for (GuiEventListener row : list.children()) {
+            if (!(row instanceof ContainerEventHandler widgets) || !row.isMouseOver(mouseX, mouseY)) continue;
+            for (GuiEventListener child : widgets.children()) {
+                if (child instanceof AbstractWidget widget && widget.isMouseOver(mouseX, mouseY)) return widget;
+            }
+        }
+        return null;
+    }
+
     /** The width of the column on the left, which the rows of options are centred on. */
     public int columnWidth() {
         return Math.min(PANEL_WIDTH, width);
@@ -221,6 +340,7 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         NumberSlider.nextFrame();
         super.render(graphics, mouseX, mouseY, partialTick);
+        previewDistance(mouseX, mouseY);
         drawVersion(graphics);
     }
     //?} else {
@@ -230,6 +350,7 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
         NumberSlider.nextFrame();
         if (minecraft.level == null) renderBackground(graphics);
         super.render(graphics, mouseX, mouseY, partialTick);
+        previewDistance(mouseX, mouseY);
         drawVersion(graphics);
     }
     *///?}

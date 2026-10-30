@@ -47,7 +47,7 @@ never added to a level (`track/Puppets`).
 |---|---|
 | root | `LivingHorizonCommon` (entry point on both sides, opens the network channel), `LivingHorizonClient` (client entry point), `FarConfig` (the settings file), `QualityPreset`, `Stats` |
 | `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`, `SeedDraws`, `SeedMobs`, `Foresight`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
-| `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`; `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
+| `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`, the distance settings drawn in the world (`DistancePreview`); `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
 | `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
 | `ambient/` | The birds (`Ambience`, `BirdModels`, `BirdFigure`, `AmbientRenderer`) and the easter eggs |
 | `platform/` | What differs between loaders: events, network, config folder |
@@ -82,6 +82,12 @@ client class.
   picture, but in front of the terrain between.
 - **Mounts.** A player is drawn on the mob they ride (`FarPlayer.mountPuppet`), and the
   remembered mobs leave that mob out (`MobMemory.carried`), so it is never drawn twice.
+- **Elytras.** A player the server says is gliding flies: `FarPlayer.glide` sets the copy's
+  gliding flag, counts its `fallFlyTicks` (the body lies along the flight after ten) and, from
+  1.21.2, ticks its `ElytraAnimationState` (the wings spread), all of which the game does in
+  the player's tick, which a copy never runs; its pitch follows the server's, its legs hang
+  still. A glider is never an impostor, and never baked into one: the pictures are baked
+  standing. A copy made as a player leaves mid-flight keeps how long they glided and their pitch.
 
 What breaks it:
 
@@ -111,7 +117,7 @@ checks it.
   mount, and a client that remembers that mount or vehicle (shared by the server, or met) does
   not draw it a second time on its own. A server of an older version names only the kinds of
   `track/MobKinds.TYPES`: the client then keeps the mount it knew while the server's copy is of
-  its kind (`FarPlayer.mountFrom`).
+  its kind (`FarPlayer.mountFrom`). And whether they glide with an elytra, with their pitch then.
 - **Every five seconds**, to every player online:
   - how the 64 players nearest them look, online or logged off (skin, armour and what they
     hold, read every second), and what they ride, as the server saves it;
@@ -143,7 +149,9 @@ Their layout, from version 3:
   the table. Version 2 numbered them 0 to 2 and gave 3 to every other one, so players in two
   dimensions of mods were drawn in each other's; it is still read, those in 3 left out;
 - the records, each after its length (a varint). The players who logged off come after which
-  part of their list the message is and how many parts there are.
+  part of their list the message is and how many parts there are. Version 4 marks a gliding
+  player with the last bit of their flags, and writes their pitch at the end of the record:
+  version 3 leaves both unread, and reads the rest of the record as before.
 
 A message stays under 1 MiB, past which the game refuses it (`MAX_BYTES`). The players who
 logged off go in as many messages as it takes, none left out; the client takes the list once
@@ -151,7 +159,7 @@ its last part has come, and drops a list whose parts come out of order. Players 
 not fit are sent by their position alone, then left out, the first in the list kept, so the
 nearest come first. Mobs that do not fit leave out the farthest, and the circle they were
 chosen in shrinks so that the client does not take those left out for gone.
-`PositionsMessageTest` holds the exact bytes of two messages: a change to the layout fails
+`PositionsMessageTest` holds the exact bytes of three messages: a change to the layout fails
 it, and is a new version.
 
 ### Where it runs
@@ -762,6 +770,12 @@ frame. A boat or a vehicle is pictured from every height, as a phantom or a ghas
   (`render/state/`), which set the entity's body, head, stride and age for the time it is
   drawn.
 
+Each range has a backend of its own (`BakeBackend`: `OverrideBake` from 1.21.6, `DeviceBake` on
+1.21.5, `GlBake` before), in a file wrapped whole in a Stonecutter guard: it makes the page
+textures, draws and reads back the views, and writes a sheet into its page. Everything else
+(the queue, the rows, staging a figure, what is done with the pictures) is shared in
+`ImpostorAtlas`.
+
 ### Same look, same picture
 
 `ImpostorKey` decides which picture a figure gets. Figures with the same key share one sheet.
@@ -803,23 +817,29 @@ frame. A boat or a vehicle is pictured from every height, as a phantom or a ghas
   the mobs' room, nor the mobs theirs.
 - A sheet drawn or asked for in the last 10 seconds is never replaced.
 
+`SheetAllocator` holds the pages, their rows and the budgets. It asks the game nothing (the
+clock and the page textures are handed in), so `SheetAllocatorTest` checks it on its own.
+
 ### On disk
 
 `ImpostorDisk` keeps the mobs' sheets in `config/livinghorizon/impostors/<fingerprint>/`, so
 that a mob met in an earlier game is read back rather than baked.
 
 - The fingerprint is the game version, the resource packs chosen and their files, the jars in
-  `mods/` and how a sheet is baked (`BAKE`). When one of them changes, the folder is thrown
-  away. Its text is kept beside the sheets (`fingerprint.txt`), and the log says which lines
-  changed when a folder is thrown away ("the saved mob pictures of ... are thrown away").
+  `mods/` and how a sheet is baked (`BAKE`). It is worked out on the disk's thread, at the start
+  and after each reload; the mobs wait the moment it takes, so they are read back rather than
+  baked. The folders of the last three fingerprints are kept: a resource pack switched off and on
+  again finds its sheets. Its text is kept beside the sheets (`fingerprint.txt`), and the log says
+  which lines changed when an older folder is thrown away ("the saved mob pictures of ... are
+  thrown away").
 - Each file holds when and in which world or server its sheet was baked (file `FORMAT` 3; a
   file of 2 still reads, its date unknown). The impostor screen shows it under each name, with
   where the pictures come from (`ImpostorAtlas.Origin`): *Shared*, read back from disk; *New*,
   baked in this game and saved; *Not saved* (players, riders, birds).
 - A sheet read back is checked against the size of a sheet (`ImpostorDisk.decode`) before
   anything is allocated: a damaged file is baked again, it never asks for more memory.
-- 4096 sheets are kept, some 35 KB each once compressed (about 140 MB), counted when the
-  folder is opened, at the start and after a reload: a game may write more until then. The
+- 4096 sheets are kept per fingerprint, some 35 KB each once compressed (about 140 MB), counted
+  when the folder is opened, at the start and after a reload: a game may write more until then. The
   ones met longest ago go first.
 
 ### Special figures
@@ -848,8 +868,10 @@ that a mob met in an earlier game is read back rather than baked.
   lying down or in a bed. A posture other than standing is part of the key
   (`ImpostorKey.posture`), and the picture is baked in it:
   - seated: in the riding pose, drawn lowered to the ground as the model is;
-  - lying: along its body, baked raised (`ImpostorAtlas.LYING_LIFT`) so that none of it
+  - lying: along its body, baked raised (`Posture.BAKED_LIFT`) so that none of it
     falls below the tile, and laid along its bed when it is in one.
+
+  `render/Posture` seats or lays a figure down the same way for the model and for the picture.
 - **Riders** (players online or not, on a horse, a camel, a happy ghast, in a boat, a raft, a
   minecart...) are baked in one picture with what carries them (`ImpostorKey.riding`,
   `ImpostorAtlas.Rider`): the rider seated where it sits, turned as it is turned. A vehicle has
@@ -1015,6 +1037,26 @@ reaches there: the same fog up to the limit, Voxy's from there on.
   debug screen, on by default) turns it off, glint and lightning included.
 
 The `farfog` scenario checks it, with a limit standing in for Voxy's.
+
+**Distant Horizons** takes the game's fog away altogether while it draws (both ramps pushed out
+to 4×10¹⁴ blocks, `MixinFogRenderer`) and fogs its own terrain in a pass of its own: the
+entities had no fog at all, a far mob sharp against fogged hills. Its far fog's thickness at a
+distance `d` (`shaders/fog/*/frag.fsh`, its settings through its API) is, with `x = d / R` (its
+render distance `R` in blocks) and `u = (x - start) / (end - start)`, `min + (max - min)` times
+`u` kept to 0..1 (linear), `1 - e^(-u·density)` (exponential) or `1 - e^(-(u·density)²)`
+(exponential squared, its default), across the ground or in every direction (height fog mixed
+`SPHERICAL`). `compat/DhFog` gives the entities the same through the game's two ramps, whose
+larger one times the colour's alpha is the fog: the alpha is `max`, one ramp a floor at `min`
+(running from 10⁷ blocks behind to as far ahead, flat over any distance seen), the other the
+slope, on the distance Distant Horizons uses. The slope is exact for a linear fog and a least
+squares fit over two render distances for the others (off by 0.12 at most for the exponential
+squared, 0.2 for the exponential, which thickens fastest at its start). Fitted again when its
+settings change, read once a second. Left out: its height fog, and its *sky colour* fog colour
+(the world's stays). *DH Fog Fix* (`optDhFog`, debug screen, on) turns it off. `DhFogTest`
+checks the fit against Distant Horizons' formula, and the `dhfog` scenario the mobs in the real
+game with Distant Horizons (26.3, `--with distanthorizons`), its fog made thick from 0 to 205
+blocks. `/livinghorizon lod` says whose fog the figures get, its ramps in blocks, and how many
+frames it was bound (`FarFog.status`, the *Fog on distant figures* line).
 
 ## Skipping hidden mobs
 
@@ -1234,6 +1276,31 @@ screen, Mod Menu (Fabric, Quilt) or the mods list (NeoForge, Forge), the setting
 `/livinghorizon config`. From Sodium 0.8 the main screen's settings are on Sodium's video
 settings pages too, with the same names, and its sub-screens open from there.
 
+The mod's screens sit in a column on the left and leave the world in view. While a distance
+setting of the main screen is hovered or dragged, and for a moment and a half after it
+changes from the keyboard, `render/DistancePreview` draws what it measures in that world
+(`SideOptionsScreen.distance` marks the setting, with its shape):
+
+- blocks from the player (*Simplification Distance*, the render distances, *Roaming Radius*,
+  *Bird Distance*): a sphere of that radius round the camera, from its bottom up to a fence
+  of `16 + distance / 50` blocks above the camera, with a bright rail along the top. Where
+  the terrain meets it is that distance; the fence looks lower the farther it is. 0 (no
+  limit, or off) draws nothing;
+- *Scan Radius*: the same fence along the edge of the chunks a scan reads
+  (`dx² + dz² <= radius²`, as `MobScan`);
+- *Min. Flight Height*: a ceiling at that height above the player or the sea, as wide as
+  *Bird Distance*, with the chunk lines on it.
+
+It is submitted with the entities, like the birds, so that terrain in front of it hides it,
+the far terrain's included while its depth is merged. From 1.21.11, without a shader pack, it
+is drawn as the game's debug quads: no fog, no depth written. Before, those write depth (water
+and clouds behind would be lost), and under a shader pack Iris gives them no program of the
+pack (its `IrisPipelines` leaves them out), so Photon's passes paint over them: a glowing
+entity's render type draws it there, which Iris gives one, fogged as entities are (without a
+pack, past the game's fog it only shows with Voxy or Distant Horizons). The screen asks for it every frame
+and it fades out once it stops asking; it is gone as soon as no screen is open. Sodium's page
+does not show it.
+
 The *Preset* button (*Low*, *Normal*, *High*, *Ultra*) sets only the settings that scale the
 cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 `birdMaxDistance`. *Normal* is the defaults. Changing one of them by hand shows *Custom*.
@@ -1375,6 +1442,7 @@ Every one is on by default except `optFreezeHidden`. Switch one off to see what 
 | `optDhFade` | DH Fade | Distant Horizons' fade leaves the entities alone, without a shader pack; off, it paints its terrain over distant mobs |
 | `optVoxyShadows` | Voxy Shadow Fix | Our far figures are written into Voxy's depth, on their own pixels only, so that Photon's terrain shadows do not fall across them |
 | `optVoxyFog` | Voxy Fog Fix | Without a shader pack, the world's entities get Voxy's fog, which stops growing past a limit (see [Fog on distant figures](#fog-on-distant-figures)); off, the game's fog |
+| `optDhFog` | DH Fog Fix | Without a shader pack, the world's entities get Distant Horizons' far fog, which takes the game's away (see [Fog on distant figures](#fog-on-distant-figures)); off, no fog on them |
 | `optBackgroundBuild` | Background Build | Saved mobs are read off the game's thread and built within 2 ms per tick |
 | `optStillTiny` | Still Tiny Mobs | Mobs under `animationMinPixels` play no walking or idle animation |
 | `optFreezeHidden` | Freeze Undrawn Mobs | A copy not drawn for half a second is not animated, only moved where the server says |

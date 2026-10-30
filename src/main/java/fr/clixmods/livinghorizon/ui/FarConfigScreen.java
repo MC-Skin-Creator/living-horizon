@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon.ui;
 import com.mojang.serialization.Codec;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.QualityPreset;
+import fr.clixmods.livinghorizon.render.DistancePreview.Shape;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.Foresight;
 import fr.clixmods.livinghorizon.track.MobScan;
@@ -76,13 +77,15 @@ public final class FarConfigScreen extends SideOptionsScreen {
                         .tooltip(Tooltip.create(Component.translatable(KEY + "debug.tooltip"))).build(),
                 null);
 
-        // Distances take a whole row: their names are long, as the game's own are.
+        // Distances take a whole row: their names are long, as the game's own are. Each is drawn
+        // in the world behind the screen while it is hovered or changed (distance()).
         header(Component.translatable(KEY + "impostorsSection"));
         list.addSmall(
                 bool("impostors", c.impostors, v -> c.impostors = v),
                 bool("impostorEntities", c.impostorEntities, v -> c.impostorEntities = v));
         list.addSmall(bool("impostorPlayers", c.impostorPlayers, v -> c.impostorPlayers = v), null);
-        list.addBig(blocks("impostorDistance", 0, FarConfig.MAX_IMPOSTOR_DISTANCE, c.impostorDistance, v -> c.impostorDistance = v));
+        list.addBig(distance(Shape.AROUND, blocks("impostorDistance", 0, FarConfig.MAX_IMPOSTOR_DISTANCE,
+                c.impostorDistance, v -> c.impostorDistance = v)));
         list.addBig(unit("impostorPixels", "pixels", 0, FarConfig.MAX_IMPOSTOR_PIXELS, c.impostorPixels,
                 v -> c.impostorPixels = v));
         list.addBig(unit("impostorMobMemory", "megabytes", FarConfig.MIN_MOB_MEMORY, FarConfig.MAX_MOB_MEMORY,
@@ -98,13 +101,13 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(
                 bool("enabled", c.enabled, v -> c.enabled = v),
                 bool("showVehicles", c.showVehicles, v -> c.showVehicles = v));
-        list.addBig(reach("playerMaxDistance", c.playerMaxDistance, v -> c.playerMaxDistance = v));
+        list.addBig(distance(Shape.AROUND, reach("playerMaxDistance", c.playerMaxDistance, v -> c.playerMaxDistance = v)));
         list.addSmall(
                 bool("offlinePlayers", c.offlinePlayers, v -> c.offlinePlayers = v),
                 integer("maxOfflinePlayers", 0, FarConfig.MAX_OFFLINE, c.maxOfflinePlayers,
                         v -> c.maxOfflinePlayers = v, FarConfig.UNLIMITED_OFFLINE),
                 bool("offlineLife", c.offlineLife, v -> c.offlineLife = v),
-                blocks("offlineRoam", 8, 128, c.offlineRoam, v -> c.offlineRoam = v));
+                distance(Shape.AROUND, blocks("offlineRoam", 8, 128, c.offlineRoam, v -> c.offlineRoam = v)));
         list.addSmall(
                 bool("offlineNames", c.offlineNames, v -> c.offlineNames = v).createButton(minecraft.options, 0, 0, 150),
                 Button.builder(Component.translatable(KEY + "forgetSleepers"), b -> confirm("forgetSleepers",
@@ -120,10 +123,10 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 Button.builder(Component.translatable(KEY + "forgetMobs"), b -> confirm("forgetMobs",
                                 () -> FarPlayerTracker.get().mobs().forgetAll()))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "forgetMobs.tooltip"))).build());
-        list.addSmall(scanButton(), chunks("scanRadius", MobScan.MIN_RADIUS, MobScan.MAX_RADIUS, c.scanRadius,
-                v -> c.scanRadius = v).createButton(minecraft.options, 0, 0, 150));
-        list.addSmall(foreseeButton(), chunks("foreseeRadius", Foresight.MIN_RADIUS, Foresight.MAX_RADIUS, c.foreseeRadius,
-                v -> c.foreseeRadius = v).createButton(minecraft.options, 0, 0, 150));
+        list.addSmall(scanButton(), distanceButton(Shape.CHUNKS, chunks("scanRadius", MobScan.MIN_RADIUS,
+                MobScan.MAX_RADIUS, c.scanRadius, v -> c.scanRadius = v), 150));
+        list.addSmall(foreseeButton(), distanceButton(Shape.CHUNKS, chunks("foreseeRadius", Foresight.MIN_RADIUS,
+                Foresight.MAX_RADIUS, c.foreseeRadius, v -> c.foreseeRadius = v), 150));
         subheader(Component.translatable(KEY + "mobs.creatures"));
         // The guessed mobs beside the mobs: Max Mobs and Mob Render Distance count both.
         list.addSmall(
@@ -132,23 +135,24 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(
                 integer("maxDistantMobs", 0, FarConfig.MAX_MOBS, c.maxDistantMobs, v -> c.maxDistantMobs = v, FarConfig.UNLIMITED_MOBS),
                 bool("rememberNamedMobs", c.rememberNamedMobs, v -> c.rememberNamedMobs = v));
-        list.addBig(reach("mobMaxDistance", c.mobMaxDistance, v -> c.mobMaxDistance = v));
+        list.addBig(distance(Shape.AROUND, reach("mobMaxDistance", c.mobMaxDistance, v -> c.mobMaxDistance = v)));
         list.addBig(unit("animationMinPixels", "pixels", 0, 40, c.animationMinPixels, v -> c.animationMinPixels = v));
-        list.addBig(reach("animationMaxDistance", c.animationMaxDistance, v -> c.animationMaxDistance = v));
+        list.addBig(distance(Shape.AROUND, reach("animationMaxDistance", c.animationMaxDistance, v -> c.animationMaxDistance = v)));
         subheader(Component.translatable(KEY + "mobs.entities"));
         list.addSmall(
                 bool("distantEntities", c.distantEntities, v -> c.distantEntities = v),
                 integer("maxDistantEntities", 0, FarConfig.MAX_MOBS, c.maxDistantEntities,
                         v -> c.maxDistantEntities = v, FarConfig.UNLIMITED_MOBS));
-        list.addBig(reach("entityMaxDistance", c.entityMaxDistance, v -> c.entityMaxDistance = v));
+        list.addBig(distance(Shape.AROUND, reach("entityMaxDistance", c.entityMaxDistance, v -> c.entityMaxDistance = v)));
 
         header(Component.translatable(KEY + "birds"));
         list.addSmall(
                 bool("skyBirds", c.skyBirds, v -> c.skyBirds = v),
                 unit("birdDensity", "percent", 0, 500, c.birdDensity, v -> c.birdDensity = v));
-        list.addBig(blocks("birdMaxDistance", 100, 3000, c.birdMaxDistance, v -> c.birdMaxDistance = v));
+        list.addBig(distance(Shape.AROUND, blocks("birdMaxDistance", 100, 3000, c.birdMaxDistance,
+                v -> c.birdMaxDistance = v)));
         list.addSmall(
-                blocks("birdMinHeight", 0, 200, c.birdMinHeight, v -> c.birdMinHeight = v),
+                distance(Shape.ABOVE, blocks("birdMinHeight", 0, 200, c.birdMinHeight, v -> c.birdMinHeight = v)),
                 unit("birdSize", "multiplier", 1, 6, c.birdSize, v -> c.birdSize = v));
         list.addSmall(
                 choice("birdStyle", List.of("3d", "2d"), c.birdStyle, v -> c.birdStyle = v).createButton(minecraft.options, 0, 0, 150),

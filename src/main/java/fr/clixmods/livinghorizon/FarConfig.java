@@ -371,6 +371,12 @@ public final class FarConfig {
      * mobs turn paler than Voxy's terrain; enchantment glints and lightning then fade as usual.
      */
     public boolean optVoxyFog = true;
+
+    /**
+     * Without a shader pack, the world's entities get Distant Horizons' far fog, which takes the
+     * game's away (see {@code DhFog}). Off: no fog on them, sharp against its fogged terrain.
+     */
+    public boolean optDhFog = true;
     /** Saved mobs are read off the game's thread and built within 2 ms per tick. */
     public boolean optBackgroundBuild = true;
     /** A mob only a few pixels high on screen plays no walking or idle animation: it only slides and turns. */

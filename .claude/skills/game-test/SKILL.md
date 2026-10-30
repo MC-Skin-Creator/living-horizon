@@ -128,8 +128,11 @@ thread), `setScreen`, `clickScreenButton(translation key)`, `takeScreenshot`. Th
 ## Limits
 
 - No real graphics card: a bug of one driver (NVIDIA, AMD) does not show here.
-- **Voxy and Distant Horizons cannot run** (Voxy needs GLSL 4.60, llvmpipe has 4.50).
-  Say so when a check depended on them.
+- **Voxy cannot run** (it needs GLSL 4.60, llvmpipe has 4.50). Say so when a check depended on it.
+- **Distant Horizons runs on 26.3** (`LH_NODE=26.3.x ... --with distanthorizons`): it needs
+  Fabric Loader 0.19.5, so set `deps.fabric_loader` to it in `stonecutter.properties.toml` for
+  the run, and put it back; 3.3.4 needs the same. The game may hang as it closes with it: kill
+  `KnotClient` once the scenario says `done`. The `dhfog` scenario checks its fog on the mobs.
 - **Shader packs** run through Iris on llvmpipe, slowly: `--shaders` takes an unpacked
   pack folder, downloads Iris next to Sodium for the node's game version (`LH_NODE`), and
   `Scene.shaderPack` copies the pack into Iris's folder and turns it on before the first
