@@ -12,9 +12,17 @@
 
 #### Nouveautés
 - **Liens vers les pages du mod** — à côté du logo Discord, les réglages du mod ont maintenant les logos de Modrinth, CurseForge, Nexus Mods et du site web du mod, pour ouvrir ses pages en un clic.
+- **Créatures devinées** — les terres lointaines que personne n'a encore explorées ne sont plus vides de créatures : le mod devine à partir de la graine où le monde les placerait, aussi loin que va la *Distance d'affichage des créatures*, en solo ou sur un serveur avec le mod ; elles peuvent ne pas y être une fois sur place, et *Créatures devinées*, à côté de *Afficher les créatures*, les cache.
+- **Créatures à la longue-vue** — regarder dans une longue-vue montre maintenant les créatures devinées des terres inexplorées là où elle vise, aussi loin soit-il, en solo ou sur un serveur qui partage sa graine.
+- **Deviner les créatures** — un nouveau bouton affiche d'un coup les créatures devinées jusqu'à 1024 chunks autour, et les garde pour la partie suivante, en solo ou sur un serveur qui partage sa graine.
+- **Valeurs saisies** — les nombres max et les distances d'affichage de l'écran de réglages du mod acceptent maintenant n'importe quel nombre tapé à la main, même au-delà du bout de leur curseur, que la page de Sodium affiche aussi : clic droit dessus, saisissez un nombre et appuyez sur Entrée ; les flèches du clavier déplacent chaque curseur d'un cran, ou de dix avec Maj.
 
 #### Améliorations
 - **Distance de simplification désactivable** — la *Distance de simplification* peut maintenant être mise sur Non : les mobs, entités, joueurs et oiseaux lointains ne deviennent alors des images plates que quand ils paraissent plus petits à l'écran que la *Taille de simplification*.
+- **Plus de créatures lointaines** — *Créatures max* va maintenant jusqu'à 4000 avant *Illimité*.
+- **Illimité au bout du curseur** — *Illimitée* est maintenant tout à droite des curseurs de distance d'affichage, après 4000 blocs, au lieu de tout à gauche.
+- **Confirmation avant Illimité** — mettre un curseur sur *Illimité*, un nombre de créatures, d'entités ou de joueurs déconnectés ou une distance d'affichage, demande maintenant une confirmation, car cela peut faire chuter fortement les FPS et, dans le pire des cas, faire planter le jeu ; sur la page de Sodium, la question vient avec *Appliquer*.
+- **Des limites par défaut** — plus rien n'est *Illimité* par défaut : *Distance d'affichage des joueurs*, *Distance des animations* et *Distance d'affichage des entités* s'arrêtent à 4000 blocs, *Élevé* affiche jusqu'à 1500 créatures et *Ultra* jusqu'à 3000 et jusqu'à 2048 blocs, et les réglages restés sur ces anciennes valeurs par défaut ou ces préréglages passent aux nouvelles.
 
 ## 0.14.0 — 2026-10-29
 
@@ -22,13 +30,9 @@
 
 #### Nouveautés
 - **Véhicules des autres mods au loin** — les véhicules des autres mods, comme les avions d'Immersive Aircraft, restent maintenant visibles au-delà de la distance de rendu là où on les a laissés, comme les bateaux ; ils sont listés dans l'onglet *Entités* de *Créatures et entités...* dès le départ, et ceux qu'on monte sans les diriger (wagonnets, véhicules de certains autres mods) restent désactivés tant qu'on ne les active pas.
-- **Réglages des entités** — les bateaux, véhicules et mannequins ont maintenant leurs propres réglages, à part des créatures : *Afficher les entités*, *Entités max* et *Distance d'affichage des entités*, de 4000 blocs par défaut.
+- **Réglages des entités** — les bateaux, véhicules et mannequins ont maintenant leurs propres réglages, à part des créatures : *Afficher les entités*, *Entités max* et *Distance d'affichage des entités*, illimitée par défaut.
 - **Créatures simplifiées et Entités simplifiées** — *Entités simplifiées* devient deux options : *Créatures simplifiées*, et *Entités simplifiées* pour les bateaux, véhicules et mannequins, qui deviennent eux aussi des images plates au loin, vus aussi d'au-dessus et d'en dessous ; *Joueurs simplifiés* ne dépend plus d'aucune des deux, et le bouton qui montre les images devient *Aperçu des images...*, avec un onglet pour les images des entités.
 - **Bouton du journal des modifications** — les réglages du mod ont maintenant un bouton du journal des modifications à côté du logo Discord, pour lire ce qui a changé à chaque version (un bouton *Lire le journal des modifications* sur la page de Sodium).
-- **Créatures devinées** — les terres lointaines que personne n'a encore explorées ne sont plus vides de créatures : le mod devine à partir de la graine où le monde les placerait, aussi loin que va la *Distance d'affichage des créatures*, en solo ou sur un serveur avec le mod ; elles peuvent ne pas y être une fois sur place, et *Créatures devinées*, à côté de *Afficher les créatures*, les cache.
-- **Créatures à la longue-vue** — regarder dans une longue-vue montre maintenant les créatures devinées des terres inexplorées là où elle vise, aussi loin soit-il, en solo ou sur un serveur qui partage sa graine.
-- **Deviner les créatures** — un nouveau bouton affiche d'un coup les créatures devinées jusqu'à 1024 chunks autour, et les garde pour la partie suivante, en solo ou sur un serveur qui partage sa graine.
-- **Valeurs saisies** — les nombres max et les distances d'affichage de l'écran de réglages du mod acceptent maintenant n'importe quel nombre tapé à la main, même au-delà du bout de leur curseur, que la page de Sodium affiche aussi : clic droit dessus, saisissez un nombre et appuyez sur Entrée ; les flèches du clavier déplacent chaque curseur d'un cran, ou de dix avec Maj.
 
 #### Améliorations
 - **Serveurs sans le mod** — en rejoignant un serveur sans Living Horizon, ou avec une version trop ancienne ou trop récente du mod, le tchat dit maintenant que les joueurs lointains n'y sont pas affichés ; avec *Afficher les joueurs* désactivé, rien n'est dit.
@@ -38,11 +42,7 @@
 - **Joueurs montés au loin** — avec *Joueurs simplifiés*, un joueur lointain dans un bateau, un wagonnet, un avion ou sur un ghast joyeux est maintenant représenté vu d'au-dessus et d'en dessous comme ce qu'il monte, et plus de profil quand on le regarde d'en haut.
 - **Avions laissés en l'air** — un joueur qui se déconnecte en vol reste en l'air dans son avion, qui reste sur place s'il était immobile, ou tourne en rond s'il volait.
 - **Images sauvegardées affichées** — l'écran *Aperçu des images* indique maintenant sous chaque créature si son image est partagée, relue d'une partie précédente, nouvelle et sauvegardée pour les suivantes, ou non sauvegardée, avec quand et dans quel monde elle a été faite.
-- **Créatures assises qui le restent** — les chats, les loups et les perroquets à qui tu as dit de s'asseoir restent maintenant assis au loin, au lieu de se lever et de partir se balader.
-- **Plus de créatures lointaines** — *Créatures max* va maintenant jusqu'à 4000 avant *Illimité*.
-- **Illimité au bout du curseur** — *Illimitée* est maintenant tout à droite des curseurs de distance d'affichage, après 4000 blocs, au lieu de tout à gauche.
-- **Confirmation avant Illimité** — mettre un curseur sur *Illimité*, un nombre de créatures, d'entités ou de joueurs déconnectés ou une distance d'affichage, demande maintenant une confirmation, car cela peut faire chuter fortement les FPS et, dans le pire des cas, faire planter le jeu ; sur la page de Sodium, la question vient avec *Appliquer*.
-- **Des limites par défaut** — plus rien n'est *Illimité* par défaut : *Distance d'affichage des joueurs* et *Distance des animations* s'arrêtent à 4000 blocs, *Élevé* affiche jusqu'à 1500 créatures et *Ultra* jusqu'à 3000 et jusqu'à 2048 blocs, et les réglages restés sur ces anciennes valeurs par défaut ou ces préréglages passent aux nouvelles.
+- **Animaux assis qui le restent** — les chats, les loups et les perroquets à qui tu as dit de s'asseoir restent maintenant assis au loin, au lieu de se lever et de partir se balader.
 
 #### Corrections
 - **Plantage en ouvrant Créatures et entités depuis l'écran titre** — ouvrir *Créatures et entités...* depuis l'écran titre ne fait plus planter le jeu (Minecraft 26.x).
