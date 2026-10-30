@@ -153,14 +153,14 @@ public final class SodiumOptions implements ConfigEntryPoint {
                 .addOptionGroup(b.createOptionGroup().setName(Component.translatable(KEY + "mobs.creatures"))
                         .addOption(bool(b, "distantMobs", d.distantMobs, v -> FarConfig.get().distantMobs = v,
                                 () -> FarConfig.get().distantMobs))
-                        .addOption(count(b, "maxDistantMobs", FarConfig.MAX_MOBS, FarConfig.UNLIMITED_MOBS, d.maxDistantMobs,
-                                v -> FarConfig.get().maxDistantMobs = v, () -> FarConfig.get().maxDistantMobs))
-                        .addOption(reach(b, "mobMaxDistance", d.mobMaxDistance,
-                                v -> FarConfig.get().mobMaxDistance = v, () -> FarConfig.get().mobMaxDistance))
-                        .addOption(bool(b, "rememberNamedMobs", d.rememberNamedMobs,
-                                v -> FarConfig.get().rememberNamedMobs = v, () -> FarConfig.get().rememberNamedMobs))
                         .addOption(bool(b, "seedMobs", d.seedMobs,
                                 v -> FarConfig.get().seedMobs = v, () -> FarConfig.get().seedMobs))
+                        .addOption(count(b, "maxDistantMobs", FarConfig.MAX_MOBS, FarConfig.UNLIMITED_MOBS, d.maxDistantMobs,
+                                v -> FarConfig.get().maxDistantMobs = v, () -> FarConfig.get().maxDistantMobs))
+                        .addOption(bool(b, "rememberNamedMobs", d.rememberNamedMobs,
+                                v -> FarConfig.get().rememberNamedMobs = v, () -> FarConfig.get().rememberNamedMobs))
+                        .addOption(reach(b, "mobMaxDistance", d.mobMaxDistance,
+                                v -> FarConfig.get().mobMaxDistance = v, () -> FarConfig.get().mobMaxDistance))
                         .addOption(integer(b, "animationMinPixels", 0, 40, d.animationMinPixels,
                                 v -> FarConfig.get().animationMinPixels = v, () -> FarConfig.get().animationMinPixels,
                                 unit("animationMinPixels", "pixels", 0)))

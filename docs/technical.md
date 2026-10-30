@@ -510,7 +510,7 @@ since (`SeedMobs.unexplored`). *Forget All* deletes this server's files.
   later: those stay foreseen. Its own mobs are there once generated, remembered by the server
   like any other, and the client forgets those foreseen as it forgets a mob the server stopped
   sharing. The client never draws one in a chunk it holds, and drops those chunks from its index.
-- **On the client.** *Unexplored Land Mobs* (`seedMobs`, on) hides them and stops foreseeing.
+- **On the client.** *Show Guessed Mobs* (`seedMobs`, on, beside *Show Mobs*) hides them and stops foreseeing. The screens call them guessed mobs: a guess of where the world would put them, not a sighting.
   They are never saved in the memory file (the index has its own), those the server shares are taken only within
   *Mob Render Distance* plus 64 blocks, and they do not count in its 2000 mobs. The debug boxes
   and outlines show them in pink (*Foreseen Mobs*).
@@ -1311,7 +1311,7 @@ In three parts, on both screens: *General*, *Mobs* (the living kinds, mannequins
 | `maxDistantMobs` | Mobs: Max Mobs | `512` | 0 to 4000, more when typed, or no limit | How many are drawn at once, nearest first, the animals foreseen from the seed included (`0`: none; no limit is the slider's right end, which 1000 in an older settings file becomes). No limit here and in `mobMaxDistance` together can crash the game |
 | `mobMaxDistance` | Mobs: Mob Render Distance | `512` blocks | 1 to 4000, or no limit | Past this, distant mobs are not drawn (`0`: no limit, the right end of the slider) |
 | `rememberNamedMobs` | Mobs: Name-Tagged Mobs | `true` | | A mob with a name tag is shown whatever its type |
-| `seedMobs` | Mobs: Unexplored Land Mobs | `true` | | The animals a server with the mod foresees in land nobody has explored, from the seed, are shown |
+| `seedMobs` | Mobs: Show Guessed Mobs | `true` | | The animals a server with the mod foresees in land nobody has explored, from the seed, are shown |
 | `animationMinPixels` | Mobs: Min. Animated Size | `10` pixels | 0 to 40 | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
 | `animationMaxDistance` | Mobs: Animation Distance | `4000` blocks | 1 to 4000, or no limit | Past this, no distant mob plays an animation (`0`: no limit, the right end of the slider) |
 | `distantEntities` | Entities: Show Entities | `true` | | Remembered boats, vehicles and mannequins stay visible far away |

@@ -115,13 +115,14 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(foreseeButton(), chunks("foreseeRadius", Foresight.MIN_RADIUS, Foresight.MAX_RADIUS, c.foreseeRadius,
                 v -> c.foreseeRadius = v).createButton(minecraft.options, 0, 0, 150));
         subheader(Component.translatable(KEY + "mobs.creatures"));
+        // The guessed mobs beside the mobs: Max Mobs and Mob Render Distance count both.
         list.addSmall(
                 bool("distantMobs", c.distantMobs, v -> c.distantMobs = v),
-                integer("maxDistantMobs", 0, FarConfig.MAX_MOBS, c.maxDistantMobs, v -> c.maxDistantMobs = v, FarConfig.UNLIMITED_MOBS));
-        list.addBig(reach("mobMaxDistance", c.mobMaxDistance, v -> c.mobMaxDistance = v));
-        list.addSmall(
-                bool("rememberNamedMobs", c.rememberNamedMobs, v -> c.rememberNamedMobs = v),
                 bool("seedMobs", c.seedMobs, v -> c.seedMobs = v));
+        list.addSmall(
+                integer("maxDistantMobs", 0, FarConfig.MAX_MOBS, c.maxDistantMobs, v -> c.maxDistantMobs = v, FarConfig.UNLIMITED_MOBS),
+                bool("rememberNamedMobs", c.rememberNamedMobs, v -> c.rememberNamedMobs = v));
+        list.addBig(reach("mobMaxDistance", c.mobMaxDistance, v -> c.mobMaxDistance = v));
         list.addBig(unit("animationMinPixels", "pixels", 0, 40, c.animationMinPixels, v -> c.animationMinPixels = v));
         list.addBig(reach("animationMaxDistance", c.animationMaxDistance, v -> c.animationMaxDistance = v));
         subheader(Component.translatable(KEY + "mobs.entities"));
