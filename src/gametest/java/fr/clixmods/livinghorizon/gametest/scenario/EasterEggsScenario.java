@@ -75,9 +75,9 @@ public final class EasterEggsScenario implements Scenario {
     }
 
     /**
-     * The calendar: a day for each dawn; from the second or third, the watcher (4) comes on his
-     * own once a day, by day as well as by night (his moment hurried here), and goes once he is
-     * looked in the eyes.
+     * The calendar: a day for each dawn; from the second or third, the daily ones come on their
+     * own once a day, by day as well as by night, and together (their moments hurried here): the
+     * watcher (4) and the ghost (3). The watcher goes once he is looked in the eyes.
      */
     private void calendar(ClientGameTestContext context, TestSingleplayerContext world) {
         int before = context.computeOnClient(minecraft -> ambience().calendar().days());
@@ -90,17 +90,24 @@ public final class EasterEggsScenario implements Scenario {
         int after = context.computeOnClient(minecraft -> ambience().calendar().days());
         Scene.log("eggs calendar " + before + " -> " + after + " days");
         if (after != before + 3) throw new AssertionError("the calendar counted " + (after - before) + " dawns, not 3");
-        // By day: he no longer waits for the night.
-        context.runOnClient(minecraft -> ambience().herobrine().soon());
-        Vec3 at = null;
-        for (int i = 0; i < 2400 && at == null; i += 20) {
+        // By day, both at once: they wait neither for the night nor for each other.
+        context.runOnClient(minecraft -> {
+            ambience().herobrine().soon();
+            ambience().ghosts().soon();
+        });
+        Vec3 at = null, ghost = null;
+        for (int i = 0; i < 2400 && (at == null || ghost == null); i += 20) {
             context.waitTicks(20);
-            at = context.computeOnClient(minecraft -> {
+            if (at == null) at = context.computeOnClient(minecraft -> {
                 RemotePlayer him = ambience().herobrine().figure();
                 return him == null ? null : him.position();
             });
+            if (ghost == null) ghost = context.computeOnClient(minecraft -> ambience().ghosts().position());
         }
         if (at == null) throw new AssertionError("ee4 did not come by day");
+        if (ghost == null) throw new AssertionError("ee3 did not come by day beside ee4");
+        Vec3 walking = ghost;
+        context.runOnClient(minecraft -> Scene.log("eggs ee3 by day at " + walking));
         drawn(context, at, "ee4 by day");
         Vec3 him = at;
         context.runOnClient(minecraft -> {
