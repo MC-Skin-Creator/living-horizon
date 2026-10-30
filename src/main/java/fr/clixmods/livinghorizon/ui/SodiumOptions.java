@@ -126,9 +126,8 @@ public final class SodiumOptions implements ConfigEntryPoint {
                 .addOptionGroup(b.createOptionGroup()
                         .addOption(bool(b, "offlinePlayers", d.offlinePlayers, v -> FarConfig.get().offlinePlayers = v,
                                 () -> FarConfig.get().offlinePlayers))
-                        .addOption(integer(b, "maxOfflinePlayers", 0, FarConfig.UNLIMITED_OFFLINE, d.maxOfflinePlayers,
-                                v -> FarConfig.get().maxOfflinePlayers = v, () -> FarConfig.get().maxOfflinePlayers,
-                                plain("maxOfflinePlayers", 0, FarConfig.UNLIMITED_OFFLINE))
+                        .addOption(count(b, "maxOfflinePlayers", FarConfig.MAX_OFFLINE, FarConfig.UNLIMITED_OFFLINE, d.maxOfflinePlayers,
+                                v -> FarConfig.get().maxOfflinePlayers = v, () -> FarConfig.get().maxOfflinePlayers)
                                 .setEnabledProvider(on("offlinePlayers"), id("offlinePlayers")))
                         .addOption(bool(b, "offlineLife", d.offlineLife, v -> FarConfig.get().offlineLife = v,
                                 () -> FarConfig.get().offlineLife)
@@ -154,9 +153,8 @@ public final class SodiumOptions implements ConfigEntryPoint {
                 .addOptionGroup(b.createOptionGroup().setName(Component.translatable(KEY + "mobs.creatures"))
                         .addOption(bool(b, "distantMobs", d.distantMobs, v -> FarConfig.get().distantMobs = v,
                                 () -> FarConfig.get().distantMobs))
-                        .addOption(integer(b, "maxDistantMobs", 0, FarConfig.UNLIMITED_MOBS, d.maxDistantMobs,
-                                v -> FarConfig.get().maxDistantMobs = v, () -> FarConfig.get().maxDistantMobs,
-                                plain("maxDistantMobs", 0, FarConfig.UNLIMITED_MOBS)))
+                        .addOption(count(b, "maxDistantMobs", FarConfig.MAX_MOBS, FarConfig.UNLIMITED_MOBS, d.maxDistantMobs,
+                                v -> FarConfig.get().maxDistantMobs = v, () -> FarConfig.get().maxDistantMobs))
                         .addOption(reach(b, "mobMaxDistance", d.mobMaxDistance,
                                 v -> FarConfig.get().mobMaxDistance = v, () -> FarConfig.get().mobMaxDistance))
                         .addOption(bool(b, "rememberNamedMobs", d.rememberNamedMobs,
@@ -171,9 +169,8 @@ public final class SodiumOptions implements ConfigEntryPoint {
                 .addOptionGroup(b.createOptionGroup().setName(Component.translatable(KEY + "mobs.entities"))
                         .addOption(bool(b, "distantEntities", d.distantEntities, v -> FarConfig.get().distantEntities = v,
                                 () -> FarConfig.get().distantEntities))
-                        .addOption(integer(b, "maxDistantEntities", 0, FarConfig.UNLIMITED_MOBS, d.maxDistantEntities,
-                                v -> FarConfig.get().maxDistantEntities = v, () -> FarConfig.get().maxDistantEntities,
-                                plain("maxDistantEntities", 0, FarConfig.UNLIMITED_MOBS)))
+                        .addOption(count(b, "maxDistantEntities", FarConfig.MAX_MOBS, FarConfig.UNLIMITED_MOBS, d.maxDistantEntities,
+                                v -> FarConfig.get().maxDistantEntities = v, () -> FarConfig.get().maxDistantEntities))
                         .addOption(reach(b, "entityMaxDistance", d.entityMaxDistance,
                                 v -> FarConfig.get().entityMaxDistance = v, () -> FarConfig.get().entityMaxDistance)));
     }
@@ -346,6 +343,43 @@ public final class SodiumOptions implements ConfigEntryPoint {
                 .setBinding(asking(name, max, set, shown)::accept, shown::getAsInt);
     }
 
+    /**
+     * A count from 0 to {@code last}, then no limit at the right end, read as its {@code .max} text,
+     * as {@link FarConfigScreen#integer}: the settings keep no limit as {@code unlimited}. A typed
+     * number past {@code last}, from the mod's screen, is shown at {@code last} and kept unless moved.
+     */
+    private OptionBuilder count(ConfigBuilder b, String name, int last, int unlimited, int fallback, IntConsumer set,
+                                IntSupplier get) {
+        int top = last + 1;
+        IntSupplier shown = () -> {
+            int value = get.getAsInt();
+            return value >= unlimited ? top : Math.clamp(value, 0, last);
+        };
+        return b.createIntegerOption(id(name))
+                .setName(Component.translatable(KEY + name))
+                .setTooltip(tooltip(name))
+                .setRange(0, top, 1)
+                .setValueFormatter(v -> v >= top ? Component.translatable(KEY + name + ".max")
+                        : v == 0 ? Component.translatable(KEY + name + ".zero")
+                        : Component.literal(String.valueOf(v)))
+                .setDefaultValue(fallback >= unlimited ? top : Math.clamp(fallback, 0, last))
+                .setStorageHandler(storage)
+                .setBinding(asking(name, top, beyond(last, unlimited, v -> set.accept(v >= top ? unlimited : v), get), shown)::accept,
+                        shown::getAsInt);
+    }
+
+    /**
+     * A number typed past the slider's last one on the mod's screen, which Sodium's row shows at
+     * that last place: left as it is when the row is saved still there.
+     */
+    private static IntConsumer beyond(int last, int unlimited, IntConsumer set, IntSupplier get) {
+        return v -> {
+            int kept = get.getAsInt();
+            if (v == last && kept > last && kept < unlimited) return;
+            set.accept(v);
+        };
+    }
+
     /** A distance in blocks, "512 Blocks", the zero of a range from 0 read as its {@code .zero} text. */
     private OptionBuilder blocks(ConfigBuilder b, String name, int min, int max, int fallback, IntConsumer set,
                                  IntSupplier get) {
@@ -367,19 +401,13 @@ public final class SodiumOptions implements ConfigEntryPoint {
                         : Component.translatable(KEY + "blocks", v))
                 .setDefaultValue(fallback <= 0 ? top : Math.clamp(fallback, 1, FarConfig.MAX_DISTANCE))
                 .setStorageHandler(storage)
-                .setBinding(asking(name, top, v -> set.accept(v >= top ? 0 : v), shown)::accept, shown::getAsInt);
+                .setBinding(asking(name, top, beyond(FarConfig.MAX_DISTANCE, Integer.MAX_VALUE,
+                        v -> set.accept(v >= top ? 0 : v), get), shown)::accept, shown::getAsInt);
     }
 
     /** A number in a unit, as {@link FarConfigScreen} writes it ("30s", "6px", "100%"); the zero of a range from 0 as its text. */
     private static ControlValueFormatter unit(String name, String unit, int min) {
         return v -> v == 0 && min == 0 ? Component.translatable(KEY + name + ".zero") : Component.translatable(KEY + unit, v);
-    }
-
-    /** A bare number; the zero of a range from 0, and from {@code unlimited} on (when above 0) the text for no limit. */
-    private static ControlValueFormatter plain(String name, int min, int unlimited) {
-        return v -> v == 0 && min == 0 ? Component.translatable(KEY + name + ".zero")
-                : unlimited > 0 && v >= unlimited ? Component.translatable(KEY + name + ".max")
-                : Component.literal(String.valueOf(v));
     }
 
     /** A button opening one of the mod's screens, which comes back to Sodium's when closed. */

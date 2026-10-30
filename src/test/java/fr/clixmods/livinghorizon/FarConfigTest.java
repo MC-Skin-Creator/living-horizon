@@ -111,6 +111,10 @@ class FarConfigTest {
         FarConfig chosen = migrated("{\"version\": 12, \"maxDistantMobs\": 999}");
         assertEquals(999, chosen.maxDistantMobs);
         assertEquals(1000, migrated("{\"version\": 13, \"maxDistantMobs\": 1000}").maxDistantMobs);
+        assertEquals(FarConfig.UNLIMITED_OFFLINE, migrated("{\"version\": 12, \"maxOfflinePlayers\": 1000}").maxOfflinePlayers);
+        // A number typed past the slider is a limit, not no limit.
+        FarConfig typed = migrated("{\"version\": 13, \"maxDistantMobs\": 6000}");
+        assertEquals(6000, typed.most(true, 9000));
     }
 
     @Test

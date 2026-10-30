@@ -18,7 +18,7 @@
 - **Unexplored Land Mobs** — far land nobody has explored yet is no longer empty of animals, as far as *Mob Render Distance* reaches, in single player or on a server with the mod; a new setting hides them.
 - **Animals through a spyglass** — looking through a spyglass now shows the animals of unexplored land where it looks, however far, in single player or on a server that shares its seed.
 - **Guess Nearby Mobs** — a new button shows the animals of unexplored land up to 1024 chunks around at once, and keeps them for the next game, in single player or on a server that shares its seed.
-- **Typed values** — the sliders of the mod's settings screen now take a value typed by hand: right-click one, type a number and press Enter; the arrow keys move it by one, or ten with Shift.
+- **Typed values** — the sliders of the mod's settings screen now take a value typed by hand: right-click one, type a number and press Enter, even past the end of a count or a render distance; the arrow keys move it by one, or ten with Shift.
 
 #### Improved
 - **Servers without the mod** — joining a server without Living Horizon, or with a version of it too old or too new, now says in the chat that distant players are not shown there; with *Show Players* off, nothing is said.

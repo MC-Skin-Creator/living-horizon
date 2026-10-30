@@ -69,27 +69,38 @@ public final class TypedValuesScenario implements Scenario {
                 context.waitTicks(3);
             }
 
-            // 3. The word for no limit, typed: asked, and no keeps the value.
-            type(context, "maxDistantMobs", "unlim");
+            // 3. Digits only: the letters typed are taken out.
+            type(context, "maxDistantMobs", "ab12c");
             context.getInput().pressKey(InputConstants.KEY_RETURN);
-            context.waitTicks(3);
-            Scene.screenshot(context, this, "asked-typed");
-            if (answer(context, false)) {
-                expect(wrong, "no to a typed Unlimited", context, c -> c.maxDistantMobs, 1234);
-                expectShown(wrong, context, "maxDistantMobs", "1234");
-            } else {
-                wrong.add("typing Unlimited did not ask");
-            }
+            context.waitTicks(2);
+            expect(wrong, "letters taken out of ab12c", context, c -> c.maxDistantMobs, 12);
 
-            // 4. A number past the end: asked, and yes sets no limit.
+            // 4. A number past the slider's end: kept as typed, never no limit, and not asked.
             type(context, "maxDistantMobs", "99999");
             context.getInput().pressKey(InputConstants.KEY_RETURN);
             context.waitTicks(3);
-            if (answer(context, true)) {
-                expect(wrong, "yes to 99999", context, c -> c.maxDistantMobs, FarConfig.UNLIMITED_MOBS);
-            } else {
-                wrong.add("typing 99999 did not ask");
+            if (context.computeOnClient(minecraft -> minecraft.screen instanceof ConfirmScreen)) {
+                wrong.add("typing 99999 asked about no limit");
+                answer(context, false);
             }
+            expect(wrong, "typed 99999", context, c -> c.maxDistantMobs, 99999);
+            expectShown(wrong, context, "maxDistantMobs", "99999");
+            Scene.screenshot(context, this, "beyond");
+
+            // 4b. No limit only at the right end: dragged there, yes sets it; typed in again, the
+            // field shows the slider's last number.
+            drag(context, "maxDistantMobs", 1.2);
+            if (answer(context, true)) {
+                expect(wrong, "yes to a dragged Unlimited", context, c -> c.maxDistantMobs, FarConfig.UNLIMITED_MOBS);
+            } else {
+                wrong.add("dragging Max Mobs to the end did not ask");
+            }
+            type(context, "maxDistantMobs", "");
+            String field = context.computeOnClient(minecraft -> slider(minecraft, "maxDistantMobs").typedText());
+            if (!String.valueOf(FarConfig.MAX_MOBS).equals(field)) wrong.add("no limit typed in shows \"" + field + "\", not " + FarConfig.MAX_MOBS);
+            Scene.screenshot(context, this, "unlimited-typing");
+            context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+            context.waitTicks(2);
 
             // 5. Dragged to the right end: shown, asked on release, no puts it back.
             drag(context, "mobMaxDistance", 1.2);

@@ -41,8 +41,8 @@ public final class OptionsScreenScenario implements Scenario {
         Scene.configure(context, config -> {
             config.scanRadius = fr.clixmods.livinghorizon.track.MobScan.MAX_RADIUS;
             config.foreseeRadius = fr.clixmods.livinghorizon.track.Foresight.MAX_RADIUS;
-            config.maxDistantMobs = config.maxDistantEntities = fr.clixmods.livinghorizon.FarConfig.UNLIMITED_MOBS - 1;
-            config.maxOfflinePlayers = fr.clixmods.livinghorizon.FarConfig.UNLIMITED_OFFLINE - 1;
+            config.maxDistantMobs = config.maxDistantEntities = fr.clixmods.livinghorizon.FarConfig.MAX_MOBS;
+            config.maxOfflinePlayers = fr.clixmods.livinghorizon.FarConfig.MAX_OFFLINE;
         });
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
             List<String> problems = new ArrayList<>();

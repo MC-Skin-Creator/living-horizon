@@ -14,17 +14,17 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 
-import java.text.Normalizer;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
 
 /**
  * A slider of whole numbers that also takes a typed value: a right click turns it into a text
- * field (Enter keeps the value, Escape or a click elsewhere leaves it), and the arrow keys move it
- * one step, ten with Shift. Where the right end means no limit and {@link Range#warns}, the player
- * is asked before that end is kept, however it was reached: dragged, typed or stepped onto.
+ * field of digits only (Enter keeps the value, Escape or a click elsewhere leaves it), and the
+ * arrow keys move it one step, ten with Shift. Where the right end means no limit, any number can
+ * be typed, past the slider's last one too, which the slider shows at that last place; no limit
+ * itself is only its right end, and with {@link Range#warns} the player is asked before it is
+ * kept, however it was reached: dragged or stepped onto.
  *
  * <p>Built by the game's own option list through {@link Range}, the values of an
  * {@link OptionInstance}, so that the screens add it as any other option. The screen around it
@@ -33,6 +33,8 @@ import java.util.function.IntConsumer;
 public final class NumberSlider extends AbstractSliderButton {
     private static final int INVALID = 0xFFFF5555;
     private static final int VALID = 0xFFE0E0E0;
+    /** No limit, as the slider's values hold it: never a number a player types. */
+    public static final int UNLIMITED = Integer.MAX_VALUE;
 
     /** Counted by the screen at every frame: a slider not drawn in this one is scrolled out of view. */
     private static int frame;
@@ -43,6 +45,8 @@ public final class NumberSlider extends AbstractSliderButton {
     private final IntConsumer changed;
     private @Nullable EditBox field;
     private int drawnIn = -1;
+    /** A typed number past the slider's last one, shown at that last place until the slider moves. */
+    private @Nullable Integer beyond;
 
     private NumberSlider(int x, int y, int width, OptionInstance<Integer> option, Range range,
                          OptionInstance.TooltipSupplier<Integer> tooltip, IntConsumer changed) {
@@ -51,7 +55,7 @@ public final class NumberSlider extends AbstractSliderButton {
         this.range = range;
         this.tooltip = tooltip;
         this.changed = changed;
-        updateMessage();
+        show(option.get());
     }
 
     /**
@@ -78,6 +82,7 @@ public final class NumberSlider extends AbstractSliderButton {
     }
 
     int current() {
+        if (beyond != null && value == range.toSlider(beyond)) return beyond;
         return range.fromSlider(value);
     }
 
@@ -97,7 +102,7 @@ public final class NumberSlider extends AbstractSliderButton {
     }
 
     private boolean asks(int v) {
-        return range.warns && v == range.max && option.get() != range.max;
+        return range.warns && v == UNLIMITED && option.get() != UNLIMITED;
     }
 
     private void keep(int v) {
@@ -107,10 +112,11 @@ public final class NumberSlider extends AbstractSliderButton {
 
     private void show(int v) {
         value = range.toSlider(v);
+        beyond = range.beyond(v) ? v : null;
         updateMessage();
     }
 
-    /** Set to {@code v}, through the question when it is the end with no limit. */
+    /** Set to {@code v}, through the question when it is no limit. */
     void put(int v) {
         show(v);
         if (asks(v)) ask(v);
@@ -129,9 +135,18 @@ public final class NumberSlider extends AbstractSliderButton {
                 Component.translatable("livinghorizon.options.unlimited.confirm")));
     }
 
-    /** One step along, from where it was before the game's own step: ten with Shift. */
+    /**
+     * One step along, from where it was before the game's own step: ten with Shift. Past the last
+     * number the right arrow goes to no limit, and the left one comes back from it to that number;
+     * a typed number past it steps on from there.
+     */
     private void step(int from, boolean right, boolean shift) {
-        int v = Math.clamp(from + (right ? 1 : -1) * (shift ? 10 : 1), range.min, range.max);
+        int by = shift ? 10 : 1;
+        int v;
+        if (from == UNLIMITED) v = right ? UNLIMITED : range.max;
+        else if (range.beyond(from)) v = right ? (int) Math.min((long) from + by, UNLIMITED - 1) : Math.max(from - by, range.max);
+        else if (right && range.unlimited && from + by > range.max) v = from == range.max ? UNLIMITED : range.max;
+        else v = Math.clamp(from + (right ? by : -by), range.min, range.max);
         put(v);
     }
 
@@ -141,14 +156,30 @@ public final class NumberSlider extends AbstractSliderButton {
         return field;
     }
 
-    /** Turns into a text field holding the value, all of it selected so that typing replaces it. */
+    /** What its field holds while it is typed in; null otherwise. */
+    public @Nullable String typedText() {
+        return field == null ? null : field.getValue();
+    }
+
+    /**
+     * Turns into a text field holding the value, all of it selected so that typing replaces it; no
+     * limit shows as the slider's last number. Digits only: anything else is taken out as typed or
+     * pasted.
+     */
     void startTyping() {
         Minecraft minecraft = Minecraft.getInstance();
         EditBox box = new EditBox(minecraft.font, getX(), getY(), getWidth(), getHeight(), getMessage());
-        box.setMaxLength(24);
+        box.setMaxLength(Range.DIGITS);
         int v = current();
-        box.setValue(range.unlimited != null && v == range.max ? range.unlimited.getString() : String.valueOf(v));
-        box.setResponder(text -> box.setTextColor(range.parse(text) == null ? INVALID : VALID));
+        box.setValue(String.valueOf(v == UNLIMITED ? range.max : v));
+        box.setResponder(text -> {
+            String digits = text.replaceAll("[^0-9]", "");
+            if (!digits.equals(text)) {
+                box.setValue(digits);
+                return;
+            }
+            box.setTextColor(range.parse(text) == null ? INVALID : VALID);
+        });
         box.setTextColor(VALID);
         box.setCursorPosition(box.getValue().length());
         box.setHighlightPos(0);
@@ -248,59 +279,58 @@ public final class NumberSlider extends AbstractSliderButton {
     }
 
     /**
-     * The values of a {@link NumberSlider}: whole numbers from {@code min} to {@code max}, read as
-     * {@code label} says. With {@code unlimited}, the right end means no limit and that word,
-     * typed, sets it; with {@code warns}, the player is asked before it is kept.
+     * The values of a {@link NumberSlider}: whole numbers from {@code min} to {@code max} along the
+     * slider, read as {@code label} says. With {@code unlimited}, one more place at the right end
+     * is no limit ({@link #UNLIMITED}), and a number past {@code max} can be typed; with
+     * {@code warns}, the player is asked before no limit is kept.
      */
     public static final class Range implements OptionInstance.ValueSet<Integer> {
+        /** The longest number the field takes: a billion, short of {@link #UNLIMITED}. */
+        static final int DIGITS = 9;
+
         final Component caption;
         final int min, max;
         final OptionInstance.CaptionBasedToString<Integer> label;
-        final @Nullable Component unlimited;
+        final boolean unlimited;
         final boolean warns;
 
         public Range(Component caption, int min, int max, OptionInstance.CaptionBasedToString<Integer> label,
-                     @Nullable Component unlimited, boolean warns) {
+                     boolean unlimited, boolean warns) {
             this.caption = caption;
             this.min = min;
             this.max = max;
             this.label = label;
             this.unlimited = unlimited;
-            this.warns = warns && unlimited != null;
+            this.warns = warns && unlimited;
+        }
+
+        private int places() {
+            return max - min + 1 + (unlimited ? 1 : 0);
+        }
+
+        /** A typed number past the slider's last one, which only a slider with no limit keeps. */
+        boolean beyond(int v) {
+            return unlimited && v > max && v != UNLIMITED;
         }
 
         double toSlider(int v) {
-            return (Math.clamp(v, min, max) - min + 0.5) / (max - min + 1);
+            int place = unlimited && v == UNLIMITED ? places() - 1 : Math.clamp(v, min, max) - min;
+            return (place + 0.5) / places();
         }
 
         int fromSlider(double slider) {
-            return Math.clamp(min + (int) Math.floor(slider * (max - min + 1)), min, max);
+            int place = Math.clamp((int) Math.floor(slider * places()), 0, places() - 1);
+            return unlimited && place == places() - 1 ? UNLIMITED : min + place;
         }
 
         /**
-         * What is typed as a value: a number, brought into the range (past the last number, no limit
-         * where the end is that), or the start of the word for no limit. Null for anything else.
+         * What is typed as a value: digits only, brought up to {@code min}, and down to {@code max}
+         * where there is no limit to go to; past it, kept as typed. Null for anything else.
          */
         public @Nullable Integer parse(String typed) {
-            String text = typed.replaceAll("[\\s\\u00A0\\u202F,.']", "");
-            if (text.isEmpty()) return null;
-            if (text.chars().allMatch(Character::isDigit)) {
-                long v = text.length() > 12 ? Long.MAX_VALUE : Long.parseLong(text);
-                int last = unlimited != null ? max - 1 : max;
-                if (unlimited != null && v > last) return max;
-                return (int) Math.clamp(v, min, last);
-            }
-            if (unlimited != null && (text.equals("∞") || startsWord(plain(unlimited.getString()), plain(text)))) return max;
-            return null;
-        }
-
-        private static boolean startsWord(String word, String typed) {
-            return typed.length() >= 2 && word.startsWith(typed);
-        }
-
-        /** Without case, accents or spaces: "illimite" for "Illimité", "sinlimite" for "Sin límite". */
-        private static String plain(String text) {
-            return Normalizer.normalize(text, Normalizer.Form.NFD).replaceAll("[\\p{M}\\s\\u00A0]", "").toLowerCase(Locale.ROOT);
+            if (typed.isEmpty() || typed.length() > DIGITS || !typed.chars().allMatch(c -> c >= '0' && c <= '9')) return null;
+            int v = Integer.parseInt(typed);
+            return Math.clamp(v, min, unlimited ? UNLIMITED - 1 : max);
         }
 
         //? if >=26.2 {
@@ -319,12 +349,12 @@ public final class NumberSlider extends AbstractSliderButton {
 
         @Override
         public Optional<Integer> validateValue(Integer value) {
-            return value >= min && value <= max ? Optional.of(value) : Optional.empty();
+            return value >= min && (value <= max || unlimited) ? Optional.of(value) : Optional.empty();
         }
 
         @Override
         public Codec<Integer> codec() {
-            return Codec.intRange(min, max);
+            return Codec.INT;
         }
     }
 }

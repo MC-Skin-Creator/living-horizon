@@ -247,7 +247,7 @@ on this client: nothing is sent to the server, they block nobody, and nothing ca
   were last, as they looked, on what they rode: as far as this client knows, they logged off
   then.
 - `offlinePlayers` off turns all of it off: nobody is shown or remembered.
-- `maxOfflinePlayers` of them are drawn at once (256; 1000 is no limit): the nearest the
+- `maxOfflinePlayers` of them are drawn at once (256; up to 1000 on the slider, then no limit): the nearest the
   camera in its dimension, chosen again every tick (`RestingPlayers.shown`). The others stay
   remembered and lose their puppet until they are among the nearest again.
 
@@ -605,7 +605,7 @@ below), and other flyers and swimmers get a flat disc at their own height.
 
 ### How many are drawn and animated
 
-- `maxDistantMobs` of them are drawn at once (512, up to 4000; 4001, the slider's right end, is no limit): the nearest remembered
+- `maxDistantMobs` of them are drawn at once (512, up to 4000 on the slider, more when typed, then no limit at the slider's right end): the nearest remembered
   ones. Past `mobMaxDistance` (512 blocks) none are drawn. Both that distance and the near zone
   are applied after the choice, so copies there still take places and fewer may show.
 - With `onlyOverTerrain` (*Only Over Terrain*, in *Debug Options...*, on), a mob is drawn only where terrain is drawn
@@ -1246,12 +1246,17 @@ The sliders of whole numbers on the mod's screens are `ui/NumberSlider`, which t
 option lists build through its `OptionInstance.ValueSet` (made public by the access widener
 before 26.2, where the game made it so). A right click turns one into a text field, which
 `SideOptionsScreen` hands the keys until Enter (kept when it reads as a value), Escape or a
-click: a number is brought into the range, one past the last number or the start of the word
-for no limit (any case, accents or spaces) is no limit. The arrow keys move it one value, ten
-with Shift, where the game moves it a pixel. `NumberSlider.asksBeforeUnlimited` names every
+click. It takes digits only, and shows the slider's last number on no limit. A number below the
+range is brought up to it; past the last number, a slider with no limit at its end keeps the
+number as typed (shown at that last place, `NumberSlider.beyond`), any other is brought down to
+it. No limit is a value of its own (`NumberSlider.UNLIMITED`, `FarConfig.UNLIMITED_MOBS` and
+`UNLIMITED_OFFLINE` for the counts, 0 for the distances), reached only at the slider's right
+end, never typed. Sodium's rows show a typed number past their end at their last place and
+leave it as it is when saved there. The arrow keys move it one value, ten with Shift, where the
+game moves it a pixel. `NumberSlider.asksBeforeUnlimited` names every
 setting whose right end is no limit (the three counts and the four distances), none of them
 safe without one: dragged there, the slider shows it and keeps it on release once the player
-says yes; typed or stepped there, at once. Sodium's page cannot ask as its slider moves:
+says yes; stepped there, at once. Sodium's page cannot ask as its slider moves:
 `SodiumOptions.asking` holds the value at *Apply* and asks then, and no reads the page back.
 
 ### Main screen
@@ -1282,7 +1287,7 @@ says yes; typed or stepped there, at once. Sodium's page cannot ask as its slide
 | `showVehicles` | Mounts & Vehicles | `true` | | Draw the mount they were last seen on |
 | `playerMaxDistance` | Player Render Distance | `4000` blocks | 1 to 4000, or no limit | Past this, distant players are not drawn (`0`: no limit, the right end of the slider) |
 | `offlinePlayers` | Offline Players | `true` | | Players who logged off are shown and remembered; off, neither |
-| `maxOfflinePlayers` | Max Offline | `256` | 0 to 1000 | How many players who logged off are drawn at once, nearest first (`0`: none, `1000`: no limit) |
+| `maxOfflinePlayers` | Max Offline | `256` | 0 to 1000, more when typed, or no limit | How many players who logged off are drawn at once, nearest first (`0`: none; no limit is the slider's right end, which 1000 in an older settings file becomes) |
 | `offlineLife` | Offline Player Activity | `true` | | They live their life around their spot; off, they sit on it |
 | `offlineRoam` | Roaming Radius | `50` blocks | 8 to 128 | How far from their spot they walk around and look for a bed or a chest (50 is about a village) |
 | `offlineNames` | Offline Player Names | `true` | | Their name above them, marked offline, and when they were last seen, under the crosshair |
@@ -1302,14 +1307,14 @@ In three parts, on both screens: *General*, *Mobs* (the living kinds, mannequins
 | `scanRadius` | General: Scan Radius | `32` chunks | 4 to 1024 | Chunks around you read by a scan, in single player (32 chunks = 512 blocks) |
 | `foreseeRadius` | General: Guess Radius | `64` chunks | 4 to 1024 | Chunks around you *Guess Nearby Mobs* foresees the animals of the land nobody explored in |
 | `distantMobs` | Mobs: Show Mobs | `true` | | Remembered mobs stay visible far away |
-| `maxDistantMobs` | Mobs: Max Mobs | `512` | 0 to 4001 | How many are drawn at once, nearest first, the animals foreseen from the seed included (`0`: none, `4001`: no limit, which 1000 in an older settings file becomes). No limit here and in `mobMaxDistance` together can crash the game |
+| `maxDistantMobs` | Mobs: Max Mobs | `512` | 0 to 4000, more when typed, or no limit | How many are drawn at once, nearest first, the animals foreseen from the seed included (`0`: none; no limit is the slider's right end, which 1000 in an older settings file becomes). No limit here and in `mobMaxDistance` together can crash the game |
 | `mobMaxDistance` | Mobs: Mob Render Distance | `512` blocks | 1 to 4000, or no limit | Past this, distant mobs are not drawn (`0`: no limit, the right end of the slider) |
 | `rememberNamedMobs` | Mobs: Name-Tagged Mobs | `true` | | A mob with a name tag is shown whatever its type |
 | `seedMobs` | Mobs: Unexplored Land Mobs | `true` | | The animals a server with the mod foresees in land nobody has explored, from the seed, are shown |
 | `animationMinPixels` | Mobs: Min. Animated Size | `10` pixels | 0 to 40 | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
 | `animationMaxDistance` | Mobs: Animation Distance | `4000` blocks | 1 to 4000, or no limit | Past this, no distant mob plays an animation (`0`: no limit, the right end of the slider) |
 | `distantEntities` | Entities: Show Entities | `true` | | Remembered boats, vehicles and mannequins stay visible far away |
-| `maxDistantEntities` | Entities: Max Entities | `256` | 0 to 4001 | How many of them are drawn at once, nearest first, apart from the mobs: a crowd of mobs never pushes an aircraft out (`4001`: no limit) |
+| `maxDistantEntities` | Entities: Max Entities | `256` | 0 to 4000, more when typed, or no limit | How many of them are drawn at once, nearest first, apart from the mobs: a crowd of mobs never pushes an aircraft out (no limit: the slider's right end) |
 | `entityMaxDistance` | Entities: Entity Render Distance | `4000` blocks | 1 to 4000, or no limit | Past this, distant boats, vehicles and mannequins are not drawn (`0`: no limit, the right end of the slider; few, and an aircraft is seen from afar) |
 | `knownMobTypes` | (not shown) | Those met so far | | Mob types already offered once, the game's and other mods': a new one is shown from the start, then left as you set it |
 | `knownVehicles` | (not shown) | Empty | | Vehicles that are neither mobs nor boats, as found from their renderer or met, listed in *Mobs & Entities...* |

@@ -78,8 +78,10 @@ public final class FarConfig {
      */
     public boolean offlinePlayers = true;
 
-    /** The value of {@link #maxOfflinePlayers} (and above) that means no limit. */
-    public static final int UNLIMITED_OFFLINE = 1000;
+    /** The value of {@link #maxOfflinePlayers} that means no limit; any number below is one. */
+    public static final int UNLIMITED_OFFLINE = Integer.MAX_VALUE;
+    /** The last number of {@link #maxOfflinePlayers}' slider, before no limit; a higher one can be typed. */
+    public static final int MAX_OFFLINE = 1000;
 
     /**
      * How many players who logged off are drawn at once: the nearest ones. The others stay
@@ -113,10 +115,12 @@ public final class FarConfig {
      */
     public boolean distantMobs = true;
 
-    /** The value of {@link #maxDistantMobs} (and above) that means no limit: one past the highest number. */
-    public static final int UNLIMITED_MOBS = 4001;
+    /** The value of {@link #maxDistantMobs} and {@link #maxDistantEntities} that means no limit; any number below is one. */
+    public static final int UNLIMITED_MOBS = Integer.MAX_VALUE;
+    /** The last number of their sliders, before no limit; a higher one can be typed. */
+    public static final int MAX_MOBS = 4000;
 
-    /** Blocks: the highest distance the sliders give before no limit, which the settings keep as 0. */
+    /** Blocks: the last distance of the sliders before no limit, which the settings keep as 0; a farther one can be typed. */
     public static final int MAX_DISTANCE = 4000;
 
     /** How many remembered mobs are drawn at once: the nearest ones. {@link #UNLIMITED_MOBS}: all. */
@@ -542,9 +546,10 @@ public final class FarConfig {
             config.impostorEntities = config.impostors;
         }
         if (config.version < 13) {
-            // No limit was 1000; the slider goes to 4000 now, then no limit.
+            // No limit was 1000; the sliders go further now, then no limit, and any number can be typed.
             if (config.maxDistantMobs >= 1000) config.maxDistantMobs = UNLIMITED_MOBS;
             if (config.maxDistantEntities >= 1000) config.maxDistantEntities = UNLIMITED_MOBS;
+            if (config.maxOfflinePlayers >= 1000) config.maxOfflinePlayers = UNLIMITED_OFFLINE;
             // No limit is never safe: the presets and defaults that went without one, which the
             // player did not choose by hand, take the limits they have now.
             boolean high = config.impostorDistance == 256 && config.maxDistantMobs == UNLIMITED_MOBS
