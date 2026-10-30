@@ -138,8 +138,10 @@ say which class is which). Players find them; nothing they read gives one away:
   the log where each one comes; without it the log says nothing of them. Its lang keys are
   `livinghorizon.eeN.*`, and `livinghorizon.ee.nothing` when it cannot come;
 - by chance, only as `ambient/EggCalendar` allows: each from a day of its own (days lived in
-  that world, counted at dawn), two to four days apart, one at a time; the watcher (ee4)
-  keeps nights of his own and stays out of the others' way. The commands skip all of it;
+  that world, counted at dawn), two to four days apart, one at a time. The daily ones (ee3,
+  ee4, ee5, `ambient/Daily`) are not left to chance: once a day from the second or third, at a
+  moment of it drawn at dawn, alongside the others, and back one to three days after being
+  seen. The commands skip all of it;
 - an easter egg gets no changelog entry, even when it changes. One wink that names none
   ("I thought I saw something in the sky") is the most a release may carry.
 
