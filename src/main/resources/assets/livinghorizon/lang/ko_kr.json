@@ -13,7 +13,7 @@
   "livinghorizon.options.preset.tooltip": "아래 설정이 원하는 품질에 알맞은 값으로 설정됩니다: 멀리 있는 개체를 얼마나 많이, 얼마나 멀리까지 표시할지 정합니다. 높음과 울트라는 고성능 컴퓨터용입니다. 설정을 직접 바꾸면 사용자 지정으로 전환됩니다.",
   "livinghorizon.options.typeValue": "우클릭하여 값을 입력합니다.",
   "livinghorizon.options.unlimited": "%s: 무제한으로 설정할까요?",
-  "livinghorizon.options.unlimited.confirm": "무제한이면 모드가 찾은 것을 모두 보관하고 표시합니다. 프레임 속도가 크게 떨어지고 메모리가 가득 찰 수 있습니다. 유지할까요?",
+  "livinghorizon.options.unlimited.confirm": "무제한이면 모드가 찾은 것을 모두 보관하고 표시합니다. 프레임 속도가 크게 떨어지고, 최악의 경우 게임이 충돌할 수 있습니다. 유지할까요?",
   "livinghorizon.options.preset.custom": "사용자 지정",
   "livinghorizon.options.preset.ultra": "울트라",
   "livinghorizon.options.preset.high": "높음",

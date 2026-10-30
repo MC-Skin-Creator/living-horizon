@@ -13,7 +13,7 @@
   "livinghorizon.options.preset.tooltip": "Imposta le opzioni qui sotto su valori ragionevoli per la qualità desiderata: quante entità lontane vengono mostrate e fino a che distanza. Alta e Ultra sono per computer potenti. Modificare un'opzione a mano passa a Personalizzata.",
   "livinghorizon.options.typeValue": "Clic destro per digitare un valore.",
   "livinghorizon.options.unlimited": "%s: illimitato?",
-  "livinghorizon.options.unlimited.confirm": "Senza limiti, la mod conserva e mostra tutto ciò che trova: gli FPS possono calare molto e la memoria riempirsi. Mantenere?",
+  "livinghorizon.options.unlimited.confirm": "Senza limiti, la mod conserva e mostra tutto ciò che trova: gli FPS possono calare molto e, nel peggiore dei casi, il gioco può andare in crash. Mantenere?",
   "livinghorizon.options.preset.custom": "Personalizzata",
   "livinghorizon.options.preset.ultra": "Ultra",
   "livinghorizon.options.preset.high": "Alta",

@@ -31,7 +31,7 @@
 - **Sitting pets stay put** — cats, wolves and parrots told to sit now stay sitting far away, instead of standing up and wandering off.
 - **More distant mobs** — *Max Mobs* now goes up to 4000 before *Unlimited*.
 - **Unlimited at the end of the slider** — *Unlimited* now sits at the right end of the render distance sliders, after 4000 blocks, instead of the left.
-- **Asked before Unlimited** — setting *Max Mobs*, *Max Entities* or *Mob Render Distance* to *Unlimited* now asks first, since it can bring the frame rate down sharply and fill the memory; on Sodium's page the question comes with *Apply*.
+- **Asked before Unlimited** — setting *Max Mobs*, *Max Entities* or *Mob Render Distance* to *Unlimited* now asks first, since it can bring the frame rate down sharply and, in the worst case, crash the game; on Sodium's page the question comes with *Apply*.
 - **Presets with limits** — the *High* and *Ultra* presets no longer set anything to *Unlimited*: *High* shows up to 1500 mobs, *Ultra* up to 3000 as far as 2048 blocks.
 
 #### Fixed

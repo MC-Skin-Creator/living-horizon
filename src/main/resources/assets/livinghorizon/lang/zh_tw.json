@@ -13,7 +13,7 @@
   "livinghorizon.options.preset.tooltip": "依據所需畫質，將下方設定調整為合理的值：顯示多少遠處實體，以及顯示多遠。「高」和「極高」適用於高效能電腦。手動變更任一設定會切換為「自訂」。",
   "livinghorizon.options.typeValue": "按右鍵以輸入數值。",
   "livinghorizon.options.unlimited": "%s：無限？",
-  "livinghorizon.options.unlimited.confirm": "無限時，模組會保留並顯示找到的所有實體：幀率可能大幅下降，記憶體也可能被佔滿。確定保留嗎？",
+  "livinghorizon.options.unlimited.confirm": "無限時，模組會保留並顯示找到的所有實體：幀率可能大幅下降，最糟的情況下遊戲可能當機。確定保留嗎？",
   "livinghorizon.options.preset.custom": "自訂",
   "livinghorizon.options.preset.ultra": "極高",
   "livinghorizon.options.preset.high": "高",

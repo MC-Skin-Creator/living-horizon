@@ -13,7 +13,7 @@
   "livinghorizon.options.preset.tooltip": "Aşağıdaki ayarları istenilen kaliteye göre makul değerlere ayarlar: kaç uzak varlığın ve ne kadar uzağa kadar gösterileceği. Yüksek ve Ultra güçlü bilgisayarlar içindir. Bir ayarı elle değiştirmek Özel'e geçirir.",
   "livinghorizon.options.typeValue": "Değer yazmak için sağ tıklayın.",
   "livinghorizon.options.unlimited": "%s: sınırsız mı?",
-  "livinghorizon.options.unlimited.confirm": "Sınır olmadan mod bulduğu her şeyi tutar ve gösterir: kare hızı ciddi şekilde düşebilir ve bellek dolabilir. Korunsun mu?",
+  "livinghorizon.options.unlimited.confirm": "Sınır olmadan mod bulduğu her şeyi tutar ve gösterir: kare hızı ciddi şekilde düşebilir ve en kötü durumda oyun çökebilir. Korunsun mu?",
   "livinghorizon.options.preset.custom": "Özel",
   "livinghorizon.options.preset.ultra": "Ultra",
   "livinghorizon.options.preset.high": "Yüksek",

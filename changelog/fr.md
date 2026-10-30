@@ -31,7 +31,7 @@
 - **Animaux assis qui le restent** — les chats, les loups et les perroquets à qui tu as dit de s'asseoir restent maintenant assis au loin, au lieu de se lever et de partir se balader.
 - **Plus de créatures lointaines** — *Créatures max* va maintenant jusqu'à 4000 avant *Illimité*.
 - **Illimité au bout du curseur** — *Illimitée* est maintenant tout à droite des curseurs de distance d'affichage, après 4000 blocs, au lieu de tout à gauche.
-- **Confirmation avant Illimité** — régler *Créatures max*, *Entités max* ou *Distance d'affichage des créatures* sur *Illimité* demande maintenant une confirmation, car cela peut faire chuter fortement les FPS et remplir la mémoire ; sur la page de Sodium, la question vient avec *Appliquer*.
+- **Confirmation avant Illimité** — régler *Créatures max*, *Entités max* ou *Distance d'affichage des créatures* sur *Illimité* demande maintenant une confirmation, car cela peut faire chuter fortement les FPS et, dans le pire des cas, faire planter le jeu ; sur la page de Sodium, la question vient avec *Appliquer*.
 - **Préréglages avec des limites** — les préréglages *Élevé* et *Ultra* ne mettent plus rien sur *Illimité* : *Élevé* affiche jusqu'à 1500 créatures, *Ultra* jusqu'à 3000 et jusqu'à 2048 blocs.
 
 #### Corrections

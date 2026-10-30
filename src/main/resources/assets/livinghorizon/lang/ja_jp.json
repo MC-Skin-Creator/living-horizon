@@ -13,7 +13,7 @@
   "livinghorizon.options.preset.tooltip": "下の設定を、指定の質に適した値に設定します：遠くのエンティティをいくつ、どこまで表示するか。「高」と「ウルトラ」は高性能なコンピューター向けです。設定を手動で変更すると「カスタム」に切り替わります。",
   "livinghorizon.options.typeValue": "右クリックで値を入力できます。",
   "livinghorizon.options.unlimited": "%s：無制限にしますか？",
-  "livinghorizon.options.unlimited.confirm": "無制限にすると、MODは見つけたものをすべて保持して表示します。フレームレートが大きく下がり、メモリが埋まることがあります。この設定にしますか？",
+  "livinghorizon.options.unlimited.confirm": "無制限にすると、MODは見つけたものをすべて保持して表示します。フレームレートが大きく下がり、最悪の場合はゲームがクラッシュすることがあります。この設定にしますか？",
   "livinghorizon.options.preset.custom": "カスタム",
   "livinghorizon.options.preset.ultra": "ウルトラ",
   "livinghorizon.options.preset.high": "高",
