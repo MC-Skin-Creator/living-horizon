@@ -1,5 +1,6 @@
 package fr.clixmods.livinghorizon.gametest.scenario;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
@@ -16,7 +17,6 @@ import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,8 +29,8 @@ import java.util.function.ToIntFunction;
  * a slider one value, ten with Shift.
  */
 public final class TypedValuesScenario implements Scenario {
-    private static final int LEFT = GLFW.GLFW_MOUSE_BUTTON_LEFT;
-    private static final int RIGHT = GLFW.GLFW_MOUSE_BUTTON_RIGHT;
+    private static final int LEFT = InputConstants.MOUSE_BUTTON_LEFT;
+    private static final int RIGHT = InputConstants.MOUSE_BUTTON_RIGHT;
 
     @Override
     public String name() {
@@ -53,14 +53,14 @@ public final class TypedValuesScenario implements Scenario {
             // 1. Typed: right click, a number, Enter.
             type(context, "maxDistantMobs", "1234");
             Scene.screenshot(context, this, "typing");
-            context.getInput().pressKey(GLFW.GLFW_KEY_ENTER);
+            context.getInput().pressKey(InputConstants.KEY_RETURN);
             context.waitTicks(2);
             expect(wrong, "typed 1234", context, c -> c.maxDistantMobs, 1234);
             expectShown(wrong, context, "maxDistantMobs", "1234");
 
             // 2. Escape leaves the value, and the screen stays open.
             type(context, "maxDistantMobs", "7");
-            context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
+            context.getInput().pressKey(InputConstants.KEY_ESCAPE);
             context.waitTicks(2);
             expect(wrong, "Escape", context, c -> c.maxDistantMobs, 1234);
             if (!context.computeOnClient(minecraft -> minecraft.screen instanceof FarConfigScreen)) {
@@ -71,7 +71,7 @@ public final class TypedValuesScenario implements Scenario {
 
             // 3. The word for no limit, typed: asked, and no keeps the value.
             type(context, "maxDistantMobs", "unlim");
-            context.getInput().pressKey(GLFW.GLFW_KEY_ENTER);
+            context.getInput().pressKey(InputConstants.KEY_RETURN);
             context.waitTicks(3);
             Scene.screenshot(context, this, "asked-typed");
             if (answer(context, false)) {
@@ -83,7 +83,7 @@ public final class TypedValuesScenario implements Scenario {
 
             // 4. A number past the end: asked, and yes sets no limit.
             type(context, "maxDistantMobs", "99999");
-            context.getInput().pressKey(GLFW.GLFW_KEY_ENTER);
+            context.getInput().pressKey(InputConstants.KEY_RETURN);
             context.waitTicks(3);
             if (answer(context, true)) {
                 expect(wrong, "yes to 99999", context, c -> c.maxDistantMobs, FarConfig.UNLIMITED_MOBS);
@@ -105,22 +105,22 @@ public final class TypedValuesScenario implements Scenario {
 
             // 6. The arrow keys: one value, ten with Shift, on a slider that never asks.
             type(context, "impostorDistance", "500");
-            context.getInput().pressKey(GLFW.GLFW_KEY_ENTER);
+            context.getInput().pressKey(InputConstants.KEY_RETURN);
             context.waitTicks(2);
             expect(wrong, "typed 500", context, c -> c.impostorDistance, 500);
             focus(context, "impostorDistance");
-            context.getInput().pressKey(GLFW.GLFW_KEY_RIGHT);
+            context.getInput().pressKey(InputConstants.KEY_RIGHT);
             context.waitTicks(2);
             if (context.computeOnClient(minecraft -> FarConfig.get().impostorDistance) == 500) {
                 // The game's slider takes the arrows once Enter is pressed on it.
-                context.getInput().pressKey(GLFW.GLFW_KEY_ENTER);
-                context.getInput().pressKey(GLFW.GLFW_KEY_RIGHT);
+                context.getInput().pressKey(InputConstants.KEY_RETURN);
+                context.getInput().pressKey(InputConstants.KEY_RIGHT);
                 context.waitTicks(2);
             }
             expect(wrong, "right arrow", context, c -> c.impostorDistance, 501);
-            context.getInput().holdKey(GLFW.GLFW_KEY_LEFT_SHIFT);
-            context.getInput().pressKey(GLFW.GLFW_KEY_LEFT);
-            context.getInput().releaseKey(GLFW.GLFW_KEY_LEFT_SHIFT);
+            context.getInput().holdKey(InputConstants.KEY_LSHIFT);
+            context.getInput().pressKey(InputConstants.KEY_LEFT);
+            context.getInput().releaseKey(InputConstants.KEY_LSHIFT);
             context.waitTicks(2);
             expect(wrong, "Shift and left arrow", context, c -> c.impostorDistance, 491);
             Scene.screenshot(context, this, "arrows");
@@ -153,7 +153,7 @@ public final class TypedValuesScenario implements Scenario {
         context.waitTicks(2);
         // The click put the slider where it landed: typed back to where it was.
         type(context, setting, String.valueOf(before));
-        context.getInput().pressKey(GLFW.GLFW_KEY_ENTER);
+        context.getInput().pressKey(InputConstants.KEY_RETURN);
         context.waitTicks(2);
     }
 
