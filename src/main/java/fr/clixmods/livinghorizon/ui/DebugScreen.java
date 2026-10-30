@@ -40,6 +40,9 @@ public final class DebugScreen extends SideOptionsScreen {
                         .tooltip(Tooltip.create(Component.translatable(KEY + "boxes.open.tooltip"))).build(),
                 Button.builder(Component.translatable(KEY + "outlines.open"), b -> minecraft.setScreen(new OutlinesScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "outlines.open.tooltip"))).build());
+        list.addSmall(
+                Button.builder(Component.translatable(KEY + "stats.open"), b -> minecraft.setScreen(new StatsScreen(this)))
+                        .tooltip(Tooltip.create(Component.translatable(KEY + "stats.open.tooltip"))).build(), null);
 
         header(Component.translatable(KEY + "debug.rendering"));
         list.addSmall(

@@ -27,7 +27,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -142,6 +141,10 @@ public final class Foresight {
 
     private long world = Long.MIN_VALUE;
     private @Nullable String dimension;
+    /** Bumped whenever the index changes: what was wanted from it is worked out again then only. */
+    private int version;
+    /** What {@link #wantedIfChanged} last worked out from: the index, where the player was, the spyglass, the settings. */
+    private long wantedFrom = Long.MIN_VALUE;
     /** Chunk to its foreseen mobs, {@link #LONGS} longs each; only chunks with some. Never changed once put. */
     private Long2ObjectOpenHashMap<long[]> index = new Long2ObjectOpenHashMap<>();
     /** Chunks asked for already, whatever came of it. */
@@ -155,8 +158,6 @@ public final class Foresight {
     private @Nullable String sharedKey;
     private SeedDraws.@Nullable Source shared;
     private @Nullable CompletableFuture<SeedDraws.@Nullable Source> building;
-    /** New mobs found since the memory last asked ({@link #takeFresh}). */
-    private boolean fresh;
     /** The seed the ids are drawn from: needed to write them in a few bytes. Null before any. */
     private @Nullable Long seed;
     /** The folder of this server's files; null before {@link #open}. */
@@ -212,11 +213,11 @@ public final class Foresight {
         index = new Long2ObjectOpenHashMap<>();
         worked = new Worked();
         generation++;
+        version++;
         asking = scoping = null;
         scan = null;
         scope = null;
         seed = null;
-        fresh = false;
         dirty = false;
         coneKey = Long.MIN_VALUE;
         Path file = file();
@@ -234,13 +235,6 @@ public final class Foresight {
         folder = null;
     }
 
-    /** True once after new mobs were found or read: the memory takes them at once. */
-    boolean takeFresh() {
-        boolean was = fresh;
-        fresh = false;
-        return was;
-    }
-
     /** The chunks this client holds are generated: their real mobs are there, never those foreseen. */
     private void forgetHeld(ClientLevel level, LocalPlayer self, int reach) {
         int cx = self.getBlockX() >> 4, cz = self.getBlockZ() >> 4;
@@ -248,7 +242,10 @@ public final class Foresight {
             for (int dz = -reach; dz <= reach; dz++) {
                 if (!level.getChunkSource().hasChunk(cx + dx, cz + dz)) continue;
                 long chunk = SeedDraws.chunk(cx + dx, cz + dz);
-                if (index.remove(chunk) != null) dirty = true;
+                if (index.remove(chunk) != null) {
+                    dirty = true;
+                    version++;
+                }
                 worked.mark(chunk);
             }
         }
@@ -259,7 +256,7 @@ public final class Foresight {
             index.put(entry.getLongKey(), pack(entry.getValue()));
         }
         dirty = true;
-        if (!found.isEmpty()) fresh = true;
+        if (!found.isEmpty()) version++;
     }
 
     /** Blocks around the player it foresees by itself: as far as mobs are drawn, and a little more. */
@@ -550,14 +547,55 @@ public final class Foresight {
                 }
             }
         }
-        Comparator<PositionsMessage.Mob> nearest = Comparator.comparingDouble(mob -> Math.hypot(mob.x() - x, mob.z() - z));
-        looked.sort(nearest);
-        near.sort(nearest);
         int most = config.most(true, looked.size() + near.size());
+        // All of them wanted: in any order. Otherwise the nearest, those where the spyglass looks first.
+        if (most < looked.size() + near.size()) {
+            nearest(looked, x, z);
+            nearest(near, x, z);
+        }
         List<PositionsMessage.Mob> wanted = new ArrayList<>(most);
         for (PositionsMessage.Mob mob : looked) if (wanted.size() < most) wanted.add(mob);
         for (PositionsMessage.Mob mob : near) if (wanted.size() < most) wanted.add(mob);
         return wanted;
+    }
+
+    /**
+     * {@link #wanted}, or null when nothing it depends on changed since the last call: the index,
+     * the chunk the player is in, where the spyglass looks, the settings. Thousands of mobs are
+     * then not gone through again for nothing.
+     */
+    @Nullable List<PositionsMessage.Mob> wantedIfChanged(double x, double y, double z, FarConfig config) {
+        Scope seen = scope;
+        long from = version;
+        from = from * 31 + SeedDraws.chunk(Mth.floor(x) >> 4, Mth.floor(z) >> 4);
+        from = from * 31 + (seen == null ? 0 : seen.key());
+        from = from * 31 + config.mobMaxDistance;
+        from = from * 31 + config.maxDistantMobs;
+        from = from * 31 + (config.seedMobs ? 1 : 0);
+        if (from == wantedFrom) return null;
+        wantedFrom = from;
+        return wanted(x, y, z, config);
+    }
+
+    /** Sorts mobs nearest first across the ground, each distance worked out once. */
+    private static void nearest(List<PositionsMessage.Mob> mobs, double x, double z) {
+        int n = mobs.size();
+        if (n > 0xFFFFF) {
+            mobs.sort(java.util.Comparator.comparingDouble(mob -> (mob.x() - x) * (mob.x() - x) + (mob.z() - z) * (mob.z() - z)));
+            return;
+        }
+        long[] order = new long[n];
+        for (int i = 0; i < n; i++) {
+            PositionsMessage.Mob mob = mobs.get(i);
+            double dx = mob.x() - x, dz = mob.z() - z;
+            // A positive double sorts as its bits do: the squared distance above, the place below.
+            order[i] = (Double.doubleToRawLongBits(dx * dx + dz * dz) & ~0xFFFFFL) | i;
+        }
+        java.util.Arrays.sort(order);
+        List<PositionsMessage.Mob> sorted = new ArrayList<>(n);
+        for (long entry : order) sorted.add(mobs.get((int) (entry & 0xFFFFF)));
+        mobs.clear();
+        mobs.addAll(sorted);
     }
 
     private void pick(long[] mobs, double x, double y, double z, double reachSquared, @Nullable Scope seen,
@@ -581,6 +619,21 @@ public final class Foresight {
         int mobs = 0;
         for (long[] list : index.values()) mobs += list.length / LONGS;
         return mobs;
+    }
+
+    /** What is kept, for the Statistics screen: mobs, chunks with some, chunks asked for, the memory it takes, the folder. */
+    public record Stats(int mobs, int chunks, long asked, long bytes, @Nullable Path folder) {
+    }
+
+    public Stats stats() {
+        int mobs = size();
+        long asked = 0;
+        for (long[] bits : worked.regions.values()) {
+            for (long word : bits) asked += Long.bitCount(word);
+        }
+        // The longs of each mob, then each chunk's array and its place in the map, then the regions asked for.
+        long bytes = (long) mobs * LONGS * 8 + index.size() * 48L + worked.regions.size() * 200L;
+        return new Stats(mobs, index.size(), asked, bytes, folder);
     }
 
     /** Whether a scan by hand is under way. */
@@ -803,11 +856,12 @@ public final class Foresight {
         }
         // Chunks generated since: asked for, none to show.
         if (keep.length != saved.index().size()) dirty = true;
-        if (keep.length > 0) fresh = true;
+        if (keep.length > 0) version++;
     }
 
     /** <i>Forget All</i>: what was foreseen goes, here and in every file of this server. */
     void forgetAll() {
+        version++;
         index = new Long2ObjectOpenHashMap<>();
         worked = new Worked();
         generation++;

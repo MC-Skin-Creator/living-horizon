@@ -628,6 +628,13 @@ below), and other flyers and swimmers get a flat disc at their own height.
   (`DepthFar.pixelsPerRadian`), so a spyglass's zoom counts.
 - `animationMaxDistance` (blocks; 0 is no limit) stills every mob past it, however big
   (`MobMemory.isStill`).
+- A still copy standing where it was put is looked at once in sixteen ticks, each on a tick of
+  its own (by its id): with Mob Render Distance at 4000 blocks and the land's animals guessed,
+  tens of thousands far off would otherwise be gone through every tick.
+- Copies are built (`MobMemory.build`) within 2 ms a tick, those in front of the player first
+  (70° either side), each the nearest first. A short saved text (a foreseen mob, one built from
+  what the server said) is read at once: queued on the game's background executor, it waited
+  behind the world being generated, a few copies a second.
 - With `optFreezeHidden` (*Debug Options...*, off by default), a copy not drawn for half a
   second (out of view, hidden, too small) is not ticked at all until it is drawn again: no
   animation, no ground read, only moved where the server says it is.
@@ -1069,6 +1076,7 @@ debug options. `/livinghorizon debug` turns the panel and the boxes on or off to
 | Boxes per kind | `box*`, in *Boxes...* | The boxes and labels of one kind on their own switch: real ones drawn by the mod, copies, foreseen animals, players, those not drawn (the game's are `debugGameMobs`) |
 | Labels (from 1.21.11) | `debugLabels` | State, kind, distance and size on screen above each box, at a constant size |
 | Outlines | `outline*`, in *Outlines...* | An outline around each kind of figure, and a cross where a mob is not drawn (below) |
+| Statistics | *Statistics...* (`ui/StatsScreen`) | What is kept, counted when opened and on *Refresh*: remembered mobs (met, shared by the server, guessed), chosen, built and waiting; the guessed mobs kept apart, the chunks looked at and the memory they take; the size on disk of each folder of `config/livinghorizon`, this server's and all |
 | Depth view | `debugDepthView` | Bottom right: the game's depth alone, with the far terrain merged in, or after the entities. Near is white, far black, sky blue |
 | Far terrain | `/livinghorizon lod` (or `voxy`) | Which far terrain mod is read (Voxy or Distant Horizons), whether reading it failed, and the state of its depth |
 | Optimisations | `opt*`, `depthOcclusion`, `hideOccludedMobs` | Every optimisation has its own switch, to compare the cost (see [Optimizations](#optimizations)) |

@@ -629,6 +629,15 @@ come back, add it here in the same pull request: this file is what the next sess
   the chunks generated since (`SeedMobs.unexplored`); *Forget All* deletes it.
   The `seedmobs` scenario checks it all, the generator built from the seed against the server's,
   and how many stand where the game puts them; the boxes and outlines show them in pink.
+- **Copies waiting to be built for minutes, or *Tick: choosing mobs* long** (thousands of mobs, guessed
+  ones with Mob Render Distance at 4000): a short saved text is read at once, never queued on the
+  game's background executor, which world generation keeps busy (a few copies a second); the
+  copies to build are sorted (in view first) before the 2 ms budget starts, which counts the
+  building alone (sorting 26 000 used it all, and those out of view were never built); a still
+  copy is looked at once in sixteen ticks; the choice sorts only when something is cut or the
+  spyglass is up, and the guessed mobs are worked out again only when what they depend on
+  changed (`Foresight.wantedIfChanged`). The `seedcrowd` scenario measures it all; the
+  *Statistics...* screen counts what is kept.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

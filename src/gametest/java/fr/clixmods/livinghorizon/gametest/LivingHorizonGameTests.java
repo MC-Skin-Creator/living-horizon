@@ -37,6 +37,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.RestingImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingLoopScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingMountScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.SeedCrowdScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.SeedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ServerWithoutModScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ShoreScenario;
@@ -75,6 +76,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new FarFogScenario(),
             new RememberedMobsScenario(),
             new SeedMobsScenario(),
+            new SeedCrowdScenario(),
             new OverVoidScenario(),
             new MannequinsScenario(),
             new VehiclesScenario(),

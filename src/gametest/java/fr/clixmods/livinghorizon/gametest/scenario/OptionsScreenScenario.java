@@ -53,6 +53,7 @@ public final class OptionsScreenScenario implements Scenario {
                     look(context, language + "-debug", () -> new DebugScreen(null), problems);
                     look(context, language + "-boxes", () -> new BoxesScreen(null), problems);
                     look(context, language + "-outlines", () -> new OutlinesScreen(null), problems);
+                    look(context, language + "-stats", () -> new fr.clixmods.livinghorizon.ui.StatsScreen(null), problems);
                 }
             } finally {
                 setLanguage(context, "en_us");

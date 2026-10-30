@@ -141,6 +141,8 @@ public final class MobMemory {
         transient float serverBody = Float.NaN, serverHead = Float.NaN;
         /** Too small or too far for its animation to show; kept between ticks for the hysteresis. */
         transient boolean still;
+        /** The last choice that drew it ({@code MobMemory.choose}). */
+        transient int chosenIn;
         /** When it was last drawn, in nanoseconds; 0 if never. */
         transient long drawnAt;
 
@@ -170,6 +172,10 @@ public final class MobMemory {
     private static final long FREEZE_AFTER = 500_000_000L;
     /** Grounds asked for per tick, at most: a copy of a few sections each here, the rest off the game's thread. */
     private static final int READS_PER_TICK = 6;
+    /** Saved data this short (a mob foreseen or built from what the server said) is read at once, never queued. */
+    private static final int READ_AT_ONCE = 512;
+    /** Copies the player sees are built first: this far either side of where they look. */
+    private static final double SEEN_COS = Math.cos(Math.toRadians(70));
     /**
      * Ticks before a ground read with columns missing is read again - the far world may not
      * be open yet, as when the world was just entered - doubled each time, up to a minute.
@@ -232,6 +238,34 @@ public final class MobMemory {
 
     public int size() {
         return mobs.size();
+    }
+
+    /** Choices made so far, each copy marked with the last that drew it. */
+    private int choices;
+
+    /** Copies built last tick, and how many waited to be when it began. */
+    private int lastBuilds, lastCandidates;
+
+    /** How many mobs are remembered, and of which kind, for the Statistics screen. */
+    public record Stats(int remembered, int met, int shared, int guessed, int chosen, int built, int waiting,
+                        int reading, int builtLastTick, int candidatesLastTick, @Nullable Path file) {
+    }
+
+    public Stats stats() {
+        int met = 0, shared = 0, guessed = 0, built = 0, waiting = 0, reading = 0;
+        for (Remembered mob : mobs.values()) {
+            if (mob.fromPack) shared++;
+            else if (mob.foreseenHere) guessed++;
+            else met++;
+        }
+        for (Remembered mob : shown) {
+            if (mob.puppet() != null) built++;
+            else if (mob.waiting()) {
+                waiting++;
+                if (mob.parsed != null && !mob.parsed.isDone()) reading++;
+            }
+        }
+        return new Stats(mobs.size(), met, shared, guessed, shown.size(), built, waiting, reading, lastBuilds, lastCandidates, file);
     }
 
     /** The mobs and boats the server sends right now. */
@@ -719,8 +753,9 @@ public final class MobMemory {
             scoping = self.isScoping();
             chooseSoon = true;
         }
-        // New ones found, or the spyglass moving: those where it looks are taken at once.
-        boolean foreseeNow = clock % 5 == 0 && (foresight.takeFresh() || scoping);
+        // Through the spyglass, those where it looks are taken at once; otherwise once a second,
+        // not at every batch found, which would go through thousands of mobs each time.
+        boolean foreseeNow = scoping && clock % 5 == 0;
         long following = Profile.begin(Profile.Section.TICK_MOBS_FOLLOW);
         try {
             followServer(level, dimension);
@@ -734,11 +769,11 @@ public final class MobMemory {
                 if (clock % 20 == 0) {
                     lastPack = pack;
                     if (pack != null) sync(pack);
-                    foreseen(foresight.wanted(selfX, selfY, selfZ, config), dimension);
+                    foresee(config, dimension);
                     learnReach();
                     reconcile(level, dimension, renderDistanceBlocks);
                 } else if (foreseeNow) {
-                    foreseen(foresight.wanted(selfX, selfY, selfZ, config), dimension);
+                    foresee(config, dimension);
                 }
                 choose(dimension, config);
             } finally {
@@ -772,24 +807,50 @@ public final class MobMemory {
         boolean background = config.optBackgroundBuild;
         long budget = System.nanoTime() + BUILD_BUDGET;
         int reads = 0;
+        // Those the player sees first, the nearest first, then the others: sorted out before the
+        // budget starts, which counts the building alone, however many wait.
+        int builds = 0, unbuilt = 0;
+        if (background) {
+            Vec3 sight = self.getViewVector(1f);
+            List<Remembered> seen = new ArrayList<>(), unseen = new ArrayList<>();
+            for (Remembered mob : shown) {
+                if (mob.gone || mob.handover != null || mob.puppet != null || mob.failed) continue;
+                (seen(mob, sight) ? seen : unseen).add(mob);
+            }
+            unbuilt = seen.size() + unseen.size();
+            long started = System.nanoTime();
+            budget = started + BUILD_BUDGET;
+            building:
+            for (List<Remembered> group : List.of(seen, unseen)) {
+                for (Remembered mob : group) {
+                    if (System.nanoTime() >= budget) break building;
+                    if (mob.parsed == null) mob.parsed = read(mob.nbt, true);
+                    if (!mob.parsed.isDone()) continue;
+                    build(mob, level);
+                    builds++;
+                }
+            }
+            buildNanos += System.nanoTime() - started;
+        }
+        lastBuilds = builds;
+        lastCandidates = unbuilt;
         for (Remembered mob : shown) {
             if (mob.gone || mob.handover != null) continue;
             if (mob.puppet == null && !mob.failed) {
                 // The saved data is read on a background thread; the puppet is made here,
                 // where the world is, as long as this tick's budget lasts.
-                if (mob.parsed == null) {
-                    String nbt = mob.nbt;
-                    mob.parsed = background
-                            ? CompletableFuture.supplyAsync(() -> parse(nbt), Util.backgroundExecutor())
-                            : CompletableFuture.completedFuture(parse(nbt));
-                }
-                if (mob.parsed.isDone() && (!background || System.nanoTime() < budget)) {
+                if (mob.parsed == null) mob.parsed = read(mob.nbt, background);
+                if (mob.parsed.isDone() && !background) {
                     long building = System.nanoTime();
                     build(mob, level);
                     buildNanos += System.nanoTime() - building;
                 }
             }
             if (mob.puppet == null) continue;
+            // Too small or far to show its animation, standing where it was put: looked at again
+            // once in sixteen ticks, each on a tick of its own. Thousands far off cost little then.
+            if (mob.still && mob.motion != null && mob.motion.placed() && mob.handover == null
+                    && ((clock + mob.id.hashCode()) & 15) != 0) continue;
             if (mob.puppet instanceof LivingEntity living) {
                 // Not drawn for a moment: it keeps its place, as a position and nothing more.
                 if (config.optFreezeHidden && mob.motion != null && mob.motion.placed()
@@ -992,13 +1053,26 @@ public final class MobMemory {
             mob.z = found.z();
             mob.foreseenHere = true;
             mobs.put(id, mob);
-            chooseSoon = true;
+            // Where the spyglass looks, drawn at once; otherwise at the next choice, within a second,
+            // not a choice through thousands of mobs at every batch found.
+            if (scoping) chooseSoon = true;
         }
         List<UUID> dropped = new ArrayList<>();
         for (Remembered mob : mobs.values()) {
             if (mob.foreseenHere && !mob.fromPack && !kept.contains(mob.id)) dropped.add(mob.id);
         }
         dropped.forEach(this::forget);
+    }
+
+    /** The foreseen mobs worth remembering, worked out again only when what they depend on changed. */
+    private void foresee(FarConfig config, String dimension) {
+        long started = Profile.begin(Profile.Section.TICK_MOBS_FORESEE);
+        try {
+            List<PositionsMessage.Mob> wanted = foresight.wantedIfChanged(selfX, selfY, selfZ, config);
+            if (wanted != null) foreseen(wanted, dimension);
+        } finally {
+            Profile.end(Profile.Section.TICK_MOBS_FORESEE, started);
+        }
     }
 
     /**
@@ -1128,12 +1202,21 @@ public final class MobMemory {
 
     private void reconcile(ClientLevel level, String dimension, int renderDistanceBlocks) {
         List<Remembered> missing = new ArrayList<>();
+        double bound = Math.max(24, renderBlocks);
         for (Remembered mob : mobs.values()) {
+            // Past the render distance it is never in range: nothing more looked up for it.
+            double dx = mob.x - selfX, dz = mob.z - selfZ, across = dx * dx + dz * dz;
+            if (across >= bound * bound) {
+                mob.missingChecks = 0;
+                continue;
+            }
             if (!mob.dimension.equals(dimension) || !isHere(mob) || live.containsKey(mob.id)) continue;
-            EntityType<?> type = type(mob);
-            double range = nearRange(type);
-            boolean inRange = Math.hypot(mob.x - selfX, mob.z - selfZ) < range
-                    && level.hasChunk((int) Math.floor(mob.x) >> 4, (int) Math.floor(mob.z) >> 4);
+            boolean inRange = false;
+            {
+                double range = nearRange(type(mob));
+                inRange = across < range * range
+                        && level.hasChunk((int) Math.floor(mob.x) >> 4, (int) Math.floor(mob.z) >> 4);
+            }
             mob.missingChecks = inRange ? mob.missingChecks + 1 : 0;
             if (mob.missingChecks >= 5) missing.add(mob);
         }
@@ -1183,6 +1266,23 @@ public final class MobMemory {
         }
     }
 
+    /**
+     * A mob's saved data, read: at once when short, otherwise on a background thread when
+     * {@code background} (the game's own, busy with its world as it generates).
+     */
+    private static CompletableFuture<CompoundTag> read(String nbt, boolean background) {
+        return background && nbt.length() > READ_AT_ONCE
+                ? CompletableFuture.supplyAsync(() -> parse(nbt), Util.backgroundExecutor())
+                : CompletableFuture.completedFuture(parse(nbt));
+    }
+
+    /** Whether a copy is in front of the player, across the ground, or right by them. */
+    private boolean seen(Remembered mob, Vec3 sight) {
+        double dx = mob.x - selfX, dz = mob.z - selfZ, length = Math.sqrt(dx * dx + dz * dz);
+        double flat = Math.sqrt(sight.x * sight.x + sight.z * sight.z);
+        return length < 16 || flat < 1e-3 || (dx * sight.x + dz * sight.z) / (length * flat) >= SEEN_COS;
+    }
+
     /** The nearest few, in this dimension: the ones drawn until the next choice. */
     private void choose(String dimension, FarConfig config) {
         chooseSoon = false;
@@ -1196,28 +1296,35 @@ public final class MobMemory {
             if (!wanted.contains(mob.type) && !(config.rememberNamedMobs && mob.named)) continue;
             boolean creature = creature(mob);
             if (!config.shows(creature)) continue;
-            if (SeedDraws.foreseen(mob.id) && (!config.seedMobs || generated(mob))) continue;
             mob.distance = distance(mob.x, mob.y, mob.z);
+            // Only a chunk within the render distance can be held: no lookup for those past it.
+            if (SeedDraws.foreseen(mob.id) && (!config.seedMobs
+                    || mob.distance < renderBlocks + 64 && generated(mob))) continue;
             (creature ? creatures : others).add(mob);
         }
-        List<Remembered> chosen = new ArrayList<>();
+        List<Remembered> chosen = new ArrayList<>(creatures.size() + others.size());
         for (List<Remembered> here : List.of(creatures, others)) {
-            // Where the spyglass looks first, however far: the player is looking for them there.
-            for (Remembered mob : here) {
-                if (foresight.inScope(mob.x, mob.y + 0.5, mob.z)) mob.distance -= 1e9;
+            int most = config.most(here == creatures, here.size());
+            // All of them drawn and no spyglass: no order to put them in. Otherwise the nearest,
+            // where the spyglass looks first, however far: the player is looking for them there.
+            if (most < here.size() || scoping) {
+                for (Remembered mob : here) {
+                    if (foresight.inScope(mob.x, mob.y + 0.5, mob.z)) mob.distance -= 1e9;
+                }
+                here.sort(Comparator.comparingDouble(mob -> mob.distance));
+                for (Remembered mob : here) {
+                    if (mob.distance < 0) mob.distance += 1e9;
+                }
             }
-            here.sort(Comparator.comparingDouble(mob -> mob.distance));
-            for (Remembered mob : here) {
-                if (mob.distance < 0) mob.distance += 1e9;
-            }
-            chosen.addAll(here.subList(0, config.most(here == creatures, here.size())));
+            chosen.addAll(most < here.size() ? here.subList(0, most) : here);
         }
-        Set<Remembered> kept = Collections.newSetFromMap(new IdentityHashMap<>());
-        kept.addAll(chosen);
+        // Those no longer drawn let their copy go: marked by this choice's number, no set of thousands.
+        int choice = ++choices;
+        for (Remembered mob : chosen) mob.chosenIn = choice;
         for (Remembered mob : shown) {
-            if (!kept.contains(mob)) mob.puppet = null;
+            if (mob.chosenIn != choice) mob.puppet = null;
         }
-        shown = Collections.unmodifiableList(new ArrayList<>(chosen));
+        shown = Collections.unmodifiableList(chosen);
     }
 
     /** A mob rather than another entity (a boat, a vehicle, a mannequin); one of a kind not known here is taken for a mob. */
