@@ -1228,9 +1228,13 @@ public final class FarDepth {
             uniform sampler2D drawn;
             void main() {
                 ivec2 at = ivec2(gl_FragCoord.xy);
-                float now = texelFetch(drawn, at, 0).r;
-                // Still what Voxy wrote: no entity here, give the depth back as it was.
-                gl_FragDepth = now == texelFetch(written, at, 0).r ? texelFetch(saved, at, 0).r : now;
+                // An entity drawn here: its depth is left as it is, never written again. Before
+                // 1.21.5 the depth is fixed-point, and a value read and written back can come out
+                // one step off: Distant Horizons' fade mask, which looks for the entities' exact
+                // depth, then found none of them and painted its terrain over every far figure.
+                if (texelFetch(drawn, at, 0).r != texelFetch(written, at, 0).r) discard;
+                // Still what the far terrain wrote: no entity here, give the depth back as it was.
+                gl_FragDepth = texelFetch(saved, at, 0).r;
             }
             """;
 

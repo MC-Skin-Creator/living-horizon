@@ -21,6 +21,7 @@
 
 #### Fixed
 - **Distant mobs sharp in Distant Horizons' fog** — distant mobs no longer stay sharp against Distant Horizons' fogged terrain: they fade into its fog like the land around them, without a shader pack (Minecraft 1.21.6 and later).
+- **Distant mobs gone over Distant Horizons** — distant mobs, players and vehicles no longer vanish over Distant Horizons' terrain with *Hide Behind Far Terrain* on, without a shader pack (Minecraft 1.21.4 and older).
 
 ## 0.14.0 — 2026-10-29
 

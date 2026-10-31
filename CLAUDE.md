@@ -350,6 +350,11 @@ come back, add it here in the same pull request: this file is what the next sess
   Distant Horizons reports (`getDepthRange`, `getDepthDirection`: reversed and 0..1 on 26.2,
   empty at 0). Measured: sky 0, ground at 53 blocks 0.067, horizon 0.005. `DhDepth.frame`
   combines the two from 26.2 only; older versions keep OpenGL's -1..1.
+- **Every far figure gone over Distant Horizons' terrain before 1.21.5** (mobs, players, vehicles;
+  back with *Hide Behind Far Terrain* off; no shader pack): its fade painted over them, since the
+  fade mask found none of their pixels. The depth is fixed-point there, and a value read and
+  written back through `gl_FragDepth` can come out one step off: `FarDepth`'s restore leaves the
+  entities' pixels alone (`discard`), never writes them again, and the mask's exact comparison holds.
 - **Before 1.21.5** the game's depth texture has an unsized format (`GL_DEPTH_COMPONENT`):
   `glTextureStorage2D` refuses it, so anything copied from it is allocated the way the game
   allocates its own. A copy "with no size" or an all-white depth view is this.

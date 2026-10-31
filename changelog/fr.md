@@ -21,6 +21,7 @@
 
 #### Corrections
 - **Créatures lointaines nettes dans le brouillard de Distant Horizons** — les créatures lointaines ne restent plus nettes devant le terrain de Distant Horizons dans le brouillard : elles s'y fondent comme le terrain autour d'elles, sans pack de shaders (Minecraft 1.21.6 et plus).
+- **Créatures lointaines disparues sur Distant Horizons** — les créatures, joueurs et véhicules lointains ne disparaissent plus sur le terrain de Distant Horizons avec *Masquer par le relief* activé, sans pack de shaders (Minecraft 1.21.4 et moins).
 
 ## 0.14.0 — 2026-10-29
 
