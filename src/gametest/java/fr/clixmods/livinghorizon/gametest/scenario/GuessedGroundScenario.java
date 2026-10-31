@@ -72,6 +72,7 @@ public final class GuessedGroundScenario implements Scenario {
     /** Guessed mobs whose column is read through Distant Horizons' API, a quarter of a second each. */
     private static final int SAMPLE = 40;
     private static final long REFERENCE_NANOS = 30_000_000_000L;
+    private static boolean failureLogged;
 
     /**
      * {sampled, with terrain in Distant Horizons, void though terrain, void without, unknown,
@@ -137,7 +138,12 @@ public final class GuessedGroundScenario implements Scenario {
             column.setAccessible(true);
             return column.invoke(lod, world, x, z) != null;
         } catch (ReflectiveOperationException e) {
-            // Unanswered, or no world: not counted.
+            // Unanswered, or no world: not counted, and the first reason logged.
+            if (!failureLogged) {
+                failureLogged = true;
+                Throwable cause = e.getCause() != null ? e.getCause() : e;
+                Scene.log("guessedground: a direct read of Distant Horizons gave no answer: " + cause);
+            }
             return null;
         }
     }
