@@ -1,5 +1,6 @@
 package fr.clixmods.livinghorizon.gametest.scenario;
 
+import fr.clixmods.livinghorizon.compat.DrawnGround;
 import fr.clixmods.livinghorizon.compat.LodWorld;
 import fr.clixmods.livinghorizon.debug.DebugMarks;
 import fr.clixmods.livinghorizon.gametest.Scenario;
@@ -16,7 +17,6 @@ import net.minecraft.world.phys.Vec3;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Guessed mobs over Distant Horizons' terrain (`--with distanthorizons`, 26.3): with <i>Only Over
@@ -55,14 +55,8 @@ public final class GuessedGroundScenario implements Scenario {
             int[] last = null;
             for (int round = 0; round < 18; round++) {
                 context.waitTicks(200);
-                int[] counts = count(context);
+                int[] counts = count(context, (round + 1) * 10);
                 last = counts;
-                Scene.log("guessedground after " + (round + 1) * 10 + " s: guessed chosen " + counts[0]
-                        + ", Distant Horizons has their column " + counts[1] + ", judged void with terrain there " + counts[2]
-                        + ", void without terrain " + counts[3] + ", unknown " + counts[4] + ", terrain " + counts[5]
-                        + "; marks void " + context.computeOnClient(minecraft -> DebugMarks.count(DebugMarks.Mark.VOID))
-                        + "; " + context.computeOnClient(minecraft -> LodWorld.status() + " " + LodWorld.details()
-                        + " drawn to " + (int) LodWorld.drawnDistance()));
                 if (counts[1] > 20 && round >= 5) break;
             }
             Scene.screenshot(context, this, "guessed");
@@ -75,44 +69,45 @@ public final class GuessedGroundScenario implements Scenario {
         }
     }
 
-    /**
-     * {chosen, with terrain in Distant Horizons, void though terrain, void without, unknown, terrain}
-     * for the guessed mobs chosen now: Distant Horizons read directly, the mod's answer asked of
-     * DrawnGround as the frame does.
-     */
+    /** Guessed mobs whose column is read through Distant Horizons' API, a quarter of a second each. */
     private static final int SAMPLE = 40;
+    private static final long REFERENCE_NANOS = 30_000_000_000L;
 
-    private static int[] count(ClientGameTestContext context) {
+    /**
+     * {sampled, with terrain in Distant Horizons, void though terrain, void without, unknown,
+     * terrain} for a sample of the guessed mobs chosen now: the mod's answer asked of DrawnGround
+     * as the frame does, then Distant Horizons read directly on this thread, outside the mod's
+     * readers, whose queue the guessed mobs' own ground reads fill.
+     */
+    private static int[] count(ClientGameTestContext context, int seconds) {
         List<double[]> spots = context.computeOnClient(minecraft -> {
             List<double[]> found = new ArrayList<>();
             for (MobMemory.Remembered mob : FarPlayerTracker.get().mobs().shown()) {
                 if (SeedDraws.foreseen(mob.id())) found.add(new double[]{mob.x(), mob.z()});
             }
-            // Read through Distant Horizons' API, a quarter of a second a column: a sample.
             List<double[]> sample = new ArrayList<>();
-            for (int i = 0; i < Math.min(SAMPLE, found.size()); i++) sample.add(found.get(i * found.size() / Math.min(SAMPLE, found.size())));
+            int n = Math.min(SAMPLE, found.size());
+            for (int i = 0; i < n; i++) sample.add(found.get(i * found.size() / n));
             return sample;
         });
-        int[] xs = new int[spots.size()], zs = new int[spots.size()];
-        for (int i = 0; i < spots.size(); i++) {
-            xs[i] = (int) Math.floor(spots.get(i)[0]);
-            zs[i] = (int) Math.floor(spots.get(i)[1]);
-        }
-        LodWorld.Surface[] surfaces;
-        try {
-            surfaces = LodWorld.surfaces(xs, zs).get(120, TimeUnit.SECONDS);
-        } catch (Exception e) {
-            throw new AssertionError("reading Distant Horizons failed: " + e, e);
-        }
         String[] answers = context.computeOnClient(minecraft -> {
             String[] out = new String[spots.size()];
             for (int i = 0; i < out.length; i++) out[i] = answer(minecraft, spots.get(i)[0], spots.get(i)[1]);
             return out;
         });
+        int[] answered = new int[3];
+        for (String answer : answers) answered[answer.equals("VOID") ? 0 : answer.equals("UNKNOWN") ? 1 : 2]++;
+        Scene.log("guessedground after " + seconds + " s: the mod says, of " + answers.length + " guessed mobs sampled: void "
+                + answered[0] + ", unknown " + answered[1] + ", terrain " + answered[2] + "; marks void "
+                + context.computeOnClient(minecraft -> DebugMarks.count(DebugMarks.Mark.VOID)) + "; "
+                + context.computeOnClient(minecraft -> DrawnGround.status() + "; " + LodWorld.status() + " " + LodWorld.details()
+                + " drawn to " + (int) LodWorld.drawnDistance()));
         int[] counts = new int[6];
-        counts[0] = spots.size();
-        for (int i = 0; i < surfaces.length; i++) {
-            boolean terrain = surfaces[i] != null;
+        long started = System.nanoTime();
+        for (int i = 0; i < spots.size() && System.nanoTime() - started < REFERENCE_NANOS; i++) {
+            Boolean terrain = column((int) Math.floor(spots.get(i)[0]), (int) Math.floor(spots.get(i)[1]));
+            if (terrain == null) continue;
+            counts[0]++;
             if (terrain) counts[1]++;
             switch (answers[i]) {
                 case "VOID" -> counts[terrain ? 2 : 3]++;
@@ -120,7 +115,31 @@ public final class GuessedGroundScenario implements Scenario {
                 default -> counts[5]++;
             }
         }
+        Scene.log("guessedground after " + seconds + " s: read directly " + counts[0] + " in " + (System.nanoTime() - started) / 1_000_000
+                + " ms, Distant Horizons has their column " + counts[1] + ", judged void with terrain there " + counts[2]
+                + ", void without terrain " + counts[3] + ", unknown " + counts[4] + ", terrain " + counts[5]);
         return counts;
+    }
+
+    /** Whether Distant Horizons holds blocks at this column, through its API; null when it did not answer. */
+    private static Boolean column(int x, int z) {
+        try {
+            Method source = LodWorld.class.getDeclaredMethod("source");
+            source.setAccessible(true);
+            Object lod = source.invoke(null);
+            if (lod == null) return null;
+            Class<?> type = Class.forName("fr.clixmods.livinghorizon.compat.LodSource");
+            Method open = LodWorld.class.getDeclaredMethod("open", type);
+            open.setAccessible(true);
+            Object world = open.invoke(null, lod);
+            if (world == null) return null;
+            Method column = type.getDeclaredMethod("column", Object.class, int.class, int.class);
+            column.setAccessible(true);
+            return column.invoke(lod, world, x, z) != null;
+        } catch (ReflectiveOperationException e) {
+            // Unanswered, or no world: not counted.
+            return null;
+        }
     }
 
     private static String answer(Minecraft minecraft, double x, double z) {
