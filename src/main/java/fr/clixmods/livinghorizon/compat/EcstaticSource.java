@@ -92,7 +92,7 @@ final class EcstaticSource implements LodSource {
         return true;
     }
 
-    private void link() throws ReflectiveOperationException {
+    private void link() throws Throwable {
         String p = EcstaticLink.PACKAGE;
         MethodHandles.Lookup lookup = MethodHandles.publicLookup();
         Class<?> mod = Class.forName(p + "Ecstatic");
