@@ -129,6 +129,10 @@ must look exactly the same with Living Horizon installed as without it:
 Writing the mobs into Voxy's depth over the whole screen, for Photon's shadows, broke Voxy's
 water under Photon. Check any change to `compat/` against this section.
 
+Supporting a new far-terrain mod, or saying how well one is supported: the `far-terrain-mod`
+skill (`.claude/skills/far-terrain-mod/`), whose `support.md` is updated by any pull request
+that changes the support of Voxy, Distant Horizons or another such mod.
+
 ## Easter eggs are secret
 
 The mod hides a few easter eggs, in `ambient/` (the `eeN` commands in `LivingHorizonCommand`
