@@ -82,6 +82,9 @@
 #### Fixed
 - **Benchmark command reserved for testing** — `/livinghorizon benchmark` is no longer offered to players: it is only meant for testing the mod.
 
+#### Fixed
+- **Glowing edges on distant mobs** — distant mobs no longer have a glowing, shimmering outline over Distant Horizons when the anti-aliasing mod QDAA is installed too (Minecraft 1.20.1 to 1.21.4).
+
 ## 0.12.0 — 2026-10-23
 
 ### Server

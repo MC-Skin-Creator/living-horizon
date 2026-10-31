@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * What OpenGL said of a texture (its size and format) or of a framebuffer's depth attachment,
+ * What OpenGL said of a texture (its size, format and filters) or of a framebuffer's depth attachment,
  * kept rather than asked every frame. With the driver on a thread of its own (NVIDIA's threaded
  * optimisation, Mesa's glthread), each question stops the game until the driver has caught up.
  *
@@ -25,6 +25,8 @@ final class GlCache {
 
     /** A texture's name to its width, height and internal format. */
     private static final Map<Integer, int[]> TEXTURES = new HashMap<>();
+    /** A texture's name to its minifying and magnifying filters, for the few textures asked. */
+    private static final Map<Integer, int[]> FILTERS = new HashMap<>();
     /** A framebuffer's name and attachment point to the attachment's type and name. */
     private static final Map<Long, int[]> ATTACHMENTS = new HashMap<>();
     private static int screenWidth, screenHeight;
@@ -41,6 +43,7 @@ final class GlCache {
         screenHeight = main.height;
         refreshed = now;
         TEXTURES.clear();
+        FILTERS.clear();
         ATTACHMENTS.clear();
     }
 
@@ -69,15 +72,33 @@ final class GlCache {
         return texture(texture)[2];
     }
 
+    /**
+     * The texture's minifying and magnifying filters, in that order. Kept like its size: whoever
+     * changes them for a while puts them back before the cache could be asked again.
+     */
+    static int[] filters(int texture) {
+        check();
+        int[] known = FILTERS.get(texture);
+        if (known == null) {
+            known = new int[]{
+                    GL45C.glGetTextureParameteri(texture, GL11C.GL_TEXTURE_MIN_FILTER),
+                    GL45C.glGetTextureParameteri(texture, GL11C.GL_TEXTURE_MAG_FILTER)};
+            FILTERS.put(texture, known);
+        }
+        return known;
+    }
+
     /** A texture this mod has just made, at this size and format: nothing to ask. */
     static void made(int texture, int width, int height, int format) {
         check();
         TEXTURES.put(texture, new int[]{width, height, format});
+        FILTERS.remove(texture);
     }
 
     /** A texture this mod deleted: its name may come back for another one. */
     static void deleted(int texture) {
         TEXTURES.remove(texture);
+        FILTERS.remove(texture);
     }
 
     private static int[] attachment(int framebuffer, int attachment) {

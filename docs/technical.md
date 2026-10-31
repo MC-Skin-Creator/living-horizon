@@ -969,7 +969,11 @@ entities).
 
 Without a shader pack, Distant Horizons fades the game's picture into its terrain after the
 entities. `FarDepth.beforeFade` keeps that fade off our figures (`optDhFade`); otherwise it
-paints its terrain over distant mobs.
+paints its terrain over distant mobs. It empties the figures' depth, which the fade reads as
+sky, and while the fade runs it makes the game's depth texture unfiltered: QDAA turns its
+filters to linear, and a figure's edge read a hair nearer than the sky beside the game's
+terrain was taken for ground at the far plane and painted over. The filters come back right
+after (`FarDepth.refilter`).
 
 **On 26.3**, with Vulkan, or with OpenGL over Distant Horizons without a shader pack (unless
 Distant Horizons draws with OpenGL itself, as it does with Iris installed), all of this goes
@@ -1003,7 +1007,7 @@ every `glGet*`, `glIsEnabled` or `glGetQueryObject` stops the game until the dri
 up. The depth steps and the occlusion test keep those few:
 
 - **Uniform locations** are looked up once, when each program is made (`GlPrograms.uniforms`).
-- **Texture sizes and formats, framebuffer attachments** come from `compat/GlCache`. It asks
+- **Texture sizes, formats and filters, framebuffer attachments** come from `compat/GlCache`. It asks
   again once the main render target changes size, and once a second whatever happens. The
   copies `FarDepth` makes are noted as they are made (`GlCache.made`, `deleted`), never asked
   about.

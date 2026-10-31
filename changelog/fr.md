@@ -82,6 +82,9 @@
 #### Corrections
 - **Commande de benchmark réservée aux tests** — `/livinghorizon benchmark` n'est plus proposée aux joueurs : elle sert uniquement à tester le mod.
 
+#### Corrections
+- **Contours lumineux sur les mobs lointains** — les mobs lointains n'ont plus de contour lumineux qui scintille sur Distant Horizons quand le mod d'anticrénelage QDAA est installé aussi (Minecraft 1.20.1 à 1.21.4).
+
 ## 0.12.0 — 2026-10-23
 
 ### Serveur
