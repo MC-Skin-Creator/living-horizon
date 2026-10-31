@@ -1158,6 +1158,10 @@ public final class MobMemory {
             CompoundTag tag = mob.parsed == null ? null : mob.parsed.join();
             if (entity == null || tag == null) {
                 mob.failed = true;
+                if (UNBUILT.add(mob.type)) {
+                    LivingHorizonClient.LOGGER.warn("Could not make a copy of {}: {}", mob.type,
+                            entity == null ? "the game would not make one" : "its saved data does not read");
+                }
                 return;
             }
             EntityNbt.load(entity, level, tag);
@@ -1184,8 +1188,14 @@ public final class MobMemory {
             mob.puppet = entity;
         } catch (Exception e) {
             mob.failed = true;
+            if (UNBUILT.add(mob.type)) {
+                LivingHorizonClient.LOGGER.warn("Could not make a copy of {} from its saved data: it is not drawn far away", mob.type, e);
+            }
         }
     }
+
+    /** The kinds whose copy could not be made from their saved data, said once each in the log. */
+    private static final Set<String> UNBUILT = Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
 
     /**
      * A second copy of a remembered mob, the same to look at (coat, variant) but with no
