@@ -20,6 +20,7 @@
 
 #### Fixed
 - **Distant mobs sharp in Distant Horizons' fog** — distant mobs no longer stay sharp against Distant Horizons' fogged terrain: they fade into its fog like the land around them, without a shader pack (Minecraft 1.21.6 and later).
+- **Crash on Mac** — the game no longer crashes a second after joining a world on a Mac or an older graphics card, and distant mobs still hide behind the far terrain there.
 
 ## 0.14.0 — 2026-10-29
 

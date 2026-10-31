@@ -13,14 +13,11 @@ import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.opengl.GL11C;
-import org.lwjgl.opengl.GL12C;
 import org.lwjgl.opengl.GL13C;
 import org.lwjgl.opengl.GL14C;
 import org.lwjgl.opengl.GL20C;
 import org.lwjgl.opengl.GL30C;
 import org.lwjgl.opengl.GL33C;
-import org.lwjgl.opengl.GL43C;
-import org.lwjgl.opengl.GL45C;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -561,9 +558,9 @@ public final class FarDepth {
                 viewProgram = GlPrograms.fullScreen("Depth view", VIEW, "depth");
                 viewUniforms = GlPrograms.uniforms(viewProgram, "area", "size", "planes", "terms", "depthLayout");
             }
-            if (viewTarget == 0) viewTarget = GL45C.glCreateFramebuffers();
+            if (viewTarget == 0) viewTarget = GlCalls.createFramebuffer();
             // Every frame: see attachDepth.
-            GL45C.glNamedFramebufferTexture(viewTarget, GL30C.GL_COLOR_ATTACHMENT0, colorId, 0);
+            GlCalls.framebufferTexture(viewTarget, GL30C.GL_COLOR_ATTACHMENT0, colorId);
             int screenW = minecraft.getMainRenderTarget().width, screenH = minecraft.getMainRenderTarget().height;
             int w = screenW * 2 / 5, h = screenH * 2 / 5, x = screenW - w - 8, y = 8;
             GlState gl = GlState.save(1, GlState.COLOUR);
@@ -587,7 +584,7 @@ public final class FarDepth {
                 GL20C.glUniform2f(viewUniforms[4], DepthFar.reversed() ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f);
                 GL30C.glBindVertexArray(vertexArray);
                 GL33C.glBindSampler(0, 0);
-                GL45C.glBindTextureUnit(0, mode == 1 ? saved : mode == 2 ? written : FRAME.lateShown ? lateDrawn : drawn);
+                GlCalls.bindTextureUnit(0, mode == 1 ? saved : mode == 2 ? written : FRAME.lateShown ? lateDrawn : drawn);
                 GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3);
             } finally {
                 gl.restore();
@@ -831,7 +828,7 @@ public final class FarDepth {
             if (inverse != null) GL20C.glUniformMatrix4fv(dhUniforms[6], false, inverse.get(DH_INVERSE));
             GL30C.glBindVertexArray(vertexArray);
             GL33C.glBindSampler(0, dhSampler);
-            GL45C.glBindTextureUnit(0, dh.texture());
+            GlCalls.bindTextureUnit(0, dh.texture());
             GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3);
         } finally {
             gl.restore();
@@ -901,7 +898,7 @@ public final class FarDepth {
             GL30C.glBindVertexArray(vertexArray);
             for (int unit = 0; unit < 3; unit++) {
                 GL33C.glBindSampler(unit, 0);
-                GL45C.glBindTextureUnit(unit, unit == 0 ? before : unit == 1 ? withFar : after);
+                GlCalls.bindTextureUnit(unit, unit == 0 ? before : unit == 1 ? withFar : after);
             }
             GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3);
         } finally {
@@ -1004,7 +1001,7 @@ public final class FarDepth {
             GL30C.glBindVertexArray(vertexArray);
             for (int unit = 0; unit < 2; unit++) {
                 GL33C.glBindSampler(unit, 0);
-                GL45C.glBindTextureUnit(unit, unit == 0 ? written : drawn);
+                GlCalls.bindTextureUnit(unit, unit == 0 ? written : drawn);
             }
             GL11C.glEnable(GL11C.GL_SCISSOR_TEST);
             for (int framebuffer : new int[]{voxyOpaqueTarget, voxyTranslucentTarget}) {
@@ -1027,13 +1024,12 @@ public final class FarDepth {
      * through it went to a picture of the old size that nobody reads any more.
      */
     static int attachDepth(int framebuffer, int depth) {
-        if (framebuffer == 0) framebuffer = GL45C.glCreateFramebuffers();
+        if (framebuffer == 0) framebuffer = GlCalls.createFramebuffer();
         int format = GlCache.format(depth);
         boolean stencil = format == GL30C.GL_DEPTH24_STENCIL8 || format == GL30C.GL_DEPTH32F_STENCIL8
                 || format == GL30C.GL_DEPTH_STENCIL;
-        if (!stencil) GL45C.glNamedFramebufferTexture(framebuffer, GL30C.GL_DEPTH_STENCIL_ATTACHMENT, 0, 0);
-        GL45C.glNamedFramebufferTexture(framebuffer,
-                stencil ? GL30C.GL_DEPTH_STENCIL_ATTACHMENT : GL30C.GL_DEPTH_ATTACHMENT, depth, 0);
+        if (!stencil) GlCalls.framebufferTexture(framebuffer, GL30C.GL_DEPTH_STENCIL_ATTACHMENT, 0);
+        GlCalls.framebufferTexture(framebuffer, stencil ? GL30C.GL_DEPTH_STENCIL_ATTACHMENT : GL30C.GL_DEPTH_ATTACHMENT, depth);
         return framebuffer;
     }
 
@@ -1110,13 +1106,13 @@ public final class FarDepth {
                 GL30C.glBindVertexArray(vertexArray);
                 for (int unit = 0; unit < 3; unit++) {
                     GL33C.glBindSampler(unit, 0);
-                    GL45C.glBindTextureUnit(unit, unit == 0 ? faded : unit == 1 ? written : drawn);
+                    GlCalls.bindTextureUnit(unit, unit == 0 ? faded : unit == 1 ? written : drawn);
                 }
                 GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3);
                 // The translucent step's figures, drawn after the solid ones: tested against the same copy.
                 if (FRAME.lateFade) {
-                    GL45C.glBindTextureUnit(1, lateWritten);
-                    GL45C.glBindTextureUnit(2, lateDrawn);
+                    GlCalls.bindTextureUnit(1, lateWritten);
+                    GlCalls.bindTextureUnit(2, lateDrawn);
                     GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3);
                 }
             } finally {
@@ -1171,13 +1167,13 @@ public final class FarDepth {
     // --- GPU objects ----------------------------------------------------------------------
 
     private static void copy(int from, int to) {
-        GL43C.glCopyImageSubData(from, GL11C.GL_TEXTURE_2D, 0, 0, 0, 0, to, GL11C.GL_TEXTURE_2D, 0, 0, 0, 0, width, height, 1);
+        GlCalls.copyDepth(from, to, width, height, format);
     }
 
     private static void prepare(int w, int h, int f) {
         if (program == 0) {
             program = GlPrograms.fullScreen("Depth restore", RESTORE, "saved", "written", "drawn");
-            vertexArray = GL45C.glCreateVertexArrays();
+            vertexArray = GlCalls.createVertexArray();
         }
         if (saved != 0 && w == width && h == height && f == format) return;
         for (int texture : new int[]{saved, written, drawn, faded, lateSaved, lateWritten, lateDrawn}) {
@@ -1197,25 +1193,7 @@ public final class FarDepth {
     }
 
     private static int texture() {
-        int texture = GL45C.glCreateTextures(GL11C.GL_TEXTURE_2D);
-        if (format == GL11C.GL_DEPTH_COMPONENT || format == GL30C.GL_DEPTH_STENCIL) {
-            // Before 1.21.5 the game's depth has an unsized format, which storage refuses and
-            // leaves the copy without a size: it is made the way the game makes its own, so
-            // that copying between the two stays allowed.
-            boolean stencil = format == GL30C.GL_DEPTH_STENCIL;
-            int previous = GL11C.glGetInteger(GL11C.GL_TEXTURE_BINDING_2D);
-            GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, texture);
-            GL11C.glTexImage2D(GL11C.GL_TEXTURE_2D, 0, format, width, height, 0, format,
-                    stencil ? GL30C.GL_UNSIGNED_INT_24_8 : GL11C.GL_FLOAT, (java.nio.ByteBuffer) null);
-            GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, previous);
-            GL45C.glTextureParameteri(texture, GL12C.GL_TEXTURE_MAX_LEVEL, 0);
-        } else {
-            GL45C.glTextureStorage2D(texture, 1, format, width, height);
-        }
-        GL45C.glTextureParameteri(texture, GL11C.GL_TEXTURE_MIN_FILTER, GL11C.GL_NEAREST);
-        GL45C.glTextureParameteri(texture, GL11C.GL_TEXTURE_MAG_FILTER, GL11C.GL_NEAREST);
-        GL45C.glTextureParameteri(texture, GL14C.GL_TEXTURE_COMPARE_MODE, GL11C.GL_NONE);
-        GL45C.glTextureParameteri(texture, GL43C.GL_DEPTH_STENCIL_TEXTURE_MODE, GL11C.GL_DEPTH_COMPONENT);
+        int texture = GlCalls.depthTexture(format, width, height);
         GlCache.made(texture, width, height, format);
         return texture;
     }

@@ -20,6 +20,7 @@
 
 #### Corrections
 - **Créatures lointaines nettes dans le brouillard de Distant Horizons** — les créatures lointaines ne restent plus nettes devant le terrain de Distant Horizons dans le brouillard : elles s'y fondent comme le terrain autour d'elles, sans pack de shaders (Minecraft 1.21.6 et plus).
+- **Plantage sur Mac** — le jeu ne plante plus une seconde après avoir rejoint un monde sur Mac ou sur une carte graphique ancienne, et les créatures lointaines s'y cachent toujours derrière le terrain lointain.
 
 ## 0.14.0 — 2026-10-29
 
