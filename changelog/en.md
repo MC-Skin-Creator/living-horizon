@@ -34,6 +34,13 @@
 - **Distant mobs visible on the far terrain** — Distant mobs, estimated ones included, now stay visible on the far terrain, instead of being hidden as if nothing were under them: for a while after a world opens, among thousands of estimated mobs, or when Voxy or Distant Horizons is slow to answer.
 - **Distant Horizons' fog on mobs** — Distant mobs now get the same fog as Distant Horizons' terrain and fade with it, instead of standing out sharply against the landscape. (Minecraft 1.21.6 and later, without shaders.)
 
+#### Improved
+- **Ice and Fire flying mobs seen from every angle** — Ice and Fire's dragons, amphitheres and hippogryphs now have simplified images seen from below and from above, like phantoms and planes, instead of from the side only. They look right as they fly overhead or when you look down on them.
+- **Sharper huge mobs in the distance** — Very large mobs now keep their full 3D model while they still look large on screen, instead of turning into a blocky simplified image.
+
+#### Fixed
+- **Ice and Fire mobs correctly simplified** — Distant Ice and Fire dragons now have whole simplified images at their real size, instead of a close-up of their legs or a wing. Dragons of different ages no longer share one image, and sea serpents keep their 3D model instead of a cut-off image.
+
 ## 0.14.0 — 2026-10-29
 
 ### Client

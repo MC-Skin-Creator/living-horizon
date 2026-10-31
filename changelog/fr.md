@@ -34,6 +34,13 @@
 - **Créatures lointaines visibles sur le terrain lointain** — Les créatures lointaines, estimées comprises, restent maintenant visibles sur le terrain lointain, au lieu d'être masquées comme s'il n'y avait rien sous elles : un moment après l'ouverture d'un monde, parmi des milliers de créatures estimées, ou quand Voxy ou Distant Horizons tarde à répondre.
 - **Brouillard de Distant Horizons appliqué aux créatures** — Les créatures lointaines reçoivent maintenant le même brouillard que le terrain de Distant Horizons et s'estompent avec lui, au lieu de ressortir nettement sur le paysage. (Minecraft 1.21.6 et plus, sans shaders.)
 
+#### Améliorations
+- **Créatures volantes d'Ice and Fire vues sous tous les angles** — Les dragons, amphithères et hippogriffes d'Ice and Fire ont maintenant des images simplifiées vues d'en dessous et d'au-dessus, comme les phantoms et les avions, au lieu d'être vus seulement de côté. Ils restent ainsi fidèles quand ils vous survolent ou que vous les regardez d'en haut.
+- **Créatures géantes plus nettes au loin** — Les très grandes créatures gardent maintenant leur modèle 3D complet tant qu'elles paraissent grandes à l'écran, au lieu de devenir une image simplifiée pixelisée.
+
+#### Corrections
+- **Créatures d'Ice and Fire correctement simplifiées** — Les dragons lointains d'Ice and Fire ont maintenant des images simplifiées entières à leur vraie taille, au lieu d'un gros plan de leurs pattes ou d'une aile. Des dragons d'âges différents ne partagent plus la même image, et les serpents de mer gardent leur modèle 3D au lieu d'une image coupée.
+
 ## 0.14.0 — 2026-10-29
 
 ### Client

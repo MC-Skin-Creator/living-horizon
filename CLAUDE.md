@@ -435,6 +435,14 @@ come back, add it here in the same pull request: this file is what the next sess
   stable across games (an identity hash in `ImpostorKey.stable`). The `sharing` scenario
   checks all of it, except across games: the client game tests start from an empty run
   folder every time.
+- **A modded mob's picture a close-up of part of it** (Ice and Fire's adult dragons as legs or a
+  wing filling the tile, in the impostor screen): its copy kept the box of a newborn, since the
+  mod works the size out in its tick and a copy never ticks. `EntityNbt.load` refreshes the box.
+  A model longer than five times its box (a sea serpent, the oldest dragons) is not pictured
+  (`MAX_GROW`, "does not fit its picture" in the log). Ice and Fire is on Forge 1.20.1 only,
+  where the client game tests do not run: install Forge's client with its installer, put the
+  SRG jar (`renameJarJar`), Ice and Fire and Citadel in `mods/`, and open a world made by its
+  dedicated server with a datapack summoning the dragons (`AgeTicks`, `AgingDisabled`).
 - **Specks along an impostor's edge, or a figure cut off by its tile** (black dashes over a far
   mob, a horse without its muzzle): the texture filter reads half a pixel of the smallest level
   past each tile, so the quad and its UVs keep `ImpostorRenderer.INSET` clear on all four sides,
