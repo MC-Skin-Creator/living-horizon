@@ -6,8 +6,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * A mod that keeps the world past the render distance, read through {@link LodWorld}:
- * Voxy or Distant Horizons. Neither is required, and neither is linked against: each
- * source reaches its mod at runtime, so the mod loads with either, both or none.
+ * Voxy, Distant Horizons or Lodistance. None is required, and none is linked against: each
+ * source reaches its mod at runtime, so the mod loads with any of them or none.
  *
  * <p>Every method but the first three runs on a reader thread, never on the game's.
  */

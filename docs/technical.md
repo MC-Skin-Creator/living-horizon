@@ -48,7 +48,7 @@ never added to a level (`track/Puppets`).
 | root | `LivingHorizonCommon` (entry point on both sides, opens the network channel), `LivingHorizonClient` (client entry point), `FarConfig` (the settings file), `QualityPreset`, `Stats` |
 | `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`, `SeedDraws`, `SeedMobs`, `Foresight`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
 | `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`, the distance settings drawn in the world (`DistancePreview`); `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
-| `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
+| `compat/` | Voxy, Distant Horizons and Lodistance: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `LodistanceSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `LodistanceLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
 | `ambient/` | The birds (`Ambience`, `BirdModels`, `BirdFigure`, `AmbientRenderer`) and the easter eggs |
 | `platform/` | What differs between loaders: events, network, config folder |
 | `ui/` | The settings screens (`FarConfigScreen` and its sub-screens, `SodiumOptions`), the impostor screen, the text under the crosshair (`OfflineHud`) |
@@ -938,12 +938,14 @@ Horizon (on 26.3 the game's GPU device path works otherwise, see
 | Voxy, no shader pack | Voxy itself, for good: nothing to do |
 | Voxy, under a pack that keeps it out of the game's depth (Photon sets `excludeLodsFromVanillaDepth`) | `FarDepth`, around the entities only |
 | Distant Horizons | `FarDepth`, from Distant Horizons' own depth texture (`compat/DhDepth`) |
+| Lodistance with Sodium | Lodistance, at twice its terrain's distance: `FarDepth` moves it to its real depth, around the entities only |
+| Lodistance without Sodium | `FarDepth`, from Lodistance's own depth texture, the same way as Distant Horizons' |
 
-### Links to Voxy, Distant Horizons and Iris
+### Links to Voxy, Distant Horizons, Lodistance and Iris
 
-None of the three has an API for what the mod needs, or not all of it: they are reached by
-reflection, each through one class, `VoxyLink`, `DhLink` (what `DhDepth` and `DhSource` share)
-and `IrisLink`. A rename on their side is followed there and nowhere else. What an older or
+None of the four has an API for what the mod needs, or not all of it: they are reached by
+reflection, each through one class, `VoxyLink`, `DhLink` (what `DhDepth` and `DhSource` share),
+`LodistanceLink` and `IrisLink`. A rename on their side is followed there and nowhere else. What an older or
 newer version lacks and the mod can do without is a fallback (`Links.optional…`), noted by the
 link; what it cannot do without turns that part off for the session. `/livinghorizon lod` has
 one line per link: linked, not installed or off and why, the fallbacks in use, and how often the
@@ -963,8 +965,8 @@ game test fails on it.
 
 The shaders' depth arithmetic is written once, `shaders/include/far_depth.glsl`: the OpenGL
 programs splice it in (`GlPrograms`), 26.3's take it with `#include`, and `DepthMath` mirrors it
-in Java for `DepthMathTest`. The `depthview` game test compiles every program, those only Voxy
-or Distant Horizons would use included.
+in Java for `DepthMathTest`. The `depthview` game test compiles every program, those only Voxy,
+Distant Horizons or Lodistance would use included.
 
 ### Voxy under a shader pack
 
@@ -1006,6 +1008,48 @@ of the world's pass there, so the merge is a draw in that pass and is not taken 
 Horizons' depth stays in the game's for the rest of the frame, which its fade treats as sky.
 `FarDepthGpu.beforeFade` keeps the fade off our figures on a copy of the depth, put back
 after.
+
+### Lodistance
+
+Lodistance (Fabric, 26.3 only) has no API and no source code: `LodistanceLink` reads the fields
+of its own classes, never writes one, and turns itself off for the session when one is missing.
+It refuses Voxy and Distant Horizons (`conflicts`), so it is always alone. Its jar was
+decompiled to find out how it draws (0.8.7: no network but its own server channel, no files
+outside the game folder); nothing of it is copied here, its licence reserves all rights.
+
+It draws its terrain one of two ways:
+
+- **With Sodium** (`PearlLodRenderer`, its default), inside Sodium's opaque terrain pass, into
+  the game's own depth. Its vertex shader replaces the depth of each point by
+  `A + 0.5 * m32 / w` (A 0 when the depth is reversed, 1 otherwise), half the depth the game's
+  projection gives that distance, so that the game's terrain always wins over it. A distant mob
+  behind one of its hills is hidden only past twice the hill's distance, and shows through it
+  otherwise. (Its formula leaves out the projection's far plane: past half of it, its terrain
+  comes in front of the game's depth for the same distance instead.) `FarDepth.mergeLodistance`
+  moves those pixels to their real depth around the entities, either way, past the far plane to
+  the far plane, and `restore` puts Lodistance's back. A pixel is taken for its terrain only where,
+  read as the game's own, it would lie farther across than any of the game's chunks
+  (Lodistance leaves out the chunks within the render distance less one, and the game draws
+  none past it): the game's terrain is never touched.
+- **Without Sodium** (`LodRenderer`), into a framebuffer of its own, at `prepareTranslucents`
+  inside the world's pass before the solid step, then laid over the picture where the game drew
+  nothing. None of it reaches the game's depth: it is merged like Distant Horizons', through the
+  inverse of the projection it was drawn with.
+
+The occlusion queries read the merged depth, so *Skip Hidden Mobs* works behind its terrain too.
+Its fog: it pushes the game's render distance fog out to where its own terrain's fog runs
+(from `fogStart` times its distance to its distance), but its terrain has none of the game's
+atmospheric fog (1024 blocks in a clear overworld), which still reached the entities: a mob a
+thousand blocks away was a flat patch of fog colour on clear hills. `FarFog.lodistance` gives
+the entities its ramp alone, so within the game's render distance they are a little clearer
+than the game's terrain behind them; where the atmospheric fog ends before the render distance
+(the Nether, thick weather) the game's stays.
+
+`LodistanceSource` reads the ground of its regions held in memory (up to three runs of blocks
+per column, the block at the top of each, water over them; no biomes) without its locks, and
+`LodWorld.drawnDistance` its distance setting. Not done yet: Vulkan (the GPU device path, where
+the merge could not be taken back and would change how its terrain looks against clouds and
+particles) and shader packs, where it is left alone (`mergeLodistance` says why).
 
 ### Shadows under Photon
 

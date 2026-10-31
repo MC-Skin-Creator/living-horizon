@@ -133,6 +133,12 @@ thread), `setScreen`, `clickScreenButton(translation key)`, `takeScreenshot`. Th
   Fabric Loader 0.19.5, so set `deps.fabric_loader` to it in `stonecutter.properties.toml` for
   the run, and put it back; 3.3.4 needs the same. The game may hang as it closes with it: kill
   `KnotClient` once the scenario says `done`. The `dhfog` scenario checks its fog on the mobs.
+- **Lodistance runs on 26.3** (Fabric Loader 0.19.5, as for Distant Horizons): it is on
+  CurseForge only, so put its client jar (not `lodistance-server`) at
+  `build/game-test-mods/26.3-with/lodistance/lodistance.jar` and pass `--with lodistance`. With
+  `--sodium` it draws into the game's depth, without Sodium into its own; the `lodistance`
+  scenario checks both. It takes the chunks as they load: something built afterwards reaches it
+  through `save-all flush` and its client command `lodistance reimport`.
 - **Shader packs** run through Iris on llvmpipe, slowly: `--shaders` takes an unpacked
   pack folder, downloads Iris next to Sodium for the node's game version (`LH_NODE`), and
   `Scene.shaderPack` copies the pack into Iris's folder and turns it on before the first

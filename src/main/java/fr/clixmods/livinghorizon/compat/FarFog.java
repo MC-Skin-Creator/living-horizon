@@ -14,7 +14,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 /**
- * Voxy's fog on the world's entities, without a shader pack. Voxy fogs its terrain the way the
+ * Voxy's fog on the world's entities, without a shader pack (Lodistance's too: see
+ * {@link #lodistance}). Voxy fogs its terrain the way the
  * game fogs the world (the environmental fog: none at its start, full at its end, 1024 blocks in
  * a clear overworld), but stops it growing past a distance of its own: the render distance, at
  * least 320 blocks, times the square root of 3 (1.5 render distances before 0.2.6). The game's
@@ -101,6 +102,8 @@ public final class FarFog {
                     : "Distant Horizons' (" + DhFog.describe() + ")";
             return ramps;
         }
+        DhFog.Ramps lodistance = lodistance(environmentalEnd, renderDistanceStart, renderDistanceEnd);
+        if (lodistance != null) return lodistance;
         // A fog that ends close (water, lava, blindness) is left alone, as Voxy leaves it.
         if (!config.optVoxyFog) return game("Voxy Fog Fix off");
         if (renderDistanceStart < NO_RENDER_DISTANCE_FOG || environmentalEnd < 10
@@ -110,6 +113,28 @@ public final class FarFog {
         source = "Voxy's, stopping at " + Math.round(far[0]) + " blocks";
         return new DhFog.Ramps(environmentalStart, far[0], renderDistanceStart, renderDistanceEnd, far[1]);
     }
+
+    /**
+     * Lodistance's fog on the entities. It pushes the game's render distance fog out to where its
+     * own terrain's fog runs, but leaves the game's other ramp, the atmospheric fog (1024 blocks in
+     * a clear overworld), which its terrain does not have: a mob a thousand blocks away was a flat
+     * patch of fog colour on clear hills. The entities get its ramp alone. Within the game's own
+     * render distance they are then a little clearer than the game's terrain behind them, at most
+     * by what that fog reaches at the render distance: the far ones matter more. Where the
+     * atmospheric fog ends before the render distance (the Nether, thick weather, water), and with
+     * Lodistance not drawing or not extending the fog, the game's is left. Null then.
+     */
+    private static DhFog.@Nullable Ramps lodistance(float environmentalEnd, float renderDistanceStart,
+                                                   float renderDistanceEnd) {
+        if (!LodistanceLink.linked() || LodistanceLink.drawing() != null || !LodistanceLink.extendsFog()) return null;
+        float view = Minecraft.getInstance().options.getEffectiveRenderDistance() * 16f;
+        if (environmentalEnd <= view || !(renderDistanceEnd > renderDistanceStart)) return null;
+        source = "Lodistance's, " + Math.round(renderDistanceStart) + ".." + Math.round(renderDistanceEnd) + " blocks";
+        return new DhFog.Ramps(NO_FOG, NO_FOG, renderDistanceStart, renderDistanceEnd, 1f);
+    }
+
+    /** A ramp that never starts: the shaders' fog is 0 short of its start. */
+    private static final float NO_FOG = 1e9f;
 
     private static <T> @Nullable T game(String why) {
         source = "the game's: " + why;
