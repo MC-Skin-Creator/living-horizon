@@ -1066,13 +1066,20 @@ public final class FarDepth {
 
     // --- Distant Horizons' fade -------------------------------------------------------------
 
-    private static int unmaskProgram, unmaskEmpty;
+    private static int unmaskProgram, unmaskNear;
 
     /**
      * Distant Horizons is about to fade the game's picture into its terrain. Without a
      * shader pack, it takes anything the game drew past the render distance for terrain
      * left over, and paints its own terrain over it - the distant mobs included. For the
-     * fade, the pixels of the entities read as sky, which it leaves alone.
+     * fade, the pixels of the entities stand at the near plane, like the ground at the player's
+     * feet: it writes the game's own colour back there, opaque.
+     *
+     * <p>Never as sky: the fade leaves the sky's colour alone but writes it with an alpha of 0,
+     * and the entities took that alpha. The game's own blit to the screen ignores alpha; QDAA's
+     * (supersampling) copies it, and every mob, near or far, had a bright line along its edge.
+     * At the near plane the fade writes what it writes without this mod, the game's colour at
+     * an alpha of 1, only not its terrain over the distant mobs.
      */
     public static void beforeFade() {
         DhLink.fadeHooked();
@@ -1103,10 +1110,10 @@ public final class FarDepth {
                 GL11C.glViewport(0, 0, width, height);
                 if (unmaskProgram == 0) {
                     unmaskProgram = GlPrograms.fullScreen("Fade mask", UNMASK, "current", "written", "drawn");
-                    unmaskEmpty = GL20C.glGetUniformLocation(unmaskProgram, "empty");
+                    unmaskNear = GL20C.glGetUniformLocation(unmaskProgram, "nearDepth");
                 }
                 GL20C.glUseProgram(unmaskProgram);
-                GL20C.glUniform1f(unmaskEmpty, DepthFar.reversed() ? 0f : 1f);
+                GL20C.glUniform1f(unmaskNear, DepthFar.reversed() ? 1f : 0f);
                 GL30C.glBindVertexArray(vertexArray);
                 for (int unit = 0; unit < 3; unit++) {
                     GL33C.glBindSampler(unit, 0);
@@ -1151,20 +1158,20 @@ public final class FarDepth {
     }
 
     /**
-     * A screen-filling triangle that empties the depth wherever an entity was drawn and
-     * nothing was drawn over it since (translucent terrain, which the fade must still see).
+     * A screen-filling triangle that moves the depth to the near plane wherever an entity was
+     * drawn and nothing was drawn over it since (translucent terrain, which the fade must still see).
      */
     private static final String UNMASK = """
             #version 330 core
             uniform sampler2D current;
             uniform sampler2D written;
             uniform sampler2D drawn;
-            uniform float empty;
+            uniform float nearDepth; // the near plane's depth: 0, or 1 when the depth is reversed
             void main() {
                 ivec2 at = ivec2(gl_FragCoord.xy);
                 float entity = texelFetch(drawn, at, 0).r;
                 if (entity == texelFetch(written, at, 0).r || texelFetch(current, at, 0).r != entity) discard;
-                gl_FragDepth = empty;
+                gl_FragDepth = nearDepth;
             }
             """;
 

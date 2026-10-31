@@ -59,6 +59,9 @@
 - **Modded vehicles keep their colours** — Distant vehicles and mobs from some mods, such as Immersive Aircraft's planes, now keep their colours as you approach, instead of turning black for a moment.
 - **Mounts shown only once** — The mount or vehicle of a distant player, such as a modded plane, no longer appears a second time beside them.
 
+#### Fixed
+- **Bright outline round mobs with QDAA** — mobs, near or far, no longer have a thin bright line along their edges when Distant Horizons and QDAA are installed together.
+
 ## 0.13.0 — 2026-10-28
 
 ### Client

@@ -342,6 +342,11 @@ come back, add it here in the same pull request: this file is what the next sess
   (`LodSource.keepsBetweenReads`, Voxy); a Distant Horizons read of a world left keeps nothing
   (`DhSource.Opened`), and `LodWorld.suspend` interrupts those still waiting (`ModCalls`), which
   Distant Horizons answers as cancelled. The game's thread never waits for a read of another mod.
+- **A bright line round every mob with Distant Horizons and QDAA** (near mobs too, most visible
+  in the dark; Fabric 1.20.1): Distant Horizons' fade writes an alpha of 0 where the depth reads
+  as sky, and QDAA's blit to the screen copies the alpha the game's own ignores. QDAA also turns
+  on linear filtering for the game's depth texture, not only its colour. `FarDepth.beforeFade`
+  puts the entities at the near plane for the fade, never at the sky's depth.
 - **Depth view lighter or darker as far mobs show or hide**: the game's far plane follows the
   farthest figure drawn (`GhostRenderer.farPlane`); the view shades against `FarDepth.VIEW_FAR`.
 - **Distant Horizons' rendering engine** (from 3.3: Blaze3D or OpenGL). With Iris installed,

@@ -59,6 +59,9 @@
 - **Véhicules moddés qui gardent leurs couleurs** — Les véhicules et créatures lointains de certains mods, comme les avions d'Immersive Aircraft, gardent maintenant leurs couleurs quand vous vous en approchez, au lieu de devenir noirs un instant.
 - **Montures affichées une seule fois** — La monture ou le véhicule d'un joueur lointain, comme un avion moddé, n'apparaît plus en double à côté de lui.
 
+#### Corrections
+- **Contour clair autour des mobs avec QDAA** — les mobs, proches ou lointains, n'ont plus de fine ligne claire le long de leurs bords quand Distant Horizons et QDAA sont installés ensemble.
+
 ## 0.13.0 — 2026-10-28
 
 ### Client
