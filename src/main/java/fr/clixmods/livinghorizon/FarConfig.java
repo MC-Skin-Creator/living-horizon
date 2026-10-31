@@ -51,7 +51,7 @@ public final class FarConfig {
     @SerializedName(value = "depthOcclusion", alternate = "voxyOcclusion")
     public boolean depthOcclusion = true;
 
-    private static final int CURRENT = 12;
+    private static final int CURRENT = 13;
 
     /** Skinned figures, which Distant Friends uses as its fake players: shown, standing still. */
     private static final String MANNEQUIN = "minecraft:mannequin";
@@ -523,12 +523,30 @@ public final class FarConfig {
             // One switch for every figure but players became one for mobs and one for the rest.
             config.impostorEntities = config.impostors;
         }
+        if (config.version < 13) {
+            // Superb Warfare's vehicles were taken for seats, off unless chosen: they are driven,
+            // and offered again as such the next time the game lists them or one is met.
+            config.seatedVehicles.removeIf(type -> {
+                boolean driven = Vehicles.Driven.MODS.contains(namespace(type));
+                if (driven && !config.mobTypes.contains(type)) {
+                    config.knownVehicles.remove(type);
+                    config.knownMobTypes.remove(type);
+                }
+                return driven;
+            });
+        }
         // Written by hand out of range: the nearest end.
         config.impostorMobMemory = Math.clamp(config.impostorMobMemory, MIN_MOB_MEMORY, MAX_MOB_MEMORY);
         config.impostorPlayerMemory = Math.clamp(config.impostorPlayerMemory, MIN_PLAYER_MEMORY, MAX_PLAYER_MEMORY);
         config.impostorPixels = Math.clamp(config.impostorPixels, 0, MAX_IMPOSTOR_PIXELS);
         config.impostorDistance = Math.clamp(config.impostorDistance, 0, MAX_IMPOSTOR_DISTANCE);
         config.version = CURRENT;
+    }
+
+    /** The mod part of a type id, {@code superbwarfare} in {@code superbwarfare:m_1a_2}; the game's when it has none. */
+    static String namespace(String type) {
+        int colon = type.indexOf(':');
+        return colon < 0 ? "minecraft" : type.substring(0, colon);
     }
 
     /**

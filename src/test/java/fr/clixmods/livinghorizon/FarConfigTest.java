@@ -27,7 +27,7 @@ class FarConfigTest {
         FarConfig fresh = new FarConfig();
         fresh.version = migrated.version;
         assertEquals(GSON.toJson(fresh), GSON.toJson(migrated));
-        assertEquals(12, migrated.version);
+        assertEquals(13, migrated.version);
     }
 
     @Test
@@ -146,6 +146,25 @@ class FarConfigTest {
         assertFalse(migrated("{\"version\": 11, \"impostors\": false}").impostorEntities);
         assertTrue(migrated("{\"version\": 11, \"impostors\": true}").impostorEntities);
         assertTrue(migrated("{\"version\": 12, \"impostors\": false}").impostorEntities);
+    }
+
+    @Test
+    void version13OffersSuperbWarfareVehiclesAgain() {
+        String seen = "\"knownVehicles\": [\"superbwarfare:m_1a_2\", \"superbwarfare:a_10a\", \"minecraft:minecart\"],"
+                + " \"seatedVehicles\": [\"superbwarfare:m_1a_2\", \"superbwarfare:a_10a\", \"minecraft:minecart\"],"
+                + " \"knownMobTypes\": [\"superbwarfare:m_1a_2\", \"superbwarfare:a_10a\", \"minecraft:minecart\"],"
+                + " \"mobTypes\": [\"superbwarfare:a_10a\"]}";
+        FarConfig config = migrated("{\"version\": 12, " + seen);
+        // Driven now; the one left off is offered again, the one turned on stays on.
+        assertEquals(java.util.List.of("minecraft:minecart"), config.seatedVehicles);
+        assertFalse(config.knownVehicles.contains("superbwarfare:m_1a_2"));
+        assertFalse(config.knownMobTypes.contains("superbwarfare:m_1a_2"));
+        assertTrue(config.knownVehicles.contains("superbwarfare:a_10a"));
+        assertTrue(config.mobTypes.contains("superbwarfare:a_10a"));
+        // The minecart only seats its riders, as before.
+        assertTrue(config.knownMobTypes.contains("minecraft:minecart"));
+        // A file already up to date is left as it is.
+        assertEquals(3, migrated("{\"version\": 13, " + seen).seatedVehicles.size());
     }
 
     @Test

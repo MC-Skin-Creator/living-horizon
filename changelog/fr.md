@@ -17,6 +17,7 @@
 - **Distance de simplification désactivable** — la *Distance de simplification* peut maintenant être mise sur Non : les mobs, entités, joueurs et oiseaux lointains ne deviennent alors des images plates que quand ils paraissent plus petits à l'écran que la *Taille de simplification*.
 - **Joueurs lointains en vol plané** — les joueurs lointains qui volent avec des élytres planent maintenant dans le ciel, ailes déployées, au lieu de courir debout dans les airs (avec le mod sur le serveur).
 - **Packs de ressources activés puis désactivés** — les *Entités simplifiées* des mobs lointains (des images plates d'eux) ne sont plus toutes redessinées quand un pack de ressources est désactivé puis réactivé, et le chargement des ressources ne fige plus le jeu pendant qu'elles sont recherchées.
+- **Véhicules de Superb Warfare au loin** — les chars, avions, bateaux et canons de Superb Warfare restent maintenant visibles au-delà de la distance de rendu dès le départ, cachés derrière les collines de Voxy et de Distant Horizons comme le reste, et ne sont plus désactivés tant qu'on ne les active pas dans *Créatures et entités...*.
 
 #### Corrections
 - **Créatures lointaines nettes dans le brouillard de Distant Horizons** — les créatures lointaines ne restent plus nettes devant le terrain de Distant Horizons dans le brouillard : elles s'y fondent comme le terrain autour d'elles, sans pack de shaders (Minecraft 1.21.6 et plus).

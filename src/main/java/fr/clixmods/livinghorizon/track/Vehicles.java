@@ -10,6 +10,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 
 /**
@@ -22,9 +23,13 @@ import java.util.function.Predicate;
  *     the game asks every tick to know whose keys move it. A boat, Immersive Aircraft's planes.
  *     Shown far away from the start, like a boat.</li>
  * <li>{@link Kind#SEATED}: it only places its riders ({@code positionRider}). A minecart,
- *     Superb Warfare's vehicles, but also Create's seats and moving contraptions, whose copies
- *     could cost a lot: listed among the mobs once met, and only shown once chosen.</li>
+ *     but also Create's seats and moving contraptions, whose copies could cost a lot: listed
+ *     among the mobs once met, and only shown once chosen.</li>
  * </ul>
+ *
+ * <p>Some mods drive their vehicles with controls of their own and never answer who steers:
+ * Superb Warfare's tanks, planes and boats only place their riders. Their base classes are
+ * named in {@link Driven}, and whatever comes from one is steered all the same.
  *
  * <p>Both methods are found on {@link Entity} by their shape, not their name, which is not
  * the same under every loader. The answer is kept per class: asking costs a lookup.
@@ -50,6 +55,24 @@ public final class Vehicles {
             method -> method.getParameterCount() == 2 && method.getParameterTypes()[0] == Entity.class
                     && method.getParameterTypes()[1] == Entity.MoveFunction.class);
 
+    /**
+     * The vehicles other mods drive themselves, apart from the rest of this class: the settings
+     * read it as they load, before the game is ready to be asked about its entities.
+     */
+    public static final class Driven {
+        /**
+         * Their base classes, by name: nothing of those mods is linked against. Superb
+         * Warfare's, under every loader and game version it has.
+         */
+        static final Set<String> CLASSES = Set.of("com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity");
+
+        /** The namespaces of those mods' entity types, for settings saved before they were known. */
+        public static final Set<String> MODS = Set.of("superbwarfare");
+
+        private Driven() {
+        }
+    }
+
     private static final ClassValue<Kind> KINDS = new ClassValue<>() {
         @Override
         protected Kind computeValue(Class<?> type) {
@@ -73,8 +96,16 @@ public final class Vehicles {
     /** What entities of this class are as vehicles. */
     public static Kind kindOf(Class<?> type) {
         if (!Entity.class.isAssignableFrom(type) || LivingEntity.class.isAssignableFrom(type)) return Kind.NONE;
-        if (overrides(type, STEERING)) return Kind.STEERED;
+        if (overrides(type, STEERING) || driven(type)) return Kind.STEERED;
         return overrides(type, SEATING) ? Kind.SEATED : Kind.NONE;
+    }
+
+    /** Whether a class comes from the base class of a vehicle another mod drives itself. */
+    private static boolean driven(Class<?> type) {
+        for (Class<?> at = type; at != null && at != Entity.class; at = at.getSuperclass()) {
+            if (Driven.CLASSES.contains(at.getName())) return true;
+        }
+        return false;
     }
 
     /** Whether a class below Entity declares this method of Entity's again. */

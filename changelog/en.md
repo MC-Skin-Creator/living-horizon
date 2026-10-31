@@ -17,6 +17,7 @@
 - **Simplification Distance can be turned off** — *Simplification Distance* now goes down to OFF, so far mobs, entities, players and birds become flat pictures only when they look smaller on screen than the *Simplification Size*.
 - **Distant players gliding** — distant players flying with an elytra now glide through the sky, wings spread, instead of running upright in the air (with the mod on the server).
 - **Resource packs switched back and forth** — far mobs' *Simplified Entities* (flat pictures of them) are no longer all drawn again when a resource pack is turned off and back on, and loading resources no longer pauses the game while they are looked for.
+- **Superb Warfare vehicles far away** — Superb Warfare's tanks, planes, boats and guns now stay visible past the render distance from the start, behind Voxy's and Distant Horizons' hills like everything else, no longer off until turned on in *Mobs & Entities...*.
 
 #### Fixed
 - **Distant mobs sharp in Distant Horizons' fog** — distant mobs no longer stay sharp against Distant Horizons' fogged terrain: they fade into its fog like the land around them, without a shader pack (Minecraft 1.21.6 and later).

@@ -396,9 +396,11 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
   told by what their class does, never by a list of ids (`track/Vehicles`): one whose class
   answers who steers it (`getControllingPassenger`, as a boat's does: Immersive Aircraft's
   planes, another mod's boat) is shown from the start; one that only places its riders
-  (`positionRider`: a minecart, Superb Warfare's vehicles, Create's seats and moving
-  contraptions, whose copies could cost a lot) is listed but waits to be chosen
-  (`seatedVehicles`, kept by *Defaults* and a reset). Both methods are found on `Entity` by
+  (`positionRider`: a minecart, Create's seats and moving contraptions, whose copies could
+  cost a lot) is listed but waits to be chosen (`seatedVehicles`, kept by *Defaults* and a
+  reset). A mod that drives its vehicles with controls of its own, never answering who steers,
+  is named by its base class in `Vehicles.Driven` (Superb Warfare's `VehicleEntity`): steered
+  all the same, and its kinds once taken for seats are offered again (settings version 13). Both methods are found on `Entity` by
   their shape, since their names differ between loaders. The class is the one the kind's
   renderer is declared for (`MobList.vehicle`, read from the game's map of renderers with
   Guava's `TypeToken`), so a kind is under the *Entities* tab of *Mobs & Entities...* from the

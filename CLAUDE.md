@@ -479,7 +479,8 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Another mod's vehicle vanishing far away** (an aircraft, a car, a tank gone past the render
   distance): an entity that is not alive is a vehicle only when its class declares
   `getControllingPassenger` again (steered: shown from the start, like a boat) or `positionRider`
-  (seated: listed but off), found on `Entity` by shape (`track/Vehicles`). Its class is read from
+  (seated: listed but off), found on `Entity` by shape (`track/Vehicles`). A mod that drives its
+  vehicles itself and only places riders (Superb Warfare) is named in `Vehicles.Driven`: steered. Its class is read from
   the renderer its kind is drawn with (`MobList.vehicle`), so it is listed before one is met; a
   renderer declared for any entity leaves it to the first one met (`knownVehicles`). It is drawn
   up to *Entity Render Distance*, not the mobs' (`GhostRenderer.creature`). Check the mod's classes
