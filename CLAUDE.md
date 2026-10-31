@@ -711,7 +711,8 @@ changelog in a later commit or pull request.
 
 A pull request that changes what a player sees or feels adds its entry to
 `changelog/en.md` and `changelog/fr.md`, under `## Unreleased` / `## Prochaine version`
-and nowhere else: a dated section is a version already released, never edited. A version
+and nowhere else: a dated section is a version already released, never given an entry, and
+reworded only when the user asks for it. A version
 is split in two parts, **Server** first (what a server owner installs, sets up or gets, and
 what the mod does on a server, a LAN host included), then **Client** (what a player sees and
 feels in game, single player included): `### Server` / `### Client` (`### Serveur` /
@@ -722,20 +723,27 @@ the same order. Versions released before the split keep their flat `### New` hea
 `changelog` CI job checks all of this.
 
 The release dates the section, opens a new empty one, and posts the entries on Modrinth
-(Changelog tab), CurseForge (file page) and Discord. Players read them, so write for
-someone who has never seen the code:
+(Changelog tab), CurseForge (file page) and Discord, and the game shows them in its
+changelog screen. Players read them, so **every entry is written with the
+`changelog-writing` skill** (`.claude/skills/changelog-writing/`), which holds the style,
+the vocabulary and examples. In short:
 
-- write like Minecraft's own release notes: one short sentence per bullet, a bold subject
-  first that names what the player sees (the feature, or the bug as it looked), never a
-  version or a mod alone; where it applies goes in brackets at the end:
-  `**Distant mobs showing through hills** — distant mobs no longer show through Voxy's
-  hills (Minecraft 26.1).`
-- a fix says what was wrong and that it is gone ("no longer…"), never only the new
-  behaviour: "mobs hide behind hills" reads as a feature, not a fix.
+- a bold, benefit-first title that names the result for the player (a fix too: "Better
+  integration with Distant Horizons' fog"; a crash: "Startup crash fixed"), never a version
+  or a mod alone; then what the player now sees or can do, why it matters, any condition,
+  in one to three short sentences starting with a capital; where it applies goes last:
+  `**Mobs properly hidden by hills** — Distant mobs no longer show through Voxy's
+  hills. (Minecraft 26.1.)`
+- a fix still makes clear what was wrong ("instead of…", "no longer…"): "mobs hide behind
+  hills" alone reads as a feature, not a fix.
 - say what the player notices, not how it was done: no shader, depth, buffer, pass,
-  query, mask, class or setting internals; nothing about the debug screens. Name settings
-  and screens as the game shows them (impostors are *Simplified Mobs*, *Simplified Entities* and *Simplified Players*), and explain
-  them in plain words (flat pictures of far mobs).
+  query, mask, class or setting internals; nothing about the debug screens. Summarise
+  rather than list, and drop side details. Name settings and screens as the game shows
+  them (impostors are *Simplified Mobs*, *Simplified Entities* and *Simplified Players*),
+  and explain them in plain words (simplified images of distant mobs). A prediction is
+  never written as a certainty.
+- the same word for the same thing: mobs / créatures, entities / entités (boats,
+  vehicles, mannequins), offline players / joueurs déconnectés; French says *vous*.
 - one bullet per problem: two causes of the same symptom share one bullet.
 - say *mobs* (*créatures* in French, the game's word for mobs in each language), never
   *animals*, in the changelog, the translations, the README and the store text; only a list
