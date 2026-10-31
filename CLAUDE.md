@@ -692,7 +692,11 @@ come back, add it here in the same pull request: this file is what the next sess
   empty, wait or were never asked, how fast the far world reads, and where a column read for a
   second or more waits. Never interrupt a Distant Horizons read to free a thread: it reads its
   database, which an interrupt can close. An unanswered column (`LodWorld.Unanswered`) is never a
-  failure (`LodSource.fail` pauses every read 20 s).
+  failure (`LodSource.fail` pauses every read 20 s). Even so a Distant Horizons column read through
+  its API took 278 ms (it loads or builds its whole 64-block section), and thousands of chunks took
+  minutes: `DhSource.holds` asks its database instead (`FullDataSourceV2Repo`, the generation step
+  of each column of a section, one query for 16 chunks). "its database not read" in the lod line
+  means a version whose classes differ: check them with `javap`, as for its API.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

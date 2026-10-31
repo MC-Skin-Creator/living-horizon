@@ -370,6 +370,9 @@ public final class LodWorld {
         Thread self = Thread.currentThread();
         URGENT_BUSY.put(self, at);
         try {
+            // Asked of the mod's own records first: a column read makes it load an area of terrain.
+            Boolean held = source.holds(world, x, z);
+            if (held != null) return held;
             Surface surface = source.column(world, x, z);
             if (cache) columns.put(key, new Known(surface == null ? NOTHING : surface, at));
             return surface != null;

@@ -37,6 +37,15 @@ final class DhSource implements LodSource {
     private MethodHandle isAir, isLiquid, isSolid, biomeName;
     /** Before Distant Horizons 3.0 there is no opacity, and before 2.4 no cache: null then. */
     private @Nullable MethodHandle opacity, softCache;
+    /**
+     * Its database, read directly ({@link #holds}): null on a version whose classes differ, or
+     * once a query failed, and its columns are read one by one instead.
+     */
+    private volatile @Nullable MethodHandle generationSteps;
+    private MethodHandle dhWorld, loadedLevels, levelWrapper, dataProvider, providerRepo, sectionAt, newBytes, bytesOf;
+    private @Nullable MethodHandle timestampAt;
+    /** Sections asked of its database, and those holding at least one chunk. */
+    private final AtomicInteger sections = new AtomicInteger(), sectionsHeld = new AtomicInteger();
 
     /**
      * One reader's cache of Distant Horizons' data, for the level it was made for. Distant
@@ -69,6 +78,13 @@ final class DhSource implements LodSource {
     private static final class Era {
         /** The height of the highest block of each column read, and until when it is trusted. */
         final ConcurrentHashMap<Long, Long> tops = new ConcurrentHashMap<>();
+        /** Which chunks of each section its database holds ({@link #holds}), and when that was read. */
+        final ConcurrentHashMap<Long, long[]> held = new ConcurrentHashMap<>();
+        /** The database of the level last asked about, and that level. */
+        volatile @Nullable Database database;
+    }
+
+    private record Database(Object level, Object repo) {
     }
 
     /** A level opened for a read, in the era it was opened in. */
@@ -92,7 +108,9 @@ final class DhSource implements LodSource {
 
     @Override
     public String details() {
-        return reads.get() + " columns read, " + found.get() + " with blocks; last answer: " + lastAnswer;
+        String database = generationSteps == null ? "; its database not read"
+                : "; its database asked about " + sections.get() + " sections, " + sectionsHeld.get() + " with terrain";
+        return reads.get() + " columns read, " + found.get() + " with blocks; last answer: " + lastAnswer + database;
     }
 
     /** The data points of a column, or null; counts the answers and keeps the last message. */
@@ -215,6 +233,7 @@ final class DhSource implements LodSource {
             try {
                 if (!DhLink.linked()) throw new IllegalStateException("its API is not the one this mod knows");
                 link();
+                linkDatabase();
             } catch (Throwable e) {
                 broken = true;
                 failure = "Distant Horizons found, but too old or unknown (its world needs 2.3 or newer): " + e;
@@ -349,6 +368,130 @@ final class DhSource implements LodSource {
             }
         }
         return sameDimension == null ? null : new Opened(sameDimension, era);
+    }
+
+    /**
+     * Distant Horizons keeps its terrain in a database, by sections of 64 by 64 blocks (4 by 4
+     * chunks), with how far each column was generated. Which sections exist, and which of their
+     * columns hold terrain, is one small query a section, where reading a column through its API
+     * loads or builds the whole section's terrain (a quarter of a second each, measured). Not
+     * called off as a world is left: it never waits for Distant Horizons' threads, and an
+     * interrupt could close its database.
+     */
+    private void linkDatabase() {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.publicLookup();
+            String core = "com.seibel.distanthorizons.core.";
+            Class<?> shared = Class.forName(core + "api.internal.SharedApi");
+            Class<?> world = Class.forName(core + "world.IDhWorld");
+            Class<?> level = Class.forName(core + "level.IDhLevel");
+            Class<?> wrapper = Class.forName(core + "wrapperInterfaces.world.ILevelWrapper");
+            Class<?> provider = Class.forName(core + "file.fullDatafile.V2.FullDataSourceProviderV2");
+            Class<?> repo = Class.forName(core + "sql.repo.FullDataSourceV2Repo");
+            Class<?> section = Class.forName(core + "pos.DhSectionPos");
+            Class<?> bytes = Class.forName("it.unimi.dsi.fastutil.bytes.ByteArrayList", true, repo.getClassLoader());
+            dhWorld = lookup.findStatic(shared, "getAbstractDhWorld",
+                    MethodType.methodType(Class.forName(core + "world.AbstractDhWorld")));
+            loadedLevels = lookup.findVirtual(world, "getAllLoadedLevels", MethodType.methodType(Iterable.class));
+            levelWrapper = lookup.findVirtual(level, "getLevelWrapper", MethodType.methodType(wrapper));
+            dataProvider = lookup.findVirtual(level, "getFullDataProvider", MethodType.methodType(provider));
+            providerRepo = lookup.findGetter(provider, "repo", repo);
+            sectionAt = lookup.findStatic(section, "encode", MethodType.methodType(long.class, byte.class, int.class, int.class));
+            newBytes = lookup.findConstructor(bytes, MethodType.methodType(void.class));
+            bytesOf = lookup.findVirtual(bytes, "toByteArray", MethodType.methodType(byte[].class));
+            timestampAt = Links.optional(lookup, repo, "getTimestampForPos", MethodType.methodType(Long.class, long.class));
+            generationSteps = lookup.findVirtual(repo, "getColumnGenerationStepForPos", MethodType.methodType(void.class, long.class, bytes));
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
+            generationSteps = null;
+            DhLink.fallback("no look at its database: the ground under distant mobs is read column by column, slowly");
+        }
+    }
+
+    private static final long HELD_NANOS = 2_000_000_000L;
+    private static final int SECTIONS_KEPT = 50_000;
+
+    @Override
+    public @Nullable Boolean holds(Object world, int x, int z) throws Throwable {
+        MethodHandle steps = generationSteps;
+        if (steps == null) return null;
+        Opened opened = (Opened) world;
+        if (left(opened)) return null;
+        int cx = x >> 4, cz = z >> 4;
+        long key = (long) (cx >> 2) << 32 | ((cz >> 2) & 0xFFFFFFFFL);
+        long now = System.nanoTime();
+        ConcurrentHashMap<Long, long[]> held = opened.era.held;
+        long[] known = held.get(key);
+        if (known == null || now - known[1] > HELD_NANOS) {
+            Long mask;
+            try {
+                mask = chunksHeld(steps, opened, cx >> 2, cz >> 2);
+            } catch (Throwable e) {
+                // Its database is not what this mod knows: its columns are read instead.
+                generationSteps = null;
+                DhLink.fallback("its database did not answer as expected, read column by column: " + e);
+                LivingHorizonClient.LOGGER.warn("Distant Horizons' database did not answer as expected: its columns are read one by one", e);
+                return null;
+            }
+            if (mask == null || left(opened)) return null;
+            if (held.size() > SECTIONS_KEPT) held.clear();
+            held.put(key, known = new long[]{mask, now});
+        }
+        return (known[0] >> ((cx & 3) * 4 + (cz & 3)) & 1) != 0;
+    }
+
+    /**
+     * The chunks of a section that hold terrain, a bit each ({@code x * 4 + z} within the
+     * section); 0 where the database has no such section, null where it cannot tell.
+     */
+    private @Nullable Long chunksHeld(MethodHandle steps, Opened opened, int sx, int sz) throws Throwable {
+        Object repo = repoOf(opened);
+        if (repo == null) return null;
+        long section = (long) sectionAt.invoke((byte) 6, sx, sz);
+        Object list = newBytes.invoke();
+        steps.invoke(repo, section, list);
+        byte[] generated = (byte[]) bytesOf.invoke(list);
+        sections.incrementAndGet();
+        if (generated.length == 0) {
+            // No steps: no such section, unless a row without them (cannot tell, then).
+            return timestampAt != null && timestampAt.invoke(repo, section) != null ? null : 0L;
+        }
+        if (generated.length != 64 * 64) return null;
+        long mask = 0;
+        // A column at (x, z) within the section is at x * 64 + z; 0 is a column never generated.
+        for (int chunk = 0; chunk < 16; chunk++) {
+            int fromX = (chunk >> 2) * 16, fromZ = (chunk & 3) * 16;
+            search:
+            for (int i = 0; i < 16; i++) {
+                for (int j = 0; j < 16; j++) {
+                    if (generated[(fromX + i) * 64 + fromZ + j] != 0) {
+                        mask |= 1L << chunk;
+                        break search;
+                    }
+                }
+            }
+        }
+        if (mask != 0) sectionsHeld.incrementAndGet();
+        return mask;
+    }
+
+    /** The database of the level read, found among Distant Horizons' levels by its wrapper. */
+    private @Nullable Object repoOf(Opened opened) throws Throwable {
+        Database database = opened.era.database;
+        if (database != null && database.level == opened.level) return database.repo;
+        Object world = dhWorld.invoke();
+        if (world == null) return null;
+        Object game = wrapped.invoke(opened.level);
+        for (Object level : (Iterable<?>) loadedLevels.invoke(world)) {
+            Object wrapper = levelWrapper.invoke(level);
+            if (wrapper == null) continue;
+            if (wrapper == opened.level || game != null && wrapped.invoke(wrapper) == game) {
+                Object repo = providerRepo.invoke(dataProvider.invoke(level));
+                if (repo == null) return null;
+                opened.era.database = new Database(opened.level, repo);
+                return repo;
+            }
+        }
+        return null;
     }
 
     @Override

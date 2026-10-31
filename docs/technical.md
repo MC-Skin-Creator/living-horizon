@@ -620,11 +620,17 @@ below), and other flyers and swimmers get a flat disc at their own height.
   under it (`compat/DrawnGround`): a chunk the game holds within its render distance, measured
   as the game picks its sections, or else a chunk the far world has terrain in, within Voxy's or
   Distant Horizons' own render distance (`LodWorld.drawnDistance`). The far world is asked a
-  chunk at a time, every chunk of a frame in one read (`LodWorld.fresh`, which reads a column
-  remembered empty again). A chunk found empty is asked again after 1, 2, 4... up to 30 seconds,
-  as the far world fills in after a world is opened; one with terrain stays so until the world
-  changes. Never a blink: only a "no terrain" answer hides a mob; while its chunk has no answer
-  yet (or the far world's reads are paused), it stays as it was the frame before
+  chunk at a time, on four threads of their own (`LodWorld.ground`), 256 chunks at most waiting,
+  each answered as it comes. Distant Horizons is asked through its database (`DhSource.holds`):
+  it keeps its terrain by sections of 4 by 4 chunks, with how far each column was generated, and
+  one small query a section says which of its chunks hold terrain; a column read through its API
+  loads or builds the section's terrain, a quarter of a second each. A version whose classes
+  differ reads columns instead, as Voxy does. Any read of the far world that finds blocks (a
+  mob's ground, most often) notes its chunk as terrain too (`DrawnGround.noted`). A chunk found
+  empty is asked again after 1, 2, 4... up to 10 seconds, as the far world fills in after a world
+  is opened, and all of them at once when one turns out to hold terrain; one with terrain stays
+  so until the world changes. Never a blink: only a "no terrain" answer hides a mob; while its
+  chunk has no answer yet (or the far world's reads are paused), it stays as it was the frame before
   (`DrawnGround.Decisions`, by the mob's id, shared by the real mob and its copy). The game's
   chunks within three of the edge of its render distance are asked ahead, so the answer is there
   before a mob or the edge crosses them. The debug marks call a hidden one *over the void*.
