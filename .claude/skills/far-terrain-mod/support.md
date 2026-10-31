@@ -63,7 +63,7 @@ Lodistance: as in PR #311, not merged yet.
 
 | Item | Voxy | Distant Horizons | Lodistance |
 |---|---|---|---|
-| Distant mobs fogged like its terrain | ✅ `FarFog` | ✅ `DhFog` | ❌ to check: it pushes the game's fog out to its distance, but mixes its own terrain only 85 % and fades it out at the edge |
+| Distant mobs fogged like its terrain | ✅ `FarFog` | ✅ `DhFog` | 🟡 its ramp alone, without the game's atmospheric fog (`FarFog.lodistance`); within the game's render distance mobs are a little clearer than the game's terrain |
 
 ## 6. What the player sees
 
@@ -85,8 +85,8 @@ Lodistance: as in PR #311, not merged yet.
 
 ## Left to do
 
-- **Lodistance**: run the `lodistance` scenario again with Sodium (its ground checks and the
-  last depth change have not run in game); its fog on distant mobs; shader packs; Vulkan; areas
+- **Lodistance**: run the `lodistance` scenario again with Sodium (its ground checks, the
+  last depth change and the fog have not run in game); shader packs; Vulkan; areas
   not in its memory; its renderer without Sodium, which drew nothing in the game tests (its hook
   misses 26.3's indirect chunk path).
 - **Voxy**: a game test, once something can run it.
