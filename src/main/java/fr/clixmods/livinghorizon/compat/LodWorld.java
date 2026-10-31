@@ -17,7 +17,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Reads the world past the render distance, from whichever mod keeps it - Voxy, Distant
- * Horizons or Lodistance, none required: the ground and biome of a column - for the birds to find
+ * Horizons, Lodistance or Far View, none required: the ground and biome of a column - for the birds to find
  * coasts, fields and lakes, and for the mobs to find where they may walk - and the first
  * block along a line, for the line of sight and {@code /livinghorizon lod}.
  *
@@ -123,9 +123,17 @@ public final class LodWorld {
      */
     private static volatile ConcurrentHashMap<Long, Known> memory = new ConcurrentHashMap<>();
 
-    private static final LodSource[] SOURCES = {new VoxySource(), new DhSource(), new LodistanceSource()};
+    private static final LodSource[] SOURCES = {new VoxySource(), new DhSource(), new LodistanceSource(),
+            new FarViewSource()};
 
     private LodWorld() {
+    }
+
+    /** Every client tick with a level, on the game's thread: each source installed does its part. */
+    public static void tick() {
+        for (LodSource source : SOURCES) {
+            if (source.loaded()) source.tick();
+        }
     }
 
     /** Another world: every section held is let go, every column read forgotten. */
@@ -175,7 +183,7 @@ public final class LodWorld {
         return source == null ? 0 : source.clearDistance();
     }
 
-    /** Whether Voxy, Distant Horizons or Lodistance is installed, answering or not. */
+    /** Whether a far-terrain mod is installed (Voxy, Distant Horizons, Lodistance or Far View), answering or not. */
     public static boolean installed() {
         for (LodSource source : SOURCES) {
             if (source.loaded()) return true;
@@ -183,7 +191,7 @@ public final class LodWorld {
         return false;
     }
 
-    /** Whether Voxy, Distant Horizons or Lodistance is installed and answering: there is a far world to read. */
+    /** Whether a far-terrain mod is installed (Voxy, Distant Horizons, Lodistance or Far View) and answering: there is a far world to read. */
     public static boolean present() {
         return source() != null;
     }
@@ -227,7 +235,7 @@ public final class LodWorld {
         if (source == null) {
             String failure = status().failure();
             result.completeExceptionally(new IllegalStateException(failure != null ? failure
-                    : "neither Voxy, Distant Horizons nor Lodistance is loaded"));
+                    : "no far-terrain mod is loaded (Voxy, Distant Horizons, Lodistance or Far View)"));
             return result;
         }
         run(source, () -> {

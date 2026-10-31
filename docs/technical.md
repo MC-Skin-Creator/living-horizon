@@ -48,7 +48,7 @@ never added to a level (`track/Puppets`).
 | root | `LivingHorizonCommon` (entry point on both sides, opens the network channel), `LivingHorizonClient` (client entry point), `FarConfig` (the settings file), `QualityPreset`, `Stats` |
 | `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`, `SeedDraws`, `SeedMobs`, `Foresight`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
 | `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`, the distance settings drawn in the world (`DistancePreview`); `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
-| `compat/` | Voxy, Distant Horizons and Lodistance: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `LodistanceSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `LodistanceLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
+| `compat/` | Voxy, Distant Horizons, Lodistance and Far View: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `LodistanceSource`, `FarViewSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `LodistanceLink`, `FarViewLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
 | `ambient/` | The birds (`Ambience`, `BirdModels`, `BirdFigure`, `AmbientRenderer`) and the easter eggs |
 | `platform/` | What differs between loaders: events, network, config folder |
 | `ui/` | The settings screens (`FarConfigScreen` and its sub-screens, `SodiumOptions`), the impostor screen, the text under the crosshair (`OfflineHud`) |
@@ -564,7 +564,7 @@ off, then run or jump to it once it was sent again.
 
 Once its copy is drawn, the blocks within 8 blocks of a mob (a square of 17 by 17 columns,
 `track/MobPaths`) are read, a few mobs per tick, from loaded chunks or from the far world
-(Voxy or Distant Horizons): the loaded sections are copied on the game's thread
+(Voxy, Distant Horizons or Far View): the loaded sections are copied on the game's thread
 (`track/BlockCopy`) and the ground and animation worked out on `track/GroundWork`'s threads,
 so the answer comes a tick or so later. They are read again when the mob moves, and later and later while
 columns are missing; a ground read whole is saved with the mob and used at once next time.
@@ -574,7 +574,8 @@ below), and other flyers and swimmers get a flat disc at their own height.
 - **The ground**: in each column, the floor nearest the mob's height with room above it.
   Grass, flowers, crops and snow layers count as air; a path dug with a shovel counts as
   ground; water, leaves, fences and walls are not ground. Voxy gives every block of the
-  column, Distant Horizons only its top one.
+  column, Distant Horizons only its top one, Far View its top one and, under trees, the ground
+  and where the leaves start.
 - **Choosing an animation**: every animation is laid on that ground, turned eight ways and
   mirrored. It fits when it never leaves the ground and never climbs or drops more than a
   block at a time: never off a cliff, never over a fence. Those at least 0.6 times as wide as
@@ -940,12 +941,13 @@ Horizon (on 26.3 the game's GPU device path works otherwise, see
 | Distant Horizons | `FarDepth`, from Distant Horizons' own depth texture (`compat/DhDepth`) |
 | Lodistance with Sodium | Lodistance, at twice its terrain's distance: `FarDepth` moves it to its real depth, around the entities only |
 | Lodistance without Sodium | `FarDepth`, from Lodistance's own depth texture, the same way as Distant Horizons' |
+| Far View | Far View itself, with the game's projection: nothing to do (not with its *Seamless* option, see [Far View](#far-view)) |
 
-### Links to Voxy, Distant Horizons, Lodistance and Iris
+### Links to Voxy, Distant Horizons, Lodistance, Far View and Iris
 
-None of the four has an API for what the mod needs, or not all of it: they are reached by
+None of the five has an API for what the mod needs, or not all of it: they are reached by
 reflection, each through one class, `VoxyLink`, `DhLink` (what `DhDepth` and `DhSource` share),
-`LodistanceLink` and `IrisLink`. A rename on their side is followed there and nowhere else. What an older or
+`LodistanceLink`, `FarViewLink` and `IrisLink`. A rename on their side is followed there and nowhere else. What an older or
 newer version lacks and the mod can do without is a fallback (`Links.optional…`), noted by the
 link; what it cannot do without turns that part off for the session. `/livinghorizon lod` has
 one line per link: linked, not installed or off and why, the fallbacks in use, and how often the
@@ -1050,6 +1052,34 @@ per column, the block at the top of each, water over them; no biomes) without it
 `LodWorld.drawnDistance` its distance setting. Not done yet: Vulkan (the GPU device path, where
 the merge could not be taken back and would change how its terrain looks against clouds and
 particles) and shader packs, where it is left alone (`mergeLodistance` says why).
+
+### Far View
+
+Far View (Forge and NeoForge, 1.20.1 to 1.21.4, no API, no source published) keeps a height
+grid of the terrain the client has received, in regions of 128 by 128 columns (`FVWorld`), and
+in single player also reads the world's region files and generates chunks around the player
+on the integrated server. It meshes that grid and draws it with NeoForge's
+`AFTER_SOLID_BLOCKS` stage into the game's own picture and depth, before the entities, with the
+game's projection pushed out to its distance (`getProjectionMatrix`). Our figures are hidden
+behind it like any mob behind a block, and the occlusion queries see it; its haze is the game's
+terrain fog, which the entities share. Under a shader pack it draws in Iris's terrain phase.
+
+- **Its world** (`compat/FarViewSource`): the top block of each column and, under trees, the
+  ground and where the leaves start. Its map of regions is a plain one, filled on the game's
+  thread: once a second the game's thread copies the regions' arrays into a map of ours
+  (`tick`), which the reader threads read. It draws nothing in a dimension with a ceiling,
+  nor once switched off (Ctrl+H): its world reads as empty there.
+- **Its *Seamless* option** (off by default, never under a shader pack) draws its terrain with
+  a projection of its own squeezed into the back of the depth range (`glDepthRange`). A
+  figure's depth cannot be compared with it there: a mob shows through its hills. *Skip Hidden
+  Mobs* then asks the lines of sight through its grid instead of the depth
+  (`FarViewLink.squeezesDepth`); a mob half behind a hill is still drawn whole.
+- **Its far mobs** (on by default): past 128 blocks and up to the render distance it cancels
+  the game's model of a live mob (`EntityRenderDispatcher.shouldRender`) and draws a box of its
+  own. The game leaving it out, `GhostRenderer.unseen` would draw it too: it asks
+  `FVFarMobs.suppressModel` first (`FarViewLink.drawsMob`) and leaves those to Far View. With
+  its boxes off, the game draws them and we draw the rest past the render distance. In single
+  player it also has the built-in server send mobs out to the render distance.
 
 ### Shadows under Photon
 
@@ -1209,7 +1239,7 @@ debug options. `/livinghorizon debug` turns the panel and the boxes on or off to
 | Outlines | `outline*`, in *Outlines...* | An outline around each kind of figure, and a cross where a mob is not drawn (below) |
 | Statistics | *Statistics...* (`ui/StatsScreen`) | What is kept, counted when opened and on *Refresh*: remembered mobs (met, shared by the server, guessed), chosen, built and waiting; the guessed mobs kept apart, the chunks looked at and the memory they take; the size on disk of each folder of `config/livinghorizon`, this server's and all |
 | Depth view | `debugDepthView` | Bottom right: the game's depth alone, with the far terrain merged in, or after the entities. Near is white, far black, sky blue |
-| Far terrain | `/livinghorizon lod` (or `voxy`) | Which far terrain mod is read (Voxy or Distant Horizons), whether reading it failed, and the state of its depth |
+| Far terrain | `/livinghorizon lod` (or `voxy`) | Which far terrain mod is read (Voxy, Distant Horizons or Far View), whether reading it failed, and the state of its depth |
 | Optimisations | `opt*`, `depthOcclusion`, `hideOccludedMobs` | Every optimisation has its own switch, to compare the cost (see [Optimizations](#optimizations)) |
 
 ### Box colours
