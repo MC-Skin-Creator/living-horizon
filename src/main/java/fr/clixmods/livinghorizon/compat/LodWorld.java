@@ -255,6 +255,61 @@ public final class LodWorld {
         return surfaces(xs, zs, false);
     }
 
+    /**
+     * A column the mod was asked about and did not answer for, which is not the same as one it
+     * holds nothing in: {@link LodSource#column} throws it, and {@link #ground} reads it as unknown.
+     */
+    static final class Unanswered extends Exception {
+        static final Unanswered INSTANCE = new Unanswered();
+
+        private Unanswered() {
+            super(null, null, false, false);
+        }
+    }
+
+    /**
+     * Whether the far world holds terrain at each column: true, false where it holds nothing,
+     * null where it could not say (no world open yet, a read that failed or was not answered).
+     * Only a column read as empty is false: a failed read never makes ground into void. A
+     * column remembered with terrain answers at once; one remembered empty is read again.
+     */
+    public static CompletableFuture<@Nullable Boolean[]> ground(int[] xs, int[] zs) {
+        Boolean[] found = new Boolean[xs.length];
+        LodSource source = source();
+        if (source == null) return CompletableFuture.completedFuture(found);
+        CompletableFuture<@Nullable Boolean[]> result = new CompletableFuture<>();
+        run(source, () -> {
+            ConcurrentHashMap<Long, Known> columns = memory;
+            try {
+                Object world = open(source);
+                if (world != null) {
+                    long at = System.nanoTime();
+                    boolean cache = FarConfig.get().optColumnCache;
+                    if (columns.size() > COLUMNS_KEPT) columns.clear();
+                    for (int i = 0; i < xs.length; i++) {
+                        long key = key(xs[i], zs[i]);
+                        Known known = cache ? columns.get(key) : null;
+                        if (known != null && at - known.at < COLUMN_NANOS && known.surface != NOTHING) {
+                            found[i] = true;
+                            continue;
+                        }
+                        try {
+                            Surface surface = source.column(world, xs[i], zs[i]);
+                            if (cache) columns.put(key, new Known(surface == null ? NOTHING : surface, at));
+                            found[i] = surface != null;
+                        } catch (Unanswered unanswered) {
+                            found[i] = null;
+                        }
+                    }
+                }
+            } catch (Throwable e) {
+                source.fail(e);
+            }
+            result.complete(found);
+        });
+        return result;
+    }
+
     private static CompletableFuture<@Nullable Surface[]> surfaces(int[] xs, int[] zs, boolean trustNothing) {
         Surface[] found = new Surface[xs.length];
         LodSource source = source();
@@ -288,7 +343,13 @@ public final class LodWorld {
                             found[i] = known.surface == NOTHING ? null : known.surface;
                             continue;
                         }
-                        Surface surface = source.column(world, xs[i], zs[i]);
+                        Surface surface;
+                        try {
+                            surface = source.column(world, xs[i], zs[i]);
+                        } catch (Unanswered unanswered) {
+                            // Not remembered: asked again next time.
+                            continue;
+                        }
                         if (cache) columns.put(key, new Known(surface == null ? NOTHING : surface, at));
                         found[i] = surface;
                     }

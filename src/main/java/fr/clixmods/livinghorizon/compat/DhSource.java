@@ -81,6 +81,8 @@ final class DhSource implements LodSource {
      * asks nothing more and keeps nothing ({@link #left}), and {@link #cancel()} calls it off.
      */
     private final ModCalls<Era> calls = new ModCalls<>(new Era());
+    /** The last read on this thread was answered "failed" by Distant Horizons, rather than empty. */
+    private final ThreadLocal<Boolean> unanswered = ThreadLocal.withInitial(() -> false);
 
     private final ThreadLocal<Cached> caches = new ThreadLocal<>();
 
@@ -95,6 +97,7 @@ final class DhSource implements LodSource {
 
     /** The data points of a column, or null; counts the answers and keeps the last message. */
     private Object @Nullable [] read(Object repo, Opened opened, int x, int z, Object cache) throws Throwable {
+        unanswered.set(false);
         if (!calls.enter(opened.era)) return null;
         Object result;
         try {
@@ -116,6 +119,7 @@ final class DhSource implements LodSource {
         Object message = DhLink.message(result);
         if (!DhLink.success(result)) {
             lastAnswer = "failed: " + message;
+            unanswered.set(true);
             return missed();
         }
         Object[] points = (Object[]) DhLink.payload(result);
@@ -352,6 +356,8 @@ final class DhSource implements LodSource {
         Opened opened = (Opened) world;
         if (left(opened)) return null;
         Object[] points = read(terrainRepo.invoke(), opened, x, z, cache(opened));
+        // Distant Horizons said it could not answer: not the same as a column it holds nothing in.
+        if (points == null && unanswered.get()) throw LodWorld.Unanswered.INSTANCE;
         if (points == null) return null;
         Object best = null;
         int bestTop = Integer.MIN_VALUE;

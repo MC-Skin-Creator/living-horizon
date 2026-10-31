@@ -675,6 +675,12 @@ come back, add it here in the same pull request: this file is what the next sess
   mouse release only to the widget under the cursor, and a slider dragged past its end is
   released beside it. `SideOptionsScreen.mouseReleased` hands every release to
   `NumberSlider.afterRelease`; a screen of numbers that is not a `SideOptionsScreen` needs the same.
+- **Distant mobs over the far terrain marked "over the void"** (dark purple boxes on terrain that
+  is drawn, *Only Over Terrain* hiding them): `DrawnGround` reads the far world with
+  `LodWorld.ground`, where only a column read as empty is void. A read that failed, no world open
+  yet, or Distant Horizons answering "failed" (`LodWorld.Unanswered`) is unknown, keeps the mob as
+  it was and is asked again a second later; read as empty, a chunk waited up to 30 s. Read
+  `/livinghorizon lod` (its last answer) when it comes back.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

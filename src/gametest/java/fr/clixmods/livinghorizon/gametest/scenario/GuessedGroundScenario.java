@@ -94,7 +94,7 @@ public final class GuessedGroundScenario implements Scenario {
         }
         LodWorld.Surface[] surfaces;
         try {
-            surfaces = LodWorld.fresh(xs, zs).get(30, TimeUnit.SECONDS);
+            surfaces = LodWorld.surfaces(xs, zs).get(30, TimeUnit.SECONDS);
         } catch (Exception e) {
             throw new AssertionError("reading Distant Horizons failed: " + e, e);
         }

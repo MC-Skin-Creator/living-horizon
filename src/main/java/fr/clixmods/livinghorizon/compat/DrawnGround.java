@@ -138,11 +138,15 @@ public final class DrawnGround {
         Chunk[] chunks = ASKED.toArray(new Chunk[0]);
         int[] xs = Arrays.copyOf(askedX, chunks.length), zs = Arrays.copyOf(askedZ, chunks.length);
         ASKED.clear();
-        LodWorld.fresh(xs, zs).whenComplete((found, error) -> {
+        LodWorld.ground(xs, zs).whenComplete((found, error) -> {
             long now = System.nanoTime();
             for (int i = 0; i < chunks.length; i++) {
                 Chunk chunk = chunks[i];
-                if (error == null && found != null && found[i] != null) {
+                Boolean terrain = error == null && found != null ? found[i] : null;
+                if (terrain == null) {
+                    // No answer (no world open yet, a failed read): not void, asked again soon.
+                    chunk.next = now + RETRY_NANOS;
+                } else if (terrain) {
                     chunk.ground = true;
                 } else {
                     int misses = Math.min(chunk.misses, 5);
