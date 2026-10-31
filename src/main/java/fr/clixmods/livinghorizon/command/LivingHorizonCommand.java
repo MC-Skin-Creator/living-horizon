@@ -39,7 +39,10 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -214,6 +217,8 @@ public final class LivingHorizonCommand {
     private static final int MAX_TEST_PLAYERS = 100, MAX_TEST_RADIUS = 256;
     /** Blocks around you a crowd of test players is spread over when no radius is given. */
     private static final int CROWD_RADIUS = 16;
+    /** Blocks above the ground gliding test players are placed at when no height is given. */
+    private static final int GLIDE_HEIGHT = 30;
 
     /**
      * {@code /livinghorizon debug offline test ...}: test players who logged off, to try the
@@ -221,46 +226,63 @@ public final class LivingHorizonCommand {
      * stand, wearing your skin, logged off that many minutes ago, on a copy of what you ride
      * if you ride something; with a count, that many ({@code name1}, {@code name2}...), each on
      * the ground somewhere within the radius around you. {@code crowd <count> [radius]
-     * [minutes]} does the same with names of their own. {@code clear} removes them;
+     * [minutes]} does the same with names of their own; {@code glide <count> [radius] [height]}
+     * too, that many blocks above the ground in an elytra, as if they logged off gliding.
+     * {@code clear} removes them;
      * {@code list} shows everyone resting on this server. Test players are never written to
      * the file.
      */
     private static <S> LiteralArgumentBuilder<S> offlineTests(Function<S, Source> source) {
         return LiteralArgumentBuilder.<S>literal("offline").then(LiteralArgumentBuilder.<S>literal("test")
                 .then(LiteralArgumentBuilder.<S>literal("spawn")
-                        .executes(c -> spawnOffline(source.apply(c.getSource()), null, 0, 1, 0))
+                        .executes(c -> spawnOffline(source.apply(c.getSource()), 0, null, 0, 1, 0))
                         .then(RequiredArgumentBuilder.<S, String>argument("name", StringArgumentType.word())
-                                .executes(c -> spawnOffline(source.apply(c.getSource()),
+                                .executes(c -> spawnOffline(source.apply(c.getSource()), 0,
                                         StringArgumentType.getString(c, "name"), 0, 1, 0))
                                 .then(RequiredArgumentBuilder.<S, Integer>argument("minutes", IntegerArgumentType.integer(0))
-                                        .executes(c -> spawnOffline(source.apply(c.getSource()),
+                                        .executes(c -> spawnOffline(source.apply(c.getSource()), 0,
                                                 StringArgumentType.getString(c, "name"),
                                                 IntegerArgumentType.getInteger(c, "minutes"), 1, 0))
                                         .then(RequiredArgumentBuilder.<S, Integer>argument("count",
                                                         IntegerArgumentType.integer(1, MAX_TEST_PLAYERS))
-                                                .executes(c -> spawnOffline(source.apply(c.getSource()),
+                                                .executes(c -> spawnOffline(source.apply(c.getSource()), 0,
                                                         StringArgumentType.getString(c, "name"),
                                                         IntegerArgumentType.getInteger(c, "minutes"),
                                                         IntegerArgumentType.getInteger(c, "count"), CROWD_RADIUS))
                                                 .then(RequiredArgumentBuilder.<S, Integer>argument("radius",
                                                                 IntegerArgumentType.integer(0, MAX_TEST_RADIUS))
-                                                        .executes(c -> spawnOffline(source.apply(c.getSource()),
+                                                        .executes(c -> spawnOffline(source.apply(c.getSource()), 0,
                                                                 StringArgumentType.getString(c, "name"),
                                                                 IntegerArgumentType.getInteger(c, "minutes"),
                                                                 IntegerArgumentType.getInteger(c, "count"),
                                                                 IntegerArgumentType.getInteger(c, "radius"))))))))
                 .then(LiteralArgumentBuilder.<S>literal("crowd")
                         .then(RequiredArgumentBuilder.<S, Integer>argument("count", IntegerArgumentType.integer(1, MAX_TEST_PLAYERS))
-                                .executes(c -> spawnOffline(source.apply(c.getSource()), null, 0,
+                                .executes(c -> spawnOffline(source.apply(c.getSource()), 0, null, 0,
                                         IntegerArgumentType.getInteger(c, "count"), CROWD_RADIUS))
                                 .then(RequiredArgumentBuilder.<S, Integer>argument("radius",
                                                 IntegerArgumentType.integer(0, MAX_TEST_RADIUS))
-                                        .executes(c -> spawnOffline(source.apply(c.getSource()), null, 0,
+                                        .executes(c -> spawnOffline(source.apply(c.getSource()), 0, null, 0,
                                                 IntegerArgumentType.getInteger(c, "count"),
                                                 IntegerArgumentType.getInteger(c, "radius")))
                                         .then(RequiredArgumentBuilder.<S, Integer>argument("minutes", IntegerArgumentType.integer(0))
-                                                .executes(c -> spawnOffline(source.apply(c.getSource()), null,
+                                                .executes(c -> spawnOffline(source.apply(c.getSource()), 0, null,
                                                         IntegerArgumentType.getInteger(c, "minutes"),
+                                                        IntegerArgumentType.getInteger(c, "count"),
+                                                        IntegerArgumentType.getInteger(c, "radius")))))))
+                .then(LiteralArgumentBuilder.<S>literal("glide")
+                        .then(RequiredArgumentBuilder.<S, Integer>argument("count", IntegerArgumentType.integer(1, MAX_TEST_PLAYERS))
+                                .executes(c -> spawnOffline(source.apply(c.getSource()), GLIDE_HEIGHT, null, 0,
+                                        IntegerArgumentType.getInteger(c, "count"), CROWD_RADIUS))
+                                .then(RequiredArgumentBuilder.<S, Integer>argument("radius",
+                                                IntegerArgumentType.integer(0, MAX_TEST_RADIUS))
+                                        .executes(c -> spawnOffline(source.apply(c.getSource()), GLIDE_HEIGHT, null, 0,
+                                                IntegerArgumentType.getInteger(c, "count"),
+                                                IntegerArgumentType.getInteger(c, "radius")))
+                                        .then(RequiredArgumentBuilder.<S, Integer>argument("height",
+                                                        IntegerArgumentType.integer(1, MAX_TEST_RADIUS))
+                                                .executes(c -> spawnOffline(source.apply(c.getSource()),
+                                                        IntegerArgumentType.getInteger(c, "height"), null, 0,
                                                         IntegerArgumentType.getInteger(c, "count"),
                                                         IntegerArgumentType.getInteger(c, "radius")))))))
                 .then(LiteralArgumentBuilder.<S>literal("clear").executes(c -> {
@@ -273,9 +295,11 @@ public final class LivingHorizonCommand {
 
     /**
      * Places {@code count} test players: one alone where you stand, several on the ground
-     * within {@code radius} blocks around you, each facing its own way.
+     * within {@code radius} blocks around you, each facing its own way; {@code aloft} blocks
+     * above it in an elytra, as if they logged off gliding, when it is not 0.
      */
-    private static int spawnOffline(Source source, @Nullable String name, int minutesAgo, int count, int radius) {
+    private static int spawnOffline(Source source, int aloft, @Nullable String name, int minutesAgo, int count,
+                                    int radius) {
         Player self = source.player();
         ClientPacketListener connection = source.client().getConnection();
         if (self == null || connection == null) return 0;
@@ -304,13 +328,13 @@ public final class LivingHorizonCommand {
             }
         }
         // On what you ride, if anything: a copy of it, which each of them keeps.
-        RestingPlayers.Mount mount = RestingPlayers.Mount.ridden(self);
+        RestingPlayers.Mount mount = aloft > 0 ? null : RestingPlayers.Mount.ridden(self);
         boolean flies = mount != null && RestingPlayers.Mount.flies(self.getRootVehicle());
         String dimension = SharedPositions.dimensionId(self.level().dimension());
         Random random = new Random();
         List<String> skins = RestingPlayers.skinsFor(names.size(), random);
         for (String each : names) {
-            if (count == 1 && radius == 0) {
+            if (count == 1 && radius == 0 && aloft == 0) {
                 // A copy of you: your skin, what you wear and hold, what you ride.
                 resting.fake(each, self.getGameProfile(), dimension, self.getX(), self.getY(), self.getZ(), self.getYRot(),
                         minutesAgo, mount, Gear.of(self, self.level().registryAccess()));
@@ -320,20 +344,25 @@ public final class LivingHorizonCommand {
             double angle = random.nextDouble() * Math.PI * 2, distance = radius * Math.sqrt(random.nextDouble());
             double x = self.getX() + Math.cos(angle) * distance, z = self.getZ() + Math.sin(angle) * distance;
             BlockPos column = BlockPos.containing(x, self.getY(), z);
-            double y = self.level().hasChunkAt(column)
+            double y = self.level().getChunkSource().hasChunk(column.getX() >> 4, column.getZ() >> 4)
                     ? self.level().getHeight(Heightmap.Types.MOTION_BLOCKING, column.getX(), column.getZ())
                     : self.getY();
             if (mount != null) y += mount.seatY();
             // On a mount that flies, at your height, as you fly: above the ground still where it rises higher.
             if (flies) y = Math.max(y, self.getY());
+            y += aloft;
             // The default skin of its name until the real player's skin is fetched.
             resting.fake(each, new GameProfile(UUIDUtil.createOfflinePlayerUUID(each), each), dimension, x, y, z,
                     random.nextFloat() * 360f - 180f, minutesAgo,
-                    mount == null ? null : mount.facing(random.nextFloat() * 360f - 180f), null);
+                    mount == null ? null : mount.facing(random.nextFloat() * 360f - 180f),
+                    aloft > 0 ? Gear.only(EquipmentSlot.CHEST, new ItemStack(Items.ELYTRA), self.level().registryAccess())
+                            : null);
             // Each in the skin of a real player, a different one each: a crowd, not clones of you.
             resting.dressFake(each, skins.get(names.indexOf(each)));
         }
-        source.feedback(count == 1 && radius == 0
+        source.feedback(aloft > 0
+                ? Component.translatable("livinghorizon.offline.test.gliding", count, aloft, radius)
+                : count == 1 && radius == 0
                 ? Component.translatable("livinghorizon.offline.test.spawned", names.get(0))
                 : Component.translatable("livinghorizon.offline.test.spawnedMany", count, radius));
         if (!FarConfig.get().offlinePlayers) {

@@ -43,6 +43,7 @@
   "livinghorizon.offline.unknown": "%s – offline",
   "livinghorizon.offline.test.spawned": "Testspieler %s an deiner Position abgesetzt, abgemeldet. Geh ein Stück zurück, um ihn zu sehen; /livinghorizon debug offline test clear entfernt ihn.",
   "livinghorizon.offline.test.spawnedMany": "%s Testspieler im Umkreis von %s Blöcken um dich abgesetzt, abgemeldet. /livinghorizon debug offline test clear entfernt sie.",
+  "livinghorizon.offline.test.gliding": "%s Testspieler %s Blöcke über dem Boden im Umkreis von %s Blöcken um dich abgesetzt, mit Elytren, abgemeldet wie im Gleitflug. /livinghorizon debug offline test clear entfernt sie.",
   "livinghorizon.offline.test.switchedOff": "Abgemeldete Spieler sind in den Einstellungen ausgeschaltet: Schalte sie ein, um %s zu sehen.",
   "livinghorizon.offline.test.online": "%s ist online: Wähle einen anderen Namen.",
   "livinghorizon.offline.test.long": "%s ist zu lang: Ein Spielername hat höchstens 16 Zeichen.",

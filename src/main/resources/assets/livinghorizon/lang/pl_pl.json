@@ -43,6 +43,7 @@
   "livinghorizon.offline.unknown": "%s — offline",
   "livinghorizon.offline.test.spawned": "Gracz testowy %s umieszczony w twoim miejscu, wylogowany. Odsuń się, aby go zobaczyć; /livinghorizon debug offline test clear go usuwa.",
   "livinghorizon.offline.test.spawnedMany": "Gracze testowi (%s) umieszczeni w promieniu %s bloków od ciebie, wylogowani. /livinghorizon debug offline test clear ich usuwa.",
+  "livinghorizon.offline.test.gliding": "Gracze testowi (%s) umieszczeni %s bloków nad ziemią w promieniu %s bloków od ciebie, z elytrami, wylogowani jak w locie szybowym. /livinghorizon debug offline test clear ich usuwa.",
   "livinghorizon.offline.test.switchedOff": "Wylogowani gracze są wyłączeni w ustawieniach: włącz ich, aby zobaczyć gracza %s.",
   "livinghorizon.offline.test.online": "Gracz %s jest online: wybierz inną nazwę.",
   "livinghorizon.offline.test.long": "Nazwa %s jest za długa: nazwa gracza ma najwyżej 16 znaków.",

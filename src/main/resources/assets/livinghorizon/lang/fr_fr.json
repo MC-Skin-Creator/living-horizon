@@ -43,6 +43,7 @@
   "livinghorizon.offline.unknown": "%s — hors ligne",
   "livinghorizon.offline.test.spawned": "Joueur de test %s placé là où tu es, déconnecté. Recule pour le voir ; /livinghorizon debug offline test clear le retire.",
   "livinghorizon.offline.test.spawnedMany": "%s joueurs de test placés à %s blocs de toi au plus, déconnectés. /livinghorizon debug offline test clear les retire.",
+  "livinghorizon.offline.test.gliding": "%s joueurs de test placés à %s blocs au-dessus du sol, à %s blocs de toi au plus, avec des élytres, déconnectés comme en plein vol plané. /livinghorizon debug offline test clear les retire.",
   "livinghorizon.offline.test.switchedOff": "Les joueurs déconnectés sont désactivés dans les paramètres : à activer pour voir %s.",
   "livinghorizon.offline.test.online": "%s est en ligne : choisis un autre nom.",
   "livinghorizon.offline.test.long": "%s est trop long : un pseudo fait 16 caractères au plus.",
