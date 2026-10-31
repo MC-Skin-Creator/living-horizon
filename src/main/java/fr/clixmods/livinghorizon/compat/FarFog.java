@@ -74,6 +74,11 @@ public final class FarFog {
         FarConfig config = FarConfig.get();
         if (!config.anyDistant()) return game("no distant figure shown");
         if (IrisLink.shaderPackOn()) return game("a shader pack fogs them");
+        DhFog.Smooth ecstatic = EcstaticLink.fog(start);
+        if (ecstatic != null) {
+            source = "Ecstatic's";
+            return ecstatic;
+        }
         // A fog that ends close (water, lava, blindness), or Distant Horizons not drawing.
         if (start < NO_RENDER_DISTANCE_FOG) return game("its own fog is on");
         if (!config.optDhFog) return game("DH Fog Fix off, no fog at all");

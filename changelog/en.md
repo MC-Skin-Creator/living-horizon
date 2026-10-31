@@ -7,6 +7,7 @@
 #### New
 - **Support for Lodistance's terrain** — Distant mobs and players now hide behind Lodistance's far terrain like behind any hill and blend into its fog, and distant mobs walk on its ground, as they do with Voxy and Distant Horizons. (Minecraft 26.3, with OpenGL, without shaders.)
 - **Support for Far View's terrain** — Distant mobs now show and walk on Far View's far terrain and hide behind its hills, instead of being hidden past the render distance. (Forge and NeoForge, Minecraft 1.20.1 to 1.21.4.)
+- **Support for Ecstatic's terrain** — Distant mobs now appear on Ecstatic's terrain and walk on its ground, instead of vanishing past the render distance. They hide correctly behind its hills, stay visible in front of them, and blend into its fog. (NeoForge, Minecraft 1.21.1, single player; the fog without shaders.)
 
 #### Fixed
 - **Mobs shown only once with Far View** — Mobs that Far View draws as boxes between 128 blocks and the render distance are now shown only once, instead of twice on top of each other. (Forge and NeoForge, Minecraft 1.20.1 to 1.21.4.)
@@ -35,7 +36,6 @@
 - **Estimate the mobs around you** — The new *Guess Nearby Mobs* button shows the estimated mobs up to 1,024 chunks around you at once, and keeps them for your next sessions. On a server, the server must share its seed.
 - **Typed values** — Sliders in the mod's settings that end in *Unlimited* (maximum counts and render distances) now accept a value typed on the keyboard, even beyond their last step, and Sodium's page shows it too. Right-click a slider to enter an exact value; the arrow keys also move each slider step by step.
 - **Distance preview in the world** — When you hover or change a distance setting, its limit is now shown directly in the world, behind the menu. You can see at a glance how far the chosen value reaches.
-- **Ecstatic's far terrain** — distant mobs now stand and walk on Ecstatic's terrain and hide behind its hills, instead of vanishing past the render distance or under the land behind them (NeoForge, Minecraft 1.21.1, single player).
 
 #### Improved
 - **Optional simplification distance** — *Simplification Distance* can now be turned off. Mobs, entities, players and birds then only become simplified images once they look small enough on screen.

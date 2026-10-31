@@ -41,8 +41,6 @@ final class EcstaticSource implements LodSource {
 
     private MethodHandle coordinator, fileForLevel, bootstrapFile, readColumn, region, spacing, channel, height, biome;
     private int regionBlocks;
-    /** {@code Ecstatic.currentRingConfig} and {@code RingConfig.outerBoundary}, for how far it draws: null when missing. */
-    private @Nullable MethodHandle rings, outerBoundary;
 
     private final AtomicInteger reads = new AtomicInteger(), found = new AtomicInteger();
 
@@ -100,7 +98,6 @@ final class EcstaticSource implements LodSource {
         Class<?> regionType = Class.forName(p + "lod.RegionCoord");
         Class<?> file = Class.forName(p + "storage.LodRegionFile");
         Class<?> column = Class.forName(p + "storage.HeightmapColumn");
-        Class<?> ring = Class.forName(p + "lod.RingConfig");
         MethodType toObject = MethodType.methodType(Object.class, Object.class);
         coordinator = lookup.findStatic(mod, "activeCoordinator", MethodType.methodType(coordinatorType))
                 .asType(MethodType.methodType(Object.class));
@@ -119,16 +116,6 @@ final class EcstaticSource implements LodSource {
         height = lookup.findVirtual(column, "height", MethodType.methodType(int.class)).asType(MethodType.methodType(int.class, Object.class));
         biome = lookup.findVirtual(column, "biomeRawId", MethodType.methodType(int.class)).asType(MethodType.methodType(int.class, Object.class));
         if (regionBlocks <= 0) throw new IllegalStateException("regions of " + regionBlocks + " blocks");
-        try {
-            rings = lookup.findStatic(mod, "currentRingConfig", MethodType.methodType(ring, int.class))
-                    .asType(MethodType.methodType(Object.class, int.class));
-            outerBoundary = lookup.findVirtual(ring, "outerBoundary", MethodType.methodType(int.class, int.class))
-                    .asType(MethodType.methodType(int.class, Object.class, int.class));
-        } catch (ReflectiveOperationException e) {
-            rings = null;
-            outerBoundary = null;
-            EcstaticLink.fallback("how far it draws unknown");
-        }
     }
 
     @Override
@@ -241,25 +228,16 @@ final class EcstaticSource implements LodSource {
     @Override
     public double drawnDistance() {
         Minecraft minecraft = Minecraft.getInstance();
-        MethodHandle config = rings, boundary = outerBoundary;
-        if (config == null || boundary == null || !EcstaticLink.draws(minecraft)) return 0;
-        try {
-            Object ring = (Object) config.invokeExact(minecraft.options.getEffectiveRenderDistance());
-            return (int) boundary.invokeExact(ring, COARSEST) * 16.0;
-        } catch (Throwable e) {
-            return 0;
-        }
+        if (!EcstaticLink.draws(minecraft)) return 0;
+        return EcstaticLink.drawnDistance(minecraft.options.getEffectiveRenderDistance());
     }
 
-    /**
-     * Its fog starts at the game's render distance and, by default, reaches 45% at the edge of
-     * its terrain: still thin a little under half of the way out.
-     */
+    /** Where its fog, a smoothstep from its start to its end, reaches a fifth: a third of the way. */
     @Override
     public double clearDistance() {
         double drawn = drawnDistance();
-        if (drawn <= 0) return 0;
-        double start = Minecraft.getInstance().options.getEffectiveRenderDistance() * 16.0;
-        return drawn <= start ? drawn : start + (drawn - start) * 0.2 / 0.45;
+        float[] ramp = EcstaticLink.fogRamp(Minecraft.getInstance().options.getEffectiveRenderDistance());
+        if (drawn <= 0 || ramp == null) return drawn;
+        return Math.min(drawn, ramp[0] + (ramp[1] - ramp[0]) * 0.31);
     }
 }

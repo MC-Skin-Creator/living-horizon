@@ -7,6 +7,7 @@
 #### Nouveautés
 - **Prise en charge du terrain de Lodistance** — Les créatures et joueurs lointains se cachent maintenant derrière le terrain lointain de Lodistance comme derrière n'importe quelle colline et se fondent dans son brouillard, et les créatures lointaines marchent sur son sol, comme avec Voxy et Distant Horizons. (Minecraft 26.3, avec OpenGL, sans shaders.)
 - **Prise en charge du terrain de Far View** — Les créatures lointaines s'affichent et marchent maintenant sur le terrain lointain de Far View et se cachent derrière ses collines, au lieu d'être masquées au-delà de la distance d'affichage. (Forge et NeoForge, Minecraft 1.20.1 à 1.21.4.)
+- **Prise en charge du terrain d'Ecstatic** — Les créatures lointaines apparaissent maintenant sur le terrain d'Ecstatic et marchent sur son sol, au lieu de disparaître au-delà de la distance d'affichage. Elles se cachent correctement derrière ses collines, restent visibles devant elles et se fondent dans son brouillard. (NeoForge, Minecraft 1.21.1, solo ; le brouillard sans shaders.)
 
 #### Corrections
 - **Créatures affichées une seule fois avec Far View** — Les créatures que Far View dessine en boîtes entre 128 blocs et la distance d'affichage ne sont maintenant affichées qu'une fois, au lieu de deux fois l'une sur l'autre. (Forge et NeoForge, Minecraft 1.20.1 à 1.21.4.)
@@ -35,7 +36,6 @@
 - **Estimation des créatures alentour** — Le nouveau bouton *Deviner les créatures* affiche d'un coup les créatures estimées jusqu'à 1024 chunks autour de vous, et les conserve pour vos prochaines sessions. Sur un serveur, celui-ci doit partager sa seed.
 - **Saisie des valeurs au clavier** — Les curseurs des réglages du mod qui se terminent par *Illimité* (nombres maximum et distances d'affichage) acceptent maintenant une valeur tapée au clavier, même au-delà de leur dernier cran, et la page de Sodium l'affiche aussi. Faites un clic droit sur un curseur pour saisir une valeur précise ; les flèches du clavier ajustent aussi chaque curseur cran par cran.
 - **Aperçu des distances dans le monde** — Lorsque vous survolez ou modifiez un réglage de distance, sa limite s'affiche maintenant directement dans le monde, derrière le menu. Vous voyez ainsi d'un coup d'œil jusqu'où porte la valeur choisie.
-- **Terrain lointain d'Ecstatic** — les créatures lointaines se tiennent et marchent maintenant sur le terrain d'Ecstatic et se cachent derrière ses collines, au lieu de disparaître au-delà de la distance de rendu ou sous le terrain derrière elles (NeoForge, Minecraft 1.21.1, solo).
 
 #### Améliorations
 - **Distance de simplification facultative** — La *Distance de simplification* peut maintenant être désactivée. Les créatures, entités, joueurs et oiseaux ne deviennent alors des images simplifiées que lorsqu'ils paraissent assez petits à l'écran.

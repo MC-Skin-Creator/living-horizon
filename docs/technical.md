@@ -1102,9 +1102,19 @@ game's nearer, a hill a hundred blocks behind a mob 300 blocks away has a smalle
 mob and is painted over it (`DepthMathTest`). So while Ecstatic draws, the game's far plane is
 Ecstatic's (`EcstaticLink.farPlane`, read from its renderer, in `GhostRenderer.farPlane`).
 
-Its fog is not ours: it takes the game's fog away (the world's entities included) and fogs its
-terrain in its own shaders, so distant mobs are not fogged over its terrain. Its shader pack
-support is not done yet; neither is checked here.
+Its fog: it moves the game's fog out to a hundred times the far distance (the entities'
+included) and fogs its terrain itself, without a shader pack, with the game's `linear_fog` in
+its own shaders: every way round, from the render distance to an end past its outermost ring
+(its fog reaches 45% there, times its *fog falloff*), in the game's fog colour. Distant mobs had
+no fog on its fogged hills. `EcstaticLink.fog` gives the world's entities that same ramp
+(`FarFog.chooseSmooth`, set around the entities through `GameFog`), which the entities' shaders
+apply the same way. Under a shader pack the pack's fog stays. Ecstatic advises against shader
+packs for now and its Iris support is not done: not checked here.
+
+Nothing of it runs in the game tests (NeoForge 1.21.1, which has no client game tests): it is
+checked by starting the `1.21.1-neoforge` client. Its source was read at 1.4.1 (October 2026): no
+network at all, no process, no class loading; files only under `config/ecstatic` and the
+world's save, and a PNG the player picks in a file dialog; `Unsafe` only to unmap its files.
 
 `compat/EcstaticSource` reads its grid of heights and biomes (one file per level of detail, a
 sample every 2 to 32 blocks): the ground for the mobs and *Only Over Terrain*. Ecstatic frees a
@@ -1206,6 +1216,14 @@ ground, its colour's alpha times `max`, fitted by least squares over two render 
 (`DhFog.fitSmooth`; off by 0.044 at most for its default, 0.04 for a linear fog, 0.19 for the
 exponential). There is no floor: a `min` above 0 is only followed on average. Voxy is not
 there before 1.21.6, so nothing else changes. The block entities, drawn after, keep the game's.
+
+**Ecstatic** (1.21.1) moves the game's fog out to a hundred times the far distance while it
+draws and fogs its terrain with the game's own smooth ramp, in its own shaders, every way round:
+from the render distance to `R + (E - R) / 0.45 × falloff`, `E` the edge of its outermost ring
+and `falloff` its *fog falloff* setting (0.95 by default), in the game's fog colour. The same
+`FarFog.begin` sets exactly that ramp around the entities (`EcstaticLink.fog`), as long as the
+game's start is past fifty render distances: Ecstatic's own fog is on. Water, lava, blindness,
+a foggy biome or a boss keep the game's.
 
 ## Skipping hidden mobs
 
