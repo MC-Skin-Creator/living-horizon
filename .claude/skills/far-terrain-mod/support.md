@@ -81,7 +81,7 @@ Lodistance: as in PR #311, not merged yet.
 | Game test scenario | ❌ cannot run on llvmpipe (GLSL 4.60) | ✅ `dhfog` | ✅ `lodistance`, part of it run |
 | `DepthMathTest` case | ✅ | ✅ | ✅ |
 | `docs/technical.md`, CLAUDE.md checklist | ✅ | ✅ | ✅ |
-| Tooltips in every language, changelog | ✅ | ✅ | 🟡 three of them; *Lazy Far Depth*, the parallel reads and the occlusion tooltips still name only Voxy and Distant Horizons |
+| Tooltips in every language, changelog | ✅ | ✅ | ✅ |
 
 ## Left to do
 
