@@ -159,6 +159,8 @@ public final class LivingHorizonCommand {
                                 (level, player) -> FarPlayerTracker.get().ambience().bigfoot().summon(level, player, true))))
                         .then(LiteralArgumentBuilder.<S>literal("ee7").requires(c -> EGGS).executes(c -> egg(source.apply(c.getSource()), "ee7",
                                 (level, player) -> FarPlayerTracker.get().ambience().ghostBoat().summon(level, player, true))))
+                        .then(LiteralArgumentBuilder.<S>literal("ee8").requires(c -> EGGS).executes(c -> egg(source.apply(c.getSource()), "ee8",
+                                (level, player) -> FarPlayerTracker.get().ambience().ghostVillager().summon(level, player, true))))
                         .then(birds)
                         .then(LiteralArgumentBuilder.<S>literal("config").executes(c -> {
                             // After the chat screen, which closes once the command has run.

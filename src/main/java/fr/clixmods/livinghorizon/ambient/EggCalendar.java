@@ -28,7 +28,7 @@ import java.nio.file.Path;
  */
 public final class EggCalendar {
     /** The first day each easter egg may come by chance, by number; the daily ones' (3, 4, 5) are drawn per world. */
-    private static final int[] FIRST = {0, 3, 5, 0, 0, 0, 6, 8};
+    private static final int[] FIRST = {0, 3, 5, 0, 0, 0, 6, 8, 4};
     /** The daily easter eggs, by number. */
     private static final int[] DAILY = {3, 4, 5};
 

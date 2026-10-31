@@ -264,6 +264,7 @@ public final class Ambience {
     private final Waver waver = new Waver(calendar);
     private final Bigfoot bigfoot = new Bigfoot(calendar);
     private final GhostBoat ghostBoat = new GhostBoat(calendar);
+    private final GhostVillager ghostVillager = new GhostVillager(calendar);
 
     /** When the easter eggs may come, per world. */
     public EggCalendar calendar() {
@@ -305,6 +306,11 @@ public final class Ambience {
         return ghostBoat;
     }
 
+    /** Easter egg 8. */
+    public GhostVillager ghostVillager() {
+        return ghostVillager;
+    }
+
     /** Everything flying or perched this tick. */
     public List<Flyer> flyers() {
         return flyers;
@@ -321,7 +327,7 @@ public final class Ambience {
         // daily ones (3, 4, 5) keep days of their own, alongside the others: nobody waits for them.
         calendar.tick(current);
         boolean eggs = config.easterEggs && current.dimension() == Level.OVERWORLD;
-        boolean free = !ufo.busy() && !pass.busy() && !bigfoot.busy() && !ghostBoat.busy();
+        boolean free = !ufo.busy() && !pass.busy() && !bigfoot.busy() && !ghostBoat.busy() && !ghostVillager.busy();
         ufo.tick(current, self, eggs, free && calendar.allows(1));
         pass.tick(current, self, eggs, free && calendar.allows(2));
         ghosts.tick(current, self, eggs);
@@ -329,6 +335,7 @@ public final class Ambience {
         waver.tick(current, self, eggs);
         bigfoot.tick(current, self, eggs, free && calendar.allows(6));
         ghostBoat.tick(current, self, eggs, free && calendar.allows(7));
+        ghostVillager.tick(current, self, eggs, free && calendar.allows(8));
         flyers.clear();
         if (!config.skyBirds || current.dimension() != Level.OVERWORLD) {
             groups.clear();
