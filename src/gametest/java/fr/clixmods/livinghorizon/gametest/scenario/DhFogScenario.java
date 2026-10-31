@@ -30,7 +30,6 @@ public final class DhFogScenario implements Scenario {
             Scene.log("dhfog skipped: Distant Horizons is not installed (run.sh dhfog --with distanthorizons)");
             return;
         }
-        //? if >=1.21.6 {
         context.runOnClient(minecraft -> {
             minecraft.options.entityDistanceScaling().set(0.5);
             minecraft.options.renderDistance().set(12);
@@ -65,7 +64,6 @@ public final class DhFogScenario implements Scenario {
                 minecraft.options.cloudStatus().set(CloudStatus.FANCY);
             });
         }
-        //?}
     }
 
     /** Sets Distant Horizons' far fog through its API; what it holds afterwards. */

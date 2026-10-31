@@ -99,6 +99,7 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
     //? if >=1.21.9 {
     @Override
     public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+        if (typing != null) return typingKey(event.key(), () -> typing.field() != null && typing.field().keyPressed(event));
         if (event.key() == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE && shouldCloseOnEsc() && SodiumReturn.below(lastScreen)) {
             closeOnRelease = true;
             return true;
@@ -115,9 +116,28 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
         }
         return super.keyReleased(event);
     }
+
+    @Override
+    public boolean charTyped(net.minecraft.client.input.CharacterEvent event) {
+        if (typing != null && typing.field() != null) return typing.field().charTyped(event);
+        return super.charTyped(event);
+    }
+
+    @Override
+    public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
+        return clicked(event.x(), event.y(), event.button()) || super.mouseClicked(event, doubleClick);
+    }
+
+    @Override
+    public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) {
+        boolean done = super.mouseReleased(event);
+        NumberSlider.afterRelease();
+        return done;
+    }
     //?} else {
     /*@Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (typing != null) return typingKey(keyCode, () -> typing.field() != null && typing.field().keyPressed(keyCode, scanCode, modifiers));
         if (keyCode == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE && shouldCloseOnEsc() && SodiumReturn.below(lastScreen)) {
             closeOnRelease = true;
             return true;
@@ -134,7 +154,79 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
         }
         return super.keyReleased(keyCode, scanCode, modifiers);
     }
+
+    @Override
+    public boolean charTyped(char character, int modifiers) {
+        if (typing != null && typing.field() != null) return typing.field().charTyped(character, modifiers);
+        return super.charTyped(character, modifiers);
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        return clicked(mouseX, mouseY, button) || super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    // Before 1.21 the release reaches only the widget under the cursor: the screen hands it on.
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        boolean done = super.mouseReleased(mouseX, mouseY, button);
+        NumberSlider.afterRelease();
+        return done;
+    }
     *///?}
+
+    /** The slider typed in, which takes the keys until Enter, Escape or a click. */
+    private @Nullable NumberSlider typing;
+
+    /** Escape leaves the field as it was, Enter keeps what is typed when it reads as a value. */
+    private boolean typingKey(int key, java.util.function.BooleanSupplier field) {
+        if (key == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE) {
+            stopTyping(false);
+        } else if (key == com.mojang.blaze3d.platform.InputConstants.KEY_RETURN
+                || key == com.mojang.blaze3d.platform.InputConstants.KEY_NUMPADENTER) {
+            if (typing != null && typing.typedIsValid()) stopTyping(true);
+        } else {
+            field.getAsBoolean();
+        }
+        return true;
+    }
+
+    private void stopTyping(boolean keep) {
+        NumberSlider slider = typing;
+        typing = null;
+        if (slider != null) slider.stopTyping(keep);
+    }
+
+    /**
+     * A click while typing keeps what is typed (and is spent on the field itself when it lands
+     * there); a right click on a slider that takes typing (one with no limit at its end) opens its field.
+     */
+    private boolean clicked(double x, double y, int button) {
+        if (typing != null) {
+            boolean onField = typing.isMouseOver(x, y);
+            stopTyping(typing.typedIsValid());
+            if (onField || minecraft.screen != this) return true;
+        }
+        if (button != com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT || list == null || !list.isMouseOver(x, y)) {
+            return false;
+        }
+        NumberSlider slider = sliderAt(list, x, y);
+        if (slider == null || !slider.typable()) return false;
+        typing = slider;
+        slider.startTyping();
+        return true;
+    }
+
+    private static @Nullable NumberSlider sliderAt(GuiEventListener listener, double x, double y) {
+        if (listener instanceof NumberSlider slider) return slider.shown() && slider.isMouseOver(x, y) ? slider : null;
+        if (listener instanceof net.minecraft.client.gui.components.events.ContainerEventHandler container) {
+            for (GuiEventListener child : container.children()) {
+                NumberSlider found = sliderAt(child, x, y);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
 
     // --- Distances shown in the world ----------------------------------------------------
 
@@ -205,7 +297,8 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
         AbstractWidget under = optionUnder(mouseX, mouseY);
         Distance pointed = null;
         for (Distance distance : distances) {
-            int value = distance.option.get();
+            // No limit draws nothing, as the preview reads 0.
+            int value = distance.option.get() == NumberSlider.UNLIMITED ? 0 : distance.option.get();
             if (value != distance.value) {
                 distance.value = value;
                 distance.changed = now;
@@ -260,6 +353,7 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        NumberSlider.nextFrame();
         super.render(graphics, mouseX, mouseY, partialTick);
         previewDistance(mouseX, mouseY);
         drawVersion(graphics);
@@ -268,6 +362,7 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
     /*// Before 1.20.2 a screen draws its own background, in render.
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        NumberSlider.nextFrame();
         if (minecraft.level == null) renderBackground(graphics);
         super.render(graphics, mouseX, mouseY, partialTick);
         previewDistance(mouseX, mouseY);

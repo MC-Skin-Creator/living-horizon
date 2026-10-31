@@ -7,12 +7,30 @@ package fr.clixmods.livinghorizon.render.impostor;
  *
  * <p>A figure already pictured keeps its picture until it is a little inside both: 5% closer
  * than the distance and 5% taller than the size. None of it blinks between a model and a picture.
+ *
+ * <p>A picture is never blown up far past the pixels it holds: a huge mob just past the
+ * distance (an Ice and Fire dragon twenty blocks long) keeps its model until it is small enough.
  */
 public final class ImpostorThreshold {
     /** How far inside a threshold a pictured figure must come to get its model back. */
     public static final double RETURN = 0.95;
 
+    /** How many times larger than its pixels a picture may be shown. */
+    public static final double MAX_ENLARGED = 2;
+
     private ImpostorThreshold() {
+    }
+
+    /**
+     * Whether a picture would be shown too large for what it holds, and its model drawn instead.
+     * A pictured figure keeps its picture until it is 5% larger than that.
+     *
+     * @param tilePixels a tile's height on screen, in pixels
+     * @param heldPixels the pixels along a side of a tile
+     * @param pictured   the figure was a picture last frame
+     */
+    public static boolean enlarged(double tilePixels, int heldPixels, boolean pictured) {
+        return tilePixels > heldPixels * MAX_ENLARGED / (pictured ? RETURN : 1);
     }
 
     /**

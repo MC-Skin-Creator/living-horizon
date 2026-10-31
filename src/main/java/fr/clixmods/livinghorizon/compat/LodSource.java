@@ -49,6 +49,14 @@ interface LodSource {
     /** The world to read on this thread, or null while the mod has none loaded. */
     @Nullable Object open() throws Throwable;
 
+    /**
+     * Whether the mod holds terrain anywhere in the chunk of the block {@code (x, z)}, known
+     * without reading its blocks; null where it cannot tell that way, and the column is read.
+     */
+    default @Nullable Boolean holds(Object world, int x, int z) throws Throwable {
+        return null;
+    }
+
     /** The highest block of a column and its biome; null where the mod knows nothing. */
     LodWorld.@Nullable Surface column(Object world, int x, int z) throws Throwable;
 
@@ -58,7 +66,13 @@ interface LodSource {
      * block is known: that block, solid ground under it, air over it.
      */
     default BlockState @Nullable [] slice(Object world, int x, int z, int bottom, int height) throws Throwable {
-        LodWorld.Surface surface = column(world, x, z);
+        LodWorld.Surface surface;
+        try {
+            surface = column(world, x, z);
+        } catch (LodWorld.Unanswered unanswered) {
+            // Not answered: nothing known, never a failure that pauses every read.
+            return null;
+        }
         if (surface == null) return null;
         BlockState top = surface.block() != null ? surface.block()
                 : surface.water() ? Blocks.WATER.defaultBlockState() : Blocks.STONE.defaultBlockState();

@@ -14,6 +14,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.FarFogScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FollowedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FlyersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.GaitsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.StillMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.GlidersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.HeadTurnScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorCrowdScenario;
@@ -36,15 +37,20 @@ import fr.clixmods.livinghorizon.gametest.scenario.PerchersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PerfScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RememberedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ResizeScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.RestKeptScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingCrowdScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingLoopScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingMountScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.SeedCrowdScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.SeedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ServerWithoutModScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ShoreScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.SittingPetsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.SodiumControlsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.TypedValuesScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.GuessedGroundScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.SodiumPagesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.UnloadScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.VehiclesScenario;
@@ -78,6 +84,8 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new FarFogScenario(),
             new DhFogScenario(),
             new RememberedMobsScenario(),
+            new SeedMobsScenario(),
+            new SeedCrowdScenario(),
             new OverVoidScenario(),
             new MannequinsScenario(),
             new VehiclesScenario(),
@@ -89,11 +97,14 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new RestingLoopScenario(),
             new RestingCrowdScenario(),
             new ShoreScenario(),
+            new RestKeptScenario(),
             new OptionsScreenScenario(),
             new DistancePreviewScenario(),
             new LinksScenario(),
             new SodiumPagesScenario(),
             new SodiumControlsScenario(),
+            new TypedValuesScenario(),
+            new GuessedGroundScenario(),
             new DepthViewScenario(),
             new EntityDepthScenario(),
             new ResizeScenario(),
@@ -104,6 +115,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new SittingPetsScenario(),
             new HeadTurnScenario(),
             new GaitsScenario(),
+            new StillMobsScenario(),
             new FlyersScenario(),
             new EasterEggsScenario(),
             new BirdsScenario(),

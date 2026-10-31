@@ -27,7 +27,7 @@ class FarConfigTest {
         FarConfig fresh = new FarConfig();
         fresh.version = migrated.version;
         assertEquals(GSON.toJson(fresh), GSON.toJson(migrated));
-        assertEquals(12, migrated.version);
+        assertEquals(13, migrated.version);
     }
 
     @Test
@@ -100,6 +100,43 @@ class FarConfigTest {
         FarConfig kept = migrated("{\"version\": 7, " + old);
         assertEquals(200, kept.maxDistantMobs);
         assertFalse(kept.impostors);
+    }
+
+    @Test
+    void version13KeepsNoLimitPastTheOldTop() {
+        FarConfig unlimited = migrated("{\"version\": 12, \"maxDistantMobs\": 1000, \"maxDistantEntities\": 1000}");
+        assertEquals(FarConfig.UNLIMITED_MOBS, unlimited.maxDistantMobs);
+        assertEquals(FarConfig.UNLIMITED_MOBS, unlimited.maxDistantEntities);
+        assertEquals(9000, unlimited.most(true, 9000));
+        FarConfig chosen = migrated("{\"version\": 12, \"maxDistantMobs\": 999}");
+        assertEquals(999, chosen.maxDistantMobs);
+        assertEquals(1000, migrated("{\"version\": 13, \"maxDistantMobs\": 1000}").maxDistantMobs);
+        assertEquals(FarConfig.UNLIMITED_OFFLINE, migrated("{\"version\": 12, \"maxOfflinePlayers\": 1000}").maxOfflinePlayers);
+        // A number typed past the slider is a limit, not no limit.
+        FarConfig typed = migrated("{\"version\": 13, \"maxDistantMobs\": 6000}");
+        assertEquals(6000, typed.most(true, 9000));
+    }
+
+    @Test
+    void version13GivesLimitsToWhatWasNotChosenByHand() {
+        // The old High and Ultra presets go to the new ones, with limits.
+        FarConfig high = migrated("{\"version\": 12, \"impostorDistance\": 256, \"maxDistantMobs\": 1000,"
+                + " \"mobMaxDistance\": 1024, \"birdDensity\": 200, \"birdMaxDistance\": 1500}");
+        assertEquals(QualityPreset.HIGH, QualityPreset.of(high));
+        FarConfig ultra = migrated("{\"version\": 12, \"impostorDistance\": 512, \"maxDistantMobs\": 1000,"
+                + " \"mobMaxDistance\": 0, \"birdDensity\": 400, \"birdMaxDistance\": 3000}");
+        assertEquals(QualityPreset.ULTRA, QualityPreset.of(ultra));
+        // The distances whose default was no limit.
+        FarConfig distances = migrated("{\"version\": 12, \"playerMaxDistance\": 0, \"entityMaxDistance\": 0,"
+                + " \"animationMaxDistance\": 0}");
+        assertEquals(FarConfig.MAX_DISTANCE, distances.playerMaxDistance);
+        assertEquals(FarConfig.MAX_DISTANCE, distances.entityMaxDistance);
+        assertEquals(FarConfig.MAX_DISTANCE, distances.animationMaxDistance);
+        // No limit set by hand, outside a preset, is kept.
+        FarConfig chosen = migrated("{\"version\": 12, \"maxDistantMobs\": 1000, \"mobMaxDistance\": 0}");
+        assertEquals(FarConfig.UNLIMITED_MOBS, chosen.maxDistantMobs);
+        assertEquals(0, chosen.mobMaxDistance);
+        assertEquals(1200, migrated("{\"version\": 12, \"playerMaxDistance\": 1200}").playerMaxDistance);
     }
 
     @Test

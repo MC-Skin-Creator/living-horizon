@@ -375,6 +375,7 @@ public final class Benchmark {
         config.outlineGameMobs = false;
         config.outlineLiveMobs = false;
         config.outlineCopies = false;
+        config.outlineForeseen = false;
         config.outlinePlayers = false;
         config.outlineImpostors = false;
         config.outlineLeftOut = false;

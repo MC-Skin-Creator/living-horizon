@@ -274,4 +274,17 @@ class PositionsMessageTest {
     private static byte[] bytes(String hex) {
         return HexFormat.of().parseHex(hex);
     }
+
+    @Test
+    void sharesTheSeedWithTheDimensionsAClientCanBuild() {
+        PositionsMessage.Seed seed = new PositionsMessage.Seed(-123456789L, List.of(
+                new PositionsMessage.SeedGround("minecraft:overworld", "minecraft:overworld", "minecraft:overworld")));
+        PositionsMessage.Decoded read = PositionsMessage.read(PositionsMessage.seed(seed));
+        assertNotNull(read);
+        assertEquals(PositionsMessage.SEED, read.kind());
+        assertEquals(seed, read.seed());
+        PositionsMessage.Decoded none = PositionsMessage.read(PositionsMessage.seed(PositionsMessage.Seed.NONE));
+        assertNotNull(none);
+        assertEquals(PositionsMessage.Seed.NONE, none.seed());
+    }
 }

@@ -297,9 +297,10 @@ public final class ImpostorAtlas {
 
     /**
      * How much larger a figure cut off by the very edge of its picture is baked again at
-     * least, and how much larger than {@link #size} a picture can get.
+     * least, and how much larger than {@link #size} a picture can get: an Ice and Fire dragon's
+     * tail reaches more than three times past its box.
      */
-    private static final double GROW = 1.3, MAX_GROW = 3;
+    private static final double GROW = 1.3, MAX_GROW = 5;
 
     /** How this game version draws and reads back the pictures, and writes the pages. */
     private static final BakeBackend BACKEND = BakeBackend.of();
@@ -350,8 +351,13 @@ public final class ImpostorAtlas {
     private static final Map<ImpostorKey, Double> GROWN = new HashMap<>();
     /** Figures the pages had no room for, and when: not asked for again for a while. */
     private static final Map<ImpostorKey, Long> REFUSED = new HashMap<>();
-    /** Figures whose renderer gives nothing to draw: never asked for again. */
+    /**
+     * Figures whose renderer gives nothing to draw, or whose model still reaches past its picture
+     * at {@link #MAX_GROW}: never asked for again, drawn as models.
+     */
     private static final Set<ImpostorKey> UNDRAWABLE = new HashSet<>();
+    /** Kinds of figure left out for not fitting their picture, each logged once. */
+    private static final Set<String> TOO_LARGE = new HashSet<>();
     /** Rows being baked: not free, not yet a sheet. */
     private static final Set<Integer> BAKING = new HashSet<>();
     //? if <1.21.6 {
@@ -896,6 +902,16 @@ public final class ImpostorAtlas {
                 GROWN.put(key, grow);
                 QUEUE.add(request.grown(grow));
                 again = true;
+                return;
+            }
+            if (growth > 1.01) {
+                // Still cut off with all the room it may have (Ice and Fire's sea serpent): a
+                // picture of part of it would stand for it everywhere, its model is drawn instead.
+                UNDRAWABLE.add(key);
+                if (TOO_LARGE.add(key.type())) {
+                    LivingHorizonClient.LOGGER.info("{} is drawn as a model far away: it does not fit its picture",
+                            key.type());
+                }
                 return;
             }
             int[][] levels = ImpostorPixels.sheet(pictures, request.render(), ImpostorViews.TILE, MIPS);
