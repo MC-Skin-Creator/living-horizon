@@ -46,6 +46,17 @@ public final class LodWorld {
         thread.setPriority(Thread.NORM_PRIORITY - 1);
         return thread;
     });
+    /**
+     * The short questions that decide what is drawn now (is there terrain under these mobs, the
+     * debug command's probe), on a thread of their own: behind the ground reads of thousands of
+     * guessed mobs in the readers' queue, a mob waited seconds for its answer, hidden meanwhile.
+     */
+    private static final ExecutorService URGENT = Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "Living Horizon LOD reader (urgent)");
+        thread.setDaemon(true);
+        thread.setPriority(Thread.NORM_PRIORITY);
+        return thread;
+    });
     /** Tasks given to the readers and not finished yet, for the debug panel. */
     private static final AtomicInteger PENDING = new AtomicInteger();
 
@@ -61,8 +72,12 @@ public final class LodWorld {
     private static volatile boolean suspended;
 
     private static void run(LodSource source, Runnable task) {
+        run(source, task, false);
+    }
+
+    private static void run(LodSource source, Runnable task, boolean urgent) {
         PENDING.incrementAndGet();
-        (FarConfig.get().optParallelRead ? READERS : READER).execute(() -> {
+        (urgent ? URGENT : FarConfig.get().optParallelRead ? READERS : READER).execute(() -> {
             Lock held = source.keepsBetweenReads() ? READS.readLock() : null;
             if (held != null) held.lock();
             try {
@@ -222,7 +237,7 @@ public final class LodWorld {
             } catch (Throwable e) {
                 result.completeExceptionally(e);
             }
-        });
+        }, true);
         return result;
     }
 
@@ -306,7 +321,7 @@ public final class LodWorld {
                 source.fail(e);
             }
             result.complete(found);
-        });
+        }, true);
         return result;
     }
 

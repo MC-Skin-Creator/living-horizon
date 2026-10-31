@@ -31,7 +31,7 @@
 - **Packs de ressources activés puis désactivés** — les *Entités simplifiées* des mobs lointains (des images plates d'eux) ne sont plus toutes redessinées quand un pack de ressources est désactivé puis réactivé, et le chargement des ressources ne fige plus le jeu pendant qu'elles sont recherchées.
 
 #### Corrections
-- **Créatures lointaines cachées comme au-dessus du vide** — les créatures lointaines, devinées comprises, posées sur le terrain lointain ne sont plus cachées comme s'il n'y avait rien sous elles quand Voxy ou Distant Horizons tarde à répondre.
+- **Créatures lointaines cachées comme au-dessus du vide** — les créatures lointaines, devinées comprises, posées sur le terrain lointain ne sont plus cachées comme s'il n'y avait rien sous elles pendant un moment après l'ouverture d'un monde ou parmi des milliers de créatures devinées, ou quand Voxy ou Distant Horizons tarde à répondre.
 - **Créatures lointaines nettes dans le brouillard de Distant Horizons** — les créatures lointaines ne restent plus nettes devant le terrain de Distant Horizons dans le brouillard : elles s'y fondent comme le terrain autour d'elles, sans pack de shaders (Minecraft 1.21.6 et plus).
 
 ## 0.14.0 — 2026-10-29

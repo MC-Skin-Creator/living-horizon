@@ -679,8 +679,13 @@ come back, add it here in the same pull request: this file is what the next sess
   is drawn, *Only Over Terrain* hiding them): `DrawnGround` reads the far world with
   `LodWorld.ground`, where only a column read as empty is void. A read that failed, no world open
   yet, or Distant Horizons answering "failed" (`LodWorld.Unanswered`) is unknown, keeps the mob as
-  it was and is asked again a second later; read as empty, a chunk waited up to 30 s. Read
-  `/livinghorizon lod` (its last answer) when it comes back.
+  it was and is asked again a second later. As a world opens Distant Horizons answers "nothing"
+  for a while: a chunk read as empty waits 1 to 10 s, and the first one found with terrain after
+  that has every empty chunk asked again at once (`DrawnGround.revisit`). A mob with no answer
+  yet is hidden too, and marked void: its question waited behind the ground reads of thousands
+  of guessed mobs (`MobPaths`) in the readers' queue, seconds as a world opened, and
+  `/livinghorizon lod` answered as late. `LodWorld.ground` and `probe` run on a thread of their
+  own (`URGENT`). Read `/livinghorizon lod` (its reads, its last answer) when it comes back.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

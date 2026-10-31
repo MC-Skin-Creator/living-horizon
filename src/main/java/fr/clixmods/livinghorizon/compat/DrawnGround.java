@@ -32,7 +32,9 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class DrawnGround {
     /** The first wait before a chunk found empty is asked again, and the longest. */
-    private static final long RETRY_NANOS = 1_000_000_000L, RETRY_MAX_NANOS = 30_000_000_000L;
+    private static final long RETRY_NANOS = 1_000_000_000L, RETRY_MAX_NANOS = 10_000_000_000L;
+    /** The least time between two calls asking every chunk found empty again. */
+    private static final long REVISIT_NANOS = 1_000_000_000L;
     private static final int CHUNKS_KEPT = 20_000;
     /** Chunks from the edge of the game's render distance asked of the far world ahead. */
     private static final int AHEAD = 3;
@@ -58,6 +60,14 @@ public final class DrawnGround {
     private static int[] askedX = new int[64], askedZ = new int[64];
     private static final Decisions DECISIONS = new Decisions();
 
+    /**
+     * A chunk found empty turned out to hold terrain: the far world is filling in (Distant
+     * Horizons answers "nothing" for a while as a world opens), and every chunk found empty is
+     * asked again at once rather than after its wait.
+     */
+    private static volatile boolean revisit;
+    private static long revisitedAt = Long.MIN_VALUE;
+
     private static double farDrawn;
     private static long farDrawnAt = Long.MIN_VALUE;
 
@@ -68,6 +78,7 @@ public final class DrawnGround {
     static void clear() {
         CHUNKS.clear();
         DECISIONS.clear();
+        revisit = false;
     }
 
     /**
@@ -76,7 +87,15 @@ public final class DrawnGround {
      * Asks the far world when needed; {@link #ask()} sends the questions.
      */
     public static boolean shown(ClientLevel level, Vec3 eye, Object key, double x, double z) {
-        return DECISIONS.decide(key, answer(level, eye, x, z), System.nanoTime());
+        long now = System.nanoTime();
+        if (revisit && (revisitedAt == Long.MIN_VALUE || now - revisitedAt >= REVISIT_NANOS)) {
+            revisit = false;
+            revisitedAt = now;
+            for (Chunk chunk : CHUNKS.values()) {
+                if (!chunk.ground) chunk.next = now;
+            }
+        }
+        return DECISIONS.decide(key, answer(level, eye, x, z), now);
     }
 
     private static Answer answer(ClientLevel level, Vec3 eye, double x, double z) {
@@ -147,6 +166,7 @@ public final class DrawnGround {
                     // No answer (no world open yet, a failed read): not void, asked again soon.
                     chunk.next = now + RETRY_NANOS;
                 } else if (terrain) {
+                    if (chunk.misses > 0) revisit = true;
                     chunk.ground = true;
                 } else {
                     int misses = Math.min(chunk.misses, 5);
