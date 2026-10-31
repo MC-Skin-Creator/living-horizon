@@ -15,6 +15,7 @@ public final class Profile {
     public enum Section {
         TICK_MOBS_FOLLOW("tickMobsFollow"),
         TICK_MOBS_CHOOSE("tickMobsChoose"),
+        TICK_MOBS_FORESEE("tickMobsForesee"),
         TICK_MOBS_BUILD("tickMobsBuild"),
         TICK_MOBS_GROUND("tickMobsGround"),
         TICK_MOBS_MOTION("tickMobsMotion"),

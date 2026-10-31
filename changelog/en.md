@@ -4,6 +4,10 @@
 
 ### Server
 
+#### New
+- **Mobs in unexplored land** — a server with the mod now shows its players the mobs the world puts in land nobody has explored yet, about where they will be found; `seedMobs` and `seedMobRange` in the server settings turn it off or change how far it reaches.
+- **Seed sharing** — `shareSeed` in the server settings, off by default, lets the players' game guess those mobs anywhere by itself, through a spyglass or with *Guess Nearby Mobs*; whoever has the seed knows everything about the world.
+
 #### Improved
 - **Gliding players shared** — the server now tells players who is gliding with an elytra, so that they see them fly from afar; players with an older version still see them as before.
 
@@ -11,14 +15,23 @@
 
 #### New
 - **Links to the mod's pages** — beside the Discord logo, the mod's settings now have the logos of Modrinth, CurseForge, Nexus Mods and the mod's website, to open its pages in one click.
+- **Guessed Mobs** — far land nobody has explored yet is no longer empty of mobs: the mod guesses from the seed where the world would put them, as far as *Mob Render Distance* reaches, in single player or on a server with the mod; they may not be there once you arrive, and *Show Guessed Mobs*, beside *Show Mobs*, hides them.
+- **Mobs through a spyglass** — looking through a spyglass now shows the guessed mobs of unexplored land where it looks, however far, in single player or on a server that shares its seed.
+- **Guess Nearby Mobs** — a new button shows the guessed mobs up to 1024 chunks around at once, and keeps them for the next game, in single player or on a server that shares its seed.
+- **Typed values** — the sliders of the mod's settings screen that end in *Unlimited* (the most mobs, entities and offline players, and the render distances) now take any number typed by hand, even past their last number, which Sodium's page shows too: right-click one, type a number and press Enter; the arrow keys move every slider by one, or ten with Shift.
 - **Distances shown in the world** — hovering or changing a distance on the mod's settings screen now draws it in the world behind: a glowing wall that far away, the edge of the chunks *Scan Radius* reads, or a ceiling at *Min. Flight Height*.
 
 #### Improved
 - **Simplification Distance can be turned off** — *Simplification Distance* now goes down to OFF, so far mobs, entities, players and birds become flat pictures only when they look smaller on screen than the *Simplification Size*.
+- **More distant mobs** — *Max Mobs* now goes up to 4000 before *Unlimited*.
+- **Unlimited at the end of the slider** — *Unlimited* now sits at the right end of the render distance sliders, after 4000 blocks, instead of the left.
+- **Asked before Unlimited** — setting any slider to *Unlimited*, a number of mobs, entities or offline players or a render distance, now asks first, since it can bring the frame rate down sharply and, in the worst case, crash the game; on Sodium's page the question comes with *Apply*.
+- **Limits by default** — nothing is *Unlimited* by default any more: *Player Render Distance*, *Animation Distance* and *Entity Render Distance* stop at 4000 blocks, *High* shows up to 1500 mobs and *Ultra* up to 3000 as far as 2048 blocks, and settings left on these old defaults or presets move to the new ones.
 - **Distant players gliding** — distant players flying with an elytra now glide through the sky, wings spread, instead of running upright in the air (with the mod on the server).
 - **Resource packs switched back and forth** — far mobs' *Simplified Entities* (flat pictures of them) are no longer all drawn again when a resource pack is turned off and back on, and loading resources no longer pauses the game while they are looked for.
 
 #### Fixed
+- **Distant mobs hidden as if over the void** — distant mobs, guessed ones included, standing on the far terrain are no longer hidden as if nothing were under them for a while after a world opens or among thousands of guessed mobs, or when Voxy or Distant Horizons is slow to answer.
 - **Distant mobs sharp in Distant Horizons' fog** — distant mobs no longer stay sharp against Distant Horizons' fogged terrain: they fade into its fog like the land around them, without a shader pack (Minecraft 1.21.6 and later).
 
 ## 0.14.0 — 2026-10-29

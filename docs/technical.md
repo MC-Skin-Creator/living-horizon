@@ -33,7 +33,7 @@ positions with the clients that have it.
 |---|---|---|
 | [Distant players](#distant-players) | Online players past the server's view distance | Positions shared by a server with the mod |
 | [Players who logged off](#players-who-logged-off) | Players at the spot they left, living around it | This client's memory and the server's file |
-| [Distant mobs](#distant-mobs) | Mobs out of range, playing an animation in a loop | This client's memory, or the server's |
+| [Distant mobs](#distant-mobs) | Mobs out of range, playing an animation in a loop | This client's memory, or the server's, and the world's seed for land never explored |
 | [Birds](#birds) | Flocks, perched birds, ducks, bats, parrots | Made up on the client from the terrain |
 | [Impostors](#impostors) | Flat pictures in place of far models | Baked by the game's own renderers |
 | [Far terrain depth](#far-terrain-depth) | Nothing of its own: hides our figures behind the far terrain | Voxy's or Distant Horizons' depth |
@@ -46,7 +46,7 @@ never added to a level (`track/Puppets`).
 | Package | What is in it |
 |---|---|
 | root | `LivingHorizonCommon` (entry point on both sides, opens the network channel), `LivingHorizonClient` (client entry point), `FarConfig` (the settings file), `QualityPreset`, `Stats` |
-| `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
+| `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`, `SeedDraws`, `SeedMobs`, `Foresight`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
 | `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`, the distance settings drawn in the world (`DistancePreview`); `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
 | `compat/` | Voxy and Distant Horizons: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`) |
 | `ambient/` | The birds (`Ambience`, `BirdModels`, `BirdFigure`, `AmbientRenderer`) and the easter eggs |
@@ -125,7 +125,12 @@ checks it.
     they left, with how they looked and the mount they took away for those among the 64. The
     server sends them all; each client chooses how many it draws (`maxOfflinePlayers`);
   - the remembered mobs within 2048 blocks of them, with what they wear (saddle, harness,
-    armour, carpet, chest; see [Distant mobs](#distant-mobs)).
+    armour, carpet, chest; see [Distant mobs](#distant-mobs)), and the animals foreseen in the
+    chunks not generated yet within `seedMobRange` of them (see
+    [Animals of unexplored land](#animals-of-unexplored-land));
+  - the world's seed, when the owner shares it (`shareSeed`), and which dimensions a client can
+    build the generator of; otherwise an empty one, which tells the client the server shares
+    none. A kind of message older versions leave unread.
 - **At once, to a player who joins**: all of it, without waiting for the next five seconds.
 
 The messages (`track/PositionsMessage`) are written with plain Java streams, the same on
@@ -181,6 +186,11 @@ alone. An unknown key is said in the console and dropped.
 `track/ShareRules` decides, for each player sent the lists, who is left out, with no type of
 the game's but a team's name:
 
+- `seedMobs` (on) and `seedMobRange` (512 blocks, 0 to 2048) share the animals foreseen in the
+  chunks not generated yet, with the mobs: off, none are worked out at all. `shareSeed` (off)
+  sends the world's seed to the players with the mod, for their game to foresee them anywhere
+  itself, where the dimension's generator is the game's own: whoever has the seed knows where
+  everything in the world is.
 - `sharePlayers`, `shareOfflinePlayers`, `shareMobs` switch each list off. The players
   message is still sent, empty but for the player themselves, so the client knows the
   server has the mod. Mobs switched off, or a player in a hidden dimension, get an empty
@@ -245,7 +255,7 @@ on this client: nothing is sent to the server, they block nobody, and nothing ca
   were last, as they looked, on what they rode: as far as this client knows, they logged off
   then.
 - `offlinePlayers` off turns all of it off: nobody is shown or remembered.
-- `maxOfflinePlayers` of them are drawn at once (256; 1000 is no limit): the nearest the
+- `maxOfflinePlayers` of them are drawn at once (256; up to 1000 on the slider, then no limit): the nearest the
   camera in its dimension, chosen again every tick (`RestingPlayers.shown`). The others stay
   remembered and lose their puppet until they are among the nearest again.
 
@@ -386,6 +396,8 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
 - **Otherwise**, each client remembers the mobs it met itself (the types in `mobTypes`), in
   `config/livinghorizon/mobs/<server>.json`. Every kind is in it by default, monsters too: one
   that despawned is forgotten like any other (below).
+- **Land never explored**: a server with the mod also shares the animals the game will put
+  in the chunks it has not generated yet, from the world's seed (see below).
 - **Look.** A mob met up close keeps its exact look (the game's own save of it); one known
   only from the server is built from kind, variant and age.
 - **Forgetting.** Coming back within range of a remembered mob that is not there forgets it.
@@ -419,6 +431,97 @@ starts its loop at its own moment, drawn from its UUID. `track/MobMemory` keeps 
   made on the client always stands it up: `MobMemory.onUnload` writes the pose the client sees
   (`isInSittingPose`) into the save's `Sitting` instead. In single player the server's pose is
   taken with each answer (below), and a copy walking up to its real pet sits or stands as it does.
+
+### Animals of unexplored land
+
+A chunk gets its first animals as the game generates it, from a random seeded by the world's
+seed and the chunk's position alone (`NoiseBasedChunkGenerator.spawnOriginalMobs`). The same
+draws are made for the chunks not generated yet (`track/SeedDraws`), so land nobody has explored
+has its herds from afar, about where the game will put them.
+
+- **How.** The biome is the generator's, read at the chunk's corner at the top of the world
+  through the game's own zoom, as the game reads it; on 26.3 the animals and their odds are
+  environment attributes, the dimension's then the biome's. The terrain is the generator's bare
+  noise (`getBaseColumn`): no grass, trees or snow yet. A column topped with water or lava is no
+  place for an animal, any other is, and a turtle only lower than the sea plus 4 blocks, as the
+  game's rule says; the draws then go on as the game's do, so a herd stands where the game puts
+  it wherever the bare terrain is right. Where the game turns a spot down for what the bare
+  terrain lacks (no grass under it, a tree in the way), its draws and these part ways for the
+  rest of the chunk: that herd is missing or elsewhere. The `seedmobs` game test generates
+  a square of such chunks and counts how many stand within 2 blocks of the game's (about half).
+- **Look.** The game draws a coat, colour or age with a random nothing can foresee: they are
+  drawn from the mob's id, with the game's odds (a herd of horses one coat, a family of rabbits
+  one fur, the first of a group never a baby; sheep by climate from 1.21.5).
+- **Ids.** Each has a name-based id (version 3, from the seed, the dimension, the chunk and its
+  place in it): the same every time, whoever works it out, and no mob the game makes has one
+  (`SeedDraws.foreseen`).
+- **Where.** Only a dimension of the usual terrain (`NoiseBasedChunkGenerator`, mobs not
+  switched off by its settings, no ceiling) with mobs spawning (`doMobSpawning`, from 1.21.11
+  where the game reads it there too).
+
+Three ways in, all of them the same draws:
+
+1. **The server, around its players** (`track/SeedMobs`): within `seedMobRange` (512 blocks) of
+   each player with the mod, on a thread of its own, a pass every five seconds, up to 2048
+   chunks a pass, the nearest first, shared with the remembered mobs. Any server with the mod,
+   the one in a world played alone included.
+2. **This client, by itself** (`track/Foresight`): within *Mob Render Distance* plus 64 blocks
+   (4096 blocks without a limit), so that the far terrain of Voxy or Distant Horizons has its
+   animals as it is drawn: 1024 chunks at a time, as soon as the last are done (every five ticks
+   at most), those within 75° of where the player looks first, then the rest, each the nearest
+   first (`Foresight.around`), so that a wider *Mob Render Distance* fills in where they look
+   within seconds; and through a spyglass, along where it looks, up to 256 chunks, where
+   they are then drawn whatever *Mob Render Distance* says and chosen before any other. The
+   spyglass asks every four ticks for 256 chunks, the line of sight first and then wider, half a
+   degree at a time (`Foresight.coneChunks`, only the chunks in view), on threads of its own that
+   never wait behind a scan (`SeedMobs` `URGENT`, `URGENT_DRAWS`); what it finds is made into
+   remembered mobs at once, and again every five ticks while it moves.
+3. **By hand**: *Guess Nearby Mobs* (a button next to *Scan Nearby Mobs*, or
+   `/livinghorizon foresee [radius]`), every chunk within `foreseeRadius` (64 chunks, up to
+   1024), in parts of 65536 chunks, saying in the chat how far it got.
+
+Who works out what this client asks for:
+
+- **A world played here or hosted on LAN**: the server in this game (`SeedMobs.foresee`), one
+  request at a time on a thread of its own, the draws on half the cores (the game and its server
+  keep the others).
+- **Another server with the mod whose owner shares the seed** (`shareSeed`, off by default): the
+  server sends it (a `SEED` message, every five seconds) with, for each dimension whose generator
+  is the game's own, its noise settings and biome preset (`SeedDraws.vanillaKeys`: the overworld,
+  large biomes or amplified, with no biome of a mod or a data pack). This client builds that
+  generator again from the game's own registries (`SeedDraws.vanilla`, `VanillaRegistries`, a
+  second or two the first time) and draws on a thread of its own. It knows only the chunks it has
+  held itself; a chunk generated elsewhere may show its foreseen animals beside its real ones.
+  The `seedmobs` game test checks that the generator built again draws exactly the server's.
+- **Any other server**: none but what the server shares around its players.
+
+What this client foresees is kept per chunk, four numbers a mob (`Foresight.index`, 32 bytes): a
+guess of 1024 chunks around finds about a million animals, some 40 MB. Only the nearest become
+remembered mobs, every second (those where the spyglass looks first), as many as `maxDistantMobs`
+lets be drawn, since no other could be; the others wait in the index.
+
+The index is saved per world and dimension, apart from the mobs met
+(`config/livinghorizon/foreseen/<server>/<world>-<dimension>.bin`, `Foresight.write`): on
+leaving the world or the dimension, every five minutes, and once a guess is done. Gzipped, with
+the chunks asked for (a bit each) and, per mob, its place among its chunk's draws (its id is
+drawn again from the seed: `SeedDraws.id` keeps that place in its last 16 bits), where it stands
+in the chunk to a 256th of a block, its height, kind, age and variant: about five bytes a mob,
+some 5 MB for a guess of 1024 chunks around (a mob in the memory file takes a kilobyte). Read
+again on coming back; in a world played here, the server first leaves out the chunks generated
+since (`SeedMobs.unexplored`). *Forget All* deletes this server's files.
+
+- **Generated.** A chunk is left out once it has its animals. On the server: loaded, or saved in
+  its region file past the step that puts them there. The region's header says which chunks are
+  saved (read again when the file changes); the game's storage thread is then asked, in the
+  background, the status each was saved at (`chunkScanner`, that one field). A chunk the game
+  only began, around one it generated (up to `features` or `light`), still gets its animals
+  later: those stay foreseen. Its own mobs are there once generated, remembered by the server
+  like any other, and the client forgets those foreseen as it forgets a mob the server stopped
+  sharing. The client never draws one in a chunk it holds, and drops those chunks from its index.
+- **On the client.** *Show Guessed Mobs* (`seedMobs`, on, beside *Show Mobs*) hides them and stops foreseeing. The screens call them guessed mobs: a guess of where the world would put them, not a sighting.
+  They are never saved in the memory file (the index has its own), those the server shares are taken only within
+  *Mob Render Distance* plus 64 blocks, and they do not count in its 2000 mobs. The debug boxes
+  and outlines show them in pink (*Foreseen Mobs*).
 
 ### Scanning nearby mobs
 
@@ -510,18 +613,24 @@ below), and other flyers and swimmers get a flat disc at their own height.
 
 ### How many are drawn and animated
 
-- `maxDistantMobs` of them are drawn at once (512; 1000 is no limit): the nearest remembered
+- `maxDistantMobs` of them are drawn at once (512, up to 4000 on the slider, more when typed, then no limit at the slider's right end): the nearest remembered
   ones. Past `mobMaxDistance` (512 blocks) none are drawn. Both that distance and the near zone
   are applied after the choice, so copies there still take places and fewer may show.
 - With `onlyOverTerrain` (*Only Over Terrain*, in *Debug Options...*, on), a mob is drawn only where terrain is drawn
   under it (`compat/DrawnGround`): a chunk the game holds within its render distance, measured
   as the game picks its sections, or else a chunk the far world has terrain in, within Voxy's or
   Distant Horizons' own render distance (`LodWorld.drawnDistance`). The far world is asked a
-  chunk at a time, every chunk of a frame in one read (`LodWorld.fresh`, which reads a column
-  remembered empty again). A chunk found empty is asked again after 1, 2, 4... up to 30 seconds,
-  as the far world fills in after a world is opened; one with terrain stays so until the world
-  changes. Never a blink: only a "no terrain" answer hides a mob; while its chunk has no answer
-  yet (or the far world's reads are paused), it stays as it was the frame before
+  chunk at a time, on four threads of their own (`LodWorld.ground`), 256 chunks at most waiting,
+  each answered as it comes. Distant Horizons is asked through its database (`DhSource.holds`):
+  it keeps its terrain by sections of 4 by 4 chunks, with how far each column was generated, and
+  one small query a section says which of its chunks hold terrain; a column read through its API
+  loads or builds the section's terrain, a quarter of a second each. A version whose classes
+  differ reads columns instead, as Voxy does. Any read of the far world that finds blocks (a
+  mob's ground, most often) notes its chunk as terrain too (`DrawnGround.noted`). A chunk found
+  empty is asked again after 1, 2, 4... up to 10 seconds, as the far world fills in after a world
+  is opened, and all of them at once when one turns out to hold terrain; one with terrain stays
+  so until the world changes. Never a blink: only a "no terrain" answer hides a mob; while its
+  chunk has no answer yet (or the far world's reads are paused), it stays as it was the frame before
   (`DrawnGround.Decisions`, by the mob's id, shared by the real mob and its copy). The game's
   chunks within three of the edge of its render distance are asked ahead, so the answer is there
   before a mob or the edge crosses them. The debug marks call a hidden one *over the void*.
@@ -533,6 +642,13 @@ below), and other flyers and swimmers get a flat disc at their own height.
   (`DepthFar.pixelsPerRadian`), so a spyglass's zoom counts.
 - `animationMaxDistance` (blocks; 0 is no limit) stills every mob past it, however big
   (`MobMemory.isStill`).
+- A still copy standing where it was put is looked at once in sixteen ticks, each on a tick of
+  its own (by its id): with Mob Render Distance at 4000 blocks and the land's animals guessed,
+  tens of thousands far off would otherwise be gone through every tick.
+- Copies are built (`MobMemory.build`) within 2 ms a tick, those in front of the player first
+  (70° either side), each the nearest first. A short saved text (a foreseen mob, one built from
+  what the server said) is read at once: queued on the game's background executor, it waited
+  behind the world being generated, a few copies a second.
 - With `optFreezeHidden` (*Debug Options...*, off by default), a copy not drawn for half a
   second (out of view, hidden, too small) is not ticked at all until it is drawn again: no
   animation, no ground read, only moved where the server says it is.
@@ -1005,8 +1121,10 @@ debug options. `/livinghorizon debug` turns the panel and the boxes on or off to
 | Polygons in F3 | `fake_entities` in the game's debug options (F3 + F6, from 1.21.9) | The polygons of the mod's own entities (distant players and mobs, never the game's), split into full models and impostors (one quad each), and a line of impostor sheets baked and waiting |
 | Boxes (from 1.21.11) | `debugBoxes` | A box around every distant mob and player, seen through terrain, coloured by what became of it (below). A dot in the middle keeps it visible when the box is smaller than its lines |
 | Game's mobs | `debugGameMobs` | Boxes around the mobs the game draws itself too |
+| Boxes per kind | `box*`, in *Boxes...* | The boxes and labels of one kind on their own switch: real ones drawn by the mod, copies, foreseen animals, players, those not drawn (the game's are `debugGameMobs`) |
 | Labels (from 1.21.11) | `debugLabels` | State, kind, distance and size on screen above each box, at a constant size |
 | Outlines | `outline*`, in *Outlines...* | An outline around each kind of figure, and a cross where a mob is not drawn (below) |
+| Statistics | *Statistics...* (`ui/StatsScreen`) | What is kept, counted when opened and on *Refresh*: remembered mobs (met, shared by the server, guessed), chosen, built and waiting; the guessed mobs kept apart, the chunks looked at and the memory they take; the size on disk of each folder of `config/livinghorizon`, this server's and all |
 | Depth view | `debugDepthView` | Bottom right: the game's depth alone, with the far terrain merged in, or after the entities. Near is white, far black, sky blue |
 | Far terrain | `/livinghorizon lod` (or `voxy`) | Which far terrain mod is read (Voxy or Distant Horizons), whether reading it failed, and the state of its depth |
 | Optimisations | `opt*`, `depthOcclusion`, `hideOccludedMobs` | Every optimisation has its own switch, to compare the cost (see [Optimizations](#optimizations)) |
@@ -1016,6 +1134,7 @@ debug options. `/livinghorizon debug` turns the panel and the boxes on or off to
 | Colour | What became of the mob |
 |---|---|
 | Green | Copy drawn |
+| Pink | Copy of an animal foreseen from the seed, never seen |
 | Cyan | Real mob drawn by the mod |
 | Blue | Player |
 | White | Real mob drawn by the game (with `debugGameMobs`) |
@@ -1036,6 +1155,7 @@ are made for screenshots that compare optimisations.
 | `outlineGameMobs` | Real (game) | White, around the mobs and players the game draws |
 | `outlineLiveMobs` | Real (mod) | Cyan, around the real mobs the mod draws |
 | `outlineCopies` | 3D Copies | Green, around the 3D copies |
+| `outlineForeseen` | Foreseen Mobs | Pink, around the copies of animals foreseen from the seed |
 | `outlinePlayers` | Players | Blue, around the distant players |
 | `outlineImpostors` | Impostors | Magenta, around the impostors |
 | `outlineLeftOut` | Not Drawn | A cross a few pixels wide where a distant mob is not drawn at all, in the colour of why: where it is, not what it is |
@@ -1125,6 +1245,7 @@ update, measure the same scene. Birds still choose where they fly by chance.
 | `/livinghorizon config` | Opens the settings |
 | `/livinghorizon impostors` | Opens the impostor preview (*Picture Preview...*) |
 | `/livinghorizon scan [radius]` | Reads the mobs of the chunks around, in single player (see [Scanning nearby mobs](#scanning-nearby-mobs)) |
+| `/livinghorizon foresee [radius]` | Foresees the animals of the land nobody explored within that many chunks, up to 1024 (see [Animals of unexplored land](#animals-of-unexplored-land)) |
 | `/livinghorizon bird <kind>` | Calls a group of birds of that kind (see [Calling birds](#calling-birds)) |
 | `/livinghorizon lod` (or `voxy`) | Which far terrain mod is read and the state of its depth |
 | `/livinghorizon debug` | Turns the debug panel and the boxes on or off together |
@@ -1189,6 +1310,30 @@ does not show it.
 The *Preset* button (*Low*, *Normal*, *High*, *Ultra*) sets only the settings that scale the
 cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 `birdMaxDistance`. *Normal* is the defaults. Changing one of them by hand shows *Custom*.
+No preset goes without a limit: *High* is 1500 mobs to 1024 blocks, *Ultra* 3000 mobs to
+2048 blocks (`NumberSliderTest` checks every preset and the defaults). No default goes without
+one either; settings version 13 moves the old High and Ultra and the old unlimited default
+distances (players, animation, entities) to the new values, and keeps a no limit set by hand.
+
+The sliders of whole numbers on the mod's screens are `ui/NumberSlider`, which the game's own
+option lists build through its `OptionInstance.ValueSet` (made public by the access widener
+before 26.2, where the game made it so). Only a slider with no limit at its end (the counts and
+the render distances, `NumberSlider.typable`) takes a typed value; one within bounds does not,
+its ends being what the mod can do. A right click turns it into a text field, which
+`SideOptionsScreen` hands the keys until Enter (kept when it reads as a value), Escape or a
+click. It takes digits only, and shows the slider's last number on no limit. A number below the
+range is brought up to it; past the last number it is kept as typed (shown at that last place,
+`NumberSlider.beyond`). No limit is a value of its own (`NumberSlider.UNLIMITED`, `FarConfig.UNLIMITED_MOBS` and
+`UNLIMITED_OFFLINE` for the counts, 0 for the distances), reached only at the slider's right
+end, never typed. Sodium's rows show a typed number past their end as their last place's value
+(`SodiumOptions.typedPast`) and leave it as it is when saved there. The arrow keys move it one value, ten with Shift, where the
+game moves it a pixel. `NumberSlider.asksBeforeUnlimited` names every
+setting whose right end is no limit (the three counts and the four distances), none of them
+safe without one: dragged there, the slider shows it and keeps it on release once the player
+says yes; stepped there, at once. The release is heard by the screen too (`SideOptionsScreen`,
+`NumberSlider.afterRelease`): before 1.21 the game hands it only to the widget under the cursor,
+and a slider dragged past its end is released beside it. Sodium's page cannot ask as its slider moves:
+`SodiumOptions.asking` holds the value at *Apply* and asks then, and no reads the page back.
 
 ### Main screen
 
@@ -1216,9 +1361,9 @@ cost: `impostorDistance`, `maxDistantMobs`, `mobMaxDistance`, `birdDensity` and
 |---|---|---|---|---|
 | `enabled` | Show Players | `true` | | Distant players are drawn at all. The *Toggle Distant Players* key flips it |
 | `showVehicles` | Mounts & Vehicles | `true` | | Draw the mount they were last seen on |
-| `playerMaxDistance` | Player Render Distance | `0` blocks | 0 to 4000 | Past this, distant players are not drawn (`0`: no limit) |
+| `playerMaxDistance` | Player Render Distance | `4000` blocks | 1 to 4000, or no limit | Past this, distant players are not drawn (`0`: no limit, the right end of the slider) |
 | `offlinePlayers` | Offline Players | `true` | | Players who logged off are shown and remembered; off, neither |
-| `maxOfflinePlayers` | Max Offline | `256` | 0 to 1000 | How many players who logged off are drawn at once, nearest first (`0`: none, `1000`: no limit) |
+| `maxOfflinePlayers` | Max Offline | `256` | 0 to 1000, more when typed, or no limit | How many players who logged off are drawn at once, nearest first (`0`: none; no limit is the slider's right end, which 1000 in an older settings file becomes) |
 | `offlineLife` | Offline Player Activity | `true` | | They live their life around their spot; off, they sit on it |
 | `offlineRoam` | Roaming Radius | `50` blocks | 8 to 128 | How far from their spot they walk around and look for a bed or a chest (50 is about a village) |
 | `offlineNames` | Offline Player Names | `true` | | Their name above them, marked offline, and when they were last seen, under the crosshair |
@@ -1236,15 +1381,17 @@ In three parts, on both screens: *General*, *Mobs* (the living kinds, mannequins
 | `mobTypes` | General: Mobs & Entities... | Every mob and boat of the game and of other mods, and the vehicles their rider steers | | Which mobs and entities are shown, and remembered by this client. A change shows at once, the game paused or not (`MobMemory.kindsChanged`) |
 | `stillMobTypes` | Mobs & Entities..., *Still* | Happy ghast, mannequin | | Mobs shown standing still instead of walking their loop; a boat or a vehicle is only *Shown* or *Hidden* |
 | `scanRadius` | General: Scan Radius | `32` chunks | 4 to 1024 | Chunks around you read by a scan, in single player (32 chunks = 512 blocks) |
+| `foreseeRadius` | General: Guess Radius | `64` chunks | 4 to 1024 | Chunks around you *Guess Nearby Mobs* foresees the animals of the land nobody explored in |
 | `distantMobs` | Mobs: Show Mobs | `true` | | Remembered mobs stay visible far away |
-| `maxDistantMobs` | Mobs: Max Mobs | `512` | 0 to 1000 | How many are drawn at once, nearest first (`0`: none, `1000`: no limit). No limit here and in `mobMaxDistance` together can crash the game |
-| `mobMaxDistance` | Mobs: Mob Render Distance | `512` blocks | 0 to 4000 | Past this, distant mobs are not drawn (`0`: no limit) |
+| `maxDistantMobs` | Mobs: Max Mobs | `512` | 0 to 4000, more when typed, or no limit | How many are drawn at once, nearest first, the animals foreseen from the seed included (`0`: none; no limit is the slider's right end, which 1000 in an older settings file becomes). No limit here and in `mobMaxDistance` together can crash the game |
+| `mobMaxDistance` | Mobs: Mob Render Distance | `512` blocks | 1 to 4000, or no limit | Past this, distant mobs are not drawn (`0`: no limit, the right end of the slider) |
 | `rememberNamedMobs` | Mobs: Name-Tagged Mobs | `true` | | A mob with a name tag is shown whatever its type |
+| `seedMobs` | Mobs: Show Guessed Mobs | `true` | | The animals a server with the mod foresees in land nobody has explored, from the seed, are shown |
 | `animationMinPixels` | Mobs: Min. Animated Size | `10` pixels | 0 to 40 | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
-| `animationMaxDistance` | Mobs: Animation Distance | `0` blocks | 0 to 4000 | Past this, no distant mob plays an animation (`0`: no limit) |
+| `animationMaxDistance` | Mobs: Animation Distance | `4000` blocks | 1 to 4000, or no limit | Past this, no distant mob plays an animation (`0`: no limit, the right end of the slider) |
 | `distantEntities` | Entities: Show Entities | `true` | | Remembered boats, vehicles and mannequins stay visible far away |
-| `maxDistantEntities` | Entities: Max Entities | `256` | 0 to 1000 | How many of them are drawn at once, nearest first, apart from the mobs: a crowd of mobs never pushes an aircraft out (`1000`: no limit) |
-| `entityMaxDistance` | Entities: Entity Render Distance | `0` blocks | 0 to 4000 | Past this, distant boats, vehicles and mannequins are not drawn (`0`: no limit; few, and an aircraft is seen from afar) |
+| `maxDistantEntities` | Entities: Max Entities | `256` | 0 to 4000, more when typed, or no limit | How many of them are drawn at once, nearest first, apart from the mobs: a crowd of mobs never pushes an aircraft out (no limit: the slider's right end) |
+| `entityMaxDistance` | Entities: Entity Render Distance | `4000` blocks | 1 to 4000, or no limit | Past this, distant boats, vehicles and mannequins are not drawn (`0`: no limit, the right end of the slider; few, and an aircraft is seen from afar) |
 | `knownMobTypes` | (not shown) | Those met so far | | Mob types already offered once, the game's and other mods': a new one is shown from the start, then left as you set it |
 | `knownVehicles` | (not shown) | Empty | | Vehicles that are neither mobs nor boats, as found from their renderer or met, listed in *Mobs & Entities...* |
 | `seatedVehicles` | (not shown) | Empty | | Those of them that only seat their riders (a minecart): listed, never shown by default |
@@ -1274,6 +1421,7 @@ the mod shares come back by themselves. *Scan Nearby Mobs* runs a scan.
 | `debugBoxes` | Boxes on Mobs | `false` | A coloured box around every distant mob and player, seen through terrain |
 | `debugLabels` | Labels on Mobs | `false` | State, kind, distance and size on screen above each box |
 | `debugGameMobs` | Game's Mobs Too | `false` | Boxes around the mobs the game draws itself too |
+| `box*` | Boxes... | `true` | Which other kinds get their box and label: `boxLiveMobs`, `boxCopies`, `boxForeseen`, `boxPlayers`, `boxLeftOut` |
 | `debugDepthView` | Depth View | `0` | `0` off; `1` the game's depth; `2` with the far terrain merged in; `3` after the entities |
 | `outline*` | Outlines... | `false` | See [Outlines](#outlines) |
 

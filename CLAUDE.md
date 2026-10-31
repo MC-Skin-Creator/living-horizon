@@ -100,6 +100,14 @@ page is named by the key `livinghorizon.options.<field>` of the `FarConfig` fiel
 the `sodiumcontrols` scenario finds rows by that name and checks that each one writes its
 field. Run it (`run.sh sodium,sodiumcontrols --sodium`) after any change to the settings.
 
+A slider of whole numbers on the mod's screens goes through `FarConfigScreen`'s helpers
+(`ui/NumberSlider`: one step per arrow key; where no limit follows its end, typed with a right
+click, digits only, past the end too; a slider within bounds takes no typing), never a bare `IntRange`. No limit is a value of its own, never a number
+past the slider's last one, which a player may type.
+No limit is never safe: every setting whose right end means no limit is named in
+`NumberSlider.asksBeforeUnlimited`, both screens ask before keeping it, and no preset or
+default sets it.
+
 Older Sodium (0.5 to 0.7: 1.20.x, 1.21.3 to 1.21.10) has no API for other mods' pages: there
 the settings stay on the mod's own screen, which the *Living Horizon...* button opens.
 
@@ -624,6 +632,34 @@ come back, add it here in the same pull request: this file is what the next sess
   as a truncated jar (`zip END header not found` on the next attempt): `gradle.sh` deletes the
   jars that do not open before trying again. What Forge's Maven served is kept in each Forge
   node's cache entry (`mavenizer/caches/maven/forge`), so a build only asks it for what changed.
+- **Animals of unexplored land missing or drawn twice** (none far off in a world never explored,
+  or one beside the real herd as a chunk loads): they are drawn by `SeedDraws`, foreseen by the
+  server around players with the mod (`SeedMobs`) and by the client within *Mob Render Distance*,
+  through a spyglass and by *Guess Nearby Mobs* (`Foresight`: in a world played here, or from the
+  seed a server shares with `shareSeed`), in a dimension of the usual terrain only (a flat world
+  has none, the client game tests' consistent settings included). A chunk is left out once loaded
+  or saved past the step that puts its animals there; one generated with the mod off, explored,
+  or pregenerated (Chunky, Distant Horizons' `INTERNAL_SERVER` mode) has its real ones instead,
+  which only the scan or the server's memory shows. The client never draws one in a chunk it
+  holds: ask its chunk source (`level.getChunkSource().hasChunk`), never `ClientLevel.hasChunk`,
+  which always says yes. The generator a client builds from a shared seed (`SeedDraws.vanilla`,
+  the game's registries) has no biome tags: a tag is read from the client level's registries
+  (`SeedDraws.Tags`); asked of the built biome, it threw and the chunk was left out, logged once.
+  What the client foresaw is kept in `config/livinghorizon/foreseen/<server>/` (`Foresight.write`,
+  a few bytes a mob: an id is drawn again from the seed and its draw's place, the last 16 bits of
+  `SeedDraws.id`), read back on coming back; in a world played here the server first leaves out
+  the chunks generated since (`SeedMobs.unexplored`); *Forget All* deletes it.
+  The `seedmobs` scenario checks it all, the generator built from the seed against the server's,
+  and how many stand where the game puts them; the boxes and outlines show them in pink.
+- **Copies waiting to be built for minutes, or *Tick: choosing mobs* long** (thousands of mobs, guessed
+  ones with Mob Render Distance at 4000): a short saved text is read at once, never queued on the
+  game's background executor, which world generation keeps busy (a few copies a second); the
+  copies to build are sorted (in view first) before the 2 ms budget starts, which counts the
+  building alone (sorting 26 000 used it all, and those out of view were never built); a still
+  copy is looked at once in sixteen ticks; the choice sorts only when something is cut or the
+  spyglass is up, and the guessed mobs are worked out again only when what they depend on
+  changed (`Foresight.wantedIfChanged`). The `seedcrowd` scenario measures it all; the
+  *Statistics...* screen counts what is kept.
 - **Nothing drawn in the world while a distance setting is hovered** (the distance preview,
   `render/DistancePreview`): an entity's render type is fogged like an entity, and the game's
   fog had faded a 128-block fence out completely at the default render distance. From 1.21.11
@@ -634,6 +670,33 @@ come back, add it here in the same pull request: this file is what the next sess
   entity type draws it on every version. The screen asks for it every frame; a time limit
   instead made it vanish between two frames of a slow game. The `distancepreview` scenario
   checks it.
+- **No question before Unlimited on an old version** (1.20.x: a slider dragged to its right end
+  shows *Unlimited*, nothing asks, the setting keeps its value): before 1.21 the game hands a
+  mouse release only to the widget under the cursor, and a slider dragged past its end is
+  released beside it. `SideOptionsScreen.mouseReleased` hands every release to
+  `NumberSlider.afterRelease`; a screen of numbers that is not a `SideOptionsScreen` needs the same.
+- **Distant mobs over the far terrain marked "over the void"** (dark purple boxes on terrain that
+  is drawn, *Only Over Terrain* hiding them): `DrawnGround` reads the far world with
+  `LodWorld.ground`, where only a column read as empty is void. A read that failed, no world open
+  yet, or Distant Horizons answering "failed" (`LodWorld.Unanswered`) is unknown, keeps the mob as
+  it was and is asked again a second later. As a world opens Distant Horizons answers "nothing"
+  for a while: a chunk read as empty waits 1 to 10 s, and the first one found with terrain after
+  that has every empty chunk asked again at once (`DrawnGround.revisit`). A mob with no answer
+  yet is hidden too, and marked void: its question waited behind the ground reads of thousands
+  of guessed mobs (`MobPaths`) in the readers' queue, seconds as a world opened, and
+  `/livinghorizon lod` answered late too, its probe reading hundreds of columns. Now any read of
+  the far world that finds blocks (a mob's ground above all, `MobPaths`) notes its chunk as
+  terrain (`DrawnGround.noted`), and the chunks still unknown are read a column a task on four
+  threads of their own (`LodWorld.ground`, `URGENT`, never the probe), 256 at most at a time, each
+  answered as it is read. `/livinghorizon lod` prints at once how many chunks have terrain, are
+  empty, wait or were never asked, how fast the far world reads, and where a column read for a
+  second or more waits. Never interrupt a Distant Horizons read to free a thread: it reads its
+  database, which an interrupt can close. An unanswered column (`LodWorld.Unanswered`) is never a
+  failure (`LodSource.fail` pauses every read 20 s). Even so a Distant Horizons column read through
+  its API took 278 ms (it loads or builds its whole 64-block section), and thousands of chunks took
+  minutes: `DhSource.holds` asks its database instead (`FullDataSourceV2Repo`, the generation step
+  of each column of a section, one query for 16 chunks). "its database not read" in the lod line
+  means a version whose classes differ: check them with `javap`, as for its API.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
@@ -674,6 +737,10 @@ someone who has never seen the code:
   and screens as the game shows them (impostors are *Simplified Mobs*, *Simplified Entities* and *Simplified Players*), and explain
   them in plain words (flat pictures of far mobs).
 - one bullet per problem: two causes of the same symptom share one bullet.
+- say *mobs* (*créatures* in French, the game's word for mobs in each language), never
+  *animals*, in the changelog, the translations, the README and the store text; only a list
+  of kinds may name animals (villagers, animals, golems). The mobs foreseen from the seed are
+  *guessed mobs* (*créatures devinées*).
 - nothing for CI, refactors, tooling, documentation or debug-only tools.
 
 ## Issues

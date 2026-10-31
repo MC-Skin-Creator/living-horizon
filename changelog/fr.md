@@ -4,6 +4,10 @@
 
 ### Serveur
 
+#### Nouveautés
+- **Créatures des terres inexplorées** — un serveur avec le mod montre désormais à ses joueurs les créatures que le monde place dans les terres que personne n'a encore explorées, à peu près là où on les trouvera ; `seedMobs` et `seedMobRange`, dans les réglages du serveur, le coupent ou changent sa portée.
+- **Partage de la graine** — `shareSeed`, dans les réglages du serveur, désactivé par défaut, laisse le jeu des joueurs deviner lui-même ces créatures partout, à la longue-vue ou avec *Deviner les créatures* ; qui a la graine sait tout du monde.
+
 #### Améliorations
 - **Joueurs en élytres partagés** — le serveur dit maintenant aux joueurs qui plane avec des élytres, pour qu'ils les voient voler de loin ; les joueurs avec une version plus ancienne les voient comme avant.
 
@@ -11,14 +15,23 @@
 
 #### Nouveautés
 - **Liens vers les pages du mod** — à côté du logo Discord, les réglages du mod ont maintenant les logos de Modrinth, CurseForge, Nexus Mods et du site web du mod, pour ouvrir ses pages en un clic.
+- **Créatures devinées** — les terres lointaines que personne n'a encore explorées ne sont plus vides de créatures : le mod devine à partir de la graine où le monde les placerait, aussi loin que va la *Distance d'affichage des créatures*, en solo ou sur un serveur avec le mod ; elles peuvent ne pas y être une fois sur place, et *Créatures devinées*, à côté de *Afficher les créatures*, les cache.
+- **Créatures à la longue-vue** — regarder dans une longue-vue montre maintenant les créatures devinées des terres inexplorées là où elle vise, aussi loin soit-il, en solo ou sur un serveur qui partage sa graine.
+- **Deviner les créatures** — un nouveau bouton affiche d'un coup les créatures devinées jusqu'à 1024 chunks autour, et les garde pour la partie suivante, en solo ou sur un serveur qui partage sa graine.
+- **Valeurs saisies** — les curseurs de l'écran de réglages du mod qui finissent par *Illimité* (le nombre max de créatures, d'entités et de joueurs déconnectés, et les distances d'affichage) acceptent maintenant n'importe quel nombre tapé à la main, même au-delà de leur dernière valeur, que la page de Sodium affiche aussi : clic droit dessus, saisissez un nombre et appuyez sur Entrée ; les flèches du clavier déplacent chaque curseur d'un cran, ou de dix avec Maj.
 - **Distances affichées dans le monde** — survoler ou modifier une distance dans l'écran des réglages du mod la dessine maintenant dans le monde derrière : un mur lumineux à cette distance, la limite des chunks que lit le *Rayon du scan*, ou un plafond à l'*Altitude min.*
 
 #### Améliorations
 - **Distance de simplification désactivable** — la *Distance de simplification* peut maintenant être mise sur Non : les mobs, entités, joueurs et oiseaux lointains ne deviennent alors des images plates que quand ils paraissent plus petits à l'écran que la *Taille de simplification*.
+- **Plus de créatures lointaines** — *Créatures max* va maintenant jusqu'à 4000 avant *Illimité*.
+- **Illimité au bout du curseur** — *Illimitée* est maintenant tout à droite des curseurs de distance d'affichage, après 4000 blocs, au lieu de tout à gauche.
+- **Confirmation avant Illimité** — mettre un curseur sur *Illimité*, un nombre de créatures, d'entités ou de joueurs déconnectés ou une distance d'affichage, demande maintenant une confirmation, car cela peut faire chuter fortement les FPS et, dans le pire des cas, faire planter le jeu ; sur la page de Sodium, la question vient avec *Appliquer*.
+- **Des limites par défaut** — plus rien n'est *Illimité* par défaut : *Distance d'affichage des joueurs*, *Distance des animations* et *Distance d'affichage des entités* s'arrêtent à 4000 blocs, *Élevé* affiche jusqu'à 1500 créatures et *Ultra* jusqu'à 3000 et jusqu'à 2048 blocs, et les réglages restés sur ces anciennes valeurs par défaut ou ces préréglages passent aux nouvelles.
 - **Joueurs lointains en vol plané** — les joueurs lointains qui volent avec des élytres planent maintenant dans le ciel, ailes déployées, au lieu de courir debout dans les airs (avec le mod sur le serveur).
 - **Packs de ressources activés puis désactivés** — les *Entités simplifiées* des mobs lointains (des images plates d'eux) ne sont plus toutes redessinées quand un pack de ressources est désactivé puis réactivé, et le chargement des ressources ne fige plus le jeu pendant qu'elles sont recherchées.
 
 #### Corrections
+- **Créatures lointaines cachées comme au-dessus du vide** — les créatures lointaines, devinées comprises, posées sur le terrain lointain ne sont plus cachées comme s'il n'y avait rien sous elles pendant un moment après l'ouverture d'un monde ou parmi des milliers de créatures devinées, ou quand Voxy ou Distant Horizons tarde à répondre.
 - **Créatures lointaines nettes dans le brouillard de Distant Horizons** — les créatures lointaines ne restent plus nettes devant le terrain de Distant Horizons dans le brouillard : elles s'y fondent comme le terrain autour d'elles, sans pack de shaders (Minecraft 1.21.6 et plus).
 
 ## 0.14.0 — 2026-10-29

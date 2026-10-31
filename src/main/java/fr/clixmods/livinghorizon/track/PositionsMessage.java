@@ -57,6 +57,12 @@ public final class PositionsMessage {
     public static final byte PLAYERS = 0;
     public static final byte MOBS = 1;
     public static final byte OFFLINE = 2;
+    /**
+     * The world's seed, for a client to foresee the first animals of the land nobody explored
+     * itself ({@link SeedDraws}); sent only when the server's owner allows it. Versions before it
+     * leave a kind they do not know unread.
+     */
+    public static final byte SEED = 3;
 
     private static final Logger LOGGER = LoggerFactory.getLogger("Living Horizon");
     /** Bytes before the dimensions: the two versions and the kind. */
@@ -151,10 +157,46 @@ public final class PositionsMessage {
      * A message read: its kind, and the list it carries (the other one is null). The players who
      * logged off come in {@code part} of a list that may take several messages; null for the others.
      */
-    public record Decoded(byte kind, @Nullable List<Player> players, @Nullable Mobs mobs, @Nullable Part part) {
+    public record Decoded(byte kind, @Nullable List<Player> players, @Nullable Mobs mobs, @Nullable Part part,
+                          @Nullable Seed seed) {
         public Decoded(byte kind, @Nullable List<Player> players, @Nullable Mobs mobs) {
-            this(kind, players, mobs, null);
+            this(kind, players, mobs, null, null);
         }
+
+        public Decoded(byte kind, @Nullable List<Player> players, @Nullable Mobs mobs, @Nullable Part part) {
+            this(kind, players, mobs, part, null);
+        }
+    }
+
+    /**
+     * The world's seed and the dimensions whose generator is the game's own, for a client to build
+     * it again ({@link SeedDraws#vanilla}); none when the server shares no seed.
+     */
+    public record Seed(long seed, List<SeedGround> dimensions) {
+        public static final Seed NONE = new Seed(0, List.of());
+    }
+
+    /** A dimension whose generator is the game's own: its noise settings and its biome preset, by id. */
+    public record SeedGround(String dimension, String settings, String biomes) {
+    }
+
+    /** The seed message; {@link Seed#NONE} tells a client the server shares none (any more). */
+    public static byte[] seed(Seed seed) {
+        Encoder encoder = new Encoder(MAX_BYTES, 1 + COUNT + 8);
+        Records list = encoder.list();
+        for (SeedGround ground : seed.dimensions()) {
+            encoder.add(list, out -> {
+                writeVarint(out, encoder.dimension(ground.dimension()));
+                out.writeUTF(ground.settings());
+                out.writeUTF(ground.biomes());
+            });
+        }
+        return write(VERSION, READABLE_FROM, out -> {
+            out.writeByte(SEED);
+            encoder.writeTable(out);
+            writeRecord(out, head -> head.writeLong(seed.seed()));
+            list.writeTo(out);
+        });
     }
 
     /** Which message of a list sent in several this one is, from 0, and how many there are. */
@@ -344,6 +386,16 @@ public final class PositionsMessage {
                 String dimension = dimensions.get(readVarint(head));
                 double x = head.readDouble(), z = head.readDouble(), radius = head.readDouble();
                 return new Decoded(kind, null, new Mobs(readMobs(in, dimensions), dimension, x, z, radius));
+            }
+            if (kind == SEED) {
+                long seed = readRecord(in).readLong();
+                int count = readCount(in);
+                List<SeedGround> grounds = new ArrayList<>(Math.min(count, 64));
+                for (int i = 0; i < count; i++) {
+                    DataInputStream ground = readRecord(in);
+                    grounds.add(new SeedGround(dimensions.get(readVarint(ground)), ground.readUTF(), ground.readUTF()));
+                }
+                return new Decoded(kind, null, null, null, new Seed(seed, List.copyOf(grounds)));
             }
             return null;
         } catch (IOException | RuntimeException e) {

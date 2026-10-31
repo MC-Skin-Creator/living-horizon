@@ -22,6 +22,7 @@ import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.LastSeen;
 import fr.clixmods.livinghorizon.track.Profiles;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
+import fr.clixmods.livinghorizon.track.Foresight;
 import fr.clixmods.livinghorizon.track.Gear;
 import fr.clixmods.livinghorizon.track.MobScan;
 import fr.clixmods.livinghorizon.track.PositionsMessage;
@@ -124,6 +125,11 @@ public final class LivingHorizonCommand {
                             return 1;
                         })
                                 .then(offlineTests(source)))
+                        .then(LiteralArgumentBuilder.<S>literal("foresee")
+                                .executes(c -> foresee(source.apply(c.getSource()), FarConfig.get().foreseeRadius))
+                                .then(RequiredArgumentBuilder.<S, Integer>argument("radius",
+                                                IntegerArgumentType.integer(Foresight.MIN_RADIUS, Foresight.MAX_RADIUS))
+                                        .executes(c -> foresee(source.apply(c.getSource()), IntegerArgumentType.getInteger(c, "radius")))))
                         .then(LiteralArgumentBuilder.<S>literal("scan")
                                 .executes(c -> scan(source.apply(c.getSource()), FarConfig.get().scanRadius))
                                 .then(RequiredArgumentBuilder.<S, Integer>argument("radius",
@@ -419,6 +425,16 @@ public final class LivingHorizonCommand {
     }
 
     /**
+     * {@code /livinghorizon foresee [radius]}: the first animals of the land nobody explored within
+     * that many chunks, foreseen from the seed (a world played here, or a server sharing it).
+     */
+    private static int foresee(Source source, int radius) {
+        Minecraft client = source.client();
+        client.execute(() -> FarPlayerTracker.get().mobs().foresight().start(client, radius));
+        return FarPlayerTracker.get().mobs().foresight().available(client) ? 1 : 0;
+    }
+
+    /**
      * {@code /livinghorizon lod} ({@code voxy} too): whether the mod can see the far terrain
      * of Voxy or Distant Horizons. Aim at a far mountain: the answer is how far the first
      * block they know along that line is.
@@ -438,6 +454,8 @@ public final class LivingHorizonCommand {
         for (Links.Report link : Links.report()) {
             source.feedback(Component.translatable("livinghorizon.lod.link", link.mod(), link.status()));
         }
+        // At once, before the probe, which reads hundreds of columns and may answer late.
+        source.feedback(Component.translatable("livinghorizon.lod.details", fr.clixmods.livinghorizon.compat.DrawnGround.status()));
         Player self = source.player();
         Minecraft client = source.client();
         LodWorld.probe(self.getEyePosition(), self.getLookAngle(), 4096).whenComplete((hit, error) ->

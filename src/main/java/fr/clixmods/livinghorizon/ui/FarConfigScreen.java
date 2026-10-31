@@ -5,6 +5,7 @@ import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.QualityPreset;
 import fr.clixmods.livinghorizon.render.DistancePreview.Shape;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
+import fr.clixmods.livinghorizon.track.Foresight;
 import fr.clixmods.livinghorizon.track.MobScan;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.OptionInstance;
@@ -100,12 +101,11 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(
                 bool("enabled", c.enabled, v -> c.enabled = v),
                 bool("showVehicles", c.showVehicles, v -> c.showVehicles = v));
-        list.addBig(distance(Shape.AROUND, blocks("playerMaxDistance", 0, 4000, c.playerMaxDistance,
-                v -> c.playerMaxDistance = v)));
+        list.addBig(distance(Shape.AROUND, reach("playerMaxDistance", c.playerMaxDistance, v -> c.playerMaxDistance = v)));
         list.addSmall(
                 bool("offlinePlayers", c.offlinePlayers, v -> c.offlinePlayers = v),
-                integer("maxOfflinePlayers", 0, FarConfig.UNLIMITED_OFFLINE, c.maxOfflinePlayers,
-                        v -> c.maxOfflinePlayers = v, true),
+                integer("maxOfflinePlayers", 0, FarConfig.MAX_OFFLINE, c.maxOfflinePlayers,
+                        v -> c.maxOfflinePlayers = v, FarConfig.UNLIMITED_OFFLINE),
                 bool("offlineLife", c.offlineLife, v -> c.offlineLife = v),
                 distance(Shape.AROUND, blocks("offlineRoam", 8, 128, c.offlineRoam, v -> c.offlineRoam = v)));
         list.addSmall(
@@ -125,24 +125,25 @@ public final class FarConfigScreen extends SideOptionsScreen {
                         .tooltip(Tooltip.create(Component.translatable(KEY + "forgetMobs.tooltip"))).build());
         list.addSmall(scanButton(), distanceButton(Shape.CHUNKS, chunks("scanRadius", MobScan.MIN_RADIUS,
                 MobScan.MAX_RADIUS, c.scanRadius, v -> c.scanRadius = v), 150));
+        list.addSmall(foreseeButton(), distanceButton(Shape.CHUNKS, chunks("foreseeRadius", Foresight.MIN_RADIUS,
+                Foresight.MAX_RADIUS, c.foreseeRadius, v -> c.foreseeRadius = v), 150));
         subheader(Component.translatable(KEY + "mobs.creatures"));
+        // The guessed mobs beside the mobs: Max Mobs and Mob Render Distance count both.
         list.addSmall(
                 bool("distantMobs", c.distantMobs, v -> c.distantMobs = v),
-                integer("maxDistantMobs", 0, FarConfig.UNLIMITED_MOBS, c.maxDistantMobs, v -> c.maxDistantMobs = v, true));
-        list.addBig(distance(Shape.AROUND, blocks("mobMaxDistance", 0, 4000, c.mobMaxDistance,
-                v -> c.mobMaxDistance = v)));
+                bool("seedMobs", c.seedMobs, v -> c.seedMobs = v));
         list.addSmall(
-                bool("rememberNamedMobs", c.rememberNamedMobs, v -> c.rememberNamedMobs = v),
-                unit("animationMinPixels", "pixels", 0, 40, c.animationMinPixels, v -> c.animationMinPixels = v));
-        list.addBig(distance(Shape.AROUND, blocks("animationMaxDistance", 0, 4000, c.animationMaxDistance,
-                v -> c.animationMaxDistance = v)));
+                integer("maxDistantMobs", 0, FarConfig.MAX_MOBS, c.maxDistantMobs, v -> c.maxDistantMobs = v, FarConfig.UNLIMITED_MOBS),
+                bool("rememberNamedMobs", c.rememberNamedMobs, v -> c.rememberNamedMobs = v));
+        list.addBig(distance(Shape.AROUND, reach("mobMaxDistance", c.mobMaxDistance, v -> c.mobMaxDistance = v)));
+        list.addBig(unit("animationMinPixels", "pixels", 0, 40, c.animationMinPixels, v -> c.animationMinPixels = v));
+        list.addBig(distance(Shape.AROUND, reach("animationMaxDistance", c.animationMaxDistance, v -> c.animationMaxDistance = v)));
         subheader(Component.translatable(KEY + "mobs.entities"));
         list.addSmall(
                 bool("distantEntities", c.distantEntities, v -> c.distantEntities = v),
-                integer("maxDistantEntities", 0, FarConfig.UNLIMITED_MOBS, c.maxDistantEntities,
-                        v -> c.maxDistantEntities = v, true));
-        list.addBig(distance(Shape.AROUND, blocks("entityMaxDistance", 0, 4000, c.entityMaxDistance,
-                v -> c.entityMaxDistance = v)));
+                integer("maxDistantEntities", 0, FarConfig.MAX_MOBS, c.maxDistantEntities,
+                        v -> c.maxDistantEntities = v, FarConfig.UNLIMITED_MOBS));
+        list.addBig(distance(Shape.AROUND, reach("entityMaxDistance", c.entityMaxDistance, v -> c.entityMaxDistance = v)));
 
         header(Component.translatable(KEY + "birds"));
         list.addSmall(
@@ -252,6 +253,21 @@ public final class FarConfigScreen extends SideOptionsScreen {
         return button;
     }
 
+    /** <i>Guess Nearby Mobs</i>: in a world played here, or on a server that shares its seed. */
+    private Button foreseeButton() {
+        boolean available = FarPlayerTracker.get().mobs().foresight().available(minecraft);
+        Button button = Button.builder(Component.translatable(KEY + "foreseeMobs"), b -> {
+                    FarConfig.save();
+                    minecraft.setScreen(null);
+                    FarPlayerTracker.get().mobs().foresight().start(minecraft, FarConfig.get().foreseeRadius);
+                })
+                .tooltip(Tooltip.create(Component.translatable(
+                        KEY + (available ? "foreseeMobs.tooltip" : "foreseeMobs.unavailable"))))
+                .build();
+        button.active = available;
+        return button;
+    }
+
     @Override
     public void removed() {
         FarConfig.save();
@@ -277,16 +293,22 @@ public final class FarConfigScreen extends SideOptionsScreen {
         return OptionInstance.createBoolean(KEY + name, tooltip(name), value, set::accept);
     }
 
-    /** With {@code maxIsUnlimited}, the top of the slider reads as the {@code .max} text. */
+    /**
+     * With {@code unlimited} (the value the settings keep for no limit, above {@code max}), one more
+     * place past {@code max} is no limit, read as the {@code .max} text, and any number can be typed.
+     */
     static OptionInstance<Integer> integer(String name, int min, int max, int value, Consumer<Integer> set,
-                                           boolean maxIsUnlimited) {
-        return new OptionInstance<>(KEY + name, tooltip(name),
-                (caption, v) -> v == 0 && min == 0
-                        ? Options.genericValueLabel(caption, Component.translatable(KEY + name + ".zero"))
-                        : maxIsUnlimited && v >= max
+                                           int unlimited) {
+        boolean limitless = unlimited > max;
+        int shown = limitless && value >= unlimited ? NumberSlider.UNLIMITED
+                : limitless ? Math.max(value, min) : Math.clamp(value, min, max);
+        return slider(name, min, max, shown,
+                (caption, v) -> v == NumberSlider.UNLIMITED
                         ? Options.genericValueLabel(caption, Component.translatable(KEY + name + ".max"))
+                        : v == 0 && min == 0
+                        ? Options.genericValueLabel(caption, Component.translatable(KEY + name + ".zero"))
                         : Options.genericValueLabel(caption, v),
-                new OptionInstance.IntRange(min, max), Math.clamp(value, min, max), set::accept);
+                limitless, v -> set.accept(v == NumberSlider.UNLIMITED ? unlimited : v));
     }
 
     /** A distance in blocks, said so: "512 Blocks"; zero reads as the {@code .zero} text. */
@@ -294,20 +316,52 @@ public final class FarConfigScreen extends SideOptionsScreen {
         return unit(name, "blocks", min, max, value, set);
     }
 
+    /**
+     * A distance in blocks up to {@link FarConfig#MAX_DISTANCE} along the slider, then no limit at the
+     * right end, read as the {@code .zero} text: the settings keep no limit as 0. A farther distance
+     * can be typed.
+     */
+    static OptionInstance<Integer> reach(String name, int value, Consumer<Integer> set) {
+        return slider(name, 1, FarConfig.MAX_DISTANCE, value <= 0 ? NumberSlider.UNLIMITED : value,
+                (caption, v) -> v == NumberSlider.UNLIMITED
+                        ? Options.genericValueLabel(caption, Component.translatable(KEY + name + ".zero"))
+                        : Options.genericValueLabel(caption, Component.translatable(KEY + "blocks", v)),
+                true, v -> set.accept(v == NumberSlider.UNLIMITED ? 0 : v));
+    }
+
     /** A number in a unit, the way the game writes it ("30s", "6px", "2x", "100%"); zero reads as the {@code .zero} text. */
     static OptionInstance<Integer> unit(String name, String unit, int min, int max, int value, Consumer<Integer> set) {
-        return new OptionInstance<>(KEY + name, tooltip(name),
+        return slider(name, min, max, Math.clamp(value, min, max),
                 (caption, v) -> v == 0 && min == 0
                         ? Options.genericValueLabel(caption, Component.translatable(KEY + name + ".zero"))
                         : Options.genericValueLabel(caption, Component.translatable(KEY + unit, v)),
-                new OptionInstance.IntRange(min, max), Math.clamp(value, min, max), set::accept);
+                false, set);
     }
 
     /** A distance in chunks, worded like the game's own render distance ("32 chunks"). */
     static OptionInstance<Integer> chunks(String name, int min, int max, int value, Consumer<Integer> set) {
-        return new OptionInstance<>(KEY + name, tooltip(name),
+        return slider(name, min, max, Math.clamp(value, min, max),
                 (caption, v) -> Options.genericValueLabel(caption, Component.translatable(KEY + name + ".value", v)),
-                new OptionInstance.IntRange(min, max), Math.clamp(value, min, max), set::accept);
+                false, set);
+    }
+
+    /**
+     * A slider of whole numbers ({@link NumberSlider}). With {@code unlimited}, its right end is no
+     * limit, which the settings named by {@link NumberSlider#asksBeforeUnlimited} keep only once the
+     * player says yes, and it takes a typed value, past its last number too.
+     */
+    private static OptionInstance<Integer> slider(String name, int min, int max, int value,
+                                                  OptionInstance.CaptionBasedToString<Integer> label,
+                                                  boolean unlimited, Consumer<Integer> set) {
+        NumberSlider.Range range = new NumberSlider.Range(Component.translatable(KEY + name), min, max, label, unlimited,
+                NumberSlider.asksBeforeUnlimited(name));
+        // Only a slider with no limit at its end takes a typed value, and says so.
+        Component tooltip = Component.translatable(KEY + name + ".tooltip");
+        if (unlimited) {
+            tooltip = tooltip.copy().append("\n\n")
+                    .append(Component.translatable(KEY + "typeValue").withStyle(net.minecraft.ChatFormatting.GRAY));
+        }
+        return new OptionInstance<>(KEY + name, OptionInstance.cachedConstantTooltip(tooltip), label, range, value, set::accept);
     }
 
     static OptionInstance<String> choice(String name, List<String> values, String value, Consumer<String> set) {
