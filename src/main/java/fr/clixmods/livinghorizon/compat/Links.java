@@ -13,9 +13,10 @@ import java.util.Set;
 
 /**
  * What the links to other mods share ({@link VoxyLink}, {@link DhLink}, {@link LodistanceLink},
- * {@link FarViewLink}, {@link IrisLink}): looking up what older or newer versions may not have, and
- * keeping a word of what each link found, for {@code /livinghorizon lod}. A missing piece the mod
- * can do without is a fallback: the link notes it once, and the line in {@code lod} says it.
+ * {@link FarViewLink}, {@link EcstaticLink}, {@link IrisLink}): looking up what older or newer
+ * versions may not have, and keeping a word of what each link found, for {@code /livinghorizon
+ * lod}. A missing piece the mod can do without is a fallback: the link notes it once, and the
+ * line in {@code lod} says it.
  */
 public final class Links {
     private Links() {
@@ -32,6 +33,7 @@ public final class Links {
     public static List<Report> report() {
         return List.of(new Report("Voxy", VoxyLink.status()), new Report("Distant Horizons", DhLink.status()),
                 new Report("Lodistance", LodistanceLink.status()), new Report("Far View", FarViewLink.status()),
+                new Report("Ecstatic", EcstaticLink.status()),
                 new Report("Iris", IrisLink.status()), new Report("Fog on distant figures", FarFog.status()));
     }
 

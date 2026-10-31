@@ -564,7 +564,7 @@ off, then run or jump to it once it was sent again.
 
 Once its copy is drawn, the blocks within 8 blocks of a mob (a square of 17 by 17 columns,
 `track/MobPaths`) are read, a few mobs per tick, from loaded chunks or from the far world
-(Voxy, Distant Horizons or Far View): the loaded sections are copied on the game's thread
+(Voxy, Distant Horizons, Lodistance, Far View or Ecstatic): the loaded sections are copied on the game's thread
 (`track/BlockCopy`) and the ground and animation worked out on `track/GroundWork`'s threads,
 so the answer comes a tick or so later. They are read again when the mob moves, and later and later while
 columns are missing; a ground read whole is saved with the mob and used at once next time.
@@ -574,8 +574,9 @@ below), and other flyers and swimmers get a flat disc at their own height.
 - **The ground**: in each column, the floor nearest the mob's height with room above it.
   Grass, flowers, crops and snow layers count as air; a path dug with a shovel counts as
   ground; water, leaves, fences and walls are not ground. Voxy gives every block of the
-  column, Distant Horizons only its top one, Far View its top one and, under trees, the ground
-  and where the leaves start.
+  column, Distant Horizons only its top one, Lodistance up to three runs of blocks, Far View its
+  top one and, under trees, the ground and where the leaves start, Ecstatic only the height of
+  its ground.
 - **Choosing an animation**: every animation is laid on that ground, turned eight ways and
   mirrored. It fits when it never leaves the ground and never climbs or drops more than a
   block at a time: never off a cliff, never over a fence. Those at least 0.6 times as wide as
@@ -948,17 +949,19 @@ Horizon (on 26.3 the game's GPU device path works otherwise, see
 | Lodistance with Sodium | Lodistance, at twice its terrain's distance: `FarDepth` moves it to its real depth, around the entities only |
 | Lodistance without Sodium | `FarDepth`, from Lodistance's own depth texture, the same way as Distant Horizons' |
 | Far View | Far View itself, with the game's projection: nothing to do (not with its *Seamless* option, see [Far View](#far-view)) |
+| Ecstatic | Nobody: it draws after the entities, tested against their depth ([Ecstatic](#ecstatic)) |
 
-### Links to Voxy, Distant Horizons, Lodistance, Far View and Iris
+### Links to Voxy, Distant Horizons, Lodistance, Far View, Ecstatic and Iris
 
-None of the five has an API for what the mod needs, or not all of it: they are reached by
+None of the six has an API for what the mod needs, or not all of it: they are reached by
 reflection, each through one class, `VoxyLink`, `DhLink` (what `DhDepth` and `DhSource` share),
-`LodistanceLink`, `FarViewLink` and `IrisLink`. A rename on their side is followed there and nowhere else. What an older or
-newer version lacks and the mod can do without is a fallback (`Links.optional…`), noted by the
-link; what it cannot do without turns that part off for the session. `/livinghorizon lod` has
-one line per link: linked, not installed or off and why, the fallbacks in use, and how often the
-mixins into Voxy (`renderOpaque`) and Distant Horizons (its fades) ran. Those two may find nothing
-to hook (`require = 0`): a count that stays at 0 while the mod draws is a renamed method.
+`LodistanceLink`, `FarViewLink`, `EcstaticLink` and `IrisLink`. A rename on their side is
+followed there and nowhere else. What an older or newer version lacks and the mod can do
+without is a fallback (`Links.optional…`), noted by the link; what it cannot do without turns
+that part off for the session. `/livinghorizon lod` has one line per link: linked, not
+installed or off and why, the fallbacks in use, and how often the mixins into Voxy
+(`renderOpaque`) and Distant Horizons (its fades) ran. Those two may find nothing to hook
+(`require = 0`): a count that stays at 0 while the mod draws is a renamed method.
 
 ### One frame
 
@@ -1086,6 +1089,27 @@ terrain fog, which the entities share. Under a shader pack it draws in Iris's te
   `FVFarMobs.suppressModel` first (`FarViewLink.drawsMob`) and leaves those to Far View. With
   its boxes off, the game draws them and we draw the rest past the render distance. In single
   player it also has the built-in server send mobs out to the render distance.
+
+### Ecstatic
+
+Ecstatic (NeoForge 1.21.1) draws the overworld past the render distance from the world's seed,
+in single player only. It draws its terrain into the game's framebuffer after the entities
+(`RenderLevelStageEvent`, `AFTER_PARTICLES`), tested against the game's depth and written into
+it: our figures are already there, so its hills hide them like any block, and nothing is
+merged. But it projects its terrain with a far plane of its own (at least 16,800 blocks; the
+game's near plane), and depths agree only between projections with the same planes. With the
+game's nearer, a hill a hundred blocks behind a mob 300 blocks away has a smaller depth than the
+mob and is painted over it (`DepthMathTest`). So while Ecstatic draws, the game's far plane is
+Ecstatic's (`EcstaticLink.farPlane`, read from its renderer, in `GhostRenderer.farPlane`).
+
+Its fog is not ours: it takes the game's fog away (the world's entities included) and fogs its
+terrain in its own shaders, so distant mobs are not fogged over its terrain. Its shader pack
+support is not done yet; neither is checked here.
+
+`compat/EcstaticSource` reads its grid of heights and biomes (one file per level of detail, a
+sample every 2 to 32 blocks): the ground for the mobs and *Only Over Terrain*. Ecstatic frees a
+file's memory as its server stops, without forgetting it; a read holds the file's lock, as its
+own reads and its closing do, and reads nothing from a closed file.
 
 ### Shadows under Photon
 
@@ -1245,7 +1269,7 @@ debug options. `/livinghorizon debug` turns the panel and the boxes on or off to
 | Outlines | `outline*`, in *Outlines...* | An outline around each kind of figure, and a cross where a mob is not drawn (below) |
 | Statistics | *Statistics...* (`ui/StatsScreen`) | What is kept, counted when opened and on *Refresh*: remembered mobs (met, shared by the server, guessed), chosen, built and waiting; the guessed mobs kept apart, the chunks looked at and the memory they take; the size on disk of each folder of `config/livinghorizon`, this server's and all |
 | Depth view | `debugDepthView` | Bottom right: the game's depth alone, with the far terrain merged in, or after the entities. Near is white, far black, sky blue |
-| Far terrain | `/livinghorizon lod` (or `voxy`) | Which far terrain mod is read (Voxy, Distant Horizons or Far View), whether reading it failed, and the state of its depth |
+| Far terrain | `/livinghorizon lod` (or `voxy`) | Which far terrain mod is read (Voxy, Distant Horizons, Far View or Ecstatic), whether reading it failed, and the state of its depth |
 | Optimisations | `opt*`, `depthOcclusion`, `hideOccludedMobs` | Every optimisation has its own switch, to compare the cost (see [Optimizations](#optimizations)) |
 
 ### Box colours

@@ -35,6 +35,7 @@
 - **Estimate the mobs around you** — The new *Guess Nearby Mobs* button shows the estimated mobs up to 1,024 chunks around you at once, and keeps them for your next sessions. On a server, the server must share its seed.
 - **Typed values** — Sliders in the mod's settings that end in *Unlimited* (maximum counts and render distances) now accept a value typed on the keyboard, even beyond their last step, and Sodium's page shows it too. Right-click a slider to enter an exact value; the arrow keys also move each slider step by step.
 - **Distance preview in the world** — When you hover or change a distance setting, its limit is now shown directly in the world, behind the menu. You can see at a glance how far the chosen value reaches.
+- **Ecstatic's far terrain** — distant mobs now stand and walk on Ecstatic's terrain and hide behind its hills, instead of vanishing past the render distance or under the land behind them (NeoForge, Minecraft 1.21.1, single player).
 
 #### Improved
 - **Optional simplification distance** — *Simplification Distance* can now be turned off. Mobs, entities, players and birds then only become simplified images once they look small enough on screen.

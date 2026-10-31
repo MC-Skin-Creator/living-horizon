@@ -97,6 +97,25 @@ class DepthMathTest {
         }
     }
 
+    /**
+     * Ecstatic draws its terrain after the entities, tested against the game's depth, with the
+     * game's near plane and a far plane of its own. With the game's plane nearer, a hill well
+     * behind a distant mob passes the test and is painted over it; with the same plane, only a
+     * hill in front of it does.
+     */
+    @Test
+    void ecstaticsTerrainStaysBehindAMobOnlyWithTheSameFarPlane() {
+        float mob = 300f, behind = 400f, inFront = 295f;
+        float[] game = DepthMath.terms(NEAR, 1100f, false, false);
+        float[] ecstatic = DepthMath.terms(NEAR, 16800f * 1.05f, false, false);
+        float mobDepth = DepthMath.depth(game[0], game[1], false, mob);
+        assertTrue(DepthMath.depth(ecstatic[0], ecstatic[1], false, behind) <= mobDepth, "the hill behind wins");
+
+        float matched = DepthMath.depth(ecstatic[0], ecstatic[1], false, mob);
+        assertTrue(DepthMath.depth(ecstatic[0], ecstatic[1], false, behind) > matched, "the hill behind loses");
+        assertTrue(DepthMath.depth(ecstatic[0], ecstatic[1], false, inFront) <= matched, "the hill in front wins");
+    }
+
     @Test
     void termsAreTheProjectionsOwn() {
         for (boolean reversed : BOTH) {

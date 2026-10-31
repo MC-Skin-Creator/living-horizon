@@ -340,6 +340,12 @@ come back, add it here in the same pull request: this file is what the next sess
   fog, which the game still gave the entities; `FarFog.lodistance` gives them its ramp alone.
   The `lodistance` scenario checks it (its jar in `build/game-test-mods/26.3-with/lodistance/`,
   `--with lodistance`, with and without `--sodium`).
+- **Distant mobs painted over by Ecstatic's terrain behind them** (NeoForge 1.21.1, single
+  player): Ecstatic draws after the entities, tested against the game's depth, with a far plane
+  of its own; the game's projection must take the same one (`EcstaticLink.farPlane`, read from
+  its private `LodRenderer.extendedFarPlaneBlocks`). `/livinghorizon lod` says whether it is
+  matched. Its source is public (CC BY-NC-SA: read it, never copy it); `EcstaticSource` reads its
+  files only under their lock and while open, since Ecstatic frees them as its server stops.
 - **Steps out of order** (`/livinghorizon lod` or the log says so; the `depthview` game test
   fails): a hook before that step no longer runs, renamed by the game or another mod. The order
   is in `FarDepth.Frame` and `docs/technical.md` ("One frame").
