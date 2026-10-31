@@ -684,10 +684,15 @@ come back, add it here in the same pull request: this file is what the next sess
   that has every empty chunk asked again at once (`DrawnGround.revisit`). A mob with no answer
   yet is hidden too, and marked void: its question waited behind the ground reads of thousands
   of guessed mobs (`MobPaths`) in the readers' queue, seconds as a world opened, and
-  `/livinghorizon lod` answered late too, its probe reading hundreds of columns. `LodWorld.ground`
-  runs on a thread of its own (`URGENT`, never the probe), one read at a time of 256 chunks at most
-  (`DrawnGround.BATCH`): a read answers all its chunks at its end. `/livinghorizon lod` prints at once
-  how many chunks have terrain, are empty, wait or were never asked, and how fast the far world reads.
+  `/livinghorizon lod` answered late too, its probe reading hundreds of columns. Now any read of
+  the far world that finds blocks (a mob's ground above all, `MobPaths`) notes its chunk as
+  terrain (`DrawnGround.noted`), and the chunks still unknown are read a column a task on four
+  threads of their own (`LodWorld.ground`, `URGENT`, never the probe), 256 at most at a time, each
+  answered as it is read. `/livinghorizon lod` prints at once how many chunks have terrain, are
+  empty, wait or were never asked, how fast the far world reads, and where a column read for a
+  second or more waits. Never interrupt a Distant Horizons read to free a thread: it reads its
+  database, which an interrupt can close. An unanswered column (`LodWorld.Unanswered`) is never a
+  failure (`LodSource.fail` pauses every read 20 s).
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

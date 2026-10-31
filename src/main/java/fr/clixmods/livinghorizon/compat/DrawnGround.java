@@ -180,6 +180,19 @@ public final class DrawnGround {
                 + " waiting for an answer, " + none + " not asked yet; " + LodWorld.groundTimes();
     }
 
+    /**
+     * A read of the far world found blocks at this column, for whatever it was read (the ground a
+     * mob walks on, most often): its chunk has terrain, without a question of its own. Most mobs
+     * have their ground read anyway; asked again here, their answer waited behind those reads.
+     */
+    static void noted(int x, int z) {
+        int cx = x >> 4, cz = z >> 4;
+        Chunk chunk = CHUNKS.computeIfAbsent((long) cx << 32 | (cz & 0xFFFFFFFFL), key -> new Chunk());
+        if (chunk.ground) return;
+        if (chunk.misses > 0) revisit = true;
+        chunk.ground = true;
+    }
+
     /** Sends the far world this frame's questions, in one read. */
     public static void ask() {
         long started = System.nanoTime();
@@ -189,26 +202,30 @@ public final class DrawnGround {
         Chunk[] chunks = ASKED.toArray(new Chunk[0]);
         int[] xs = Arrays.copyOf(askedX, chunks.length), zs = Arrays.copyOf(askedZ, chunks.length);
         ASKED.clear();
-        LodWorld.ground(xs, zs).whenComplete((found, error) -> {
-            long now = System.nanoTime();
-            for (int i = 0; i < chunks.length; i++) {
-                Chunk chunk = chunks[i];
-                Boolean terrain = error == null && found != null ? found[i] : null;
-                if (terrain == null) {
-                    // No answer (no world open yet, a failed read): not void, asked again soon.
-                    chunk.next = now + RETRY_NANOS;
-                } else if (terrain) {
-                    if (chunk.misses > 0) revisit = true;
-                    chunk.ground = true;
-                } else {
-                    int misses = Math.min(chunk.misses, 5);
-                    chunk.next = now + Math.min(RETRY_MAX_NANOS, RETRY_NANOS << misses);
-                    chunk.misses = misses + 1;
-                }
-                chunk.asking = false;
-            }
-            reading = false;
-        });
+        LodWorld.ground(xs, zs, (i, terrain) -> answered(chunks[i], terrain, System.nanoTime()))
+                .whenComplete((found, error) -> {
+                    // Any chunk still waiting got no answer (no world, a failed read): asked again soon.
+                    long now = System.nanoTime();
+                    for (Chunk chunk : chunks) {
+                        if (chunk.asking) answered(chunk, null, now);
+                    }
+                    reading = false;
+                });
+    }
+
+    /** One chunk's answer: terrain, nothing, or none (not void, asked again soon). */
+    private static void answered(Chunk chunk, @Nullable Boolean terrain, long now) {
+        if (terrain == null) {
+            chunk.next = now + RETRY_NANOS;
+        } else if (terrain) {
+            if (chunk.misses > 0) revisit = true;
+            chunk.ground = true;
+        } else {
+            int misses = Math.min(chunk.misses, 5);
+            chunk.next = now + Math.min(RETRY_MAX_NANOS, RETRY_NANOS << misses);
+            chunk.misses = misses + 1;
+        }
+        chunk.asking = false;
     }
 
     /** {@link LodWorld#drawnDistance}, read again once a second: the settings it reads seldom change. */

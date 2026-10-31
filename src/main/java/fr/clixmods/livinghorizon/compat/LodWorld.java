@@ -50,14 +50,18 @@ public final class LodWorld {
      * The short questions that decide what is drawn now (is there terrain under these mobs), on a
      * thread of their own: behind the ground reads of thousands of guessed mobs in the readers'
      * queue, a mob waited seconds for its answer, hidden meanwhile. Not the debug command's probe,
-     * which reads hundreds of columns along its ray.
+     * which reads hundreds of columns along its ray. A column a task of its own, on four threads:
+     * one that Distant Horizons is slow to answer holds one thread, not every answer behind it.
      */
-    private static final ExecutorService URGENT = Executors.newSingleThreadExecutor(runnable -> {
-        Thread thread = new Thread(runnable, "Living Horizon LOD reader (urgent)");
+    private static final int URGENT_THREADS = 4;
+    private static final ExecutorService URGENT = Executors.newFixedThreadPool(URGENT_THREADS, runnable -> {
+        Thread thread = new Thread(runnable, "Living Horizon LOD reader (urgent) " + NAMES.incrementAndGet());
         thread.setDaemon(true);
         thread.setPriority(Thread.NORM_PRIORITY);
         return thread;
     });
+    /** The urgent readers reading a column now, and since when: what a stuck one waits on, for the debug command. */
+    private static final ConcurrentHashMap<Thread, Long> URGENT_BUSY = new ConcurrentHashMap<>();
     /** Tasks given to the readers and not finished yet, for the debug panel. */
     private static final AtomicInteger PENDING = new AtomicInteger();
 
@@ -295,56 +299,87 @@ public final class LodWorld {
     private static volatile int groundLastBatch;
     private static volatile long groundLastNanos;
 
+    /** Whether a column's answer is known: true, false, or null for no answer. */
+    @FunctionalInterface
+    public interface ColumnAnswer {
+        void accept(int index, @Nullable Boolean terrain);
+    }
+
     /** For {@code /livinghorizon lod}: how fast the ground under mobs is read. */
     public static String groundTimes() {
         long columns = GROUND_COLUMNS.get(), nanos = GROUND_NANOS.get();
-        return columns + " columns read in " + nanos / 1_000_000 + " ms ("
+        String text = columns + " columns read in " + nanos / 1_000_000 + " ms ("
                 + (columns == 0 ? "-" : String.format(java.util.Locale.ROOT, "%.2f", nanos / 1e6 / columns)) + " ms each), last batch "
                 + groundLastBatch + " in " + groundLastNanos / 1_000_000 + " ms, " + pending() + " reads waiting";
+        long now = System.nanoTime();
+        for (var busy : URGENT_BUSY.entrySet()) {
+            long took = now - busy.getValue();
+            if (took < 1_000_000_000L) continue;
+            // A column read for a second or more: where it waits.
+            StringBuilder at = new StringBuilder();
+            int shown = 0;
+            for (StackTraceElement frame : busy.getKey().getStackTrace()) {
+                if (shown == 6) break;
+                String name = frame.getClassName();
+                at.append(shown++ == 0 ? "" : " < ").append(name.substring(name.lastIndexOf('.') + 1))
+                        .append('.').append(frame.getMethodName());
+            }
+            text += "; a column read for " + took / 1_000_000 + " ms, at " + at;
+        }
+        return text;
     }
 
-    public static CompletableFuture<@Nullable Boolean[]> ground(int[] xs, int[] zs) {
+    public static CompletableFuture<@Nullable Boolean[]> ground(int[] xs, int[] zs, ColumnAnswer each) {
         Boolean[] found = new Boolean[xs.length];
         LodSource source = source();
-        if (source == null) return CompletableFuture.completedFuture(found);
+        if (source == null || xs.length == 0) return CompletableFuture.completedFuture(found);
         CompletableFuture<@Nullable Boolean[]> result = new CompletableFuture<>();
-        run(source, () -> {
-            ConcurrentHashMap<Long, Known> columns = memory;
-            try {
-                Object world = open(source);
-                if (world != null) {
-                    long at = System.nanoTime();
-                    int read = 0;
-                    boolean cache = FarConfig.get().optColumnCache;
-                    if (columns.size() > COLUMNS_KEPT) columns.clear();
-                    for (int i = 0; i < xs.length; i++) {
-                        long key = key(xs[i], zs[i]);
-                        Known known = cache ? columns.get(key) : null;
-                        if (known != null && at - known.at < COLUMN_NANOS && known.surface != NOTHING) {
-                            found[i] = true;
-                            continue;
-                        }
-                        read++;
-                        try {
-                            Surface surface = source.column(world, xs[i], zs[i]);
-                            if (cache) columns.put(key, new Known(surface == null ? NOTHING : surface, at));
-                            found[i] = surface != null;
-                        } catch (Unanswered unanswered) {
-                            found[i] = null;
-                        }
-                    }
-                    long took = System.nanoTime() - at;
-                    GROUND_COLUMNS.addAndGet(read);
-                    GROUND_NANOS.addAndGet(took);
-                    groundLastBatch = xs.length;
-                    groundLastNanos = took;
+        java.util.concurrent.atomic.AtomicInteger left = new java.util.concurrent.atomic.AtomicInteger(xs.length);
+        long batch = System.nanoTime();
+        groundLastBatch = xs.length;
+        for (int n = 0; n < xs.length; n++) {
+            int i = n;
+            run(source, () -> {
+                try {
+                    found[i] = column(source, xs[i], zs[i]);
+                } catch (Throwable e) {
+                    source.fail(e);
                 }
-            } catch (Throwable e) {
-                source.fail(e);
-            }
-            result.complete(found);
-        }, true);
+                // Answered as it comes: one slow column no longer keeps the others waiting.
+                each.accept(i, found[i]);
+                if (left.decrementAndGet() == 0) {
+                    groundLastNanos = System.nanoTime() - batch;
+                    result.complete(found);
+                }
+            }, true);
+        }
         return result;
+    }
+
+    /** One column for {@link #ground}: true with terrain, false empty, null unanswered or no world. */
+    private static @Nullable Boolean column(LodSource source, int x, int z) throws Throwable {
+        Object world = open(source);
+        if (world == null) return null;
+        long key = key(x, z);
+        long at = System.nanoTime();
+        boolean cache = FarConfig.get().optColumnCache;
+        ConcurrentHashMap<Long, Known> columns = memory;
+        Known known = cache ? columns.get(key) : null;
+        if (known != null && at - known.at < COLUMN_NANOS && known.surface != NOTHING) return true;
+        if (columns.size() > COLUMNS_KEPT) columns.clear();
+        Thread self = Thread.currentThread();
+        URGENT_BUSY.put(self, at);
+        try {
+            Surface surface = source.column(world, x, z);
+            if (cache) columns.put(key, new Known(surface == null ? NOTHING : surface, at));
+            return surface != null;
+        } catch (Unanswered unanswered) {
+            return null;
+        } finally {
+            URGENT_BUSY.remove(self);
+            GROUND_COLUMNS.incrementAndGet();
+            GROUND_NANOS.addAndGet(System.nanoTime() - at);
+        }
     }
 
     private static CompletableFuture<@Nullable Surface[]> surfaces(int[] xs, int[] zs, boolean trustNothing) {
@@ -388,6 +423,7 @@ public final class LodWorld {
                             continue;
                         }
                         if (cache) columns.put(key, new Known(surface == null ? NOTHING : surface, at));
+                        if (surface != null) DrawnGround.noted(xs[i], zs[i]);
                         found[i] = surface;
                     }
                 }
@@ -414,7 +450,10 @@ public final class LodWorld {
             try {
                 Object world = open(source);
                 if (world != null) {
-                    for (int i = 0; i < xs.length; i++) found[i] = source.slice(world, xs[i], zs[i], bottom, height);
+                    for (int i = 0; i < xs.length; i++) {
+                        found[i] = source.slice(world, xs[i], zs[i], bottom, height);
+                        if (found[i] != null) DrawnGround.noted(xs[i], zs[i]);
+                    }
                 }
             } catch (Throwable e) {
                 source.fail(e);

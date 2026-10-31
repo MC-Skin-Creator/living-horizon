@@ -58,7 +58,13 @@ interface LodSource {
      * block is known: that block, solid ground under it, air over it.
      */
     default BlockState @Nullable [] slice(Object world, int x, int z, int bottom, int height) throws Throwable {
-        LodWorld.Surface surface = column(world, x, z);
+        LodWorld.Surface surface;
+        try {
+            surface = column(world, x, z);
+        } catch (LodWorld.Unanswered unanswered) {
+            // Not answered: nothing known, never a failure that pauses every read.
+            return null;
+        }
         if (surface == null) return null;
         BlockState top = surface.block() != null ? surface.block()
                 : surface.water() ? Blocks.WATER.defaultBlockState() : Blocks.STONE.defaultBlockState();
