@@ -379,14 +379,14 @@ public final class FarConfig {
     public boolean optDhFog = true;
     /** Saved mobs are read off the game's thread and built within 2 ms per tick. */
     public boolean optBackgroundBuild = true;
-    /** A mob only a few pixels high on screen plays no walking or idle animation: it stands where it is. */
+    /** A mob only a few pixels high on screen stops walking about: it stands where it is. */
     public boolean optStillTiny = true;
     /**
-     * Pixels: a distant mob shorter than this on screen plays no walking or idle animation (it
+     * Pixels: a distant mob shorter than this on screen stops walking about and stands (it
      * resumes a little above, so it never flickers). 0 always animates. Needs {@link #optStillTiny}.
      */
     public int animationMinPixels = 10;
-    /** Blocks: past this, no distant mob plays an animation, however big it looks. 0 is no limit, which the screens ask about first. */
+    /** Blocks: past this, every distant mob stops walking about and stands, however big it looks. 0 is no limit, which the screens ask about first. */
     public int animationMaxDistance = MAX_DISTANCE;
     /** A copy that was not drawn for a moment (out of view, hidden, too small) stays where it is: no animation, no path read. */
     public boolean optFreezeHidden = false;

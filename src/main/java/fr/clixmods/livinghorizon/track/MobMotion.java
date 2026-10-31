@@ -91,7 +91,7 @@ final class MobMotion {
         place(mob);
         air = -1;
         lift = 0;
-        apply(puppet, 0, true);
+        apply(puppet, 0);
         puppet.setOldPosAndRot();
         puppet.yBodyRotO = body;
         puppet.yHeadRotO = head;
@@ -139,8 +139,8 @@ final class MobMotion {
     /**
      * One tick of its animation. {@code choice} is null until the ground around it is
      * read; {@code roam} is off for the mobs shown standing still; {@code tiny} means too
-     * small or too far for its animation to be played: it stands where its animation had it,
-     * its idle movements frozen, and goes on from there once played again; {@code home} is how much it
+     * small or too far for its animation to be played: it stands where its animation had it
+     * and goes on from there once played again (a flyer flies on); {@code home} is how much it
      * is called back to its spot ({@link #home}).
      */
     void tick(LivingEntity puppet, MobMemory.Remembered mob, MobPaths.@Nullable Choice choice, int clock, boolean roam,
@@ -149,7 +149,7 @@ final class MobMotion {
         if (gait == null) gait = MobGait.of(puppet);
         following = 0;
         if (flight != null && roam && !mob.simulated) {
-            fly(puppet, mob, flight, clock, tiny, home);
+            fly(puppet, mob, flight, clock, home);
             return;
         }
         // Still: it stands where its animation had it, rather than sliding along it with its legs at rest.
@@ -232,7 +232,7 @@ final class MobMotion {
             head = Mth.approachDegrees(head, body + look, 8f);
         }
         pitch = Mth.lerp(0.15f, pitch, grazing ? 40f : 0f);
-        apply(puppet, Math.hypot(x - fromX, z - fromZ), tiny);
+        apply(puppet, Math.hypot(x - fromX, z - fromZ));
     }
 
     /**
@@ -240,8 +240,7 @@ final class MobMotion {
      * through the air when it is not there yet (just remembered, or called back to its spot).
      * It faces where it flies and tilts as it climbs or dives.
      */
-    private void fly(LivingEntity puppet, MobMemory.Remembered mob, MobFlight flight, int clock, boolean tiny,
-                     float home) {
+    private void fly(LivingEntity puppet, MobMemory.Remembered mob, MobFlight flight, int clock, float home) {
         playing = null;
         // Each one at its own point of its flight.
         double t = clock + Math.floorMod(seed >> 17, 4000L);
@@ -284,7 +283,7 @@ final class MobMotion {
         air = -1;
         lift = 0;
         climbing = false;
-        apply(puppet, Math.sqrt(mx * mx + my * my + mz * mz), tiny);
+        apply(puppet, Math.sqrt(mx * mx + my * my + mz * mz));
     }
 
     /**
@@ -317,13 +316,13 @@ final class MobMotion {
         float headTo = real instanceof LivingEntity living ? living.yHeadRot : yaw;
         head = Mth.approachDegrees(head, d > 1.5 ? body : headTo, 10f);
         pitch = Mth.lerp(0.3f, pitch, real.getXRot());
-        apply(puppet, Math.hypot(x - fromX, z - fromZ), false);
+        apply(puppet, Math.hypot(x - fromX, z - fromZ));
         boolean there = air < 0 && Math.hypot(tx - x, tz - z) < 0.1 && Math.abs(ty - y) < 0.15
                 && Math.abs(Mth.wrapDegrees(body - yaw)) < 15;
         return there || ++following > 120;
     }
 
-    private void apply(LivingEntity puppet, double moved, boolean tiny) {
+    private void apply(LivingEntity puppet, double moved) {
         puppet.setOldPosAndRot();
         puppet.yBodyRotO = puppet.yBodyRot;
         puppet.yHeadRotO = puppet.yHeadRot;
@@ -336,8 +335,10 @@ final class MobMotion {
         // Legs as it moves, even still: moved by the server or walking back to its spot, a mob
         // with its legs at rest slides. Standing, they are at rest anyway.
         Puppets.walk(puppet, (float) Math.min(moved * 4.0, 1.0), 0.4f, puppet.isBaby() ? 3f : 1f);
-        // Idle movements frozen: nothing of them would show.
-        if (!tiny) puppet.tickCount++;
+        // Every tick, still or not: the game plays idle movements at tickCount plus the frame's
+        // part of a tick, and with tickCount stopped they ran a tick's worth and snapped back,
+        // twenty times a second.
+        puppet.tickCount++;
         if (gait != null) gait.pose(puppet, tookOff, landed, lift > 0 || climbing);
         tookOff = false;
     }
