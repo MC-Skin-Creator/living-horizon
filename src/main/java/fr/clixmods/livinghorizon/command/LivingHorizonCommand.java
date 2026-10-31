@@ -454,6 +454,8 @@ public final class LivingHorizonCommand {
         for (Links.Report link : Links.report()) {
             source.feedback(Component.translatable("livinghorizon.lod.link", link.mod(), link.status()));
         }
+        // At once, before the probe, which reads hundreds of columns and may answer late.
+        source.feedback(Component.translatable("livinghorizon.lod.details", fr.clixmods.livinghorizon.compat.DrawnGround.status()));
         Player self = source.player();
         Minecraft client = source.client();
         LodWorld.probe(self.getEyePosition(), self.getLookAngle(), 4096).whenComplete((hit, error) ->

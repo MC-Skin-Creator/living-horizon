@@ -47,9 +47,10 @@ public final class LodWorld {
         return thread;
     });
     /**
-     * The short questions that decide what is drawn now (is there terrain under these mobs, the
-     * debug command's probe), on a thread of their own: behind the ground reads of thousands of
-     * guessed mobs in the readers' queue, a mob waited seconds for its answer, hidden meanwhile.
+     * The short questions that decide what is drawn now (is there terrain under these mobs), on a
+     * thread of their own: behind the ground reads of thousands of guessed mobs in the readers'
+     * queue, a mob waited seconds for its answer, hidden meanwhile. Not the debug command's probe,
+     * which reads hundreds of columns along its ray.
      */
     private static final ExecutorService URGENT = Executors.newSingleThreadExecutor(runnable -> {
         Thread thread = new Thread(runnable, "Living Horizon LOD reader (urgent)");
@@ -237,7 +238,7 @@ public final class LodWorld {
             } catch (Throwable e) {
                 result.completeExceptionally(e);
             }
-        }, true);
+        });
         return result;
     }
 
@@ -288,6 +289,20 @@ public final class LodWorld {
      * Only a column read as empty is false: a failed read never makes ground into void. A
      * column remembered with terrain answers at once; one remembered empty is read again.
      */
+    /** For {@code /livinghorizon lod}: the columns {@link #ground} read, the time it took, its last batch. */
+    private static final java.util.concurrent.atomic.AtomicLong GROUND_COLUMNS = new java.util.concurrent.atomic.AtomicLong(),
+            GROUND_NANOS = new java.util.concurrent.atomic.AtomicLong();
+    private static volatile int groundLastBatch;
+    private static volatile long groundLastNanos;
+
+    /** For {@code /livinghorizon lod}: how fast the ground under mobs is read. */
+    public static String groundTimes() {
+        long columns = GROUND_COLUMNS.get(), nanos = GROUND_NANOS.get();
+        return columns + " columns read in " + nanos / 1_000_000 + " ms ("
+                + (columns == 0 ? "-" : String.format(java.util.Locale.ROOT, "%.2f", nanos / 1e6 / columns)) + " ms each), last batch "
+                + groundLastBatch + " in " + groundLastNanos / 1_000_000 + " ms, " + pending() + " reads waiting";
+    }
+
     public static CompletableFuture<@Nullable Boolean[]> ground(int[] xs, int[] zs) {
         Boolean[] found = new Boolean[xs.length];
         LodSource source = source();
@@ -299,6 +314,7 @@ public final class LodWorld {
                 Object world = open(source);
                 if (world != null) {
                     long at = System.nanoTime();
+                    int read = 0;
                     boolean cache = FarConfig.get().optColumnCache;
                     if (columns.size() > COLUMNS_KEPT) columns.clear();
                     for (int i = 0; i < xs.length; i++) {
@@ -308,6 +324,7 @@ public final class LodWorld {
                             found[i] = true;
                             continue;
                         }
+                        read++;
                         try {
                             Surface surface = source.column(world, xs[i], zs[i]);
                             if (cache) columns.put(key, new Known(surface == null ? NOTHING : surface, at));
@@ -316,6 +333,11 @@ public final class LodWorld {
                             found[i] = null;
                         }
                     }
+                    long took = System.nanoTime() - at;
+                    GROUND_COLUMNS.addAndGet(read);
+                    GROUND_NANOS.addAndGet(took);
+                    groundLastBatch = xs.length;
+                    groundLastNanos = took;
                 }
             } catch (Throwable e) {
                 source.fail(e);

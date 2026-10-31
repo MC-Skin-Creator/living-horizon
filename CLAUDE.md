@@ -684,8 +684,10 @@ come back, add it here in the same pull request: this file is what the next sess
   that has every empty chunk asked again at once (`DrawnGround.revisit`). A mob with no answer
   yet is hidden too, and marked void: its question waited behind the ground reads of thousands
   of guessed mobs (`MobPaths`) in the readers' queue, seconds as a world opened, and
-  `/livinghorizon lod` answered as late. `LodWorld.ground` and `probe` run on a thread of their
-  own (`URGENT`). Read `/livinghorizon lod` (its reads, its last answer) when it comes back.
+  `/livinghorizon lod` answered late too, its probe reading hundreds of columns. `LodWorld.ground`
+  runs on a thread of its own (`URGENT`, never the probe), one read at a time of 256 chunks at most
+  (`DrawnGround.BATCH`): a read answers all its chunks at its end. `/livinghorizon lod` prints at once
+  how many chunks have terrain, are empty, wait or were never asked, and how fast the far world reads.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
