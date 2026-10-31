@@ -28,6 +28,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.MannequinsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OcclusionScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LinksScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.LodistanceScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OverVoidScenario;
@@ -97,6 +98,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new EntityDepthScenario(),
             new ResizeScenario(),
             new OcclusionScenario(),
+            new LodistanceScenario(),
             new UnloadScenario(),
             new FollowedMobsScenario(),
             new SittingPetsScenario(),

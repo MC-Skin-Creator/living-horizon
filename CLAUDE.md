@@ -317,6 +317,15 @@ come back, add it here in the same pull request: this file is what the next sess
   tries both). Check a new version with `javap` on its jar from Modrinth, as for Distant
   Horizons, and read the links' lines in `/livinghorizon lod`: each says what it runs without,
   and how often the mixins into Voxy and Distant Horizons ran (0 while they draw: renamed).
+- **Distant mobs through Lodistance's terrain** (Fabric 26.3; hidden only far behind its hills):
+  with Sodium, Lodistance writes its terrain into the game's depth at half the depth of its
+  distance, so that the game's terrain always wins. `FarDepth.mergeLodistance` moves the pixels
+  farther across than any of the game's chunks to their real depth around the entities; without
+  Sodium its depth is a texture of its own, merged like Distant Horizons'. It has no API and no
+  source: `LodistanceLink` reads its fields, so check a new version by decompiling its jar from
+  CurseForge (in the scratchpad, never copied in). Not done yet with Vulkan or a shader pack.
+  The `lodistance` scenario checks it (its jar in `build/game-test-mods/26.3-with/lodistance/`,
+  `--with lodistance`, with and without `--sodium`).
 - **Steps out of order** (`/livinghorizon lod` or the log says so; the `depthview` game test
   fails): a hook before that step no longer runs, renamed by the game or another mod. The order
   is in `FarDepth.Frame` and `docs/technical.md` ("One frame").
