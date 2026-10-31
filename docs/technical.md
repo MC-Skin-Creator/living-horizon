@@ -1037,6 +1037,14 @@ It draws its terrain one of two ways:
   inverse of the projection it was drawn with.
 
 The occlusion queries read the merged depth, so *Skip Hidden Mobs* works behind its terrain too.
+Its fog: it pushes the game's render distance fog out to where its own terrain's fog runs
+(from `fogStart` times its distance to its distance), but its terrain has none of the game's
+atmospheric fog (1024 blocks in a clear overworld), which still reached the entities: a mob a
+thousand blocks away was a flat patch of fog colour on clear hills. `FarFog.lodistance` gives
+the entities its ramp alone, so within the game's render distance they are a little clearer
+than the game's terrain behind them; where the atmospheric fog ends before the render distance
+(the Nether, thick weather) the game's stays.
+
 `LodistanceSource` reads the ground of its regions held in memory (up to three runs of blocks
 per column, the block at the top of each, water over them; no biomes) without its locks, and
 `LodWorld.drawnDistance` its distance setting. Not done yet: Vulkan (the GPU device path, where

@@ -5,7 +5,7 @@
 ### Client
 
 #### New
-- **Support for Lodistance's terrain** — Distant mobs and players now hide behind Lodistance's far terrain like behind any hill, and distant mobs walk on its ground, as they do with Voxy and Distant Horizons. (Minecraft 26.3, with OpenGL, without shaders.)
+- **Support for Lodistance's terrain** — Distant mobs and players now hide behind Lodistance's far terrain like behind any hill and blend into its fog, and distant mobs walk on its ground, as they do with Voxy and Distant Horizons. (Minecraft 26.3, with OpenGL, without shaders.)
 
 ## 0.15.0 — 2026-10-31
 

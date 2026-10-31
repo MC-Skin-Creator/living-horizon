@@ -5,7 +5,7 @@
 ### Client
 
 #### Nouveautés
-- **Prise en charge du terrain de Lodistance** — Les créatures et joueurs lointains se cachent maintenant derrière le terrain lointain de Lodistance comme derrière n'importe quelle colline, et les créatures lointaines marchent sur son sol, comme avec Voxy et Distant Horizons. (Minecraft 26.3, avec OpenGL, sans shaders.)
+- **Prise en charge du terrain de Lodistance** — Les créatures et joueurs lointains se cachent maintenant derrière le terrain lointain de Lodistance comme derrière n'importe quelle colline et se fondent dans son brouillard, et les créatures lointaines marchent sur son sol, comme avec Voxy et Distant Horizons. (Minecraft 26.3, avec OpenGL, sans shaders.)
 
 ## 0.15.0 — 2026-10-31
 

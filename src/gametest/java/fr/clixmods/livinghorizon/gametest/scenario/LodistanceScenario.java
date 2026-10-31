@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.gametest.scenario;
 
 import fr.clixmods.livinghorizon.compat.FarDepth;
+import fr.clixmods.livinghorizon.compat.FarFog;
 import fr.clixmods.livinghorizon.compat.Links;
 import fr.clixmods.livinghorizon.compat.LodWorld;
 import fr.clixmods.livinghorizon.compat.OcclusionQueries;
@@ -23,7 +24,8 @@ import java.util.concurrent.TimeoutException;
  * stone wall and a row of cows behind it; the player walks away until the wall is Lodistance's.
  * With <i>Hide Behind Far Terrain</i> on, every cow is behind the wall and hidden; off, as
  * Lodistance's depth alone leaves them, they show through it. Its world is read too: the wall's
- * height over the ground, and the wall straight ahead. Without Lodistance it says so.
+ * height over the ground, and the wall straight ahead; and the cows' fog is Lodistance's. Without
+ * Lodistance it says so.
  */
 public final class LodistanceScenario implements Scenario {
     private static final String[] MOBS = {"cow"};
@@ -120,7 +122,11 @@ public final class LodistanceScenario implements Scenario {
             context.waitTicks(20);
             Scene.screenshot(context, this, "merged-drawn");
 
+            // The cows get Lodistance's fog, without the game's atmospheric fog its terrain does not have.
+            String fog = context.computeOnClient(minecraft -> FarFog.status());
+            Scene.log("lodistance fog: " + fog);
             if (merged != COUNT) throw new AssertionError("Behind Lodistance's wall " + merged + " cows hidden, not " + COUNT);
+            if (!fog.startsWith("Lodistance's")) throw new AssertionError("The cows' fog is not Lodistance's: " + fog);
         } finally {
             Scene.configure(context, config -> {
                 config.depthOcclusion = true;

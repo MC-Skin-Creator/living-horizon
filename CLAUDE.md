@@ -332,6 +332,8 @@ come back, add it here in the same pull request: this file is what the next sess
   Sodium its depth is a texture of its own, merged like Distant Horizons'. It has no API and no
   source: `LodistanceLink` reads its fields, so check a new version by decompiling its jar from
   CurseForge (in the scratchpad, never copied in). Not done yet with Vulkan or a shader pack.
+  Distant mobs a flat patch of fog colour on its clear hills: its terrain has no atmospheric
+  fog, which the game still gave the entities; `FarFog.lodistance` gives them its ramp alone.
   The `lodistance` scenario checks it (its jar in `build/game-test-mods/26.3-with/lodistance/`,
   `--with lodistance`, with and without `--sodium`).
 - **Steps out of order** (`/livinghorizon lod` or the log says so; the `depthview` game test

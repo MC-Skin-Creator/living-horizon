@@ -36,7 +36,7 @@ final class LodistanceLink {
     private static boolean ready, linked;
 
     private static Method usePearl, config, world, lodDistance;
-    private static Field enabled, fogStart, lodsWithShaders;
+    private static Field enabled, fogStart, lodsWithShaders, extendFog;
     private static Matrix4fc projection;
     private static Object pearl, own;
     private static Field pearlStatus, ownStatus, ownDepth, ownWidth, ownHeight;
@@ -67,6 +67,7 @@ final class LodistanceLink {
             enabled = settings.getField("enabled");
             fogStart = settings.getField("fogStart");
             lodsWithShaders = settings.getField("lodsWithShaders");
+            extendFog = settings.getField("extendVanillaFog");
             projection = (Matrix4fc) Class.forName(ROOT + "render.RenderContext").getField("PROJECTION").get(null);
 
             Class<?> pearlType = Class.forName(ROOT + "render.PearlLodRenderer");
@@ -162,6 +163,22 @@ final class LodistanceLink {
         try {
             Object settings = settings();
             return settings != null && lodsWithShaders.getBoolean(settings);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            fail("its settings", e);
+            return false;
+        }
+    }
+
+    /**
+     * Whether it pushes the game's render distance fog out to its own distance (its
+     * {@code extendVanillaFog}, on by default): the start and end the game's fog then holds are
+     * where its own terrain's fog runs, from {@code fogStart} times its distance to its distance.
+     */
+    static boolean extendsFog() {
+        if (!linked()) return false;
+        try {
+            Object settings = settings();
+            return settings != null && enabled.getBoolean(settings) && extendFog.getBoolean(settings);
         } catch (ReflectiveOperationException | RuntimeException e) {
             fail("its settings", e);
             return false;
