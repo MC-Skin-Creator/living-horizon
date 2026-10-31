@@ -368,7 +368,7 @@
   "livinghorizon.options.optStillTiny": "微小生物静止",
   "livinghorizon.options.optFreezeHidden": "冻结未绘制生物",
   "livinghorizon.options.optFreezeHidden.tooltip": "未被绘制的远处生物（在视野外、在地形后、太小）会停止移动：在再次显示之前只是一个位置。可节省其动画和路径读取。默认关闭，用于对比。",
-  "livinghorizon.options.optStillTiny.tooltip": "在屏幕上只有几个像素高的远处生物只会滑动和转身，不播放行走和待机动画，反正也看不出来。关：始终播放动画。",
+  "livinghorizon.options.optStillTiny.tooltip": "在屏幕上只有几个像素高的远处生物会停在原地，不播放行走和待机动画，反正也看不出来。关：始终播放动画。",
   "livinghorizon.options.optBackgroundBuild.tooltip": "已保存的生物在游戏线程之外读取，并在每刻2毫秒内构建。关：在游戏线程上一次性完成。",
   "livinghorizon.debug.on": "Living Horizon调试：开（面板和方框）。",
   "livinghorizon.debug.off": "Living Horizon调试：关。",

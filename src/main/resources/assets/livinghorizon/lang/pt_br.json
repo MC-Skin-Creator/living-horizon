@@ -368,7 +368,7 @@
   "livinghorizon.options.optStillTiny": "Minúsculas paradas",
   "livinghorizon.options.optFreezeHidden": "Congelar invisíveis",
   "livinghorizon.options.optFreezeHidden.tooltip": "Uma criatura distante que não é desenhada (fora da vista, atrás do terreno, pequena demais) para de se mexer: é só uma posição até aparecer de novo. Poupa a animação e as leituras de caminho. Não por padrão, para comparar.",
-  "livinghorizon.options.optStillTiny.tooltip": "Uma criatura distante com só alguns pixels de altura na tela desliza e gira sem as animações de andar e de repouso, que não seriam vistas. Não: sempre animada.",
+  "livinghorizon.options.optStillTiny.tooltip": "Uma criatura distante com só alguns pixels de altura na tela fica onde está, sem as animações de andar e de repouso, que não seriam vistas. Não: sempre animada.",
   "livinghorizon.options.optBackgroundBuild.tooltip": "As criaturas salvas são lidas fora da thread do jogo e montadas em até 2 ms por tique. Não: todas de uma vez, na thread do jogo.",
   "livinghorizon.debug.on": "Depuração do Living Horizon: ativada (painel e caixas).",
   "livinghorizon.debug.off": "Depuração do Living Horizon: desativada.",

@@ -368,7 +368,7 @@
   "livinghorizon.options.optStillTiny": "小さなMobを静止",
   "livinghorizon.options.optFreezeHidden": "描画されないMobを停止",
   "livinghorizon.options.optFreezeHidden.tooltip": "描画されていない遠くのMob（視界外、地形の裏、小さすぎる）は動きを止め、再び見えるまで位置だけの存在になります。アニメーションと経路の読み取りを節約します。デフォルトではオフ（比較用）。",
-  "livinghorizon.options.optStillTiny.tooltip": "画面上で数ピクセルの高さしかない遠くのMobは、見えない歩行や待機のアニメーションを再生せずに、滑るように移動し向きを変えます。オフ：常にアニメーション。",
+  "livinghorizon.options.optStillTiny.tooltip": "画面上で数ピクセルの高さしかない遠くのMobは、見えない歩行や待機のアニメーションを再生せずに、その場に留まります。オフ：常にアニメーション。",
   "livinghorizon.options.optBackgroundBuild.tooltip": "保存されたMobをゲームのスレッド外で読み込み、1ティックあたり2 ms以内で構築します。オフ：ゲームのスレッドで一度にすべて。",
   "livinghorizon.debug.on": "Living Horizonのデバッグ：オン（パネルと枠）。",
   "livinghorizon.debug.off": "Living Horizonのデバッグ：オフ。",

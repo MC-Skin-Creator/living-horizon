@@ -379,7 +379,7 @@ public final class FarConfig {
     public boolean optDhFog = true;
     /** Saved mobs are read off the game's thread and built within 2 ms per tick. */
     public boolean optBackgroundBuild = true;
-    /** A mob only a few pixels high on screen plays no walking or idle animation: it only slides and turns. */
+    /** A mob only a few pixels high on screen plays no walking or idle animation: it stands where it is. */
     public boolean optStillTiny = true;
     /**
      * Pixels: a distant mob shorter than this on screen plays no walking or idle animation (it
