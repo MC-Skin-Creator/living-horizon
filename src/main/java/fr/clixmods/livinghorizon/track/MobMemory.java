@@ -847,10 +847,15 @@ public final class MobMemory {
                 }
             }
             if (mob.puppet == null) continue;
-            // Too small or far to show its animation, standing where it was put: looked at again
-            // once in sixteen ticks, each on a tick of its own. Thousands far off cost little then.
-            if (mob.still && mob.motion != null && mob.motion.placed() && mob.handover == null
-                    && ((clock + mob.id.hashCode()) & 15) != 0) continue;
+            // Too small or far to show its animation, standing with nothing left to walk or turn:
+            // looked at again once in sixteen ticks, each on a tick of its own, and only kept going
+            // meanwhile. Thousands far off cost little then. One that moves (the server's, one
+            // called back to its spot) is moved every tick: once in sixteen, it went in jerks.
+            if (mob.still && mob.motion != null && mob.motion.settled() && !mob.simulated && mob.handover == null
+                    && mob.puppet instanceof LivingEntity resting && ((clock + mob.id.hashCode()) & 15) != 0) {
+                mob.motion.rest(resting);
+                continue;
+            }
             if (mob.puppet instanceof LivingEntity living) {
                 // Not drawn for a moment: it keeps its place, as a position and nothing more.
                 if (config.optFreezeHidden && mob.motion != null && mob.motion.placed()

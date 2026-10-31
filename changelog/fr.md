@@ -42,6 +42,7 @@
 - **Créatures d'Ice and Fire correctement simplifiées** — Les dragons lointains d'Ice and Fire ont maintenant des images simplifiées entières à leur vraie taille, au lieu d'un gros plan de leurs pattes ou d'une aile. Des dragons d'âges différents ne partagent plus la même image, et les serpents de mer gardent leur modèle 3D au lieu d'une image coupée.
 - **Les joueurs déconnectés gardent leur bateau** — Un joueur déconnecté au milieu de l'eau ne perd plus le bateau où il se repose quand vous vous éloignez : il le garde de près comme de loin, et la prochaine fois que vous jouez.
 - **Les joueurs déconnectés ne flottent plus dans les airs** — Un joueur déconnecté en l'air, en vol plané avec des élytres ou en pleine chute, n'y remonte plus quand vous vous éloignez : il se repose sur le sol sous lui. Avec Voxy ou Distant Horizons, il est au sol avant même que vous vous approchiez.
+- **Créatures lointaines au repos naturel** — Les créatures lointaines au-delà de la *Distance des animations*, ou plus petites que la *Taille min. animée*, restent maintenant à leur place, au lieu de glisser d'avant en arrière les pattes immobiles en tremblant. Elles reprennent leur marche là où elles s'étaient arrêtées une fois suffisamment proches.
 
 ## 0.14.0 — 2026-10-29
 

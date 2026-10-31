@@ -646,16 +646,23 @@ below), and other flyers and swimmers get a flat disc at their own height.
   chunks within three of the edge of its render distance are asked ahead, so the answer is there
   before a mob or the edge crosses them. The debug marks call a hidden one *over the void*.
 - A mob smaller on screen than `animationMinPixels` (10 pixels; 0 always animates; its height
-  or width, whichever is larger, and never under `minApparentPixels`) plays no
-  walking or idle animation (`optStillTiny`): it keeps sliding along its animation and turning
-  every tick, but its legs stay still. It resumes at that size plus a quarter and a pixel, so
-  it never flickers. Sizes use the field of view the frame is really projected with
-  (`DepthFar.pixelsPerRadian`), so a spyglass's zoom counts.
+  or width, whichever is larger, and never under `minApparentPixels`) stops walking about
+  (`optStillTiny`): its animation's clock stops (`MobMotion.held`), so it stands where the
+  animation had it and goes on from there, with no jump, once played again. What still moves it
+  (the server, walking back to its spot) moves its legs too: a mob sliding with its legs at rest
+  looked like a glitch. Its `tickCount` goes on every tick, still or not: the game plays idle
+  movements at `tickCount` plus the frame's part of a tick, and a stopped `tickCount` made them
+  run one tick's worth and snap back twenty times a second, a trembling mob. It resumes at that
+  size plus a quarter and a pixel, so it never flickers. Sizes use the field of view the frame
+  is really projected with (`DepthFar.pixelsPerRadian`), so a spyglass's zoom counts.
 - `animationMaxDistance` (blocks; 0 is no limit) stills every mob past it, however big
   (`MobMemory.isStill`).
-- A still copy standing where it was put is looked at once in sixteen ticks, each on a tick of
-  its own (by its id): with Mob Render Distance at 4000 blocks and the land's animals guessed,
-  tens of thousands far off would otherwise be gone through every tick.
+- A still copy standing with nothing left to walk or turn (`MobMotion.settled`) is looked at once
+  in sixteen ticks, each on a tick of its own (by its id): with Mob Render Distance at 4000 blocks
+  and the land's animals guessed, tens of thousands far off would otherwise be gone through every
+  tick. In between, `MobMotion.rest` only keeps its clocks going, so its idle movements do not
+  snap back. One that moves (the server's, one called back to its spot) is moved every tick:
+  looked at once in sixteen, it went in jerks.
 - Copies are built (`MobMemory.build`) within 2 ms a tick, those in front of the player first
   (70° either side), each the nearest first. A short saved text (a foreseen mob, one built from
   what the server said) is read at once: queued on the game's background executor, it waited
@@ -1420,8 +1427,8 @@ In three parts, on both screens: *General*, *Mobs* (the living kinds, mannequins
 | `mobMaxDistance` | Mobs: Mob Render Distance | `512` blocks | 1 to 4000, or no limit | Past this, distant mobs are not drawn (`0`: no limit, the right end of the slider) |
 | `rememberNamedMobs` | Mobs: Name-Tagged Mobs | `true` | | A mob with a name tag is shown whatever its type |
 | `seedMobs` | Mobs: Show Guessed Mobs | `true` | | The animals a server with the mod foresees in land nobody has explored, from the seed, are shown |
-| `animationMinPixels` | Mobs: Min. Animated Size | `10` pixels | 0 to 40 | A distant mob shorter than this on screen plays no walking or idle animation (`0`: always animates) |
-| `animationMaxDistance` | Mobs: Animation Distance | `4000` blocks | 1 to 4000, or no limit | Past this, no distant mob plays an animation (`0`: no limit, the right end of the slider) |
+| `animationMinPixels` | Mobs: Min. Animated Size | `10` pixels | 0 to 40 | A distant mob shorter than this on screen stops walking about and stands (`0`: always walks) |
+| `animationMaxDistance` | Mobs: Animation Distance | `4000` blocks | 1 to 4000, or no limit | Past this, every distant mob stops walking about and stands (`0`: no limit, the right end of the slider) |
 | `distantEntities` | Entities: Show Entities | `true` | | Remembered boats, vehicles and mannequins stay visible far away |
 | `maxDistantEntities` | Entities: Max Entities | `256` | 0 to 4000, more when typed, or no limit | How many of them are drawn at once, nearest first, apart from the mobs: a crowd of mobs never pushes an aircraft out (no limit: the slider's right end) |
 | `entityMaxDistance` | Entities: Entity Render Distance | `4000` blocks | 1 to 4000, or no limit | Past this, distant boats, vehicles and mannequins are not drawn (`0`: no limit, the right end of the slider; few, and an aircraft is seen from afar) |
@@ -1485,7 +1492,7 @@ Every one is on by default except `optFreezeHidden`. Switch one off to see what 
 | `optVoxyFog` | Voxy Fog Fix | Without a shader pack, the world's entities get Voxy's fog, which stops growing past a limit (see [Fog on distant figures](#fog-on-distant-figures)); off, the game's fog |
 | `optDhFog` | DH Fog Fix | Without a shader pack, the world's entities get Distant Horizons' far fog, which takes the game's away (see [Fog on distant figures](#fog-on-distant-figures)); off, no fog on them |
 | `optBackgroundBuild` | Background Build | Saved mobs are read off the game's thread and built within 2 ms per tick |
-| `optStillTiny` | Still Tiny Mobs | Mobs under `animationMinPixels` play no walking or idle animation |
+| `optStillTiny` | Still Tiny Mobs | Mobs under `animationMinPixels` stop walking about and stand |
 | `optFreezeHidden` | Freeze Undrawn Mobs | A copy not drawn for half a second is not animated, only moved where the server says |
 
 Older names are still read from the file:
