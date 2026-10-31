@@ -332,7 +332,7 @@
   "livinghorizon.options.optStillTiny": "Mob minuscoli fermi",
   "livinghorizon.options.optFreezeHidden": "Blocca non disegnati",
   "livinghorizon.options.optFreezeHidden.tooltip": "Un mob lontano non disegnato (fuori dalla visuale, dietro il terreno, troppo piccolo) smette di muoversi: è solo una posizione finché non ricompare. Risparmia la sua animazione e la lettura dei percorsi. Disattivato per impostazione predefinita, per confrontare.",
-  "livinghorizon.options.optStillTiny.tooltip": "Un mob lontano alto solo pochi pixel sullo schermo scivola e si gira senza riprodurre le animazioni di camminata e di riposo, che non si vedrebbero. Disattivato: sempre animato.",
+  "livinghorizon.options.optStillTiny.tooltip": "Un mob lontano alto solo pochi pixel sullo schermo resta dov'è, senza le animazioni di camminata e di riposo, che non si vedrebbero. Disattivato: sempre animato.",
   "livinghorizon.options.optBackgroundBuild.tooltip": "I mob salvati vengono letti fuori dal thread del gioco e costruiti entro 2 ms per tick. Disattivato: tutti insieme, sul thread del gioco.",
   "livinghorizon.debug.on": "Diagnostica di Living Horizon: attiva (pannello e riquadri).",
   "livinghorizon.debug.off": "Diagnostica di Living Horizon: disattivata.",

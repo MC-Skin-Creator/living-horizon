@@ -332,7 +332,7 @@
   "livinghorizon.options.optStillTiny": "Mobs diminutos quietos",
   "livinghorizon.options.optFreezeHidden": "Congelar no dibujados",
   "livinghorizon.options.optFreezeHidden.tooltip": "Un mob lejano que no se dibuja (fuera de la vista, tras el terreno, demasiado pequeño) deja de moverse: es solo una posición hasta que vuelve a verse. Ahorra su animación y la lectura de sus caminos. Desactivado por defecto, para comparar.",
-  "livinghorizon.options.optStillTiny.tooltip": "Un mob lejano de solo unos píxeles de alto en pantalla se desliza y gira sin reproducir sus animaciones de caminar y de reposo, que no se verían. Desactivado: siempre animado.",
+  "livinghorizon.options.optStillTiny.tooltip": "Un mob lejano de solo unos píxeles de alto en pantalla se queda donde está, sin sus animaciones de caminar y de reposo, que no se verían. Desactivado: siempre animado.",
   "livinghorizon.options.optBackgroundBuild.tooltip": "Los mobs guardados se leen fuera del hilo del juego y se construyen en 2 ms por tic como máximo. Desactivado: todos de golpe, en el hilo del juego.",
   "livinghorizon.debug.on": "Depuración de Living Horizon: activada (panel y cajas).",
   "livinghorizon.debug.off": "Depuración de Living Horizon: desactivada.",

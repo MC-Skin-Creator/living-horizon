@@ -332,7 +332,7 @@
   "livinghorizon.options.optStillTiny": "Drobne bez animacji",
   "livinghorizon.options.optFreezeHidden": "Zamrażaj nierysowane",
   "livinghorizon.options.optFreezeHidden.tooltip": "Odległe stworzenie, które nie jest rysowane (poza widokiem, za terenem, za małe), przestaje się ruszać: jest tylko pozycją, dopóki znów się nie pojawi. Oszczędza animację i odczyty ścieżek. Domyślnie wyłączone, do porównania.",
-  "livinghorizon.options.optStillTiny.tooltip": "Odległe stworzenie o wysokości zaledwie kilku pikseli na ekranie przesuwa się i obraca bez animacji chodzenia i spoczynku, których nie byłoby widać. Wyłączone: zawsze animowane.",
+  "livinghorizon.options.optStillTiny.tooltip": "Odległe stworzenie o wysokości zaledwie kilku pikseli na ekranie stoi w miejscu, bez animacji chodzenia i spoczynku, których nie byłoby widać. Wyłączone: zawsze animowane.",
   "livinghorizon.options.optBackgroundBuild.tooltip": "Zapisane stworzenia są odczytywane poza wątkiem gry i budowane w ciągu 2 ms na tik. Wyłączone: wszystkie naraz, w wątku gry.",
   "livinghorizon.debug.on": "Debugowanie Living Horizon: włączone (panel i ramki).",
   "livinghorizon.debug.off": "Debugowanie Living Horizon: wyłączone.",

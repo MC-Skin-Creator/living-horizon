@@ -332,7 +332,7 @@
   "livinghorizon.options.optStillTiny": "Minikler Durağan",
   "livinghorizon.options.optFreezeHidden": "Çizilmeyeni Dondur",
   "livinghorizon.options.optFreezeHidden.tooltip": "Çizilmeyen (görüş dışında, arazinin arkasında, çok küçük) uzak bir canlı hareket etmeyi bırakır: yeniden görünene kadar yalnızca bir konumdur. Animasyonundan ve yol okumalarından tasarruf sağlar. Varsayılan olarak KAPALI, karşılaştırmak için.",
-  "livinghorizon.options.optStillTiny.tooltip": "Ekranda yalnızca birkaç piksel yüksekliğindeki uzak bir canlı, görülemeyecek yürüme ve bekleme animasyonlarını oynatmadan kayar ve döner. KAPALI: her zaman hareketli.",
+  "livinghorizon.options.optStillTiny.tooltip": "Ekranda yalnızca birkaç piksel yüksekliğindeki uzak bir canlı, görülemeyecek yürüme ve bekleme animasyonları olmadan olduğu yerde durur. KAPALI: her zaman hareketli.",
   "livinghorizon.options.optBackgroundBuild.tooltip": "Kayıtlı canlılar oyunun iş parçacığı dışında okunur ve birim zaman başına 2 ms içinde oluşturulur. KAPALI: hepsi birden, oyunun iş parçacığında.",
   "livinghorizon.debug.on": "Living Horizon hata ayıklama: açık (panel ve kutular).",
   "livinghorizon.debug.off": "Living Horizon hata ayıklama: kapalı.",

@@ -332,7 +332,7 @@
   "livinghorizon.options.optStillTiny": "Winzlinge reglos",
   "livinghorizon.options.optFreezeHidden": "Unsichtbare einfrieren",
   "livinghorizon.options.optFreezeHidden.tooltip": "Eine ferne Kreatur, die nicht gezeichnet wird (außer Sicht, hinter Gelände, zu klein), bewegt sich nicht mehr: Sie ist nur eine Position, bis sie wieder erscheint. Spart ihre Animation und das Lesen ihrer Wege. Standardmäßig aus, zum Vergleich.",
-  "livinghorizon.options.optStillTiny.tooltip": "Eine ferne Kreatur, die auf dem Bildschirm nur ein paar Pixel hoch ist, gleitet und dreht sich, ohne ihre Lauf‐ und Ruheanimationen abzuspielen, die nicht zu sehen wären. Aus: immer animiert.",
+  "livinghorizon.options.optStillTiny.tooltip": "Eine ferne Kreatur, die auf dem Bildschirm nur ein paar Pixel hoch ist, bleibt stehen, ohne ihre Lauf‐ und Ruheanimationen, die nicht zu sehen wären. Aus: immer animiert.",
   "livinghorizon.options.optBackgroundBuild.tooltip": "Gespeicherte Kreaturen werden außerhalb des Spiel‐Threads gelesen und mit höchstens 2 ms pro Tick aufgebaut. Aus: alle auf einmal, im Spiel‐Thread.",
   "livinghorizon.debug.on": "Living‐Horizon‐Debug: an (Panel und Boxen).",
   "livinghorizon.debug.off": "Living‐Horizon‐Debug: aus.",
