@@ -240,6 +240,7 @@ abstract class LevelRendererMixin {
 import com.mojang.blaze3d.vertex.PoseStack;
 import fr.clixmods.livinghorizon.ambient.AmbientRenderer;
 import fr.clixmods.livinghorizon.compat.FarDepth;
+import fr.clixmods.livinghorizon.compat.FarFog;
 import fr.clixmods.livinghorizon.render.DistancePreview;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
@@ -283,6 +284,8 @@ abstract class LevelRendererMixin {
         GhostRenderer.beginFrame();
         FarDepth.arm();
         FarDepth.before();
+        FarFog.arm();
+        FarFog.begin(null);
     }
 
     @Inject(method = "renderEntity", at = @At("HEAD"))
@@ -312,6 +315,7 @@ abstract class LevelRendererMixin {
         DistancePreview.submit(pose, camera.position(), sink);
         buffers.endBatch();
         FarDepth.after();
+        FarFog.end();
     }
 }
 *///?}
