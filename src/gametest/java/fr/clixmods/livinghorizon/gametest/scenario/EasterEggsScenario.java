@@ -368,11 +368,22 @@ public final class EasterEggsScenario implements Scenario {
             Scene.log("eggs ee8 at " + at + ", " + (int) across + " blocks");
             if (across < 50) throw new AssertionError("ee8 at " + (int) across + " blocks, too near");
             lookAt(minecraft.player, at.x, at.y + 1.2, at.z);
-            minecraft.options.fov().set(20);
+            minecraft.options.fov().set(30);
         });
         context.waitTicks(60);
         if (!context.computeOnClient(minecraft -> ambience().ghostVillager().busy())) throw new AssertionError("ee8 gone too soon");
         Scene.screenshot(context, this, "ee8-night");
+        // Closer, still farther than where it goes, to see the figure.
+        Vec3 seen = context.computeOnClient(minecraft -> ambience().ghostVillager().position());
+        Scene.command(world, "tp @a " + seen.x + " ~ " + (seen.z - 40));
+        context.waitTicks(5);
+        context.runOnClient(minecraft -> {
+            Vec3 here = ambience().ghostVillager().position();
+            if (here == null) throw new AssertionError("ee8 gone at 40 blocks");
+            lookAt(minecraft.player, here.x, here.y + 1.1, here.z);
+        });
+        context.waitTicks(3);
+        Scene.screenshot(context, this, "ee8-close");
         Vec3 now = context.computeOnClient(minecraft -> ambience().ghostVillager().position());
         Scene.command(world, "tp @a " + (now.x + 6) + " ~ " + (now.z - 6));
         context.waitTicks(10);
