@@ -652,14 +652,17 @@ below), and other flyers and swimmers get a flat disc at their own height.
   (the server, walking back to its spot) moves its legs too: a mob sliding with its legs at rest
   looked like a glitch. Its `tickCount` goes on every tick, still or not: the game plays idle
   movements at `tickCount` plus the frame's part of a tick, and a stopped `tickCount` made them
-  run one tick's worth and snap back twenty times a second, a trembling mob. It resumes at that size plus a quarter and a pixel, so
-  it never flickers. Sizes use the field of view the frame is really projected with
-  (`DepthFar.pixelsPerRadian`), so a spyglass's zoom counts.
+  run one tick's worth and snap back twenty times a second, a trembling mob. It resumes at that
+  size plus a quarter and a pixel, so it never flickers. Sizes use the field of view the frame
+  is really projected with (`DepthFar.pixelsPerRadian`), so a spyglass's zoom counts.
 - `animationMaxDistance` (blocks; 0 is no limit) stills every mob past it, however big
   (`MobMemory.isStill`).
-- A still copy standing where it was put is looked at once in sixteen ticks, each on a tick of
-  its own (by its id): with Mob Render Distance at 4000 blocks and the land's animals guessed,
-  tens of thousands far off would otherwise be gone through every tick.
+- A still copy standing with nothing left to walk or turn (`MobMotion.settled`) is looked at once
+  in sixteen ticks, each on a tick of its own (by its id): with Mob Render Distance at 4000 blocks
+  and the land's animals guessed, tens of thousands far off would otherwise be gone through every
+  tick. In between, `MobMotion.rest` only keeps its clocks going, so its idle movements do not
+  snap back. One that moves (the server's, one called back to its spot) is moved every tick:
+  looked at once in sixteen, it went in jerks.
 - Copies are built (`MobMemory.build`) within 2 ms a tick, those in front of the player first
   (70° either side), each the nearest first. A short saved text (a foreseen mob, one built from
   what the server said) is read at once: queued on the game's background executor, it waited

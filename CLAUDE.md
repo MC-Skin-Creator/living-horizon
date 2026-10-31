@@ -406,7 +406,9 @@ come back, add it here in the same pull request: this file is what the next sess
   under *Min. Animated Size*): a still mob must stand, not play its animation's path without its
   legs; `MobMotion.held` stops its animation's clock. And a puppet's `tickCount` must go on every
   tick: the game plays idle movements at `tickCount` plus the frame's part of a tick, so a stopped
-  one replays a tick's worth twenty times a second. The `stillmobs` scenario checks both.
+  one replays a tick's worth twenty times a second. Still copies are looked at once in sixteen
+  ticks only once `MobMotion.settled`, and `rest` keeps their clocks going in between: one moved
+  once in sixteen ticks went in jerks. The `stillmobs` scenario checks it all.
 - **Distant mobs only turning on the spot**, never walking, after the world was opened, while
   those met since walk: their ground was read (`MobPaths.plan`) where the far world had nothing
   (Voxy or Distant Horizons not open yet, or Voxy turned off for the session by one failed
@@ -678,7 +680,7 @@ come back, add it here in the same pull request: this file is what the next sess
   game's background executor, which world generation keeps busy (a few copies a second); the
   copies to build are sorted (in view first) before the 2 ms budget starts, which counts the
   building alone (sorting 26 000 used it all, and those out of view were never built); a still
-  copy is looked at once in sixteen ticks; the choice sorts only when something is cut or the
+  copy with nothing left to walk or turn is looked at once in sixteen ticks; the choice sorts only when something is cut or the
   spyglass is up, and the guessed mobs are worked out again only when what they depend on
   changed (`Foresight.wantedIfChanged`). The `seedcrowd` scenario measures it all; the
   *Statistics...* screen counts what is kept.

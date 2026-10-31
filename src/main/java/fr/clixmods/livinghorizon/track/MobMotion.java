@@ -47,6 +47,8 @@ final class MobMotion {
     private int started;
     /** Ticks spent still ({@code tiny}): its animation's clock stops meanwhile, and goes on from there after. */
     private int held;
+    /** Still and nothing of it changed this tick: until something moves it, {@link #rest} may stand for a tick. */
+    private boolean settled;
     private int following;
     /** Where the server last had a mob it moves, and how fast to walk to reach it by the next answer. */
     private double aimX = Double.NaN, aimZ = Double.NaN, pace;
@@ -70,6 +72,25 @@ final class MobMotion {
         return placed;
     }
 
+    /** Still, where its animation had it, with nothing left to walk or turn: see {@link #rest}. */
+    boolean settled() {
+        return settled;
+    }
+
+    /**
+     * A tick of a {@link #settled} mob, in place of {@link #tick}: it stays as it is, and its
+     * clocks go on. Its idle movements are played at tickCount plus the frame's part of a tick,
+     * and its legs at their speed: left alone, both would run a tick's worth and snap back.
+     */
+    void rest(LivingEntity puppet) {
+        held++;
+        puppet.setOldPosAndRot();
+        puppet.yBodyRotO = puppet.yBodyRot;
+        puppet.yHeadRotO = puppet.yHeadRot;
+        Puppets.walk(puppet, 0f, 0.4f, puppet.isBaby() ? 3f : 1f);
+        puppet.tickCount++;
+    }
+
     double x() {
         return x;
     }
@@ -88,6 +109,7 @@ final class MobMotion {
      * should be when it shows again, instead of running there.
      */
     void jump(LivingEntity puppet, MobMemory.Remembered mob) {
+        settled = false;
         place(mob);
         air = -1;
         lift = 0;
@@ -148,10 +170,13 @@ final class MobMotion {
         if (!placed) place(mob);
         if (gait == null) gait = MobGait.of(puppet);
         following = 0;
+        settled = false;
         if (flight != null && roam && !mob.simulated) {
             fly(puppet, mob, flight, clock, home);
             return;
         }
+        double wasX = x, wasY = y + lift, wasZ = z;
+        float wasBody = body, wasHead = head, wasPitch = pitch;
         // Still: it stands where its animation had it, rather than sliding along it with its legs at rest.
         if (tiny) held++;
         int own = clock - held;
@@ -233,6 +258,8 @@ final class MobMotion {
         }
         pitch = Mth.lerp(0.15f, pitch, grazing ? 40f : 0f);
         apply(puppet, Math.hypot(x - fromX, z - fromZ));
+        settled = tiny && !followed && air < 0 && x == wasX && y + lift == wasY && z == wasZ
+                && body == wasBody && head == wasHead && Math.abs(pitch - wasPitch) < 0.01f;
     }
 
     /**
@@ -292,6 +319,7 @@ final class MobMotion {
      * the real one takes its place without a jump.
      */
     boolean follow(LivingEntity puppet, MobMemory.Remembered mob, Entity real) {
+        settled = false;
         if (!placed) place(mob);
         if (gait == null) gait = MobGait.of(puppet);
         double tx = real.getX(), ty = real.getY(), tz = real.getZ();
