@@ -45,6 +45,8 @@ final class MobMotion {
     private boolean placed;
     private MobPaths.@Nullable Choice playing;
     private int started;
+    /** Ticks spent still ({@code tiny}): its animation's clock stops meanwhile, and goes on from there after. */
+    private int held;
     private int following;
     /** Where the server last had a mob it moves, and how fast to walk to reach it by the next answer. */
     private double aimX = Double.NaN, aimZ = Double.NaN, pace;
@@ -137,7 +139,8 @@ final class MobMotion {
     /**
      * One tick of its animation. {@code choice} is null until the ground around it is
      * read; {@code roam} is off for the mobs shown standing still; {@code tiny} means too
-     * small on screen for its legs and idle movements to show; {@code home} is how much it
+     * small or too far for its animation to be played: it stands where its animation had it,
+     * its idle movements frozen, and goes on from there once played again; {@code home} is how much it
      * is called back to its spot ({@link #home}).
      */
     void tick(LivingEntity puppet, MobMemory.Remembered mob, MobPaths.@Nullable Choice choice, int clock, boolean roam,
@@ -149,9 +152,12 @@ final class MobMotion {
             fly(puppet, mob, flight, clock, tiny, home);
             return;
         }
+        // Still: it stands where its animation had it, rather than sliding along it with its legs at rest.
+        if (tiny) held++;
+        int own = clock - held;
         if (choice != playing) {
             // Read again and the same as it plays already: it goes on rather than starting over.
-            if (choice == null || playing == null || !choice.same(playing)) started = clock;
+            if (choice == null || playing == null || !choice.same(playing)) started = own;
             playing = choice;
         }
         int offset = (int) Math.floorMod(seed >> 17, 400L);
@@ -162,7 +168,7 @@ final class MobMotion {
         boolean walking = false, grazing = false;
         boolean followed = mob.simulated;
         MobAnimations.Animation animation = roam && choice != null && !followed ? choice.animation() : null;
-        int t = clock - started - (int) Math.floorMod(seed, 200L);
+        int t = own - started - (int) Math.floorMod(seed, 200L);
         if (animation != null && t >= 0) {
             MobAnimations.Pose pose = animation.sample(t);
             tx += MobAnimations.worldX(pose.x(), pose.z(), choice.angle(), choice.mirror());
@@ -172,7 +178,7 @@ final class MobMotion {
             grazing = pose.grazing() && puppet instanceof Animal;
         } else if (roam && choice != null && !followed) {
             // Nowhere to walk: a slow turn on the spot now and then, a different one each time.
-            int round = Math.floorDiv(clock + offset, TURN_ROUND);
+            int round = Math.floorDiv(own + offset, TURN_ROUND);
             facing = mob.yaw + (Math.floorMod(mix(seed, round), 5L) - 2) * 35f;
         }
         if (home > 0) {
@@ -222,7 +228,7 @@ final class MobMotion {
         if (followed) {
             head = Mth.approachDegrees(head, Float.isNaN(mob.head) ? body : mob.head, TURN);
         } else {
-            float look = grazing ? 0 : glance(seed, clock + offset) * (walking || catching ? 0.3f : 1f) * (1 - home);
+            float look = grazing ? 0 : glance(seed, own + offset) * (walking || catching ? 0.3f : 1f) * (1 - home);
             head = Mth.approachDegrees(head, body + look, 8f);
         }
         pitch = Mth.lerp(0.15f, pitch, grazing ? 40f : 0f);
@@ -327,13 +333,11 @@ final class MobMotion {
         puppet.setXRot(pitch);
         puppet.yBodyRot = body;
         puppet.yHeadRot = head;
-        if (tiny) {
-            // Legs at rest and idle movements frozen: nothing of them would show.
-            Puppets.walk(puppet, 0f, 1f, 0f);
-        } else {
-            Puppets.walk(puppet, (float) Math.min(moved * 4.0, 1.0), 0.4f, puppet.isBaby() ? 3f : 1f);
-            puppet.tickCount++;
-        }
+        // Legs as it moves, even still: moved by the server or walking back to its spot, a mob
+        // with its legs at rest slides. Standing, they are at rest anyway.
+        Puppets.walk(puppet, (float) Math.min(moved * 4.0, 1.0), 0.4f, puppet.isBaby() ? 3f : 1f);
+        // Idle movements frozen: nothing of them would show.
+        if (!tiny) puppet.tickCount++;
         if (gait != null) gait.pose(puppet, tookOff, landed, lift > 0 || climbing);
         tookOff = false;
     }

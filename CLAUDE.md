@@ -394,6 +394,9 @@ come back, add it here in the same pull request: this file is what the next sess
   simulation distance, a square of chunks that reaches farther on its diagonals. In single
   player `ServerMobs` asks the server where those are and the copies follow; on a server only
   the mod on the server closes that gap.
+- **Distant mobs gliding to and fro, legs still** (past *Animation Distance* or under *Min.
+  Animated Size*): a still mob must stand, not play its animation's path without its legs.
+  `MobMotion.held` stops its animation's clock; the `stillmobs` scenario measures it.
 - **Distant mobs only turning on the spot**, never walking, after the world was opened, while
   those met since walk: their ground was read (`MobPaths.plan`) where the far world had nothing
   (Voxy or Distant Horizons not open yet, or Voxy turned off for the session by one failed

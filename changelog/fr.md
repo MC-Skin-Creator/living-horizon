@@ -19,6 +19,7 @@
 - **Packs de ressources activés puis désactivés** — les *Entités simplifiées* des mobs lointains (des images plates d'eux) ne sont plus toutes redessinées quand un pack de ressources est désactivé puis réactivé, et le chargement des ressources ne fige plus le jeu pendant qu'elles sont recherchées.
 
 #### Corrections
+- **Créatures lointaines qui glissent** — les créatures lointaines au-delà de la *Distance des animations*, ou plus petites que la *Taille min. animée*, ne glissent plus d'avant en arrière les pattes immobiles : elles restent où elles sont jusqu'à reprendre vie.
 - **Créatures lointaines nettes dans le brouillard de Distant Horizons** — les créatures lointaines ne restent plus nettes devant le terrain de Distant Horizons dans le brouillard : elles s'y fondent comme le terrain autour d'elles, sans pack de shaders (Minecraft 1.21.6 et plus).
 
 ## 0.14.0 — 2026-10-29

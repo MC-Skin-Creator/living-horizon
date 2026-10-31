@@ -527,8 +527,10 @@ below), and other flyers and swimmers get a flat disc at their own height.
   before a mob or the edge crosses them. The debug marks call a hidden one *over the void*.
 - A mob smaller on screen than `animationMinPixels` (10 pixels; 0 always animates; its height
   or width, whichever is larger, and never under `minApparentPixels`) plays no
-  walking or idle animation (`optStillTiny`): it keeps sliding along its animation and turning
-  every tick, but its legs stay still. It resumes at that size plus a quarter and a pixel, so
+  walking or idle animation (`optStillTiny`): its animation's clock stops (`MobMotion.held`), so
+  it stands where the animation had it and goes on from there, with no jump, once played again.
+  What still moves it (the server, walking back to its spot) moves its legs too: a mob sliding
+  with its legs at rest looked like a glitch. It resumes at that size plus a quarter and a pixel, so
   it never flickers. Sizes use the field of view the frame is really projected with
   (`DepthFar.pixelsPerRadian`), so a spyglass's zoom counts.
 - `animationMaxDistance` (blocks; 0 is no limit) stills every mob past it, however big

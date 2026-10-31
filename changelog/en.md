@@ -19,6 +19,7 @@
 - **Resource packs switched back and forth** — far mobs' *Simplified Entities* (flat pictures of them) are no longer all drawn again when a resource pack is turned off and back on, and loading resources no longer pauses the game while they are looked for.
 
 #### Fixed
+- **Distant mobs gliding to and fro** — distant mobs past the *Animation Distance*, or smaller than the *Min. Animated Size*, no longer slide back and forth with their legs still: they stand where they are until they come back to life.
 - **Distant mobs sharp in Distant Horizons' fog** — distant mobs no longer stay sharp against Distant Horizons' fogged terrain: they fade into its fog like the land around them, without a shader pack (Minecraft 1.21.6 and later).
 
 ## 0.14.0 — 2026-10-29
