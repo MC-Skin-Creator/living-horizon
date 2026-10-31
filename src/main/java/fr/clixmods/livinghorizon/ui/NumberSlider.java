@@ -37,6 +37,13 @@ public final class NumberSlider extends AbstractSliderButton {
     /** No limit, as the slider's values hold it: never a number a player types. */
     public static final int UNLIMITED = Integer.MAX_VALUE;
 
+    /**
+     * The slider the mouse left on no limit, asked about once the button is released, wherever it
+     * is: before 1.21 the game hands the release only to the widget under the cursor, and a slider
+     * dragged past its end is released beside it.
+     */
+    private static @Nullable NumberSlider releasing;
+
     /** Counted by the screen at every frame: a slider not drawn in this one is scrolled out of view. */
     private static int frame;
 
@@ -103,7 +110,11 @@ public final class NumberSlider extends AbstractSliderButton {
     @Override
     protected void applyValue() {
         int v = current();
-        if (asks(v)) return;
+        if (asks(v)) {
+            releasing = this;
+            return;
+        }
+        if (releasing == this) releasing = null;
         keep(v);
     }
 
@@ -267,8 +278,16 @@ public final class NumberSlider extends AbstractSliderButton {
     *///?}
 
     private void released() {
-        int v = current();
-        if (asks(v)) ask(v);
+        afterRelease();
+    }
+
+    /** The mouse button released, on a slider or anywhere on the screen: no limit, dragged to, is asked about. */
+    static void afterRelease() {
+        NumberSlider slider = releasing;
+        releasing = null;
+        if (slider == null) return;
+        int v = slider.current();
+        if (slider.asks(v)) slider.ask(v);
     }
 
     /**

@@ -670,6 +670,11 @@ come back, add it here in the same pull request: this file is what the next sess
   entity type draws it on every version. The screen asks for it every frame; a time limit
   instead made it vanish between two frames of a slow game. The `distancepreview` scenario
   checks it.
+- **No question before Unlimited on an old version** (1.20.x: a slider dragged to its right end
+  shows *Unlimited*, nothing asks, the setting keeps its value): before 1.21 the game hands a
+  mouse release only to the widget under the cursor, and a slider dragged past its end is
+  released beside it. `SideOptionsScreen.mouseReleased` hands every release to
+  `NumberSlider.afterRelease`; a screen of numbers that is not a `SideOptionsScreen` needs the same.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

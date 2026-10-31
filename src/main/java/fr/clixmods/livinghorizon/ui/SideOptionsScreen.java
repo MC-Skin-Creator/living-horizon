@@ -127,6 +127,13 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
     public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
         return clicked(event.x(), event.y(), event.button()) || super.mouseClicked(event, doubleClick);
     }
+
+    @Override
+    public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) {
+        boolean done = super.mouseReleased(event);
+        NumberSlider.afterRelease();
+        return done;
+    }
     //?} else {
     /*@Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
@@ -157,6 +164,14 @@ public abstract class SideOptionsScreen extends OptionsSubScreen {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         return clicked(mouseX, mouseY, button) || super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    // Before 1.21 the release reaches only the widget under the cursor: the screen hands it on.
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        boolean done = super.mouseReleased(mouseX, mouseY, button);
+        NumberSlider.afterRelease();
+        return done;
     }
     *///?}
 

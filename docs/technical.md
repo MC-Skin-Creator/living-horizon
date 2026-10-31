@@ -1324,7 +1324,9 @@ end, never typed. Sodium's rows show a typed number past their end as their last
 game moves it a pixel. `NumberSlider.asksBeforeUnlimited` names every
 setting whose right end is no limit (the three counts and the four distances), none of them
 safe without one: dragged there, the slider shows it and keeps it on release once the player
-says yes; stepped there, at once. Sodium's page cannot ask as its slider moves:
+says yes; stepped there, at once. The release is heard by the screen too (`SideOptionsScreen`,
+`NumberSlider.afterRelease`): before 1.21 the game hands it only to the widget under the cursor,
+and a slider dragged past its end is released beside it. Sodium's page cannot ask as its slider moves:
 `SodiumOptions.asking` holds the value at *Apply* and asks then, and no reads the page back.
 
 ### Main screen
