@@ -18,7 +18,7 @@
 - **Guessed Mobs** — far land nobody has explored yet is no longer empty of mobs: the mod guesses from the seed where the world would put them, as far as *Mob Render Distance* reaches, in single player or on a server with the mod; they may not be there once you arrive, and *Show Guessed Mobs*, beside *Show Mobs*, hides them.
 - **Mobs through a spyglass** — looking through a spyglass now shows the guessed mobs of unexplored land where it looks, however far, in single player or on a server that shares its seed.
 - **Guess Nearby Mobs** — a new button shows the guessed mobs up to 1024 chunks around at once, and keeps them for the next game, in single player or on a server that shares its seed.
-- **Typed values** — the counts and render distances of the mod's settings screen now take any number typed by hand, even past the end of their slider, which Sodium's page shows too: right-click one, type a number and press Enter; the arrow keys move every slider by one, or ten with Shift.
+- **Typed values** — the sliders of the mod's settings screen that end in *Unlimited* (the most mobs, entities and offline players, and the render distances) now take any number typed by hand, even past their last number, which Sodium's page shows too: right-click one, type a number and press Enter; the arrow keys move every slider by one, or ten with Shift.
 - **Distances shown in the world** — hovering or changing a distance on the mod's settings screen now draws it in the world behind: a glowing wall that far away, the edge of the chunks *Scan Radius* reads, or a ceiling at *Min. Flight Height*.
 
 #### Improved
