@@ -21,8 +21,9 @@ import java.util.concurrent.TimeUnit;
 /**
  * Guessed mobs over Distant Horizons' terrain (`--with distanthorizons`, 26.3): with <i>Only Over
  * Terrain</i> on, a guessed mob standing where Distant Horizons holds terrain must not be judged
- * over the void. Reads, for the guessed mobs chosen, whether Distant Horizons has their column and
- * what the mod decided, and fails when terrain is there and the mod says void.
+ * over the void. Reads, for a sample of the guessed mobs chosen, whether Distant Horizons has their
+ * column (through its API) and what the mod decided, and fails when terrain is there and the mod
+ * says void.
  */
 public final class GuessedGroundScenario implements Scenario {
     @Override
@@ -62,10 +63,10 @@ public final class GuessedGroundScenario implements Scenario {
                         + "; marks void " + context.computeOnClient(minecraft -> DebugMarks.count(DebugMarks.Mark.VOID))
                         + "; " + context.computeOnClient(minecraft -> LodWorld.status() + " " + LodWorld.details()
                         + " drawn to " + (int) LodWorld.drawnDistance()));
-                if (counts[1] > 50 && round >= 5) break;
+                if (counts[1] > 20 && round >= 5) break;
             }
             Scene.screenshot(context, this, "guessed");
-            if (last != null && last[2] > Math.max(3, last[1] / 20)) {
+            if (last != null && last[2] > Math.max(2, last[1] / 20)) {
                 throw new AssertionError("guessedground: " + last[2] + " guessed mobs judged over the void where Distant Horizons has terrain, of "
                         + last[1]);
             }
@@ -79,13 +80,18 @@ public final class GuessedGroundScenario implements Scenario {
      * for the guessed mobs chosen now: Distant Horizons read directly, the mod's answer asked of
      * DrawnGround as the frame does.
      */
+    private static final int SAMPLE = 40;
+
     private static int[] count(ClientGameTestContext context) {
         List<double[]> spots = context.computeOnClient(minecraft -> {
             List<double[]> found = new ArrayList<>();
             for (MobMemory.Remembered mob : FarPlayerTracker.get().mobs().shown()) {
                 if (SeedDraws.foreseen(mob.id())) found.add(new double[]{mob.x(), mob.z()});
             }
-            return found;
+            // Read through Distant Horizons' API, a quarter of a second a column: a sample.
+            List<double[]> sample = new ArrayList<>();
+            for (int i = 0; i < Math.min(SAMPLE, found.size()); i++) sample.add(found.get(i * found.size() / Math.min(SAMPLE, found.size())));
+            return sample;
         });
         int[] xs = new int[spots.size()], zs = new int[spots.size()];
         for (int i = 0; i < spots.size(); i++) {
@@ -94,7 +100,7 @@ public final class GuessedGroundScenario implements Scenario {
         }
         LodWorld.Surface[] surfaces;
         try {
-            surfaces = LodWorld.surfaces(xs, zs).get(30, TimeUnit.SECONDS);
+            surfaces = LodWorld.surfaces(xs, zs).get(120, TimeUnit.SECONDS);
         } catch (Exception e) {
             throw new AssertionError("reading Distant Horizons failed: " + e, e);
         }
