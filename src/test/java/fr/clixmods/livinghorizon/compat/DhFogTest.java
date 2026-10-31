@@ -58,4 +58,40 @@ class DhFogTest {
         // No fog at all: nothing changes the mobs.
         assertEquals(0, DhFog.fit(new DhFog.Settings(RADIUS, 0f, 1f, 0f, 0f, DhFog.LINEAR, 1f, false)).alpha());
     }
+
+    /** The game's fog on a mob before 1.21.6: one smooth ramp times the alpha. */
+    private static double game(DhFog.Smooth fog, double distance) {
+        return DhFog.smoothstep(fog.start(), fog.end(), distance) * fog.alpha();
+    }
+
+    private static double worstSmooth(DhFog.Settings settings) {
+        DhFog.Smooth fog = DhFog.fitSmooth(settings);
+        double worst = 0;
+        for (int i = 0; i <= 200; i++) {
+            double x = 1.5 * i / 200;
+            worst = Math.max(worst, Math.abs(game(fog, x * RADIUS) - DhFog.thickness(settings, x)));
+        }
+        return worst;
+    }
+
+    @Test
+    void beforeOneTwentyOneSixOneSmoothRampFollowsIt() {
+        // Distant Horizons' default: exponential squared from 0.4 to 1 of its render distance.
+        double squared = worstSmooth(new DhFog.Settings(RADIUS, 0.4f, 1f, 0f, 1f, DhFog.EXPONENTIAL_SQUARED, 2.5f, false));
+        double linear = worstSmooth(new DhFog.Settings(RADIUS, 0.4f, 1f, 0f, 1f, DhFog.LINEAR, 2.5f, false));
+        double plain = worstSmooth(new DhFog.Settings(RADIUS, 0f, 1f, 0f, 1f, DhFog.EXPONENTIAL, 2.5f, false));
+        assertTrue(squared < 0.06, "exponential squared off by " + squared);
+        assertTrue(linear < 0.06, "linear off by " + linear);
+        assertTrue(plain < 0.2, "exponential off by " + plain);
+        DhFog.Smooth spherical = DhFog.fitSmooth(new DhFog.Settings(RADIUS, 0.4f, 1f, 0f, 1f, DhFog.LINEAR, 1f, true));
+        assertTrue(spherical.spherical(), "in every direction when its height fog mixes spherically");
+    }
+
+    @Test
+    void beforeOneTwentyOneSixAnEvenFogAndNoFogAreKept() {
+        DhFog.Smooth even = DhFog.fitSmooth(new DhFog.Settings(RADIUS, 0f, 1f, 0.6f, 0.6f, DhFog.LINEAR, 1f, false));
+        assertEquals(0.6, game(even, 1), 1e-6);
+        assertEquals(0.6, game(even, RADIUS), 1e-6);
+        assertEquals(0, DhFog.fitSmooth(new DhFog.Settings(RADIUS, 0f, 1f, 0f, 0f, DhFog.LINEAR, 1f, false)).alpha());
+    }
 }

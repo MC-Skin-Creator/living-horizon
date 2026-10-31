@@ -1074,6 +1074,17 @@ game with Distant Horizons (26.3, `--with distanthorizons`), its fog made thick 
 blocks. `/livinghorizon lod` says whose fog the figures get, its ramps in blocks, and how many
 frames it was bound (`FarFog.status`, the *Fog on distant figures* line).
 
+Before 1.21.6 the game's fog is not a buffer but one value (`RenderSystem`'s fog start, end,
+shape and colour; `FogParameters` from 1.21.2), read by every draw until it is set again, and
+a single ramp, smooth (`smoothstep`) from its start to its end. Distant Horizons pushes it out
+to 4×10¹⁴ blocks there too, in `FogRenderer.setupFog` for the terrain. `FarFog.begin` and `end`,
+around the world's entities in `LevelRendererMixin`, set Distant Horizons' fog through
+`compat/GameFog` and put the game's back: one smooth ramp, in every direction or across the
+ground, its colour's alpha times `max`, fitted by least squares over two render distances
+(`DhFog.fitSmooth`; off by 0.044 at most for its default, 0.04 for a linear fog, 0.19 for the
+exponential). There is no floor: a `min` above 0 is only followed on average. Voxy is not
+there before 1.21.6, so nothing else changes. The block entities, drawn after, keep the game's.
+
 ## Skipping hidden mobs
 
 *Skip Hidden Mobs* (`hideOccludedMobs`) does not draw a distant mob the terrain hides

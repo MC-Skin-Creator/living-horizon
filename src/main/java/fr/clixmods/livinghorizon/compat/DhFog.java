@@ -23,6 +23,11 @@ import org.jspecify.annotations.Nullable;
  * exponential ones ({@link #fit}). The fog colour stays the world's: with Distant Horizons'
  * <i>sky colour</i> fog, far mobs fade to the world's fog colour instead. Its height fog is
  * left out.
+ *
+ * <p>Before 1.21.6 the game's fog is one ramp, smooth ({@code smoothstep}) from its start to
+ * its end, in every direction or across the ground, times the colour's alpha. Distant Horizons
+ * pushes it out to 4×10¹⁴ blocks there too; {@link #fitSmooth} gives the one ramp closest to
+ * its fog, with no floor: a thinnest fog above none is only followed on average.
  */
 public final class DhFog {
     /** Distant Horizons' settings, as read: its render distance in blocks and its far fog. */
@@ -38,6 +43,13 @@ public final class DhFog {
                         float renderDistanceEnd, float alpha) {
     }
 
+    /**
+     * The fog the game is to give the entities before 1.21.6: its one smooth ramp in blocks, in
+     * every direction or across the ground, and the factor on its colour's alpha.
+     */
+    public record Smooth(float start, float end, boolean spherical, float alpha) {
+    }
+
     static final int LINEAR = 0, EXPONENTIAL = 1, EXPONENTIAL_SQUARED = 2;
     /** Blocks: a ramp from this far behind, ending as far ahead, is flat over any distance seen. */
     private static final float FLAT = 1e7f;
@@ -51,8 +63,9 @@ public final class DhFog {
     private static @Nullable Settings read;
     /** Why there is none, when there is none. */
     private static String why = "not read yet";
-    private static @Nullable Settings fitted;
+    private static @Nullable Settings fitted, fittedSmooth;
     private static @Nullable Ramps ramps;
+    private static @Nullable Smooth smooth;
     private static boolean broken;
 
     private DhFog() {
@@ -60,18 +73,34 @@ public final class DhFog {
 
     /** The fog for this frame, from Distant Horizons' settings (read again every second); null where it draws none. */
     static @Nullable Ramps now() {
-        long time = System.nanoTime();
-        if (time - readAt > 1_000_000_000L || readAt == 0) {
-            readAt = time;
-            read = settings();
-        }
-        Settings settings = read;
+        Settings settings = current();
         if (settings == null) return null;
         if (!settings.equals(fitted)) {
             fitted = settings;
             ramps = fit(settings);
         }
         return ramps;
+    }
+
+    /** The fog for this frame before 1.21.6, as {@link #now}. */
+    static @Nullable Smooth nowSmooth() {
+        Settings settings = current();
+        if (settings == null) return null;
+        if (!settings.equals(fittedSmooth)) {
+            fittedSmooth = settings;
+            smooth = fitSmooth(settings);
+        }
+        return smooth;
+    }
+
+    /** Distant Horizons' settings, read again every second. */
+    private static @Nullable Settings current() {
+        long time = System.nanoTime();
+        if (time - readAt > 1_000_000_000L || readAt == 0) {
+            readAt = time;
+            read = settings();
+        }
+        return read;
     }
 
     /** The ramps closest to Distant Horizons' fog, in blocks. */
@@ -100,6 +129,27 @@ public final class DhFog {
             // Through (start, floor) and (end, 1).
             return new double[]{s.start() - floor * length / (1 - floor), s.start() + length};
         }
+        return search(s, alpha, floor, false);
+    }
+
+    /**
+     * The one smooth ramp closest to Distant Horizons' fog, before 1.21.6: the least squares over
+     * {@link #FIT_TO} render distances, for every falloff.
+     */
+    static Smooth fitSmooth(Settings s) {
+        float alpha = Math.min(1, Math.max(s.max(), s.min()));
+        if (alpha <= 0) return new Smooth(NEVER, 2 * NEVER, s.spherical(), 0);
+        // As thick everywhere: a ramp ended before the camera.
+        if (s.min() >= alpha) return new Smooth(-1, 0, s.spherical(), alpha);
+        double[] best = search(s, alpha, 0, true);
+        return new Smooth((float) (best[0] * s.radius()), (float) (best[1] * s.radius()), s.spherical(), alpha);
+    }
+
+    /**
+     * The ramp, from where to where in fractions of the render distance, that follows Distant
+     * Horizons' fog closest: straight above a floor, or smooth from none.
+     */
+    private static double[] search(Settings s, float alpha, double floor, boolean smooth) {
         double[] best = {0, 1};
         double bestError = Double.MAX_VALUE;
         // Coarse, then fine around the best.
@@ -110,7 +160,7 @@ public final class DhFog {
             double[] around = best.clone();
             for (double a = fromA; a <= toA; a += step) {
                 for (double width = fromWidth; width <= toWidth; width += step) {
-                    double error = error(s, alpha, floor, a, a + width, bestError);
+                    double error = error(s, alpha, floor, smooth, a, a + width, bestError);
                     if (error < bestError) {
                         bestError = error;
                         around = new double[]{a, a + width};
@@ -122,16 +172,24 @@ public final class DhFog {
         return best;
     }
 
-    private static double error(Settings s, float alpha, double floor, double a, double b, double stopAt) {
+    private static double error(Settings s, float alpha, double floor, boolean smooth, double a, double b, double stopAt) {
         double sum = 0;
         for (int i = 0; i <= SAMPLES; i++) {
             double x = FIT_TO * i / SAMPLES;
-            double ramp = Math.min(1, Math.max(0, (x - a) / (b - a)));
+            double ramp = smooth ? smoothstep(a, b, x) : Math.min(1, Math.max(0, (x - a) / (b - a)));
             double off = Math.max(floor, ramp) - thickness(s, x) / alpha;
             sum += off * off;
             if (sum >= stopAt) return sum;
         }
         return sum;
+    }
+
+    /** The game's fog before 1.21.6 ({@code linear_fog}): none up to its start, all of it from its end, smooth between. */
+    static double smoothstep(double start, double end, double x) {
+        if (x <= start) return 0;
+        if (x >= end) return 1;
+        double t = (x - start) / (end - start);
+        return t * t * (3 - 2 * t);
     }
 
     /** Distant Horizons' fog at a distance, in render distances: {@code getFarFogThickness}, kept to 0..1. */
