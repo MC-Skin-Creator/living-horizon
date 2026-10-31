@@ -32,6 +32,26 @@ class ImpostorThresholdTest {
     }
 
     @Test
+    void sizeAloneWhenNoDistance() {
+        assertFalse(ImpostorThreshold.pictured(5000, 200, false, 0, 20));
+        assertFalse(ImpostorThreshold.pictured(5000, 200, true, 0, 20));
+        assertTrue(ImpostorThreshold.pictured(60, 15, false, 0, 20));
+        // Both off: never a picture.
+        assertFalse(ImpostorThreshold.pictured(5000, 1, false, 0, 0));
+    }
+
+    @Test
+    void aPictureIsNeverBlownUpPastTwiceItsPixels() {
+        // A 64-pixel tile: a cow's at 130 blocks is a dozen pixels, a grown dragon's hundreds.
+        assertFalse(ImpostorThreshold.enlarged(13, 64, false));
+        assertFalse(ImpostorThreshold.enlarged(128, 64, false));
+        assertTrue(ImpostorThreshold.enlarged(300, 64, false));
+        // Its picture kept until a little past the limit, its model until a little inside it.
+        assertFalse(ImpostorThreshold.enlarged(132, 64, true));
+        assertTrue(ImpostorThreshold.enlarged(132, 64, false));
+    }
+
+    @Test
     void neverAtTheEye() {
         assertFalse(ImpostorThreshold.pictured(0, 0, true, 128, 20));
     }

@@ -51,7 +51,7 @@ public final class FarConfig {
     @SerializedName(value = "depthOcclusion", alternate = "voxyOcclusion")
     public boolean depthOcclusion = true;
 
-    private static final int CURRENT = 12;
+    private static final int CURRENT = 13;
 
     /** Skinned figures, which Distant Friends uses as its fake players: shown, standing still. */
     private static final String MANNEQUIN = "minecraft:mannequin";
@@ -78,8 +78,10 @@ public final class FarConfig {
      */
     public boolean offlinePlayers = true;
 
-    /** The value of {@link #maxOfflinePlayers} (and above) that means no limit. */
-    public static final int UNLIMITED_OFFLINE = 1000;
+    /** The value of {@link #maxOfflinePlayers} that means no limit; any number below is one. */
+    public static final int UNLIMITED_OFFLINE = Integer.MAX_VALUE;
+    /** The last number of {@link #maxOfflinePlayers}' slider, before no limit; a higher one can be typed. */
+    public static final int MAX_OFFLINE = 1000;
 
     /**
      * How many players who logged off are drawn at once: the nearest ones. The others stay
@@ -113,8 +115,13 @@ public final class FarConfig {
      */
     public boolean distantMobs = true;
 
-    /** The value of {@link #maxDistantMobs} (and above) that means no limit. */
-    public static final int UNLIMITED_MOBS = 1000;
+    /** The value of {@link #maxDistantMobs} and {@link #maxDistantEntities} that means no limit; any number below is one. */
+    public static final int UNLIMITED_MOBS = Integer.MAX_VALUE;
+    /** The last number of their sliders, before no limit; a higher one can be typed. */
+    public static final int MAX_MOBS = 4000;
+
+    /** Blocks: the last distance of the sliders before no limit, which the settings keep as 0; a farther one can be typed. */
+    public static final int MAX_DISTANCE = 4000;
 
     /** How many remembered mobs are drawn at once: the nearest ones. {@link #UNLIMITED_MOBS}: all. */
     public int maxDistantMobs = 512;
@@ -148,10 +155,10 @@ public final class FarConfig {
 
     /**
      * Blocks: past this, distant boats, vehicles and mannequins are not drawn, apart from the
-     * mobs' limit. 0, the default, is no limit: there are few of them, and an aircraft is seen
-     * from afar.
+     * mobs' limit: far by default, since there are few of them and an aircraft is seen from
+     * afar. 0 is no limit, which the screens ask about first.
      */
-    public int entityMaxDistance = 0;
+    public int entityMaxDistance = MAX_DISTANCE;
 
     /**
      * Distant mobs are drawn only where terrain is drawn under them: a chunk the game draws, or
@@ -160,8 +167,8 @@ public final class FarConfig {
      */
     public boolean onlyOverTerrain = true;
 
-    /** Blocks: past this, distant players are not drawn. 0, the default, is no limit. */
-    public int playerMaxDistance = 0;
+    /** Blocks: past this, distant players are not drawn. 0 is no limit, which the screens ask about first. */
+    public int playerMaxDistance = MAX_DISTANCE;
 
     /**
      * The mobs shown far away, by type id ({@code "minecraft:horse"}). This client
@@ -183,11 +190,23 @@ public final class FarConfig {
     public boolean rememberNamedMobs = true;
 
     /**
+     * The animals a server with the mod foresees in the land nobody has explored yet, from the
+     * world's seed ({@code track/SeedMobs}), are shown with the remembered mobs.
+     */
+    public boolean seedMobs = true;
+
+    /**
      * Chunks around the player read by a scan ("Scan the chunks around", or
      * {@code /livinghorizon scan}): in a single player world, the mobs of these chunks
      * are read from the world itself instead of met on the way.
      */
     public int scanRadius = 32;
+
+    /**
+     * Chunks around the player <i>Guess Nearby Mobs</i> foresees the first animals of, in land
+     * nobody explored ({@code track/Foresight}): up to 1024.
+     */
+    public int foreseeRadius = 64;
 
     /**
      * Birds and bats: flocks, birds of prey, gulls, pigeons, robins, tits, bats at night.
@@ -257,14 +276,18 @@ public final class FarConfig {
         return impostors || impostorEntities || impostorPlayers;
     }
 
-    /** Blocks: past this distance an impostor stands in for the model. */
+    /** Blocks: past this distance an impostor stands in for the model. 0 goes by the size alone. */
     public int impostorDistance = 128;
 
     /**
      * Pixels: a figure shorter than this on screen is an impostor too, even closer than
-     * {@link #impostorDistance} (its model back only a little above). 0 goes by the distance alone.
+     * {@link #impostorDistance} (its model back only a little above). 0 goes by the distance alone;
+     * with both 0, nothing is simplified.
      */
     public int impostorPixels = 10;
+
+    /** Top of {@link #impostorDistance}'s range, which starts at 0 (off). */
+    public static final int MAX_IMPOSTOR_DISTANCE = 2000;
 
     /** Range of {@link #impostorPixels}. */
     public static final int MAX_IMPOSTOR_PIXELS = 64;
@@ -348,17 +371,23 @@ public final class FarConfig {
      * mobs turn paler than Voxy's terrain; enchantment glints and lightning then fade as usual.
      */
     public boolean optVoxyFog = true;
+
+    /**
+     * Without a shader pack, the world's entities get Distant Horizons' far fog, which takes the
+     * game's away (see {@code DhFog}). Off: no fog on them, sharp against its fogged terrain.
+     */
+    public boolean optDhFog = true;
     /** Saved mobs are read off the game's thread and built within 2 ms per tick. */
     public boolean optBackgroundBuild = true;
-    /** A mob only a few pixels high on screen plays no walking or idle animation: it only slides and turns. */
+    /** A mob only a few pixels high on screen stops walking about: it stands where it is. */
     public boolean optStillTiny = true;
     /**
-     * Pixels: a distant mob shorter than this on screen plays no walking or idle animation (it
+     * Pixels: a distant mob shorter than this on screen stops walking about and stands (it
      * resumes a little above, so it never flickers). 0 always animates. Needs {@link #optStillTiny}.
      */
     public int animationMinPixels = 10;
-    /** Blocks: past this, no distant mob plays an animation, however big it looks. 0 is no limit. */
-    public int animationMaxDistance = 0;
+    /** Blocks: past this, every distant mob stops walking about and stands, however big it looks. 0 is no limit, which the screens ask about first. */
+    public int animationMaxDistance = MAX_DISTANCE;
     /** A copy that was not drawn for a moment (out of view, hidden, too small) stays where it is: no animation, no path read. */
     public boolean optFreezeHidden = false;
 
@@ -370,6 +399,17 @@ public final class FarConfig {
     public boolean debugLabels = false;
     /** Boxes around the mobs the game draws itself, too. */
     public boolean debugGameMobs = false;
+    // Which other kinds get their box and label, in the Boxes screen.
+    /** Around the real mobs the server sends that the mod draws. */
+    public boolean boxLiveMobs = true;
+    /** Around the copies of mobs met. */
+    public boolean boxCopies = true;
+    /** Around the animals foreseen from the seed, in land nobody explored. */
+    public boolean boxForeseen = true;
+    /** Around the distant players. */
+    public boolean boxPlayers = true;
+    /** Around the mobs left out of the frame (too small, hidden, over the void, outside the view...). */
+    public boolean boxLeftOut = true;
     // Outlines, seen through terrain, in the colours of the debug boxes: what draws each figure.
     /** Around the mobs the game draws itself: white. */
     public boolean outlineGameMobs = false;
@@ -377,6 +417,8 @@ public final class FarConfig {
     public boolean outlineLiveMobs = false;
     /** Around the 3D copies of mobs the server no longer sends: green. */
     public boolean outlineCopies = false;
+    /** Around the copies of animals foreseen from the seed, in land nobody explored: pink. */
+    public boolean outlineForeseen = false;
     /** Around the distant players the mod draws: blue. */
     public boolean outlinePlayers = false;
     /** Around impostors, whatever they stand for: magenta. */
@@ -513,10 +555,28 @@ public final class FarConfig {
             // One switch for every figure but players became one for mobs and one for the rest.
             config.impostorEntities = config.impostors;
         }
+        if (config.version < 13) {
+            // No limit was 1000; the sliders go further now, then no limit, and any number can be typed.
+            if (config.maxDistantMobs >= 1000) config.maxDistantMobs = UNLIMITED_MOBS;
+            if (config.maxDistantEntities >= 1000) config.maxDistantEntities = UNLIMITED_MOBS;
+            if (config.maxOfflinePlayers >= 1000) config.maxOfflinePlayers = UNLIMITED_OFFLINE;
+            // No limit is never safe: the presets and defaults that went without one, which the
+            // player did not choose by hand, take the limits they have now.
+            boolean high = config.impostorDistance == 256 && config.maxDistantMobs == UNLIMITED_MOBS
+                    && config.mobMaxDistance == 1024 && config.birdDensity == 200 && config.birdMaxDistance == 1500;
+            boolean ultra = config.impostorDistance == 512 && config.maxDistantMobs == UNLIMITED_MOBS
+                    && config.mobMaxDistance == 0 && config.birdDensity == 400 && config.birdMaxDistance == 3000;
+            if (high) QualityPreset.HIGH.apply(config);
+            if (ultra) QualityPreset.ULTRA.apply(config);
+            if (config.playerMaxDistance <= 0) config.playerMaxDistance = MAX_DISTANCE;
+            if (config.entityMaxDistance <= 0) config.entityMaxDistance = MAX_DISTANCE;
+            if (config.animationMaxDistance <= 0) config.animationMaxDistance = MAX_DISTANCE;
+        }
         // Written by hand out of range: the nearest end.
         config.impostorMobMemory = Math.clamp(config.impostorMobMemory, MIN_MOB_MEMORY, MAX_MOB_MEMORY);
         config.impostorPlayerMemory = Math.clamp(config.impostorPlayerMemory, MIN_PLAYER_MEMORY, MAX_PLAYER_MEMORY);
         config.impostorPixels = Math.clamp(config.impostorPixels, 0, MAX_IMPOSTOR_PIXELS);
+        config.impostorDistance = Math.clamp(config.impostorDistance, 0, MAX_IMPOSTOR_DISTANCE);
         config.version = CURRENT;
     }
 

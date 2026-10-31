@@ -326,10 +326,20 @@ public record ImpostorKey(String type, long appearance, int posture) {
         *///?} else
         /*if (entity instanceof AbstractClientPlayer player) hash = hash * 31 + player.getSkinTextureLocation().hashCode();*/
         hash = hash(hash, values, restless);
+        // Its size, to about 6%: some mods' mobs take it from a value that keeps changing and
+        // is left out (Ice and Fire's dragons grow with their age, which ticks up). Two of one
+        // look but not one size would share a sheet baked for one of them.
+        hash = hash * 31 + size(entity.getBbWidth());
+        hash = hash * 31 + size(entity.getBbHeight());
         if (entity instanceof LivingEntity living) {
             for (EquipmentSlot slot : EquipmentSlot.values()) hash = hash * 31 + item(living.getItemBySlot(slot));
         }
         return new ImpostorKey(type, hash);
+    }
+
+    /** A size in blocks, in steps of about 6%: the same step for sizes a little apart. */
+    static long size(float blocks) {
+        return Math.round(Math.log(Math.max(blocks, 0.01f)) * 16);
     }
 
     /**

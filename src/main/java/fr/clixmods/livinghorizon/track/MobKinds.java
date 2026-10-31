@@ -49,6 +49,11 @@ public final class MobKinds {
         return kind >= 1 && kind <= TYPES.size() ? TYPES.get(kind - 1) : null;
     }
 
+    /** The number a type is shared by, 0 for one a server does not share. */
+    public static int kind(String type) {
+        return TYPES.indexOf(type) + 1;
+    }
+
     /**
      * The saved field the server reads the variant from, written back the same way so
      * the game itself turns the number into a coat, a fleece, a colour.

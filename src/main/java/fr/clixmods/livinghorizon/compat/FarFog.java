@@ -29,6 +29,10 @@ import java.lang.reflect.Method;
  * world's entities are drawn, nowhere else: the sky, the clouds and the terrain keep the game's.
  * Only the enchantment glint and lightning, which read the fog without its alpha, fade a little
  * sooner.
+ *
+ * <p>Before 1.21.6 the game's fog is one value, set for whatever is drawn next ({@link GameFog}):
+ * Distant Horizons' is set while the world's entities are drawn ({@link DhFog#fitSmooth}), and
+ * the game's put back after. Voxy is not there before 1.21.6.
  */
 public final class FarFog {
     /** Where our fog sits in the game's fog buffer, after its own: a multiple of any uniform offset alignment. */
@@ -40,21 +44,94 @@ public final class FarFog {
     }
 
     /**
-     * The fog the entities get, from the game's this frame, Voxy's changes in it: its end, then
-     * the factor on its colour's alpha. Null where it is the game's: switched off
-     * ({@code optVoxyFog}), no Voxy, Voxy's fog off, a shader pack, the game's render distance
-     * fog on, or Voxy's limit past the fog's end.
+     * The fog the entities get, from the game's this frame: Voxy's changes in it, or Distant
+     * Horizons' fog where it took the game's away ({@link DhFog}). Null where it is the game's:
+     * switched off ({@code optVoxyFog}, {@code optDhFog}), neither mod's fog, a shader pack, the
+     * game's render distance fog on, or Voxy's limit past the fog's end.
      */
-    public static float @Nullable [] capped(float environmentalStart, float environmentalEnd, float renderDistanceStart) {
-        if (!FarConfig.get().optVoxyFog) return null;
+    public static DhFog.@Nullable Ramps capped(float environmentalStart, float environmentalEnd,
+                                              float renderDistanceStart, float renderDistanceEnd) {
+        DhFog.Ramps ramps = choose(environmentalStart, environmentalEnd, renderDistanceStart, renderDistanceEnd);
+        written = ramps == null ? "" : String.format(java.util.Locale.ROOT, "; every way %.0f..%.0f, across %.0f..%.0f blocks, at most %.2f",
+                ramps.environmentalStart(), ramps.environmentalEnd(), ramps.renderDistanceStart(),
+                ramps.renderDistanceEnd(), ramps.alpha());
+        return ramps;
+    }
+
+    /**
+     * The fog the entities get before 1.21.6, from the game's start this frame: Distant
+     * Horizons' where it took the game's away. Null where it is the game's.
+     */
+    static DhFog.@Nullable Smooth cappedSmooth(float start) {
+        DhFog.Smooth fog = chooseSmooth(start);
+        written = fog == null ? "" : String.format(java.util.Locale.ROOT, "; %s %.0f..%.0f blocks, at most %.2f",
+                fog.spherical() ? "every way" : "across", fog.start(), fog.end(), fog.alpha());
+        return fog;
+    }
+
+    private static DhFog.@Nullable Smooth chooseSmooth(float start) {
+        FarConfig config = FarConfig.get();
+        if (!config.anyDistant()) return game("no distant figure shown");
+        if (IrisLink.shaderPackOn()) return game("a shader pack fogs them");
+        // A fog that ends close (water, lava, blindness), or Distant Horizons not drawing.
+        if (start < NO_RENDER_DISTANCE_FOG) return game("its own fog is on");
+        if (!config.optDhFog) return game("DH Fog Fix off, no fog at all");
+        DhFog.Smooth fog = DhFog.nowSmooth();
+        source = fog == null ? "the game's: none, Distant Horizons' fog unread or off (" + DhFog.why() + ")"
+                : "Distant Horizons' (" + DhFog.describe() + ")";
+        return fog;
+    }
+
+    private static DhFog.@Nullable Ramps choose(float environmentalStart, float environmentalEnd,
+                                               float renderDistanceStart, float renderDistanceEnd) {
+        FarConfig config = FarConfig.get();
         if (!Float.isNaN(limitForTests)) {
-            return environmentalEnd - environmentalStart > 1 ? limited(environmentalStart, environmentalEnd, limitForTests) : null;
+            if (!config.optVoxyFog) return game("Voxy Fog Fix off");
+            float[] far = environmentalEnd - environmentalStart > 1 ? limited(environmentalStart, environmentalEnd, limitForTests) : null;
+            source = "a limit for the tests";
+            return far == null ? null : new DhFog.Ramps(environmentalStart, far[0], renderDistanceStart, renderDistanceEnd, far[1]);
+        }
+        if (!config.anyDistant()) return game("no distant figure shown");
+        if (IrisLink.shaderPackOn()) return game("a shader pack fogs them");
+        // Distant Horizons takes the game's fog away altogether, both ramps; Voxy only the render distance's.
+        if (environmentalStart >= NO_RENDER_DISTANCE_FOG && renderDistanceStart >= NO_RENDER_DISTANCE_FOG) {
+            if (!config.optDhFog) return game("DH Fog Fix off, no fog at all");
+            DhFog.Ramps ramps = DhFog.now();
+            source = ramps == null ? "the game's: none, Distant Horizons' fog unread or off (" + DhFog.why() + ")"
+                    : "Distant Horizons' (" + DhFog.describe() + ")";
+            return ramps;
         }
         // A fog that ends close (water, lava, blindness) is left alone, as Voxy leaves it.
+        if (!config.optVoxyFog) return game("Voxy Fog Fix off");
         if (renderDistanceStart < NO_RENDER_DISTANCE_FOG || environmentalEnd < 10
-                || environmentalEnd - environmentalStart <= 1) return null;
-        if (!FarConfig.get().anyDistant() || IrisLink.shaderPackOn()) return null;
-        return limited(environmentalStart, environmentalEnd, voxyLimit());
+                || environmentalEnd - environmentalStart <= 1) return game("its own fog is on");
+        float[] far = limited(environmentalStart, environmentalEnd, voxyLimit());
+        if (far == null) return game("neither Voxy's nor Distant Horizons' fog");
+        source = "Voxy's, stopping at " + Math.round(far[0]) + " blocks";
+        return new DhFog.Ramps(environmentalStart, far[0], renderDistanceStart, renderDistanceEnd, far[1]);
+    }
+
+    private static <T> @Nullable T game(String why) {
+        source = "the game's: " + why;
+        return null;
+    }
+
+    // --- What /livinghorizon lod says --------------------------------------------------------
+
+    /** Whose fog the figures got last, and why. */
+    private static volatile String source = "not written yet";
+    /** The ramps the figures got last, in words. */
+    private static volatile String written = "";
+    /** Frames ours was bound, and frames it was not though written, and why the last one. */
+    private static volatile long bound, missed;
+    private static volatile String missedWhy = "";
+
+    /** The fog the distant figures get, for {@code /livinghorizon lod}. */
+    public static String status() {
+        StringBuilder text = new StringBuilder(source).append(written);
+        text.append("; bound ").append(bound).append(" frames");
+        if (missed > 0) text.append(", not ").append(missed).append(" (").append(missedWhy).append(')');
+        return text.toString();
     }
 
     /**
@@ -183,7 +260,12 @@ public final class FarFog {
         if (far == null || saved != null) return null;
         GpuBufferSlice current = RenderSystem.getShaderFog();
         // The fog turned off (F3 + F), or this frame's fog not written yet.
-        if (current == null || !current.equals(world)) return null;
+        if (current == null || !current.equals(world)) {
+            missed++;
+            missedWhy = current == null ? "no fog bound" : "another fog bound than the game's";
+            return null;
+        }
+        bound++;
         saved = current;
         RenderSystem.setShaderFog(far);
         return far;
@@ -209,18 +291,33 @@ public final class FarFog {
         return end();
     }
     //?} else {
-    /*// Before 1.21.6 the overworld has no fog of its own past the render distance, and Voxy is
-    // not there: nothing to match.
+    /*// Before 1.21.6: the game's fog, put back after the entities while Distant Horizons' is set.
+    private static float @Nullable [] saved;
+
+    // Just before the world's entities are drawn: Distant Horizons' fog is set in place of the game's.
     public static void begin(@Nullable Object by) {
+        if (!armed) return;
         armed = false;
         owner = by;
+        if (saved != null) return;
+        float[] game = GameFog.read();
+        DhFog.Smooth fog = cappedSmooth(game[0]);
+        if (fog == null) return;
+        bound++;
+        saved = game;
+        GameFog.set(new float[]{fog.start(), fog.end(), fog.spherical() ? 0 : 1, game[3], game[4], game[5], game[6] * fog.alpha()});
     }
 
     public static boolean active() {
-        return false;
+        return saved != null;
     }
 
+    // Just after the world's entities are drawn: the game's fog is set again.
     public static void end() {
+        float[] back = saved;
+        if (back == null) return;
+        saved = null;
+        GameFog.set(back);
     }
     *///?}
 }

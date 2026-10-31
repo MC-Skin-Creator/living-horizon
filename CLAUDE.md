@@ -100,6 +100,14 @@ page is named by the key `livinghorizon.options.<field>` of the `FarConfig` fiel
 the `sodiumcontrols` scenario finds rows by that name and checks that each one writes its
 field. Run it (`run.sh sodium,sodiumcontrols --sodium`) after any change to the settings.
 
+A slider of whole numbers on the mod's screens goes through `FarConfigScreen`'s helpers
+(`ui/NumberSlider`: one step per arrow key; where no limit follows its end, typed with a right
+click, digits only, past the end too; a slider within bounds takes no typing), never a bare `IntRange`. No limit is a value of its own, never a number
+past the slider's last one, which a player may type.
+No limit is never safe: every setting whose right end means no limit is named in
+`NumberSlider.asksBeforeUnlimited`, both screens ask before keeping it, and no preset or
+default sets it.
+
 Older Sodium (0.5 to 0.7: 1.20.x, 1.21.3 to 1.21.10) has no API for other mods' pages: there
 the settings stay on the mod's own screen, which the *Living Horizon...* button opens.
 
@@ -138,8 +146,10 @@ say which class is which). Players find them; nothing they read gives one away:
   the log where each one comes; without it the log says nothing of them. Its lang keys are
   `livinghorizon.eeN.*`, and `livinghorizon.ee.nothing` when it cannot come;
 - by chance, only as `ambient/EggCalendar` allows: each from a day of its own (days lived in
-  that world, counted at dawn), two to four days apart, one at a time; the watcher (ee4)
-  keeps nights of his own and stays out of the others' way. The commands skip all of it;
+  that world, counted at dawn), two to four days apart, one at a time. The daily ones (ee3,
+  ee4, ee5, `ambient/Daily`) are not left to chance: once a day from the second or third, at a
+  moment of it drawn at dawn, alongside the others, and back one to three days after being
+  seen. The commands skip all of it;
 - an easter egg gets no changelog entry, even when it changes. One wink that names none
   ("I thought I saw something in the sky") is the most a release may carry.
 
@@ -253,8 +263,9 @@ distant mobs or players, birds, impostors or a screen is checked in the real cli
 `.claude/skills/game-test/` runs it headless (Xvfb, software OpenGL), drives it with the
 scenarios in `src/gametest/java` and takes screenshots to look at. Run
 `.claude/skills/game-test/run.sh [scenario]`, read `SKILL.md` there first, add a scenario
-for what the change touches, and show the user the screenshots. Voxy and Distant Horizons
-cannot run there: say so when a check depends on them.
+for what the change touches, and show the user the screenshots. Voxy cannot run there: say so
+when a check depends on it. Distant Horizons runs there on 26.3 (`--with distanthorizons`,
+Fabric Loader 0.19.5 for the run: see the skill).
 
 ## Debugging checklist
 
@@ -391,6 +402,13 @@ come back, add it here in the same pull request: this file is what the next sess
   simulation distance, a square of chunks that reaches farther on its diagonals. In single
   player `ServerMobs` asks the server where those are and the copies follow; on a server only
   the mod on the server closes that gap.
+- **Distant mobs gliding to and fro, legs still, or trembling** (past *Animation Distance* or
+  under *Min. Animated Size*): a still mob must stand, not play its animation's path without its
+  legs; `MobMotion.held` stops its animation's clock. And a puppet's `tickCount` must go on every
+  tick: the game plays idle movements at `tickCount` plus the frame's part of a tick, so a stopped
+  one replays a tick's worth twenty times a second. Still copies are looked at once in sixteen
+  ticks only once `MobMotion.settled`, and `rest` keeps their clocks going in between: one moved
+  once in sixteen ticks went in jerks. The `stillmobs` scenario checks it all.
 - **Distant mobs only turning on the spot**, never walking, after the world was opened, while
   those met since walk: their ground was read (`MobPaths.plan`) where the far world had nothing
   (Voxy or Distant Horizons not open yet, or Voxy turned off for the session by one failed
@@ -417,13 +435,21 @@ come back, add it here in the same pull request: this file is what the next sess
   `ImpostorKey` leaves out what never shows (positions, times, owners, names, sound variants,
   an item's damage), names variants by their registry key so that a sheet is found again in
   the next world, and learns per kind of mob the values seen changing again and again
-  (`RESTLESS`). `ImpostorAtlas` gives each kind of figure pages of its own (`Page`), keeps the
+  (`RESTLESS`). `SheetAllocator` gives each kind of figure pages of its own (`Page`), keeps the
   mobs' sheets, throws the players' away once unused, and never evicts a sheet drawn or asked
-  for within `IN_USE`. `ImpostorDisk` keeps the mobs' sheets on disk under a fingerprint
+  for within `IN_USE`; `SheetAllocatorTest` checks it without the game. `ImpostorDisk` keeps the mobs' sheets on disk under a fingerprint
   (game, resource packs, mods): a sheet never read back from disk means its key is not
   stable across games (an identity hash in `ImpostorKey.stable`). The `sharing` scenario
   checks all of it, except across games: the client game tests start from an empty run
   folder every time.
+- **A modded mob's picture a close-up of part of it** (Ice and Fire's adult dragons as legs or a
+  wing filling the tile, in the impostor screen): its copy kept the box of a newborn, since the
+  mod works the size out in its tick and a copy never ticks. `EntityNbt.load` refreshes the box.
+  A model longer than five times its box (a sea serpent, the oldest dragons) is not pictured
+  (`MAX_GROW`, "does not fit its picture" in the log). Ice and Fire is on Forge 1.20.1 only,
+  where the client game tests do not run: install Forge's client with its installer, put the
+  SRG jar (`renameJarJar`), Ice and Fire and Citadel in `mods/`, and open a world made by its
+  dedicated server with a datapack summoning the dragons (`AgeTicks`, `AgingDisabled`).
 - **Specks along an impostor's edge, or a figure cut off by its tile** (black dashes over a far
   mob, a horse without its muzzle): the texture filter reads half a pixel of the smallest level
   past each tile, so the quad and its UVs keep `ImpostorRenderer.INSET` clear on all four sides,
@@ -531,6 +557,21 @@ come back, add it here in the same pull request: this file is what the next sess
   strolling): the game saves the order to sit from `orderedToSit`, which only the server sets, so a
   save made on the client says `Sitting:0b`. `MobMemory.onUnload` writes `isInSittingPose()` into
   it; a sitting copy gets no stroll. The `sittingpets` scenario checks it.
+- **Distant players running upright in the air with an elytra** (legs walking, wings folded):
+  the game tilts a glider and spreads its wings in the player's tick (`fallFlyTicks`, and
+  `ElytraAnimationState` from 1.21.2), which a puppet never runs, and only the server knows who
+  glides. It shares it (message version 4: the last flag bit, the pitch at the end of the record)
+  and `FarPlayer.glide` does the tick's part. A glider is never an impostor, nor baked into one:
+  the pictures are baked standing. The `gliders` scenario checks it.
+- **Players who logged off losing their boat, or back up in the air, once the camera moves away**
+  (in a boat or on the ground up close): the client's level answers yes to `hasChunk` and
+  `hasChunkAt` for every chunk (`ClientLevel.hasChunk` returns true), and a chunk it dropped reads
+  as air: no water, no ground. Ask `level.getChunkSource().hasChunk` (`Footing.loaded`). And a
+  `RestingPuppet` is made again whenever they leave the nearest drawn, the world opens again or
+  the server's word on them changes: where they rest (`RestingPlayers.Rest`: the ground under a
+  spot in the air, the shore, the boat) is kept with the spot and saved, and a new puppet starts
+  there; before the blocks are ever loaded, the far world is asked (`guess`). The `restkept`
+  scenario checks it.
 - **A rider turned sideways** (a player resting in a boat facing left or right of it): the seat's
   yaw is the rider's body (`yBodyRot`), which the boat keeps in line with itself, never the head
   (`getYRot`), which looks wherever the player looked as they left.
@@ -593,6 +634,11 @@ come back, add it here in the same pull request: this file is what the next sess
   the game's fog on entities does not know. `FarFog` gives the world's entities Voxy's curve, from
   a second fog `FogRendererMixin` writes next to the game's; a new Voxy that computes its limit
   otherwise (`NormalRenderPipeline.finish`, `javap`) needs `FarFog.voxyLimit` to follow.
+- **Distant mobs sharp against Distant Horizons' fogged terrain** (no fog on them at all, without a
+  shader pack): Distant Horizons pushes both of the game's fog ramps out to 4×10¹⁴ blocks and fogs
+  its terrain in a pass of its own. `DhFog` gives the entities its far fog through the game's two
+  ramps (one a floor at its thinnest, one the slope), fitted to its formula (`DhFogTest`); a new
+  Distant Horizons that fogs otherwise (`shaders/fog`, `GlDhFogShader.onApplyUniforms`) needs it to follow.
 - **Water gone under a shader pack whenever a distant figure is in view** (Photon with Distant
   Horizons on 26.3: the lake shows its bare, shadowed bed, with *Hide Behind Far Terrain* on; the
   depth view looks right): from 26.3 the game caches blending and the colour mask per draw
@@ -610,6 +656,71 @@ come back, add it here in the same pull request: this file is what the next sess
   as a truncated jar (`zip END header not found` on the next attempt): `gradle.sh` deletes the
   jars that do not open before trying again. What Forge's Maven served is kept in each Forge
   node's cache entry (`mavenizer/caches/maven/forge`), so a build only asks it for what changed.
+- **Animals of unexplored land missing or drawn twice** (none far off in a world never explored,
+  or one beside the real herd as a chunk loads): they are drawn by `SeedDraws`, foreseen by the
+  server around players with the mod (`SeedMobs`) and by the client within *Mob Render Distance*,
+  through a spyglass and by *Guess Nearby Mobs* (`Foresight`: in a world played here, or from the
+  seed a server shares with `shareSeed`), in a dimension of the usual terrain only (a flat world
+  has none, the client game tests' consistent settings included). A chunk is left out once loaded
+  or saved past the step that puts its animals there; one generated with the mod off, explored,
+  or pregenerated (Chunky, Distant Horizons' `INTERNAL_SERVER` mode) has its real ones instead,
+  which only the scan or the server's memory shows. The client never draws one in a chunk it
+  holds: ask its chunk source (`level.getChunkSource().hasChunk`), never `ClientLevel.hasChunk`,
+  which always says yes. The generator a client builds from a shared seed (`SeedDraws.vanilla`,
+  the game's registries) has no biome tags: a tag is read from the client level's registries
+  (`SeedDraws.Tags`); asked of the built biome, it threw and the chunk was left out, logged once.
+  What the client foresaw is kept in `config/livinghorizon/foreseen/<server>/` (`Foresight.write`,
+  a few bytes a mob: an id is drawn again from the seed and its draw's place, the last 16 bits of
+  `SeedDraws.id`), read back on coming back; in a world played here the server first leaves out
+  the chunks generated since (`SeedMobs.unexplored`); *Forget All* deletes it.
+  The `seedmobs` scenario checks it all, the generator built from the seed against the server's,
+  and how many stand where the game puts them; the boxes and outlines show them in pink.
+- **Copies waiting to be built for minutes, or *Tick: choosing mobs* long** (thousands of mobs, guessed
+  ones with Mob Render Distance at 4000): a short saved text is read at once, never queued on the
+  game's background executor, which world generation keeps busy (a few copies a second); the
+  copies to build are sorted (in view first) before the 2 ms budget starts, which counts the
+  building alone (sorting 26 000 used it all, and those out of view were never built); a still
+  copy with nothing left to walk or turn is looked at once in sixteen ticks; the choice sorts only when something is cut or the
+  spyglass is up, and the guessed mobs are worked out again only when what they depend on
+  changed (`Foresight.wantedIfChanged`). The `seedcrowd` scenario measures it all; the
+  *Statistics...* screen counts what is kept.
+- **Nothing drawn in the world while a distance setting is hovered** (the distance preview,
+  `render/DistancePreview`): an entity's render type is fogged like an entity, and the game's
+  fog had faded a 128-block fence out completely at the default render distance. From 1.21.11
+  it is the game's debug quads (no fog, no depth written); before, their depth would hide the
+  water behind, so the entity type stays, and past the fog it shows only with Voxy or Distant
+  Horizons. Under a shader pack Iris gives debug quads no program of the pack (`IrisPipelines`
+  leaves them out) and Photon's passes paint over them: with a pack on, the glowing
+  entity type draws it on every version. The screen asks for it every frame; a time limit
+  instead made it vanish between two frames of a slow game. The `distancepreview` scenario
+  checks it.
+- **No question before Unlimited on an old version** (1.20.x: a slider dragged to its right end
+  shows *Unlimited*, nothing asks, the setting keeps its value): before 1.21 the game hands a
+  mouse release only to the widget under the cursor, and a slider dragged past its end is
+  released beside it. `SideOptionsScreen.mouseReleased` hands every release to
+  `NumberSlider.afterRelease`; a screen of numbers that is not a `SideOptionsScreen` needs the same.
+- **Distant mobs over the far terrain marked "over the void"** (dark purple boxes on terrain that
+  is drawn, *Only Over Terrain* hiding them): `DrawnGround` reads the far world with
+  `LodWorld.ground`, where only a column read as empty is void. A read that failed, no world open
+  yet, or Distant Horizons answering "failed" (`LodWorld.Unanswered`) is unknown, keeps the mob as
+  it was and is asked again a second later. As a world opens Distant Horizons answers "nothing"
+  for a while: a chunk read as empty waits 1 to 10 s, and the first one found with terrain after
+  that has every empty chunk asked again at once (`DrawnGround.revisit`). A mob with no answer
+  yet is hidden too, and marked void: its question waited behind the ground reads of thousands
+  of guessed mobs (`MobPaths`) in the readers' queue, seconds as a world opened, and
+  `/livinghorizon lod` answered late too, its probe reading hundreds of columns. Now any read of
+  the far world that finds blocks (a mob's ground above all, `MobPaths`) notes its chunk as
+  terrain (`DrawnGround.noted`), and the chunks still unknown are read a column a task on four
+  threads of their own (`LodWorld.ground`, `URGENT`, never the probe), 256 at most at a time, each
+  answered as it is read. `/livinghorizon lod` prints at once how many chunks have terrain, are
+  empty, wait or were never asked, how fast the far world reads, and where a column read for a
+  second or more waits. Never interrupt a Distant Horizons read to free a thread: it reads its
+  database, which an interrupt can close. An unanswered column (`LodWorld.Unanswered`) is never a
+  failure (`LodSource.fail` pauses every read 20 s). Even so a Distant Horizons column read through
+  its API took 278 ms (it loads or builds its whole 64-block section), and thousands of chunks took
+  minutes: `DhSource.holds` asks its database instead (`FullDataSourceV2Repo`, the generation step
+  of each column of a section, one query for 16 chunks). "its database not read" in the lod line
+  means a version whose classes differ: check them with `javap`, as for its API.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
@@ -624,7 +735,8 @@ changelog in a later commit or pull request.
 
 A pull request that changes what a player sees or feels adds its entry to
 `changelog/en.md` and `changelog/fr.md`, under `## Unreleased` / `## Prochaine version`
-and nowhere else: a dated section is a version already released, never edited. A version
+and nowhere else: a dated section is a version already released, never given an entry, and
+reworded only when the user asks for it. A version
 is split in two parts, **Server** first (what a server owner installs, sets up or gets, and
 what the mod does on a server, a LAN host included), then **Client** (what a player sees and
 feels in game, single player included): `### Server` / `### Client` (`### Serveur` /
@@ -635,21 +747,32 @@ the same order. Versions released before the split keep their flat `### New` hea
 `changelog` CI job checks all of this.
 
 The release dates the section, opens a new empty one, and posts the entries on Modrinth
-(Changelog tab), CurseForge (file page) and Discord. Players read them, so write for
-someone who has never seen the code:
+(Changelog tab), CurseForge (file page) and Discord, and the game shows them in its
+changelog screen. Players read them, so **every entry is written with the
+`changelog-writing` skill** (`.claude/skills/changelog-writing/`), which holds the style,
+the vocabulary and examples. In short:
 
-- write like Minecraft's own release notes: one short sentence per bullet, a bold subject
-  first that names what the player sees (the feature, or the bug as it looked), never a
-  version or a mod alone; where it applies goes in brackets at the end:
-  `**Distant mobs showing through hills** — distant mobs no longer show through Voxy's
-  hills (Minecraft 26.1).`
-- a fix says what was wrong and that it is gone ("no longer…"), never only the new
-  behaviour: "mobs hide behind hills" reads as a feature, not a fix.
+- a bold, benefit-first title that names the result for the player (a fix too: "Better
+  integration with Distant Horizons' fog"; a crash: "Startup crash fixed"), never a version
+  or a mod alone; then what the player now sees or can do, why it matters, any condition,
+  in one to three short sentences starting with a capital; where it applies goes last:
+  `**Mobs properly hidden by hills** — Distant mobs no longer show through Voxy's
+  hills. (Minecraft 26.1.)`
+- a fix still makes clear what was wrong ("instead of…", "no longer…"): "mobs hide behind
+  hills" alone reads as a feature, not a fix.
 - say what the player notices, not how it was done: no shader, depth, buffer, pass,
-  query, mask, class or setting internals; nothing about the debug screens. Name settings
-  and screens as the game shows them (impostors are *Simplified Mobs*, *Simplified Entities* and *Simplified Players*), and explain
-  them in plain words (flat pictures of far mobs).
+  query, mask, class or setting internals; nothing about the debug screens. Summarise
+  rather than list, and drop side details. Name settings and screens as the game shows
+  them (impostors are *Simplified Mobs*, *Simplified Entities* and *Simplified Players*),
+  and explain them in plain words (simplified images of distant mobs). A prediction is
+  never written as a certainty.
+- the same word for the same thing: mobs / créatures, entities / entités (boats,
+  vehicles, mannequins), offline players / joueurs déconnectés; French says *vous*.
 - one bullet per problem: two causes of the same symptom share one bullet.
+- say *mobs* (*créatures* in French, the game's word for mobs in each language), never
+  *animals*, in the changelog, the translations, the README and the store text; only a list
+  of kinds may name animals (villagers, animals, golems). The mobs foreseen from the seed are
+  *guessed mobs* (*créatures devinées*).
 - nothing for CI, refactors, tooling, documentation or debug-only tools.
 
 ## Issues

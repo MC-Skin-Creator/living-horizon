@@ -10,6 +10,7 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -65,6 +66,10 @@ public final class FarPlayer {
     private float knownYaw = Float.NaN;
     /** Whether they ride something, when the server says it. */
     private boolean riding = true;
+    /** Flying with an elytra, as the server says. */
+    private boolean gliding;
+    /** Where they look up or down while gliding, as the server says, and as drawn. */
+    private float knownPitch, pitch;
 
     /**
      * Not to be drawn until something new is heard: disappeared too close to have walked
@@ -297,6 +302,8 @@ public final class FarPlayer {
         }
         if (lastSeen != null) {
             puppet = copyPlayer(level, lastSeen);
+            // Gliding as they left, the body stays tilted as it was; the server says from here on.
+            pitch = lastSeen.getXRot();
             mountPuppet = lastVehicle == null ? null : copyEntity(level, lastVehicle);
             mountGuessed = mountShared = false;
             if (mountPuppet != null) {
@@ -320,6 +327,8 @@ public final class FarPlayer {
         knownY = report.y();
         knownYaw = report.yaw();
         riding = report.riding();
+        gliding = report.gliding();
+        knownPitch = report.pitch();
         return Source.SHARED;
     }
 
@@ -423,25 +432,51 @@ public final class FarPlayer {
             yaw = knownYaw;
         }
         float head = Float.isNaN(knownYaw) ? yaw : knownYaw;
-        float walk = moving ? (float) Math.min(speed * 4.0, 1.0) : 0f;
+        // Gliding, the legs hang still however fast they go.
+        float walk = moving && !gliding ? (float) Math.min(speed * 4.0, 1.0) : 0f;
+        glide(puppet);
 
         Entity mount = config.showVehicles ? mountPuppet() : null;
         if (mount != null) {
             mountYaw = yaw;
-            place(mount, x, y, z, yaw, yaw, walk);
+            place(mount, x, y, z, yaw, yaw, walk, 0f);
             Vec3 seat = riderOffset.yRot((float) -Math.toRadians(yaw));
             mount.setPos(x - seat.x, y - seat.y, z - seat.z);
-            place(puppet, x, y, z, yaw + riderYaw, head, 0f);
+            place(puppet, x, y, z, yaw + riderYaw, head, 0f, 0f);
         } else {
-            place(puppet, x, y, z, yaw, head, walk);
+            place(puppet, x, y, z, yaw, head, walk, gliding ? pitch : 0f);
         }
     }
 
-    private static void place(Entity entity, double px, double py, double pz, float body, float head, float walk) {
+    /**
+     * Flying with an elytra, as the server says: the body tilts along the flight over half a
+     * second and the wings spread, the way the game does it in the player's tick, which a
+     * puppet never runs. The pitch, which tilts the body up or down, follows the server's.
+     */
+    private void glide(RemotePlayer puppet) {
+        if (gliding) {
+            if (!puppet.isFallFlying()) puppet.startFallFlying();
+            // Lying along the flight after ten ticks; counted no further.
+            puppet.fallFlyTicks = Math.min(puppet.fallFlyTicks + 1, 200);
+            pitch += (knownPitch - pitch) * (float) (1 - Math.exp(-DT / 0.2));
+        } else {
+            if (puppet.isFallFlying()) puppet.stopFallFlying();
+            puppet.fallFlyTicks = 0;
+            pitch = knownPitch = 0f;
+        }
+        // A copy made mid-flight takes the glider's pose, and its small box: the copies keep a standing one.
+        if (puppet.getPose() == Pose.FALL_FLYING) puppet.setPose(Pose.STANDING);
+        // Before 1.21.2 the wings spread as the model is drawn.
+        //? if >=1.21.2
+        puppet.elytraAnimationState.tick();
+    }
+
+    private static void place(Entity entity, double px, double py, double pz, float body, float head, float walk,
+                              float pitch) {
         entity.setOldPosAndRot();
         entity.setPos(px, py, pz);
         entity.setYRot(head);
-        entity.setXRot(0f);
+        entity.setXRot(pitch);
         if (entity instanceof LivingEntity living) {
             living.yBodyRotO = living.yBodyRot;
             living.yHeadRotO = living.yHeadRot;
@@ -490,6 +525,8 @@ public final class FarPlayer {
             for (EquipmentSlot slot : EquipmentSlot.values()) {
                 to.setItemSlot(slot, from.getItemBySlot(slot).copy());
             }
+            // How long it has been gliding, which tilts its body: a glider copied mid-flight stays lying along it.
+            to.fallFlyTicks = from.getFallFlyingTicks();
         }
         copy.setPos(source.getX(), source.getY(), source.getZ());
         copy.setOldPosAndRot();

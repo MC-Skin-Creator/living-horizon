@@ -8,6 +8,7 @@ import fr.clixmods.livinghorizon.ambient.Ambience;
 import fr.clixmods.livinghorizon.compat.DrawnGround;
 import fr.clixmods.livinghorizon.compat.EntityCulling;
 import fr.clixmods.livinghorizon.compat.FarDepth;
+import fr.clixmods.livinghorizon.compat.IceAndFire;
 import fr.clixmods.livinghorizon.compat.OcclusionQueries;
 import fr.clixmods.livinghorizon.debug.DebugMarks;
 import fr.clixmods.livinghorizon.debug.DebugMarks.Mark;
@@ -25,6 +26,7 @@ import fr.clixmods.livinghorizon.track.MobMemory;
 import fr.clixmods.livinghorizon.track.Puppets;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
 import fr.clixmods.livinghorizon.track.RestingPuppet;
+import fr.clixmods.livinghorizon.track.SeedDraws;
 import fr.clixmods.livinghorizon.track.SharedPositions;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -34,11 +36,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.player.RemotePlayer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.renderer.entity.state.BoatRenderState;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
-import net.minecraft.client.renderer.entity.state.HumanoidRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 //? if <1.21.9 {
 /*import com.mojang.blaze3d.vertex.PoseStack;
@@ -55,7 +57,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
-import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.phys.Vec3;
@@ -502,9 +503,7 @@ public final class GhostRenderer {
                 }
                 EntityRenderState body = extract(dispatcher, puppet, partialTick);
                 EntityRenderState mountState = mount == null ? null : extract(dispatcher, mount, partialTick);
-                if (mountState != null && body instanceof HumanoidRenderState humanoid) {
-                    humanoid.isPassenger = true;
-                }
+                if (mountState != null) Posture.seat(body);
                 add(frame, minecraft, eye, body, mountState, true, Mark.PLAYER, config, player.id());
             }
         }
@@ -539,11 +538,11 @@ public final class GhostRenderer {
     }
 
     /**
-     * Pictured from several heights, not only level with it: a phantom or a ghast, and a boat or
-     * a vehicle, which an aircraft is, flying overhead or seen from a cliff.
+     * Pictured from several heights, not only level with it: a phantom or a ghast, Ice and Fire's
+     * dragons, and a boat or a vehicle, which an aircraft is, flying overhead or seen from a cliff.
      */
     private static boolean fromHeights(Entity entity) {
-        return MobFlight.pictured(entity) || !(entity instanceof LivingEntity);
+        return MobFlight.pictured(entity) || !(entity instanceof LivingEntity) || IceAndFire.flies(entity);
     }
 
     /** Past the distance set in the options; 0 is no limit. */
@@ -576,7 +575,9 @@ public final class GhostRenderer {
                 if (debug && mob.waiting()) markRemembered(mob, Mark.WAITING);
                 continue;
             }
-            if (!config.shows(creature(puppet)) || tooFar(puppet, eye, maxDistance(puppet, config))) continue;
+            // Where the spyglass looks, as far as it looks.
+            if (!config.shows(creature(puppet)) || tooFar(puppet, eye, maxDistance(puppet, config))
+                    && !memory.foresight().inScope(puppet.getX(), puppet.getY() + puppet.getBbHeight() / 2, puppet.getZ())) continue;
             // A copy walking up to its real mob stands for it, however close.
             if (!memory.handingOver(mob) && tooClose(puppet, eye, memory.nearRange(mob))) {
                 if (debug) DebugMarks.mark(puppet, Mark.NEAR);
@@ -585,14 +586,15 @@ public final class GhostRenderer {
             if (overVoid(minecraft, eye, mob.id(), puppet, config)) continue;
             if (skipped(puppet, true)) continue;
             if (occluded(mob.id(), puppet, config)) continue;
-            if (debug) DebugMarks.mark(puppet, Mark.FAKE);
+            Mark copy = SeedDraws.foreseen(mob.id()) ? Mark.FORESEEN : Mark.FAKE;
+            if (debug) DebugMarks.mark(puppet, copy);
             mob.drawn();
             if (impostor(minecraft, eye, puppet, partialTick, config)) continue;
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
             // A puppet is in no world, so never in water: fish would be drawn flopping on
             // their side, as on land. Water mobs were in water when last seen.
             if (body instanceof LivingEntityRenderState living && livesInWater(puppet)) living.isInWater = true;
-            add(frame, minecraft, eye, body, null, true, Mark.FAKE, config, mob.id());
+            add(frame, minecraft, eye, body, null, true, copy, config, mob.id());
         }
         DrawnGround.ask();
         if (debug && DebugMarks.drawing() && minecraft.level != null) {
@@ -738,29 +740,21 @@ public final class GhostRenderer {
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
             if (body == null) continue;
             EntityRenderState mountState = mount == null ? null : extract(dispatcher, mount, partialTick);
-            if (mountState != null && body instanceof HumanoidRenderState humanoid) {
-                humanoid.isPassenger = true;
-            }
+            if (mountState != null) Posture.seat(body);
             if (look != RestingPuppet.Look.STAND && look != RestingPuppet.Look.RIDE
                     && body instanceof LivingEntityRenderState living) {
                 living.yRot = 0;
                 living.xRot = 0;
                 living.walkAnimationSpeed = 0;
-                if (look == RestingPuppet.Look.BED) {
-                    // In the bed: its sleeping position, so the game lays it along the bed.
-                    living.pose = Pose.SLEEPING;
-                } else if (look == RestingPuppet.Look.LIE) {
-                    // Lying on the ground: the game lays a sleeper out along its body
-                    // rotation when there is no bed, a little lower than on a mattress.
-                    living.pose = Pose.SLEEPING;
-                    living.bedOrientation = null;
-                    body.y += LIE_LIFT;
-                }
             }
-            if (look == RestingPuppet.Look.SIT && body instanceof HumanoidRenderState humanoid) {
+            if (look == RestingPuppet.Look.BED) {
+                Posture.lie(body, true);
+            } else if (look == RestingPuppet.Look.LIE && Posture.lie(body, false)) {
+                // On the ground the game lays a sleeper a little lower than on a mattress.
+                body.y += Posture.LIE_LIFT;
+            } else if (look == RestingPuppet.Look.SIT && Posture.seat(body)) {
                 // The riding pose, without a mount: legs out in front, on the ground.
-                humanoid.isPassenger = true;
-                body.y -= SEAT_DROP;
+                body.y -= Posture.SEAT_DROP;
             }
             // Their name, marked offline, where the game would show it: close by, as for anyone.
             Component name = config.offlineNames ? body.nameTag : null;
@@ -933,7 +927,9 @@ public final class GhostRenderer {
         if (now - lastPrewarm < 1000) return;
         lastPrewarm = now;
         for (FarPlayer player : config.impostorPlayers ? FarPlayerTracker.get().players() : List.<FarPlayer>of()) {
-            if (player.puppet() != null) ImpostorAtlas.request(ImpostorKey.of(player.puppet()), player.puppet());
+            RemotePlayer puppet = player.puppet();
+            // Baked once they land: gliding, the picture would show them lying in the air.
+            if (puppet != null && !puppet.isFallFlying()) ImpostorAtlas.request(ImpostorKey.of(puppet), puppet);
         }
         if (!config.distantMobs && !config.distantEntities) return;
         for (MobMemory.Remembered mob : FarPlayerTracker.get().mobs().shown()) {
@@ -945,7 +941,7 @@ public final class GhostRenderer {
                 ImpostorAtlas.request(key, puppet);
                 continue;
             }
-            // A phantom, a ghast, an aircraft: seen from every height, as it flies about.
+            // A phantom, a ghast, a dragon, an aircraft: seen from every height, as it flies about.
             for (int height = 0; height < ImpostorViews.HEIGHTS.length; height++) {
                 ImpostorAtlas.request(ImpostorKey.seenFrom(key, height), puppet);
             }
@@ -988,7 +984,9 @@ public final class GhostRenderer {
      */
     private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config,
                                     double dx, double dy, double dz, float facing) {
+        // A glider is tilted along its flight, which no picture baked standing shows.
         if (!ImpostorAtlas.usable() || entity.isPassenger() || entity.isVehicle()
+                || entity instanceof LivingEntity glider && glider.isFallFlying()
                 || !drawable(minecraft.getEntityRenderDispatcher(), entity)) {
             return false;
         }
@@ -1001,7 +999,7 @@ public final class GhostRenderer {
                 : Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
         boolean aloft = fromHeights(entity);
         if (aloft) {
-            // A phantom, a ghast, an aircraft, often seen from below: the picture baked from the nearest
+            // A phantom, a ghast, a dragon, an aircraft, often seen from below: the picture baked from the nearest
             // height, round its middle, turned to the camera up and down as a bird's is.
             dy += ImpostorAtlas.middle(entity);
             key = seenFrom(key, entity, eye, partialTick, dx, dy, dz);
@@ -1085,12 +1083,18 @@ public final class GhostRenderer {
             if (sheet == null) return false;
             key = last.key;
         }
+        // As large as its model would be drawn: a figure turning into its picture keeps its size.
+        double boost = Apparent.boost(Apparent.extent(size), distance, pixelsPerRadian, config.minApparentPixels);
+        // Far larger on screen than its picture holds (a huge mob just past the distance): its
+        // model, rather than a picture blown up into blocks.
+        if (ImpostorThreshold.enlarged(sheet.worldSize() * boost / distance * pixelsPerRadian, sheet.tile(), last != null)) {
+            if (last != null) SHOWN.remove(shown);
+            return false;
+        }
         if (distance > drawnRange) FarDepth.needed();
         farthest = Math.max(farthest, distance);
         drawn++;
         double pull = Apparent.pull(distance, DepthFar.of(minecraft));
-        // As large as its model would be drawn: a figure turning into its picture keeps its size.
-        double boost = Apparent.boost(Apparent.extent(size), distance, pixelsPerRadian, config.minApparentPixels);
         if (facing) {
             // Turned to the camera round its middle, a picture shows what is nearer than that middle
             // (an aircraft's nose, the wheels under it) farther along the line of sight: seen from
@@ -1117,11 +1121,6 @@ public final class GhostRenderer {
         return true;
     }
 
-    /** Blocks a figure in the riding pose is lowered by to sit on the ground: the seat's height. */
-    private static final double SEAT_DROP = 0.6;
-    /** Blocks a figure lying on the ground is raised by: the game lays a sleeper a little low. */
-    private static final double LIE_LIFT = 0.13;
-
     /**
      * A player who logged off as a picture, in its posture: standing, seated on the ground,
      * lying on it or in a bed (laid along the bed, as the game lays a sleeper), or on its mount.
@@ -1130,20 +1129,20 @@ public final class GhostRenderer {
                                            RestingPuppet.Look look, float partialTick, FarConfig config) {
         return switch (look) {
             case STAND -> impostor(minecraft, eye, puppet, partialTick, config);
-            case SIT -> impostor(minecraft, eye, puppet, partialTick, config, 0, -SEAT_DROP, 0, Float.NaN);
-            // Lying pictures are baked raised (ImpostorAtlas.LYING_LIFT): lowered back here.
-            case LIE -> impostor(minecraft, eye, puppet, partialTick, config, 0, LIE_LIFT - ImpostorAtlas.LYING_LIFT, 0,
+            case SIT -> impostor(minecraft, eye, puppet, partialTick, config, 0, -Posture.SEAT_DROP, 0, Float.NaN);
+            // Lying pictures are baked raised (Posture.BAKED_LIFT): lowered back here.
+            case LIE -> impostor(minecraft, eye, puppet, partialTick, config, 0, Posture.LIE_LIFT - Posture.BAKED_LIFT, 0,
                     Float.NaN);
             case BED -> {
                 Direction bed = puppet.getBedOrientation();
                 if (bed == null) {
-                    yield impostor(minecraft, eye, puppet, partialTick, config, 0, LIE_LIFT - ImpostorAtlas.LYING_LIFT, 0,
+                    yield impostor(minecraft, eye, puppet, partialTick, config, 0, Posture.LIE_LIFT - Posture.BAKED_LIFT, 0,
                             Float.NaN);
                 }
                 // As the game lays one: its head on the pillow, its body along the bed.
                 double back = puppet.getEyeHeight() - 0.1;
                 yield impostor(minecraft, eye, puppet, partialTick, config, -bed.getStepX() * back,
-                        -ImpostorAtlas.LYING_LIFT, -bed.getStepZ() * back, sleeping(bed));
+                        -Posture.BAKED_LIFT, -bed.getStepZ() * back, sleeping(bed));
             }
             case RIDE -> mount != null && impostorRiding(minecraft, eye, puppet, mount, partialTick, config);
         };

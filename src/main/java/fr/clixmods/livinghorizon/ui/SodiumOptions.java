@@ -5,6 +5,7 @@ import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.QualityPreset;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
+import fr.clixmods.livinghorizon.track.Foresight;
 import fr.clixmods.livinghorizon.track.MobScan;
 import net.caffeinemc.mods.sodium.api.config.ConfigEntryPoint;
 import net.caffeinemc.mods.sodium.api.config.ConfigState;
@@ -45,6 +46,9 @@ public final class SodiumOptions implements ConfigEntryPoint {
 
     private final StorageEventHandler storage = this::afterSave;
 
+    /** Settings set to no limit on the page, kept once the player says yes: {@link #asking}. */
+    private final java.util.Map<String, Runnable> held = new java.util.LinkedHashMap<>();
+
     @Override
     public void registerConfigLate(ConfigBuilder builder) {
         FarConfig defaults = new FarConfig();
@@ -72,7 +76,8 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 () -> FarConfig.get().easterEggs)))
                 .addOptionGroup(b.createOptionGroup()
                         .addOption(opens(b, "debug", DebugScreen::new))
-                        .addOption(button(b, "discord", DiscordLink::open))
+                        // Only Discord here: the store pages and the website stay on the mod's own screen.
+                        .addOption(button(b, "discord", parent -> LinkScreen.open(parent, ProjectLink.DISCORD)))
                         .addOption(opens(b, "changelog", ChangelogScreen::new))
                         .addOption(button(b, "restoreDefaults", parent -> confirm(parent, "restoreDefaults", () -> {
                             FarConfig.reset(MobList.all());
@@ -89,7 +94,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 () -> FarConfig.get().impostorEntities))
                         .addOption(bool(b, "impostorPlayers", d.impostorPlayers, v -> FarConfig.get().impostorPlayers = v,
                                 () -> FarConfig.get().impostorPlayers))
-                        .addOption(blocks(b, "impostorDistance", 32, 2000, d.impostorDistance,
+                        .addOption(blocks(b, "impostorDistance", 0, FarConfig.MAX_IMPOSTOR_DISTANCE, d.impostorDistance,
                                 v -> FarConfig.get().impostorDistance = v, () -> FarConfig.get().impostorDistance)
                                 .setEnabledProvider(any(PICTURED), ids(PICTURED)))
                         .addOption(integer(b, "impostorPixels", 0, FarConfig.MAX_IMPOSTOR_PIXELS, d.impostorPixels,
@@ -117,14 +122,13 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 () -> FarConfig.get().enabled))
                         .addOption(bool(b, "showVehicles", d.showVehicles, v -> FarConfig.get().showVehicles = v,
                                 () -> FarConfig.get().showVehicles))
-                        .addOption(blocks(b, "playerMaxDistance", 0, 4000, d.playerMaxDistance,
+                        .addOption(reach(b, "playerMaxDistance", d.playerMaxDistance,
                                 v -> FarConfig.get().playerMaxDistance = v, () -> FarConfig.get().playerMaxDistance)))
                 .addOptionGroup(b.createOptionGroup()
                         .addOption(bool(b, "offlinePlayers", d.offlinePlayers, v -> FarConfig.get().offlinePlayers = v,
                                 () -> FarConfig.get().offlinePlayers))
-                        .addOption(integer(b, "maxOfflinePlayers", 0, FarConfig.UNLIMITED_OFFLINE, d.maxOfflinePlayers,
-                                v -> FarConfig.get().maxOfflinePlayers = v, () -> FarConfig.get().maxOfflinePlayers,
-                                plain("maxOfflinePlayers", 0, true))
+                        .addOption(count(b, "maxOfflinePlayers", FarConfig.MAX_OFFLINE, FarConfig.UNLIMITED_OFFLINE, d.maxOfflinePlayers,
+                                v -> FarConfig.get().maxOfflinePlayers = v, () -> FarConfig.get().maxOfflinePlayers)
                                 .setEnabledProvider(on("offlinePlayers"), id("offlinePlayers")))
                         .addOption(bool(b, "offlineLife", d.offlineLife, v -> FarConfig.get().offlineLife = v,
                                 () -> FarConfig.get().offlineLife)
@@ -150,25 +154,25 @@ public final class SodiumOptions implements ConfigEntryPoint {
                 .addOptionGroup(b.createOptionGroup().setName(Component.translatable(KEY + "mobs.creatures"))
                         .addOption(bool(b, "distantMobs", d.distantMobs, v -> FarConfig.get().distantMobs = v,
                                 () -> FarConfig.get().distantMobs))
-                        .addOption(integer(b, "maxDistantMobs", 0, FarConfig.UNLIMITED_MOBS, d.maxDistantMobs,
-                                v -> FarConfig.get().maxDistantMobs = v, () -> FarConfig.get().maxDistantMobs,
-                                plain("maxDistantMobs", 0, true)))
-                        .addOption(blocks(b, "mobMaxDistance", 0, 4000, d.mobMaxDistance,
-                                v -> FarConfig.get().mobMaxDistance = v, () -> FarConfig.get().mobMaxDistance))
+                        .addOption(bool(b, "seedMobs", d.seedMobs,
+                                v -> FarConfig.get().seedMobs = v, () -> FarConfig.get().seedMobs))
+                        .addOption(count(b, "maxDistantMobs", FarConfig.MAX_MOBS, FarConfig.UNLIMITED_MOBS, d.maxDistantMobs,
+                                v -> FarConfig.get().maxDistantMobs = v, () -> FarConfig.get().maxDistantMobs))
                         .addOption(bool(b, "rememberNamedMobs", d.rememberNamedMobs,
                                 v -> FarConfig.get().rememberNamedMobs = v, () -> FarConfig.get().rememberNamedMobs))
+                        .addOption(reach(b, "mobMaxDistance", d.mobMaxDistance,
+                                v -> FarConfig.get().mobMaxDistance = v, () -> FarConfig.get().mobMaxDistance))
                         .addOption(integer(b, "animationMinPixels", 0, 40, d.animationMinPixels,
                                 v -> FarConfig.get().animationMinPixels = v, () -> FarConfig.get().animationMinPixels,
                                 unit("animationMinPixels", "pixels", 0)))
-                        .addOption(blocks(b, "animationMaxDistance", 0, 4000, d.animationMaxDistance,
+                        .addOption(reach(b, "animationMaxDistance", d.animationMaxDistance,
                                 v -> FarConfig.get().animationMaxDistance = v, () -> FarConfig.get().animationMaxDistance)))
                 .addOptionGroup(b.createOptionGroup().setName(Component.translatable(KEY + "mobs.entities"))
                         .addOption(bool(b, "distantEntities", d.distantEntities, v -> FarConfig.get().distantEntities = v,
                                 () -> FarConfig.get().distantEntities))
-                        .addOption(integer(b, "maxDistantEntities", 0, FarConfig.UNLIMITED_MOBS, d.maxDistantEntities,
-                                v -> FarConfig.get().maxDistantEntities = v, () -> FarConfig.get().maxDistantEntities,
-                                plain("maxDistantEntities", 0, true)))
-                        .addOption(blocks(b, "entityMaxDistance", 0, 4000, d.entityMaxDistance,
+                        .addOption(count(b, "maxDistantEntities", FarConfig.MAX_MOBS, FarConfig.UNLIMITED_MOBS, d.maxDistantEntities,
+                                v -> FarConfig.get().maxDistantEntities = v, () -> FarConfig.get().maxDistantEntities))
+                        .addOption(reach(b, "entityMaxDistance", d.entityMaxDistance,
                                 v -> FarConfig.get().entityMaxDistance = v, () -> FarConfig.get().entityMaxDistance)));
     }
 
@@ -195,7 +199,32 @@ public final class SodiumOptions implements ConfigEntryPoint {
                             FarConfig.save();
                             minecraft.setScreen(null);
                             MobScan.start(minecraft, FarConfig.get().scanRadius);
+                        }))
+                .addOption(b.createIntegerOption(id("foreseeRadius"))
+                        .setName(Component.translatable(KEY + "foreseeRadius"))
+                        .setTooltip(tooltip("foreseeRadius"))
+                        .setRange(Foresight.MIN_RADIUS, Foresight.MAX_RADIUS, 1)
+                        .setValueFormatter(v -> Component.translatable(KEY + "foreseeRadius.value", v))
+                        .setDefaultValue(d.foreseeRadius)
+                        .setStorageHandler(storage)
+                        .setBinding(v -> FarConfig.get().foreseeRadius = v,
+                                () -> Math.clamp(FarConfig.get().foreseeRadius, Foresight.MIN_RADIUS, Foresight.MAX_RADIUS)))
+                .addOption(b.createExternalButtonOption(id("foreseeMobs"))
+                        .setName(Component.translatable(KEY + "foreseeMobs"))
+                        .setTooltip(Component.translatable(KEY + "foreseeMobs.tooltip"))
+                        .setEnabledProvider(s -> foreseeable(), ConfigState.UPDATE_ON_REBUILD)
+                        .setScreenConsumer(parent -> {
+                            Minecraft minecraft = Minecraft.getInstance();
+                            if (!foreseeable()) return;
+                            FarConfig.save();
+                            minecraft.setScreen(null);
+                            FarPlayerTracker.get().mobs().foresight().start(minecraft, FarConfig.get().foreseeRadius);
                         }));
+    }
+
+    /** Whether <i>Guess Nearby Mobs</i> can run here: a world played here, or a server sharing its seed. */
+    private static boolean foreseeable() {
+        return FarPlayerTracker.get().mobs().foresight().available(Minecraft.getInstance());
     }
 
     private OptionPageBuilder birds(ConfigBuilder b, FarConfig d) {
@@ -239,6 +268,41 @@ public final class SodiumOptions implements ConfigEntryPoint {
             reload();
         }
         FarConfig.save();
+        if (!held.isEmpty()) askUnlimited();
+    }
+
+    /**
+     * The right end of a slider that asks first ({@link NumberSlider#asksBeforeUnlimited}): Sodium's
+     * page cannot ask as the slider moves, so the value is held at "Apply" and set only once the
+     * player says yes. No puts the page back to what the settings keep.
+     */
+    private IntConsumer asking(String name, int top, IntConsumer set, IntSupplier shown) {
+        if (!NumberSlider.asksBeforeUnlimited(name)) return set;
+        return v -> {
+            held.remove(name);
+            if (v >= top && shown.getAsInt() < top) held.put(name, () -> set.accept(v));
+            else set.accept(v);
+        };
+    }
+
+    private void askUnlimited() {
+        java.util.List<Runnable> actions = new java.util.ArrayList<>(held.values());
+        net.minecraft.network.chat.MutableComponent names = Component.empty();
+        for (String name : held.keySet()) {
+            if (!names.getSiblings().isEmpty()) names.append(", ");
+            names.append(Component.translatable(KEY + name));
+        }
+        held.clear();
+        Minecraft minecraft = Minecraft.getInstance();
+        Screen back = minecraft.screen;
+        minecraft.setScreen(new Confirm(yes -> {
+            if (yes) {
+                actions.forEach(Runnable::run);
+                FarConfig.save();
+            }
+            reload();
+            minecraft.setScreen(back);
+        }, Component.translatable(KEY + "unlimited", names), Component.translatable(KEY + "unlimited.confirm")));
     }
 
     /**
@@ -268,6 +332,8 @@ public final class SodiumOptions implements ConfigEntryPoint {
 
     private OptionBuilder integer(ConfigBuilder b, String name, int min, int max, int fallback, IntConsumer set,
                                   IntSupplier get, ControlValueFormatter format) {
+        // A value out of range in the file would read as the default: shown at the nearest end instead.
+        IntSupplier shown = () -> Math.clamp(get.getAsInt(), min, max);
         return b.createIntegerOption(id(name))
                 .setName(Component.translatable(KEY + name))
                 .setTooltip(tooltip(name))
@@ -275,8 +341,53 @@ public final class SodiumOptions implements ConfigEntryPoint {
                 .setValueFormatter(format)
                 .setDefaultValue(Math.clamp(fallback, min, max))
                 .setStorageHandler(storage)
-                // A value out of range in the file would read as the default: shown at the nearest end instead.
-                .setBinding(set::accept, () -> Math.clamp(get.getAsInt(), min, max));
+                .setBinding(asking(name, max, set, shown)::accept, shown::getAsInt);
+    }
+
+    /**
+     * A count from 0 to {@code last}, then no limit at the right end, read as its {@code .max} text,
+     * as {@link FarConfigScreen#integer}: the settings keep no limit as {@code unlimited}. A typed
+     * number past {@code last}, from the mod's screen, is shown at {@code last} and kept unless moved.
+     */
+    private OptionBuilder count(ConfigBuilder b, String name, int last, int unlimited, int fallback, IntConsumer set,
+                                IntSupplier get) {
+        int top = last + 1;
+        IntSupplier shown = () -> {
+            int value = get.getAsInt();
+            return value >= unlimited ? top : Math.clamp(value, 0, last);
+        };
+        return b.createIntegerOption(id(name))
+                .setName(Component.translatable(KEY + name))
+                .setTooltip(tooltip(name))
+                .setRange(0, top, 1)
+                .setValueFormatter(v -> v >= top ? Component.translatable(KEY + name + ".max")
+                        : v == 0 ? Component.translatable(KEY + name + ".zero")
+                        : Component.literal(String.valueOf(typedPast(v, last, unlimited, get))))
+                .setDefaultValue(fallback >= unlimited ? top : Math.clamp(fallback, 0, last))
+                .setStorageHandler(storage)
+                .setBinding(asking(name, top, beyond(last, unlimited, v -> set.accept(v >= top ? unlimited : v), get), shown)::accept,
+                        shown::getAsInt);
+    }
+
+    /**
+     * What a row at its last place reads: the number the settings keep when one was typed past it
+     * on the mod's screen, which {@link #beyond} leaves as it is.
+     */
+    private static int typedPast(int v, int last, int unlimited, IntSupplier get) {
+        int kept = get.getAsInt();
+        return v == last && kept > last && kept < unlimited ? kept : v;
+    }
+
+    /**
+     * A number typed past the slider's last one on the mod's screen, which Sodium's row shows at
+     * that last place: left as it is when the row is saved still there.
+     */
+    private static IntConsumer beyond(int last, int unlimited, IntConsumer set, IntSupplier get) {
+        return v -> {
+            int kept = get.getAsInt();
+            if (v == last && kept > last && kept < unlimited) return;
+            set.accept(v);
+        };
     }
 
     /** A distance in blocks, "512 Blocks", the zero of a range from 0 read as its {@code .zero} text. */
@@ -285,16 +396,28 @@ public final class SodiumOptions implements ConfigEntryPoint {
         return integer(b, name, min, max, fallback, set, get, unit(name, "blocks", min));
     }
 
+    /** A distance up to {@link FarConfig#MAX_DISTANCE}, then no limit at the right end, as {@link FarConfigScreen#reach}. */
+    private OptionBuilder reach(ConfigBuilder b, String name, int fallback, IntConsumer set, IntSupplier get) {
+        int top = FarConfig.MAX_DISTANCE + 1;
+        IntSupplier shown = () -> {
+            int value = get.getAsInt();
+            return value <= 0 ? top : Math.clamp(value, 1, FarConfig.MAX_DISTANCE);
+        };
+        return b.createIntegerOption(id(name))
+                .setName(Component.translatable(KEY + name))
+                .setTooltip(tooltip(name))
+                .setRange(1, top, 1)
+                .setValueFormatter(v -> v >= top ? Component.translatable(KEY + name + ".zero")
+                        : Component.translatable(KEY + "blocks", typedPast(v, FarConfig.MAX_DISTANCE, Integer.MAX_VALUE, get)))
+                .setDefaultValue(fallback <= 0 ? top : Math.clamp(fallback, 1, FarConfig.MAX_DISTANCE))
+                .setStorageHandler(storage)
+                .setBinding(asking(name, top, beyond(FarConfig.MAX_DISTANCE, Integer.MAX_VALUE,
+                        v -> set.accept(v >= top ? 0 : v), get), shown)::accept, shown::getAsInt);
+    }
+
     /** A number in a unit, as {@link FarConfigScreen} writes it ("30s", "6px", "100%"); the zero of a range from 0 as its text. */
     private static ControlValueFormatter unit(String name, String unit, int min) {
         return v -> v == 0 && min == 0 ? Component.translatable(KEY + name + ".zero") : Component.translatable(KEY + unit, v);
-    }
-
-    /** A bare number; the zero of a range from 0 and, with {@code maxIsUnlimited}, the top read as text. */
-    private static ControlValueFormatter plain(String name, int min, boolean maxIsUnlimited) {
-        return v -> v == 0 && min == 0 ? Component.translatable(KEY + name + ".zero")
-                : maxIsUnlimited && v >= FarConfig.UNLIMITED_MOBS ? Component.translatable(KEY + name + ".max")
-                : Component.literal(String.valueOf(v));
     }
 
     /** A button opening one of the mod's screens, which comes back to Sodium's when closed. */

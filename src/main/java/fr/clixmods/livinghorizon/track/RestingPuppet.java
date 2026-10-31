@@ -2,7 +2,9 @@ package fr.clixmods.livinghorizon.track;
 
 import com.mojang.authlib.GameProfile;
 import fr.clixmods.livinghorizon.FarConfig;
+import fr.clixmods.livinghorizon.compat.LodWorld;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.player.RemotePlayer;
@@ -12,6 +14,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Avatar;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -36,6 +39,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -115,6 +119,8 @@ public final class RestingPuppet extends RemotePlayer {
     private static final int SHORE = 10;
     /** Ticks between two looks for a shore, and between two looks at the water under its boat. */
     private static final int SHORE_WAIT = 20;
+    /** The surface of still water open to the sky, above the bottom of its block. */
+    private static final double WATER_TOP = 8 / 9.0;
     /** Colours of the fire resistance and water breathing potions' swirls. */
     private static final int FIRE_RESISTANCE = 0xFF9900, WATER_BREATHING = 0x98DAC0;
 
@@ -138,6 +144,14 @@ public final class RestingPuppet extends RemotePlayer {
     /** Its spot being in water: the nearest shore, where it rests instead. */
     private @Nullable Vec3 shore;
     private int shoreWait, dryWait;
+    /** Where it was found to rest, from the blocks: kept with its spot ({@link #restFound}). */
+    private RestingPlayers.@Nullable Rest rest;
+    private boolean restFound;
+    /** Its shore or boat guessed from the far world, to be found again from the blocks once loaded. */
+    private boolean guessed;
+    /** The far world was asked what is under its spot; its answer, once there. */
+    private boolean askedFar;
+    private LodWorld.@Nullable Surface farSurface;
 
     private boolean placed;
     private boolean lively;
@@ -190,12 +204,17 @@ public final class RestingPuppet extends RemotePlayer {
         this.scan = Math.floorMod(spot.name().hashCode(), 5);
         setSilent(true);
         getEntityData().set(Avatar.DATA_PLAYER_MODE_CUSTOMISATION, (byte) 0x7F);
-        snap(spot.x(), spot.y(), spot.z());
+        this.mount = RestingMount.of(level, spot, random);
+        // Where it was found to rest before: there at once, near or far, loaded or not.
+        rest = spot.rest();
+        if (rest != null && rest.boat()) boat = RestingMount.boat(level, spot, rest.y(), random);
+        else if (rest != null) shore = rest.at();
+        Vec3 at = place();
+        snap(at.x, at.y, at.z);
         setYRot(spot.yaw());
         yBodyRot = yBodyRotO = spot.yaw();
         yHeadRot = yHeadRotO = spot.yaw();
         timer = 40 + random.nextInt(80);
-        this.mount = RestingMount.of(level, spot, random);
         // Dressed as they were when they logged off; the sword and shield it draws are its own.
         Gear.apply(this, spot.gear(), level.registryAccess());
         held = getItemBySlot(EquipmentSlot.MAINHAND).copy();
@@ -322,7 +341,7 @@ public final class RestingPuppet extends RemotePlayer {
         if (lively != config.offlineLife) {
             lively = config.offlineLife;
             calmDown(beds);
-            if (!lively) snap(spot.x(), spot.y(), spot.z());
+            if (!lively) snap(place().x, place().y, place().z);
             placed = false;
             if (mount != null) mount.reset();
             if (boat != null) boat.reset();
@@ -337,7 +356,8 @@ public final class RestingPuppet extends RemotePlayer {
             calmDown(beds);
             placed = false;
             if (carrier != null) carrier.reset();
-            snap(spot.x(), spot.y(), spot.z());
+            Vec3 at = place();
+            snap(at.x, at.y, at.z);
         }
         if (riding && carried != null) {
             ride(level, carried, config, work);
@@ -360,7 +380,7 @@ public final class RestingPuppet extends RemotePlayer {
             start(Activity.IDLE, 20 + random.nextInt(40));
         }
 
-        if (!level.hasChunkAt(blockPosition())) {
+        if (!Footing.loaded(level, blockPosition())) {
             // Nothing known of the blocks here: it only stands, sits or sleeps where it is.
             placed = false;
             afar(night);
@@ -463,10 +483,12 @@ public final class RestingPuppet extends RemotePlayer {
     // --- Out of the water -------------------------------------------------------------------
 
     /**
-     * Its spot in water, or over it (water is what it falls onto): the nearest shore within
-     * {@link #SHORE} blocks, where it rests instead, or a boat when there is none; decided
-     * once the blocks around are all there, again when the shore is gone. Out of the boat
-     * once the water at its spot is gone. Looked at once a second.
+     * Where it rests, decided from the blocks once those around its spot are all there, again
+     * when that changes; looked at once a second. Its spot in the air: the ground under it.
+     * In water, or over it (water is what it falls onto): the nearest shore within
+     * {@link #SHORE} blocks, or a boat on the surface when there is none, left once the water
+     * at its spot is gone. Before the blocks are there, a guess from the far world
+     * ({@link #guess}). What it finds is kept with its spot ({@link #restFound}).
      */
     private void keepDry(ClientLevel level) {
         if (dryWait > 0) {
@@ -474,26 +496,92 @@ public final class RestingPuppet extends RemotePlayer {
             return;
         }
         dryWait = SHORE_WAIT;
-        if (!level.hasChunkAt(home())) return;
+        if (!Footing.loaded(level, home())) {
+            if (rest == null) guess(level);
+            return;
+        }
         double x = spot.x(), y = landing(level), z = spot.z();
-        boolean wet = Footing.wet(blocks, x, y, z);
-        if (boat != null) {
-            if (!wet) boat = null;
+        if (!Footing.wet(blocks, x, y, z)) {
+            boat = null;
+            guessed = false;
+            // In the air: on the ground under it. On its spot: nowhere else.
+            Vec3 ground = y < spot.y() - 1e-3 ? new Vec3(x, y, z) : null;
+            if (!Objects.equals(shore, ground)) forgetShore(ground);
+            found(ground == null ? null : new RestingPlayers.Rest(x, y, z, false));
             return;
         }
-        if (!wet) {
-            if (shore != null) forgetShore(null);
-            return;
-        }
+        if (boat != null && !guessed) return;
         Vec3 known = shore;
-        if (known != null && !Double.isNaN(Footing.stand(blocks, (int) Math.floor(known.x),
+        if (known != null && !guessed && !Double.isNaN(Footing.stand(blocks, (int) Math.floor(known.x),
                 (int) Math.floor(known.y + 0.01), (int) Math.floor(known.z)))) {
             return;
         }
         if (!Footing.loadedAround(blocks, x, z, SHORE)) return;
+        guessed = false;
         Vec3 land = Footing.shore(blocks, x, y, z, SHORE);
-        forgetShore(land);
-        if (land == null) boat = RestingMount.boat(level, spot, Footing.surface(blocks, x, y, z), random);
+        if (land != null) {
+            boat = null;
+            forgetShore(land);
+            found(new RestingPlayers.Rest(land.x, land.y, land.z, false));
+            return;
+        }
+        double surface = Footing.surface(blocks, x, y, z);
+        forgetShore(null);
+        boat = RestingMount.boat(level, spot, surface, random);
+        found(boat == null ? null : new RestingPlayers.Rest(x, surface, z, true));
+    }
+
+    /** Where it was found to rest, to be kept with its spot. */
+    private void found(RestingPlayers.@Nullable Rest now) {
+        if (Objects.equals(rest, now)) return;
+        rest = now;
+        restFound = true;
+    }
+
+    /** Whether it found where it rests since last asked: {@link #rest()}, to keep with its spot. */
+    boolean restFound() {
+        boolean found = restFound;
+        restFound = false;
+        return found;
+    }
+
+    /** Where it rests, when it is not its spot. */
+    RestingPlayers.@Nullable Rest rest() {
+        return rest;
+    }
+
+    /**
+     * Its spot far away, its blocks not loaded and where it rests not found yet: what the far
+     * world (Voxy, Distant Horizons) holds under it, asked once. A spot high above the ground
+     * - a player who logged off flying - rests on it; a spot on water or over it rests in a
+     * boat. A guess only: found again from the blocks once they are loaded.
+     */
+    private void guess(ClientLevel level) {
+        LodWorld.Surface under = farSurface;
+        if (under != null) {
+            farSurface = null;
+            double top = under.y() + 1;
+            if (under.water() && top < spot.y() + 4) {
+                // On the water or above it, not deep under it: afloat, as it would be once the blocks are there.
+                boat = RestingMount.boat(level, spot, under.y() + WATER_TOP, random);
+                guessed = boat != null;
+            } else if (!under.water() && top < spot.y() - 1) {
+                forgetShore(new Vec3(spot.x(), top, spot.z()));
+                guessed = true;
+                if (!riding) snap(spot.x(), top, spot.z());
+            }
+            return;
+        }
+        if (askedFar || boat != null || shore != null) return;
+        askedFar = true;
+        LodWorld.surface(Mth.floor(spot.x()), Mth.floor(spot.z()))
+                .thenAcceptAsync(found -> farSurface = found.orElse(null), Minecraft.getInstance());
+    }
+
+    /** Where it rests while not riding: its spot, or the ground or shore it rests on instead. */
+    private Vec3 place() {
+        Vec3 land = shore;
+        return land != null ? land : new Vec3(spot.x(), spot.y(), spot.z());
     }
 
     /** Where its spot comes to rest: the spot, or what is under it when it is in the air, water included. */
@@ -1166,7 +1254,7 @@ public final class RestingPuppet extends RemotePlayer {
      * to once it has room and something under it again.
      */
     private void sit(ClientLevel level) {
-        if (!level.hasChunkAt(BlockPos.containing(spot.x(), spot.y(), spot.z()))) {
+        if (!Footing.loaded(level, spot.x(), spot.z())) {
             placed = false;
             return;
         }
