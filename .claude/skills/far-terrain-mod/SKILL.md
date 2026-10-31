@@ -1,6 +1,6 @@
 ---
 name: far-terrain-mod
-description: Add or assess support for a mod that draws terrain past the render distance (Voxy, Distant Horizons, Lodistance, any new LOD mod) - the safety check of a jar without source, how to find out how it draws, the order of the work, and the checklist of everything Living Horizon does for Voxy and Distant Horizons, filled in per mod to say how well it is supported. Use when an issue asks for compatibility with such a mod, when a new version of one breaks something, or when the user asks how well a far-terrain mod is supported or what is left to support it.
+description: Add or assess support for a mod that draws terrain past the render distance (Voxy, Distant Horizons, Lodistance, any new LOD mod) - the safety check of a jar without source, how to find out how it draws, the order of the work, and the checklist of everything Living Horizon does for Voxy and Distant Horizons, filled in per mod to say how well it is supported, and where to list it for players (README, store, metadata) once it is. Use when an issue asks for compatibility with such a mod, when a new version of one breaks something, or when the user asks how well a far-terrain mod is supported or what is left to support it.
 ---
 
 # Supporting a far-terrain mod
@@ -77,6 +77,10 @@ shows the problem (the `game-test` skill; a jar from outside Modrinth goes in
 4. **Fog** (`compat/FarFog`, `DhFog`): distant mobs fogged like its terrain.
 5. **Shader packs and Vulkan**: each checked, or left alone with the reason in `FarDepth.state()`.
 6. **Everything around it**: the items of part 7 of the checklist.
+7. **Tell the players** (part 8 of the checklist), once the mod is well supported: its terrain
+   hides distant figures, checked in game, and distant mobs walk on it. Before that, it stays
+   out of the README and the store, and an issue under the `mod compatibility` label says
+   where it stands.
 
 ## Checklist
 
@@ -88,7 +92,6 @@ shows the problem (the `game-test` skill; a jar from outside Modrinth goes in
 | Its line in `/livinghorizon lod`: linked, not installed, or off and why | `Links.report()` | Run the command with and without the mod |
 | Fallbacks for its older and newer versions, each noted once | `Links.optional…`, `Status.fallback` | `javap` on the classes it reaches, across the versions players run |
 | Counters on our mixins into it, which stay at 0 when a method was renamed | `VoxyLink.targetHooked`, `DhLink.fadeHooked` | The counters in `/livinghorizon lod` while it draws |
-| `suggests` in the mod metadata, for the loaders it ships on | `fabric.mod.json`, `mods.toml`, `neoforge.mods.toml` | Read them |
 | Loaders and game versions covered, said in the docs | its section in `docs/technical.md` | Build each node it ships for |
 
 ### 2. Its world (`LodSource`)
@@ -157,6 +160,21 @@ shows the problem (the `game-test` skill; a jar from outside Modrinth goes in
 | Every tooltip and message that names the far-terrain mods, in every language: `grep -n "Distant Horizons" src/main/resources/assets/livinghorizon/lang/en_us.json` finds them | `lang/` |
 | A changelog entry in both languages, with where it works ("Minecraft 26.3, with OpenGL and no shader pack") | `changelog/` |
 | Its column in `support.md` | this skill |
+
+### 8. Telling the players, once it is well supported
+
+Written with the `readme-writing` skill, in the same pull request as the support or the one
+that makes it good enough. Say where it works and where not yet, plainly (loader, game
+versions, OpenGL or Vulkan, shader packs), and nothing more.
+
+| Item | Where |
+|---|---|
+| Its row in the *Compatibility* table: where it works, and that mobs and players are visible on its terrain | `README.md` |
+| Named as optional in *Requirements* and *Getting started*, with a link to its page | `README.md`, `store/listing.md` |
+| Named in the FAQ (*Does it work with my mod?*, *Do I need Voxy, Distant Horizons or …?*) | `README.md`, `store/listing.md` |
+| An optional relation on each platform it is published on (CurseForge, Modrinth), and in the Nexus Mods requirements | `store/listing.md` (pasted by hand: no workflow updates the pages) |
+| `suggests` in the mod metadata, for the loaders it ships on | `fabric.mod.json`, `mods.toml`, `neoforge.mods.toml` |
+| The changelog entry says it is supported now, and where | `changelog/` |
 
 ## Reporting how well a mod is supported
 

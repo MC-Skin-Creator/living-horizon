@@ -17,7 +17,6 @@ Lodistance: as in PR #311, not merged yet.
 | Line in `/livinghorizon lod` | ✅ | ✅ | ✅ |
 | Fallbacks across its versions | ✅ (0.2.18's rename) | ✅ (2.3 to 3.3.4) | ❌ 0.8.7 only |
 | Counters on our mixins into it | ✅ `renderOpaque` | ✅ its fades | — no mixin into it |
-| `suggests` in the metadata | ✅ | ✅ | ✅ Fabric |
 | Loaders and versions | several | several | Fabric 26.3 only (all it ships) |
 
 ## 2. Its world
@@ -82,6 +81,14 @@ Lodistance: as in PR #311, not merged yet.
 | `DepthMathTest` case | ✅ | ✅ | ✅ |
 | `docs/technical.md`, CLAUDE.md checklist | ✅ | ✅ | ✅ |
 | Tooltips in every language, changelog | ✅ | ✅ | ✅ |
+
+## 8. Telling the players
+
+| Item | Voxy | Distant Horizons | Lodistance |
+|---|---|---|---|
+| README: *Compatibility*, *Requirements*, *Getting started*, FAQ | ✅ | ✅ | ✅ |
+| Store description and platform relations | ✅ | ✅ | ✅ (to paste by hand) |
+| `suggests` in the metadata | ✅ | ✅ | ✅ Fabric |
 
 ## Left to do
 
