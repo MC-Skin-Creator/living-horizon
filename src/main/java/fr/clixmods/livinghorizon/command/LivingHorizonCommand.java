@@ -106,8 +106,8 @@ public final class LivingHorizonCommand {
     }
 
     /** The command tree, for a dispatcher whose sources {@code source} turns into a {@link Source}. */
-    /** The last easter egg's number. */
-    private static final int MORE_EGGS = 21;
+    /** The easter eggs' numbers from 9 on: 20 is no more. */
+    private static final int[] MORE_EGGS = {9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21};
 
     public static <S> LiteralArgumentBuilder<S> tree(Function<S, Source> source) {
         // One word per kind of bird, so that the chat offers them all.
@@ -117,8 +117,7 @@ public final class LivingHorizonCommand {
         }
         LiteralArgumentBuilder<S> root = LiteralArgumentBuilder.<S>literal(LivingHorizonClient.MOD_ID);
         // The easter eggs from 9 on, by number, for whoever works on them (EGGS) as the others.
-        for (int number = 9; number <= MORE_EGGS; number++) {
-            int egg = number;
+        for (int egg : MORE_EGGS) {
             root.then(LiteralArgumentBuilder.<S>literal("ee" + egg).requires(c -> EGGS).executes(c -> egg(source.apply(c.getSource()),
                     "ee" + egg, (level, player) -> {
                         Egg found = FarPlayerTracker.get().ambience().egg(egg);

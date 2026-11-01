@@ -1,17 +1,17 @@
 package fr.clixmods.livinghorizon.ambient;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.math.Axis;
 import fr.clixmods.livinghorizon.FarConfig;
-import fr.clixmods.livinghorizon.render.DepthFar;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
+import fr.clixmods.livinghorizon.track.Puppets;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -22,24 +22,24 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Easter egg 10: now and then, by day or by night, a grey figure of stone stands still on a
- * far hill or open ground in sight of the player, facing them. It never moves while it is on
- * their screen; but each time they look away and back, it has: a few blocks closer, its arms
- * or its head another way. Once it stands near, the next time they look away it is gone for
+ * Easter egg 10: now and then, by day or by night, a statue - a player carved in stone, in
+ * marble or in mossy stone, one after the other - stands still on a far hill or open ground in
+ * sight of the player, facing them. It never moves while it is on their screen; but each time
+ * they look away and back, it has: a few blocks closer, crouched, its head or its body another
+ * way. Once it stands near, the next time they look away it is gone for
  * good; gone as well after ten minutes, or if they walk up to it. Only on this screen.
  *
  * <p>Its spots are read in the loaded chunks or the far world ({@link Columns}), dry ground in
  * sight ({@link Sight}). It is on screen when it is inside the player's view, the field of
  * view of the options and a margin around it: a move is read once it has left it, and made
- * only while it, and the spot it goes to, are both off the screen. The figure is drawn of
- * solid boxes in two greys, in the light where it stands.
+ * only while it, and the spot it goes to, are both off the screen. The statue is a player of
+ * no one in one of the mod's statue skins ({@link StatueFigure}), drawn by the game.
  *
  * <p>Secret: nothing a player reads (settings, README, changelog) says what it is.
  */
 public final class Statue implements Egg {
     private static final int NUMBER = 10;
     /** Stone, its darker patches, the hollows of its eyes. */
-    private static final int STONE = 0x8E8E8A, MOTTLE = 0x6C6C69, EYES = 0x2A2A28;
     /** How far off it may first stand, in blocks across. */
     private static final double MIN = 60, MAX = 250;
     /** Blocks across: the next look away takes it within {@link #CLOSE}; walking within {@link #NEAR} does at once. */
@@ -56,21 +56,23 @@ public final class Statue implements Egg {
     private static final int SPOTS = 48, MOVES = 6;
 
     /**
-     * How it stands, in degrees: each arm lifted forwards (negative), the head bowed (positive)
-     * and tilted to its side, the body turned away from the player, its head still on them.
+     * How it stands: its head bowed (positive, in degrees) or raised, its body turned away from
+     * the player (degrees) with its head still on them, crouched or not.
      */
-    private record Stance(float rightArm, float leftArm, float bow, float tilt, float turn) {
+    private record Stance(float bow, float turn, boolean crouch) {
     }
 
     private static final Stance[] STANCES = {
-            new Stance(0f, 0f, 0f, 0f, 0f),
-            new Stance(-90f, -90f, 0f, 0f, 0f),
-            new Stance(0f, 0f, 14f, 30f, 0f),
-            new Stance(0f, 0f, 0f, 0f, 50f),
-            new Stance(-105f, 0f, -8f, 0f, 0f),
-            new Stance(-70f, -75f, 22f, -16f, 0f),
-            new Stance(-90f, -20f, 6f, 18f, 35f),
+            new Stance(0f, 0f, false),
+            new Stance(35f, 0f, false),
+            new Stance(-25f, 0f, false),
+            new Stance(0f, 50f, false),
+            new Stance(20f, 0f, true),
+            new Stance(0f, 40f, true),
+            new Stance(10f, 35f, false),
     };
+    /** The statue skin the next one wears: one after the other. */
+    private static int nextLook;
 
     private final EggCalendar calendar;
     private final RandomSource random = RandomSource.create();
@@ -83,7 +85,8 @@ public final class Statue implements Egg {
     private @Nullable Vec3 next;
     /** Facing the player from where it stands, in the game's degrees; its turn to one side or the other. */
     private float yaw, side = 1f;
-    private int pose, light, age, seen, moves, idle, searchAge;
+    private int pose, age, seen, moves, idle, searchAge;
+    private @Nullable StatueFigure figure;
 
     Statue(EggCalendar calendar) {
         this.calendar = calendar;
@@ -191,7 +194,8 @@ public final class Statue implements Egg {
         z = spot.z();
         face(self);
         pose = 0;
-        light = BoxFigure.light(current, x, y, z);
+        figure = Puppets.numbered(new StatueFigure(current, StatueFigure.LOOKS[nextLook++ % StatueFigure.LOOKS.length]));
+        place();
         age = seen = moves = 0;
         shown = false;
         next = null;
@@ -237,7 +241,6 @@ public final class Statue implements Egg {
         shown = now;
         Vec3 to = next;
         if (!now && to != null && !onScreen(self, to.add(0, HEAD, 0))) move(current, self, to);
-        if (age % 20 == 0) light = BoxFigure.light(current, x, y, z);
     }
 
     /**
@@ -291,8 +294,26 @@ public final class Statue implements Egg {
         int other = 1 + random.nextInt(STANCES.length - 1);
         pose = other == pose ? 1 + other % (STANCES.length - 1) : other;
         side = random.nextBoolean() ? 1f : -1f;
-        light = BoxFigure.light(current, x, y, z);
+        place();
         moves++;
+    }
+
+    /** The statue where it stands now, in its stance, at once: it moves only when no one sees it. */
+    private void place() {
+        StatueFigure statue = figure;
+        if (statue == null) return;
+        Stance stance = STANCES[pose];
+        float body = yaw + stance.turn() * side;
+        statue.setPos(x, y, z);
+        statue.setYRot(body);
+        statue.yBodyRot = body;
+        statue.yHeadRot = yaw;
+        statue.setXRot(stance.bow());
+        statue.setShiftKeyDown(stance.crouch());
+        statue.setPose(stance.crouch() ? Pose.CROUCHING : Pose.STANDING);
+        statue.setOldPosAndRot();
+        statue.yBodyRotO = statue.yBodyRot;
+        statue.yHeadRotO = statue.yHeadRot;
     }
 
     private void face(LocalPlayer self) {
@@ -340,73 +361,21 @@ public final class Statue implements Egg {
         generation.incrementAndGet();
         searching = active = false;
         next = null;
+        figure = null;
         level = null;
     }
 
     @Override
+    public List<? extends Entity> figures() {
+        StatueFigure statue = figure;
+        return active && statue != null ? List.of(statue) : List.of();
+    }
+
+    /** The game draws the statue; only the beam over it, called. */
+    @Override
     public void submit(PoseStack pose, Vec3 camera, Sink collector, float partial) {
         if (!active) return;
-        double px = x - camera.x, py = y - camera.y, pz = z - camera.z;
-        double distance = Math.sqrt(px * px + py * py + pz * pz);
-        GhostRenderer.noteDistance(distance + 5);
-        double reach = DepthFar.of(Minecraft.getInstance()) * 0.95;
-        float pull = distance > reach ? (float) (reach / distance) : 1f;
-        Stance stance = STANCES[this.pose];
-        float turn = stance.turn() * side;
-        int lit = light;
-        pose.pushPose();
-        pose.translate((float) (px * pull), (float) (py * pull), (float) (pz * pull));
-        pose.scale(pull, pull, pull);
-        pose.mulPose(Axis.YP.rotationDegrees(-(yaw + turn)));
-        collector.draw(pose, Ufo.SOLID, (at, out) -> body(at, out, lit));
-        arm(pose, collector, -0.375f, stance.rightArm(), lit);
-        arm(pose, collector, 0.375f, stance.leftArm(), lit);
-        // The head turned back to the player, bowed, tilted.
-        pose.pushPose();
-        pose.translate(0f, 1.5f, 0f);
-        pose.mulPose(Axis.YP.rotationDegrees(turn));
-        pose.mulPose(Axis.XP.rotationDegrees(stance.bow()));
-        pose.mulPose(Axis.ZP.rotationDegrees(stance.tilt() * side));
-        collector.draw(pose, Ufo.SOLID, (at, out) -> head(at, out, lit));
-        pose.popPose();
-        pose.popPose();
+        GhostRenderer.noteDistance(Math.sqrt(camera.distanceToSqr(x, y, z)) + 5);
         if (called) CalledBeam.submit(pose, camera, collector, x, y, z);
-    }
-
-    /** Legs and body, a player's size, facing +z, its origin at its feet; a few darker patches of stone. */
-    private static void body(PoseStack.Pose at, VertexConsumer out, int light) {
-        box(at, out, -0.25f, 0f, -0.125f, 0f, 0.75f, 0.125f, STONE, light);
-        box(at, out, 0f, 0f, -0.125f, 0.25f, 0.75f, 0.125f, STONE, light);
-        box(at, out, -0.25f, 0.75f, -0.125f, 0.25f, 1.5f, 0.125f, STONE, light);
-        box(at, out, -0.18f, 1.02f, 0.125f, 0.02f, 1.3f, 0.135f, MOTTLE, light);
-        box(at, out, 0.05f, 0.8f, -0.135f, 0.22f, 0.98f, -0.125f, MOTTLE, light);
-        box(at, out, 0.25f, 0.2f, -0.06f, 0.26f, 0.5f, 0.1f, MOTTLE, light);
-        box(at, out, -0.2f, 0.05f, 0.125f, -0.06f, 0.22f, 0.135f, MOTTLE, light);
-    }
-
-    /** One arm from its shoulder, {@code side} blocks across, lifted forwards by {@code lift} degrees. */
-    private static void arm(PoseStack pose, Sink collector, float side, float lift, int light) {
-        pose.pushPose();
-        pose.translate(side, 1.375f, 0f);
-        if (lift != 0) pose.mulPose(Axis.XP.rotationDegrees(lift));
-        collector.draw(pose, Ufo.SOLID, (at, out) -> {
-            box(at, out, -0.125f, -0.625f, -0.125f, 0.125f, 0.125f, 0.125f, STONE, light);
-            box(at, out, -0.13f, -0.5f, -0.06f, -0.125f, -0.25f, 0.08f, MOTTLE, light);
-        });
-        pose.popPose();
-    }
-
-    /** The head from its neck: stone, a darker crack, two hollow eyes. */
-    private static void head(PoseStack.Pose at, VertexConsumer out, int light) {
-        box(at, out, -0.25f, 0f, -0.25f, 0.25f, 0.5f, 0.25f, STONE, light);
-        box(at, out, 0.06f, 0.3f, 0.25f, 0.1f, 0.48f, 0.26f, MOTTLE, light);
-        box(at, out, -0.25f, 0.5f, -0.1f, 0.05f, 0.51f, 0.2f, MOTTLE, light);
-        box(at, out, -0.1875f, 0.19f, 0.25f, -0.0625f, 0.25f, 0.26f, EYES, light);
-        box(at, out, 0.0625f, 0.19f, 0.25f, 0.1875f, 0.25f, 0.26f, EYES, light);
-    }
-
-    private static void box(PoseStack.Pose at, VertexConsumer out, float x0, float y0, float z0,
-                            float x1, float y1, float z1, int colour, int light) {
-        Ufo.box(at, out, x0, y0, z0, x1, y1, z1, colour >> 16 & 0xFF, colour >> 8 & 0xFF, colour & 0xFF, light);
     }
 }

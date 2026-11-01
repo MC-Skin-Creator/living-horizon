@@ -30,11 +30,16 @@ public final class Egg21 {
         context.waitTicks(100);
         Scene.command(world, "execute at @p run fill ~-20 ~-1 ~75 ~20 ~-1 ~105 minecraft:dirt_path");
         Scene.command(world, "execute at @p run setblock ~ ~ ~90 minecraft:bell");
+        // A second village, off to the side: fireworks go up over both.
+        Scene.command(world, "execute at @p run setblock ~-125 ~ ~70 minecraft:bell");
         Scene.command(world, "time set midnight");
         context.waitTicks(20);
         boolean on = context.computeOnClient(minecraft -> fireworks().summon(minecraft.level, minecraft.player, true));
         if (!on) throw new AssertionError("ee21 did not start");
         Vec3 village = await(context);
+        int villages = context.computeOnClient(minecraft -> fireworks().villages());
+        Scene.log("eggs2 ee21 over " + villages + " villages");
+        if (villages != 2) throw new AssertionError("ee21 over " + villages + " villages, not both");
         context.runOnClient(minecraft -> {
             double across = Math.hypot(village.x - minecraft.player.getX(), village.z - minecraft.player.getZ());
             Scene.log("eggs2 ee21 at " + village + ", " + (int) across + " blocks, on " + java.time.LocalDate.now());

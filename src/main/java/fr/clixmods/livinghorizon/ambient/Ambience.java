@@ -276,11 +276,10 @@ public final class Ambience {
     private final SeaCreature seaCreature = new SeaCreature(calendar);
     private final BirdShape birdShape = new BirdShape(calendar);
     private final Campfire campfire = new Campfire(calendar);
-    private final Signal signal = new Signal(calendar);
     private final Fireworks fireworks = new Fireworks(calendar);
-    /** The easter eggs from 9 on, in their order. */
+    /** The easter eggs from 9 on, in their order: 20 is no more. */
     private final List<Egg> more = List.of(sect, statue, watcher, glider, skyLanterns, mirage, herd, lostPet,
-            seaCreature, birdShape, campfire, signal, fireworks);
+            seaCreature, birdShape, campfire, fireworks);
 
     /** When the easter eggs may come, per world. */
     public EggCalendar calendar() {
@@ -380,11 +379,6 @@ public final class Ambience {
     /** Easter egg 19. */
     public Campfire campfire() {
         return campfire;
-    }
-
-    /** Easter egg 20. */
-    public Signal signal() {
-        return signal;
     }
 
     /** Easter egg 21. */

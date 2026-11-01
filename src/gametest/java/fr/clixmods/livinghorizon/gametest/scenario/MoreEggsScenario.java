@@ -12,7 +12,6 @@ import fr.clixmods.livinghorizon.gametest.scenario.eggs.Egg16;
 import fr.clixmods.livinghorizon.gametest.scenario.eggs.Egg17;
 import fr.clixmods.livinghorizon.gametest.scenario.eggs.Egg18;
 import fr.clixmods.livinghorizon.gametest.scenario.eggs.Egg19;
-import fr.clixmods.livinghorizon.gametest.scenario.eggs.Egg20;
 import fr.clixmods.livinghorizon.gametest.scenario.eggs.Egg21;
 import fr.clixmods.livinghorizon.gametest.scenario.eggs.Egg9;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -67,8 +66,10 @@ public final class MoreEggsScenario implements Scenario {
         String wanted = System.getProperty("livinghorizon.eggs", "").trim().toLowerCase(Locale.ROOT);
         Set<String> only = wanted.isEmpty() ? Set.of()
                 : Arrays.stream(wanted.split(",")).map(String::trim).collect(Collectors.toSet());
+        // By number: 20 is no more.
+        int[] numbers = {9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21};
         Part[] parts = {Egg9::run, Egg10::run, Egg11::run, Egg12::run, Egg13::run, Egg14::run, Egg15::run,
-                Egg16::run, Egg17::run, Egg18::run, Egg19::run, Egg20::run, Egg21::run};
+                Egg16::run, Egg17::run, Egg18::run, Egg19::run, Egg21::run};
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
             context.runOnClient(minecraft -> {
                 minecraft.options.entityDistanceScaling().set(0.5);
@@ -76,7 +77,7 @@ public final class MoreEggsScenario implements Scenario {
             });
             context.waitTicks(60);
             for (int i = 0; i < parts.length; i++) {
-                int number = 9 + i;
+                int number = numbers[i];
                 if (!only.isEmpty() && !only.contains(String.valueOf(number))) continue;
                 Scene.log("eggs2 ee" + number);
                 // Its place first, loaded all round: most of them come far off, out to where the chunks end.

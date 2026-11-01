@@ -31,12 +31,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Easter egg 21: on a few real dates - New Year's Eve and Day, the 14th of July, the 17th of
- * May (the game's birthday) - once in the night, fireworks go up over a village far off for
- * the best part of a minute, in the colours of the day. Only on this screen.
+ * May (the game's birthday) - once in the night, fireworks go up over every village around
+ * for the best part of a minute, in the colours of the day. Only on this screen.
  *
  * <p>Its dates are its own: the {@link EggCalendar} does not pace it ({@link #paced}). The
- * village is one {@link GhostVillager#villages} knows, its ground read in the loaded chunks or
- * the far world ({@link Columns}). The rockets' trails, their bursts and their booms are the
+ * villages are all those {@link GhostVillager#villages} knows, each its ground read in the
+ * loaded chunks or the far world ({@link Columns}), each sending up rockets of its own. The rockets' trails, their bursts and their booms are the
  * game's own: its firework particles and sounds, as a rocket of the game makes them.
  *
  * <p>Secret: nothing a player reads (settings, README, changelog) says what it is.
@@ -44,10 +44,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class Fireworks implements Egg {
     /** Ticks rockets go up for; the last of them, a quicker volley; ticks after it everything has fallen. */
     private static final int SHOW = 1000, FINALE = 140, AFTER = 200;
-    /** How far off the village may be by chance, in blocks across; blocks in front of the player when called without one. */
-    private static final double MIN = 80, MAX = 400, AHEAD = 150;
-    /** Blocks from the village's middle rockets go up from. */
-    private static final double SPREAD = 10;
+    /** How far off the villages may be, in blocks across; blocks in front of the player when called without one. */
+    private static final double MAX = 400, AHEAD = 150;
+    /** Blocks from the village's middle rockets go up from; marks nearer than which are one village. */
+    private static final double SPREAD = 10, SAME_VILLAGE = 32;
     /** A rocket's speed as it leaves, in blocks per tick, and the ticks it climbs: at least and at most. */
     private static final double SPEED_MIN = 1.6, SPEED_MAX = 2.2;
     private static final int CLIMB_MIN = 30, CLIMB_MAX = 40;
@@ -93,12 +93,15 @@ public final class Fireworks implements Egg {
     private final List<Rocket> rockets = new ArrayList<>();
     private @Nullable ClientLevel level;
     private boolean searching, active, called;
+    /** The first village, nearest the player; all of them, each its ground, and the tick it sends its next rocket. */
     private double x, y, z;
+    private final List<Vec3> sites = new ArrayList<>();
+    private int[] nextAt = new int[0];
     private Palette palette = Palette.ANY;
     /** The night it came last, counted as the calendar counts days: once a night. */
     private int played = Integer.MIN_VALUE;
     private final EggCalendar calendar;
-    private int age, nextLaunch, idle, searchAge, bursts;
+    private int age, idle, searchAge, bursts;
 
     Fireworks(EggCalendar calendar) {
         this.calendar = calendar;
@@ -126,16 +129,22 @@ public final class Fireworks implements Egg {
         return active ? new Vec3(x, y, z) : null;
     }
 
+    /** For the game tests: the villages it goes up over. */
+    public int villages() {
+        return active ? sites.size() : 0;
+    }
+
     /** For the game tests: rockets burst so far in this show. */
     public int bursts() {
         return active ? bursts : 0;
     }
 
     /**
-     * Looks for the village it goes up over and starts once its ground is read: by chance, on
-     * its dates, one far off; or because the player asked ({@code called}: at once, whatever the
-     * date and the hour, over the nearest village, or else in front of them; called again, it
-     * starts over). False if the easter eggs are off or, by chance, no village is around.
+     * Looks for the villages it goes up over and starts once their ground is read: by chance, on
+     * its dates, over every village around; or because the player asked ({@code called}: at
+     * once, whatever the date and the hour, over every village around, or else in front of
+     * them; called again, it starts over). False if the easter eggs are off or, by chance, no
+     * village is around.
      */
     @Override
     public boolean summon(ClientLevel current, LocalPlayer self, boolean called) {
@@ -146,17 +155,16 @@ public final class Fireworks implements Egg {
         double far = Math.min(MAX, Sight.reach());
         List<Vec3> villages = new ArrayList<>();
         for (Vec3 mark : GhostVillager.villages(current, self, far)) {
-            double across = Math.hypot(mark.x - self.getX(), mark.z - self.getZ());
-            if (across <= far && (called || across >= MIN)) villages.add(mark);
+            if (Math.hypot(mark.x - self.getX(), mark.z - self.getZ()) > far) continue;
+            // A bell and the villagers round it are one village.
+            boolean known = false;
+            for (Vec3 other : villages) known |= Math.hypot(other.x - mark.x, other.z - mark.z) < SAME_VILLAGE;
+            if (!known) villages.add(mark);
         }
-        Vec3 spot;
-        if (!villages.isEmpty()) {
-            spot = called ? villages.get(0) : villages.get(random.nextInt(villages.size()));
-        } else if (called) {
+        if (villages.isEmpty()) {
+            if (!called) return false;
             double ahead = Math.max(16, Math.min(AHEAD, far - 16)), yaw = Math.toRadians(self.getYRot());
-            spot = new Vec3(self.getX() - Math.sin(yaw) * ahead, self.getY(), self.getZ() + Math.cos(yaw) * ahead);
-        } else {
-            return false;
+            villages.add(new Vec3(self.getX() - Math.sin(yaw) * ahead, self.getY(), self.getZ() + Math.cos(yaw) * ahead));
         }
         this.called = called;
         level = current;
@@ -165,28 +173,40 @@ public final class Fireworks implements Egg {
         int mine = generation.get();
         Executor game = Minecraft.getInstance();
         double feet = self.getY();
-        Columns.read(current, new double[]{spot.x}, new double[]{spot.z}).thenAcceptAsync(columns -> {
+        double[] xs = new double[villages.size()], zs = new double[villages.size()];
+        for (int i = 0; i < xs.length; i++) {
+            xs[i] = villages.get(i).x;
+            zs[i] = villages.get(i).z;
+        }
+        Columns.read(current, xs, zs).thenAcceptAsync(columns -> {
             if (generation.get() != mine) return;
             searching = false;
-            Columns.Column ground = columns[0];
-            // Called, the ground of a spot nothing is known of is the player's.
-            if (!ground.known() && !called) return;
-            begin(ground.x(), ground.known() ? ground.y() : feet, ground.z());
+            List<Vec3> found = new ArrayList<>();
+            for (Columns.Column ground : columns) {
+                // Called, the ground of a spot nothing is known of is the player's.
+                if (ground.known() || called) found.add(new Vec3(ground.x(), ground.known() ? ground.y() : feet, ground.z()));
+            }
+            if (found.isEmpty()) return;
+            begin(found);
             EggLog.came(21, x, y, z, self, called);
         }, game);
         return true;
     }
 
-    private void begin(double gx, double gy, double gz) {
+    private void begin(List<Vec3> villages) {
         Palette today = Palette.of(LocalDate.now());
         palette = today != null ? today : Palette.ANY;
         if (!called) played = calendar.days();
-        x = gx;
-        y = gy;
-        z = gz;
+        sites.clear();
+        sites.addAll(villages);
+        x = villages.get(0).x;
+        y = villages.get(0).y;
+        z = villages.get(0).z;
+        nextAt = new int[sites.size()];
+        // Not all on the same tick: each village starts a moment after the last.
+        for (int i = 0; i < nextAt.length; i++) nextAt[i] = 10 + random.nextInt(30);
         rockets.clear();
         age = bursts = 0;
-        nextLaunch = 10;
         active = true;
     }
 
@@ -207,16 +227,19 @@ public final class Fireworks implements Egg {
             return;
         }
         age++;
-        if (!Columns.drawn(current, self, x, z) || age > SHOW + AFTER) {
+        boolean drawn = false;
+        for (Vec3 site : sites) drawn |= Columns.drawn(current, self, site.x, site.z);
+        if (!drawn || age > SHOW + AFTER) {
             clear();
             return;
         }
-        // Rockets until the show ends, faster at its end; none once dawn has come, unless called.
+        // Rockets from each village until the show ends, faster at its end; none once dawn has come, unless called.
         boolean going = age < SHOW && (called || !current.isBrightOutside());
-        if (going && age >= nextLaunch) {
+        for (int s = 0; going && s < sites.size(); s++) {
+            if (age < nextAt[s]) continue;
             int salvo = random.nextInt(6) == 0 ? 2 + random.nextInt(2) : 1;
-            for (int i = 0; i < salvo; i++) launch(current, i * 3);
-            nextLaunch = age + (age > SHOW - FINALE ? 3 + random.nextInt(4) : 10 + random.nextInt(22));
+            for (int i = 0; i < salvo; i++) launch(current, sites.get(s), i * 3);
+            nextAt[s] = age + (age > SHOW - FINALE ? 3 + random.nextInt(4) : 10 + random.nextInt(22));
         }
         rockets.removeIf(rocket -> {
             int t = age - rocket.launched();
@@ -234,10 +257,10 @@ public final class Fireworks implements Egg {
         if (!going && rockets.isEmpty() && age > SHOW) clear();
     }
 
-    /** A rocket from somewhere round the village, {@code later} ticks from now, with the game's sound of one. */
-    private void launch(ClientLevel current, int later) {
+    /** A rocket from somewhere round {@code village}, {@code later} ticks from now, with the game's sound of one. */
+    private void launch(ClientLevel current, Vec3 village, int later) {
         double angle = random.nextDouble() * Math.PI * 2, off = Math.sqrt(random.nextDouble()) * SPREAD;
-        Rocket rocket = new Rocket(age + later, x + Math.cos(angle) * off, y + 1, z + Math.sin(angle) * off,
+        Rocket rocket = new Rocket(age + later, village.x + Math.cos(angle) * off, village.y + 1, village.z + Math.sin(angle) * off,
                 random.nextGaussian() * 0.03, random.nextGaussian() * 0.03,
                 SPEED_MIN + random.nextDouble() * (SPEED_MAX - SPEED_MIN), CLIMB_MIN + random.nextInt(CLIMB_MAX - CLIMB_MIN + 1));
         rockets.add(rocket);
@@ -287,6 +310,7 @@ public final class Fireworks implements Egg {
         generation.incrementAndGet();
         searching = active = false;
         rockets.clear();
+        sites.clear();
         level = null;
     }
 
@@ -294,7 +318,9 @@ public final class Fireworks implements Egg {
     @Override
     public void submit(PoseStack pose, Vec3 camera, Sink collector, float partial) {
         if (!active) return;
-        GhostRenderer.noteDistance(Math.sqrt(camera.distanceToSqr(x, y, z)) + HIGH);
+        double farthest = 0;
+        for (Vec3 site : sites) farthest = Math.max(farthest, Math.sqrt(camera.distanceToSqr(site.x, site.y, site.z)));
+        GhostRenderer.noteDistance(farthest + HIGH);
         if (called) CalledBeam.submit(pose, camera, collector, x, y, z);
     }
 }

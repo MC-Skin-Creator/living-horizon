@@ -10,14 +10,12 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Easter egg 18, on a clear day: a flock comes in from the side far ahead, its birds closing
- * in on their places until the face is formed, held a few seconds, then scattered and gone.
+ * Easter egg 18, called: a flock in the shape of a Creeper's face crosses the sky in front of
+ * the player, a bird on each of the face's twenty dark pixels, and is gone at the other side.
  */
 public final class Egg18 {
-    /** Ticks the birds take to their places at most, and a margin. */
-    private static final int GATHER = 210 + 60;
-    /** Ticks the face holds and the scattered birds take to go, and a margin. */
-    private static final int AFTER = 70 + 120 + 60;
+    /** Ticks its crossing takes at most: twice 0.85 of 240 blocks at 0.6 a tick, and a margin. */
+    private static final int CROSSING = 700 + 100;
 
     private Egg18() {
     }
@@ -34,58 +32,47 @@ public final class Egg18 {
         context.waitTicks(20);
         boolean on = context.computeOnClient(minecraft -> egg().summon(minecraft.level, minecraft.player, true));
         if (!on) throw new AssertionError("ee18 did not start");
-        Vec3 at = await(context);
-        double across = context.computeOnClient(minecraft -> Math.hypot(at.x - minecraft.player.getX(), at.z - minecraft.player.getZ()));
-        double first = context.computeOnClient(minecraft -> egg().offSlots());
-        Scene.log("eggs2 ee18 at " + at + ", " + (int) across + " blocks, the farthest bird " + (int) first + " blocks from its place");
-        if (across < 120) throw new AssertionError("ee18 at " + (int) across + " blocks, too near");
-        if (first < 40) throw new AssertionError("ee18's birds start only " + first + " blocks from their places");
-        context.runOnClient(minecraft -> {
+        Vec3 start = null;
+        for (int i = 0; i < 100 && start == null; i++) {
+            start = context.computeOnClient(minecraft -> egg().position());
+            if (start == null) context.waitTick();
+        }
+        if (start == null) throw new AssertionError("ee18 found no way");
+        Vec3 from = start;
+        int birds = context.computeOnClient(minecraft -> egg().birds());
+        Scene.log("eggs2 ee18 from " + from + ", " + birds + " birds");
+        if (birds != 20) throw new AssertionError("ee18 has " + birds + " birds, not the face's twenty");
+
+        // Halfway across, in front of the player: the face, flying.
+        context.waitTicks(300);
+        Vec3 now = context.computeOnClient(minecraft -> {
+            Vec3 at = egg().position();
+            if (at == null) throw new AssertionError("ee18 gone halfway");
             lookAt(minecraft.player, at.x, at.y, at.z);
             minecraft.options.fov().set(30);
+            return at;
         });
-        context.waitTicks(60);
-        double halfway = context.computeOnClient(minecraft -> egg().offSlots());
-        Scene.log("eggs2 ee18 after 3 seconds, the farthest bird " + (int) halfway + " blocks from its place");
-        if (halfway >= first) throw new AssertionError("ee18's birds do not come closer: " + first + " then " + halfway);
-        Scene.screenshot(context, scenario, "ee18-coming");
-
-        // Formed: every bird on its pixel.
-        int waited = 65;
-        while (!context.computeOnClient(minecraft -> egg().formed())) {
-            if (++waited > GATHER) throw new AssertionError("ee18 not formed after " + waited + " ticks");
-            context.waitTick();
-        }
-        double off = context.computeOnClient(minecraft -> egg().offSlots());
-        Scene.log("eggs2 ee18 formed after " + waited + " ticks, the farthest bird " + off + " blocks from its place");
-        if (off > 1) throw new AssertionError("ee18 formed with a bird " + off + " blocks from its place");
+        double moved = Math.hypot(now.x - from.x, now.z - from.z);
+        Scene.log("eggs2 ee18 flew " + (int) moved + " blocks in 15 seconds, now at " + now);
+        if (moved < 150) throw new AssertionError("ee18 flew only " + moved + " blocks in 15 seconds");
         Scene.screenshot(context, scenario, "ee18-face");
+        context.waitTicks(20);
+        context.runOnClient(minecraft -> {
+            Vec3 at = egg().position();
+            if (at != null) lookAt(minecraft.player, at.x, at.y, at.z);
+        });
+        Scene.screenshot(context, scenario, "ee18-flying");
 
-        // Scattered, then gone.
-        int after = 5;
-        while (context.computeOnClient(minecraft -> egg().busy())) {
-            if (++after > AFTER) throw new AssertionError("ee18 still there " + after + " ticks after it formed");
-            if (after == 110) {
-                double spread = context.computeOnClient(minecraft -> egg().offSlots());
-                Scene.log("eggs2 ee18 scattering, the farthest bird " + (int) spread + " blocks from its place");
-                if (spread < 5) throw new AssertionError("ee18 not scattering 110 ticks after it formed");
-                Scene.screenshot(context, scenario, "ee18-scatter");
-                after += 5;
-            }
-            context.waitTick();
+        // Gone at the far side.
+        boolean busy = true;
+        int waited = 0;
+        for (; waited < CROSSING && busy; waited += 20) {
+            context.waitTicks(20);
+            busy = context.computeOnClient(minecraft -> egg().busy());
         }
-        Scene.log("eggs2 ee18 gone " + after + " ticks after it formed");
+        if (busy) throw new AssertionError("ee18 still crossing after " + (320 + CROSSING) + " ticks");
+        Scene.log("eggs2 ee18 gone " + (320 + waited) + " ticks after it came");
         context.runOnClient(minecraft -> minecraft.options.fov().set(70));
-    }
-
-    /** Where it came, once its search is done: a few seconds at most. */
-    private static Vec3 await(ClientGameTestContext context) {
-        for (int i = 0; i < 100; i++) {
-            Vec3 at = context.computeOnClient(minecraft -> egg().position());
-            if (at != null) return at;
-            context.waitTick();
-        }
-        throw new AssertionError("ee18 found no place");
     }
 
     private static void lookAt(LocalPlayer player, double x, double y, double z) {
