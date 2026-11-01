@@ -20,8 +20,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BellBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
@@ -192,7 +192,7 @@ public final class GhostVillager {
             for (int cz = pcz - radius; cz <= pcz + radius; cz++) {
                 if (!level.hasChunk(cx, cz)) continue;
                 for (BlockEntity entity : level.getChunk(cx, cz).getBlockEntities().values()) {
-                    if (entity.getType() != BlockEntityType.BELL) continue;
+                    if (!(entity instanceof BellBlockEntity)) continue;
                     BlockPos at = entity.getBlockPos();
                     found.add(new Vec3(at.getX() + 0.5, at.getY(), at.getZ() + 0.5));
                 }
