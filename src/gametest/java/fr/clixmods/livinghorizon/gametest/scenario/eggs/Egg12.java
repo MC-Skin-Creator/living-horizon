@@ -6,8 +6,10 @@ import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.player.RemotePlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.Items;
@@ -38,15 +40,22 @@ public final class Egg12 {
         context.waitTicks(100);
         Scene.command(world, "time set noon");
         Scene.command(world, "weather clear");
+        // It crosses out to where the loaded chunks end: wait for them, after a teleport this far.
+        for (int i = 0; i < 600 && !context.computeOnClient(Egg12::loadedAhead); i++) context.waitTick();
         context.waitTicks(20);
-        boolean on = context.computeOnClient(minecraft -> egg().summon(minecraft.level, minecraft.player, true));
-        if (!on) throw new AssertionError("ee12 did not start");
-        Vec3 at = await(context);
+        Vec3 at = null;
+        for (int tries = 0; tries < 4 && at == null; tries++) {
+            boolean on = context.computeOnClient(minecraft -> egg().summon(minecraft.level, minecraft.player, true));
+            if (!on) throw new AssertionError("ee12 did not start");
+            at = await(context);
+        }
+        if (at == null) throw new AssertionError("ee12 found no place");
+        Vec3 first = at;
         int started = 0;
-        double across = context.computeOnClient(minecraft -> Math.hypot(at.x - minecraft.player.getX(), at.z - minecraft.player.getZ()));
-        Scene.log("eggs2 ee12 at " + at + ", " + (int) across + " blocks");
+        double across = context.computeOnClient(minecraft -> Math.hypot(first.x - minecraft.player.getX(), first.z - minecraft.player.getZ()));
+        Scene.log("eggs2 ee12 at " + first + ", " + (int) across + " blocks");
         if (across < 100) throw new AssertionError("ee12 at " + (int) across + " blocks, too near");
-        if (at.y < -50) throw new AssertionError("ee12 starts at height " + at.y + ", not over the ground");
+        if (first.y < -50) throw new AssertionError("ee12 starts at height " + first.y + ", not over the ground");
         context.runOnClient(minecraft -> {
             List<? extends Entity> figures = egg().figures();
             if (figures.size() != 1 || !(figures.get(0) instanceof RemotePlayer him)) {
@@ -56,7 +65,7 @@ public final class Egg12 {
             if (!him.getItemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA)) {
                 throw new AssertionError("ee12's player wears no elytra: " + him.getItemBySlot(EquipmentSlot.CHEST));
             }
-            lookAt(minecraft.player, at.x, at.y, at.z);
+            lookAt(minecraft.player, first.x, first.y, first.z);
             minecraft.options.fov().set(30);
         });
 
@@ -65,7 +74,7 @@ public final class Egg12 {
         started += 100;
         Vec3 later = context.computeOnClient(minecraft -> egg().position());
         if (later == null) throw new AssertionError("ee12 gone after 5 seconds");
-        double moved = later.distanceTo(at);
+        double moved = later.distanceTo(first);
         Scene.log("eggs2 ee12 moved " + (int) moved + " blocks in 100 ticks, now at " + later);
         if (moved < 15) throw new AssertionError("ee12 moved only " + moved + " blocks in 100 ticks");
         context.runOnClient(minecraft -> lookAt(minecraft.player, later.x, later.y, later.z));
@@ -108,14 +117,25 @@ public final class Egg12 {
         if (lowest > -60) throw new AssertionError("ee12 never went under the ground, lowest at " + lowest);
     }
 
-    /** Where it came, once its search is done: a few seconds at most. */
+    /** Where it is once its search is done, or null if it found no place. */
     private static Vec3 await(ClientGameTestContext context) {
         for (int i = 0; i < 100; i++) {
             Vec3 at = context.computeOnClient(minecraft -> egg().position());
             if (at != null) return at;
+            if (i > 5 && !context.computeOnClient(minecraft -> egg().busy())) return null;
             context.waitTick();
         }
-        throw new AssertionError("ee12 found no place");
+        return null;
+    }
+
+    /** The chunks ahead loaded out to 225 blocks, across the player's view. */
+    private static boolean loadedAhead(Minecraft minecraft) {
+        double x = minecraft.player.getX(), z = minecraft.player.getZ();
+        for (int side = -80; side <= 80; side += 40) {
+            int bx = Mth.floor(x + side), bz = Mth.floor(z + 225);
+            if (!minecraft.level.hasChunk(bx >> 4, bz >> 4)) return false;
+        }
+        return true;
     }
 
     private static void lookAt(LocalPlayer player, double x, double y, double z) {
