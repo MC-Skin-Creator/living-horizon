@@ -17,6 +17,9 @@ import fr.clixmods.livinghorizon.gametest.scenario.eggs.Egg21;
 import fr.clixmods.livinghorizon.gametest.scenario.eggs.Egg9;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.levelgen.Heightmap;
 
 import java.util.Arrays;
 import java.util.Locale;
@@ -38,6 +41,20 @@ public final class MoreEggsScenario implements Scenario {
     /** One easter egg's part of the scenario. */
     private interface Part {
         void run(ClientGameTestContext context, TestSingleplayerContext world, Scenario scenario);
+    }
+
+    /** The chunks round the player received, out to 220 blocks: a chunk not received yet is empty to the bottom of the world. */
+    private static boolean loadedAround(Minecraft minecraft) {
+        double x = minecraft.player.getX(), z = minecraft.player.getZ();
+        for (int k = 0; k < 16; k++) {
+            double a = k * Math.PI / 8;
+            int bx = Mth.floor(x - Math.sin(a) * 220), bz = Mth.floor(z + Math.cos(a) * 220);
+            if (!minecraft.level.hasChunk(bx >> 4, bz >> 4)
+                    || minecraft.level.getHeight(Heightmap.Types.WORLD_SURFACE, bx, bz) <= minecraft.level.getMinY()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
@@ -62,6 +79,9 @@ public final class MoreEggsScenario implements Scenario {
                 int number = 9 + i;
                 if (!only.isEmpty() && !only.contains(String.valueOf(number))) continue;
                 Scene.log("eggs2 ee" + number);
+                // Its place first, loaded all round: most of them come far off, out to where the chunks end.
+                Scene.command(world, "tp @a " + number * 1000 + " -60 0 0 0");
+                for (int t = 0; t < 1500 && !context.computeOnClient(MoreEggsScenario::loadedAround); t++) context.waitTick();
                 parts[i].run(context, world, this);
                 Scene.configure(context, config -> config.easterEggs = false);
                 context.waitTicks(2);

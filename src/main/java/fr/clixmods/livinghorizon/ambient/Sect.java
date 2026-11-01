@@ -10,12 +10,16 @@ import fr.clixmods.livinghorizon.render.Sink;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
@@ -38,11 +42,14 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>Their place is read around the player, in the loaded chunks or the far world
  * ({@link Columns}): dry, flat, open ground in sight ({@link Sight}), and the ground on the
  * way to the player, for where they walk past the loaded chunks. The figures are drawn of
- * boxes ({@link BoxFigure}), lit by their fire, which is {@link Campfire}'s.
+ * boxes ({@link BoxFigure}), lit by their fire, a campfire of the game's own with its own
+ * smoke ({@link GameFire}).
  *
  * <p>Secret: nothing a player reads (settings, README, changelog) says what it is.
  */
 public final class Sect implements Egg {
+    /** See-through, lit as an entity: a figure fading away. */
+    private static final RenderType FADING = RenderTypes.entityTranslucent(Ufo.SHEET);
     /** The robe, white; the face, dark under the hood. */
     private static final int ROBE = 0xE6E3DA, FACE = 0x18140F;
     /**
@@ -80,8 +87,7 @@ public final class Sect implements Egg {
     private @Nullable Boolean scopingStandIn;
     /** The fire; the player's feet when they came, which the ground on the way was read towards. */
     private double fx, fy, fz, toX, toZ;
-    private float wind;
-    private int fireLight;
+    private @Nullable GameFire fire;
     /** The ground on the way to the player, {@link #ALONG} stretches, from the fire. */
     private double[] heights = new double[0];
     private int count;
@@ -259,8 +265,7 @@ public final class Sect implements Egg {
         toX = px;
         toZ = pz;
         heights = ys;
-        wind = random.nextFloat() * Mth.TWO_PI;
-        fireLight = Campfire.light(current, fx, fy, fz, 14);
+        fire = GameFire.at(current, fx, fy, fz);
         count = FEW + random.nextInt(MORE + 1);
         x = new double[count];
         y = new double[count];
@@ -289,7 +294,7 @@ public final class Sect implements Egg {
             off[i] = (random.nextFloat() * 2 - 1) * 20f;
             rise[i] = i == 0 ? 1f : 0f;
             fade[i] = -1;
-            light[i] = Campfire.light(current, x[i], y[i], z[i], 12);
+            light[i] = light(current, x[i], y[i], z[i], 12);
         }
         xo = x.clone();
         yo = y.clone();
@@ -355,8 +360,13 @@ public final class Sect implements Egg {
                 gone[i] = true;
                 continue;
             }
-            light[i] = Campfire.light(current, x[i], y[i], z[i], fireOn ? fireGlow(i) : 0);
+            light[i] = light(current, x[i], y[i], z[i], fireOn ? fireGlow(i) : 0);
             left++;
+        }
+        if (fire != null) {
+            // Put out with the game's puff of smoke when they leave it; smoking while it burns.
+            fire.lit(fireOn);
+            fire.tick(random);
         }
         if (left == 0 && (!fireOn || ++emptyFor > EMBERS)) clear();
     }
@@ -426,7 +436,31 @@ public final class Sect implements Egg {
     private void clear() {
         generation.incrementAndGet();
         searching = active = false;
+        fire = null;
         level = null;
+    }
+
+    @Override
+    public List<? extends Entity> figures() {
+        GameFire shown = fire;
+        return active && shown != null ? shown.figures() : List.of();
+    }
+
+    /**
+     * The light a figure stands in by a fire: the brightest block and sky light of its feet
+     * and the two blocks above, the block light at least {@code fire}. Open sky where the
+     * client has no light.
+     */
+    private static int light(ClientLevel level, double x, double y, double z, int fire) {
+        BlockPos feet = BlockPos.containing(x, y + 0.1, z);
+        if (!level.hasChunkAt(feet)) return LightTexture.pack(fire, 15);
+        int block = fire, sky = 0;
+        for (int up = 0; up < 3; up++) {
+            BlockPos at = feet.above(up);
+            block = Math.max(block, level.getBrightness(LightLayer.BLOCK, at));
+            sky = Math.max(sky, level.getBrightness(LightLayer.SKY, at));
+        }
+        return LightTexture.pack(block, sky);
     }
 
     @Override
@@ -434,17 +468,8 @@ public final class Sect implements Egg {
         if (!active) return;
         Minecraft minecraft = Minecraft.getInstance();
         double reach = DepthFar.of(minecraft) * 0.95;
-        if (fireOn) {
-            double px = fx - camera.x, py = fy - camera.y, pz = fz - camera.z;
-            double distance = Math.sqrt(px * px + py * py + pz * pz);
-            GhostRenderer.noteDistance(distance + 20);
-            float pull = distance > reach ? (float) (reach / distance) : 1f;
-            pose.pushPose();
-            pose.translate((float) (px * pull), (float) (py * pull), (float) (pz * pull));
-            pose.scale(pull, pull, pull);
-            Campfire.fire(pose, collector, age + partial, wind, 6f, 0.7f, fireLight);
-            pose.popPose();
-        }
+        // The game draws the fire and its smoke, which rises high over it: the far plane past its top.
+        GhostRenderer.noteDistance(Math.sqrt(camera.distanceToSqr(fx, fy, fz)) + 20);
         for (int i = 0; i < count; i++) {
             if (gone[i]) continue;
             int alpha = fade[i] < 0 ? 255 : Math.round(255 * Mth.clamp(1f - (fade[i] + partial) / FADE, 0f, 1f));
@@ -469,7 +494,7 @@ public final class Sect implements Egg {
             pose.scale(pull, pull, pull);
             pose.mulPose(Axis.YP.rotationDegrees(-bodyYaw));
             pose.translate(0f, -lower, 0f);
-            RenderType type = alpha < 255 ? Campfire.FADING : Ufo.SOLID;
+            RenderType type = alpha < 255 ? FADING : Ufo.SOLID;
             int lit = light[i];
             // Yaw turns the other way round from the pose's rotations, the body's as the head's.
             BoxFigure.draw(pose, collector, SHAPE, swing, raise, -headYaw, lit, type, alpha, seated);
