@@ -46,12 +46,12 @@ public final class Egg21 {
         // The first bursts.
         int sparks = 0;
         int waited = 0;
-        for (; waited < 300 && sparks < 40; waited += 5) {
+        for (; waited < 300 && sparks < 3; waited += 5) {
             context.waitTicks(5);
-            sparks = context.computeOnClient(minecraft -> fireworks().sparks());
+            sparks = context.computeOnClient(minecraft -> fireworks().bursts());
         }
-        Scene.log("eggs2 ee21 " + sparks + " sparks after " + waited + " ticks");
-        if (sparks < 40) throw new AssertionError("ee21 no burst after 15 seconds");
+        Scene.log("eggs2 ee21 " + sparks + " bursts after " + waited + " ticks");
+        if (sparks < 3) throw new AssertionError("ee21 not three bursts after 15 seconds");
         Scene.screenshot(context, scenario, "ee21-burst");
         context.waitTicks(60);
         Scene.screenshot(context, scenario, "ee21-bursts");
