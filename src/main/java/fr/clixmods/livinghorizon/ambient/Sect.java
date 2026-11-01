@@ -1,25 +1,23 @@
 package fr.clixmods.livinghorizon.ambient;
 
+import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.math.Axis;
 import fr.clixmods.livinghorizon.FarConfig;
-import fr.clixmods.livinghorizon.render.DepthFar;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
+import fr.clixmods.livinghorizon.track.Gear;
+import fr.clixmods.livinghorizon.track.Puppets;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.rendertype.RenderType;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.player.RemotePlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
@@ -31,47 +29,40 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Easter egg 9: now and then, at night, far off on open ground, six to eight figures in white
- * hooded robes sit in a circle round a fire, one of them standing. Looked at through a
+ * Easter egg 9: now and then, at night, far off on open ground, six to eight people dressed in
+ * white crouch in a circle round a campfire, one of them standing. Looked at through a
  * spyglass, they all turn their heads, then their bodies, slowly to the player, and keep
  * facing them. Once they have been seen so, as soon as the player lowers the spyglass, they
- * stand up and come, each on a heading of its own, walking towards the player, and fade away
- * before they reach them. Never seen through a spyglass, they stay until dawn, and are gone,
- * fire and all, if the player comes near. Only on this screen.
+ * stand up and come, each on a heading of its own, walking - or, some nights, running -
+ * towards the player. One hidden behind something once it has come a few seconds is gone;
+ * one in sight comes until it is near, and is gone. Never seen through a spyglass, they stay
+ * until dawn, and are gone, fire and all, if the player comes near. Only on this screen.
  *
  * <p>Their place is read around the player, in the loaded chunks or the far world
  * ({@link Columns}): dry, flat, open ground in sight ({@link Sight}), and the ground on the
- * way to the player, for where they walk past the loaded chunks. The figures are drawn of
- * boxes ({@link BoxFigure}), lit by their fire, a campfire of the game's own with its own
- * smoke ({@link GameFire}).
+ * way to the player, for where they walk past the loaded chunks. They are players of no one,
+ * in the game's default skins and white leather, drawn by the game as far players are; their
+ * fire is a campfire of the game's own with its own smoke ({@link GameFire}).
  *
  * <p>Secret: nothing a player reads (settings, README, changelog) says what it is.
  */
 public final class Sect implements Egg {
-    /** See-through, lit as an entity: a figure fading away. */
-    private static final RenderType FADING = RenderTypes.entityTranslucent(Ufo.SHEET);
-    /** The robe, white; the face, dark under the hood. */
-    private static final int ROBE = 0xE6E3DA, FACE = 0x18140F;
-    /**
-     * A person in a long robe, white all over: the face is the hood's to draw, see-through
-     * with the rest as the figure fades, so the shape has none of its own.
-     */
-    private static final BoxFigure.Shape SHAPE = new BoxFigure.Shape(
-            0.75f, 0.25f, 0.75f, 0.5f, 0.28f, 0.72f, 0.22f, 0.5f, 0f, ROBE, ROBE);
-    /** Blocks the hips sit above the ground when seated. */
-    private static final float SEAT = 0.2f;
+    /** The white their leather is dyed. */
+    private static final int WHITE = 0xF9FFFE;
     /** Blocks from the fire to each figure round it. */
     private static final double RING = 2.6;
     /** Figures round the fire, at least; more, at most. */
     private static final int FEW = 6, MORE = 2;
-    /** Blocks per tick they walk. */
-    private static final double PACE = 0.13;
+    /** Blocks per tick they walk, or run as a player sprints. */
+    private static final double WALK_PACE = 0.16, RUN_PACE = 0.28;
     /** How far off they may be, in blocks across; nearer than which they go, fire and all; a walker goes. */
     private static final double MIN = 80, MAX = 300, NEAR = 60, REACHED = 40;
     /** Spots tried; of them, ahead of the player when called; points read on the way to the player. */
     private static final int SPOTS = 48, AHEAD = 32, ALONG = 6;
-    /** Ticks looked at through a spyglass before they notice; ticks of a fade. */
-    private static final int NOTICE = 6, FADE = 40;
+    /** Ticks looked at through a spyglass before they notice. */
+    private static final int NOTICE = 6;
+    /** Ticks a figure walks before one hidden is gone; ticks hidden that do; ticks between looks. */
+    private static final int HIDE_AFTER = 140, HIDDEN = 6, LOOK_EVERY = 4;
     /** Ticks they sit at most; walk at most; the fire burns once they are all gone; a search may take. */
     private static final int LIFE = 14000, WALK = 1200, EMBERS = 1200, SEARCH = 400;
     /** Degrees per tick a head turns, a body turns to look, a walker turns to its way. */
@@ -79,24 +70,25 @@ public final class Sect implements Egg {
 
     private final EggCalendar calendar;
     private final RandomSource random = RandomSource.create();
-    /** Counts the searches: a read that comes back for one given up or replaced is dropped. */
+    /** Counts the searches and the looks: a read that comes back for one given up or replaced is dropped. */
     private final AtomicInteger generation = new AtomicInteger();
     private @Nullable ClientLevel level;
-    private boolean searching, active, called, noticed, scattering, fireOn;
-    /** For the game tests: stands in for the player's spyglass while set. */
-    private @Nullable Boolean scopingStandIn;
+    private boolean searching, active, called, noticed, scattering, fireOn, running;
+    /** For the game tests: stand in for the player's spyglass, and for whether they run, while set. */
+    private @Nullable Boolean scopingStandIn, runningStandIn;
     /** The fire; the player's feet when they came, which the ground on the way was read towards. */
     private double fx, fy, fz, toX, toZ;
     private @Nullable GameFire fire;
     /** The ground on the way to the player, {@link #ALONG} stretches, from the fire. */
     private double[] heights = new double[0];
     private int count;
-    private double[] x = new double[0], y = x, z = x, xo = x, yo = x, zo = x, walked = x;
+    private RemotePlayer[] people = new RemotePlayer[0];
+    private double[] x = new double[0], y = x, z = x;
     /** World yaws of each body and head, in degrees; the heading each takes off the player's. */
-    private float[] body = new float[0], bodyO = body, head = body, headO = body, off = body, rise = body;
-    /** Ticks before each turns to the player once noticed, stands up once they scatter; ticks of its fade, -1 until then. */
-    private int[] turnAt = new int[0], standAt = turnAt, fade = turnAt, light = turnAt;
-    private boolean[] gone = new boolean[0];
+    private float[] body = new float[0], head = body, off = body;
+    /** Ticks before each turns to the player once noticed, stands up once they scatter; ticks it has walked, been hidden. */
+    private int[] turnAt = new int[0], standAt = turnAt, walking = turnAt, hidden = turnAt;
+    private boolean[] standing = new boolean[0], gone = standing;
     private int age, lookedAt, sinceNoticed, sinceScatter, emptyFor, idle, searchAge;
 
     Sect(EggCalendar calendar) {
@@ -122,6 +114,11 @@ public final class Sect implements Egg {
     /** They have been seen through a spyglass. For the game tests. */
     public boolean noticed() {
         return active && noticed;
+    }
+
+    /** They run, rather than walk, once they come. For the game tests. */
+    public boolean running() {
+        return running;
     }
 
     /** Figures still there. For the game tests. */
@@ -160,6 +157,11 @@ public final class Sect implements Egg {
      */
     public void standIn(@Nullable Boolean scoping) {
         scopingStandIn = scoping;
+    }
+
+    /** For the game tests: true or false chooses whether the next ones run; null leaves it to chance. */
+    public void standInRunning(@Nullable Boolean run) {
+        runningStandIn = run;
     }
 
     @Override
@@ -266,20 +268,22 @@ public final class Sect implements Egg {
         toZ = pz;
         heights = ys;
         fire = GameFire.at(current, fx, fy, fz);
+        running = runningStandIn != null ? runningStandIn : random.nextBoolean();
         count = FEW + random.nextInt(MORE + 1);
+        people = new RemotePlayer[count];
         x = new double[count];
         y = new double[count];
         z = new double[count];
-        walked = new double[count];
         body = new float[count];
         head = new float[count];
         off = new float[count];
-        rise = new float[count];
         turnAt = new int[count];
         standAt = new int[count];
-        fade = new int[count];
-        light = new int[count];
+        walking = new int[count];
+        hidden = new int[count];
+        standing = new boolean[count];
         gone = new boolean[count];
+        List<String> white = whiteLeather();
         double start = random.nextDouble() * Math.PI * 2;
         for (int i = 0; i < count; i++) {
             double a = start + i * Math.PI * 2 / count + (random.nextDouble() - 0.5) * 0.25;
@@ -288,23 +292,43 @@ public final class Sect implements Egg {
             double ground = loadedGround(current, x[i], z[i]);
             y[i] = Double.isNaN(ground) ? fy : ground;
             body[i] = head[i] = yawTo(x[i], z[i], fx, fz);
-            // The one standing turns first and stands at once; the others one after the other.
+            // The one standing turns first and is up already; the others one after the other.
             turnAt[i] = i == 0 ? 0 : 10 + random.nextInt(30);
             standAt[i] = i == 0 ? 0 : 4 + random.nextInt(30);
             off[i] = (random.nextFloat() * 2 - 1) * 20f;
-            rise[i] = i == 0 ? 1f : 0f;
-            fade[i] = -1;
-            light[i] = light(current, x[i], y[i], z[i], 12);
+            standing[i] = i == 0;
+            RemotePlayer person = Puppets.player(current, new GameProfile(Watcher.anyone(random), ""));
+            Gear.apply(person, white, current.registryAccess());
+            pose(person, standing[i]);
+            people[i] = person;
+            place(i, false);
+            person.setOldPosAndRot();
+            person.yBodyRotO = person.yBodyRot;
+            person.yHeadRotO = person.yHeadRot;
         }
-        xo = x.clone();
-        yo = y.clone();
-        zo = z.clone();
-        bodyO = body.clone();
-        headO = head.clone();
         age = lookedAt = sinceNoticed = sinceScatter = emptyFor = 0;
         noticed = scattering = false;
         fireOn = true;
         active = true;
+    }
+
+    /** Dressed in white leather from head to foot, nothing in their hands: in the order {@link Gear#SLOTS} keeps. */
+    private static List<String> whiteLeather() {
+        List<String> gear = new ArrayList<>(List.of("", ""));
+        for (String piece : new String[]{"leather_boots", "leather_leggings", "leather_chestplate", "leather_helmet"}) {
+            //? if >=1.20.5 {
+            gear.add("{id:\"minecraft:" + piece + "\",count:1,components:{\"minecraft:dyed_color\":" + WHITE + "}}");
+            //?} else {
+            /*gear.add("{id:\"minecraft:" + piece + "\",Count:1b,tag:{display:{color:" + WHITE + "}}}");
+            *///?}
+        }
+        return gear;
+    }
+
+    /** Crouched round the fire, or up on its feet. */
+    private static void pose(RemotePlayer person, boolean up) {
+        person.setShiftKeyDown(!up);
+        person.setPose(up ? Pose.STANDING : Pose.CROUCHING);
     }
 
     @Override
@@ -324,11 +348,6 @@ public final class Sect implements Egg {
             return;
         }
         age++;
-        System.arraycopy(x, 0, xo, 0, count);
-        System.arraycopy(y, 0, yo, 0, count);
-        System.arraycopy(z, 0, zo, 0, count);
-        System.arraycopy(body, 0, bodyO, 0, count);
-        System.arraycopy(head, 0, headO, 0, count);
         double fromFire = Math.hypot(self.getX() - fx, self.getZ() - fz);
         boolean fireDrawn = Columns.drawn(current, self, fx, fz);
         if (!scattering && (fromFire < NEAR || !fireDrawn)) {
@@ -348,19 +367,21 @@ public final class Sect implements Egg {
         if (over) fireOn = fireOn && scattering && !current.isBrightOutside();
         if (noticed) sinceNoticed++;
         if (scattering) sinceScatter++;
+        if (scattering && age % LOOK_EVERY == 0) look(current, self);
         int left = 0;
         for (int i = 0; i < count; i++) {
             if (gone[i]) continue;
-            if (scattering) walk(current, self, i);
+            boolean moved = false;
+            if (scattering) moved = walk(current, self, i);
             else if (noticed) turn(self, i);
-            if (fade[i] < 0 && (over || (scattering && Math.hypot(self.getX() - x[i], self.getZ() - z[i]) < REACHED))) {
-                fade[i] = 0;
-            }
-            if (fade[i] >= 0 && ++fade[i] > FADE || !Columns.drawn(current, self, x[i], z[i])) {
+            // Near the player, hidden a moment once it has come a while, or the night over: gone.
+            boolean near = scattering && Math.hypot(self.getX() - x[i], self.getZ() - z[i]) < REACHED;
+            boolean behind = walking[i] >= HIDE_AFTER && hidden[i] >= HIDDEN;
+            if (over || near || behind || !Columns.drawn(current, self, x[i], z[i])) {
                 gone[i] = true;
                 continue;
             }
-            light[i] = light(current, x[i], y[i], z[i], fireOn ? fireGlow(i) : 0);
+            place(i, moved);
             left++;
         }
         if (fire != null) {
@@ -389,28 +410,66 @@ public final class Sect implements Egg {
         head[i] = Mth.approachDegrees(head[i], wanted, HEAD_TURN);
     }
 
-    /** Scattering: stood up in turn, then each walks towards the player on a heading of its own, along the ground. */
-    private void walk(ClientLevel current, LocalPlayer self, int i) {
-        if (sinceScatter < standAt[i]) return;
-        if (rise[i] < 1f) {
-            rise[i] = Math.min(1f, rise[i] + 0.1f);
-            return;
+    /** Scattering: up on its feet in turn, then each walks or runs towards the player on a heading of its own, along the ground. */
+    private boolean walk(ClientLevel current, LocalPlayer self, int i) {
+        if (sinceScatter < standAt[i]) return false;
+        if (!standing[i]) {
+            standing[i] = true;
+            pose(people[i], true);
+            return false;
         }
         float to = yawTo(x[i], z[i], self.getX(), self.getZ()) + off[i];
         body[i] = Mth.approachDegrees(body[i], to, WALK_TURN);
         head[i] = body[i];
-        double yaw = Math.toRadians(body[i]);
-        x[i] -= Math.sin(yaw) * PACE;
-        z[i] += Math.cos(yaw) * PACE;
-        walked[i] += PACE;
+        double yaw = Math.toRadians(body[i]), pace = running ? RUN_PACE : WALK_PACE;
+        x[i] -= Math.sin(yaw) * pace;
+        z[i] += Math.cos(yaw) * pace;
+        walking[i]++;
         double ground = loadedGround(current, x[i], z[i]);
         if (Double.isNaN(ground)) ground = onTheWay(x[i], z[i]);
         y[i] += (ground - y[i]) * 0.3;
+        return true;
     }
 
-    /** The block light the fire gives a figure, less the farther it walks from it. */
-    private int fireGlow(int i) {
-        return Mth.clamp(13 - (int) Math.hypot(x[i] - fx, z[i] - fz) + 2, 0, 13);
+    /**
+     * Whether those that have come a while are hidden from the player: their head and chest,
+     * through the loaded blocks, or past the far world's terrain. Counted in {@link #hidden}.
+     */
+    private void look(ClientLevel current, LocalPlayer self) {
+        List<Integer> asked = new ArrayList<>();
+        for (int i = 0; i < count; i++) if (!gone[i] && walking[i] >= HIDE_AFTER - LOOK_EVERY * 2) asked.add(i);
+        if (asked.isEmpty()) return;
+        double[] xs = new double[asked.size() * 2], ys = new double[xs.length], zs = new double[xs.length];
+        for (int k = 0; k < asked.size(); k++) {
+            int i = asked.get(k);
+            xs[2 * k] = xs[2 * k + 1] = x[i];
+            zs[2 * k] = zs[2 * k + 1] = z[i];
+            ys[2 * k] = y[i] + 1.6;
+            ys[2 * k + 1] = y[i] + 1.0;
+        }
+        int mine = generation.get();
+        Sight.of(current, self, self.getEyePosition(), xs, ys, zs).thenAcceptAsync(seen -> {
+            if (generation.get() != mine) return;
+            for (int k = 0; k < asked.size(); k++) {
+                int i = asked.get(k);
+                if (seen[2 * k] || seen[2 * k + 1]) hidden[i] = 0;
+                else hidden[i] += LOOK_EVERY;
+            }
+        }, Minecraft.getInstance());
+    }
+
+    /** The puppet where the figure is now, its legs walking when it {@code moved}. */
+    private void place(int i, boolean moved) {
+        RemotePlayer person = people[i];
+        person.setOldPosAndRot();
+        person.yBodyRotO = person.yBodyRot;
+        person.yHeadRotO = person.yHeadRot;
+        person.setPos(x[i], y[i], z[i]);
+        person.setYRot(body[i]);
+        person.yBodyRot = body[i];
+        person.yHeadRot = head[i];
+        person.setSprinting(moved && running);
+        Puppets.walk(person, moved ? (float) Math.min(1.0, (running ? RUN_PACE : WALK_PACE) * 4) : 0f, 0.4f, 1f);
     }
 
     /** The top of a loaded column; NaN where it is not loaded. */
@@ -437,96 +496,26 @@ public final class Sect implements Egg {
         generation.incrementAndGet();
         searching = active = false;
         fire = null;
+        people = new RemotePlayer[0];
+        count = 0;
         level = null;
     }
 
     @Override
     public List<? extends Entity> figures() {
-        GameFire shown = fire;
-        return active && shown != null ? shown.figures() : List.of();
+        if (!active) return List.of();
+        List<Entity> shown = new ArrayList<>(count + 1);
+        GameFire burning = fire;
+        if (burning != null) shown.addAll(burning.figures());
+        for (int i = 0; i < count; i++) if (!gone[i]) shown.add(people[i]);
+        return shown;
     }
 
-    /**
-     * The light a figure stands in by a fire: the brightest block and sky light of its feet
-     * and the two blocks above, the block light at least {@code fire}. Open sky where the
-     * client has no light.
-     */
-    private static int light(ClientLevel level, double x, double y, double z, int fire) {
-        BlockPos feet = BlockPos.containing(x, y + 0.1, z);
-        if (!level.hasChunkAt(feet)) return LightTexture.pack(fire, 15);
-        int block = fire, sky = 0;
-        for (int up = 0; up < 3; up++) {
-            BlockPos at = feet.above(up);
-            block = Math.max(block, level.getBrightness(LightLayer.BLOCK, at));
-            sky = Math.max(sky, level.getBrightness(LightLayer.SKY, at));
-        }
-        return LightTexture.pack(block, sky);
-    }
-
+    /** The game draws them and their fire; the far plane past the smoke, and the beam, called. */
     @Override
     public void submit(PoseStack pose, Vec3 camera, Sink collector, float partial) {
         if (!active) return;
-        Minecraft minecraft = Minecraft.getInstance();
-        double reach = DepthFar.of(minecraft) * 0.95;
-        // The game draws the fire and its smoke, which rises high over it: the far plane past its top.
         GhostRenderer.noteDistance(Math.sqrt(camera.distanceToSqr(fx, fy, fz)) + 20);
-        for (int i = 0; i < count; i++) {
-            if (gone[i]) continue;
-            int alpha = fade[i] < 0 ? 255 : Math.round(255 * Mth.clamp(1f - (fade[i] + partial) / FADE, 0f, 1f));
-            if (alpha <= 0) continue;
-            double px = Mth.lerp(partial, xo[i], x[i]) - camera.x;
-            double py = Mth.lerp(partial, yo[i], y[i]) - camera.y;
-            double pz = Mth.lerp(partial, zo[i], z[i]) - camera.z;
-            double distance = Math.sqrt(px * px + py * py + pz * pz);
-            GhostRenderer.noteDistance(distance + 5);
-            float pull = distance > reach ? (float) (reach / distance) : 1f;
-            boolean seated = rise[i] <= 0f;
-            // Seated, the hips low; standing up, rising from there.
-            float lower = (SHAPE.leg() - SEAT) * (1f - rise[i]);
-            float bodyYaw = Mth.rotLerp(partial, bodyO[i], body[i]);
-            float headYaw = Mth.wrapDegrees(Mth.rotLerp(partial, headO[i], head[i]) - bodyYaw);
-            boolean walking = scattering && rise[i] >= 1f && sinceScatter >= standAt[i];
-            float swing = walking ? (float) Math.sin((walked[i] + PACE * partial) * 2.5) * 28f : 0f;
-            // The one standing holds an arm out over the fire, slowly, until they are seen.
-            float raise = i == 0 && !noticed ? -18f - 10f * Mth.sin((age + partial) * 0.03f) : 0f;
-            pose.pushPose();
-            pose.translate((float) (px * pull), (float) (py * pull), (float) (pz * pull));
-            pose.scale(pull, pull, pull);
-            pose.mulPose(Axis.YP.rotationDegrees(-bodyYaw));
-            pose.translate(0f, -lower, 0f);
-            RenderType type = alpha < 255 ? FADING : Ufo.SOLID;
-            int lit = light[i];
-            // Yaw turns the other way round from the pose's rotations, the body's as the head's.
-            BoxFigure.draw(pose, collector, SHAPE, swing, raise, -headYaw, lit, type, alpha, seated);
-            if (!seated) {
-                // The robe down to the ankles, over the legs.
-                collector.draw(pose, type, (at, out) -> box(at, out, -0.27f, 0.12f, -0.16f, 0.27f, SHAPE.leg() + 0.02f, 0.16f,
-                        ROBE, alpha, lit));
-            }
-            hood(pose, collector, -headYaw, type, alpha, lit);
-            pose.popPose();
-        }
         if (called) CalledBeam.submit(pose, camera, collector, fx, fy, fz);
-    }
-
-    /** The hood round the head, turned with it: on top, at the back and on both sides, the face dark in its opening. */
-    private static void hood(PoseStack pose, Sink collector, float headYaw, RenderType type, int alpha, int light) {
-        float h = SHAPE.head() / 2, t = 0.06f;
-        pose.pushPose();
-        pose.translate(0f, SHAPE.leg() + SHAPE.body(), SHAPE.headForward());
-        pose.mulPose(Axis.YP.rotationDegrees(headYaw));
-        collector.draw(pose, type, (at, out) -> {
-            box(at, out, -h - t, 2 * h, -h - t, h + t, 2 * h + t + 0.04f, h + t * 1.5f, ROBE, alpha, light);
-            box(at, out, -h - t, -0.02f, -h - t, h + t, 2 * h, -h, ROBE, alpha, light);
-            box(at, out, -h - t, -0.02f, -h, -h, 2 * h, h + t * 1.5f, ROBE, alpha, light);
-            box(at, out, h, -0.02f, -h, h + t, 2 * h, h + t * 1.5f, ROBE, alpha, light);
-            box(at, out, -h * 0.75f, h * 0.15f, h, h * 0.75f, h * 1.7f, h + 0.01f, FACE, alpha, light);
-        });
-        pose.popPose();
-    }
-
-    private static void box(PoseStack.Pose at, VertexConsumer out, float x0, float y0, float z0,
-                            float x1, float y1, float z1, int colour, int alpha, int light) {
-        Ufo.box(at, out, x0, y0, z0, x1, y1, z1, colour >> 16 & 0xFF, colour >> 8 & 0xFF, colour & 0xFF, alpha, light);
     }
 }

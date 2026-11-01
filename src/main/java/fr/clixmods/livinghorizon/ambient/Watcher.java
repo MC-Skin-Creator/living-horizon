@@ -37,8 +37,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * lowers its spyglass, turns, walks off a few steps and is gone; gone too if they come near.
  * Only on this screen.
  *
- * <p>The figure is a player of no one, in the default skin the game picks from its id:
- * Alex's for {@link #ALEX}, holding a spyglass. It scopes as a player does, in the game's own
+ * <p>The figure is a player of no one, in a default skin of the game's, any but Steve's
+ * ({@link #anyone}), holding a spyglass. It scopes as a player does, in the game's own
  * pose and with the spyglass at its eye: its use flag is set in its synched data, from which
  * the client takes the item in its hand as the one in use, as it does for a player the server
  * says is using one. Its spot is read in the loaded chunks or the far world ({@link Columns}),
@@ -48,12 +48,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public final class Watcher implements Egg {
     private static final int NUMBER = 11;
-    /**
-     * An id the game gives Alex's default skin (slim arms): the skin is the one at
-     * {@code floorMod(id.hashCode(), 18)} in its list of default skins, Alex's at 0; this id's
-     * hash is 198.
-     */
-    static final UUID ALEX = new UUID(0L, 198L);
+    /** Default skins the game has: it gives an id the one at {@code floorMod(id.hashCode(), SKINS)}. */
+    private static final int SKINS = 18;
     /** How far off it may stand, in blocks across; it goes if the player comes within {@link #NEAR}. */
     private static final double MIN = 100, MAX = 350, NEAR = 48;
     /** Blocks off the point the player looks at must be, at least, for the spyglass to look far. */
@@ -204,7 +200,7 @@ public final class Watcher implements Egg {
 
     private void begin(ClientLevel current, LocalPlayer self, Columns.Column spot) {
         if (!called) calendar.shown(NUMBER);
-        RemotePlayer made = Puppets.player(current, new GameProfile(ALEX, ""));
+        RemotePlayer made = Puppets.player(current, new GameProfile(anyone(random), ""));
         made.setPos(spot.x(), spot.y(), spot.z());
         made.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.SPYGLASS));
         scope(made, true);
@@ -384,5 +380,15 @@ public final class Watcher implements Egg {
         if (him == null || !called) return;
         CalledBeam.submit(pose, camera, collector, Mth.lerp(partial, him.xo, him.getX()),
                 Mth.lerp(partial, him.yo, him.getY()), Mth.lerp(partial, him.zo, him.getZ()));
+    }
+
+    /**
+     * An id whose default skin is any of the game's but Steve's, which easter egg 4 wears: the
+     * hash of {@code new UUID(0, n)} is {@code n}, so {@code n} is the skin.
+     */
+    static UUID anyone(RandomSource random) {
+        int skin = random.nextInt(SKINS - 1);
+        if (skin >= Herobrine.STEVE.getLeastSignificantBits()) skin++;
+        return new UUID(0L, skin);
     }
 }

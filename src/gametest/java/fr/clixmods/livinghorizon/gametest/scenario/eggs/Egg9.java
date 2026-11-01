@@ -31,6 +31,8 @@ public final class Egg9 {
         context.waitTicks(100);
         Scene.command(world, "time set midnight");
         context.waitTicks(20);
+        // Running this time: the walkers are checked by the second round below.
+        context.runOnClient(minecraft -> sect().standInRunning(true));
         boolean on = context.computeOnClient(minecraft -> sect().summon(minecraft.level, minecraft.player, true));
         if (!on) throw new AssertionError("ee9 did not start");
         Vec3 fire = await(context);
@@ -51,6 +53,19 @@ public final class Egg9 {
             minecraft.options.fov().set(30);
         });
         context.waitTicks(20);
+        // Players of the game, dressed in white leather.
+        context.runOnClient(minecraft -> {
+            int players = 0;
+            for (net.minecraft.world.entity.Entity figure : sect().figures()) {
+                if (!(figure instanceof net.minecraft.client.player.RemotePlayer person)) continue;
+                players++;
+                net.minecraft.world.item.ItemStack chest = person.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
+                if (!chest.is(net.minecraft.world.item.Items.LEATHER_CHESTPLATE)) {
+                    throw new AssertionError("ee9's figure wears " + chest + ", not white leather");
+                }
+            }
+            if (players < 6) throw new AssertionError("ee9 has " + players + " players round the fire");
+        });
         Scene.screenshot(context, scenario, "ee9-circle");
         if (context.computeOnClient(minecraft -> sect().noticed())) throw new AssertionError("ee9 noticed without a spyglass");
 
@@ -85,16 +100,17 @@ public final class Egg9 {
         context.waitTicks(5);
         if (context.computeOnClient(minecraft -> minecraft.player.isScoping())) throw new AssertionError("ee9 spyglass still up");
         double before = context.computeOnClient(minecraft -> sect().nearest(minecraft.player.position()));
-        context.waitTicks(120);
+        context.waitTicks(80);
         double after = context.computeOnClient(minecraft -> {
             lookAt(minecraft.player, fire.x, fire.y + 1.2, fire.z);
             minecraft.options.fov().set(30);
             return sect().nearest(minecraft.player.position());
         });
         Scene.log("eggs2 ee9 nearest " + (int) before + " then " + (int) after + " blocks");
-        if (!(after < before - 3)) throw new AssertionError("ee9 not coming: " + before + " then " + after);
+        // Running, they cover more than ten blocks in those four seconds, past the time they take to stand.
+        if (!(after < before - 10)) throw new AssertionError("ee9 not running in: " + before + " then " + after);
         Scene.screenshot(context, scenario, "ee9-scatter");
-        // Each fades before it reaches the player.
+        // Each is gone as it comes near the player.
         int left = -1;
         for (int i = 0; i < 40 && left != 0; i++) {
             context.waitTicks(20);
@@ -104,8 +120,37 @@ public final class Egg9 {
         double closest = context.computeOnClient(minecraft -> minecraft.player.position().distanceTo(fire));
         Scene.log("eggs2 ee9 all gone, the fire " + (int) closest + " blocks off");
         if (!context.computeOnClient(minecraft -> sect().busy())) throw new AssertionError("ee9 fire out too soon");
+
+        // Again, walking: hidden behind stone once they have come a while, they are gone.
+        context.runOnClient(minecraft -> {
+            sect().standInRunning(false);
+            sect().standIn(true);
+        });
+        Scene.command(world, "tp @a " + spot.x + " " + spot.y + " " + spot.z);
+        on = context.computeOnClient(minecraft -> sect().summon(minecraft.level, minecraft.player, true));
+        if (!on) throw new AssertionError("ee9 did not start again");
+        Vec3 again = await(context);
+        context.runOnClient(minecraft -> lookAt(minecraft.player, again.x, again.y + 1.2, again.z));
+        context.waitTicks(40);
+        if (context.computeOnClient(minecraft -> sect().running())) throw new AssertionError("ee9 runs when told to walk");
+        context.runOnClient(minecraft -> sect().standIn(false));
+        context.waitTicks(180);
+        int walkers = context.computeOnClient(minecraft -> sect().left());
+        if (walkers == 0) throw new AssertionError("ee9 walkers gone before the wall");
+        // A hollow box of stone round the player: whichever way they come, they are behind it.
+        Scene.command(world, "execute at @p run fill ~-3 ~-1 ~-3 ~3 ~4 ~3 minecraft:stone hollow");
+        context.waitTicks(30);
+        int behind = context.computeOnClient(minecraft -> sect().left());
+        Scene.log("eggs2 ee9 walking: " + walkers + " coming, " + behind + " left once behind a wall");
+        if (behind != 0) throw new AssertionError("ee9 still " + behind + " walking behind a wall");
+        Scene.command(world, "execute at @p run fill ~-3 ~ ~-3 ~3 ~4 ~3 minecraft:air");
+        context.runOnClient(minecraft -> {
+            sect().standIn(null);
+            sect().standInRunning(null);
+        });
+
         // The player at the fire: it is out.
-        Scene.command(world, "tp @a " + (fire.x + 6) + " " + fire.y + " " + (fire.z - 6));
+        Scene.command(world, "tp @a " + (again.x + 6) + " " + again.y + " " + (again.z - 6));
         context.waitTicks(10);
         if (context.computeOnClient(minecraft -> sect().busy())) throw new AssertionError("ee9 still there with the player next to it");
         context.runOnClient(minecraft -> minecraft.options.fov().set(70));
