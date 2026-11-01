@@ -236,7 +236,7 @@ can limit. A mob only shows once your game or the server has seen it.
 <summary>Does it work with my mod?</summary>
 
 Most likely. Voxy, Distant Horizons (2.3 and later), Lodistance (Fabric 26.3, with OpenGL and
-without shaders), Sodium, Iris and shader packs work with it; Photon and Complementary were checked. Living Horizon only adds its own figures: it does not change how other
+without shaders), Bobby, Sodium, Iris and shader packs work with it; Photon and Complementary were checked. Living Horizon only adds its own figures: it does not change how other
 mods draw the world. Mods not tested yet are listed under the
 [`mod compatibility`](https://github.com/MC-Skin-Creator/living-horizon/labels/mod%20compatibility)
 label. If something breaks, open an

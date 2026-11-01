@@ -161,6 +161,7 @@ page, one file per game version and loader:
 | [Voxy](https://modrinth.com/mod/voxy) | Mobs and players are visible on its terrain. |
 | [Distant Horizons](https://modrinth.com/mod/distanthorizons) | From 2.3 on. Mobs and players are visible on its terrain. |
 | [Lodistance](https://www.curseforge.com/minecraft/mc-mods/lodistance) | Fabric, 26.3. Mobs and players are visible on its terrain, with OpenGL and without shaders. |
+| [Bobby](https://modrinth.com/mod/bobby) | Mobs and players are visible on the terrain it keeps past the server's view distance. |
 | [Iris](https://modrinth.com/mod/iris) | Shader packs work, such as the two below. |
 | [Photon](https://modrinth.com/shader/photon-shader) | Shader pack. Checked: it works. |
 | [Complementary Unbound](https://modrinth.com/shader/complementary-unbound) | Shader pack. Checked: it works. |
@@ -216,7 +217,7 @@ can limit. A mob only shows once your game or the server has seen it.
 <details>
 <summary>Does it work with my mod?</summary>
 
-Most likely. Voxy, Distant Horizons, Lodistance, Sodium, Iris and shader packs work with it (see
+Most likely. Voxy, Distant Horizons, Lodistance, Bobby, Sodium, Iris and shader packs work with it (see
 *Compatibility*). Living Horizon only adds its own figures: it does not change how other
 mods draw the world. Mods not tested yet are listed under the
 [`mod compatibility`](https://github.com/MC-Skin-Creator/living-horizon/labels/mod%20compatibility)
