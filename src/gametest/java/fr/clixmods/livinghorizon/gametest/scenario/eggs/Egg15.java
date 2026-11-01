@@ -58,23 +58,35 @@ public final class Egg15 {
             minecraft.options.fov().set(30);
         });
         Scene.screenshot(context, scenario, "ee15-herd");
-        // Looked at once they have turned: let go.
+        // Seen with the naked eye: they stare on ten seconds, then go back to their lives.
+        context.waitTicks(150);
+        if (!context.computeOnClient(minecraft -> egg().busy())) throw new AssertionError("ee15 let go before ten seconds");
         boolean gone = false;
-        for (int i = 0; i < 40 && !gone; i++) {
+        for (int i = 0; i < 120 && !gone; i++) {
             context.waitTick();
             gone = !context.computeOnClient(minecraft -> egg().busy());
         }
-        if (!gone) throw new AssertionError("ee15 still held 2 seconds after being looked at");
+        if (!gone) throw new AssertionError("ee15 still held long after ten seconds");
         Scene.screenshot(context, scenario, "ee15-released");
 
-        // Not looked at: let go once its time is up, ten seconds at most.
+        // Seen through a spyglass, then the spyglass lowered: let go at once.
         call(context);
         context.waitTicks(30);
         facing(context, "turned again");
-        context.waitTicks(190);
-        if (context.computeOnClient(minecraft -> egg().busy())) throw new AssertionError("ee15 held past its time");
+        context.runOnClient(minecraft -> {
+            egg().standIn(true);
+            lookAt(minecraft.player, at.x, at.y + 1, at.z);
+        });
+        context.waitTicks(20);
+        if (!context.computeOnClient(minecraft -> egg().busy())) throw new AssertionError("ee15 let go while still looked at");
+        context.runOnClient(minecraft -> egg().standIn(false));
+        context.waitTicks(3);
+        if (context.computeOnClient(minecraft -> egg().busy())) throw new AssertionError("ee15 still held with the spyglass lowered");
         if (!context.computeOnClient(minecraft -> egg().held().isEmpty())) throw new AssertionError("ee15 left copies held");
-        context.runOnClient(minecraft -> minecraft.options.fov().set(70));
+        context.runOnClient(minecraft -> {
+            egg().standIn(null);
+            minecraft.options.fov().set(70);
+        });
     }
 
     /** Called, the player turned away from the herd (north): where it is, once found. */

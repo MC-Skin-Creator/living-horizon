@@ -28,8 +28,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Easter egg 15: now and then, a herd far off - three cows or more, sheep, pigs, horses, goats,
  * llamas grazing together - stops all at once, and every one of them turns its head, then its
- * body, towards the player, and holds it a few seconds. They go back to their lives when the
- * player looks straight at them, or when the time is up.
+ * body, towards the player, and keeps staring. Once the player has seen them do it, they stare
+ * on ten seconds and go back to their lives; seen through a spyglass, they go back as soon as
+ * it is lowered. Never seen, they give up after a while, or when the player comes near.
  *
  * <p>The herd is among the mobs this client remembers and draws far away ({@link MobMemory}):
  * their copies stand still while held, and {@link MobMemory}'s tick asks {@link #turn} before
@@ -54,8 +55,8 @@ public final class Herd implements Egg {
     private static final float HEAD_TURN = 15f, BODY_TURN = 9f, NECK = 50f;
     /** Ticks the heads turn alone before the bodies follow. */
     private static final int BODY_AFTER = 8;
-    /** Ticks they hold it, at least and at most; ticks before being looked at sends them back, the turn seen. */
-    private static final int HOLD_MIN = 120, HOLD_MAX = 200, LOOK_MIN = 50;
+    /** Ticks they hold it unseen, at least and at most; ticks they stare on once seen. */
+    private static final int HOLD_MIN = 600, HOLD_MAX = 800, STARE = 200;
     /** Ticks a search may take; idle ticks before it may come by chance, and its odds per tick then. */
     private static final int SEARCH = 400, IDLE = 6000, CHANCE = 48000;
 
@@ -78,6 +79,11 @@ public final class Herd implements Egg {
     /** The middle of the herd. */
     private double x, y, z;
     private int age, hold, idle, searchAge;
+    /** The tick they were first seen at, -1 until then; whether through a spyglass. */
+    private int seenAt = -1;
+    private boolean seenScoping;
+    /** For the game tests: stands in for the player's spyglass while set. */
+    private @Nullable Boolean scopingStandIn;
 
     Herd(EggCalendar calendar) {
         this.calendar = calendar;
@@ -236,6 +242,8 @@ public final class Herd implements Egg {
         bodies = false;
         age = 0;
         hold = HOLD_MIN + random.nextInt(HOLD_MAX - HOLD_MIN + 1);
+        seenAt = -1;
+        seenScoping = false;
         active = true;
         EggLog.came(15, x, y, z, self, called);
     }
@@ -291,11 +299,25 @@ public final class Herd implements Egg {
         }
         look(self);
         bodies = age > BODY_AFTER;
-        // Over once the player came to see, looked at them a while after they turned, or the time is up.
-        if (age > hold || Math.hypot(self.getX() - x, self.getZ() - z) < NEAR
-                || (age >= LOOK_MIN && Herobrine.lookedAt(current, self, new Vec3(x, y + 1, z)))) {
+        boolean scoping = scopingStandIn != null ? scopingStandIn : self.isScoping();
+        if (Herobrine.lookedAt(current, self, new Vec3(x, y + 1, z))) {
+            if (seenAt < 0) seenAt = age;
+            seenScoping |= scoping;
+        }
+        // Seen, they stare on a while, or until the spyglass they were seen through is lowered;
+        // never seen, until their time is up; and never once the player comes to see.
+        boolean stared = seenAt >= 0 && (age - seenAt > STARE || (seenScoping && !scoping));
+        if (stared || (seenAt < 0 && age > hold) || Math.hypot(self.getX() - x, self.getZ() - z) < NEAR) {
             clear();
         }
+    }
+
+    /**
+     * For the game tests, which cannot always hold a spyglass up: true or false stands in for
+     * whether the player looks through one; null reads the player again.
+     */
+    public void standIn(@Nullable Boolean scoping) {
+        scopingStandIn = scoping;
     }
 
     private void clear() {
