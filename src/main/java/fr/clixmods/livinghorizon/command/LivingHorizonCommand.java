@@ -106,8 +106,8 @@ public final class LivingHorizonCommand {
     }
 
     /** The command tree, for a dispatcher whose sources {@code source} turns into a {@link Source}. */
-    /** The easter eggs' numbers from 9 on: 20 is no more. */
-    private static final int[] MORE_EGGS = {9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21};
+    /** The easter eggs' numbers from 9 on: 14 and 20 are no more. */
+    private static final int[] MORE_EGGS = {9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 21};
 
     public static <S> LiteralArgumentBuilder<S> tree(Function<S, Source> source) {
         // One word per kind of bird, so that the chat offers them all.

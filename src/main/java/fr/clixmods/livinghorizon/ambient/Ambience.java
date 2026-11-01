@@ -270,15 +270,14 @@ public final class Ambience {
     private final Watcher watcher = new Watcher(calendar);
     private final Glider glider = new Glider(calendar);
     private final SkyLanterns skyLanterns = new SkyLanterns(calendar);
-    private final Mirage mirage = new Mirage(calendar);
     private final Herd herd = new Herd(calendar);
     private final LostPet lostPet = new LostPet(calendar);
     private final SeaCreature seaCreature = new SeaCreature(calendar);
     private final BirdShape birdShape = new BirdShape(calendar);
     private final Campfire campfire = new Campfire(calendar);
     private final Fireworks fireworks = new Fireworks(calendar);
-    /** The easter eggs from 9 on, in their order: 20 is no more. */
-    private final List<Egg> more = List.of(sect, statue, watcher, glider, skyLanterns, mirage, herd, lostPet,
+    /** The easter eggs from 9 on, in their order: 14 and 20 are no more. */
+    private final List<Egg> more = List.of(sect, statue, watcher, glider, skyLanterns, herd, lostPet,
             seaCreature, birdShape, campfire, fireworks);
 
     /** When the easter eggs may come, per world. */
@@ -349,11 +348,6 @@ public final class Ambience {
     /** Easter egg 13. */
     public SkyLanterns skyLanterns() {
         return skyLanterns;
-    }
-
-    /** Easter egg 14. */
-    public Mirage mirage() {
-        return mirage;
     }
 
     /** Easter egg 15. */

@@ -6,7 +6,6 @@ import fr.clixmods.livinghorizon.gametest.scenario.eggs.Egg10;
 import fr.clixmods.livinghorizon.gametest.scenario.eggs.Egg11;
 import fr.clixmods.livinghorizon.gametest.scenario.eggs.Egg12;
 import fr.clixmods.livinghorizon.gametest.scenario.eggs.Egg13;
-import fr.clixmods.livinghorizon.gametest.scenario.eggs.Egg14;
 import fr.clixmods.livinghorizon.gametest.scenario.eggs.Egg15;
 import fr.clixmods.livinghorizon.gametest.scenario.eggs.Egg16;
 import fr.clixmods.livinghorizon.gametest.scenario.eggs.Egg17;
@@ -66,9 +65,9 @@ public final class MoreEggsScenario implements Scenario {
         String wanted = System.getProperty("livinghorizon.eggs", "").trim().toLowerCase(Locale.ROOT);
         Set<String> only = wanted.isEmpty() ? Set.of()
                 : Arrays.stream(wanted.split(",")).map(String::trim).collect(Collectors.toSet());
-        // By number: 20 is no more.
-        int[] numbers = {9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21};
-        Part[] parts = {Egg9::run, Egg10::run, Egg11::run, Egg12::run, Egg13::run, Egg14::run, Egg15::run,
+        // By number: 14 and 20 are no more.
+        int[] numbers = {9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 21};
+        Part[] parts = {Egg9::run, Egg10::run, Egg11::run, Egg12::run, Egg13::run, Egg15::run,
                 Egg16::run, Egg17::run, Egg18::run, Egg19::run, Egg21::run};
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
             context.runOnClient(minecraft -> {
