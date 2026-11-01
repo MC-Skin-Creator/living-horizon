@@ -7,6 +7,9 @@
 #### Nouveautés
 - **Prise en charge du terrain de Lodistance** — Les créatures et joueurs lointains se cachent maintenant derrière le terrain lointain de Lodistance comme derrière n'importe quelle colline et se fondent dans son brouillard, et les créatures lointaines marchent sur son sol, comme avec Voxy et Distant Horizons. (Minecraft 26.3, avec OpenGL, sans shaders.)
 
+#### Corrections
+- **Nom des joueurs déconnectés affiché sur Forge** — Viser un joueur déconnecté affiche maintenant son nom et quand il a été vu pour la dernière fois, au lieu de ne rien afficher. (Forge, Minecraft 1.20.1 à 1.20.4.)
+
 ## 0.15.0 — 2026-10-31
 
 ### Serveur

@@ -7,6 +7,9 @@
 #### New
 - **Support for Lodistance's terrain** — Distant mobs and players now hide behind Lodistance's far terrain like behind any hill and blend into its fog, and distant mobs walk on its ground, as they do with Voxy and Distant Horizons. (Minecraft 26.3, with OpenGL, without shaders.)
 
+#### Fixed
+- **Offline players' names shown on Forge** — Aiming at an offline player now shows their name and when they were last seen, instead of nothing at all. (Forge, Minecraft 1.20.1 to 1.20.4.)
+
 ## 0.15.0 — 2026-10-31
 
 ### Server

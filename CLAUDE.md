@@ -736,6 +736,11 @@ come back, add it here in the same pull request: this file is what the next sess
   minutes: `DhSource.holds` asks its database instead (`FullDataSourceV2Repo`, the generation step
   of each column of a section, one query for 16 chunks). "its database not read" in the lod line
   means a version whose classes differ: check them with `javap`, as for its API.
+- **Debug panel, depth view or an offline player's name never drawn on Forge 1.20.1 to 1.20.4**
+  (nothing over the world, no error): Forge draws the overlay with `ForgeGui`, whose `render`
+  replaces `Gui.render` without calling it, so `GuiMixin` never runs there. `Events.hud` draws
+  them from Forge's `RenderGuiEvent.Post` instead; from 1.20.6 Forge keeps the game's `Gui`.
+  Anything else hooked into `Gui.render` needs the same.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
