@@ -87,9 +87,9 @@ of it checked in game but the depth view's *Whole World* picture (without Ecstat
 
 | Item | Voxy | Distant Horizons | Lodistance | Far View | Ecstatic |
 |---|---|---|---|---|---|
-| README: *Compatibility*, *Requirements*, *Getting started*, FAQ | ✅ | ✅ | ✅ | ❌ waits for a check in game | ❌ until checked in game |
-| Store description and platform relations | ✅ | ✅ | ✅ (to paste by hand) | ❌ | ❌ |
-| `suggests` in the metadata | ✅ | ✅ | ✅ Fabric | ❌ | ❌ |
+| README: *Compatibility*, *Requirements*, *Getting started*, FAQ | ✅ | ✅ | ✅ | ❌ waits for a check in game | 🟡 *Compatibility*, *Requirements*, *Getting started*, FAQ, before a check in game, at the author's request |
+| Store description and platform relations | ✅ | ✅ | ✅ (to paste by hand) | ❌ | 🟡 (to paste by hand) |
+| `suggests` in the metadata | ✅ | ✅ | ✅ Fabric | ❌ | 🟡 NeoForge |
 
 ## Left to do
 
@@ -104,5 +104,5 @@ of it checked in game but the depth view's *Whole World* picture (without Ecstat
   pixel); no biome; then the README and the store.
 - **Ecstatic**: start the `1.21.1-neoforge` client with it (no client game tests there): distant
   mobs behind and in front of its hills, its fog on them, the depth view's *Whole World*,
-  `/livinghorizon lod`; then the README. Shader packs once its Iris support lands.
+  `/livinghorizon lod`: the README already lists it. Shader packs once its Iris support lands.
 - **Voxy**: a game test, once something can run it.
