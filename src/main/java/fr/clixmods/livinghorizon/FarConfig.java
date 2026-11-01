@@ -433,7 +433,7 @@ public final class FarConfig {
     private @Nullable String offlinePose;
     /** A panel of what the mod does and costs, in the corner of the screen. */
     public boolean debugHud = false;
-    /** 0: off; 1: the game's depth; 2: with the far terrain merged in; 3: after the entities. */
+    /** 0: off; 1: the game's depth; 2: with the far terrain merged in; 3: after the entities; 4: the whole world drawn. */
     public int debugDepthView = 0;
 
     /** Birds drawn as 3D models rather than flat sprites. */

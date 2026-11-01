@@ -1100,7 +1100,11 @@ merged. But it projects its terrain with a far plane of its own (at least 16,800
 game's near plane), and depths agree only between projections with the same planes. With the
 game's nearer, a hill a hundred blocks behind a mob 300 blocks away has a smaller depth than the
 mob and is painted over it (`DepthMathTest`). So while Ecstatic draws, the game's far plane is
-Ecstatic's (`EcstaticLink.farPlane`, read from its renderer, in `GhostRenderer.farPlane`).
+Ecstatic's (`EcstaticLink.farPlane`, read from its renderer, in `GhostRenderer.farPlane`). The
+depth view's first three pictures are taken around the entities, before Ecstatic draws, and
+never show it; its fourth, *Whole World*, is copied once the world is drawn
+(`FarDepth.worldDrawn`, at the end of `renderLevel`): its hills there sit at their real
+distances, shaded like the game's terrain, only when the two far planes agree.
 
 Its fog: it moves the game's fog out to a hundred times the far distance (the entities'
 included) and fogs its terrain itself, without a shader pack, with the game's `linear_fog` in
@@ -1286,7 +1290,7 @@ debug options. `/livinghorizon debug` turns the panel and the boxes on or off to
 | Labels (from 1.21.11) | `debugLabels` | State, kind, distance and size on screen above each box, at a constant size |
 | Outlines | `outline*`, in *Outlines...* | An outline around each kind of figure, and a cross where a mob is not drawn (below) |
 | Statistics | *Statistics...* (`ui/StatsScreen`) | What is kept, counted when opened and on *Refresh*: remembered mobs (met, shared by the server, guessed), chosen, built and waiting; the guessed mobs kept apart, the chunks looked at and the memory they take; the size on disk of each folder of `config/livinghorizon`, this server's and all |
-| Depth view | `debugDepthView` | Bottom right: the game's depth alone, with the far terrain merged in, or after the entities. Near is white, far black, sky blue |
+| Depth view | `debugDepthView` | Bottom right: the game's depth alone, with the far terrain merged in, after the entities, or once the whole world is drawn (a far terrain drawn after the entities, Ecstatic's, shows only there; copied only while chosen). Near is white, far black, sky blue |
 | Far terrain | `/livinghorizon lod` (or `voxy`) | Which far terrain mod is read (Voxy, Distant Horizons, Far View or Ecstatic), whether reading it failed, and the state of its depth |
 | Optimisations | `opt*`, `depthOcclusion`, `hideOccludedMobs` | Every optimisation has its own switch, to compare the cost (see [Optimizations](#optimizations)) |
 
@@ -1584,7 +1588,7 @@ the mod shares come back by themselves. *Scan Nearby Mobs* runs a scan.
 | `debugLabels` | Labels on Mobs | `false` | State, kind, distance and size on screen above each box |
 | `debugGameMobs` | Game's Mobs Too | `false` | Boxes around the mobs the game draws itself too |
 | `box*` | Boxes... | `true` | Which other kinds get their box and label: `boxLiveMobs`, `boxCopies`, `boxForeseen`, `boxPlayers`, `boxLeftOut` |
-| `debugDepthView` | Depth View | `0` | `0` off; `1` the game's depth; `2` with the far terrain merged in; `3` after the entities |
+| `debugDepthView` | Depth View | `0` | `0` off; `1` the game's depth; `2` with the far terrain merged in; `3` after the entities; `4` the whole world |
 | `outline*` | Outlines... | `false` | See [Outlines](#outlines) |
 
 #### Display

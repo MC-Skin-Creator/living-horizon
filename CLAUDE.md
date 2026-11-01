@@ -344,7 +344,8 @@ come back, add it here in the same pull request: this file is what the next sess
   player): Ecstatic draws after the entities, tested against the game's depth, with a far plane
   of its own; the game's projection must take the same one (`EcstaticLink.farPlane`, read from
   its private `LodRenderer.extendedFarPlaneBlocks`). `/livinghorizon lod` says whether it is
-  matched. Its source is public (CC BY-NC-SA: read it, never copy it); `EcstaticSource` reads its
+  matched; the depth view shows its terrain on its *Whole World* picture only, copied at the end
+  of `renderLevel` (`FarDepth.worldDrawn`): the others are taken before it draws. Its source is public (CC BY-NC-SA: read it, never copy it); `EcstaticSource` reads its
   files only under their lock and while open, since Ecstatic frees them as its server stops.
   Distant mobs sharp on its fogged hills: it pushes the game's fog (the entities' too) a hundred
   far distances out and fogs its terrain with the game's ramp in its own shaders;

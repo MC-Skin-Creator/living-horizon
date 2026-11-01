@@ -507,6 +507,30 @@ public final class FarDepth {
         FRAME.lateOwner = null;
     }
 
+    /**
+     * The game's depth once the whole world is drawn, for the depth view's fourth picture only:
+     * made the first time that picture is chosen, copied only while it is.
+     */
+    private static int finished;
+
+    /**
+     * The world is drawn: the depth view's fourth picture is copied, with whatever was drawn after
+     * the entities. Ecstatic draws its terrain then, tested against our figures' depth: this is
+     * where its hills and our mobs can be seen at the same distances.
+     */
+    public static void worldDrawn() {
+        if (FarConfig.get().debugDepthView != 4 || saved == 0 || depthTexture == 0 || !DepthFar.openGl() || gpuPath()) {
+            return;
+        }
+        try {
+            if (finished == 0) finished = texture();
+            copy(depthTexture, finished);
+        } catch (Throwable e) {
+            LivingHorizonClient.LOGGER.warn("Copying the depth for the depth view failed", e);
+            FarConfig.get().debugDepthView = 0;
+        }
+    }
+
     /** The translucent step's copies, made the first time they are needed. */
     private static void prepareLate() {
         if (lateSaved != 0) return;
@@ -552,11 +576,12 @@ public final class FarDepth {
     /**
      * Draws one of the depth copies of the last frame in the bottom right corner of the
      * screen, near white to far black, the sky in dark blue: {@code 1} the game's depth,
-     * {@code 2} with Voxy's terrain merged in, {@code 3} after the entities were drawn.
+     * {@code 2} with Voxy's terrain merged in, {@code 3} after the entities were drawn, {@code 4}
+     * once the whole world is drawn (what a far terrain drawn after the entities added).
      * Called with the HUD, after the world, before the HUD itself is drawn over it.
      */
     public static void drawDebugView(int mode) {
-        if (mode < 1 || mode > 3 || saved == 0 || !DepthFar.openGl() || gpuPath()) return;
+        if (mode < 1 || mode > 4 || saved == 0 || mode == 4 && finished == 0 || !DepthFar.openGl() || gpuPath()) return;
         try {
             Minecraft minecraft = Minecraft.getInstance();
             int colorId = mainTexture(false);
@@ -591,7 +616,8 @@ public final class FarDepth {
                 GL20C.glUniform2f(viewUniforms[4], DepthFar.reversed() ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f);
                 GL30C.glBindVertexArray(vertexArray);
                 GL33C.glBindSampler(0, 0);
-                GL45C.glBindTextureUnit(0, mode == 1 ? saved : mode == 2 ? written : FRAME.lateShown ? lateDrawn : drawn);
+                GL45C.glBindTextureUnit(0, mode == 1 ? saved : mode == 2 ? written : mode == 4 ? finished
+                        : FRAME.lateShown ? lateDrawn : drawn);
                 GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3);
             } finally {
                 gl.restore();
@@ -1320,12 +1346,12 @@ public final class FarDepth {
             vertexArray = GL45C.glCreateVertexArrays();
         }
         if (saved != 0 && w == width && h == height && f == format) return;
-        for (int texture : new int[]{saved, written, drawn, faded, lateSaved, lateWritten, lateDrawn}) {
+        for (int texture : new int[]{saved, written, drawn, faded, lateSaved, lateWritten, lateDrawn, finished}) {
             if (texture == 0) continue;
             GL11C.glDeleteTextures(texture);
             GlCache.deleted(texture);
         }
-        lateSaved = lateWritten = lateDrawn = 0;
+        lateSaved = lateWritten = lateDrawn = finished = 0;
         FRAME.lateShown = FRAME.lateFade = false;
         width = w;
         height = h;

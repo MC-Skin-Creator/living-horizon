@@ -33,7 +33,7 @@ public final class DebugScreen extends SideOptionsScreen {
 
         header(Component.translatable(KEY + "debug.view"));
         list.addSmall(bool("debugHud", c.debugHud, v -> c.debugHud = v));
-        list.addBig(choice("debugDepthView", List.of("0", "1", "2", "3"), String.valueOf(c.debugDepthView),
+        list.addBig(choice("debugDepthView", List.of("0", "1", "2", "3", "4"), String.valueOf(c.debugDepthView),
                 v -> c.debugDepthView = Integer.parseInt(v)));
         list.addSmall(
                 Button.builder(Component.translatable(KEY + "boxes.open"), b -> minecraft.setScreen(new BoxesScreen(this)))
