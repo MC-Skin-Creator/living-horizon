@@ -27,12 +27,31 @@ public final class Egg13 {
         context.waitTicks(100);
         Scene.command(world, "execute at @p run fill ~-20 ~-1 ~75 ~20 ~-1 ~105 minecraft:dirt_path");
         Scene.command(world, "execute at @p run setblock ~ ~ ~90 minecraft:bell");
+        // A second village, off to the side.
+        Scene.command(world, "execute at @p run fill ~-140 ~-1 ~55 ~-110 ~-1 ~85 minecraft:dirt_path");
+        Scene.command(world, "execute at @p run setblock ~-125 ~ ~70 minecraft:bell");
         Scene.command(world, "time set midnight");
         context.waitTicks(20);
+        // Every village in sight, first: both let lanterns go.
+        context.runOnClient(minecraft -> lanterns().standInEvery(true));
+        boolean both = context.computeOnClient(minecraft -> lanterns().summon(minecraft.level, minecraft.player, true));
+        if (!both) throw new AssertionError("ee13 found no village");
+        await(context);
+        int up = context.computeOnClient(minecraft -> lanterns().villages());
+        Scene.log("eggs2 ee13 from every village: " + up);
+        if (up != 2) throw new AssertionError("ee13 rose from " + up + " villages, not both");
+        context.runOnClient(minecraft -> lookAt(minecraft.player, minecraft.player.getX() - 60, -45, minecraft.player.getZ() + 80));
+        context.waitTicks(250);
+        Scene.screenshot(context, scenario, "ee13-every");
+        // Then one village only.
+        context.runOnClient(minecraft -> lanterns().standInEvery(false));
         boolean on = context.computeOnClient(minecraft -> lanterns().summon(minecraft.level, minecraft.player, true));
         if (!on) throw new AssertionError("ee13 found no village");
         Vec3 village = await(context);
+        int one = context.computeOnClient(minecraft -> lanterns().villages());
+        if (one != 1) throw new AssertionError("ee13 rose from " + one + " villages, not one");
         context.runOnClient(minecraft -> {
+            lanterns().standInEvery(null);
             double across = Math.hypot(village.x - minecraft.player.getX(), village.z - minecraft.player.getZ());
             Scene.log("eggs2 ee13 at " + village + ", " + (int) across + " blocks");
             if (across < 80) throw new AssertionError("ee13 at " + (int) across + " blocks, too near");

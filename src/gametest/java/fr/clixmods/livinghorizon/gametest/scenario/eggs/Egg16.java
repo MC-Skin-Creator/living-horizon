@@ -22,7 +22,7 @@ import java.util.List;
 
 /**
  * Easter egg 16, at night. Called with no pet of the player's remembered: a wolf with a red
- * collar, sitting far off and facing them, seen from 50 blocks, gone once they are within 20.
+ * collar, sitting far off and facing them, seen from 50 blocks, running off once they are within 30.
  * Then a wolf of theirs with a yellow collar, met and left 170 blocks behind: called again, the
  * copy that sits far off is that wolf.
  */
@@ -66,12 +66,22 @@ public final class Egg16 {
         facing(context, "ee16 from 50 blocks");
         Scene.screenshot(context, scenario, "ee16-wolf");
 
-        // Within 20 blocks: gone.
-        Vec3 close = context.computeOnClient(minecraft -> toward(minecraft.player.position(), at, 20 / Math.hypot(
+        // Within 30 blocks: it gets up and runs off, and is gone a few seconds later.
+        Vec3 close = context.computeOnClient(minecraft -> toward(minecraft.player.position(), at, 30 / Math.hypot(
                 at.x - minecraft.player.getX(), at.z - minecraft.player.getZ())));
         Scene.command(world, "tp @a " + close.x + " ~ " + close.z);
-        context.waitTicks(10);
-        if (context.computeOnClient(minecraft -> egg().busy())) throw new AssertionError("ee16 still there 20 blocks away");
+        context.waitTicks(20);
+        double off = context.computeOnClient(minecraft -> {
+            List<? extends Entity> figures = egg().figures();
+            if (figures.isEmpty() || !(figures.get(0) instanceof TamableAnimal pet)) throw new AssertionError("ee16 gone at once");
+            if (pet.isInSittingPose()) throw new AssertionError("ee16 still sitting with the player 30 blocks away");
+            return Math.hypot(pet.getX() - minecraft.player.getX(), pet.getZ() - minecraft.player.getZ());
+        });
+        Scene.log("eggs2 ee16 running off, " + (int) off + " blocks away");
+        if (off < 33) throw new AssertionError("ee16 not running off: " + off + " blocks away");
+        Scene.screenshot(context, scenario, "ee16-running");
+        context.waitTicks(130);
+        if (context.computeOnClient(minecraft -> egg().busy())) throw new AssertionError("ee16 still there after running off");
         context.runOnClient(minecraft -> minecraft.options.fov().set(70));
 
         // A wolf of theirs, a yellow collar on, met then left behind.

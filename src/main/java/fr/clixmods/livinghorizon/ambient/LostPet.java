@@ -24,6 +24,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -36,7 +37,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Easter egg 16: some evening, a dog or a cat the player lost - one of their own, which this
  * client remembers somewhere and has not seen for a long while - sits far off on the ground,
- * in sight, and looks at them. It is gone when they come near, at dawn, or after a few
+ * in sight, and looks at them. Looked at a moment, or once they come nearer, it gets up and
+ * runs off, and is gone as soon as something hides it; gone too at dawn, or after a few
  * minutes. Only on this screen: a memory of it, while the pet itself stays wherever it is
  * remembered.
  *
@@ -56,7 +58,11 @@ public final class LostPet implements Egg {
     /** Milliseconds a pet must have gone unseen to be lost: a day of the game. */
     private static final long LOST = 20 * 60 * 1000L;
     /** How far off it may come, in blocks across; blocks across under which it is gone. */
-    private static final double MIN = 60, MAX = 200, NEAR = 32;
+    private static final double MIN = 60, MAX = 200, NEAR = 12;
+    /** Blocks across within which it runs off; blocks per tick it runs. */
+    private static final double FLEE_NEAR = 48, RUN = 0.3;
+    /** Ticks looked at before it runs off; ticks it runs at most. */
+    private static final int SEEN = 40, FLEE_LIFE = 120;
     /** Degrees a tick its head follows the player, and its body when it shuffles round; degrees its head turns from its body, at most. */
     private static final float HEAD_TURN = 8f, BODY_TURN = 3f, NECK = 50f;
     /** Spots tried; ticks a search may take; ticks it stays at most (three minutes). */
@@ -73,6 +79,9 @@ public final class LostPet implements Egg {
     private @Nullable LivingEntity figure;
     private double x, y, z;
     private int age, idle, searchAge;
+    /** Ticks looked at; ticks since it ran off, -1 until then; the way it runs. */
+    private int seen, fleeing = -1;
+    private double fleeX, fleeZ;
 
     LostPet(EggCalendar calendar) {
         this.calendar = calendar;
@@ -247,6 +256,8 @@ public final class LostPet implements Egg {
 
     private void begin(LivingEntity pet, Columns.Column spot, LocalPlayer self) {
         if (!called) calendar.shown(16);
+        seen = 0;
+        fleeing = -1;
         x = spot.x();
         y = spot.y();
         z = spot.z();
@@ -284,9 +295,25 @@ public final class LostPet implements Egg {
             return;
         }
         LivingEntity pet = figure;
-        if (pet == null || ++age > LIFE || Math.hypot(self.getX() - x, self.getZ() - z) < NEAR
-                || !Columns.drawn(current, self, x, z) || (!called && current.isBrightOutside())) {
+        double across = Math.hypot(self.getX() - x, self.getZ() - z);
+        if (pet == null || ++age > LIFE || across < NEAR || !Columns.drawn(current, self, x, z)
+                || (!called && current.isBrightOutside())) {
             clear();
+            return;
+        }
+        // Looked at a moment, or the player coming nearer: it gets up and runs off.
+        if (fleeing < 0 && (across < FLEE_NEAR || (Herobrine.lookedAt(current, self, new Vec3(x, y + 0.6, z)) && ++seen >= SEEN))) {
+            fleeing = 0;
+            double away = Math.atan2(x - self.getX(), z - self.getZ()) + (random.nextDouble() - 0.5) * 1.0;
+            fleeX = Math.sin(away);
+            fleeZ = Math.cos(away);
+            if (pet instanceof TamableAnimal tame) {
+                tame.setOrderedToSit(false);
+                tame.setInSittingPose(false);
+            }
+        }
+        if (fleeing >= 0) {
+            flee(current, self, pet);
             return;
         }
         // Sitting where it is, its eyes on the player; turning round on the spot when they walk round it.
@@ -305,6 +332,28 @@ public final class LostPet implements Egg {
         pet.yHeadRot = head;
         Puppets.walk(pet, 0f, 0.4f, pet.isBaby() ? 3f : 1f);
         pet.tickCount++;
+    }
+
+    /** Running off, away from the player along the ground; gone once hidden, or after a while. */
+    private void flee(ClientLevel current, LocalPlayer self, LivingEntity pet) {
+        pet.setOldPosAndRot();
+        pet.yBodyRotO = pet.yBodyRot;
+        pet.yHeadRotO = pet.yHeadRot;
+        float yaw = (float) Math.toDegrees(Math.atan2(-fleeX, fleeZ));
+        x += fleeX * RUN;
+        z += fleeZ * RUN;
+        if (Columns.loaded(current, x, z)) {
+            y = current.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, Mth.floor(x), Mth.floor(z));
+        }
+        pet.setPos(x, y, z);
+        pet.setYRot(yaw);
+        pet.yBodyRot = yaw;
+        pet.yHeadRot = yaw;
+        Puppets.walk(pet, 1f, 0.4f, pet.isBaby() ? 3f : 1f);
+        pet.tickCount++;
+        boolean hidden = Columns.loaded(current, x, z)
+                && !Ghosts.inSight(current, self, self.getEyePosition(), x, y + 0.6, z);
+        if (++fleeing > FLEE_LIFE || (fleeing > 10 && hidden)) clear();
     }
 
     private void clear() {

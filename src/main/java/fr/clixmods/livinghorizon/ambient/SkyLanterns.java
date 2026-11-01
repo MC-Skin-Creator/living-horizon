@@ -24,10 +24,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Easter egg 13: some night, from a village far off, a few dozen paper lanterns rise into the
  * sky one after the other, warm and flickering, drifting together on a light wind and swaying a
- * little, and fade out high above it. Only on this screen.
+ * little, and fade out high above it. Some nights they rise from every village in sight at
+ * once, other nights from one of them only. Only on this screen.
  *
- * <p>The village is one {@link GhostVillager#villages} knows, 80 blocks off at least and in
- * sight above its roofs ({@link Sight}); where each lantern leaves from is read around it, in
+ * <p>The villages are those {@link GhostVillager#villages} knows, 80 blocks off at least and
+ * in sight above their roofs ({@link Sight}); where each lantern leaves from is read around it, in
  * the loaded chunks or the far world ({@link Columns}). Each lantern is a glowing box round a
  * brighter flame, in a dim halo, drawn larger the farther it is so that it stays a few pixels
  * across.
@@ -43,8 +44,8 @@ public final class SkyLanterns implements Egg {
     private static final double CEILING_MIN = 120, CEILING_MAX = 200;
     /** Blocks above the village it must be seen at: the lanterns are seen once they are up. */
     private static final double SEEN_ABOVE = 30;
-    /** Lanterns, at least and at most. */
-    private static final int FEWEST = 30, MOST = 60;
+    /** Lanterns, at least and at most; from each village, when every village in sight lets some go. */
+    private static final int FEWEST = 30, MOST = 60, FEWEST_EACH = 20, MOST_EACH = 40;
     /** Ticks over which they leave, one after the other; ticks one takes to reach its height, at least and at most. */
     private static final int RELEASE = 400, CLIMB_MIN = 1000, CLIMB_MAX = 1500;
     /** Ticks a lantern takes to pick up speed, to light up as it leaves; ticks they all fade at dawn. */
@@ -64,6 +65,10 @@ public final class SkyLanterns implements Egg {
     private final AtomicInteger generation = new AtomicInteger();
     private @Nullable ClientLevel level;
     private boolean searching, active, called;
+    /** For the game tests: true or false chooses whether every village in sight lets lanterns go; null leaves it to chance. */
+    private @Nullable Boolean everyStandIn;
+    /** Villages lanterns rise from now. */
+    private int villagesUp;
     /** The village's middle, on its ground; the wind, in blocks per tick. */
     private double x, y, z, windX, windZ;
     /** Each lantern: where it leaves from, how high it goes, its sway and its flicker. */
@@ -92,6 +97,16 @@ public final class SkyLanterns implements Egg {
     @Override
     public @Nullable Vec3 position() {
         return active ? new Vec3(x, y, z) : null;
+    }
+
+    /** For the game tests: true or false chooses whether every village in sight lets lanterns go next time; null, chance. */
+    public void standInEvery(@Nullable Boolean all) {
+        everyStandIn = all;
+    }
+
+    /** For the game tests: the villages the lanterns rise from now. */
+    public int villages() {
+        return active ? villagesUp : 0;
     }
 
     /** For the game tests: how many lanterns are in the air now. */
@@ -149,7 +164,10 @@ public final class SkyLanterns implements Egg {
         // Called, the nearest first; by chance, any of them.
         for (int i = villages.size() - 1; i > 0 && !called; i--) Collections.swap(villages, i, random.nextInt(i + 1));
         if (villages.size() > VILLAGES) villages = new ArrayList<>(villages.subList(0, VILLAGES));
-        int count = FEWEST + random.nextInt(MOST - FEWEST + 1), per = 1 + count;
+        // Some nights every village in sight, other nights one of them.
+        boolean all = everyStandIn != null ? everyStandIn : random.nextBoolean();
+        int count = all ? FEWEST_EACH + random.nextInt(MOST_EACH - FEWEST_EACH + 1) : FEWEST + random.nextInt(MOST - FEWEST + 1);
+        int per = 1 + count;
         // Each village's middle, then where each lantern leaves from around it.
         double[] xs = new double[villages.size() * per], zs = new double[xs.length];
         for (int v = 0; v < villages.size(); v++) {
@@ -184,29 +202,33 @@ public final class SkyLanterns implements Egg {
             Sight.of(current, self, eye, hx, hy, hz).thenAcceptAsync(seen -> {
                 if (generation.get() != mine) return;
                 searching = false;
-                for (int k = 0; k < seen.length; k++) {
+                List<Columns.Column[]> up = new ArrayList<>();
+                for (int k = 0; k < seen.length && (all || up.isEmpty()); k++) {
                     if (!seen[k]) continue;
-                    int v = known.get(k);
                     Columns.Column[] around = new Columns.Column[per];
-                    System.arraycopy(columns, v * per, around, 0, per);
-                    begin(around);
-                    EggLog.came(13, x, y, z, self, called);
+                    System.arraycopy(columns, known.get(k) * per, around, 0, per);
+                    up.add(around);
+                }
+                if (up.isEmpty()) {
+                    if (called) EggLog.nowhere(13);
                     return;
                 }
-                if (called) EggLog.nowhere(13);
+                begin(up);
+                EggLog.came(13, x, y, z, self, called);
             }, game);
         }, game);
         return true;
     }
 
-    /** {@code around}: the village's middle, then where each lantern leaves from. */
-    private void begin(Columns.Column[] around) {
+    /** Each of {@code villages}: its middle, then where each of its lanterns leaves from. The first is the nearest, or the one. */
+    private void begin(List<Columns.Column[]> villages) {
         if (!called) calendar.shown(13);
-        Columns.Column middle = around[0];
+        Columns.Column middle = villages.get(0)[0];
         x = middle.x();
         y = middle.y();
         z = middle.z();
-        int count = around.length - 1;
+        villagesUp = villages.size();
+        int each = villages.get(0).length - 1, count = each * villages.size();
         fromX = new double[count];
         fromY = new double[count];
         fromZ = new double[count];
@@ -220,17 +242,19 @@ public final class SkyLanterns implements Egg {
         windZ = Math.sin(wind) * speed;
         end = 0;
         for (int i = 0; i < count; i++) {
-            Columns.Column spot = around[i + 1];
+            Columns.Column[] village = villages.get(i / each);
+            Columns.Column spot = village[i % each + 1];
+            double home = village[0].y();
             // Over the roofs where the ground is known, from the village's ground where it is not.
-            double ground = spot.known() && Math.abs(spot.y() - y) < 12 ? spot.y() : y;
+            double ground = spot.known() && Math.abs(spot.y() - home) < 12 ? spot.y() : home;
             fromX[i] = spot.x();
             fromY[i] = ground + 1.5 + random.nextDouble() * 2;
             fromZ[i] = spot.z();
             ceiling[i] = CEILING_MIN + random.nextDouble() * (CEILING_MAX - CEILING_MIN);
             phase[i] = random.nextFloat() * 6.28f;
             green[i] = 150 + random.nextFloat() * 55;
-            // One after the other, never all at once.
-            delay[i] = (int) ((i + random.nextDouble()) * RELEASE / count);
+            // One after the other, never all at once; each village as the others.
+            delay[i] = (int) ((i % each + random.nextDouble()) * RELEASE / each);
             climb[i] = CLIMB_MIN + random.nextInt(CLIMB_MAX - CLIMB_MIN + 1);
             end = Math.max(end, delay[i] + climb[i] + LIFT / 2 + 1);
         }
