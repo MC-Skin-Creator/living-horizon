@@ -422,6 +422,12 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Mobs near the player never drawn far away**, only those met later: the mob memory is opened
   on the first tick with a player, and opening clears the mobs sent so far, which the level may
   have loaded just before. `FarPlayerTracker` hands it the level's entities again once open.
+- **Distant mobs missing, or far players stopping short, past the server's view distance with
+  Bobby** (issue #112): Bobby makes `getEffectiveRenderDistance` the client's own setting and
+  draws chunks it saved past the server's, which hold no entities. Anything about the entities
+  the server sends (the copies' near zone, a far player lost inside it) reads
+  `track/ServerView`, the render distance cut to the server's; terrain keeps the render
+  distance. The `bobby` scenario checks it (`run.sh bobby --with bobby`).
 - **Distant mobs jumping or sprinting as the player comes back** (the copy runs or teleports to
   the real mob once it is sent again): the server stops sending a mob at its tracking range
   (160 blocks for animals, scaled by *Entity Distance*) but keeps moving it out to the
