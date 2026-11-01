@@ -5,9 +5,12 @@ import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.Stats;
 import fr.clixmods.livinghorizon.ambient.Ambience;
+import fr.clixmods.livinghorizon.ambient.Herd;
 import fr.clixmods.livinghorizon.compat.DrawnGround;
+import fr.clixmods.livinghorizon.compat.EcstaticLink;
 import fr.clixmods.livinghorizon.compat.EntityCulling;
 import fr.clixmods.livinghorizon.compat.FarDepth;
+import fr.clixmods.livinghorizon.compat.FarViewLink;
 import fr.clixmods.livinghorizon.compat.IceAndFire;
 import fr.clixmods.livinghorizon.compat.OcclusionQueries;
 import fr.clixmods.livinghorizon.debug.DebugMarks;
@@ -245,11 +248,15 @@ public final class GhostRenderer {
 
     /**
      * The far plane this frame needs: the projection is built before the entities are
-     * extracted, so it covers the players of the frame before, with room to spare.
+     * extracted, so it covers the players of the frame before, with room to spare. While
+     * Ecstatic draws its terrain, its own far plane: it tests its terrain against the game's
+     * depth with that plane, and the two depths only agree with the same one.
      */
     public static float farPlane(float vanilla) {
         FarConfig config = FarConfig.get();
         if (!config.anyDistant() || !config.extendFarPlane) return vanilla;
+        float ecstatic = EcstaticLink.farPlane();
+        if (ecstatic > 0f) return ecstatic;
         return Math.max(vanilla, neededFar);
     }
 
@@ -527,7 +534,7 @@ public final class GhostRenderer {
         if (debug) DebugMarks.end();
     }
 
-    /** The figures of the easter eggs that are the game's own: the cow taken, the watcher. */
+    /** The figures of the easter eggs that are the game's own: the cow taken, the watcher, those from 9 on. */
     private static void eggs(List<EntityRenderState> frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
                              Vec3 eye, float partialTick, FarConfig config) {
         Ambience ambience = FarPlayerTracker.get().ambience();
@@ -535,6 +542,11 @@ public final class GhostRenderer {
         if (cow != null) add(frame, minecraft, eye, extract(dispatcher, cow, partialTick), null, true, Mark.FAKE, config, null);
         LivingEntity watcher = ambience.herobrine().figure();
         if (watcher != null) add(frame, minecraft, eye, extract(dispatcher, watcher, partialTick), null, true, Mark.FAKE, config, null);
+        for (fr.clixmods.livinghorizon.ambient.Egg egg : ambience.more()) {
+            for (Entity figure : egg.figures()) {
+                add(frame, minecraft, eye, extract(dispatcher, figure, partialTick), null, true, Mark.FAKE, config, null);
+            }
+        }
     }
 
     /**
@@ -589,7 +601,8 @@ public final class GhostRenderer {
             Mark copy = SeedDraws.foreseen(mob.id()) ? Mark.FORESEEN : Mark.FAKE;
             if (debug) DebugMarks.mark(puppet, copy);
             mob.drawn();
-            if (impostor(minecraft, eye, puppet, partialTick, config)) continue;
+            // Held by easter egg 15, its head turned apart from its body: a model, which shows it.
+            if (!Herd.holds(puppet) && impostor(minecraft, eye, puppet, partialTick, config)) continue;
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
             // A puppet is in no world, so never in water: fish would be drawn flopping on
             // their side, as on land. Water mobs were in water when last seen.
@@ -688,6 +701,8 @@ public final class GhostRenderer {
             // Close by, the game leaves a mob out only when the terrain hides it.
             if (entity.distanceToSqr(eye) < 24 * 24) continue;
             if (tooFar(entity, eye, maxDistance(entity, config))) continue;
+            // Far View draws it as a box of its own in place of the game's model: once is enough.
+            if (FarViewLink.drawsMob(entity, eye)) continue;
             if (overVoid(minecraft, eye, entity.getUUID(), entity, config)) continue;
             if (skipped(entity, true)) continue;
             if (occluded(entity.getUUID(), entity, config)) continue;

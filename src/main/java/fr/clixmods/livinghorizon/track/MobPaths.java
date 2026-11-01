@@ -23,7 +23,7 @@ import java.util.concurrent.CompletableFuture;
  *
  * <p>The ground around the mob is read once, when it is remembered: in every column
  * within {@link #RADIUS} blocks, the floor nearest the mob's own height with room above
- * it, from the chunks loaded here or else from the far world (Voxy or Distant Horizons).
+ * it, from the chunks loaded here or else from the far world (Voxy, Distant Horizons or Lodistance).
  * Both are read off the game's thread, the loaded chunks from a copy made as it is asked.
  * What has no collision - grass, flowers, crops, snow, torches - is air to a mob, and a
  * path dug with a shovel is ground like any other. Water, leaves and what stands too tall to step on (a fence, a

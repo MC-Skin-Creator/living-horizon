@@ -340,7 +340,7 @@ public final class FarConfig {
     /** The far terrain's depth is merged only on frames that draw something past the render distance. */
     @SerializedName(value = "optLazyDepth", alternate = "optLazyVoxyDepth")
     public boolean optLazyDepth = true;
-    /** The far world (Voxy or Distant Horizons) is read on several threads at once rather than one. */
+    /** The far world (Voxy, Distant Horizons, Lodistance or Far View) is read on several threads at once rather than one. */
     @SerializedName(value = "optParallelRead", alternate = "optParallelVoxy")
     public boolean optParallelRead = true;
     /** Ground already read in the far world is kept for two minutes. */
@@ -433,7 +433,7 @@ public final class FarConfig {
     private @Nullable String offlinePose;
     /** A panel of what the mod does and costs, in the corner of the screen. */
     public boolean debugHud = false;
-    /** 0: off; 1: the game's depth; 2: with the far terrain merged in; 3: after the entities. */
+    /** 0: off; 1: the game's depth; 2: with the far terrain merged in; 3: after the entities; 4: the whole world drawn. */
     public int debugDepthView = 0;
 
     /** Birds drawn as 3D models rather than flat sprites. */

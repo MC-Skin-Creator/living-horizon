@@ -3,11 +3,13 @@ package fr.clixmods.livinghorizon.gametest;
 import fr.clixmods.livinghorizon.gametest.scenario.BenchmarkScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.BenchmarkWorldScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.BirdCommandScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.BobbyScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.BirdsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DedicatedServerScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DistancePreviewScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EasterEggsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.EggFiguresScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DhFogScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FarFogScenario;
@@ -26,9 +28,11 @@ import fr.clixmods.livinghorizon.gametest.scenario.ImpostorSizeScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LanShareScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.MannequinsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.MoreEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OcclusionScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LinksScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.LodistanceScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OverVoidScenario;
@@ -108,14 +112,18 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new EntityDepthScenario(),
             new ResizeScenario(),
             new OcclusionScenario(),
+            new LodistanceScenario(),
             new UnloadScenario(),
             new FollowedMobsScenario(),
+            new BobbyScenario(),
             new SittingPetsScenario(),
             new HeadTurnScenario(),
             new GaitsScenario(),
             new StillMobsScenario(),
             new FlyersScenario(),
             new EasterEggsScenario(),
+            new MoreEggsScenario(),
+            new EggFiguresScenario(),
             new BirdsScenario(),
             new PerchersScenario(),
             new BirdCommandScenario(),

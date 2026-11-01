@@ -2,6 +2,20 @@
 
 ## Prochaine version
 
+### Client
+
+#### Nouveautés
+- **Prise en charge du terrain de Lodistance** — Les créatures et joueurs lointains se cachent maintenant derrière le terrain lointain de Lodistance comme derrière n'importe quelle colline et se fondent dans son brouillard, et les créatures lointaines marchent sur son sol, comme avec Voxy et Distant Horizons. (Minecraft 26.3, avec OpenGL, sans shaders.)
+- **Prise en charge du terrain de Far View** — Les créatures lointaines s'affichent et marchent maintenant sur le terrain lointain de Far View et se cachent derrière ses collines, au lieu d'être masquées au-delà de la distance d'affichage. (Forge et NeoForge, Minecraft 1.20.1 à 1.21.4.)
+- **Prise en charge du terrain d'Ecstatic** — Les créatures lointaines apparaissent maintenant sur le terrain d'Ecstatic et marchent sur son sol, au lieu de disparaître au-delà de la distance d'affichage. Elles se cachent correctement derrière ses collines, restent visibles devant elles et se fondent dans son brouillard. (NeoForge, Minecraft 1.21.1, solo ; le brouillard sans shaders.)
+
+#### Corrections
+- **Créatures affichées une seule fois avec Far View** — Les créatures que Far View dessine en boîtes entre 128 blocs et la distance d'affichage ne sont maintenant affichées qu'une fois, au lieu de deux fois l'une sur l'autre. (Forge et NeoForge, Minecraft 1.20.1 à 1.21.4.)
+
+#### Corrections
+- **Nom des joueurs déconnectés affiché sur Forge** — Viser un joueur déconnecté affiche maintenant son nom et quand il a été vu pour la dernière fois, au lieu de ne rien afficher. (Forge, Minecraft 1.20.1 à 1.20.4.)
+- **Meilleure intégration avec Bobby** — Les créatures lointaines restent maintenant visibles juste au-delà de la distance jusqu'où le serveur les envoie, sur le terrain que Bobby conserve, au lieu de disparaître. Les joueurs lointains ne s'arrêtent plus net non plus en sortant de cette distance.
+
 ## 0.15.0 — 2026-10-31
 
 ### Serveur
