@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon.gametest;
 import fr.clixmods.livinghorizon.gametest.scenario.BenchmarkScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.BenchmarkWorldScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.BirdCommandScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.BobbyScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.BirdsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DedicatedServerScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
