@@ -53,15 +53,14 @@ public final class Egg9 {
             minecraft.options.fov().set(30);
         });
         context.waitTicks(20);
-        // Players of the game, dressed in white leather.
+        // Players in their robes, no armour on.
         context.runOnClient(minecraft -> {
             int players = 0;
             for (net.minecraft.world.entity.Entity figure : sect().figures()) {
                 if (!(figure instanceof net.minecraft.client.player.RemotePlayer person)) continue;
                 players++;
-                net.minecraft.world.item.ItemStack chest = person.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
-                if (!chest.is(net.minecraft.world.item.Items.LEATHER_CHESTPLATE)) {
-                    throw new AssertionError("ee9's figure wears " + chest + ", not white leather");
+                if (!person.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).isEmpty()) {
+                    throw new AssertionError("ee9's figure wears " + person.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST));
                 }
             }
             if (players < 6) throw new AssertionError("ee9 has " + players + " players round the fire");

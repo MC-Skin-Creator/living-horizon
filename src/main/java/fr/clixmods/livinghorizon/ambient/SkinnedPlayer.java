@@ -17,19 +17,17 @@ import net.minecraft.world.entity.player.PlayerSkin;
 import java.util.UUID;
 
 /**
- * A player of no one in one of the mod's statue skins (stone, marble, mossy stone, all made
- * for it), for easter egg 10 ({@link Statue}). The game draws it as it draws any player; only
- * the skin is its own.
+ * A player of no one in one of the skins made for the easter eggs, in the mod's
+ * {@code textures/entity/}: the statues of easter egg 10 ({@link Statue}), the robes of easter
+ * egg 9 ({@link Sect}). The game draws it as it draws any player; only the skin is its own.
  */
-final class StatueFigure extends RemotePlayer {
-    /** The statue skins, in {@code textures/entity/statue/}: shown one after the other. */
-    static final String[] LOOKS = {"stone", "marble", "mossy"};
-
+final class SkinnedPlayer extends RemotePlayer {
     private final Identifier texture;
 
-    StatueFigure(ClientLevel level, String look) {
+    /** {@code skin}: its path in {@code textures/entity/}, without {@code .png}. */
+    SkinnedPlayer(ClientLevel level, String skin) {
         super(level, new GameProfile(UUID.randomUUID(), ""));
-        texture = Identifier.fromNamespaceAndPath(LivingHorizonClient.MOD_ID, "textures/entity/statue/" + look + ".png");
+        texture = Identifier.fromNamespaceAndPath(LivingHorizonClient.MOD_ID, "textures/entity/" + skin + ".png");
         getEntityData().set(Avatar.DATA_PLAYER_MODE_CUSTOMISATION, (byte) 0x7F);
     }
 

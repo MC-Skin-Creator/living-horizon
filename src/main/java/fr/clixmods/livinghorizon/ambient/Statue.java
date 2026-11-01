@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * sight ({@link Sight}). It is on screen when it is inside the player's view, the field of
  * view of the options and a margin around it: a move is read once it has left it, and made
  * only while it, and the spot it goes to, are both off the screen. The statue is a player of
- * no one in one of the mod's statue skins ({@link StatueFigure}), drawn by the game.
+ * no one in one of the mod's statue skins ({@link SkinnedPlayer}), drawn by the game.
  *
  * <p>Secret: nothing a player reads (settings, README, changelog) says what it is.
  */
@@ -71,7 +71,8 @@ public final class Statue implements Egg {
             new Stance(0f, 40f, true),
             new Stance(10f, 35f, false),
     };
-    /** The statue skin the next one wears: one after the other. */
+    /** The statue skins, made for it, worn one after the other; the one the next statue wears. */
+    private static final String[] LOOKS = {"statue/stone", "statue/marble", "statue/mossy"};
     private static int nextLook;
 
     private final EggCalendar calendar;
@@ -86,7 +87,7 @@ public final class Statue implements Egg {
     /** Facing the player from where it stands, in the game's degrees; its turn to one side or the other. */
     private float yaw, side = 1f;
     private int pose, age, seen, moves, idle, searchAge;
-    private @Nullable StatueFigure figure;
+    private @Nullable SkinnedPlayer figure;
 
     Statue(EggCalendar calendar) {
         this.calendar = calendar;
@@ -194,7 +195,7 @@ public final class Statue implements Egg {
         z = spot.z();
         face(self);
         pose = 0;
-        figure = Puppets.numbered(new StatueFigure(current, StatueFigure.LOOKS[nextLook++ % StatueFigure.LOOKS.length]));
+        figure = Puppets.numbered(new SkinnedPlayer(current, LOOKS[nextLook++ % LOOKS.length]));
         place();
         age = seen = moves = 0;
         shown = false;
@@ -300,7 +301,7 @@ public final class Statue implements Egg {
 
     /** The statue where it stands now, in its stance, at once: it moves only when no one sees it. */
     private void place() {
-        StatueFigure statue = figure;
+        SkinnedPlayer statue = figure;
         if (statue == null) return;
         Stance stance = STANCES[pose];
         float body = yaw + stance.turn() * side;
@@ -367,7 +368,7 @@ public final class Statue implements Egg {
 
     @Override
     public List<? extends Entity> figures() {
-        StatueFigure statue = figure;
+        SkinnedPlayer statue = figure;
         return active && statue != null ? List.of(statue) : List.of();
     }
 

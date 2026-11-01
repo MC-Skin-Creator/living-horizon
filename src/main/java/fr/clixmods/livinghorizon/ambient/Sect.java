@@ -1,11 +1,9 @@
 package fr.clixmods.livinghorizon.ambient;
 
-import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.vertex.PoseStack;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
-import fr.clixmods.livinghorizon.track.Gear;
 import fr.clixmods.livinghorizon.track.Puppets;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -29,8 +27,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Easter egg 9: now and then, at night, far off on open ground, six to eight people dressed in
- * white crouch in a circle round a campfire, one of them standing. Looked at through a
+ * Easter egg 9: now and then, at night, far off on open ground, six to eight people in white
+ * hooded robes, their faces hidden, crouch in a circle round a campfire, one of them standing. Looked at through a
  * spyglass, they all turn their heads, then their bodies, slowly to the player, and keep
  * facing them. Once they have been seen so, as soon as the player lowers the spyglass, they
  * stand up and come, each on a heading of its own, walking - or, some nights, running -
@@ -41,14 +39,14 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>Their place is read around the player, in the loaded chunks or the far world
  * ({@link Columns}): dry, flat, open ground in sight ({@link Sight}), and the ground on the
  * way to the player, for where they walk past the loaded chunks. They are players of no one,
- * in the game's default skins and white leather, drawn by the game as far players are; their
+ * in a skin made for them - a white hooded robe, no face - drawn by the game as far players are; their
  * fire is a campfire of the game's own with its own smoke ({@link GameFire}).
  *
  * <p>Secret: nothing a player reads (settings, README, changelog) says what it is.
  */
 public final class Sect implements Egg {
-    /** The white their leather is dyed. */
-    private static final int WHITE = 0xF9FFFE;
+    /** The robes they wear, skins made for them - white, hooded, the face hidden - each its own at random. */
+    private static final String[] ROBES = {"sect/veil", "sect/mask", "sect/grin"};
     /** Blocks from the fire to each figure round it. */
     private static final double RING = 2.6;
     /** Figures round the fire, at least; more, at most. */
@@ -73,7 +71,7 @@ public final class Sect implements Egg {
     /** Counts the searches and the looks: a read that comes back for one given up or replaced is dropped. */
     private final AtomicInteger generation = new AtomicInteger();
     private @Nullable ClientLevel level;
-    private boolean searching, active, called, noticed, scattering, fireOn, running;
+    private boolean searching, active, called, noticed, scattering, fireOn, running, showcasing;
     /** For the game tests: stand in for the player's spyglass, and for whether they run, while set. */
     private @Nullable Boolean scopingStandIn, runningStandIn;
     /** The fire; the player's feet when they came, which the ground on the way was read towards. */
@@ -157,6 +155,41 @@ public final class Sect implements Egg {
      */
     public void standIn(@Nullable Boolean scoping) {
         scopingStandIn = scoping;
+    }
+
+    /**
+     * For the previews in the game tests: a row of them at {@code (x, y, z)}, facing -z, one of
+     * each of {@code robes} standing, then the same crouched, until cleared.
+     */
+    public void showcase(ClientLevel current, double x, double y, double z, String[] robes) {
+        clear();
+        count = robes.length * 2;
+        people = new RemotePlayer[count];
+        this.x = new double[count];
+        this.y = new double[count];
+        this.z = new double[count];
+        body = new float[count];
+        head = new float[count];
+        off = new float[count];
+        turnAt = new int[count];
+        standAt = new int[count];
+        walking = new int[count];
+        hidden = new int[count];
+        standing = new boolean[count];
+        gone = new boolean[count];
+        for (int i = 0; i < count; i++) {
+            this.x[i] = x + (i % robes.length - (robes.length - 1) / 2.0) * 1.6;
+            this.y[i] = y;
+            this.z[i] = z + (i < robes.length ? 0 : 3);
+            body[i] = head[i] = 180f;
+            standing[i] = i < robes.length;
+            people[i] = Puppets.numbered(new SkinnedPlayer(current, robes[i % robes.length]));
+            pose(people[i], standing[i]);
+            place(i, false);
+        }
+        showcasing = true;
+        level = current;
+        active = true;
     }
 
     /** For the game tests: true or false chooses whether the next ones run; null leaves it to chance. */
@@ -283,7 +316,6 @@ public final class Sect implements Egg {
         hidden = new int[count];
         standing = new boolean[count];
         gone = new boolean[count];
-        List<String> white = whiteLeather();
         double start = random.nextDouble() * Math.PI * 2;
         for (int i = 0; i < count; i++) {
             double a = start + i * Math.PI * 2 / count + (random.nextDouble() - 0.5) * 0.25;
@@ -297,8 +329,7 @@ public final class Sect implements Egg {
             standAt[i] = i == 0 ? 0 : 4 + random.nextInt(30);
             off[i] = (random.nextFloat() * 2 - 1) * 20f;
             standing[i] = i == 0;
-            RemotePlayer person = Puppets.player(current, new GameProfile(Watcher.anyone(random), ""));
-            Gear.apply(person, white, current.registryAccess());
+            RemotePlayer person = Puppets.numbered(new SkinnedPlayer(current, ROBES[random.nextInt(ROBES.length)]));
             pose(person, standing[i]);
             people[i] = person;
             place(i, false);
@@ -312,19 +343,6 @@ public final class Sect implements Egg {
         active = true;
     }
 
-    /** Dressed in white leather from head to foot, nothing in their hands: in the order {@link Gear#SLOTS} keeps. */
-    private static List<String> whiteLeather() {
-        List<String> gear = new ArrayList<>(List.of("", ""));
-        for (String piece : new String[]{"leather_boots", "leather_leggings", "leather_chestplate", "leather_helmet"}) {
-            //? if >=1.20.5 {
-            gear.add("{id:\"minecraft:" + piece + "\",count:1,components:{\"minecraft:dyed_color\":" + WHITE + "}}");
-            //?} else {
-            /*gear.add("{id:\"minecraft:" + piece + "\",Count:1b,tag:{display:{color:" + WHITE + "}}}");
-            *///?}
-        }
-        return gear;
-    }
-
     /** Crouched round the fire, or up on its feet. */
     private static void pose(RemotePlayer person, boolean up) {
         person.setShiftKeyDown(!up);
@@ -335,6 +353,7 @@ public final class Sect implements Egg {
     public void tick(ClientLevel current, LocalPlayer self, boolean enabled, boolean quiet) {
         if (busy() && (!enabled || current != level)) clear();
         if (!enabled) return;
+        if (showcasing) return;
         if (searching) {
             if (++searchAge > SEARCH) clear();
             return;
@@ -494,7 +513,7 @@ public final class Sect implements Egg {
 
     private void clear() {
         generation.incrementAndGet();
-        searching = active = false;
+        searching = active = showcasing = false;
         fire = null;
         people = new RemotePlayer[0];
         count = 0;
