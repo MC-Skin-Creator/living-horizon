@@ -27,6 +27,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.ImpostorSizeScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LanShareScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.MannequinsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.MoreEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OcclusionScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LinksScenario;
@@ -120,6 +121,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new StillMobsScenario(),
             new FlyersScenario(),
             new EasterEggsScenario(),
+            new MoreEggsScenario(),
             new BirdsScenario(),
             new PerchersScenario(),
             new BirdCommandScenario(),

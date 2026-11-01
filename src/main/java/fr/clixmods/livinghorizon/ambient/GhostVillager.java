@@ -183,7 +183,7 @@ public final class GhostVillager {
      * loaded chunks, and each villager with another one near, loaded or remembered. The nearest
      * first, {@link #VILLAGES} at most.
      */
-    private static List<Vec3> villages(ClientLevel level, LocalPlayer self, double far) {
+    static List<Vec3> villages(ClientLevel level, LocalPlayer self, double far) {
         List<Vec3> found = new ArrayList<>();
         double reach = far + AROUND;
         int radius = Mth.ceil(Math.min(reach, Minecraft.getInstance().options.getEffectiveRenderDistance() * 16) / 16);

@@ -265,6 +265,22 @@ public final class Ambience {
     private final Bigfoot bigfoot = new Bigfoot(calendar);
     private final GhostBoat ghostBoat = new GhostBoat(calendar);
     private final GhostVillager ghostVillager = new GhostVillager(calendar);
+    private final Sect sect = new Sect(calendar);
+    private final Statue statue = new Statue(calendar);
+    private final Watcher watcher = new Watcher(calendar);
+    private final Glider glider = new Glider(calendar);
+    private final SkyLanterns skyLanterns = new SkyLanterns(calendar);
+    private final Mirage mirage = new Mirage(calendar);
+    private final Herd herd = new Herd(calendar);
+    private final LostPet lostPet = new LostPet(calendar);
+    private final SeaCreature seaCreature = new SeaCreature(calendar);
+    private final BirdShape birdShape = new BirdShape(calendar);
+    private final Campfire campfire = new Campfire(calendar);
+    private final Signal signal = new Signal(calendar);
+    private final Fireworks fireworks = new Fireworks(calendar);
+    /** The easter eggs from 9 on, in their order. */
+    private final List<Egg> more = List.of(sect, statue, watcher, glider, skyLanterns, mirage, herd, lostPet,
+            seaCreature, birdShape, campfire, signal, fireworks);
 
     /** When the easter eggs may come, per world. */
     public EggCalendar calendar() {
@@ -311,6 +327,82 @@ public final class Ambience {
         return ghostVillager;
     }
 
+    /** Easter egg 9. */
+    public Sect sect() {
+        return sect;
+    }
+
+    /** Easter egg 10. */
+    public Statue statue() {
+        return statue;
+    }
+
+    /** Easter egg 11. */
+    public Watcher watcher() {
+        return watcher;
+    }
+
+    /** Easter egg 12. */
+    public Glider glider() {
+        return glider;
+    }
+
+    /** Easter egg 13. */
+    public SkyLanterns skyLanterns() {
+        return skyLanterns;
+    }
+
+    /** Easter egg 14. */
+    public Mirage mirage() {
+        return mirage;
+    }
+
+    /** Easter egg 15. */
+    public Herd herd() {
+        return herd;
+    }
+
+    /** Easter egg 16. */
+    public LostPet lostPet() {
+        return lostPet;
+    }
+
+    /** Easter egg 17. */
+    public SeaCreature seaCreature() {
+        return seaCreature;
+    }
+
+    /** Easter egg 18. */
+    public BirdShape birdShape() {
+        return birdShape;
+    }
+
+    /** Easter egg 19. */
+    public Campfire campfire() {
+        return campfire;
+    }
+
+    /** Easter egg 20. */
+    public Signal signal() {
+        return signal;
+    }
+
+    /** Easter egg 21. */
+    public Fireworks fireworks() {
+        return fireworks;
+    }
+
+    /** The easter eggs from 9 on. */
+    public List<Egg> more() {
+        return more;
+    }
+
+    /** Easter egg {@code number}, from 9 on; null for another number. */
+    public @Nullable Egg egg(int number) {
+        for (Egg egg : more) if (egg.number() == number) return egg;
+        return null;
+    }
+
     /** Everything flying or perched this tick. */
     public List<Flyer> flyers() {
         return flyers;
@@ -328,6 +420,7 @@ public final class Ambience {
         calendar.tick(current);
         boolean eggs = config.easterEggs && current.dimension() == Level.OVERWORLD;
         boolean free = !ufo.busy() && !pass.busy() && !bigfoot.busy() && !ghostBoat.busy() && !ghostVillager.busy();
+        for (Egg egg : more) free &= !egg.busy();
         ufo.tick(current, self, eggs, free && calendar.allows(1));
         pass.tick(current, self, eggs, free && calendar.allows(2));
         ghosts.tick(current, self, eggs);
@@ -336,6 +429,7 @@ public final class Ambience {
         bigfoot.tick(current, self, eggs, free && calendar.allows(6));
         ghostBoat.tick(current, self, eggs, free && calendar.allows(7));
         ghostVillager.tick(current, self, eggs, free && calendar.allows(8));
+        for (Egg egg : more) egg.tick(current, self, eggs, free && (!egg.paced() || calendar.allows(egg.number())));
         flyers.clear();
         if (!config.skyBirds || current.dimension() != Level.OVERWORLD) {
             groups.clear();

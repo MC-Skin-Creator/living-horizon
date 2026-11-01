@@ -528,7 +528,7 @@ public final class GhostRenderer {
         if (debug) DebugMarks.end();
     }
 
-    /** The figures of the easter eggs that are the game's own: the cow taken, the watcher. */
+    /** The figures of the easter eggs that are the game's own: the cow taken, the watcher, those from 9 on. */
     private static void eggs(List<EntityRenderState> frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
                              Vec3 eye, float partialTick, FarConfig config) {
         Ambience ambience = FarPlayerTracker.get().ambience();
@@ -536,6 +536,11 @@ public final class GhostRenderer {
         if (cow != null) add(frame, minecraft, eye, extract(dispatcher, cow, partialTick), null, true, Mark.FAKE, config, null);
         LivingEntity watcher = ambience.herobrine().figure();
         if (watcher != null) add(frame, minecraft, eye, extract(dispatcher, watcher, partialTick), null, true, Mark.FAKE, config, null);
+        for (fr.clixmods.livinghorizon.ambient.Egg egg : ambience.more()) {
+            for (Entity figure : egg.figures()) {
+                add(frame, minecraft, eye, extract(dispatcher, figure, partialTick), null, true, Mark.FAKE, config, null);
+            }
+        }
     }
 
     /**
