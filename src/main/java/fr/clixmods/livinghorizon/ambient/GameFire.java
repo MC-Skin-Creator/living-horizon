@@ -11,6 +11,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CampfireBlock;
 import org.jspecify.annotations.Nullable;
 
@@ -22,10 +23,9 @@ import java.util.List;
  * smoke, the game's particles made as a campfire makes them. Lit, or out and cold.
  */
 final class GameFire {
-    /** A lit campfire, glowing whatever light is round it; the same, out. */
-    private static final String LIT = "{block_state:{Name:\"minecraft:campfire\",Properties:{lit:\"true\"}},"
-            + "brightness:{block:15,sky:15}}";
-    private static final String OUT = "{block_state:{Name:\"minecraft:campfire\",Properties:{lit:\"false\"}}}";
+    /** Lit, it glows whatever light is round it; out, it takes the light where it stands. */
+    private static final String LIT = "{brightness:{block:15,sky:15}}";
+    private static final String OUT = "{}";
 
     private final ClientLevel level;
     private final Display.BlockDisplay block;
@@ -46,14 +46,14 @@ final class GameFire {
         // A block display draws its block from its corner.
         block.setPos(pos.getX(), pos.getY(), pos.getZ());
         GameFire fire = new GameFire(level, block, pos);
-        return fire.show(LIT) ? fire : null;
+        return fire.show(true) ? fire : null;
     }
 
     /** Lit, or out: then the game's puff of smoke of a campfire put out, once. */
     void lit(boolean on) {
         if (on == lit) return;
         lit = on;
-        show(on ? LIT : OUT);
+        show(on);
         if (!on) {
             for (int i = 0; i < 20; i++) CampfireBlock.makeParticles(level, pos, false, true);
         }
@@ -74,11 +74,15 @@ final class GameFire {
         return List.of(block);
     }
 
-    /** The block display as {@code nbt} says; its tick takes it in, as it does a server's. */
-    private boolean show(String nbt) {
+    /**
+     * The block display lit or out: its light from saved data, its campfire set outright; its
+     * tick takes them in, as it does what a server sends.
+     */
+    private boolean show(boolean on) {
         try {
-            CompoundTag tag = TagParser.parseCompoundFully(nbt);
+            CompoundTag tag = TagParser.parseCompoundFully(on ? LIT : OUT);
             EntityNbt.load(block, level, tag);
+            block.setBlockState(Blocks.CAMPFIRE.defaultBlockState().setValue(CampfireBlock.LIT, on));
             block.setPos(pos.getX(), pos.getY(), pos.getZ());
             block.tick();
             return true;

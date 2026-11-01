@@ -12,6 +12,9 @@ accessible field net/minecraft/world/entity/Avatar DATA_PLAYER_MODE_CUSTOMISATIO
 # @until 1.21.8
 accessible field net/minecraft/world/entity/player/Player DATA_PLAYER_MODE_CUSTOMISATION Lnet/minecraft/network/syncher/EntityDataAccessor;
 
+# The block an easter egg's campfire shows, set outright: read from saved data, 26.3 left it air.
+accessible method net/minecraft/world/entity/Display$BlockDisplay setBlockState (Lnet/minecraft/world/level/block/state/BlockState;)V
+
 # How long a far player has been gliding, which tilts their body; tick() counts it, and a puppet never runs it.
 accessible field net/minecraft/world/entity/LivingEntity fallFlyTicks I
 
