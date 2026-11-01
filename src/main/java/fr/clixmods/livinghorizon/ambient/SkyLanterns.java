@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.ambient;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.render.DepthFar;
@@ -308,9 +309,6 @@ public final class SkyLanterns implements Egg {
         double reach = DepthFar.of(minecraft) * 0.95, perPixel = 1.0 / DepthFar.pixelsPerRadian(minecraft);
         float shown = leaving < 0 ? 1f : Mth.clamp(1f - (leaving + partial) / FADE, 0f, 1f);
         double time = age + partial, farthest = 0;
-        // The flames first, then the lanterns round them, then their halos: a halo drawn first
-        // would hide what is inside it.
-        Glows flames = new Glows(), bodies = new Glows(), halos = new Glows();
         for (int i = 0; i < delay.length; i++) {
             double t = time - delay[i];
             if (t < 0) continue;
@@ -329,56 +327,66 @@ public final class SkyLanterns implements Egg {
             float pull = distance > reach ? (float) (reach / distance) : 1f;
             // Never smaller than a few pixels, so that it reads from afar.
             float grow = (float) Math.max(1.0, distance * PIXELS * perPixel / WIDTH) * pull;
-            float cx = (float) (px * pull), cy = (float) (py * pull), cz = (float) (pz * pull);
-            float half = WIDTH / 2 * grow, tall = HEIGHT / 2 * grow;
             // A candle's flicker: two slow waves out of step.
             float flicker = 0.8f + 0.2f * (float) (0.5 + 0.5 * Math.sin(t * 0.7 + phase[i]) * Math.sin(t * 0.23 + phase[i] * 2));
-            int r = Math.round(255 * flicker), g = Math.round(green[i] * flicker), b = Math.round(70 * flicker);
-            flames.add(cx, cy - tall * 0.45f, cz, half * 0.45f, tall * 0.3f, 255, 240, 170, Math.round(255 * alpha));
-            bodies.add(cx, cy, cz, half, tall, r, g, b, Math.round(200 * alpha));
-            halos.add(cx, cy, cz, half * 2.4f, tall * 2.0f, 255, Math.round(green[i] * 0.85f), 60, Math.round(45 * alpha * flicker));
+            float tipX = 6f * (float) Math.sin(t * 0.021 + phase[i]), tipZ = 6f * (float) Math.cos(t * 0.017 + phase[i] * 1.3);
+            float tone = green[i], fade = alpha;
+            pose.pushPose();
+            pose.translate((float) (px * pull), (float) (py * pull), (float) (pz * pull));
+            pose.scale(grow, grow, grow);
+            pose.mulPose(Axis.XP.rotationDegrees(tipX));
+            pose.mulPose(Axis.ZP.rotationDegrees(tipZ));
+            pose.translate(0f, -HEIGHT / 2, 0f);
+            collector.draw(pose, Ufo.GLOW, (at, out) -> lantern(at, out, fade, flicker, tone));
+            pose.popPose();
         }
         GhostRenderer.noteDistance(farthest + 5);
-        if (flames.count > 0) {
-            collector.draw(pose, Ufo.GLOW, (at, out) -> {
-                flames.draw(at, out);
-                bodies.draw(at, out);
-                halos.draw(at, out);
-            });
-        }
         if (called) CalledBeam.submit(pose, camera, collector, x, y, z);
     }
 
-    /** Glowing boxes gathered for one frame, drawn in the order they came: their middle, half their size, colour. */
-    private static final class Glows {
-        private float[] at = new float[5 * 64];
-        private int[] colour = new int[2 * 64];
-        private int count;
-
-        void add(float x, float y, float z, float half, float tall, int r, int g, int b, int alpha) {
-            if (alpha <= 0) return;
-            if (count * 5 == at.length) {
-                at = java.util.Arrays.copyOf(at, at.length * 2);
-                colour = java.util.Arrays.copyOf(colour, colour.length * 2);
+    /**
+     * A paper lantern from its open bottom up, as wide as {@link #WIDTH} at its widest: the
+     * flame inside it first, then the paper round it - narrower at the opening, broadest in the
+     * middle, drawn in under its top - and its frame round the opening, then a faint glow.
+     */
+    private static void lantern(PoseStack.Pose at, VertexConsumer out, float alpha, float flicker, float tone) {
+        int light = Ufo.BRIGHT, a = Math.round(255 * alpha);
+        // The flame, and the brighter air round it.
+        float f = 0.05f * (0.85f + 0.3f * flicker);
+        Ufo.box(at, out, -f, 0.06f, -f, f, 0.06f + f * 3.2f, f, 255, 245, 190, a, light);
+        Ufo.box(at, out, -f * 2.2f, 0.04f, -f * 2.2f, f * 2.2f, 0.06f + f * 5f, f * 2.2f, 255, 200, 90, Math.round(110 * alpha), light);
+        // The paper: an opening, a belly, a shoulder, a top, warm with the flame inside.
+        float w = WIDTH / 2, hgt = HEIGHT;
+        float[][] rings = {{0f, w * 0.62f}, {hgt * 0.55f, w}, {hgt * 0.9f, w * 0.9f}, {hgt, w * 0.6f}};
+        int r = Math.round(255 * flicker), g = Math.round(tone * flicker), b = Math.round(70 * flicker);
+        int paper = Math.round(205 * alpha);
+        for (int k = 0; k + 1 < rings.length; k++) {
+            float y0 = rings[k][0], r0 = rings[k][1], y1 = rings[k + 1][0], r1 = rings[k + 1][1];
+            // Brighter low down, where the flame is.
+            float lit = 1f - 0.12f * k;
+            int rr = Math.round(r * lit), gg = Math.round(g * lit), bb = Math.round(b * lit);
+            for (int side = 0; side < 4; side++) {
+                float[] n = {side == 0 ? 0 : side == 1 ? 1 : side == 2 ? 0 : -1, side == 0 ? 1 : side == 2 ? -1 : 0};
+                // The side's two bottom and two top corners, round the square of each ring.
+                float ax = n[0] * r0 - n[1] * r0, az = n[1] * r0 + n[0] * r0;
+                float bx = n[0] * r0 + n[1] * r0, bz = n[1] * r0 - n[0] * r0;
+                float cx = n[0] * r1 + n[1] * r1, cz = n[1] * r1 - n[0] * r1;
+                float dx = n[0] * r1 - n[1] * r1, dz = n[1] * r1 + n[0] * r1;
+                Ufo.face(at, out, rr, gg, bb, paper, light, n[0], 0, n[1], ax, y0, az, bx, y0, bz, cx, y1, cz, dx, y1, dz);
             }
-            int k = count * 5;
-            at[k] = x;
-            at[k + 1] = y;
-            at[k + 2] = z;
-            at[k + 3] = half;
-            at[k + 4] = tall;
-            colour[count * 2] = Mth.clamp(r, 0, 255) << 16 | Mth.clamp(g, 0, 255) << 8 | Mth.clamp(b, 0, 255);
-            colour[count * 2 + 1] = Math.min(255, alpha);
-            count++;
         }
-
-        void draw(PoseStack.Pose pose, VertexConsumer out) {
-            for (int i = 0; i < count; i++) {
-                int k = i * 5, rgb = colour[i * 2];
-                float x = at[k], y = at[k + 1], z = at[k + 2], half = at[k + 3], tall = at[k + 4];
-                Ufo.box(pose, out, x - half, y - tall, z - half, x + half, y + tall, z + half,
-                        rgb >> 16 & 0xFF, rgb >> 8 & 0xFF, rgb & 0xFF, colour[i * 2 + 1], Ufo.BRIGHT);
-            }
-        }
+        // The top, closed and a little darker.
+        float top = rings[rings.length - 1][1];
+        Ufo.face(at, out, Math.round(r * 0.8f), Math.round(g * 0.75f), Math.round(b * 0.7f), paper, light, 0, 1, 0,
+                -top, hgt, -top, -top, hgt, top, top, hgt, top, top, hgt, -top);
+        // The frame round the opening.
+        float o = rings[0][1];
+        Ufo.box(at, out, -o - 0.015f, 0f, -o - 0.015f, o + 0.015f, 0.025f, -o + 0.015f, 70, 40, 20, a, light);
+        Ufo.box(at, out, -o - 0.015f, 0f, o - 0.015f, o + 0.015f, 0.025f, o + 0.015f, 70, 40, 20, a, light);
+        Ufo.box(at, out, -o - 0.015f, 0f, -o, -o + 0.015f, 0.025f, o, 70, 40, 20, a, light);
+        Ufo.box(at, out, o - 0.015f, 0f, -o, o + 0.015f, 0.025f, o, 70, 40, 20, a, light);
+        // A faint glow round it, no wider than it shows as a square.
+        Ufo.box(at, out, -w * 1.25f, -hgt * 0.08f, -w * 1.25f, w * 1.25f, hgt * 1.08f, w * 1.25f, 255, Math.round(tone * 0.85f), 60,
+                Math.round(22 * alpha * flicker), light);
     }
 }
