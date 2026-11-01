@@ -318,6 +318,7 @@ public final class FarDepth {
                     // Why Distant Horizons is of no use (too old, most often), not what an earlier frame said.
                     else if (Platform.isModLoaded("distanthorizons")) reason = DhDepth.reason();
                     else if (Platform.isModLoaded("lodistance")) reason = "Lodistance is not the version this mod knows";
+                    else if (FarViewLink.installed()) reason = "Far View draws into the game's depth itself: nothing to merge";
                     else reason = "neither Voxy, Distant Horizons nor Lodistance is usable";
                 }
                 // Distant Horizons' fade, without a shader pack, needs to know where the entities are.

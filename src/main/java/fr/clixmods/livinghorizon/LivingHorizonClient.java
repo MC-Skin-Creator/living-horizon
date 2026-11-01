@@ -194,6 +194,7 @@ public final class LivingHorizonClient {
         long allocated = Allocation.begin();
         FarPlayerTracker.get().tick(minecraft);
         if (minecraft.level != null) {
+            LodWorld.tick();
             long occluding = Profile.begin(Profile.Section.TICK_OCCLUSION);
             try {
                 Occlusion.tick(minecraft.gameRenderer.getMainCamera().position());

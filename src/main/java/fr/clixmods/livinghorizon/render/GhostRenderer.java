@@ -8,6 +8,7 @@ import fr.clixmods.livinghorizon.ambient.Ambience;
 import fr.clixmods.livinghorizon.compat.DrawnGround;
 import fr.clixmods.livinghorizon.compat.EntityCulling;
 import fr.clixmods.livinghorizon.compat.FarDepth;
+import fr.clixmods.livinghorizon.compat.FarViewLink;
 import fr.clixmods.livinghorizon.compat.IceAndFire;
 import fr.clixmods.livinghorizon.compat.OcclusionQueries;
 import fr.clixmods.livinghorizon.debug.DebugMarks;
@@ -688,6 +689,8 @@ public final class GhostRenderer {
             // Close by, the game leaves a mob out only when the terrain hides it.
             if (entity.distanceToSqr(eye) < 24 * 24) continue;
             if (tooFar(entity, eye, maxDistance(entity, config))) continue;
+            // Far View draws it as a box of its own in place of the game's model: once is enough.
+            if (FarViewLink.drawsMob(entity, eye)) continue;
             if (overVoid(minecraft, eye, entity.getUUID(), entity, config)) continue;
             if (skipped(entity, true)) continue;
             if (occluded(entity.getUUID(), entity, config)) continue;

@@ -359,6 +359,17 @@ come back, add it here in the same pull request: this file is what the next sess
   Distant Horizons answers as cancelled. The game's thread never waits for a read of another mod.
 - **Depth view lighter or darker as far mobs show or hide**: the game's far plane follows the
   farthest figure drawn (`GhostRenderer.farPlane`); the view shades against `FarDepth.VIEW_FAR`.
+- **Far View** (Forge and NeoForge, 1.20.1 to 1.21.4; no API, no source): it draws its height
+  grid into the game's own depth, before the entities, with the game's projection pushed out, so
+  nothing merges it. Every distant mob hidden past the render distance with it: its grid not read
+  (`FarViewSource`, *Only Over Terrain* sees void; `/livinghorizon lod` says why). A mob drawn
+  twice, a box and a figure: its far mobs cancel the game's model past 128 blocks and draw a box,
+  which `FarViewLink.drawsMob` leaves to it. Mobs through its hills with its *Seamless* option
+  only: its terrain is squeezed into the back of the depth with a projection of its own, so hidden
+  mobs come from lines of sight there (`FarViewLink.squeezesDepth`). Its map of regions is a plain
+  one: read only on the game's thread, copied for the readers. Check a new version by decompiling
+  its jars (CurseForge's files, listed by `api.cfwidget.com/minecraft/mc-mods/far-view`) outside
+  the repository, and reach it by reflection only: the jar says "All Rights Reserved".
 - **Distant Horizons' rendering engine** (from 3.3: Blaze3D or OpenGL). With Iris installed,
   pack on or off, it switches itself to OpenGL and fills only `getDhDepthTextureGlId`; the
   Blaze3D wrapper the game's GPU device path reads stays empty ("has no depth texture").
