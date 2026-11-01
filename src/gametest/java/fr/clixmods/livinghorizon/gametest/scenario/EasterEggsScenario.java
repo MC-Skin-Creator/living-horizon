@@ -356,17 +356,24 @@ public final class EasterEggsScenario implements Scenario {
     private void villager(ClientGameTestContext context, TestSingleplayerContext world) {
         Scene.command(world, "tp @a 0 ~ 400 0 0");
         context.waitTicks(100);
-        Scene.command(world, "execute at @p run fill ~-20 ~-1 ~75 ~20 ~-1 ~105 minecraft:dirt_path");
+        Scene.command(world, "execute at @p run fill ~-30 ~-1 ~60 ~30 ~-1 ~120 minecraft:dirt_path");
         Scene.command(world, "execute at @p run setblock ~ ~ ~90 minecraft:bell");
         Scene.command(world, "time set midnight");
         context.waitTicks(20);
         boolean on = context.computeOnClient(minecraft -> ambience().ghostVillager().summon(minecraft.level, minecraft.player, true));
         if (!on) throw new AssertionError("ee8 found no village");
-        Vec3 at = await(context, () -> ambience().ghostVillager().position(), "ee8");
+        Vec3 came = await(context, () -> ambience().ghostVillager().position(), "ee8");
+        // Not looked at, it wanders about the village as a villager does.
+        context.runOnClient(minecraft -> minecraft.player.setYRot(minecraft.player.getYRot() + 180f));
+        context.waitTicks(400);
+        Vec3 at = context.computeOnClient(minecraft -> ambience().ghostVillager().position());
+        if (at == null) throw new AssertionError("ee8 gone while it wandered");
+        Scene.log("eggs ee8 wandered " + (int) at.distanceTo(came) + " blocks from where it came");
+        if (at.distanceTo(came) < 1) throw new AssertionError("ee8 never moved");
         context.runOnClient(minecraft -> {
             double across = Math.hypot(at.x - minecraft.player.getX(), at.z - minecraft.player.getZ());
             Scene.log("eggs ee8 at " + at + ", " + (int) across + " blocks");
-            if (across < 50) throw new AssertionError("ee8 at " + (int) across + " blocks, too near");
+            if (across < 20) throw new AssertionError("ee8 at " + (int) across + " blocks, too near");
             lookAt(minecraft.player, at.x, at.y + 1.2, at.z);
             minecraft.options.fov().set(30);
         });

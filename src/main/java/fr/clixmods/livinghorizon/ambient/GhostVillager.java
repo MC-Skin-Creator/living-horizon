@@ -33,15 +33,17 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Easter egg 8: now and then, at night, far off in a village around the player, a pale,
- * see-through villager fades in on a street, walks a few steps, stops and turns to look at
- * them, and fades away; at once if the player comes near. Only on this screen.
+ * Easter egg 8: now and then, at night, in a village around the player, a pale, see-through
+ * villager fades in somewhere among the houses and wanders as a villager does: a few steps one
+ * way, a pause to look about, a few steps another, never far from where it came. Looked at a
+ * moment, it stops, turns to the player, stares, and fades away; it fades too after a while,
+ * at dawn, and at once if the player comes near. Only on this screen.
  *
- * <p>A village is where a bell stands in the loaded chunks, or where villagers stand together,
- * there or among the remembered mobs farther off. Its way is read around it, in the loaded
- * chunks or the far world ({@link Columns}): on the ground of a street or a garden, never on a
- * roof, flat all along, and in sight where it starts ({@link Sight}). The figure is drawn of
- * glowing, see-through boxes, as the ghosts of {@link Ghosts} are.
+ * <p>A village is where a bell stands in the loaded chunks, or where a villager is, loaded or
+ * among the remembered mobs farther off. Where it comes and each way it walks are read in the
+ * loaded chunks or the far world ({@link Columns}): on the ground - a street, a garden, a
+ * field - never on a roof; it comes in sight of the player where it can ({@link Sight}). The
+ * figure is drawn of glowing, see-through boxes, as the ghosts of {@link Ghosts} are.
  *
  * <p>Secret: nothing a player reads (settings, README, changelog) says what it is.
  */
@@ -50,29 +52,39 @@ public final class GhostVillager {
     private static final int ROBE = 0xC4D6F2, HEAD = 0xD4E2F8, EYES = 0x26324A;
     /** How much of what is behind it hides, out of 255, at most. */
     private static final int ALPHA = 70;
-    /** Blocks per tick it walks; blocks across under which it goes. */
-    private static final double PACE = 0.03, NEAR = 32;
-    /** How far off it may come, in blocks across; how far from what marks the village. */
-    private static final double MIN = 56, MAX = 400, AROUND = 18;
-    /** Blocks between two villagers that make a village; villagers that do, at least. */
-    private static final double TOGETHER = 40;
-    /** Villages looked at, at most; spots tried; stretches its way is read in. */
-    private static final int VILLAGES = 24, SPOTS = 48, ALONG = 3;
-    /** Ticks it takes to show or to fade; it stands looking at the player; a search may take. */
-    private static final int FADE = 50, STARE = 70, SEARCH = 400;
+    /** Blocks per tick it walks, a villager's stroll; blocks across under which it goes at once. */
+    private static final double PACE = 0.045, NEAR = 20;
+    /** How far off it may come by chance, and called, in blocks across; at most. */
+    private static final double MIN = 40, CALLED_MIN = 24, MAX = 400;
+    /** Blocks from what marks the village it may come; it wanders no farther from where it came. */
+    private static final double AROUND = 32, HOME = 24;
+    /** Blocks one walk goes, at least and at most; stretches its ground is read in. */
+    private static final double HOP_MIN = 3, HOP_MAX = 10;
+    private static final int ALONG = 4;
+    /** Villages looked at, at most; spots tried for where it comes. */
+    private static final int VILLAGES = 24, SPOTS = 64;
+    /** Ticks it pauses between walks, at least and at most more. */
+    private static final int PAUSE_MIN = 40, PAUSE_MORE = 100;
+    /** Ticks looked at before it notices; it stares then; it fades in or out; it wanders at most. */
+    private static final int NOTICE = 30, STARE = 60, FADE = 50, LIFE = 2400;
+    /** Ticks a search may take. */
+    private static final int SEARCH = 400;
 
     private final EggCalendar calendar;
     private final RandomSource random = RandomSource.create();
-    /** Counts the searches: a read that comes back for one given up or replaced is dropped. */
+    /** Counts the searches and the walks read: a read that comes back for one given up or replaced is dropped. */
     private final AtomicInteger generation = new AtomicInteger();
     private @Nullable ClientLevel level;
-    private boolean searching, active, called, noticed;
-    private double x, y, z, xo, yo, zo, dirX, dirZ, floor, walked, length;
-    /** The ground along its way, where it is not loaded: {@link #ALONG} stretches. */
-    private double[] heights = new double[0];
-    private float yaw, yawO, phase;
-    /** Ticks since it came; the tick it stopped walking; ticks it has been fading away, -1 until then. */
-    private int age, stop, leaving = -1, idle, searchAge;
+    private boolean searching, active, called, walking, choosing;
+    private double x, y, z, xo, yo, zo, floor;
+    /** Where it came: it wanders round it. */
+    private double homeX, homeZ;
+    /** The walk under way: its heading, how far it goes and has gone, its ground where not loaded. */
+    private double dirX, dirZ, length, walked;
+    private final double[] heights = new double[ALONG + 1];
+    private float yaw, yawO, head, headO, look, phase;
+    /** Ticks since it came; till its next walk; looked at; since it noticed; fading away, -1 until then. */
+    private int age, pause, seen, staring = -1, leaving = -1, idle, searchAge;
 
     GhostVillager(EggCalendar calendar) {
         this.calendar = calendar;
@@ -89,44 +101,29 @@ public final class GhostVillager {
     }
 
     /**
-     * Looks for a village around the player and a street in sight in it, and comes there once
-     * it is read: by chance, or because the player asked ({@code called}: the nearest villages
-     * first; called again, it starts over). False if the easter eggs are off or no village is
-     * known around.
+     * Looks for a village around the player and somewhere on the ground in it, and comes there
+     * once it is read: by chance, or because the player asked ({@code called}: the nearest
+     * villages, nearer the player, and out of sight when nowhere in sight; called again, it
+     * starts over). False if the easter eggs are off or no village is known around.
      */
     public boolean summon(ClientLevel current, LocalPlayer self, boolean called) {
         if (!FarConfig.get().easterEggs || current.dimension() != Level.OVERWORLD) return false;
         if (busy() && !called) return true;
         clear();
         // No farther than the terrain is drawn and clear of fog.
-        double far = Math.min(MAX, Sight.reach());
-        List<Vec3> villages = far <= MIN ? List.of() : villages(current, self, far);
+        double near = called ? CALLED_MIN : MIN, far = Math.min(MAX, Sight.reach());
+        List<Vec3> villages = far <= near ? List.of() : villages(current, self, far);
         if (villages.isEmpty()) {
             if (called) EggLog.nowhere(8);
             return false;
         }
-        int steps = 140 + random.nextInt(80);
-        double way = steps * PACE;
-        // Each spot, two blocks off it on four sides (flat ground, no roof's edge), then its way.
-        int per = 5 + ALONG;
-        double[] xs = new double[SPOTS * per], zs = new double[xs.length], dirs = new double[SPOTS * 2];
-        int[][] around = {{0, 0}, {2, 0}, {-2, 0}, {0, 2}, {0, -2}};
+        double[] xs = new double[SPOTS], zs = new double[SPOTS];
         for (int s = 0; s < SPOTS; s++) {
-            Vec3 village = villages.get(random.nextInt(villages.size()));
-            double angle = random.nextDouble() * Math.PI * 2, off = random.nextDouble() * AROUND;
-            double cx = Mth.floor(village.x + Math.cos(angle) * off) + 0.5;
-            double cz = Mth.floor(village.z + Math.sin(angle) * off) + 0.5;
-            for (int k = 0; k < 5; k++) {
-                xs[s * per + k] = cx + around[k][0];
-                zs[s * per + k] = cz + around[k][1];
-            }
-            double heading = random.nextDouble() * Math.PI * 2;
-            dirs[2 * s] = -Math.sin(heading);
-            dirs[2 * s + 1] = Math.cos(heading);
-            for (int k = 1; k <= ALONG; k++) {
-                xs[s * per + 4 + k] = cx + dirs[2 * s] * way * k / ALONG;
-                zs[s * per + 4 + k] = cz + dirs[2 * s + 1] * way * k / ALONG;
-            }
+            // Called, the nearest villages first: the one in front of the player, most likely.
+            Vec3 village = villages.get(called ? random.nextInt(Math.min(3, villages.size())) : random.nextInt(villages.size()));
+            double angle = random.nextDouble() * Math.PI * 2, off = Math.sqrt(random.nextDouble()) * AROUND;
+            xs[s] = Mth.floor(village.x + Math.cos(angle) * off) + 0.5;
+            zs[s] = Mth.floor(village.z + Math.sin(angle) * off) + 0.5;
         }
         this.called = called;
         level = current;
@@ -137,41 +134,29 @@ public final class GhostVillager {
         Vec3 eye = self.getEyePosition();
         Columns.read(current, xs, zs).thenAcceptAsync(columns -> {
             if (generation.get() != mine) return;
-            // The ground of a street or a garden all round and all along, near enough the player
-            // to be seen, far enough to be far.
-            List<Integer> streets = new ArrayList<>();
-            for (int s = 0; s < SPOTS; s++) {
-                Columns.Column spot = columns[s * per];
+            List<Columns.Column> ground = new ArrayList<>();
+            for (Columns.Column spot : columns) {
                 double across = Math.hypot(spot.x() - self.getX(), spot.z() - self.getZ());
-                boolean ok = across >= MIN && across <= far;
-                for (int k = 0; k < per && ok; k++) {
-                    Columns.Column column = columns[s * per + k];
-                    Columns.Column before = k <= 5 ? spot : columns[s * per + k - 1];
-                    ok = street(column) && Math.abs(column.y() - before.y()) <= 1;
-                }
-                if (ok) streets.add(s);
+                if (across >= near && across <= far && street(spot)) ground.add(spot);
             }
-            double[] hx = new double[streets.size()], hy = new double[streets.size()], hz = new double[streets.size()];
-            for (int i = 0; i < streets.size(); i++) {
-                Columns.Column spot = columns[streets.get(i) * per];
-                hx[i] = spot.x();
-                hy[i] = spot.y() + 1.8;
-                hz[i] = spot.z();
+            double[] hx = new double[ground.size()], hy = new double[ground.size()], hz = new double[ground.size()];
+            for (int i = 0; i < ground.size(); i++) {
+                hx[i] = ground.get(i).x();
+                hy[i] = ground.get(i).y() + 1.8;
+                hz[i] = ground.get(i).z();
             }
             Sight.of(current, self, eye, hx, hy, hz).thenAcceptAsync(seen -> {
                 if (generation.get() != mine) return;
                 searching = false;
-                List<Integer> clear = new ArrayList<>();
-                for (int i = 0; i < seen.length; i++) if (seen[i]) clear.add(streets.get(i));
-                Integer s = Sight.any(clear, random);
-                if (s == null) {
+                List<Columns.Column> clear = new ArrayList<>();
+                for (int i = 0; i < seen.length; i++) if (seen[i]) clear.add(ground.get(i));
+                // Called and nowhere in sight: behind the houses, it wanders and will show.
+                Columns.Column spot = Sight.any(clear.isEmpty() && called ? ground : clear, random);
+                if (spot == null) {
                     if (called) EggLog.nowhere(8);
                     return;
                 }
-                double[] ys = new double[ALONG + 1];
-                ys[0] = columns[s * per].y();
-                for (int k = 1; k <= ALONG; k++) ys[k] = columns[s * per + 4 + k].y();
-                begin(columns[s * per], dirs[2 * s], dirs[2 * s + 1], ys, way, steps);
+                begin(spot);
                 EggLog.came(8, x, floor, z, self, called);
             }, game);
         }, game);
@@ -180,8 +165,8 @@ public final class GhostVillager {
 
     /**
      * Where villages stand around the player, within {@code far} blocks across: each bell in the
-     * loaded chunks, and each villager with another one near, loaded or remembered. The nearest
-     * first, {@link #VILLAGES} at most.
+     * loaded chunks, and each villager, loaded or remembered. The nearest first,
+     * {@link #VILLAGES} at most.
      */
     static List<Vec3> villages(ClientLevel level, LocalPlayer self, double far) {
         List<Vec3> found = new ArrayList<>();
@@ -198,22 +183,14 @@ public final class GhostVillager {
                 }
             }
         }
-        List<Vec3> villagers = new ArrayList<>();
+        // Villagers sleep in their houses at night: where they are is the village.
         for (Entity entity : level.entitiesForRendering()) {
-            if (entity.getType() == EntityType.VILLAGER) villagers.add(entity.position());
+            if (entity.getType() == EntityType.VILLAGER) found.add(entity.position());
         }
         String dimension = level.dimension().identifier().toString();
         String villager = EntityType.getKey(EntityType.VILLAGER).toString();
         for (MobMemory.Remembered mob : FarPlayerTracker.get().mobs().remembered(dimension)) {
-            if (villager.equals(mob.type())) villagers.add(new Vec3(mob.x(), mob.y(), mob.z()));
-        }
-        for (Vec3 one : villagers) {
-            for (Vec3 other : villagers) {
-                if (one != other && Math.hypot(one.x - other.x, one.z - other.z) < TOGETHER) {
-                    found.add(one);
-                    break;
-                }
-            }
+            if (villager.equals(mob.type())) found.add(new Vec3(mob.x(), mob.y(), mob.z()));
         }
         found.removeIf(at -> Math.hypot(at.x - self.getX(), at.z - self.getZ()) > reach);
         found.sort((a, b) -> Double.compare(a.distanceToSqr(self.position()), b.distanceToSqr(self.position())));
@@ -224,27 +201,24 @@ public final class GhostVillager {
     private static boolean street(Columns.Column column) {
         if (!column.dry()) return false;
         BlockState block = column.block();
-        // A far world that does not say: what the flat ground around tells is enough.
+        // A far world that does not say: taken as ground.
         return block == null || block.is(BlockTags.DIRT) || block.is(Blocks.DIRT_PATH) || block.is(BlockTags.SAND)
                 || block.is(Blocks.GRAVEL) || block.is(BlockTags.SNOW) || block.is(Blocks.FARMLAND);
     }
 
-    private void begin(Columns.Column start, double dx, double dz, double[] ys, double way, int steps) {
+    private void begin(Columns.Column spot) {
         if (!called) calendar.shown(8);
-        x = xo = start.x();
-        z = zo = start.z();
-        heights = ys;
-        floor = ys[0];
+        x = xo = homeX = spot.x();
+        z = zo = homeZ = spot.z();
+        floor = spot.y();
         y = yo = floor + 0.1;
-        dirX = dx;
-        dirZ = dz;
-        yaw = yawO = (float) Math.toDegrees(Math.atan2(-dirX, dirZ));
-        length = way;
-        stop = steps;
-        walked = 0;
-        age = 0;
-        leaving = -1;
-        noticed = false;
+        yaw = yawO = random.nextFloat() * 360f;
+        head = headO = 0f;
+        look = 0f;
+        age = seen = 0;
+        staring = leaving = -1;
+        walking = choosing = false;
+        pause = PAUSE_MIN + random.nextInt(PAUSE_MORE);
         phase = random.nextFloat() * 6.28f;
         active = true;
     }
@@ -270,35 +244,33 @@ public final class GhostVillager {
         yo = y;
         zo = z;
         yawO = yaw;
+        headO = head;
         if (Math.hypot(self.getX() - x, self.getZ() - z) < NEAR || !Columns.drawn(current, self, x, z)) {
             clear();
             return;
         }
-        // Looked at once it shows: it stops where it is.
-        if (!noticed && age > FADE && age < stop
-                && Herobrine.lookedAt(current, self, new Vec3(x, y + 1.6, z))) {
-            noticed = true;
-            stop = age;
+        // Looked at a moment once it shows: it stops, turns to the player, and stares.
+        if (staring < 0 && leaving < 0 && age > FADE && Herobrine.lookedAt(current, self, new Vec3(x, y + 1.6, z))
+                && ++seen >= NOTICE) {
+            staring = 0;
+            walking = false;
         }
-        if (age < stop) {
-            double nx = x + dirX * PACE, nz = z + dirZ * PACE, ground = ground(current, nx, nz, walked + PACE);
-            if (Double.isNaN(ground)) {
-                // Something in the way: it stops there.
-                stop = age;
-            } else {
-                x = nx;
-                z = nz;
-                walked += PACE;
-                floor += (ground - floor) * 0.15;
-            }
-        } else {
-            // Turning, slowly, to the player, then looking at them a while.
+        if (staring >= 0) {
             float toPlayer = (float) Math.toDegrees(Math.atan2(-(self.getX() - x), self.getZ() - z));
             yaw = Mth.approachDegrees(yaw, toPlayer, 6f);
-            if (leaving < 0 && age > stop + STARE) leaving = 0;
+            head = Mth.approachDegrees(head, 0f, 6f);
+            if (++staring > STARE && leaving < 0) leaving = 0;
+        } else if (walking) {
+            walk(current);
+        } else if (!choosing && --pause <= 0) {
+            choose(current);
+        } else {
+            // Looking about while it stands, as a villager does.
+            if (random.nextInt(60) == 0) look = (random.nextFloat() - 0.5f) * 120f;
+            head = Mth.approachDegrees(head, look, 4f);
         }
-        // Dawn sends it away too.
-        if (leaving < 0 && !called && current.isBrightOutside()) leaving = 0;
+        // Its time is up, or dawn has come: it fades.
+        if (leaving < 0 && (age > LIFE || (!called && current.isBrightOutside()))) leaving = 0;
         if (leaving >= 0 && ++leaving > FADE) {
             clear();
             return;
@@ -307,9 +279,64 @@ public final class GhostVillager {
         y = floor + 0.1 + 0.05 * Math.sin(age * 0.06 + phase);
     }
 
+    /** Picks somewhere near to walk to, and walks there once its ground is read. */
+    private void choose(ClientLevel current) {
+        double angle = random.nextDouble() * Math.PI * 2, hop = HOP_MIN + random.nextDouble() * (HOP_MAX - HOP_MIN);
+        // Back towards where it came when it would wander off.
+        if (Math.hypot(x - Math.sin(angle) * hop - homeX, z + Math.cos(angle) * hop - homeZ) > HOME) {
+            angle = Math.atan2(-(homeX - x), homeZ - z);
+        }
+        double dx = -Math.sin(angle), dz = Math.cos(angle), from = floor;
+        double[] xs = new double[ALONG], zs = new double[ALONG];
+        for (int k = 1; k <= ALONG; k++) {
+            xs[k - 1] = x + dx * hop * k / ALONG;
+            zs[k - 1] = z + dz * hop * k / ALONG;
+        }
+        int mine = generation.get();
+        choosing = true;
+        Columns.read(current, xs, zs).thenAcceptAsync(columns -> {
+            if (generation.get() != mine) return;
+            choosing = false;
+            pause = PAUSE_MIN / 2 + random.nextInt(PAUSE_MORE);
+            double before = from;
+            for (Columns.Column column : columns) {
+                // Ground all along, no step it could not take: else it stays a while more.
+                if (!street(column) || Math.abs(column.y() - before) > 1) return;
+                before = column.y();
+            }
+            heights[0] = from;
+            for (int k = 0; k < ALONG; k++) heights[k + 1] = columns[k].y();
+            dirX = dx;
+            dirZ = dz;
+            length = hop;
+            walked = 0;
+            walking = true;
+        }, Minecraft.getInstance());
+    }
+
+    /** A step along the walk under way, turning to it first; ended where the ground stops it. */
+    private void walk(ClientLevel current) {
+        float heading = (float) Math.toDegrees(Math.atan2(-dirX, dirZ));
+        if (Math.abs(Mth.wrapDegrees(heading - yaw)) > 10f) {
+            yaw = Mth.approachDegrees(yaw, heading, 12f);
+            return;
+        }
+        yaw = heading;
+        head = Mth.approachDegrees(head, 0f, 6f);
+        double nx = x + dirX * PACE, nz = z + dirZ * PACE, ground = ground(current, nx, nz, walked + PACE);
+        if (Double.isNaN(ground) || walked >= length) {
+            walking = false;
+            return;
+        }
+        x = nx;
+        z = nz;
+        walked += PACE;
+        floor += (ground - floor) * 0.2;
+    }
+
     /**
-     * The ground to walk on, {@code along} blocks into its way: the loaded column's, NaN where
-     * it is water or a step up; where it is not loaded, the one read before it started.
+     * The ground to walk on, {@code along} blocks into its walk: the loaded column's, NaN where
+     * it is water or a step up; where it is not loaded, the one read before it set off.
      */
     private double ground(ClientLevel level, double x, double z, double along) {
         int bx = Mth.floor(x), bz = Mth.floor(z);
@@ -325,7 +352,7 @@ public final class GhostVillager {
 
     private void clear() {
         generation.incrementAndGet();
-        searching = active = false;
+        searching = active = walking = choosing = false;
         level = null;
     }
 
@@ -344,12 +371,18 @@ public final class GhostVillager {
         double reach = DepthFar.of(Minecraft.getInstance()) * 0.95;
         float pull = distance > reach ? (float) (reach / distance) : 1f;
         // A slow shuffle while it walks, the feet under the robe.
-        float stride = age < stop ? (float) Math.sin((walked + PACE * partial) * 5.0) * 0.09f : 0f;
+        float stride = walking ? (float) Math.sin((walked + PACE * partial) * 5.0) * 0.09f : 0f;
         pose.pushPose();
         pose.translate((float) (px * pull), (float) (py * pull), (float) (pz * pull));
         pose.scale(pull, pull, pull);
         pose.mulPose(Axis.YP.rotationDegrees(-Mth.rotLerp(partial, yawO, yaw)));
         collector.draw(pose, Ufo.GLOW, (at, out) -> body(at, out, alpha, stride));
+        // The head, turned on its own as it looks about.
+        pose.pushPose();
+        pose.translate(0f, 1.5f, 0f);
+        pose.mulPose(Axis.YP.rotationDegrees(-Mth.rotLerp(partial, headO, head)));
+        collector.draw(pose, Ufo.GLOW, (at, out) -> head(at, out, alpha));
+        pose.popPose();
         // The arms folded in front, as a villager holds them.
         pose.translate(0f, 1.3125f, 0.11f);
         pose.mulPose(Axis.XP.rotationDegrees(-43f));
@@ -358,17 +391,22 @@ public final class GhostVillager {
         if (called) CalledBeam.submit(pose, camera, collector, px + camera.x, py + camera.y, pz + camera.z);
     }
 
-    /** Feet, the long robe, the head and its big nose, two dark eyes; facing +z, origin at its feet. */
+    /** Feet and the long robe; facing +z, origin at its feet. */
     private static void body(PoseStack.Pose at, VertexConsumer out, int alpha, float stride) {
         int light = Ufo.BRIGHT;
         box(at, out, -0.24f, 0f, -0.1f + stride, -0.01f, 0.36f, 0.12f + stride, ROBE, alpha, light);
         box(at, out, 0.01f, 0f, -0.1f - stride, 0.24f, 0.36f, 0.12f - stride, ROBE, alpha, light);
         box(at, out, -0.25f, 0.36f, -0.1875f, 0.25f, 1.5f, 0.1875f, ROBE, alpha, light);
-        box(at, out, -0.25f, 1.5f, -0.25f, 0.25f, 2.125f, 0.25f, HEAD, alpha, light);
-        box(at, out, -0.0625f, 1.5f, 0.25f, 0.0625f, 1.75f, 0.375f, HEAD, alpha, light);
+    }
+
+    /** The head from the neck up, its big nose, two dark eyes. */
+    private static void head(PoseStack.Pose at, VertexConsumer out, int alpha) {
+        int light = Ufo.BRIGHT;
+        box(at, out, -0.25f, 0f, -0.25f, 0.25f, 0.625f, 0.25f, HEAD, alpha, light);
+        box(at, out, -0.0625f, 0f, 0.25f, 0.0625f, 0.25f, 0.375f, HEAD, alpha, light);
         int eyes = Math.min(255, alpha * 3);
-        box(at, out, -0.1875f, 1.78f, 0.25f, -0.0625f, 1.85f, 0.26f, EYES, eyes, light);
-        box(at, out, 0.0625f, 1.78f, 0.25f, 0.1875f, 1.85f, 0.26f, EYES, eyes, light);
+        box(at, out, -0.1875f, 0.28f, 0.25f, -0.0625f, 0.35f, 0.26f, EYES, eyes, light);
+        box(at, out, 0.0625f, 0.28f, 0.25f, 0.1875f, 0.35f, 0.26f, EYES, eyes, light);
     }
 
     /** The folded arms, around their joint at the shoulders: hands across, an arm down each side. */
