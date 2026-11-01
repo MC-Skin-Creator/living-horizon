@@ -8,6 +8,7 @@ import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.JsonStore;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
+import fr.clixmods.livinghorizon.ambient.Herd;
 import fr.clixmods.livinghorizon.platform.Platform;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -157,6 +158,10 @@ public final class MobMemory {
         public double z() { return z; }
         public String type() { return type; }
         public boolean fromPack() { return fromPack; }
+        /** Its saved data, as text. */
+        public String nbt() { return nbt; }
+        /** When this client last had it loaded (or the server last said where it is), in milliseconds since the epoch. */
+        public long seenAt() { return seenAt; }
     }
 
     private static final Gson GSON = new GsonBuilder().create();
@@ -858,8 +863,9 @@ public final class MobMemory {
             }
             if (mob.puppet instanceof LivingEntity living) {
                 // Not drawn for a moment: it keeps its place, as a position and nothing more.
+                // Held by easter egg 15 it turns all the same, out of view too.
                 if (config.optFreezeHidden && mob.motion != null && mob.motion.placed()
-                        && System.nanoTime() - mob.drawnAt > FREEZE_AFTER) {
+                        && System.nanoTime() - mob.drawnAt > FREEZE_AFTER && !Herd.holds(living)) {
                     // Moved by the server meanwhile: there when it shows again, not running there.
                     if (mob.simulated) mob.motion.jump(living, mob);
                     continue;
@@ -910,7 +916,12 @@ public final class MobMemory {
                 boolean tiny = mob.still;
                 double handover = Math.max(24, Math.min(sent(type(mob)), renderDistanceBlocks));
                 float home = MobMotion.home(Math.hypot(mob.x - selfX, mob.z - selfZ), handover);
-                motion(mob).tick(living, mob, choice, clock, roam, tiny, home);
+                // Easter egg 15 holds a few copies still, turned to the player: their loop waits.
+                if (Herd.turn(living)) {
+                    motion(mob).held(living, mob);
+                } else {
+                    motion(mob).tick(living, mob, choice, clock, roam, tiny, home);
+                }
                 motionNanos += System.nanoTime() - moving;
             } else {
                 long holding = System.nanoTime();

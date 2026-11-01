@@ -9,6 +9,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.DedicatedServerScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DepthViewScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DistancePreviewScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EasterEggsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.EggFiguresScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DhFogScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FarFogScenario;
@@ -27,6 +28,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.ImpostorSizeScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LanShareScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.MannequinsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.MoreEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OcclusionScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LinksScenario;
@@ -120,6 +122,8 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new StillMobsScenario(),
             new FlyersScenario(),
             new EasterEggsScenario(),
+            new MoreEggsScenario(),
+            new EggFiguresScenario(),
             new BirdsScenario(),
             new PerchersScenario(),
             new BirdCommandScenario(),
