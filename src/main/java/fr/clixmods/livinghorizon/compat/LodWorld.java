@@ -17,7 +17,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Reads the world past the render distance, from whichever mod keeps it - Voxy, Distant
- * Horizons, Lodistance or Far View, none required: the ground and biome of a column - for the birds to find
+ * Horizons, Lodistance, Far View or Ecstatic, none required: the ground and biome of a column - for the birds to find
  * coasts, fields and lakes, and for the mobs to find where they may walk - and the first
  * block along a line, for the line of sight and {@code /livinghorizon lod}.
  *
@@ -124,7 +124,7 @@ public final class LodWorld {
     private static volatile ConcurrentHashMap<Long, Known> memory = new ConcurrentHashMap<>();
 
     private static final LodSource[] SOURCES = {new VoxySource(), new DhSource(), new LodistanceSource(),
-            new FarViewSource()};
+            new FarViewSource(), new EcstaticSource()};
 
     private LodWorld() {
     }
@@ -235,7 +235,7 @@ public final class LodWorld {
         if (source == null) {
             String failure = status().failure();
             result.completeExceptionally(new IllegalStateException(failure != null ? failure
-                    : "no far-terrain mod is loaded (Voxy, Distant Horizons, Lodistance or Far View)"));
+                    : "no far-terrain mod is loaded (Voxy, Distant Horizons, Lodistance, Far View or Ecstatic)"));
             return result;
         }
         run(source, () -> {

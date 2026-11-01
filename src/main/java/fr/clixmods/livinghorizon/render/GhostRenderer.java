@@ -6,6 +6,7 @@ import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.Stats;
 import fr.clixmods.livinghorizon.ambient.Ambience;
 import fr.clixmods.livinghorizon.compat.DrawnGround;
+import fr.clixmods.livinghorizon.compat.EcstaticLink;
 import fr.clixmods.livinghorizon.compat.EntityCulling;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.FarViewLink;
@@ -246,11 +247,15 @@ public final class GhostRenderer {
 
     /**
      * The far plane this frame needs: the projection is built before the entities are
-     * extracted, so it covers the players of the frame before, with room to spare.
+     * extracted, so it covers the players of the frame before, with room to spare. While
+     * Ecstatic draws its terrain, its own far plane: it tests its terrain against the game's
+     * depth with that plane, and the two depths only agree with the same one.
      */
     public static float farPlane(float vanilla) {
         FarConfig config = FarConfig.get();
         if (!config.anyDistant() || !config.extendFarPlane) return vanilla;
+        float ecstatic = EcstaticLink.farPlane();
+        if (ecstatic > 0f) return ecstatic;
         return Math.max(vanilla, neededFar);
     }
 
