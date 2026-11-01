@@ -13,6 +13,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
@@ -41,7 +42,7 @@ public final class Egg12 {
         Scene.command(world, "time set noon");
         Scene.command(world, "weather clear");
         // It crosses out to where the loaded chunks end: wait for them, after a teleport this far.
-        for (int i = 0; i < 600 && !context.computeOnClient(Egg12::loadedAhead); i++) context.waitTick();
+        for (int i = 0; i < 1200 && !context.computeOnClient(Egg12::loadedAhead); i++) context.waitTick();
         context.waitTicks(20);
         Vec3 at = null;
         for (int tries = 0; tries < 4 && at == null; tries++) {
@@ -133,7 +134,9 @@ public final class Egg12 {
         double x = minecraft.player.getX(), z = minecraft.player.getZ();
         for (int side = -80; side <= 80; side += 40) {
             int bx = Mth.floor(x + side), bz = Mth.floor(z + 225);
-            if (!minecraft.level.hasChunk(bx >> 4, bz >> 4)) return false;
+            // A chunk not received yet is there, empty to the bottom of the world.
+            if (!minecraft.level.hasChunk(bx >> 4, bz >> 4)
+                    || minecraft.level.getHeight(Heightmap.Types.WORLD_SURFACE, bx, bz) <= minecraft.level.getMinY()) return false;
         }
         return true;
     }
