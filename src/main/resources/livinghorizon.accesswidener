@@ -40,6 +40,9 @@ accessible field net/minecraft/world/entity/WalkAnimationState speedOld F
 accessible class net/minecraft/client/model/geom/ModelPart$Polygon
 accessible field net/minecraft/client/model/geom/ModelPart$Cube polygons [Lnet/minecraft/client/model/geom/ModelPart$Polygon;
 
+# The view distance the server announced, which Bobby leaves out of the effective render distance.
+accessible field net/minecraft/client/Options serverRenderDistance I
+
 # The hashed seed the server sends, which tells one world from another.
 accessible field net/minecraft/world/level/biome/BiomeManager biomeZoomSeed J
 

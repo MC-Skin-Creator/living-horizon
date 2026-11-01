@@ -601,10 +601,16 @@ below), and other flyers and swimmers get a flat disc at their own height.
 
 - **The near zone.** A copy is never drawn where the real mob would be sent
   (`MobMemory.nearRange`): the smaller of how far the server sends that kind (the *Entity
-  Distance* slider in a single player world) and the render distance, less 16 blocks, never
-  under 24. There the copy would stand where the real mob is not, close enough to walk up to.
-  The simulation distance does not shrink that zone. With the debug boxes on, it shows as
-  "too close for a copy".
+  Distance* slider in a single player world) and the server's view distance, less 16 blocks,
+  never under 24. There the copy would stand where the real mob is not, close enough to walk
+  up to. The simulation distance does not shrink that zone. With the debug boxes on, it shows
+  as "too close for a copy".
+- **The server's view distance, not the render distance** (`track/ServerView`). The game's
+  effective render distance is both in the game alone. Bobby makes it the client's whole
+  setting, since it draws the chunks it saved past the server's; those hold no entities. What
+  is about terrain (far depth, the ground under a mob, birds) reads the render distance; what
+  is about entities the server sends (this zone, a far player lost inside it) reads
+  `ServerView`, the render distance cut to the view distance the server announced.
 - **Coming back.** Coming up to the distance where the server starts sending a mob
   (`MobMotion.home`), its copy is drawn back from its animation to where it was last seen:
   the pull starts 48 blocks before that distance and is whole 8 blocks before it. When the

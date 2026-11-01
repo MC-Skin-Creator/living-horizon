@@ -183,7 +183,7 @@ public final class MobMemory {
     private static final int REPLAN_FIRST = 40, REPLAN_MAX = 1200;
 
     private final Map<UUID, Remembered> mobs = new LinkedHashMap<>();
-    /** The render distance, in blocks, as of the last tick. */
+    /** How far the server sends entities, in blocks, as of the last tick ({@link ServerView}). */
     private int renderBlocks;
     /** Mobs the server sends right now: never drawn twice. */
     private final Map<UUID, Entity> live = new HashMap<>();
@@ -1194,7 +1194,8 @@ public final class MobMemory {
      * How close to the player a copy of this kind of mob cannot be: where the real mob would be
      * sent, and so drawn by the game or by the mod, were it still there. That is how far the
      * server sends this kind (which follows the "Entity Distance" slider in a single player
-     * world, and the view distance), within the render distance, less a margin. The simulation
+     * world), within the server's view distance ({@link ServerView}: never Bobby's render
+     * distance, whose far chunks hold no mobs), less a margin. The simulation
      * distance does not shrink it: mobs past it still stand in the loaded chunks and are sent.
      */
     public double nearRange(Remembered mob) {

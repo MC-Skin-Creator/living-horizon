@@ -112,6 +112,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new LodistanceScenario(),
             new UnloadScenario(),
             new FollowedMobsScenario(),
+            new BobbyScenario(),
             new SittingPetsScenario(),
             new HeadTurnScenario(),
             new GaitsScenario(),
