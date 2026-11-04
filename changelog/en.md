@@ -4,6 +4,9 @@
 
 ### Client
 
+#### Improved
+- **Smoother with thousands of distant mobs** — With thousands of distant mobs in view, estimated mobs included, Living Horizon now spends about half as much time on them at every frame, and less when it picks which ones to show. This matters most with a high *Max Mobs* or *Mob Render Distance*.
+
 #### Fixed
 - **Crash on Mac fixed** — The game no longer crashes about a second after you join a world on a Mac or an older graphics card. Distant mobs still hide behind the far terrain there, and *Skip Hidden Mobs* keeps working.
 

@@ -4,6 +4,9 @@
 
 ### Client
 
+#### Améliorations
+- **Plus fluide avec des milliers de créatures lointaines** — Avec des milliers de créatures lointaines en vue, créatures estimées comprises, Living Horizon passe maintenant environ deux fois moins de temps sur elles à chaque image, et moins lorsqu'il choisit celles à afficher. La différence se voit surtout avec des valeurs élevées de *Créatures max* ou de *Distance d'affichage des créatures*.
+
 #### Corrections
 - **Plantage sur Mac corrigé** — Le jeu ne plante plus environ une seconde après que vous avez rejoint un monde sur Mac ou avec une carte graphique ancienne. Les créatures lointaines s'y cachent toujours derrière le terrain lointain, et *Ignorer cachés* continue de fonctionner.
 
