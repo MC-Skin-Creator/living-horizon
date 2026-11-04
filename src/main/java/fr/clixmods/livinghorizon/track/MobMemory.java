@@ -146,6 +146,12 @@ public final class MobMemory {
         transient int chosenIn;
         /** The last round of guessed mobs that still wanted it ({@code MobMemory.foreseen}). */
         transient int wantedIn;
+        /** Its {@link MobMotion} is settled: read by every tick without going to it, thousands of times. */
+        transient boolean settled;
+        /** Ticks it rested untouched since its clocks were last caught up ({@code MobMemory.catchUp}). */
+        transient int owed;
+        /** The tick in sixteen it is looked at again while it rests, from its id; -1 until worked out. */
+        transient int slot = -1;
         /** When it was last drawn, in nanoseconds; 0 if never. */
         transient long drawnAt;
 
@@ -821,6 +827,7 @@ public final class MobMemory {
                 if (mob.puppet() instanceof TamableAnimal pet && joined.getKey() instanceof TamableAnimal real) {
                     pet.setInSittingPose(real.isInSittingPose());
                 }
+                catchUp(mob);
                 if (joined.getKey().isRemoved() || !(mob.puppet() instanceof LivingEntity puppet)
                         || motion(mob).follow(puppet, mob, joined.getKey())) {
                     arrived.add(mob);
@@ -879,16 +886,18 @@ public final class MobMemory {
             }
             if (mob.puppet == null) continue;
             // Too small or far to show its animation, standing with nothing left to walk or turn:
-            // looked at again once in sixteen ticks, each on a tick of its own, and only kept going
-            // meanwhile. Thousands far off cost little then. One that moves (the server's, one
-            // called back to its spot) is moved every tick: once in sixteen, it went in jerks.
-            // One held by easter egg 15 turns every tick, small on screen or not.
-            if (mob.still && mob.motion != null && mob.motion.settled() && !mob.simulated && mob.handover == null
-                    && mob.puppet instanceof LivingEntity resting && !Herd.holds(resting)
-                    && ((clock + mob.id.hashCode()) & 15) != 0) {
-                mob.motion.rest(resting);
+            // looked at again once in sixteen ticks, each on a tick of its own, and left untouched
+            // meanwhile, its clocks made up when it is drawn as a model or looked at again
+            // (catchUp). Thousands far off cost next to nothing then: only this mob is read, never
+            // its copy. One that moves (the server's, one called back to its spot) is moved every
+            // tick: once in sixteen, it went in jerks. One held by easter egg 15 turns every tick,
+            // small on screen or not.
+            if (mob.still && mob.settled && mob.motion != null && !mob.simulated && mob.handover == null
+                    && !Herd.holds(mob.puppet) && ((clock + slot(mob)) & 15) != 0) {
+                mob.owed++;
                 continue;
             }
+            catchUp(mob);
             if (mob.puppet instanceof LivingEntity living) {
                 // Not drawn for a moment: it keeps its place, as a position and nothing more.
                 // Held by easter egg 15 it turns all the same, out of view too.
@@ -959,12 +968,36 @@ public final class MobMemory {
         Profile.record(Profile.Section.TICK_MOBS_MOTION, motionNanos);
     }
 
+    /** The tick in sixteen a resting copy is looked at again: one of its own, from its id. */
+    private static int slot(Remembered mob) {
+        if (mob.slot < 0) mob.slot = mob.id.hashCode() & 15;
+        return mob.slot;
+    }
+
+    /**
+     * Makes up the ticks a copy rested untouched ({@link MobMotion#rest}): its tick count, its
+     * legs and its animation's clock, as if it had rested every one of them. Before anything reads
+     * them: the renderer drawing it as a model, its next tick. Nothing for a copy up to date. On
+     * the game's thread.
+     */
+    public void catchUp(Remembered mob) {
+        int owed = mob.owed;
+        if (owed == 0) return;
+        mob.owed = 0;
+        if (mob.motion != null && mob.puppet instanceof LivingEntity puppet) mob.motion.rest(puppet, owed);
+    }
+
     private static long seed(Remembered mob) {
         return mob.id.getMostSignificantBits() ^ mob.id.getLeastSignificantBits();
     }
 
     private static MobMotion motion(Remembered mob) {
-        if (mob.motion == null) mob.motion = new MobMotion(seed(mob), MobFlight.of(mob.type));
+        if (mob.motion == null) {
+            mob.motion = new MobMotion(seed(mob), MobFlight.of(mob.type));
+            // A new animation, never played: not settled until it has been.
+            mob.settled = false;
+            mob.owed = 0;
+        }
         return mob.motion;
     }
 
