@@ -340,6 +340,33 @@ public final class FarConfig {
      */
     public boolean impostors = true;
 
+    /**
+     * Distant mobs are drawn with simpler models the farther they are (render/lod): fewer
+     * boxes before the impostor, which {@link #impostorDistance} still starts.
+     */
+    public boolean mobLods = true;
+    /** The game's own entities, inside the render distance, take simpler models too (from 1.21.9). */
+    public boolean lodNearby = true;
+    /** Blocks from which a mob takes its first simpler model; 0: off, {@link #lodPixels} alone. */
+    public int lodDistance = 18;
+    /** Percent: each next simpler model begins this much farther than the one before (200: twice). */
+    public int lodSpacing = 200;
+    /**
+     * Pixels: a mob shorter than this on screen takes its first simpler model even closer than
+     * {@link #lodDistance}, the next ones at {@link #lodSpacing} times smaller. 0: the distance alone.
+     */
+    public int lodPixels = 0;
+    /** Percent of the polygons each simpler model keeps from the one before. */
+    public int lodKeep = 50;
+    /** How many simpler models a mob goes through before its impostor, 1 to 3. */
+    public int lodLevels = 3;
+
+    public static final int MIN_LOD_DISTANCE = 0, MAX_LOD_DISTANCE = 256;
+    public static final int MIN_LOD_SPACING = 125, MAX_LOD_SPACING = 400;
+    public static final int MAX_LOD_PIXELS = 256;
+    public static final int MIN_LOD_KEEP = 20, MAX_LOD_KEEP = 80;
+    public static final int MAX_LOD_LEVELS = 3;
+
     /** Boats, vehicles and mannequins as flat pictures too, as mobs are ("Simplified Entities"). */
     public boolean impostorEntities = true;
 
@@ -489,6 +516,8 @@ public final class FarConfig {
     public boolean debugLabels = false;
     /** Boxes around the mobs the game draws itself, too. */
     public boolean debugGameMobs = false;
+    /** Each figure drawn at a simpler level tinted by its level: the mod's, and the game's with {@link #lodNearby}. */
+    public boolean debugLodColors = false;
     // Which other kinds get their box and label, in the Boxes screen.
     /** Around the real mobs the server sends that the mod draws. */
     public boolean boxLiveMobs = true;
@@ -680,6 +709,11 @@ public final class FarConfig {
         config.impostorMobMemory = Math.clamp(config.impostorMobMemory, MIN_MOB_MEMORY, MAX_MOB_MEMORY);
         config.impostorPlayerMemory = Math.clamp(config.impostorPlayerMemory, MIN_PLAYER_MEMORY, MAX_PLAYER_MEMORY);
         config.impostorPixels = Math.clamp(config.impostorPixels, 0, MAX_IMPOSTOR_PIXELS);
+        config.lodDistance = Math.clamp(config.lodDistance, MIN_LOD_DISTANCE, MAX_LOD_DISTANCE);
+        config.lodSpacing = Math.clamp(config.lodSpacing, MIN_LOD_SPACING, MAX_LOD_SPACING);
+        config.lodPixels = Math.clamp(config.lodPixels, 0, MAX_LOD_PIXELS);
+        config.lodKeep = Math.clamp(config.lodKeep, MIN_LOD_KEEP, MAX_LOD_KEEP);
+        config.lodLevels = Math.clamp(config.lodLevels, 1, MAX_LOD_LEVELS);
         config.impostorDistance = Math.clamp(config.impostorDistance, 0, MAX_IMPOSTOR_DISTANCE);
         config.version = CURRENT;
     }

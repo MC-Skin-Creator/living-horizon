@@ -32,7 +32,8 @@ public final class DebugScreen extends SideOptionsScreen {
         FarConfig c = FarConfig.get();
 
         header(Component.translatable(KEY + "debug.view"));
-        list.addSmall(bool("debugHud", c.debugHud, v -> c.debugHud = v));
+        list.addSmall(bool("debugHud", c.debugHud, v -> c.debugHud = v),
+                bool("debugLodColors", c.debugLodColors, v -> c.debugLodColors = v));
         list.addBig(choice("debugDepthView", List.of("0", "1", "2", "3", "4"), String.valueOf(c.debugDepthView),
                 v -> c.debugDepthView = Integer.parseInt(v)));
         list.addSmall(

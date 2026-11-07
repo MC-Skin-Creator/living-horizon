@@ -13,6 +13,7 @@ import fr.clixmods.livinghorizon.render.DistancePreview;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
+import fr.clixmods.livinghorizon.render.lod.LodRenderer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -144,6 +145,7 @@ abstract class LevelRendererMixin {
         Sink sink = new Sink(collector);
         AmbientRenderer.submit(pose, frame.cameraRenderState.pos, sink);
         ImpostorRenderer.submit(pose, sink);
+        LodRenderer.submit(pose, sink);
         DistancePreview.submit(pose, frame.cameraRenderState.pos, sink);
         // Every figure is handed over, before the entities are drawn: the far terrain's depth may
         // be merged around them only.
@@ -184,6 +186,7 @@ import fr.clixmods.livinghorizon.render.DistancePreview;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
+import fr.clixmods.livinghorizon.render.lod.LodRenderer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -252,6 +255,7 @@ abstract class LevelRendererMixin {
         Sink sink = new Sink(buffers);
         AmbientRenderer.submit(pose, camera.position(), sink);
         ImpostorRenderer.submit(pose, sink);
+        LodRenderer.submit(pose, sink);
         DistancePreview.submit(pose, camera.position(), sink);
         // Lycanites Mobs keeps most of its models for a later stage: drawn while the far depth is in.
         LycaniteMobs.drawQueued();
@@ -271,6 +275,7 @@ import fr.clixmods.livinghorizon.render.DistancePreview;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
+import fr.clixmods.livinghorizon.render.lod.LodRenderer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -344,6 +349,7 @@ abstract class LevelRendererMixin {
         Sink sink = new Sink(buffers);
         AmbientRenderer.submit(pose, camera.position(), sink);
         ImpostorRenderer.submit(pose, sink);
+        LodRenderer.submit(pose, sink);
         DistancePreview.submit(pose, camera.position(), sink);
         // Lycanites Mobs keeps most of its models for a later stage: drawn while the far depth is in.
         LycaniteMobs.drawQueued();

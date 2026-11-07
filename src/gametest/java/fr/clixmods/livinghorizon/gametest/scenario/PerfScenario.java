@@ -98,7 +98,8 @@ public final class PerfScenario implements Scenario {
             List<Row> settings = new ArrayList<>();
             for (Field field : FarConfig.class.getFields()) {
                 if (Modifier.isStatic(field.getModifiers()) || field.getType() != boolean.class
-                        || !field.getName().startsWith("opt") && !field.getName().equals("impostors")) {
+                        || !field.getName().startsWith("opt") && !field.getName().equals("impostors")
+                        && !field.getName().equals("mobLods")) {
                     continue;
                 }
                 // Turning the mod back on rebuilds its figures: longer to settle.

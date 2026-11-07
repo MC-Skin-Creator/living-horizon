@@ -67,9 +67,16 @@ public final class SodiumControlsScenario implements Scenario {
             for (String name : names(context, "slider", "cycling")) {
                 if (name.equals("preset")) continue;
                 Object before = value(context, name);
-                if (kind(context, name).equals("slider")) drag(context, name, 0.15 + 0.17 * (k++ % 5));
+                boolean slider = kind(context, name).equals("slider");
+                double fraction = 0.15 + 0.17 * (k++ % 5);
+                if (slider) drag(context, name, fraction);
                 else click(context, name);
                 Object after = value(context, name);
+                // A slider of a few steps can land on the value it had: the other end of its track.
+                if (slider && after.equals(before)) {
+                    drag(context, name, 1 - fraction);
+                    after = value(context, name);
+                }
                 if (after.equals(before)) failures.add(name + ": unchanged at " + after);
                 shown.put(name, after);
             }

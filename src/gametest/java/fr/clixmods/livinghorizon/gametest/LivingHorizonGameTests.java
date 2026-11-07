@@ -35,6 +35,10 @@ import fr.clixmods.livinghorizon.gametest.scenario.MannequinsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.MinecartsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.MoreEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.LodCostScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.LodKindsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.LodStatsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.LodsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PhotonVoxyScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorShadingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OcclusionScenario;
@@ -94,6 +98,10 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new ImpostorEdgesScenario(),
             new ImpostorLongMobsScenario(),
             new ImpostorScreenScenario(),
+            new LodCostScenario(),
+            new LodKindsScenario(),
+            new LodStatsScenario(),
+            new LodsScenario(),
             new ImpostorTurnScenario(),
             new LightingScenario(),
             new PhotonVoxyScenario(),

@@ -338,6 +338,10 @@ public final class Benchmark {
             config.impostors = false;
             config.impostorEntities = false;
         }));
+        list.add(new Phase("mobs-no-lods", "distant mobs, Detail Levels off", config -> {
+            mobsOnly(config);
+            config.mobLods = false;
+        }));
         list.add(new Phase("mobs-no-occlusion", "distant mobs, Skip Hidden Mobs off", config -> {
             mobsOnly(config);
             config.hideOccludedMobs = false;
@@ -372,6 +376,7 @@ public final class Benchmark {
         config.debugBoxes = false;
         config.debugLabels = false;
         config.debugGameMobs = false;
+        config.debugLodColors = false;
         config.outlineGameMobs = false;
         config.outlineLiveMobs = false;
         config.outlineCopies = false;
