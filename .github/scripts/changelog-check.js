@@ -32,7 +32,7 @@ if (!base) {
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const { LANGS, HEADINGS, AREAS, UNRELEASED_WORD } = fragments;
-const git = args => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' });
+const git = args => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
 
 // [{ version: '0.3.0' | null, kinds: [{ area, heading, entries, flat }] }]
 // "### Server" / "### Client" open an area, "#### New" and so on a kind inside it; a
