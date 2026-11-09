@@ -18,6 +18,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.FollowedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.HandoverScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FlyersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.GaitsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.McaScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.MobFileScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.StillMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.GlidersScenario;
@@ -112,6 +113,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new RestingScenario(),
             new RestingMountScenario(),
             new RestingImpostorsScenario(),
+            new McaScenario(),
             new RestingLoopScenario(),
             new RestingCrowdScenario(),
             new RestingTouchScenario(),
