@@ -6,7 +6,7 @@ description: Write the Discord message that asks testers to try the latest build
 # Announce a build of develop to test
 
 Every push to `develop` publishes a GitHub pre-release `vX.Y.Z-dev.N`. This skill turns
-the newest one into a Discord message that asks the community to test it. Nothing is
+the newest one into a Discord message (in English) that asks the community to test it. Nothing is
 posted: the message is handed back to the user to paste.
 
 ## Steps
@@ -20,23 +20,21 @@ posted: the message is handed back to the user to paste.
    state; if `develop` moved after the release, say so in one line to the user.
 3. **List the changes in player words.** Read the entry files of `changelog/unreleased/`
    on `origin/develop` (`git show origin/develop:changelog/unreleased/<file>`): each has
-   `part`, `kind` (`new`, `improved`, `fixed`) and one line per language. Use the `fr:`
-   line as the source for the French message, `en:` for an English one. Do not list pull
-   request titles: they are developer words. Skip nothing the files carry, but merge related
-   bullets (several stutter fixes become one line).
-4. **Write the message in French** (the community channel is French; give an English
-   version too only if asked), with this layout:
+   `part`, `kind` (`new`, `improved`, `fixed`) and one line per language. Use the `en:`
+   line. Do not list pull request titles: they are developer words. Skip nothing the files
+   carry, but merge related bullets (several stutter fixes become one line).
+4. **Write the message in English, always**, with this layout:
 
    ```
-   ## 🧪 À tester : <tag>
+   ## 🧪 To test: <tag>
 
-   Une nouvelle version de développement est disponible. Dites-nous si quelque chose cloche !
+   A new development build is out. Tell us if anything looks wrong!
 
-   **Nouveautés**
+   **New**
    - …
-   **Améliorations**
+   **Improved**
    - …
-   **Corrections**
+   **Fixed**
    - …
 
    🔗 <html_url>
@@ -44,9 +42,9 @@ posted: the message is handed back to the user to paste.
 
    - one short line per change, starting with the benefit, no title/dash split, no
      internals (no shader, depth, buffer, class);
-   - a change that is server-side starts with "Serveur :", a version limit goes at the end
-     in parentheses;
-   - say *créatures*, never *animaux*; setting names exactly as the French game shows them;
+   - a server-side change starts with "Server:", a version limit goes at the end in
+     parentheses;
+   - say *mobs*, never *animals*; setting names exactly as the game shows them;
    - **Discord limits a message to 2000 characters**: count them and shorten until the
      message fits, merging bullets, never dropping the link;
    - no role ping unless the user asks for it.
