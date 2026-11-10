@@ -694,6 +694,15 @@ come back, add it here in the same pull request: this file is what the next sess
   spot in the air, the shore, the boat) is kept with the spot and saved, and a new puppet starts
   there; before the blocks are ever loaded, the far world is asked (`guess`). The `restkept`
   scenario checks it.
+- **Players who logged off in their plain skin with Minecraft Comes Alive** (a villager model up
+  close while they played, Steve or their skin once they left): MCA gives a client a player's look
+  only while that player is online, and draws a player by their id from `MCAClient.playerData`.
+  The look goes with the spot (`PositionsMessage.Look.mca`, `RestingPlayers.Spot.mca`) and
+  `Mca.dress` hands it to MCA as the puppet is made. Nothing happens: the log says "Minecraft
+  Comes Alive found, but not the version this mod knows" (a class or method of MCA renamed:
+  `McaLook.find`, `Mca.find`), or the server has no Living Horizon and this client never saw them.
+  Drawn as two eyes alone, no body: MCA had a look with no gender, clothes or hair (an MCA
+  villager summoned with data skips its set-up; the `mca` scenario summons one without).
 - **Players who logged off jumping back a few blocks, near the camera** (as their skin arrives,
   or every few seconds in single player): a new `Spot` for the same place made a new
   `RestingPuppet`, which starts on the spot. A skin fetched from Mojang, the server's word on

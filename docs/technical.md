@@ -48,7 +48,7 @@ never added to a level (`track/Puppets`).
 | root | `LivingHorizonCommon` (entry point on both sides, opens the network channel), `LivingHorizonClient` (client entry point), `FarConfig` (the settings file), `QualityPreset`, `Stats` |
 | `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`, `SeedDraws`, `SeedMobs`, `Foresight`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
 | `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`, the distance settings drawn in the world (`DistancePreview`); `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
-| `compat/` | Voxy, Distant Horizons, Lodistance and Far View: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `LodistanceSource`, `FarViewSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `LodistanceLink`, `FarViewLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`); Lycanites Mobs, whose queued models are drawn in time (`LycaniteMobs`); Valkyrien Skies, whose ships' entities are left to it (`ValkyrienSkies`) |
+| `compat/` | Voxy, Distant Horizons, Lodistance and Far View: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `LodistanceSource`, `FarViewSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `LodistanceLink`, `FarViewLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`); Lycanites Mobs, whose queued models are drawn in time (`LycaniteMobs`); Valkyrien Skies, whose ships' entities are left to it (`ValkyrienSkies`); Minecraft Comes Alive, handed the look of the players who logged off (`McaLook`, `Mca`) |
 | `ambient/` | The birds (`Ambience`, `BirdModels`, `BirdFigure`, `AmbientRenderer`) and the easter eggs |
 | `platform/` | What differs between loaders: events, network, config folder |
 | `ui/` | The settings screens (`FarConfigScreen` and its sub-screens, `SodiumOptions`), the impostor screen, the text under the crosshair (`OfflineHud`) |
@@ -254,6 +254,17 @@ on this client: nothing is sent to the server, they block nobody, and nothing ca
 - When the world or the server closes, or you leave it, everyone you saw stays where they
   were last, as they looked, on what they rode: as far as this client knows, they logged off
   then.
+- With Minecraft Comes Alive (MCA), a player can look like a villager, or a player dressed and
+  shaped as one. MCA hands that look to a client only while the player is online, by their id
+  (`MCAClient.playerData`), so the puppet of one who logged off wore their plain skin. The
+  look, MCA's saved villager without what is long (an inventory, memories, the chat prompt;
+  `compat/McaLook.trim`), now goes with the spot: the server reads it from MCA's player data as
+  they log off and shares it with their look (message version 5, last in the record; read once
+  for those offline when the server starts), and a client without the server's word keeps
+  what MCA showed it as they left (`Mca.seen`). As a puppet is made, `Mca.dress` puts a villager
+  of that look into MCA's map under the puppet's id, unless MCA has one of its own; the
+  impostor key counts it (`Mca.lookHash`). All by reflection, `net.mca` on 1.20.1 and
+  `net.conczin.mca` after.
 - `offlinePlayers` off turns all of it off: nobody is shown or remembered.
 - `maxOfflinePlayers` of them are drawn at once (256; up to 1000 on the slider, then no limit): the nearest the
   camera in its dimension, chosen again every tick (`RestingPlayers.shown`). The others stay
