@@ -42,10 +42,11 @@ public final class McaScenario implements Scenario {
         }
         Scene.configure(context, config -> config.offlineLife = false);
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
-            // MCA may greet a new player with a screen of its own.
-            context.setScreen(() -> null);
-            Scene.command(world, "summon mca:female_villager 0.5 " + GROUND + " 40.5 {NoAI:1b}");
-            context.waitTicks(20);
+            // MCA greets a new player with a screen of its own ("Who are you?"), which pauses the game.
+            context.waitTicks(40);
+            context.runOnClient(McaScenario::closeDestiny);
+            Scene.command(world, "summon mca:female_villager 0.5 " + GROUND + " 5.5 {NoAI:1b,Rotation:[180f,0f]}");
+            context.waitTicks(60);
             String look = world.getServer().computeOnServer(server -> {
                 for (Entity entity : server.overworld().getAllEntities()) {
                     if (EntityType.getKey(entity.getType()).toString().equals("mca:female_villager")) {
@@ -56,14 +57,16 @@ public final class McaScenario implements Scenario {
             });
             if (look == null) throw new AssertionError("mca: no look read from MCA's villager");
             Scene.log("mca: look of " + look.length() + " characters");
+            context.runOnClient(McaScenario::closeDestiny);
             Scene.screenshot(context, this, "villager");
             Scene.command(world, "kill @e[type=mca:female_villager]");
 
             List<PositionsMessage.Player> shared = List.of(
                     offline(PLAIN, -1.5, null),
                     offline(DRESSED, 1.5, look));
-            for (int done = 0; done < 60; done += 10) {
+            for (int done = 0; done < 80; done += 10) {
                 context.runOnClient(minecraft -> {
+                    closeDestiny(minecraft);
                     FarPlayerTracker.get().receive(PositionsMessage.players(List.of()));
                     PositionsMessage.offline(shared).forEach(FarPlayerTracker.get()::receive);
                 });
@@ -72,11 +75,26 @@ public final class McaScenario implements Scenario {
             int plain = context.computeOnClient(minecraft -> lookHash(minecraft, PLAIN));
             int dressed = context.computeOnClient(minecraft -> lookHash(minecraft, DRESSED));
             Scene.log("mca: handed to MCA, plain " + (plain != 0) + ", dressed " + (dressed != 0));
+            context.runOnClient(McaScenario::closeDestiny);
             Scene.screenshot(context, this, "offline");
             if (plain != 0 || dressed == 0) {
                 throw new AssertionError("mca: the look went to the wrong player, plain " + plain + ", dressed " + dressed);
             }
         }
+    }
+
+    /**
+     * Closes MCA's "Who are you?" screen, which it opens again every tick until told it may close:
+     * it pauses the game, and nothing of the mod's would tick.
+     */
+    private static void closeDestiny(Minecraft minecraft) {
+        try {
+            Object destiny = Class.forName("net.conczin.mca.MCAClient").getMethod("getDestinyManager").invoke(null);
+            destiny.getClass().getMethod("allowClosing").invoke(destiny);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("mca: MCA's destiny screen cannot be closed", e);
+        }
+        if (minecraft.screen != null) minecraft.setScreen(null);
     }
 
     /** A player who logged off 6 blocks ahead, facing the camera, in this look of MCA. */
