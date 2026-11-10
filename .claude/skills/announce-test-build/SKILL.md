@@ -37,6 +37,8 @@ posted: the message is handed back to the user to paste.
    **Fixed**
    - …
 
+   Some of these changes may hurt your performance. If you notice a drop, please report it. Thank you all!
+
    🔗 <html_url>
    ```
 
@@ -47,6 +49,7 @@ posted: the message is handed back to the user to paste.
    - say *mobs*, never *animals*; setting names exactly as the game shows them;
    - **Discord limits a message to 2000 characters**: count them and shorten until the
      message fits, merging bullets, never dropping the link;
+   - always keep the performance reminder sentence before the link;
    - no role ping unless the user asks for it.
 5. **Easter eggs stay secret.** Never mention one; at most "easter egg" and a number. The
    changelog has none, so there is nothing to copy.
