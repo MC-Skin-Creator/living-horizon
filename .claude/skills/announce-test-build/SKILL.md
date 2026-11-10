@@ -23,13 +23,24 @@ posted: the message is handed back to the user to paste.
    `git worktree add /tmp/lh-develop origin/develop` (or `git stash`-free equivalent), then
    `node .github/scripts/changelog-notes.js unreleased en` from there. Use its bullets
    **verbatim** (title and sentence): never reword, shorten, merge or drop one.
-4. **Write the message in English, always.** Layout of the first message:
+4. **Write the messages in English, always.** There are two parts: the announcement, then
+   the changelog, which the user posts in a thread under the announcement.
+
+   **Announcement** (one message, the link up front so nobody scrolls for it):
 
    ```
-   ## 🧪 To test: <tag>
+   Hello @Testers a new version is available for testing: <tag>
 
-   A new development build is out. Tell us if anything looks wrong!
+   🔗 Download: <html_url>
 
+   Some of these changes may hurt your performance. If you notice a drop, please report it. Thank you all!
+
+   Changelog in the thread below 👇
+   ```
+
+   **Thread** (the changelog, one or more messages), starting with:
+
+   ```
    # Server
    **Improved**
    - …
@@ -41,12 +52,11 @@ posted: the message is handed back to the user to paste.
    - `### Server` / `### Client` become `# Server` / `# Client`, `#### New` and so on become
      `**New**`; the bullets are copied as they are;
    - **Discord limits a message to 2000 characters**: the official text is longer, so split
-     it into several messages, only between two bullets (never inside one), repeating the
-     `# Client` and `**Fixed**` heading at the top of a continuation. Count each message;
-   - the last message ends with the reminder
-     `Some of these changes may hurt your performance. If you notice a drop, please report it. Thank you all!`
-     and then, on its own line, `🔗 <html_url>`;
-   - no role ping unless the user asks for it.
+     the thread into several messages, only between two bullets (never inside one), repeating
+     the `# Client` and `**Fixed**` heading at the top of a continuation. Count each message;
+   - `@Testers` is written as is, for the user to turn into the role mention when pasting;
+   - no other role ping unless the user asks for it.
 5. **Easter eggs stay secret.** Never mention one; at most "easter egg" and a number. The
    changelog has none, so there is nothing to copy.
-6. **Hand it back** as one fenced block per message, in order, each with its character count.
+6. **Hand it back** as one fenced block per message: the announcement first, then the
+   thread messages in order, each with its character count.
