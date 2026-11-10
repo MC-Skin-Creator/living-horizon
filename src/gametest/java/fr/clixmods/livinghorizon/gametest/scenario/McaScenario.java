@@ -5,10 +5,13 @@ import fr.clixmods.livinghorizon.compat.McaLook;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.platform.Platform;
+import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
+import fr.clixmods.livinghorizon.render.impostor.ImpostorKey;
 import fr.clixmods.livinghorizon.track.EntityNbt;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.PositionsMessage;
 import fr.clixmods.livinghorizon.track.RestingPlayers;
+import fr.clixmods.livinghorizon.track.RestingPuppet;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
@@ -67,14 +70,7 @@ public final class McaScenario implements Scenario {
             List<PositionsMessage.Player> shared = List.of(
                     offline(PLAIN, -1.5, null),
                     offline(DRESSED, 1.5, look));
-            for (int done = 0; done < 80; done += 10) {
-                context.runOnClient(minecraft -> {
-                    closeDestiny(minecraft);
-                    FarPlayerTracker.get().receive(PositionsMessage.players(List.of()));
-                    PositionsMessage.offline(shared).forEach(FarPlayerTracker.get()::receive);
-                });
-                context.waitTicks(10);
-            }
+            share(context, shared, 80);
             int plain = context.computeOnClient(minecraft -> lookHash(minecraft, PLAIN));
             int dressed = context.computeOnClient(minecraft -> lookHash(minecraft, DRESSED));
             Scene.log("mca: handed to MCA, plain " + (plain != 0) + ", dressed " + (dressed != 0));
@@ -83,7 +79,55 @@ public final class McaScenario implements Scenario {
             if (plain != 0 || dressed == 0) {
                 throw new AssertionError("mca: the look went to the wrong player, plain " + plain + ", dressed " + dressed);
             }
+
+            // From 150 blocks, zoomed in: as models, then as simplified pictures, each its own.
+            Scene.command(world, "tp @a 0.5 " + GROUND + " -143.5 0 0");
+            context.runOnClient(minecraft -> minecraft.options.fov().set(30));
+            Scene.configure(context, config -> config.impostorPlayers = false);
+            share(context, shared, 60);
+            Scene.screenshot(context, this, "far-models");
+            Scene.configure(context, config -> config.impostorPlayers = true);
+            String why = null;
+            for (int i = 0; i < 30 && (why = pictured(context)) != null; i++) share(context, shared, 10);
+            Scene.log("mca far: " + (why == null ? "both pictured, apart" : why));
+            Scene.screenshot(context, this, "far-impostors");
+            Scene.screenshotAtlas(context, this);
+            context.runOnClient(minecraft -> minecraft.options.fov().set(70));
+            if (why != null) throw new AssertionError("mca far: " + why);
         }
+    }
+
+    /** Shares the two players as a server with the mod would, for {@code ticks} ticks. */
+    private static void share(ClientGameTestContext context, List<PositionsMessage.Player> shared, int ticks) {
+        for (int done = 0; done < ticks; done += 10) {
+            context.runOnClient(minecraft -> {
+                closeDestiny(minecraft);
+                FarPlayerTracker.get().receive(PositionsMessage.players(List.of()));
+                PositionsMessage.offline(shared).forEach(FarPlayerTracker.get()::receive);
+            });
+            context.waitTicks(10);
+        }
+    }
+
+    /** Null once both players have a simplified picture, each a picture of its own; else why not. */
+    private static @Nullable String pictured(ClientGameTestContext context) {
+        return context.computeOnClient(minecraft -> {
+            ImpostorKey plain = ImpostorKey.of(puppet(minecraft, PLAIN));
+            ImpostorKey dressed = ImpostorKey.of(puppet(minecraft, DRESSED));
+            if (plain.equals(dressed)) return "both players share one picture";
+            if (ImpostorAtlas.sheet(plain) == null || ImpostorAtlas.sheet(dressed) == null) {
+                return "no picture yet (waiting " + ImpostorAtlas.waiting() + ")";
+            }
+            return null;
+        });
+    }
+
+    private static RestingPuppet puppet(Minecraft minecraft, String name) {
+        RestingPlayers resting = FarPlayerTracker.get().resting();
+        for (RestingPlayers.Spot spot : resting.spots()) {
+            if (spot.name().equals(name) && minecraft.level != null) return resting.puppet(minecraft.level, spot);
+        }
+        throw new AssertionError("mca: no puppet for " + name);
     }
 
     /**
@@ -108,10 +152,6 @@ public final class McaScenario implements Scenario {
 
     /** What MCA was handed for the puppet of {@code name} ({@link Mca#lookHash}), 0 for nothing. */
     private static int lookHash(Minecraft minecraft, String name) {
-        RestingPlayers resting = FarPlayerTracker.get().resting();
-        for (RestingPlayers.Spot spot : resting.spots()) {
-            if (spot.name().equals(name) && minecraft.level != null) return Mca.lookHash(resting.puppet(minecraft.level, spot));
-        }
-        throw new AssertionError("mca: no puppet for " + name);
+        return Mca.lookHash(puppet(minecraft, name));
     }
 }
