@@ -35,8 +35,11 @@ posted: the message is handed back to the user to paste.
 
    Some of these changes may hurt your performance. If you notice a drop, please report it. Thank you all!
 
-   Changelog in the thread below 👇
+   Changelog and discussion are in the <X.Y.Z> thread below, please keep your feedback there 👇
    ```
+
+   `<X.Y.Z>` is the tag without its `v` and `-dev.N` suffix (`0.17.0`): the thread is the
+   one dedicated to that version, where the changelog goes and where people discuss the build.
 
    **Thread** (the changelog, one or more messages), starting with:
 
