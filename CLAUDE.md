@@ -682,6 +682,8 @@ come back, add it here in the same pull request: this file is what the next sess
   `Mca.dress` hands it to MCA as the puppet is made. Nothing happens: the log says "Minecraft
   Comes Alive found, but not the version this mod knows" (a class or method of MCA renamed:
   `McaLook.find`, `Mca.find`), or the server has no Living Horizon and this client never saw them.
+  Drawn as two eyes alone, no body: MCA had a look with no gender, clothes or hair (an MCA
+  villager summoned with data skips its set-up; the `mca` scenario summons one without).
 - **A rider turned sideways** (a player resting in a boat facing left or right of it): the seat's
   yaw is the rider's body (`yBodyRot`), which the boat keeps in line with itself, never the head
   (`getYRot`), which looks wherever the player looked as they left.

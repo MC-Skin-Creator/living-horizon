@@ -20,8 +20,8 @@ import java.util.List;
 
 /**
  * Players who logged off, with Minecraft Comes Alive (MCA; {@code --with minecraft-comes-alive-reborn}):
- * one shared with a look of MCA, read from one of its villagers as the server reads a player's,
- * one without, side by side 6 blocks ahead. The first must be drawn as MCA draws that villager,
+ * one of its villagers up close first, then two players side by side 6 blocks ahead, one shared
+ * with that villager's look, read as the server reads a player's, one without. The first must be drawn as MCA draws that villager,
  * the second in their skin. Without MCA it says so and checks nothing.
  */
 public final class McaScenario implements Scenario {
@@ -45,7 +45,10 @@ public final class McaScenario implements Scenario {
             // MCA greets a new player with a screen of its own ("Who are you?"), which pauses the game.
             context.waitTicks(40);
             context.runOnClient(McaScenario::closeDestiny);
-            Scene.command(world, "summon mca:female_villager 0.5 " + GROUND + " 5.5 {NoAI:1b,Rotation:[180f,0f]}");
+            // Without data, so that MCA dresses it as it spawns: the game skips that for a summon with
+            // data, and an MCA villager with no gender, clothes or hair is drawn as its eyes alone.
+            Scene.command(world, "summon mca:female_villager 0.5 " + GROUND + " 5.5");
+            Scene.command(world, "data merge entity @e[type=mca:female_villager,limit=1] {NoAI:1b,Rotation:[180f,0f]}");
             context.waitTicks(60);
             String look = world.getServer().computeOnServer(server -> {
                 for (Entity entity : server.overworld().getAllEntities()) {
