@@ -81,6 +81,11 @@ public final class FarPlayerTracker {
         return Collections.unmodifiableCollection(players.values());
     }
 
+    /** The player of this id, while known; null otherwise. */
+    public @Nullable FarPlayer player(UUID id) {
+        return players.get(id);
+    }
+
     /** Birds and bats in the sky. */
     public Ambience ambience() {
         return ambience;
@@ -123,6 +128,7 @@ public final class FarPlayerTracker {
             resting.forgetPuppets();
             mobs.forgetPuppets();
             LodWorld.clear();
+            Underground.clear();
             level = current;
             String joined = serverKey(minecraft);
             if (!joined.equals(server)) {

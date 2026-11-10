@@ -155,10 +155,10 @@ class PositionsMessageTest {
     @Test
     void refusesAVersionItCannotRead() {
         byte[] message = bytes(STEVE);
-        message[7] = 5;
+        message[7] = 6;
         assertNull(PositionsMessage.read(message));
         PositionsMessage.Format format = PositionsMessage.format(message);
-        assertEquals(new PositionsMessage.Format(4, 5), format);
+        assertEquals(new PositionsMessage.Format(5, 6), format);
         assertFalse(format.readableBy(PositionsMessage.VERSION));
         assertFalse(new PositionsMessage.Format(1, 1).readableBy(PositionsMessage.VERSION));
     }

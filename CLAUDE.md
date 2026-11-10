@@ -464,13 +464,22 @@ come back, add it here in the same pull request: this file is what the next sess
   simulation distance, a square of chunks that reaches farther on its diagonals. In single
   player `ServerMobs` asks the server where those are and the copies follow; on a server only
   the mod on the server closes that gap.
+- **A mob's copy back for a few seconds after it died far away** (single player; the `followed`
+  scenario failing now and then with "The cow died and its copy stays"): the single player
+  server says it died (`ServerMobs`, `gone`), but the positions it shared before, every 7.5 s,
+  were read again (`MobMemory.sync`) and made a new copy where they had it. A copy forgotten for
+  something the server's last word does not know yet sets that word aside (`MobMemory.setAside`).
 - **Distant mobs gliding to and fro, legs still, or trembling** (past *Animation Distance* or
   under *Min. Animated Size*): a still mob must stand, not play its animation's path without its
   legs; `MobMotion.held` stops its animation's clock. And a puppet's `tickCount` must go on every
   tick: the game plays idle movements at `tickCount` plus the frame's part of a tick, so a stopped
   one replays a tick's worth twenty times a second. Still copies are looked at once in sixteen
-  ticks only once `MobMotion.settled`, and `rest` keeps their clocks going in between: one moved
-  once in sixteen ticks went in jerks. A copy held by easter egg 15 (`Herd.holds`) is never
+  ticks only once `MobMotion.settled`, and left untouched in between: their clocks (tick count,
+  legs, the animation's) are made up all at once (`MobMemory.catchUp`, `MobMotion.rest`) before
+  they are drawn as a model or looked at again. Anything else that reads a copy's tick count or
+  legs catches it up first. Until a copy is looked at, the tick reads only the remembered mob's
+  own fields (`settled`, `vehicle`, `aboard`), never the copy: one read of each copy a tick, for
+  thousands of them, was most of the cost. One moved once in sixteen ticks went in jerks. A copy held by easter egg 15 (`Herd.holds`) is never
   skipped: it turns every tick, or a far herd turned in jerks. The `stillmobs` scenario checks it all.
 - **Distant mobs gone between two distances on another player's server or LAN** (the copies
   hidden as "too close for a copy" past where the real mobs stop being sent, then forgotten): the
@@ -540,6 +549,11 @@ come back, add it here in the same pull request: this file is what the next sess
   again with more room round it (`ImpostorPixels.growth`), drawn smaller in a tile of the same 64
   pixels: tiles two or three times larger took four or nine times the memory for a figure a dozen
   pixels tall. `impostoredges` and `longmobs` show both.
+- **Players online never simplified** (full models far past *Simplification Distance*, or
+  smaller than *Simplification Size*, while offline players are pictures): the game draws other
+  players itself up to ten times the usual entity distance, and a figure it draws is never a
+  picture. `GhostRenderer.pictureInstead` takes them, and their mount, out of the game's frame
+  past either threshold; the `playersize` scenario checks offline and online players.
 - **Distant mobs shaking their heads very fast** (often reported with Entity Culling, more so with
   Chloride or anything that makes the game stop drawing mobs sooner): Entity Culling holds every
   entity out of view until the game's own `renderEntity` draws it, and gives it a shorter tick
@@ -656,6 +670,11 @@ come back, add it here in the same pull request: this file is what the next sess
   answers. Far, resting and logged-off player puppets are not ticked
   either, on every version (`Player.xCloak` before 1.21.9): not covered yet, and `cape` cannot
   just take any `ClientAvatarEntity`, since live players go through the same `extract` and tick.
+- **The ender dragon frozen far away** (gliding with still wings, always facing one way): its
+  renderer reads its wing clock (`flapTime`) and the heights and yaws its tick records
+  (`flightHistory`, `positions` before 1.21.2), never its yaw, and a puppet never ticks.
+  `MobGait.fly` does that part of its tick; its yaw points behind it (`MobGait.backwards`), and
+  it is never a picture. The `dragon` scenario checks it.
 - **Distant pets standing up** (a cat or wolf told to sit, its copy far away standing and
   strolling): the game saves the order to sit from `orderedToSit`, which only the server sets, so a
   save made on the client says `Sitting:0b`. `MobMemory.onUnload` writes `isInSittingPose()` into
@@ -684,6 +703,14 @@ come back, add it here in the same pull request: this file is what the next sess
   `McaLook.find`, `Mca.find`), or the server has no Living Horizon and this client never saw them.
   Drawn as two eyes alone, no body: MCA had a look with no gender, clothes or hair (an MCA
   villager summoned with data skips its set-up; the `mca` scenario summons one without).
+- **Players who logged off jumping back a few blocks, near the camera** (as their skin arrives,
+  or every few seconds in single player): a new `Spot` for the same place made a new
+  `RestingPuppet`, which starts on the spot. A skin fetched from Mojang, the server's word on
+  their look, and the host's own test players echoed by its server (gear `null` here, `[]`
+  there) all did. `RestingPlayers.put` keeps the puppet and dresses it again
+  (`RestingPuppet.dress`) when only the look changed (`Spot.restsLike`). One shoved off a ledge
+  and standing in the air: shoved until its box no longer meets yours, it kept a sliver of the
+  rim under it; past `RIM` it goes over and falls (`tipOver`). The `restingedge` scenario checks both.
 - **A rider turned sideways** (a player resting in a boat facing left or right of it): the seat's
   yaw is the rider's body (`yBodyRot`), which the boat keeps in line with itself, never the head
   (`getYRot`), which looks wherever the player looked as they left.
@@ -796,6 +823,17 @@ come back, add it here in the same pull request: this file is what the next sess
   spyglass is up, and the guessed mobs are worked out again only when what they depend on
   changed (`Foresight.wantedIfChanged`). The `seedcrowd` scenario measures it all; the
   *Statistics...* screen counts what is kept.
+- **The debug panel's costs compared** (*Tick: choosing mobs* and *Frame: extraction* the
+  largest): each time is per call. Choosing runs once a second, the guessed mobs nested in it;
+  the tick's other parts every tick, the frame's every frame. Compare them per second, or
+  profile the `seedcrowd` and `perf` scenarios with JFR (`-XX:StartFlightRecording` in
+  `JAVA_TOOL_OPTIONS`, then `jfr print --events jdk.ExecutionSample`). *Frame: extraction*
+  with a worst far above its average, every few seconds: something done for every copy at
+  once. A figure's picture key (`ImpostorKey.look`) is worked out again every 5 to 9 s, each
+  at its own moment; worked out for the whole crowd in one frame, or the cache cleared whole
+  past 4096 figures, it was a spike. `GhostRenderer.prewarm` looks at 1024 copies a second at
+  most. With thousands of copies the loops are memory-bound: a map lookup per copy (a UUID's
+  hash) costs more than the arithmetic, so mark copies with a round number, never a set.
 - **Nothing drawn in the world while a distance setting is hovered** (the distance preview,
   `render/DistancePreview`): an entity's render type is fogged like an entity, and the game's
   fog had faded a 128-block fence out completely at the default render distance. From 1.21.11
@@ -846,31 +884,35 @@ come back, add it here in the same pull request: this file is what the next sess
 
 **Every change, every push.** Whenever you work on something, write its changelog entry
 in the same pull request, and before every push re-read its entry files against what
-you are about to push: each player-visible change has its bullet, in both languages, and
+you are about to push: each player-visible change has its bullet, in every language, and
 no bullet describes something that is not in the diff. Never push first and fix the
 changelog in a later commit or pull request.
 
 A pull request that changes what a player sees or feels adds each of its entries as a file
 of its own in `changelog/unreleased/` (named after the change; its `README.md` has the
 format): `part: server` or `client`, `kind: new`, `improved` or `fixed`, then the bullet in
-English (`en:`) and in French (`fr:`). **Never write a bullet into `changelog/en.md` or
-`changelog/fr.md`**: two pull requests editing the same lines there conflicted on every
-rebase, while two files never do. A dated section there is a version already released, never
+each of the 14 languages the mod ships, one line per language (`en:`, `fr:`, `de:`, `es:`,
+`it:`, `pt_br:`, `pl:`, `tr:`, `ru:`, `uk:`, `zh_cn:`, `zh_tw:`, `ja:`, `ko:`), in the words
+vanilla Minecraft and the mod's own `lang/` file use in that language (setting names exactly
+as the game shows them). `changelog/languages.json` lists the languages, the file of each
+(`changelog/<code>.md`) and its headings; a language added to `lang/` is added there too,
+its whole changelog translated. **Never write a bullet into `changelog/<code>.md`**: two pull
+requests editing the same lines there conflicted on every rebase, while two files never do. A dated section there is a version already released, never
 given an entry, and reworded only when the user asks for it. A version is split in two parts,
 **Server** first (what a server owner installs, sets up or gets, and what the mod does on a
 server, a LAN host included), then **Client** (what a player sees and feels in game, single
 player included), each with the kinds it needs, New, Improved, Fixed. Versions released
 before the split keep their flat `### New` headings. The `changelog` CI job checks all of
-this; `node .github/scripts/changelog-notes.js unreleased en` prints the next version's
-section as it will read. A branch started before the entry files moves its bullets into them
-with `node .github/scripts/changelog-split.js`, then keeps `develop`'s `en.md` and `fr.md`
-where they conflict.
+this, every language's file against `en.md`; `node .github/scripts/changelog-notes.js
+unreleased <code>` prints the next version's section as it will read. A branch started before
+the entry files moves its bullets into them with `node .github/scripts/changelog-split.js`,
+then keeps `develop`'s `changelog/<code>.md` where they conflict.
 
-The release turns the files into the version's section of `changelog/en.md` and
-`changelog/fr.md` (`### Server` / `#### New` and so on, in the order of the file names),
-deletes them, and posts the entries on Modrinth
-(Changelog tab), CurseForge (file page) and Discord. The game shows them in its changelog
-screen, under *Unreleased* until then: the build merges the files into the jar's copy
+The release turns the files into the version's section of every `changelog/<code>.md`
+(`### Server` / `#### New` and so on, in the order of the file names), deletes them, and
+posts the entries on Modrinth (Changelog tab), CurseForge (file page) and Nexus Mods in
+English, and on Discord in English and French. The game shows them in its changelog screen,
+in the game's language (English where it has none), under *Unreleased* until then: the build merges the files into the jar's copy
 (`gradle/target.gradle.kts`, the same layout as `.github/scripts/changelog-fragments.js`). Players read them, so **every entry is written with the
 `changelog-writing` skill** (`.claude/skills/changelog-writing/`), which holds the style,
 the vocabulary and examples. In short:
