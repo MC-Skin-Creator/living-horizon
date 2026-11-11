@@ -621,7 +621,7 @@ public final class GhostRenderer {
                              Vec3 eye, float partialTick, FarConfig config) {
         if (!config.distantMobs && !config.distantEntities) return;
         MobMemory memory = FarPlayerTracker.get().mobs();
-        List<MobMemory.Remembered> shown = memory.shown();
+        List<MobMemory.Remembered> shown = memory.shown(minecraft.level);
         for (MobMemory.Remembered mob : shown) {
             Entity puppet = mob.puppet();
             if (puppet == null) {
@@ -737,7 +737,8 @@ public final class GhostRenderer {
                 else if (debug) DebugMarks.tally(Mark.GAME);
                 continue;
             }
-            if (entity.isRemoved() || entity.isInvisible()) continue;
+            // Of a level left, until the next tick lets it go: never drawn at its old place in this one.
+            if (entity.isRemoved() || entity.isInvisible() || entity.level() != level) continue;
             // A mount with a player on it is drawn with that player; a villager in a minecart,
             // a cow in a boat, each on its own.
             if ((entity.isPassenger() || entity.isVehicle()) && carriesPlayer(entity.getRootVehicle())) continue;
@@ -1029,7 +1030,7 @@ public final class GhostRenderer {
             if (puppet != null && !puppet.isFallFlying()) ImpostorAtlas.request(ImpostorKey.of(puppet), puppet);
         }
         if (!config.distantMobs && !config.distantEntities) return;
-        List<MobMemory.Remembered> shown = FarPlayerTracker.get().mobs().shown();
+        List<MobMemory.Remembered> shown = FarPlayerTracker.get().mobs().shown(Minecraft.getInstance().level);
         int count = Math.min(shown.size(), PREWARM_MOST);
         if (prewarmFrom >= shown.size()) prewarmFrom = 0;
         int from = prewarmFrom;

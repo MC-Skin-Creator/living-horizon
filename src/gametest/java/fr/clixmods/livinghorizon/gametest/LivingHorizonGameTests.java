@@ -40,6 +40,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PhotonVoxyScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorShadingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OcclusionScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.OtherDimensionScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LinksScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LodistanceScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
@@ -164,7 +165,8 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new PerfScenario(),
             new BenchmarkScenario(),
             new BenchmarkWorldScenario(),
-            new MinecartsScenario());
+            new MinecartsScenario(),
+            new OtherDimensionScenario());
 
     @Override
     public void runTest(ClientGameTestContext context) {
