@@ -196,6 +196,8 @@ public final class MobMemory {
         public UUID id() { return id; }
         public @Nullable Entity puppet() { return gone ? null : puppet; }
         public boolean waiting() { return !gone && puppet == null && !failed; }
+        /** The dimension it was seen in, by id ({@code minecraft:overworld}). */
+        public String dimension() { return dimension; }
         public double x() { return x; }
         public double y() { return y; }
         public double z() { return z; }
@@ -326,6 +328,13 @@ public final class MobMemory {
     /** What the server shared, as last synced. */
     private @Nullable SharedPositions lastPack;
     private List<Remembered> shown = List.of();
+    /**
+     * The level {@link #shown} was put together in. The dimension changes between two ticks: until
+     * the next one, the copies chosen there are not drawn in the new level.
+     */
+    private @Nullable ClientLevel shownIn;
+    /** The mobs of a level left are being remembered: no copy of them is made to draw. */
+    private boolean leaving;
     /** Mobs that left since {@link #shown} was put together: added to it in one go, when it is next read. */
     private final List<Remembered> arriving = new ArrayList<>();
     /** The file being written; null before the first save. */
@@ -369,6 +378,11 @@ public final class MobMemory {
             shown = Collections.unmodifiableList(next);
         }
         return shown;
+    }
+
+    /** The copies to draw in this level: none of another, chosen before the dimension changed. */
+    public List<Remembered> shown(@Nullable ClientLevel level) {
+        return level != null && level == shownIn ? shown() : List.of();
     }
 
     /** Draws nothing until the next choice. */
@@ -589,6 +603,7 @@ public final class MobMemory {
         takenAway.clear();
         stranded.clear();
         showNone();
+        shownIn = null;
         chooseSoon = false;
         file = null;
         bound = null;
@@ -598,7 +613,22 @@ public final class MobMemory {
     }
 
     /** Puppets belong to one level. */
-    void forgetPuppets() {
+    void forgetPuppets(ClientLevel current) {
+        // The real mobs of the level left: Forge and NeoForge never unload them as the dimension
+        // changes, and they were drawn at their old place in the new one. Remembered there instead.
+        List<Entity> left = new ArrayList<>();
+        for (Entity entity : live.values()) {
+            if (entity.level() != current) left.add(entity);
+        }
+        leaving = true;
+        try {
+            for (Entity entity : left) {
+                if (entity.level() instanceof ClientLevel old) onUnload(entity, old);
+                live.remove(entity.getUUID(), entity);
+            }
+        } finally {
+            leaving = false;
+        }
         for (Remembered mob : mobs.values()) {
             mob.puppet = null;
             mob.motion = null;
@@ -722,7 +752,8 @@ public final class MobMemory {
         // Remembered when it was stranded, and its copy flies or walks on from there.
         if (stranded.remove(entity.getUUID(), entity)) return;
         live.remove(entity.getUUID());
-        if (level == bound && rememberable(entity)) unlearnReach(entity);
+        // Left with its level, not stopped being sent: says nothing of how far the server sends.
+        if (!leaving && level == bound && rememberable(entity)) unlearnReach(entity);
         // Gone again before its copy reached it: that copy carries on from where it got to.
         Remembered joined = joining.remove(entity);
         if (joined != null) joined.handover = null;
@@ -774,7 +805,7 @@ public final class MobMemory {
      * between with neither the real mob nor its copy. The next choice puts the list in order.
      */
     private void showNow(Remembered mob, ClientLevel level, FarConfig config) {
-        if (config.most(creature(mob), 1) <= 0 || carried.contains(mob.id)) return;
+        if (leaving || level != shownIn || config.most(creature(mob), 1) <= 0 || carried.contains(mob.id)) return;
         if (mob.underground() && Underground.hiding(level, config)) return;
         if (mob.puppet == null) {
             // A crowd unloaded at once (a teleport) is left to the ticks and their budget.
@@ -955,6 +986,10 @@ public final class MobMemory {
     void tick(ClientLevel level, LocalPlayer self, int renderDistanceBlocks, FarConfig config,
               @Nullable SharedPositions pack) {
         bound = level;
+        if (shownIn != level) {
+            showNone();
+            shownIn = level;
+        }
         world = worldOf(level);
         selfX = self.getX();
         selfY = self.getY();
@@ -964,7 +999,13 @@ public final class MobMemory {
         builtNow = 0;
         clock++;
         riders.clear();
-        for (Entity entity : live.values()) {
+        for (var it = live.values().iterator(); it.hasNext(); ) {
+            Entity entity = it.next();
+            // Of a level left and never unloaded: drawn nowhere, least of all at its old place here.
+            if (entity.level() != level) {
+                it.remove();
+                continue;
+            }
             if (entity.isPassenger()) riders.put(entity.getUUID(), entity.getRootVehicle().getUUID());
         }
         adoptRead(false);

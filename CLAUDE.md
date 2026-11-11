@@ -281,6 +281,9 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Far terrain depth missing** (depth view without Voxy's or Distant Horizons' terrain,
   mobs not hidden behind its hills): read the *Far terrain depth* line of the debug panel or
   `/livinghorizon lod`, with *Lazy far depth* off, since lazy depth hides the real reason.
+  "off" there means a step threw and the depth stays off until a restart: the log says why
+  ("Using the far terrain's depth failed"). "a step changes GL state its bracket did not
+  save": a step's `GlState.save` asks for more than `beforeEntities`' bracket around it.
 - **Part of the far terrain's depth missing, cut along a straight line** (a far mob showing
   through Voxy's or Distant Horizons' terrain on one side of an edge, the depth view fine):
   the merge is held to a rectangle round the figures (`FarDepth.region`, *Local Far Depth*).
@@ -749,6 +752,12 @@ come back, add it here in the same pull request: this file is what the next sess
   the messages' table of dimensions, `RestingPlayers.Spot`), never by a number, which cannot
   tell two mods' dimensions apart: message format 2 and the resting file's layout 1 gave them
   all 3, and their readers leave those out.
+- **Mobs of the Overworld drawn in the Nether** (issue #343: squids in the Nether's air, at their
+  Overworld coordinates): Forge and NeoForge never unload the old level's entities as the dimension
+  changes, so they stayed among the live mobs `GhostRenderer` draws past the entity distance; and
+  until the next tick the copies chosen in the old level were still drawn. `MobMemory.forgetPuppets`
+  remembers the old level's live mobs, its tick drops any of another level, and the renderer takes
+  `shown(level)`, empty for a level the copies were not chosen in. The `otherdimension` scenario checks it.
 - **Distant players gone after an update, the log saying "the server shares format vN"**: the
   server and the client run mods whose `PositionsMessage` layouts are too far apart. A field
   added at the end of a record, or after the records, raises `VERSION` only; anything else
