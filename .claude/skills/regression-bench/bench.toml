@@ -1,0 +1,93 @@
+# The regression bench's settings. A bench.toml in the bench's home folder (LH_BENCH_HOME)
+# overrides any key of this one, table by table.
+
+# The Fabric nodes run, from 1.21.4: the client game tests need the Fabric API's module.
+nodes = ["1.21.4", "1.21.5", "1.21.8", "1.21.10", "1.21.11", "26.1.x", "26.2.x", "26.3.x"]
+
+# The nodes `jars` plays by default (published jars, any loader): those the client game tests
+# cannot reach. `--nodes all` plays every node of stonecutter.properties.toml.
+jar_nodes = ["1.20.1-forge", "1.20.1", "1.21.1-neoforge", "1.21.1-forge", "1.21.11-neoforge", "26.3.x-neoforge", "1.21.11-quilt"]
+
+# The node every other is compared with, between versions.
+reference_node = "1.21.11"
+
+# Minutes one game may run before it is stopped.
+timeout_minutes = 60
+
+# The GitHub repository the develop builds are released from.
+repository = "MC-Skin-Creator/living-horizon"
+
+# One profile is one set of mods, loaded from a folder of its own: every node is played once
+# per profile, with the same game. `mods` are Modrinth projects (their Fabric jar for the
+# node's game version); `shaderpack` a Modrinth shader pack, turned on through Iris.
+# A profile whose mods do not exist for a game version is skipped on that node.
+#
+# `noise` is how much a channel may differ between the two shots of a pair and still count
+# as steady (0 to 255); `tolerance` how much a steady pixel may differ from the baseline;
+# `settle` (jars only) the seconds in the world before the first picture: Distant Horizons builds
+# its terrain, a shader pack compiles.
+# `max_pixels` how many changed pixels, in blobs of two by two at least (a terrain edge shifted
+# by one pixel draws thin lines, which do not count), mark a shot changed: a distant mob is a
+# few dozen pixels, so this stays small. Calibrate it with two runs of the same build.
+
+[profiles.vanilla]
+mods = []
+noise = 2
+tolerance = 6
+max_pixels = 4
+
+[profiles.sodium]
+mods = ["sodium"]
+noise = 2
+tolerance = 6
+max_pixels = 4
+
+[profiles.voxy]
+settle = 60
+mods = ["sodium", "voxy"]
+noise = 2
+tolerance = 6
+max_pixels = 4
+
+[profiles.dh]
+mods = ["distanthorizons"]
+settle = 120
+noise = 2
+tolerance = 6
+max_pixels = 4
+
+[profiles.iris]
+settle = 60
+mods = ["sodium", "iris"]
+shaderpack = "complementary-reimagined"
+noise = 10
+tolerance = 16
+max_pixels = 12
+
+[profiles.voxy-photon]
+settle = 60
+mods = ["sodium", "iris", "voxy"]
+shaderpack = "photon-shader"
+noise = 10
+tolerance = 16
+max_pixels = 12
+
+[profiles.dh-complementary]
+settle = 120
+mods = ["sodium", "iris", "distanthorizons"]
+shaderpack = "complementary-reimagined"
+noise = 10
+tolerance = 16
+max_pixels = 12
+
+# Between versions the game itself draws a little differently (its sky, its lighting): those
+# comparisons only inform, with these looser limits: `max_changed` is a share of the steady pixels.
+[cross_version]
+tolerance = 24
+max_changed = 0.02
+
+# A phase of /livinghorizon benchmark (--perf) is marked slower when its average frame time
+# grew by more than this share and this many milliseconds, both.
+[perf]
+slower_share = 0.10
+slower_ms = 0.3
