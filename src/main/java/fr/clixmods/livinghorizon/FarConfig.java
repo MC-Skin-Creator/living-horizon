@@ -528,6 +528,25 @@ public final class FarConfig {
     private @Nullable Boolean debugOutlines;
     /** Before version 9, how a player who logged off was drawn: {@code "sleep"}, {@code "sit"} or {@code "hidden"}. */
     private @Nullable String offlinePose;
+    /**
+     * A copy within this many blocks of its real mob, sent again, walks to it before the real one
+     * is shown; farther, the real one takes its place at once. 0: always at once.
+     */
+    public int joinMaxDistance = 48;
+    /** How fast a copy walks to its real mob, in percent of how the game walks a mob of its kind. */
+    public int joinPace = 100;
+    /** A copy walking to its real mob steps up and down the blocks under it, rather than going straight to its feet. */
+    public boolean joinFollowGround = true;
+    /** Seconds a copy walks to its real mob before it lets the real one take over where it stands. */
+    public int joinGiveUpSeconds = 30;
+    /**
+     * Within this many blocks of a copy walking up to its real mob, sent again, or of the real one,
+     * kept out of view meanwhile, the copy hurries ({@link #joinHurrySpeed}); farther, it walks at
+     * its own pace. 0: never hurries.
+     */
+    public int joinHurryDistance = 16;
+    /** How fast a hurrying copy walks up to its real mob, in percent of its own pace: a mob that panics runs at about twice it. */
+    public int joinHurrySpeed = 200;
     /** A panel of what the mod does and costs, in the corner of the screen. */
     public boolean debugHud = false;
     /** 0: off; 1: the game's depth; 2: with the far terrain merged in; 3: after the entities; 4: the whole world drawn. */

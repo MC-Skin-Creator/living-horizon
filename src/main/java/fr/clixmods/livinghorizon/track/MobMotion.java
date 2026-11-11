@@ -1,9 +1,15 @@
 package fr.clixmods.livinghorizon.track;
 
+import fr.clixmods.livinghorizon.FarConfig;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -53,6 +59,10 @@ final class MobMotion {
     /** Still and nothing of it changed this tick: until something moves it, {@link #rest} may stand for a tick. */
     private boolean settled;
     private int following;
+    /** The copy stood on its real mob at the end of the last tick of {@link #follow}. */
+    private boolean joined;
+    /** How many times its pace it goes to its real mob this tick: 1 but in {@link #follow}. */
+    private double hurrying = 1;
     /** Where the server last had a mob it moves, and how fast to walk to reach it by the next answer. */
     private double aimX = Double.NaN, aimZ = Double.NaN, pace;
     private @Nullable MobGait gait;
@@ -228,6 +238,8 @@ final class MobMotion {
         fit(puppet);
         if (!placed) place(mob);
         following = 0;
+        joined = false;
+        hurrying = 1;
         settle(mob, false);
         if (flight != null && roam && !mob.simulated) {
             fly(puppet, mob, flight, clock, home);
@@ -376,24 +388,38 @@ final class MobMotion {
      * the farther it is, never slower than the real one walks. True once there, and then
      * the real one takes its place without a jump.
      */
-    boolean follow(LivingEntity puppet, MobMemory.Remembered mob, Entity real) {
+    /**
+     * A step of the copy towards its real mob, sent again, as the game would walk it there: at
+     * its kind's walking pace ({@link #walkPace}, times {@code joinPace}), or the real one's if faster, {@code hurry}
+     * times that while the player is close ({@code joinHurryDistance}); on the blocks under it
+     * ({@link #standAt}, unless {@code joinFollowGround} is off); a hopping mob in hops, waiting less between them when hurried. Faster
+     * than that, catching up more the farther it was, it slid across the ground with its legs
+     * racing. Done once it stood on the real one, facing its way, for a whole tick: gone the tick
+     * it arrived, its last step was never seen, and the real one appeared that step ahead.
+     */
+    boolean follow(LivingEntity puppet, MobMemory.Remembered mob, Entity real, double hurry, FarConfig config) {
         settle(mob, false);
         fit(puppet);
         if (!placed) place(mob);
+        hurrying = hurry;
         double tx = real.getX(), ty = real.getY(), tz = real.getZ();
         double dx = tx - x, dz = tz - z, d = Math.hypot(dx, dz);
         double pace = Math.hypot(real.getX() - real.xo, real.getZ() - real.zo);
-        double reach = Math.min(0.8, pace + 0.06 + 0.05 * d);
+        double reach = Math.max(walkPace(puppet) * config.joinPace / 100.0 * hurry, pace + 0.01);
         double step = gait.hops() ? hop(d, reach) : Math.min(d, reach);
         double fromX = x, fromZ = z;
-        climbing = Math.abs(ty - y) > 0.05;
         if (d > 1e-4) {
             x += dx / d * step;
             z += dz / d * step;
-            y += (ty - y) * Math.min(1, step / d);
-        } else {
-            y += (ty - y) * 0.5;
         }
+        // On the blocks under it while it walks; on the real one's feet on the last stretch, or
+        // where nothing it can stand on is known.
+        double ground = config.joinFollowGround && d - step > 1 ? standAt(puppet.level(), x, y, z) : Double.NaN;
+        if (Double.isNaN(ground)) ground = d > 1e-4 ? y + (ty - y) * Math.min(1, step / d) : ty;
+        climbing = Math.abs(ground - y) > 0.05;
+        // Up a step in a few ticks, like a hop; down the same.
+        y += (ground - y) * 0.4;
+        if (Math.abs(ground - y) < 0.01) y = ground;
         land(d - step);
         float yaw = faces(real instanceof LivingEntity living ? living.yBodyRot : real.getYRot());
         // Facing the way it walks, and the way the real one faces on the last stretch.
@@ -405,8 +431,45 @@ final class MobMotion {
         apply(puppet, Math.hypot(x - fromX, z - fromZ));
         boolean there = air < 0 && Math.hypot(tx - x, tz - z) < 0.1 && Math.abs(ty - y) < 0.15
                 && Math.abs(Mth.wrapDegrees(body - yaw)) < 15;
-        return there || ++following > 120;
+        boolean stood = joined;
+        joined = there;
+        // Not there after joinGiveUpSeconds: the real one takes over where the copy got to.
+        return stood && there || ++following > Math.max(1, config.joinGiveUpSeconds) * 20;
     }
+
+    /**
+     * Blocks a tick the game walks a mob of this kind at: its input and its push are both its
+     * movement speed, and grass keeps about 1.6 times their product (a cow 0.064, about 1.3
+     * blocks a second; a wolf 2.9). Kept between a slow amble and a run.
+     */
+    static double walkPace(LivingEntity puppet) {
+        double speed = puppet.getAttributeValue(Attributes.MOVEMENT_SPEED);
+        return Mth.clamp(speed * speed * 1.6, 0.04, 0.35);
+    }
+
+    /**
+     * Where a mob at {@code x, z} stands, from a step above its feet at {@code y} down to a few
+     * blocks below: the top of the first block it cannot walk through. Not known (the chunk is
+     * not held, only air or water below, a wall taller than a step) gives NaN.
+     */
+    private static double standAt(Level level, double x, double y, double z) {
+        int bx = Mth.floor(x), bz = Mth.floor(z);
+        // Asked of the chunk cache: a client's level says it has every chunk.
+        if (!level.getChunkSource().hasChunk(bx >> 4, bz >> 4)) return Double.NaN;
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        for (int by = Mth.floor(y + STEP_UP); by >= Mth.floor(y) - 4; by--) {
+            pos.set(bx, by, bz);
+            if (!level.getFluidState(pos).isEmpty()) return Double.NaN;
+            VoxelShape shape = level.getBlockState(pos).getCollisionShape(level, pos);
+            if (shape.isEmpty()) continue;
+            double top = by + shape.max(Direction.Axis.Y);
+            return top <= y + STEP_UP ? top : Double.NaN;
+        }
+        return Double.NaN;
+    }
+
+    /** How high a mob walks up without a jump: a block, or a slab on a block. */
+    private static final double STEP_UP = 1.2;
 
     private void apply(LivingEntity puppet, double moved) {
         puppet.setOldPosAndRot();
@@ -456,6 +519,8 @@ final class MobMotion {
             air = -1;
             landed = true;
             rest = gait.rest(seed, hops++, ahead);
+            // Hurrying to its real mob: shorter waits, the same hops.
+            if (hurrying > 1) rest = (int) (rest / hurrying);
         }
         lift = air >= 0 ? gait.lift(air) : 0;
     }

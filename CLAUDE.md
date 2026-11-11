@@ -461,6 +461,30 @@ come back, add it here in the same pull request: this file is what the next sess
   the server sends (the copies' near zone, a far player lost inside it) reads
   `track/ServerView`, the render distance cut to the server's; terrain keeps the render
   distance. The `bobby` scenario checks it (`run.sh bobby --with bobby`).
+- **Distant mobs vanishing for good on a server that sends them only up close** (kept only when
+  the player flies off fast; mc.peacefulvanilla.club sends mobs to 24 blocks): a mob the server
+  stops sending near the player reads as killed or despawned and is forgotten. Near is
+  `MobMemory.goneNear`, kept well inside the reach learned for its kind, never a fixed 32 blocks.
+  The reach also learns from where mobs are dropped (`learnReach(Entity)`): sampled once a second
+  only, it came out at 10 blocks for a server sending 16. No fixed distance near the player either:
+  a copy is drawn however close (it exists only while the real mob is not sent), and
+  `MobMemory.nearRange`, where a missing one is forgotten, follows that reach. So a copy of a mob
+  gone (died, moved off) is seen until `reconcile` forgets it: it looks every 5 ticks, after
+  `learnReach`, and forgets after 3 looks; at 5 looks a second apart, one stood in front of the
+  player for 5 s. A mob sent again is kept out of view while its copy walks up to it
+  (`MobMotion.follow`), as the game would walk it: at its kind's pace (`walkPace`, from its
+  movement speed: a cow 0.064 blocks a tick), on the blocks under it (`standAt`), hopping if it
+  hops; faster with the player close. Catching up faster the farther it was, it slid across the
+  ground with its legs racing and went up a ramp through the air. All of it is set on the *Debug*
+  screen (`join*` settings: how far it walks, its pace, the ground, when it gives up, the hurry).
+  The real one takes over a tick after the copy stood on it: removed the tick it arrived, its last
+  step was never drawn and the real one appeared a step ahead. Taking over at once instead (no
+  walk) made it jump and turn on the spot. The `shortrange`, `smallmobs` and `comeback` scenarios
+  check it.
+- **Small mobs vanishing for a few blocks with *Entity Distance* below 100 %** (chickens, cats,
+  wolves; zombies and cows fine): the game culls a mob at a distance that grows with its size, a
+  chicken past 16 blocks at 50 %. `GhostRenderer.unseen` takes over from the game's own test
+  (`Entity.shouldRender`), never from a fixed distance: a fixed 24 blocks left a gap.
 - **Distant mobs jumping or sprinting as the player comes back** (the copy runs or teleports to
   the real mob once it is sent again): the server stops sending a mob at its tracking range
   (160 blocks for animals, scaled by *Entity Distance*) but keeps moving it out to the

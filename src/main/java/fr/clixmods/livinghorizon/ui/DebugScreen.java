@@ -49,7 +49,13 @@ public final class DebugScreen extends SideOptionsScreen {
                 bool("extendFarPlane", c.extendFarPlane, v -> c.extendFarPlane = v),
                 unit("minApparentPixels", "pixels", 0, 32, (int) c.minApparentPixels, v -> c.minApparentPixels = v),
                 bool("renderTrackedVehiclesFar", c.renderTrackedVehiclesFar, v -> c.renderTrackedVehiclesFar = v),
-                bool("impostorTurn", c.impostorTurn, v -> c.impostorTurn = v));
+                bool("impostorTurn", c.impostorTurn, v -> c.impostorTurn = v),
+                unit("joinMaxDistance", "blocks", 0, 128, c.joinMaxDistance, v -> c.joinMaxDistance = v),
+                unit("joinPace", "percent", 25, 400, c.joinPace, v -> c.joinPace = v),
+                bool("joinFollowGround", c.joinFollowGround, v -> c.joinFollowGround = v),
+                unit("joinGiveUpSeconds", "seconds", 1, 120, c.joinGiveUpSeconds, v -> c.joinGiveUpSeconds = v),
+                unit("joinHurryDistance", "blocks", 0, 64, c.joinHurryDistance, v -> c.joinHurryDistance = v),
+                unit("joinHurrySpeed", "percent", 100, 400, c.joinHurrySpeed, v -> c.joinHurrySpeed = v));
 
         header(Component.translatable(KEY + "debug.optimisations"));
         list.addSmall(
