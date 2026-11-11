@@ -461,6 +461,10 @@ come back, add it here in the same pull request: this file is what the next sess
   the server sends (the copies' near zone, a far player lost inside it) reads
   `track/ServerView`, the render distance cut to the server's; terrain keeps the render
   distance. The `bobby` scenario checks it (`run.sh bobby --with bobby`).
+- **Distant mobs vanishing for good on a server that sends them only up close** (kept only when
+  the player flies off fast; mc.peacefulvanilla.club sends mobs to 24 blocks): a mob the server
+  stops sending near the player reads as killed or despawned and is forgotten. Near is
+  `MobMemory.goneNear`, kept well inside the reach learned for its kind, never a fixed 32 blocks.
 - **Distant mobs jumping or sprinting as the player comes back** (the copy runs or teleports to
   the real mob once it is sent again): the server stops sending a mob at its tracking range
   (160 blocks for animals, scaled by *Entity Distance*) but keeps moving it out to the

@@ -769,8 +769,10 @@ public final class MobMemory {
             forget(mob.getUUID());
             return;
         }
-        // Gone right next to us: killed, despawned, picked up - not out of range.
-        if (selfKnown && distance(mob.getX(), mob.getY(), mob.getZ()) < 32) {
+        // Gone right next to us: killed, despawned, picked up - not out of range. Next to us is
+        // well inside where this server sends that kind: a server that stops sending mobs at 24
+        // blocks drops every one of them closer than 32, and none of them was remembered.
+        if (selfKnown && Math.hypot(mob.getX() - selfX, mob.getZ() - selfZ) < goneNear(sent(mob.getType()))) {
             forget(mob.getUUID());
             return;
         }
@@ -1690,6 +1692,22 @@ public final class MobMemory {
 
     /** How far inside the reach a mob may stop being sent without lowering it: its chunk dropped first. */
     private static final double REACH_SLACK = 24;
+
+    /** Closer than this, in blocks across, a mob that stops being sent was killed, despawned or picked up. */
+    private static final double GONE_NEAR = 32;
+    /** How far inside where the server sends a kind a mob may still be when it is dropped: the player moved meanwhile. */
+    private static final double GONE_EDGE = 8;
+
+    /**
+     * Closer than this, in blocks across, a mob of a kind the server sends this far (0 when not
+     * known yet) was not dropped for being out of range: it is forgotten rather than remembered.
+     * Never past where the server stops sending it, less a margin. Not known, nothing is forgotten
+     * for its distance alone: a copy left of a mob that is not there is forgotten a few seconds
+     * later ({@link #reconcile}), and a dead one never gets one.
+     */
+    static double goneNear(double sent) {
+        return Math.min(GONE_NEAR, sent - GONE_EDGE);
+    }
 
     /**
      * Back within range of a remembered mob and it is not there: it moved on, or died.
