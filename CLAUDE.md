@@ -468,8 +468,12 @@ come back, add it here in the same pull request: this file is what the next sess
   The reach also learns from where mobs are dropped (`learnReach(Entity)`): sampled once a second
   only, it came out at 10 blocks for a server sending 16. No fixed distance near the player either:
   a copy is drawn however close (it exists only while the real mob is not sent), and
-  `MobMemory.nearRange`, where a missing one is forgotten, follows that reach. The `shortrange` and
-  `smallmobs` scenarios check it.
+  `MobMemory.nearRange`, where a missing one is forgotten, follows that reach. So a copy of a mob
+  gone (died, moved off) is seen until `reconcile` forgets it: it looks every 5 ticks, after
+  `learnReach`, and forgets after 3 looks; at 5 looks a second apart, one stood in front of the
+  player for 5 s. Where the game draws the real mob itself (`Entity.shouldRender`), the real one
+  takes over at once (`joins`): the copy walking up to it kept it out of view for seconds. The
+  `shortrange`, `smallmobs` and `comeback` scenarios check it.
 - **Small mobs vanishing for a few blocks with *Entity Distance* below 100 %** (chickens, cats,
   wolves; zombies and cows fine): the game culls a mob at a distance that grows with its size, a
   chicken past 16 blocks at 50 %. `GhostRenderer.unseen` takes over from the game's own test

@@ -667,11 +667,17 @@ public final class MobMemory {
         forget(entity.getUUID());
     }
 
-    /** A copy drawn now, on its own feet, not so far from the real one that walking up to it would take long. */
+    /**
+     * A copy drawn now, on its own feet, not so far from the real one that walking up to it would
+     * take long, and far enough that the game leaves the real one to the mod. Where the game draws
+     * the real mob itself, the player sees it close: it takes over at once, and the copy goes.
+     * Walking up to it there kept the real mob out of view for seconds.
+     */
     private boolean joins(Remembered mob, Entity real) {
         return !mob.gone && mob.handover == null && mob.puppet instanceof LivingEntity puppet
                 && real instanceof LivingEntity && !real.isPassenger() && !real.isVehicle()
-                && shown().contains(mob) && puppet.distanceToSqr(real) < 48 * 48;
+                && shown().contains(mob) && puppet.distanceToSqr(real) < 48 * 48
+                && !(selfKnown && real.shouldRender(selfX, selfY, selfZ));
     }
 
     /** Its copy reached the real mob, or cannot any more: the real one takes over. */
@@ -1045,6 +1051,13 @@ public final class MobMemory {
             Profile.end(Profile.Section.TICK_MOBS_FOLLOW, following);
         }
 
+        // Often: a copy of a mob that is not there any more is seen until it is forgotten.
+        // The reach first: a host that lowers its "Entity Distance" drops mobs well inside it, whose
+        // copies would be taken for gone before it came down.
+        if (clock % RECONCILE_EVERY == 0) {
+            learnReach();
+            reconcile(level, dimension, renderDistanceBlocks);
+        }
         if (clock % 20 == 0 || chooseSoon || foreseeNow) {
             long choosing = Profile.begin(Profile.Section.TICK_MOBS_CHOOSE);
             try {
@@ -1052,8 +1065,6 @@ public final class MobMemory {
                     lastPack = pack;
                     if (pack != null) sync(pack, config.optBackgroundBuild);
                     foresee(config, dimension);
-                    learnReach();
-                    reconcile(level, dimension, renderDistanceBlocks);
                     if (hidingUnderground) placeUnderground(level, dimension);
                 } else if (foreseeNow) {
                     foresee(config, dimension);
@@ -1752,6 +1763,15 @@ public final class MobMemory {
         return range - Math.min(16, range / 4);
     }
 
+    /** Ticks between two looks for copies of mobs that are not there any more. */
+    private static final int RECONCILE_EVERY = 5;
+    /**
+     * Looks in a row a copy is missing where the server would send its mob before it is forgotten:
+     * half a second or so, time for the server to send the mob of a chunk just sent. Five looks a
+     * second apart left a mob that was gone standing in front of the player for five seconds.
+     */
+    private static final int MISSING_CHECKS = 3;
+
     private void reconcile(ClientLevel level, String dimension, int renderDistanceBlocks) {
         List<Remembered> missing = new ArrayList<>();
         double bound = Math.max(24, renderBlocks);
@@ -1767,11 +1787,12 @@ public final class MobMemory {
             boolean inRange = false;
             {
                 double range = nearRange(type(mob));
+                // Asked of the chunk cache: the client's level says it has every chunk.
                 inRange = across < range * range
-                        && level.hasChunk((int) Math.floor(mob.x) >> 4, (int) Math.floor(mob.z) >> 4);
+                        && level.getChunkSource().hasChunk((int) Math.floor(mob.x) >> 4, (int) Math.floor(mob.z) >> 4);
             }
             mob.missingChecks = inRange ? mob.missingChecks + 1 : 0;
-            if (mob.missingChecks >= 5) missing.add(mob);
+            if (mob.missingChecks >= MISSING_CHECKS) missing.add(mob);
         }
         for (Remembered mob : missing) {
             if (mob.fromPack) dismissed.put(mob.id, mob.x + mob.y * 31 + mob.z * 961);
