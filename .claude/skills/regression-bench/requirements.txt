@@ -1,0 +1,5 @@
+pillow>=10
+nbtlib>=2
+minecraft-launcher-lib>=7
+numpy>=1.26
+psutil>=5.9
