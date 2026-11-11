@@ -669,13 +669,15 @@ public final class MobMemory {
 
     /**
      * A copy drawn now, on its own feet, not so far from the real one that walking up to it would
-     * take long. It walks there, faster with the player close ({@link #hurry}), and the real one
-     * takes over where and as the copy stands: never a jump, nor a frame with neither.
+     * take long ({@code joinMaxDistance}). It walks there, faster with the player close
+     * ({@link #hurry}), and the real one takes over where and as the copy stands: never a jump,
+     * nor a frame with neither.
      */
     private boolean joins(Remembered mob, Entity real) {
-        return !mob.gone && mob.handover == null && mob.puppet instanceof LivingEntity puppet
+        int far = FarConfig.get().joinMaxDistance;
+        return far > 0 && !mob.gone && mob.handover == null && mob.puppet instanceof LivingEntity puppet
                 && real instanceof LivingEntity && !real.isPassenger() && !real.isVehicle()
-                && shown().contains(mob) && puppet.distanceToSqr(real) < 48 * 48;
+                && shown().contains(mob) && puppet.distanceToSqr(real) < (double) far * far;
     }
 
     /**
@@ -1101,7 +1103,7 @@ public final class MobMemory {
                 }
                 catchUp(mob);
                 if (joined.getKey().isRemoved() || !(mob.puppet() instanceof LivingEntity puppet)
-                        || motion(mob).follow(puppet, mob, joined.getKey(), hurry(puppet, joined.getKey(), config))) {
+                        || motion(mob).follow(puppet, mob, joined.getKey(), hurry(puppet, joined.getKey(), config), config)) {
                     arrived.add(mob);
                 }
             }

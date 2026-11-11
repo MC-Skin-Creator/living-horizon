@@ -26,6 +26,12 @@ public final class ComebackScenario implements Scenario {
      * seconds), and the copy of a dead one stay drawn, once in range.
      */
     private static final int MOVED_MAX = 100, DEAD_MAX = 25;
+    /**
+     * The fastest a cow's copy may walk to it, in blocks a tick (a cow walks about 0.064, twice
+     * that when hurried), and the ticks it may spend neither on the ground nor on the step.
+     */
+    private static final double PACE_MAX = 0.2;
+    private static final int MIDAIR_MAX = 8;
     /** How far the real mob may stand from where its copy last stood, as it takes over. */
     private static final double JUMP_MAX = 0.5;
     /** How far back the player walks, and how slowly: one block every two ticks. */
@@ -65,7 +71,9 @@ public final class ComebackScenario implements Scenario {
                 int copies = context.computeOnClient(minecraft -> copies());
                 if (copies != 2) throw new AssertionError("both cows should be copies far away: " + copies);
                 // Away: one walks off to the side, the other dies.
-                server.runCommand("tp @e[tag=lh.moved] -6 -60 4");
+                // On a step a block high: its copy walks up it, not up a ramp through the air.
+                server.runCommand("fill -9 -60 1 -3 -60 4 stone");
+                server.runCommand("tp @e[tag=lh.moved] -6 -59 2");
                 server.runCommand("kill @e[tag=lh.dead]");
                 context.waitTicks(20);
                 // Looked at every tick: a single tick with neither the real mob nor its copy is a gap.
@@ -85,6 +93,8 @@ public final class ComebackScenario implements Scenario {
         } finally {
             Network.receiver(data -> Minecraft.getInstance().execute(() -> FarPlayerTracker.get().receive(data)));
         }
+        Scene.log("comeback copy walked at up to " + String.format("%.3f", watch.fastest) + " blocks a tick, "
+                + watch.midair + " ticks between the ground and the step");
         Scene.log("comeback real mob hidden behind its copy " + watch.hidden + " ticks, with neither drawn " + watch.gaps
                 + " ticks, taking over " + String.format("%.2f", watch.jump) + " blocks from its copy; dead mob's copy drawn in range "
                 + watch.ghost + " ticks");
@@ -92,7 +102,9 @@ public final class ComebackScenario implements Scenario {
         if (watch.gaps > 0) throw new AssertionError("ticks with neither the real cow nor its copy: " + watch.gaps);
         if (watch.hidden > MOVED_MAX) throw new AssertionError("the real cow was kept out of view " + watch.hidden + " ticks");
         if (watch.jump > JUMP_MAX) throw new AssertionError("the real cow appeared " + watch.jump + " blocks from its copy");
-        if (watch.ghost > DEAD_MAX) throw new AssertionError("the dead cow's copy stayed " + watch.ghost + " ticks where the server sends cows");
+        if (watch.fastest > PACE_MAX) throw new AssertionError("the copy walked to its cow at up to " + watch.fastest + " blocks a tick");
+        if (watch.midair > MIDAIR_MAX) throw new AssertionError("the copy was between the ground and the step for " + watch.midair + " ticks");
+                if (watch.ghost > DEAD_MAX) throw new AssertionError("the dead cow's copy stayed " + watch.ghost + " ticks where the server sends cows");
     }
 
     /** The cows remembered, not sent. */
@@ -106,8 +118,9 @@ public final class ComebackScenario implements Scenario {
 
     /** What the player sees of the two cows, tick after tick. */
     private static final class Watch {
-        int hidden, gaps, ghost, handovers;
-        double jump;
+        int hidden, gaps, ghost, handovers, midair;
+        double jump, fastest;
+        private double walkX = Double.NaN, walkZ;
         private boolean wasHidden;
         private double lastX = Double.NaN, lastZ;
 
@@ -124,6 +137,11 @@ public final class ComebackScenario implements Scenario {
                     if (puppet == null) {
                         gaps++;
                     } else {
+                        if (!Double.isNaN(walkX)) fastest = Math.max(fastest, Math.hypot(puppet.getX() - walkX, puppet.getZ() - walkZ));
+                        walkX = puppet.getX();
+                        walkZ = puppet.getZ();
+                        double y = puppet.getY();
+                        if (y > -59.95 && y < -59.05) midair++;
                         lastX = puppet.getX();
                         lastZ = puppet.getZ();
                     }

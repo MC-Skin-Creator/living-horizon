@@ -472,12 +472,15 @@ come back, add it here in the same pull request: this file is what the next sess
   gone (died, moved off) is seen until `reconcile` forgets it: it looks every 5 ticks, after
   `learnReach`, and forgets after 3 looks; at 5 looks a second apart, one stood in front of the
   player for 5 s. A mob sent again is kept out of view while its copy walks up to it
-  (`MobMotion.follow`), at its own pace, then `joinHurryDistance` / `joinHurrySpeed` times faster
-  with the player close (*Debug*); a slime or rabbit hops and waits between hops, which took
-  seconds, so a hurrying one does not wait. The real one takes over a tick after the copy stood
-  on it: removed the tick it arrived, its last step was never drawn and the real one appeared a
-  step ahead. Taking over at once instead (no walk) made it jump and turn on the spot. The
-  `shortrange`, `smallmobs` and `comeback` scenarios check it.
+  (`MobMotion.follow`), as the game would walk it: at its kind's pace (`walkPace`, from its
+  movement speed: a cow 0.064 blocks a tick), on the blocks under it (`standAt`), hopping if it
+  hops; faster with the player close. Catching up faster the farther it was, it slid across the
+  ground with its legs racing and went up a ramp through the air. All of it is set on the *Debug*
+  screen (`join*` settings: how far it walks, its pace, the ground, when it gives up, the hurry).
+  The real one takes over a tick after the copy stood on it: removed the tick it arrived, its last
+  step was never drawn and the real one appeared a step ahead. Taking over at once instead (no
+  walk) made it jump and turn on the spot. The `shortrange`, `smallmobs` and `comeback` scenarios
+  check it.
 - **Small mobs vanishing for a few blocks with *Entity Distance* below 100 %** (chickens, cats,
   wolves; zombies and cows fine): the game culls a mob at a distance that grows with its size, a
   chicken past 16 blocks at 50 %. `GhostRenderer.unseen` takes over from the game's own test
