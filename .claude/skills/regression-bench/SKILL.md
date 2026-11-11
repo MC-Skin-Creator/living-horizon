@@ -80,6 +80,9 @@ this is how the far depth failing on Forge 1.20.1 in v0.17.0-dev.744 showed firs
 - **Changed, unexpected**: a regression. Find the build that brought it (`run --ref <older tag>`),
   then debug on that node with `game-test` or `runClientGameTest` and the instance's mods
   (`-Plh.mods=<LH_BENCH_HOME>/instances/<node>/<profile>/mods`).
+- **Changed between releases on purpose**: v0.17's mobs appear as soon as they are read, where
+  v0.16's came a few seconds later; with 20 s to settle, 0.17's pictures hold mobs past the render
+  distance that 0.16's do not yet. Look at the zooms before calling a change a regression.
 - **Noise** (a picture changed run after run with nothing changed): run the same build twice,
   then raise that profile's `noise`, `tolerance` or `max_pixels` in `LH_BENCH_HOME/bench.toml`.
   Keep `max_pixels` small: a distant mob is a few dozen pixels.
@@ -96,46 +99,66 @@ the way a flight simulator's visual tests do: one launch, the camera taken to fi
 pair of pictures at each, compared.
 
 ```
-bench.cmd jars --tag v0.16.0 --tag v0.17.0-dev.744 --nodes 1.20.1-forge --profiles vanilla,dh,dh-complementary
-bench.cmd jars --tag v0.17.0-dev.750 --nodes 1.20.1-forge --against v0.16.0-jars
+bench.cmd jars --tag v0.16.0 --tag v0.17.0-dev.757 --nodes 1.21.11 --profiles dh,voxy
+bench.cmd jars --tag v0.16.0 --tag v0.17.0-dev.744 --nodes 1.20.1-forge --profiles vanilla,dh
+bench.cmd jars --tag v0.17.0-dev.760 --nodes 1.21.11 --profiles dh,voxy --against v0.16.0-jars
 bench.cmd compare last --against v0.16.0-jars
 ```
 
 Several `--tag`s run side by side and the later ones are compared with the first. As many games
-run at once as the memory holds (4 GB each), or `--parallel N`.
+run at once as the memory holds (4 GB each), or `--parallel N`. Measured on Fabric 1.21.11, two
+releases, Distant Horizons and Voxy, each without then with shaders: 4 minutes, 2 games at a
+time (about 2 minutes a game: 50 s to start, 20 s to settle, 16 viewpoints in 40 s, the shaders
+10 to 15 s to compile). The first run of a game version adds its install, its world (3 minutes)
+and the far terrain's warm-up (4 minutes for Distant Horizons, under one for Voxy), once.
 
-- The game is installed once per version and loader in `LH_BENCH_HOME/minecraft`
+- **Installed once** per game version and loader in `LH_BENCH_HOME/minecraft`
   (minecraft-launcher-lib, offline, the game's own Java runtime), the loader's newest version
   pinned in `pins.json` like the mods.
-- The scene is a world each game version's vanilla dedicated server makes once and the bench
+- **The scene** is a world each game version's vanilla dedicated server makes once and the bench
   keeps (`worlds/<game>/scene-<SCENE_VERSION>`): flat, time and weather stopped, rows of mobs
   without AI that never animate on their own (no horse, no chicken: a horse without AI still
   grazes), fixed ids, a wall and a hill, and north of the spot a mountain with a crowd of iron
   golems right behind it and a control group beside it. Each launch opens a copy of it. Change
   `scene_commands` and raise `SCENE_VERSION` together: every world is made again once.
-- `config/livinghorizon.json` is written before launch (no birds or easter eggs, every copy
-  still), the game opens the world by itself (Quick Play) and the mod reads the far mobs from the
-  save. After the profile's `settle` seconds the bench hides the interface (F1), then for each
-  viewpoint (`VIEWPOINTS`) types a `/tp` in the chat, checks in the game's log that it ran
-  (Escape and again when a menu was in the way), waits `--wait` seconds and takes two of the
-  game's own screenshots (F2). The render distance is 4, so that the mountain is far terrain
-  from its three viewpoints: one golem drawn through it is a line of figures on its face.
-- The keys go straight to each game's window, and the windows are turned off for the mouse and
-  the keyboard as they open: a click would give one the focus and the camera would follow the
-  mouse. The machine stays usable; the windows may overlap. Windows only.
-- Profiles take the loader's mods from Modrinth (the Fabric API added on Fabric and Quilt;
-  Embeddium and Oculus stand for Sodium and Iris on Forge), the shader pack turned on through
-  Iris's or Oculus's settings file.
-- Numbers: how many mobs the mod read from the save (`scan.mobs`). The game's log is kept with the
-  pictures (`game.log`).
+- **The far terrain is built once**: Distant Horizons and Voxy keep theirs in the world
+  (`data/DistantHorizons.sqlite` per dimension, `voxy/`). A warm-up launch per game version and
+  far terrain mod builds it (Distant Horizons while the game runs and a tour of the scene; Voxy
+  with `/voxy import world`), closes the game cleanly so that it is written out, and keeps it in
+  `worlds/<game>/scene-<V>-far/<mod jar>`; every launch after starts with it.
+- **Settings written before launch**: `config/livinghorizon.json` (no birds or easter eggs,
+  every copy still), `options.txt` (render distance 4, so that the mountain is far terrain from
+  its viewpoints; no clouds; `graphicsPreset:"custom"`, or from 1.21.11 the preset puts its own
+  render distance and clouds back), Distant Horizons' clouds off.
+- **One launch per far terrain mod**: the game opens the world itself (Quick Play), the bench
+  hides the interface (F1), goes through `VIEWPOINTS` without shaders, turns the shader pack on in
+  the same game (Iris's key K, Oculus's too) and goes through them again (`shaders-<name>`).
+- **At each viewpoint** a `/tp` typed in the chat (checked in the game's log; Escape and again
+  when a menu was in the way), then the game's own screenshots (F2) one after another until
+  three in a row match: the chunks round a place just reached take a second or two to draw, in
+  bursts. Without shaders a match is under 0.3 % of pixels moved, with them under 3 % (Photon's
+  grain).
+- **Hands off**: the keys go straight to each game's window, the windows ignore the mouse and
+  the keyboard, and each game is told it lost the focus so that it lets the mouse go (a window
+  just opened takes it, and the camera would follow the mouse). The machine stays usable; the
+  windows may overlap. Windows only.
+- **Mods**: the profile's from Modrinth (the Fabric API added on Fabric and Quilt; Embeddium and
+  Oculus stand for Sodium and Iris on Forge), in versions that fit together (`fitting` reads each
+  jar's dependencies: Voxy 0.2.16 takes Sodium 0.8.12 at most), plus `speed_mods` where they
+  exist. A mod asking for a newer Fabric Loader gets it.
 
 ## Profiles
 
 `bench.toml` next to this file; `LH_BENCH_HOME/bench.toml` overrides it per key. A profile
 names Modrinth projects (`mods`) and a shader pack (`shaderpack`, a Modrinth project for
 Iris). A profile whose mods do not exist for a game version is skipped there (Voxy before
-1.21.8). Defaults: `vanilla`, `sodium`, `voxy`, `dh`, `iris` (Complementary),
-`voxy-photon`, `dh-complementary`.
+1.21.8, and on Forge). Defaults: `vanilla`, `sodium`, `dh` (Distant Horizons, then
+Complementary), `voxy` (Voxy, then Photon). `run` keeps a profile's pack on from the start.
+
+`speed_mods` are added to every game where they exist and fit: FerriteCore, Lithium (Canary on
+Forge), ModernFix, FastLoad, Smooth Boot, Noisium, Chunky. Never one that changes what is drawn
+or slows a window without the focus: no Dynamic FPS, no culling mod, nothing that rewrites the
+chunk system or the lighting.
 
 ## Limits
 

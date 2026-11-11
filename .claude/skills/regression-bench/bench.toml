@@ -17,6 +17,14 @@ timeout_minutes = 60
 # The GitHub repository the develop builds are released from.
 repository = "MC-Skin-Creator/living-horizon"
 
+# Mods added to every game to make it start and load faster, each where it exists for the game
+# version and loader and fits with the profile's mods (left out otherwise). Only mods that change
+# nothing on screen: no Dynamic FPS (it slows a window without the focus, and the bench's windows
+# never have it), no culling mod (it changes what is drawn), nothing that rewrites the chunk system
+# or the lighting (C2ME, Moonrise, ScalableLux: what Distant Horizons reads, how the scene is lit).
+# Lithium is Canary on Forge; Chunky only pregenerates when asked.
+speed_mods = ["ferrite-core", "lithium", "canary", "modernfix", "fastload", "smooth-boot", "noisium", "chunky"]
+
 # One profile is one set of mods, loaded from a folder of its own: every node is played once
 # per profile, with the same game. `mods` are Modrinth projects (their Fabric jar for the
 # node's game version); `shaderpack` a Modrinth shader pack, turned on through Iris.
@@ -24,8 +32,6 @@ repository = "MC-Skin-Creator/living-horizon"
 #
 # `noise` is how much a channel may differ between the two shots of a pair and still count
 # as steady (0 to 255); `tolerance` how much a steady pixel may differ from the baseline;
-# `settle` (jars only) the seconds in the world before the first picture: Distant Horizons builds
-# its terrain, a shader pack compiles.
 # `max_pixels` how many changed pixels, in blobs of two by two at least (a terrain edge shifted
 # by one pixel draws thin lines, which do not count), mark a shot changed: a distant mob is a
 # few dozen pixels, so this stays small. Calibrate it with two runs of the same build.
@@ -42,40 +48,19 @@ noise = 2
 tolerance = 6
 max_pixels = 4
 
-[profiles.voxy]
-settle = 60
-mods = ["sodium", "voxy"]
-noise = 2
-tolerance = 6
-max_pixels = 4
-
+# Each far terrain mod in one game: its viewpoints without shaders, then the same once the shader
+# pack is turned on in that game (`jars`; `run` keeps the pack on from the start). Sodium and Iris
+# stand for Embeddium and Oculus on Forge.
 [profiles.dh]
-mods = ["distanthorizons"]
-settle = 120
-noise = 2
-tolerance = 6
-max_pixels = 4
-
-[profiles.iris]
-settle = 60
-mods = ["sodium", "iris"]
-shaderpack = "complementary-reimagined"
-noise = 10
-tolerance = 16
-max_pixels = 12
-
-[profiles.voxy-photon]
-settle = 60
-mods = ["sodium", "iris", "voxy"]
-shaderpack = "photon-shader"
-noise = 10
-tolerance = 16
-max_pixels = 12
-
-[profiles.dh-complementary]
-settle = 120
 mods = ["sodium", "iris", "distanthorizons"]
 shaderpack = "complementary-reimagined"
+noise = 10
+tolerance = 16
+max_pixels = 12
+
+[profiles.voxy]
+mods = ["sodium", "iris", "voxy"]
+shaderpack = "photon-shader"
 noise = 10
 tolerance = 16
 max_pixels = 12

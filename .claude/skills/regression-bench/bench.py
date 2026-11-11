@@ -201,16 +201,134 @@ def version_key(version: str) -> tuple:
     return tuple(int(part) for part in re.findall(r"\d+", version)[:3])
 
 
-def instance(node: str, game: str, name: str, profile: dict, pins: dict, update: bool) -> dict | None:
+# --- Mods that fit together --------------------------------------------------------------------
+
+def mod_meta(jar: Path) -> dict:
+    """A Fabric or Quilt jar's id, version, dependencies and incompatibilities; {} for another loader's."""
+    try:
+        with zipfile.ZipFile(jar) as archive:
+            names = archive.namelist()
+            if "fabric.mod.json" in names:
+                meta = json.loads(archive.read("fabric.mod.json").decode("utf-8", "replace"), strict=False)
+                return {"id": meta.get("id"), "version": str(meta.get("version", "")),
+                        "depends": meta.get("depends", {}), "breaks": meta.get("breaks", {})}
+    except (zipfile.BadZipFile, json.JSONDecodeError, OSError):
+        pass
+    return {}
+
+
+def version_parts(version: str) -> tuple:
+    """Comparable parts of a version: its numbers, then 1 for a release or 0 for a pre-release."""
+    core = version.split("+", 1)[0]
+    main, _, pre = core.partition("-")
+    numbers = [int(n) for n in re.findall(r"\d+", main)][:4]
+    return tuple(numbers + [0] * (4 - len(numbers))) + ((0,) if pre else (1,))
+
+
+def satisfies(version: str, predicate) -> bool:
+    """Fabric's version predicates: a list is any of them; a string is all of its space-separated
+    parts: *, =X, X, >=X, <=X, >X, <X, ~X (same minor), ^X (same major), X.x (wildcard)."""
+    if isinstance(predicate, list):
+        return any(satisfies(version, p) for p in predicate)
+    have = version_parts(version)
+    for part in str(predicate).split():
+        if part == "*":
+            continue
+        match = re.match(r"(>=|<=|>|<|=|~|\^)?(.+)", part)
+        op, want = match.group(1) or "=", match.group(2)
+        if re.search(r"\.[xX*]$", want) or want.endswith(".x"):
+            prefix = [int(n) for n in re.findall(r"\d+", want)]
+            if list(have[:len(prefix)]) != prefix:
+                return False
+            continue
+        target = version_parts(want)
+        ok = {"=": have[:4] == target[:4], ">=": have >= target, "<=": have[:4] <= target[:4],
+              ">": have > target, "<": have < target,
+              "~": have[:2] == target[:2] and have >= target, "^": have[:1] == target[:1] and have >= target}[op]
+        if not ok:
+            return False
+    return True
+
+
+def conflicts(metas: dict[str, dict]) -> list[tuple[str, str]]:
+    """(the mod whose version does not fit, why) for every dependency or incompatibility not met
+    among these mods, by Modrinth project."""
+    by_id = {m["id"]: (project, m) for project, m in metas.items() if m.get("id")}
+    found = []
+    for project, meta in metas.items():
+        for other, predicate in meta.get("depends", {}).items():
+            if other in by_id and not satisfies(by_id[other][1]["version"], predicate):
+                found.append((by_id[other][0], f"{meta['id']} asks for {other} {predicate}"))
+        for other, predicate in meta.get("breaks", {}).items():
+            if other in by_id and satisfies(by_id[other][1]["version"], predicate):
+                found.append((by_id[other][0], f"{meta['id']} breaks with {other} {predicate}"))
+    return found
+
+
+def fitting(projects: list[str], game: str, loader: str, pins: dict, update: bool) -> list[Path] | str:
+    """The jars of these Modrinth projects for a game version, in versions that fit together: when
+    one asks for another's version, the other goes down its list until all fit, and is pinned so.
+    A message instead when a project has no version, or none fits."""
+    modrinth_loader = "fabric" if loader == "quilt" else loader
+    jars: dict[str, Path] = {}
+    for project in projects:
+        pin = resolve(project, game, modrinth_loader, pins, update)
+        if not pin:
+            return f"no {project} for {game} on {loader}"
+        jars[project] = fetched(project, pin)
+    if loader not in ("fabric", "quilt"):
+        return list(jars.values())
+    tried: dict[str, set] = {}
+    for _ in range(40):
+        metas = {project: mod_meta(jar) for project, jar in jars.items()}
+        found = conflicts(metas)
+        if not found:
+            return list(jars.values())
+        project, why = found[0]
+        tried.setdefault(project, set()).add(jars[project].name)
+        query = f'project/{project}/version?game_versions=["{game}"]&loaders=["{modrinth_loader}"]'
+        versions = modrinth(query.replace('"', "%22").replace("[", "%5B").replace("]", "%5D"))
+        for candidate in versions:
+            file = next((f for f in candidate["files"] if f["primary"]), candidate["files"][0])
+            if file["filename"] in tried[project]:
+                continue
+            pin = {"version": candidate["version_number"], "file": file["filename"], "url": file["url"]}
+            jar = fetched(project, pin)
+            tried[project].add(file["filename"])
+            if not any(p == project for p, _ in conflicts({**metas, project: mod_meta(jar)})):
+                say(f"{project} {pin['version']} instead: {why}")
+                pins[game][f"{project}@{modrinth_loader}"] = pin
+                jars[project] = jar
+                break
+        else:
+            return f"no version of {project} fits: {why}"
+    return "the mods never fit together"
+
+
+def with_speed(projects: list[str], speed: list[str], game: str, loader: str, pins: dict,
+               update: bool) -> list[Path] | str:
+    """The jars of a profile's mods, with every speed mod that exists for this game version and
+    loader and fits with them: one that does not is left out, never the profile."""
+    modrinth_loader = "fabric" if loader == "quilt" else loader
+    extra = [p for p in speed if p not in projects and resolve(p, game, modrinth_loader, pins, update)]
+    while True:
+        jars = fitting(projects + extra, game, loader, pins, update)
+        if not isinstance(jars, str) or not extra:
+            return jars
+        # Whatever does not fit, the speed mods go first.
+        named = [p for p in extra if p in jars]
+        say(f"speed mod {(named or extra)[-1]} left out: {jars}")
+        extra.remove((named or extra)[-1])
+
+
+def instance(node: str, game: str, name: str, profile: dict, pins: dict, update: bool,
+             speed: list[str] | None = None) -> dict | None:
     """The folder of mods (and shader pack) of a profile on a node; None when a mod is missing for it."""
     folder = HOME / "instances" / node / name
-    jars = []
-    for project in profile.get("mods", []):
-        pin = resolve(project, game, "fabric", pins, update)
-        if not pin:
-            say(f"{node} {name}: no {project} for {game}, skipped")
-            return None
-        jars.append(fetched(project, pin))
+    jars = with_speed(list(profile.get("mods", [])), speed or [], game, "fabric", pins, update)
+    if isinstance(jars, str):
+        say(f"{node} {name}: {jars}, skipped")
+        return None
     pack = None
     if profile.get("shaderpack"):
         project = profile["shaderpack"]
@@ -448,8 +566,11 @@ def log_lines(path: Path) -> set[str]:
         if not re.search(r"/(WARN|ERROR|FATAL)\]|Exception|^\s*Caused by", line):
             continue
         # The mod's own, or an error whose stack goes through it: the other mods' warnings come and
-        # go from one run to the next (Distant Horizons' pools).
-        if not re.search(r"Living Horizon|livinghorizon", " ".join(lines[i:i + 4])):
+        # go from one run to the next (Distant Horizons' pools, the server falling behind).
+        if re.search(r"/(WARN|ERROR|FATAL)\]", line):
+            if not re.search(r"Living Horizon|livinghorizon", line):
+                continue
+        elif not re.search(r"livinghorizon", " ".join(lines[i + 1:i + 5])):
             continue
         line = re.sub(r"^\[[^\]]*\] ", "", line.strip())
         line = re.sub(r"[A-Za-z]:[\\/][^\s,'\"]*", "<path>", line)
@@ -510,7 +631,12 @@ def compare_run(run: Path, config: dict, against: Path | None = None) -> dict:
             played = json.loads((profile_dir / "run.json").read_text("utf-8")) if (profile_dir / "run.json").is_file() else {}
             cell = {"played": played, "shots": {}, "stats": [], "perf": []}
             for shot in shots_in(profile_dir) or shots_in(base):
-                cell["shots"][shot] = compare_shot(profile_dir, base, shot, limits, run / "_diff" / node / name / f"{shot}.png")
+                # The pass without shaders is held to the plain limits; only the shaded one gets the looser ones.
+                plain = shot.startswith("shaders-") or not config["profiles"].get(name, {}).get("shaderpack")
+                shot_limits = limits if plain else {**limits, **{k: config["profiles"]["vanilla"][k]
+                                                                 for k in ("noise", "tolerance", "max_pixels")}}
+                cell["shots"][shot] = compare_shot(profile_dir, base, shot, shot_limits,
+                                                   run / "_diff" / node / name / f"{shot}.png")
             stats_new = json.loads((profile_dir / "stats.json").read_text("utf-8")) if (profile_dir / "stats.json").is_file() else {}
             if (base / "stats.json").is_file():
                 cell["stats"] = compare_stats(stats_new, json.loads((base / "stats.json").read_text("utf-8")))
@@ -692,7 +818,8 @@ def command_run(args, config: dict) -> Path:
             continue
         game = tables[node]["mod"]["mc_releases"][-1]
         for name in names:
-            setup = instance(node, game, name, config["profiles"][name], pins, args.update_mods)
+            setup = instance(node, game, name, config["profiles"][name], pins, args.update_mods,
+                             config.get("speed_mods", []))
             save_pins(pins)
             if not setup:
                 continue
@@ -740,23 +867,18 @@ def command_jars(args, config: dict) -> list[Path]:
             projects = [JAR_MODS.get((p, loader), p) for p in profile.get("mods", [])]
             if loader in ("fabric", "quilt"):
                 projects.insert(0, "fabric-api")
-            extra, missing = [], None
-            for project in projects:
-                pin = resolve(project, game, "fabric" if loader == "quilt" else loader, pins, args.update_mods)
-                if not pin:
-                    missing = project
-                    break
-                extra.append(fetched(project, pin))
+            extra = with_speed(projects, config.get("speed_mods", []), game, loader, pins, args.update_mods)
+            missing = extra if isinstance(extra, str) else None
             pack = None
             if not missing and profile.get("shaderpack"):
                 pin = resolve(profile["shaderpack"], game, "iris", pins, args.update_mods)
                 if pin:
                     pack = fetched(profile["shaderpack"], pin)
                 else:
-                    missing = profile["shaderpack"]
+                    missing = f"no {profile['shaderpack']} for {game}"
             save_pins(pins)
             if missing:
-                say(f"{node} / {name}: no {missing} for {game} on {loader}, skipped")
+                say(f"{node} / {name}: {missing}, skipped")
                 continue
             versions = {p.parent.name: p.name for p in extra} | ({loader: loader_pin} if loader_pin else {}) \
                 | ({pack.parent.name: pack.name} if pack else {})
@@ -764,12 +886,33 @@ def command_jars(args, config: dict) -> list[Path]:
                 jar = jars.release_jar(tag, node, config["repository"], HOME, github)
                 tasks.append((tag, node, name, jar, extra, pack, profile.get("settle", args.settle), versions, loader_pin))
 
+    # The far terrain each set of mods draws, built once per game version and kept: a launch of
+    # its own, before the others, since the pictures of every release must start from the same one.
+    warmups = {}
+    for tag, node, name, jar, extra, pack, settle, versions, loader_pin in tasks:
+        key = jars.lod_key(extra)
+        game = jars.node_parts(node, tables)[0]
+        if key and not jars.lod_cache(HOME, game, key).is_dir():
+            warmups.setdefault((game, key), (node, name, jar, extra, pack, settle, loader_pin))
+
+    def warm(item):
+        (game, key), (node, name, jar, extra, pack, settle, loader_pin) = item
+        say(f"{node} / {name}: building the far terrain once ({key})")
+        # Distant Horizons builds its terrain while the game runs; Voxy imports the save in seconds.
+        wait = args.settle if "voxy" in key.lower() and "distanthorizons" not in key.lower() else max(settle, args.warm_settle)
+        said = jars.warm_up(HOME, node, tables, jar, extra, pack, HOME / "warmups" / f"{node}-{key}",
+                            wait, loader_pin, instance=f"{node}-{name}-warmup")
+        say(f"{node} / {name}: {said}")
+
     def one(task):
         tag, node, name, jar, extra, pack, settle, versions, loader_pin = task
         out = runs[tag] / node / name
         say(f"{tag} {node} / {name}: starting")
+        # The far terrain is there already: only the game's own chunks and the shaders to wait for.
+        if jars.lod_key(extra):
+            settle = args.settle
         result = jars.play(HOME, node, tables, jar, extra, pack, out, settle, args.wait, loader_pin,
-                           instance=f"{node}-{name}-{tag}")
+                           instance=f"{node}-{name}-{tag}", shader_settle=args.shader_settle)
         result["versions"] = versions
         (out / "stats.json").write_text(json.dumps(result.pop("stats", {}), indent=2), "utf-8")
         (out / "run.json").write_text(json.dumps(result, indent=2), "utf-8")
@@ -777,6 +920,11 @@ def command_jars(args, config: dict) -> list[Path]:
             f" in {result['minutes']} min")
 
     parallel = args.parallel or games_at_once()
+    if warmups:
+        say(f"{len(warmups)} far terrain(s) to build first, {parallel} at a time")
+        with ThreadPoolExecutor(max_workers=parallel) as pool:
+            for future in [pool.submit(warm, item) for item in warmups.items()]:
+                future.result()
     say(f"{len(tasks)} game(s) to play, {parallel} at a time")
     with ThreadPoolExecutor(max_workers=parallel) as pool:
         for future in [pool.submit(one, task) for task in tasks]:
@@ -888,8 +1036,14 @@ def main() -> None:
                             help="a release (v0.16.0); repeat it to compare the later ones with the first")
     jar_parser.add_argument("--nodes", help="nodes (1.20.1-forge,1.21.1-neoforge...), or all")
     jar_parser.add_argument("--profiles", default="vanilla")
-    jar_parser.add_argument("--settle", type=int, default=30, help="seconds in the world before the first picture")
-    jar_parser.add_argument("--wait", type=int, default=6, help="seconds at each viewpoint before its pictures")
+    jar_parser.add_argument("--settle", type=int, default=20,
+                            help="seconds in the world before the first picture (a profile's own when longer)")
+    jar_parser.add_argument("--warm-settle", type=int, default=180,
+                            help="seconds a far terrain mod gets to build the scene, once per version")
+    jar_parser.add_argument("--wait", type=float, default=0.0,
+                            help="seconds at each viewpoint before the pictures start (they wait for the view to settle anyway)")
+    jar_parser.add_argument("--shader-settle", type=int, default=40,
+                            help="seconds at most for the shader pack to compile and settle once turned on")
     jar_parser.add_argument("--parallel", type=int, help="games at once (default: as many as the memory holds)")
     jar_parser.add_argument("--against", help="a run to compare with instead of the first release")
     jar_parser.add_argument("--update-mods", action="store_true")

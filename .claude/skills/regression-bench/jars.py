@@ -58,6 +58,17 @@ VIEWPOINTS = {
     "back": (0.5, -50, 470, 180, 5),
 }
 
+# A tour of the scene before the pictures: Voxy builds its terrain only from the chunks the game
+# loads, so every part of the scene is loaded once, the mountain included. The same for every
+# profile, so that the mobs met on the way are the same too.
+TOUR = [(0.5, -58.4, -90.5), (0.5, -58.4, 120.5), (64.5, -58.4, 240.5), (0.5, -58.4, 330.5), (0.5, -58.4, 440.5),
+        (0.5, -58.4, 0.5)]
+TOUR_WAIT = 5
+
+# Two screenshots in a row match when fewer pixels than this share differ: a shader pack's own
+# grain (Photon's) keeps a few percent moving forever.
+PLAIN_STILL, SHADED_STILL = 0.003, 0.03
+
 # Mobs whose look never changes on its own with no AI: a horse grazes, a chicken lays eggs.
 KINDS = ["cow", "sheep", "pig", "villager", "iron_golem"]
 # Rows of mobs, blocks south of the spot: the game draws the first, the mod the next two (past
@@ -283,7 +294,7 @@ def scene(home: Path, game: str) -> Path:
         wait_for(r"scene built", 300)
         run("execute if entity @e[type=!minecraft:player]")
         answer = wait_for(r"Test (passed|failed)", 60)
-        count = re.search(r"count: (\d+)", answer)
+        count = re.search(r"count: (\d+)", answer, re.IGNORECASE)  # "Count: N" from 1.21.11
         found = int(count.group(1)) if count else 0
         if found != summons:
             raise RuntimeError(f"the scene holds {found} mobs, {summons} were summoned")
@@ -335,7 +346,10 @@ def prepare(game_dir: Path, mods: list[Path], world: Path, pack: Path | None, ve
         "skipMultiplayerWarning:true", "joinedFirstServer:true", "tutorialStep:none", "fullscreen:false",
         "soundCategory_master:0.0", "maxFps:60", "enableVsync:false", "lang:en_us", "darkMojangStudiosBackground:false",
         "narrator:0", "hideServerAddress:true", "showSubtitles:false", "realmsNotifications:false",
-        "menuBackgroundBlurriness:0", "chatOpacity:0.0", "textBackgroundOpacity:0.0", "chatScale:0.0", ""]), "utf-8")
+        "menuBackgroundBlurriness:0", "chatOpacity:0.0",
+        # From 1.21.11 a graphics preset other than custom puts its own render distance, clouds and
+        # entity distance back over these; and a game nobody touches drops its frame rate.
+        'graphicsPreset:"custom"', 'inactivityFpsLimit:"minimized"', "textBackgroundOpacity:0.0", "chatScale:0.0", ""]), "utf-8")
     (game_dir / "config").mkdir()
     config = {"version": 1000, "skyBirds": False, "easterEggs": False, "offlineLife": False,
               "animationMaxDistance": 1, "seedMobs": False, "debugHud": False}
@@ -348,7 +362,7 @@ def prepare(game_dir: Path, mods: list[Path], world: Path, pack: Path | None, ve
         shutil.copy2(pack, game_dir / "shaderpacks" / pack.name)
         # Iris, and Oculus (Iris on Forge) under its own name.
         for name in ("iris.properties", "oculus.properties"):
-            (game_dir / "config" / name).write_text(f"enableShaders=true\nshaderPack={pack.name}\n", "utf-8")
+            (game_dir / "config" / name).write_text(f"enableShaders=false\nshaderPack={pack.name}\n", "utf-8")
 
 
 def windows_of(pid_list: set[int], titled: bool = True) -> list[int]:
@@ -382,11 +396,22 @@ def lock(pid_list: set[int], locked: set[int]) -> None:
         if hwnd not in locked:
             ctypes.windll.user32.EnableWindow(hwnd, False)
             locked.add(hwnd)
+    for hwnd in locked:
+        release(hwnd)
+
+
+def release(hwnd: int) -> None:
+    """Tells the game its window lost the focus. A window just opened takes it, and the game then
+    holds the mouse: moving it turns the camera, locked window or not. Told it lost it, the game
+    lets the mouse go (without pausing: pauseOnLostFocus is off), and with the window locked no
+    click gives it back."""
+    import ctypes
+    ctypes.windll.user32.PostMessageW(hwnd, 0x0008, 0, 0)  # WM_KILLFOCUS
 
 
 # Virtual key and scan code: the game reads the scan code, so the keyboard's layout does not matter.
 KEYS = {"F1": (0x70, 0x3B), "F2": (0x71, 0x3C), "T": (0x54, 0x14), "BACK": (0x08, 0x0E), "ENTER": (0x0D, 0x1C),
-        "ESCAPE": (0x1B, 0x01)}
+        "ESCAPE": (0x1B, 0x01), "K": (0x4B, 0x25)}
 
 
 def press(hwnd: int, key: str) -> None:
@@ -395,9 +420,9 @@ def press(hwnd: int, key: str) -> None:
     vk, scan = KEYS[key]
     user32 = ctypes.windll.user32
     user32.PostMessageW(hwnd, 0x0100, vk, 1 | (scan << 16))
-    time.sleep(0.08)
+    time.sleep(0.03)
     user32.PostMessageW(hwnd, 0x0101, vk, 1 | (scan << 16) | (1 << 30) | (1 << 31))
-    time.sleep(0.08)
+    time.sleep(0.03)
 
 
 def command(hwnd: int, text: str) -> None:
@@ -405,20 +430,21 @@ def command(hwnd: int, text: str) -> None:
     import ctypes
     user32 = ctypes.windll.user32
     press(hwnd, "T")
-    time.sleep(0.6)
+    time.sleep(0.25)
     # The T that opened the chat may have been typed into it too.
-    for _ in range(3):
+    for _ in range(2):
         press(hwnd, "BACK")
     for char in text:
         user32.PostMessageW(hwnd, 0x0102, ord(char), 1)
-        time.sleep(0.01)
-    time.sleep(0.2)
+    time.sleep(0.1)
     press(hwnd, "ENTER")
 
 
 def teleport(hwnd: int, log: Path, x, y, z, yaw, pitch) -> bool:
     """Types the teleport and checks in the game's log that it ran. A game may be paused behind a
     menu (another game's window took the focus as it opened): Escape closes it, then again."""
+    release(hwnd)
+
     def done() -> int:
         return log.read_text("utf-8", "replace").count("Teleported ") if log.is_file() else 0
 
@@ -429,7 +455,7 @@ def teleport(hwnd: int, log: Path, x, y, z, yaw, pitch) -> bool:
         while time.time() < deadline:
             if done() > before:
                 return True
-            time.sleep(0.25)
+            time.sleep(0.05)
         press(hwnd, "ESCAPE")
         time.sleep(1)
     return False
@@ -446,6 +472,114 @@ def data_version(home: Path, game: str) -> int | None:
         return None
 
 
+def shoot(hwnd: int, shots: Path, known: set[Path]) -> Path | None:
+    """One of the game's screenshots (F2), once it is written; None when none comes."""
+    press(hwnd, "F2")
+    deadline = time.time() + 10
+    while time.time() < deadline:
+        new = sorted(set(shots.glob("*.png")) - known, key=lambda p: p.stat().st_mtime) if shots.is_dir() else []
+        if new and written(new[-1]):
+            known.update(new)
+            return new[-1]
+        time.sleep(0.05)
+    return None
+
+
+def settled_pair(hwnd: int, shots: Path, known: set[Path], most: float = 10.0,
+                 still: float = 0.003) -> tuple[list[Path] | None, float]:
+    """Screenshots one after another until two in a row match: the chunks round a viewpoint just
+    reached are drawn over a second or two, and a picture taken before misses them (holes in the
+    ground, the far terrain not there yet). Matching: fewer than `still` of the pixels differ by more
+    than a shader's own noise. After `most` seconds the last two are taken all the same. The pair and
+    the seconds it took."""
+    import numpy as np
+    from PIL import Image
+    started = time.time()
+    previous = shoot(hwnd, shots, known)
+    if previous is None:
+        return None, 0.0
+    matches = 0
+    while True:
+        current = shoot(hwnd, shots, known)
+        if current is None:
+            return None, time.time() - started
+        with Image.open(previous) as a, Image.open(current) as b:
+            moved = (np.abs(np.asarray(a.convert("RGB"), dtype=np.int16)
+                            - np.asarray(b.convert("RGB"), dtype=np.int16)).max(axis=2) > 12).mean()
+        # Twice in a row: chunks are built in bursts, and two frames between two bursts match too.
+        matches = matches + 1 if moved < still else 0
+        if matches >= 2 or time.time() - started > most:
+            return [previous, current], round(time.time() - started, 1)
+        previous = current
+
+
+def written(picture: Path) -> bool:
+    """Whether the game has finished writing a screenshot: it saves them on a thread of its own."""
+    try:
+        from PIL import Image
+        with Image.open(picture) as image:
+            image.load()
+        return True
+    except Exception:
+        return False
+
+
+def close(process, hwnd: int, seconds: int = 120) -> bool:
+    """Closes the game as its window's close button does: it saves the world, and the far terrain
+    mods write their databases out. Whether it ended by itself in time."""
+    import ctypes
+    ctypes.windll.user32.PostMessageW(hwnd, 0x0010, 0, 0)  # WM_CLOSE
+    try:
+        process.wait(timeout=seconds)
+        return True
+    except subprocess.TimeoutExpired:
+        return False
+
+
+# --- The far terrain, built once --------------------------------------------------------------
+
+def lod_key(mods: list[Path]) -> str | None:
+    """What the far terrain kept for a launch depends on: the far terrain mods' jars. None without one."""
+    names = sorted(jar.stem for jar in mods if re.search(r"distanthorizons|voxy", jar.name, re.IGNORECASE))
+    return re.sub(r"[^A-Za-z0-9.+_-]", "_", "_".join(names)) if names else None
+
+
+def lod_cache(home: Path, game: str, key: str) -> Path:
+    return home / "worlds" / game / f"scene-{SCENE_VERSION}-far" / key
+
+
+def lod_files(world: Path) -> list[Path]:
+    """The far terrain mods' files in a world: Distant Horizons' databases (one per dimension),
+    Voxy's folder."""
+    found = [p for p in world.rglob("DistantHorizons*") if p.is_file()]
+    if (world / "voxy").is_dir():
+        found += [p for p in (world / "voxy").rglob("*") if p.is_file()]
+    return found
+
+
+def keep_lod(game_dir: Path, cache: Path) -> int:
+    """Stores the far terrain a warm-up built; how many files. Written aside, then moved in place,
+    so that two warm-ups at once never leave half of one."""
+    world = game_dir / "saves" / "lh-scene"
+    files = lod_files(world)
+    if not files or cache.is_dir():
+        return len(files)
+    aside = cache.with_name(cache.name + f".part{os.getpid()}")
+    for path in files:
+        to = aside / path.relative_to(world)
+        to.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, to)
+    try:
+        aside.rename(cache)
+    except OSError:
+        shutil.rmtree(aside, ignore_errors=True)
+    return len(files)
+
+
+def restore_lod(game_dir: Path, cache: Path) -> None:
+    shutil.copytree(cache, game_dir / "saves" / "lh-scene", dirs_exist_ok=True)
+
+
 def pids(root: int) -> set[int]:
     import psutil
     try:
@@ -455,10 +589,12 @@ def pids(root: int) -> set[int]:
         return set()
 
 
-def launch(home: Path, version: str, game: str, game_dir: Path, settle: int, wait: int, out: Path,
-           timeout: int = 600) -> dict:
+def launch(home: Path, version: str, game: str, game_dir: Path, settle: int, wait: float, out: Path,
+           warm: bool = False, shaders: bool = False, shader_settle: int = 40, voxy: bool = False,
+           timeout: int = 900) -> dict:
     """Starts the game in the scene, lets it settle, then goes from viewpoint to viewpoint and takes
-    a pair of pictures at each; stops the game."""
+    a pair of pictures at each; closes the game. `warm`: a tour of the scene instead of the pictures,
+    so that the far terrain mods build all of it, then a clean close so that they write it out."""
     import minecraft_launcher_lib as mll
     from bench import stop_tree
     options = {"username": USERNAME, "uuid": PLAYER_UUID, "token": "0", "gameDirectory": str(game_dir),
@@ -479,7 +615,8 @@ def launch(home: Path, version: str, game: str, game_dir: Path, settle: int, wai
             lock(pids(process.pid), locked)
             text = latest.read_text("utf-8", "replace") if latest.is_file() else ""
             broken = re.search(r"^.*(Error during pre-loading phase|ModLoadingException.*|Minecraft Crash Report|"
-                               r"Crash report saved to.*|Mixin apply.*failed.*)$", text, re.MULTILINE)
+                               r"Crash report saved to.*|Mixin apply.*failed.*|Incompatible mods found.*|Incompatible mod set.*|"
+                               r"ModResolutionException.*)$", text, re.MULTILINE)
             if broken:
                 result["stopped"] = "the game broke: " + broken.group(0).strip()[-300:]
                 return result
@@ -498,31 +635,72 @@ def launch(home: Path, version: str, game: str, game_dir: Path, settle: int, wai
         hwnd = windows[0]
         lock(pids(process.pid), locked)
         shots = game_dir / "screenshots"
+        pictures = time.time()
+        if warm and voxy:
+            # Voxy reads the whole save into its terrain: every chunk the scene holds, the mountain too.
+            before = latest.read_text("utf-8", "replace") if latest.is_file() else ""
+            command(hwnd, "/voxy import world lh-scene")
+            deadline = time.time() + 300
+            store = game_dir / "saves" / "lh-scene" / "voxy"
+            sizes: list[int] = []
+            while time.time() < deadline:
+                time.sleep(2)
+                text = latest.read_text("utf-8", "replace")[len(before):]
+                if re.search(r"(?i)import finished", text):
+                    break
+                # Or once its folder has grown and then not for ten seconds: the message may be shown
+                # on screen only.
+                sizes.append(sum(p.stat().st_size for p in store.rglob("*") if p.is_file()) if store.is_dir() else 0)
+                if len(sizes) > 6 and sizes[-1] > sizes[0] and len(set(sizes[-6:])) == 1:
+                    break
+            say(f"  Voxy imported the save in {int(time.time() - deadline + 300)} s")
+            time.sleep(TOUR_WAIT)
+            result["ok"] = close(process, hwnd)
+            if not result["ok"]:
+                result["stopped"] = "the game did not close by itself: its far terrain may be half written"
+            return result
+        if warm:
+            for x, y, z in TOUR:
+                if not teleport(hwnd, latest, x, y, z, 0, 0):
+                    result["stopped"] = "the tour's teleport never ran"
+                    return result
+                time.sleep(TOUR_WAIT)
+            # Back to where the pictures start, the terrain around built too.
+            time.sleep(TOUR_WAIT * 2)
+            result["ok"] = close(process, hwnd)
+            if not result["ok"]:
+                result["stopped"] = "the game did not close by itself: its far terrain may be half written"
+            return result
         press(hwnd, "F1")
-        for name, (x, y, z, yaw, pitch) in VIEWPOINTS.items():
-            if process.poll() is not None:
-                result["stopped"] = f"the game ended before {name}"
-                return result
-            before = set(shots.glob("*.png")) if shots.is_dir() else set()
-            if not teleport(hwnd, latest, x, y, z, yaw, pitch):
-                result["stopped"] = f"{name}: the teleport never ran"
-                return result
-            time.sleep(wait)
-            press(hwnd, "F2")
-            time.sleep(1.5)
-            press(hwnd, "F2")
-            deadline = time.time() + 10
-            taken: list[Path] = []
-            while time.time() < deadline and len(taken) < 2:
-                time.sleep(0.5)
-                taken = sorted(set(shots.glob("*.png")) - before, key=lambda p: p.stat().st_mtime) if shots.is_dir() else []
-            if len(taken) < 2:
-                result["stopped"] = f"{name}: {len(taken)} screenshot(s) of 2"
-                return result
-            shutil.copy2(taken[0], out / f"{name}-a.png")
-            shutil.copy2(taken[1], out / f"{name}-b.png")
-            result["shots"].append(name)
-            say(f"  {name}")
+        # Without shaders, then with them: turned on in the same game (Iris's key, Oculus's too).
+        for prefix in ["", "shaders-"] if shaders else [""]:
+            if prefix:
+                press(hwnd, "K")
+                turned = time.time()
+                time.sleep(3)
+                # The pack compiles, then its frames settle (temporal effects): until two match.
+                settled_pair(hwnd, shots, set(shots.glob("*.png")) if shots.is_dir() else set(),
+                             most=shader_settle, still=SHADED_STILL)
+                say(f"  shaders on and settled in {int(time.time() - turned)} s")
+            for name, (x, y, z, yaw, pitch) in VIEWPOINTS.items():
+                name = prefix + name
+                if process.poll() is not None:
+                    result["stopped"] = f"the game ended before {name}"
+                    return result
+                before = set(shots.glob("*.png")) if shots.is_dir() else set()
+                if not teleport(hwnd, latest, x, y, z, yaw, pitch):
+                    result["stopped"] = f"{name}: the teleport never ran"
+                    return result
+                time.sleep(wait)
+                pair, waited = settled_pair(hwnd, shots, before, still=SHADED_STILL if prefix else PLAIN_STILL)
+                if not pair:
+                    result["stopped"] = f"{name}: no screenshot came"
+                    return result
+                shutil.copy2(pair[0], out / f"{name}-a.png")
+                shutil.copy2(pair[1], out / f"{name}-b.png")
+                result["shots"].append(name)
+                result.setdefault("waited", {})[name] = waited
+        say(f"  {len(result['shots'])} viewpoints in {int(time.time() - pictures)} s")
         result["ok"] = True
         return result
     finally:
@@ -534,14 +712,32 @@ def launch(home: Path, version: str, game: str, game_dir: Path, settle: int, wai
         result["seconds"] = int(time.time() - started)
         if latest.is_file():
             shutil.copy2(latest, out / "game.log")
-            # The one number a published jar says in its log: how many mobs it read from the save.
-            scans = re.findall(r"Scan done: (\d+) mobs", latest.read_text("utf-8", "replace"))
-            result["stats"] = {"scan.mobs": scans[0]} if scans else {}
+
+
+def warm_up(home: Path, node: str, tables: dict, jar: Path, extra_mods: list[Path], pack: Path | None, out: Path,
+            settle: int, version_of_loader: str | None, instance: str) -> str:
+    """Builds the far terrain of the scene once for these mods and keeps it; what happened."""
+    game, loader = node_parts(node, tables)
+    key = lod_key(extra_mods)
+    cache = lod_cache(home, game, key)
+    if cache.is_dir():
+        return "far terrain already built"
+    version = install(game, loader, home, version_of_loader)
+    world = scene(home, game)
+    out.mkdir(parents=True, exist_ok=True)
+    game_dir = home / "instances-jar" / instance
+    prepare(game_dir, [jar, *extra_mods], world, pack, data_version(home, game))
+    result = launch(home, version, game, game_dir, settle, 0, out, warm=True,
+                    voxy=any("voxy" in jar.name.lower() for jar in extra_mods))
+    if not result["ok"]:
+        return f"warm-up failed: {result['stopped']}"
+    return f"far terrain built and kept ({keep_lod(game_dir, cache)} files, {round(result['seconds'] / 60, 1)} min)"
 
 
 def play(home: Path, node: str, tables: dict, jar: Path, extra_mods: list[Path], pack: Path | None, out: Path,
-         settle: int, wait: int, version_of_loader: str | None, instance: str) -> dict:
-    """One jar on one node with a set of mods: one launch, every viewpoint."""
+         settle: int, wait: float, version_of_loader: str | None, instance: str, shader_settle: int = 40) -> dict:
+    """One jar on one node with a set of mods: one launch, every viewpoint. The far terrain a
+    warm-up built is put back into the world first."""
     game, loader = node_parts(node, tables)
     version = install(game, loader, home, version_of_loader)
     world = scene(home, game)
@@ -549,11 +745,15 @@ def play(home: Path, node: str, tables: dict, jar: Path, extra_mods: list[Path],
     # A folder per game: several run at once.
     game_dir = home / "instances-jar" / instance
     prepare(game_dir, [jar, *extra_mods], world, pack, data_version(home, game))
-    result = launch(home, version, game, game_dir, settle, wait, out)
+    key = lod_key(extra_mods)
+    if key and lod_cache(home, game, key).is_dir():
+        restore_lod(game_dir, lod_cache(home, game, key))
+    result = launch(home, version, game, game_dir, settle, wait, out, shaders=pack is not None,
+                    shader_settle=shader_settle)
     failures = [result["stopped"]] if result["stopped"] else []
     if not result["ok"] and (out / "game.log").is_file():
         text = (out / "game.log").read_text("utf-8", "replace")
         failures += [l.strip() for l in text.splitlines() if re.search(r"Exception|ERROR|FATAL", l)][:8]
     return {"ok": result["ok"], "stopped": result["stopped"], "failures": failures, "shots": result["shots"],
-            "stats": result.get("stats", {}),
+            "stats": {}, "waited": result.get("waited", {}),
             "minutes": round(result.get("seconds", 0) / 60, 1)}
