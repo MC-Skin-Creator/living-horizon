@@ -669,15 +669,25 @@ public final class MobMemory {
 
     /**
      * A copy drawn now, on its own feet, not so far from the real one that walking up to it would
-     * take long, and far enough that the game leaves the real one to the mod. Where the game draws
-     * the real mob itself, the player sees it close: it takes over at once, and the copy goes.
-     * Walking up to it there kept the real mob out of view for seconds.
+     * take long. It walks there, faster with the player close ({@link #hurry}), and the real one
+     * takes over where and as the copy stands: never a jump, nor a frame with neither.
      */
     private boolean joins(Remembered mob, Entity real) {
         return !mob.gone && mob.handover == null && mob.puppet instanceof LivingEntity puppet
                 && real instanceof LivingEntity && !real.isPassenger() && !real.isVehicle()
-                && shown().contains(mob) && puppet.distanceToSqr(real) < 48 * 48
-                && !(selfKnown && real.shouldRender(selfX, selfY, selfZ));
+                && shown().contains(mob) && puppet.distanceToSqr(real) < 48 * 48;
+    }
+
+    /**
+     * How many times its own pace a copy walks to its real mob: faster while the player is close
+     * to either ({@code joinHurryDistance}), where the real one kept out of view is missed.
+     */
+    private double hurry(Entity puppet, Entity real, FarConfig config) {
+        int near = config.joinHurryDistance;
+        if (near <= 0 || !selfKnown) return 1;
+        double limit = (double) near * near;
+        boolean close = puppet.distanceToSqr(selfX, selfY, selfZ) < limit || real.distanceToSqr(selfX, selfY, selfZ) < limit;
+        return close ? Math.max(1, config.joinHurrySpeed / 100.0) : 1;
     }
 
     /** Its copy reached the real mob, or cannot any more: the real one takes over. */
@@ -1091,7 +1101,7 @@ public final class MobMemory {
                 }
                 catchUp(mob);
                 if (joined.getKey().isRemoved() || !(mob.puppet() instanceof LivingEntity puppet)
-                        || motion(mob).follow(puppet, mob, joined.getKey())) {
+                        || motion(mob).follow(puppet, mob, joined.getKey(), hurry(puppet, joined.getKey(), config))) {
                     arrived.add(mob);
                 }
             }

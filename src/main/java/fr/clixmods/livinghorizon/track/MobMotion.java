@@ -53,6 +53,8 @@ final class MobMotion {
     /** Still and nothing of it changed this tick: until something moves it, {@link #rest} may stand for a tick. */
     private boolean settled;
     private int following;
+    /** The copy stood on its real mob at the end of the last tick of {@link #follow}. */
+    private boolean joined;
     /** Where the server last had a mob it moves, and how fast to walk to reach it by the next answer. */
     private double aimX = Double.NaN, aimZ = Double.NaN, pace;
     private @Nullable MobGait gait;
@@ -228,6 +230,7 @@ final class MobMotion {
         fit(puppet);
         if (!placed) place(mob);
         following = 0;
+        joined = false;
         settle(mob, false);
         if (flight != null && roam && !mob.simulated) {
             fly(puppet, mob, flight, clock, home);
@@ -376,15 +379,22 @@ final class MobMotion {
      * the farther it is, never slower than the real one walks. True once there, and then
      * the real one takes its place without a jump.
      */
-    boolean follow(LivingEntity puppet, MobMemory.Remembered mob, Entity real) {
+    /**
+     * A step of the copy towards its real mob, sent again: at its own pace, or {@code hurry} times
+     * faster while the player is close ({@code joinHurryDistance}). Done once it stood on the real
+     * one, facing its way, for a whole tick: gone the tick it arrived, its last step was never
+     * seen, and the real one appeared that step ahead.
+     */
+    boolean follow(LivingEntity puppet, MobMemory.Remembered mob, Entity real, double hurry) {
         settle(mob, false);
         fit(puppet);
         if (!placed) place(mob);
         double tx = real.getX(), ty = real.getY(), tz = real.getZ();
         double dx = tx - x, dz = tz - z, d = Math.hypot(dx, dz);
         double pace = Math.hypot(real.getX() - real.xo, real.getZ() - real.zo);
-        double reach = Math.min(0.8, pace + 0.06 + 0.05 * d);
-        double step = gait.hops() ? hop(d, reach) : Math.min(d, reach);
+        double reach = Math.min(0.8, pace + 0.06 + 0.05 * d) * hurry;
+        // Hurrying, it does not wait on the ground between two hops.
+        double step = gait.hops() && hurry <= 1 ? hop(d, reach) : Math.min(d, reach);
         double fromX = x, fromZ = z;
         climbing = Math.abs(ty - y) > 0.05;
         if (d > 1e-4) {
@@ -392,20 +402,22 @@ final class MobMotion {
             z += dz / d * step;
             y += (ty - y) * Math.min(1, step / d);
         } else {
-            y += (ty - y) * 0.5;
+            y += (ty - y) * Math.min(1, 0.5 * hurry);
         }
         land(d - step);
         float yaw = faces(real instanceof LivingEntity living ? living.yBodyRot : real.getYRot());
         // Facing the way it walks, and the way the real one faces on the last stretch.
         float turnTo = d > 1.5 ? (float) (Mth.atan2(dz, dx) * Mth.RAD_TO_DEG) - 90f : yaw;
-        body = Mth.approachDegrees(body, turnTo, TURN);
+        body = Mth.approachDegrees(body, turnTo, (float) (TURN * hurry));
         float headTo = real instanceof LivingEntity living ? faces(living.yHeadRot) : yaw;
-        head = Mth.approachDegrees(head, d > 1.5 ? body : headTo, 10f);
-        pitch = Mth.lerp(0.3f, pitch, real.getXRot());
+        head = Mth.approachDegrees(head, d > 1.5 ? body : headTo, (float) (10f * hurry));
+        pitch = Mth.lerp((float) Math.min(1, 0.3 * hurry), pitch, real.getXRot());
         apply(puppet, Math.hypot(x - fromX, z - fromZ));
         boolean there = air < 0 && Math.hypot(tx - x, tz - z) < 0.1 && Math.abs(ty - y) < 0.15
                 && Math.abs(Mth.wrapDegrees(body - yaw)) < 15;
-        return there || ++following > 120;
+        boolean stood = joined;
+        joined = there;
+        return stood && there || ++following > 120;
     }
 
     private void apply(LivingEntity puppet, double moved) {
