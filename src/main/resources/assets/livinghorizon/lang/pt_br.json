@@ -407,7 +407,6 @@
   "livinghorizon.debug.mark.tiny": "pequena demais",
   "livinghorizon.debug.mark.hidden": "atrás de blocos",
   "livinghorizon.debug.mark.void": "sobre o vazio",
-  "livinghorizon.debug.mark.near": "perto demais para uma cópia",
   "livinghorizon.debug.mark.outside": "fora da vista",
   "livinghorizon.debug.mark.waiting": "em construção",
   "livinghorizon.debug.mark.spare": "além do máximo",

@@ -407,7 +407,6 @@
   "livinghorizon.debug.mark.tiny": "слишком мал",
   "livinghorizon.debug.mark.hidden": "за блоками",
   "livinghorizon.debug.mark.void": "над пустотой",
-  "livinghorizon.debug.mark.near": "слишком близко для копии",
   "livinghorizon.debug.mark.outside": "вне обзора",
   "livinghorizon.debug.mark.waiting": "строится",
   "livinghorizon.debug.mark.spare": "сверх максимума",

@@ -335,6 +335,8 @@ public final class MobMemory {
     private @Nullable ClientLevel shownIn;
     /** The mobs of a level left are being remembered: no copy of them is made to draw. */
     private boolean leaving;
+    /** Mobs moved by this client out of its chunks are being remembered: never sent there, they say nothing of the reach. */
+    private boolean stranding;
     /** Mobs that left since {@link #shown} was put together: added to it in one go, when it is next read. */
     private final List<Remembered> arriving = new ArrayList<>();
     /** The file being written; null before the first save. */
@@ -754,6 +756,8 @@ public final class MobMemory {
         live.remove(entity.getUUID());
         // Left with its level, not stopped being sent: says nothing of how far the server sends.
         if (!leaving && level == bound && rememberable(entity)) unlearnReach(entity);
+        // Sent there until now: the server sends that kind at least this far.
+        if (!leaving && !stranding && level == bound && rememberable(entity)) learnReach(entity);
         // Gone again before its copy reached it: that copy carries on from where it got to.
         Remembered joined = joining.remove(entity);
         if (joined != null) joined.handover = null;
@@ -1627,9 +1631,14 @@ public final class MobMemory {
                 out.add(entity);
             }
         }
-        for (Entity entity : out) {
-            onUnload(entity, level);
-            stranded.put(entity.getUUID(), entity);
+        stranding = true;
+        try {
+            for (Entity entity : out) {
+                onUnload(entity, level);
+                stranded.put(entity.getUUID(), entity);
+            }
+        } finally {
+            stranding = false;
         }
     }
 
@@ -1672,6 +1681,20 @@ public final class MobMemory {
     }
 
     /**
+     * The server sent this mob where it stops being sent: its kind is sent at least that far.
+     * Sampled once a second only, the mobs sent showed less: walking away from mobs sent to 16
+     * blocks, the farthest seen was 10, and the copies of mobs gone between the two were kept.
+     */
+    private void learnReach(Entity entity) {
+        if (entity.isPassenger() || entity.isVehicle()) return;
+        if (entity instanceof LivingEntity living && living.isDeadOrDying()) return;
+        LocalPlayer self = Minecraft.getInstance().player;
+        if (self == null) return;
+        double across = Math.hypot(entity.getX() - self.getX(), entity.getZ() - self.getZ());
+        reach.merge(entity.getType().getCategory(), across, Math::max);
+    }
+
+    /**
      * A mob the server stopped sending well inside the reach of its kind, kept until the next
      * {@link #learnReach}: see there. Not one carried, dying, or gone close by (killed, picked
      * up), nor one a few blocks inside the reach, whose chunk was dropped before it was.
@@ -1710,26 +1733,23 @@ public final class MobMemory {
     }
 
     /**
-     * Back within range of a remembered mob and it is not there: it moved on, or died.
-     * Within range means well inside where this server was seen sending that kind of mob,
-     * not merely inside the loaded chunks: a server that sends animals to 48 blocks only
-     * would otherwise wipe out, a few seconds after they appear, every copy between 48
-     * blocks and the render distance - to bring them back when the server next moves them.
-     */
-    /**
-     * How close to the player a copy of this kind of mob cannot be: where the real mob would be
-     * sent, and so drawn by the game or by the mod, were it still there. That is how far the
-     * server sends this kind (which follows the "Entity Distance" slider in a single player
-     * world), within the server's view distance ({@link ServerView}: never Bobby's render
-     * distance, whose far chunks hold no mobs), less a margin. The simulation
-     * distance does not shrink it: mobs past it still stand in the loaded chunks and are sent.
+     * How close to the player a copy of this kind of mob is forgotten when the real one is not
+     * sent: there the server would send it, were it still there, so it moved on or died. That is
+     * how far the server sends this kind (which follows the "Entity Distance" slider in a single
+     * player world), within the server's view distance ({@link ServerView}: never Bobby's render
+     * distance, whose far chunks hold no mobs), less a margin for a mob dropped at the edge. No
+     * fixed floor: a server that sends animals to 16 blocks would lose every copy dropped there.
+     * Not known yet, nothing is forgotten for being close. The simulation distance does not
+     * shrink it: mobs past it still stand in the loaded chunks and are sent. A copy is drawn
+     * however close: it is only kept while the real mob is not sent.
      */
     public double nearRange(Remembered mob) {
         return nearRange(type(mob));
     }
 
     private double nearRange(@Nullable EntityType<?> type) {
-        return Math.max(24, Math.min(sent(type), renderBlocks) - 16);
+        double range = Math.min(sent(type), renderBlocks);
+        return range - Math.min(16, range / 4);
     }
 
     private void reconcile(ClientLevel level, String dimension, int renderDistanceBlocks) {

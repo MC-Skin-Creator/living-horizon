@@ -465,6 +465,15 @@ come back, add it here in the same pull request: this file is what the next sess
   the player flies off fast; mc.peacefulvanilla.club sends mobs to 24 blocks): a mob the server
   stops sending near the player reads as killed or despawned and is forgotten. Near is
   `MobMemory.goneNear`, kept well inside the reach learned for its kind, never a fixed 32 blocks.
+  The reach also learns from where mobs are dropped (`learnReach(Entity)`): sampled once a second
+  only, it came out at 10 blocks for a server sending 16. No fixed distance near the player either:
+  a copy is drawn however close (it exists only while the real mob is not sent), and
+  `MobMemory.nearRange`, where a missing one is forgotten, follows that reach. The `shortrange` and
+  `smallmobs` scenarios check it.
+- **Small mobs vanishing for a few blocks with *Entity Distance* below 100 %** (chickens, cats,
+  wolves; zombies and cows fine): the game culls a mob at a distance that grows with its size, a
+  chicken past 16 blocks at 50 %. `GhostRenderer.unseen` takes over from the game's own test
+  (`Entity.shouldRender`), never from a fixed distance: a fixed 24 blocks left a gap.
 - **Distant mobs jumping or sprinting as the player comes back** (the copy runs or teleports to
   the real mob once it is sent again): the server stops sending a mob at its tracking range
   (160 blocks for animals, scaled by *Entity Distance*) but keeps moving it out to the

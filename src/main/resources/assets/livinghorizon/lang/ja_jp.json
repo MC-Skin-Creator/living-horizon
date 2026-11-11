@@ -407,7 +407,6 @@
   "livinghorizon.debug.mark.tiny": "小さすぎる",
   "livinghorizon.debug.mark.hidden": "ブロックの裏",
   "livinghorizon.debug.mark.void": "奈落の上",
-  "livinghorizon.debug.mark.near": "コピーには近すぎる",
   "livinghorizon.debug.mark.outside": "視界の外",
   "livinghorizon.debug.mark.waiting": "構築中",
   "livinghorizon.debug.mark.spare": "上限超過",

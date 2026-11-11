@@ -407,7 +407,6 @@
   "livinghorizon.debug.mark.tiny": "太小",
   "livinghorizon.debug.mark.hidden": "在方块后面",
   "livinghorizon.debug.mark.void": "在虚空上方",
-  "livinghorizon.debug.mark.near": "太近，不用副本",
   "livinghorizon.debug.mark.outside": "在视野外",
   "livinghorizon.debug.mark.waiting": "正在构建",
   "livinghorizon.debug.mark.spare": "超出上限",

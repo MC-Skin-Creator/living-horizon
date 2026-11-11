@@ -407,7 +407,6 @@
   "livinghorizon.debug.mark.tiny": "너무 작음",
   "livinghorizon.debug.mark.hidden": "블록 뒤",
   "livinghorizon.debug.mark.void": "공허 위",
-  "livinghorizon.debug.mark.near": "복사본에는 너무 가까움",
   "livinghorizon.debug.mark.outside": "시야 밖",
   "livinghorizon.debug.mark.waiting": "구성 중",
   "livinghorizon.debug.mark.spare": "최대치 초과",

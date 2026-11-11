@@ -47,6 +47,10 @@ public final class ShortRangeScenario implements Scenario {
                 server.runCommand("summon cow 0 -60 " + (FIRST + i * STEP) + " {NoAI:1b,Rotation:[90f,0f]}");
             }
             try (var connection = server.connect()) {
+                // The other scenarios' servers are the same world to the mod (same seed, same
+                // address): none of their copies counted here, once the memory is open.
+                context.waitTicks(20);
+                context.runOnClient(minecraft -> FarPlayerTracker.get().mobs().forgetAll());
                 server.runCommand("tp @a 0 -60 0 0 0");
                 context.waitTicks(200);
                 context.runOnClient(minecraft -> {
@@ -77,6 +81,6 @@ public final class ShortRangeScenario implements Scenario {
             // As the client's entry point hands it in.
             Network.receiver(data -> Minecraft.getInstance().execute(() -> FarPlayerTracker.get().receive(data)));
         }
-        if (kept < COWS) throw new AssertionError("cows dropped by the server at 24 blocks and forgotten: " + (COWS - kept) + " of " + COWS);
+        if (kept != COWS) throw new AssertionError("cows dropped by the server at 24 blocks and forgotten: " + (COWS - kept) + " of " + COWS);
     }
 }
