@@ -7,6 +7,7 @@ import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerContext;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.entity.EntityType;
 
 import java.util.Properties;
 
@@ -51,7 +52,7 @@ public final class ShortRangeScenario implements Scenario {
                 context.runOnClient(minecraft -> {
                     int sent = 0;
                     for (var entity : minecraft.level.entitiesForRendering()) {
-                        if (entity.getType() == net.minecraft.world.entity.EntityType.COW) sent++;
+                        if (entity.getType() == EntityType.COW) sent++;
                     }
                     if (sent < COWS) throw new AssertionError("only " + sent + " of the " + COWS + " cows are sent at the start");
                     Scene.log("shortrange start, reach " + FarPlayerTracker.get().mobs().reach() + ", cows sent " + sent);
