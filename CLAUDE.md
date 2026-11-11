@@ -279,6 +279,9 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Far terrain depth missing** (depth view without Voxy's or Distant Horizons' terrain,
   mobs not hidden behind its hills): read the *Far terrain depth* line of the debug panel or
   `/livinghorizon lod`, with *Lazy far depth* off, since lazy depth hides the real reason.
+  "off" there means a step threw and the depth stays off until a restart: the log says why
+  ("Using the far terrain's depth failed"). "a step changes GL state its bracket did not
+  save": a step's `GlState.save` asks for more than `beforeEntities`' bracket around it.
 - **Part of the far terrain's depth missing, cut along a straight line** (a far mob showing
   through Voxy's or Distant Horizons' terrain on one side of an edge, the depth view fine):
   the merge is held to a rectangle round the figures (`FarDepth.region`, *Local Far Depth*).
