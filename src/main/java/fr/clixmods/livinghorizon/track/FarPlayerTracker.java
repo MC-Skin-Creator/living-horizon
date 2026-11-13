@@ -248,7 +248,7 @@ public final class FarPlayerTracker {
         }
         long restingStarted = Profile.begin(Profile.Section.TICK_RESTING);
         try {
-            if (config.offlinePlayers) resting.tick(current, config);
+            if (config.offlinePlayers) resting.tick(current, config, shared.active() ? shared : null);
             resting.aim(minecraft, config);
         } finally {
             Profile.end(Profile.Section.TICK_RESTING, restingStarted);

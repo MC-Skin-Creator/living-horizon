@@ -38,10 +38,11 @@ import java.util.UUID;
  * still read, from a server not updated yet and from the file. Version 4 adds a player gliding
  * with an elytra: a flag version 3 leaves unread, and their pitch at the end of the record.
  * Version 5 adds, after it, how a player who logged off looks with Minecraft Comes Alive.
+ * Version 6 adds the {@link #RESTING} message, which a reader of version 5 leaves unread.
  */
 public final class PositionsMessage {
     /** The layout written here. */
-    public static final int VERSION = 5;
+    public static final int VERSION = 6;
     /** The oldest version that reads what is written here: a reader of it or newer skips what it does not know. */
     static final int READABLE_FROM = 3;
     /** The layout of the server's own file ({@link #saved}), apart from the messages'. */
@@ -64,6 +65,11 @@ public final class PositionsMessage {
      * leave a kind they do not know unread.
      */
     public static final byte SEED = 3;
+    /**
+     * What the server's own simulation of the players who logged off is doing right now
+     * ({@link RestingBrain}), so that every client draws the same thing. Versions before 5 leave it unread.
+     */
+    public static final byte RESTING = 4;
 
     private static final Logger LOGGER = LoggerFactory.getLogger("Living Horizon");
     /** Bytes before the dimensions: the two versions and the kind. */
@@ -169,7 +175,12 @@ public final class PositionsMessage {
      * logged off come in {@code part} of a list that may take several messages; null for the others.
      */
     public record Decoded(byte kind, @Nullable List<Player> players, @Nullable Mobs mobs, @Nullable Part part,
-                          @Nullable Seed seed) {
+                          @Nullable Seed seed, @Nullable Resting resting) {
+        public Decoded(byte kind, @Nullable List<Player> players, @Nullable Mobs mobs, @Nullable Part part,
+                       @Nullable Seed seed) {
+            this(kind, players, mobs, part, seed, null);
+        }
+
         public Decoded(byte kind, @Nullable List<Player> players, @Nullable Mobs mobs) {
             this(kind, players, mobs, null, null);
         }
@@ -177,6 +188,66 @@ public final class PositionsMessage {
         public Decoded(byte kind, @Nullable List<Player> players, @Nullable Mobs mobs, @Nullable Part part) {
             this(kind, players, mobs, part, null);
         }
+    }
+
+    /**
+     * One player who logged off, as the server's simulation has them: where, which way they face,
+     * and what they do ({@code activity}: {@link RestingBrain#IDLE}, SIT, WALK, BED, the last with
+     * the head of the bed they lie in).
+     */
+    public record Actor(String name, double x, double y, double z, float yaw, String dimension, int activity,
+                        int bedX, int bedY, int bedZ) {
+    }
+
+    /** Every actor of the simulation at one tick of the server, whole: one that is missing is gone. */
+    public record Resting(long tick, List<Actor> actors) {
+    }
+
+    /** The resting message: sent every time, even empty, to say the server runs the simulation. */
+    public static byte[] resting(long tick, List<Actor> actors) {
+        Encoder encoder = new Encoder(MAX_BYTES, 1 + COUNT + 8);
+        Records list = encoder.list();
+        for (Actor actor : actors) encoder.add(list, out -> writeActor(out, encoder, actor));
+        return write(VERSION, READABLE_FROM, out -> {
+            out.writeByte(RESTING);
+            encoder.writeTable(out);
+            writeRecord(out, head -> head.writeLong(tick));
+            list.writeTo(out);
+        });
+    }
+
+    private static void writeActor(DataOutputStream out, Encoder encoder, Actor actor) throws IOException {
+        out.writeUTF(actor.name());
+        // Floats: a hundredth of a block at 30,000 out, and half the bytes of doubles.
+        out.writeFloat((float) actor.x());
+        out.writeFloat((float) actor.y());
+        out.writeFloat((float) actor.z());
+        out.writeFloat(actor.yaw());
+        writeVarint(out, encoder.dimension(actor.dimension()));
+        out.writeByte(actor.activity());
+        if (actor.activity() == RestingBrain.BED) {
+            out.writeInt(actor.bedX());
+            out.writeInt(actor.bedY());
+            out.writeInt(actor.bedZ());
+        }
+    }
+
+    private static Resting readResting(DataInputStream in, List<String> dimensions) throws IOException {
+        long tick = readRecord(in).readLong();
+        int count = readCount(in);
+        List<Actor> actors = new ArrayList<>(Math.min(count, 256));
+        for (int i = 0; i < count; i++) {
+            DataInputStream each = readRecord(in);
+            String name = each.readUTF();
+            double x = each.readFloat(), y = each.readFloat(), z = each.readFloat();
+            float yaw = each.readFloat();
+            String dimension = dimensions.get(readVarint(each));
+            int activity = each.readUnsignedByte();
+            boolean bed = activity == RestingBrain.BED;
+            actors.add(new Actor(name, x, y, z, yaw, dimension, activity, bed ? each.readInt() : 0,
+                    bed ? each.readInt() : 0, bed ? each.readInt() : 0));
+        }
+        return new Resting(tick, List.copyOf(actors));
     }
 
     /**
@@ -398,6 +469,7 @@ public final class PositionsMessage {
                 double x = head.readDouble(), z = head.readDouble(), radius = head.readDouble();
                 return new Decoded(kind, null, new Mobs(readMobs(in, dimensions), dimension, x, z, radius));
             }
+            if (kind == RESTING) return new Decoded(kind, null, null, null, null, readResting(in, dimensions));
             if (kind == SEED) {
                 long seed = readRecord(in).readLong();
                 int count = readCount(in);

@@ -713,7 +713,7 @@ public final class RestingPlayers {
     }
 
     /** Every one of them lives a tick: idle animations, their life around their spot, the ground under them. */
-    void tick(ClientLevel level, FarConfig config) {
+    void tick(ClientLevel level, FarConfig config, @Nullable SharedPositions shared) {
         choose(level, config);
         Set<BlockPos> beds = new HashSet<>();
         // Where they fish, or walk to fish: one on a stretch of shore.
@@ -747,6 +747,9 @@ public final class RestingPlayers {
             RestingPuppet puppet = puppets.get(spot);
             // Near the camera they live their life; away from it, they play a loop.
             if (camera != null) puppet.near(camera.getEyePosition());
+            // What the server's simulation has them do, when it runs one: the same for every player of the server.
+            PositionsMessage.Actor says = shared == null ? null : shared.resting(spot.name());
+            puppet.serve(says != null && says.dimension().equals(spot.dimension()) ? says : null);
             // You may shove them out of your way; they never push you.
             puppet.tick(level, config, around, work, minecraft.player);
             if (puppet.restFound()) rested.add(spot);
