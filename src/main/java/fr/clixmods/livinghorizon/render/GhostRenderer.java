@@ -741,7 +741,7 @@ public final class GhostRenderer {
             if (entity.isRemoved() || entity.isInvisible() || entity.level() != level) continue;
             // A mount with a player on it is drawn with that player; a villager in a minecart,
             // a cow in a boat, each on its own.
-            if ((entity.isPassenger() || entity.isVehicle()) && carriesPlayer(entity.getRootVehicle())) continue;
+            if ((entity.getVehicle() != null || entity.isVehicle()) && carriesPlayer(entity.getRootVehicle())) continue;
             // Its copy is still walking up to it, and drawn in its place.
             if (memory.hides(entity)) continue;
             EntityType<?> type = entity.getType();
@@ -1102,7 +1102,7 @@ public final class GhostRenderer {
     private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config,
                                     double dx, double dy, double dz, float facing) {
         // A glider is tilted along its flight, which no picture baked standing shows.
-        if (!ImpostorAtlas.usable() || entity.isPassenger() || entity.isVehicle()
+        if (!ImpostorAtlas.usable() || entity.getVehicle() != null || entity.isVehicle()
                 || entity instanceof LivingEntity glider && glider.isFallFlying() || unpictured(entity)
                 || !drawable(minecraft.getEntityRenderDispatcher(), entity)) {
             return false;
