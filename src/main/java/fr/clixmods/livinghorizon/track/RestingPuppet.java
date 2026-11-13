@@ -338,6 +338,18 @@ public final class RestingPuppet extends RemotePlayer {
                 .append(Component.translatable("livinghorizon.offline.tag").withStyle(ChatFormatting.GRAY));
     }
 
+    /**
+     * Seated or riding counts as a passenger for whatever reads the entity rather than its render state
+     * (Entity Model Features' Fresh Animations players): otherwise they stand up on the cushion and sink.
+     */
+    @Override
+    public boolean isPassenger() {
+        if (super.isPassenger()) return true;
+        if (activity == null) return false;
+        Look look = look();
+        return look == Look.SIT || look == Look.RIDE;
+    }
+
     /** How it is drawn this tick. */
     public Look look() {
         if (riding) return Look.RIDE;
@@ -482,6 +494,7 @@ public final class RestingPuppet extends RemotePlayer {
         }
         if (!lively) {
             Puppets.walk(this, 0f, 1f, 1f);
+            Puppets.ground(this, false);
             sit(level);
             return;
         }
@@ -534,6 +547,7 @@ public final class RestingPuppet extends RemotePlayer {
         arm(wary, wary || shieldTicks > 0);
         double moved = Math.hypot(getX() - before, getZ() - beforeZ);
         Puppets.walk(this, (float) Math.min(moved * 4.0, 1.0), 0.4f, 1f);
+        Puppets.ground(this, activity == Activity.FLY);
         setYRot(yBodyRot);
     }
 
@@ -608,6 +622,7 @@ public final class RestingPuppet extends RemotePlayer {
             setXRot(headPitch);
         }
         Puppets.walk(this, 0f, 1f, 1f);
+        Puppets.ground(this, false);
         setYRot(yBodyRot);
     }
 
@@ -627,6 +642,7 @@ public final class RestingPuppet extends RemotePlayer {
         if (activity == Activity.BED) {
             if (night) {
                 Puppets.walk(this, 0f, 1f, 1f);
+                Puppets.ground(this, false);
                 return;
             }
             // Up in the morning: its loop starts beside the bed.
@@ -640,6 +656,7 @@ public final class RestingPuppet extends RemotePlayer {
         activity = playing.pausing && !night ? Activity.SIT : Activity.IDLE;
         glance(false);
         Puppets.walk(this, (float) Math.min(moved * 4.0, 1.0), 0.4f, 1f);
+        Puppets.ground(this, activity == Activity.FLY);
         setYRot(yBodyRot);
     }
 
@@ -1713,6 +1730,7 @@ public final class RestingPuppet extends RemotePlayer {
     /** Where the blocks are not loaded: standing or sitting where it is, standing at night. */
     private void afar(boolean night) {
         Puppets.walk(this, 0f, 1f, 1f);
+        Puppets.ground(this, false);
         if (activity == Activity.BED) return;
         if (activity == Activity.WALK || activity == Activity.GUARD || activity == Activity.FLY
                 || activity == Activity.FACE || activity == Activity.WARM || activity == Activity.FISH
