@@ -26,7 +26,7 @@ class PositionsMessageTest {
     private static final String NETHER = "minecraft:the_nether";
 
     /** Steve, online in the nether, at (1.5, 64, -2), facing 90 degrees. */
-    private static final String STEVE = "00000005" + "00000003" + "00"
+    private static final String STEVE = "00000006" + "00000003" + "00"
             // The dimensions: one, by its id.
             + "01" + "0014" + hex(NETHER)
             // One player, 37 bytes: name, x, y, z, yaw, dimension 0, online.
@@ -34,7 +34,7 @@ class PositionsMessageTest {
             + "42b40000" + "00" + "01";
 
     /** A baby horse (kind 1, variant 513) in the overworld, sent around (0, 0), 2048 blocks. */
-    private static final String HORSE_AROUND = "00000005" + "00000003" + "01"
+    private static final String HORSE_AROUND = "00000006" + "00000003" + "01"
             + "01" + "0013" + hex(OVERWORLD)
             // The circle, 25 bytes: dimension 0, x, z, radius.
             + "19" + "00" + "0000000000000000" + "0000000000000000" + "40a0000000000000"
@@ -46,7 +46,7 @@ class PositionsMessageTest {
      * Alex gliding with an elytra in the overworld, at (0, 120, 0), facing 0 and looking 15 degrees
      * down: the flag version 3 leaves unread, and the pitch at the end of the record, which it skips.
      */
-    private static final String ALEX_GLIDING = "00000005" + "00000003" + "00"
+    private static final String ALEX_GLIDING = "00000006" + "00000003" + "00"
             + "01" + "0013" + hex(OVERWORLD)
             // One player, 40 bytes: name, x, y, z, yaw, dimension 0, online and gliding, pitch.
             + "01" + "28" + "0004" + hex("Alex") + "0000000000000000" + "405e000000000000" + "0000000000000000"
@@ -117,7 +117,7 @@ class PositionsMessageTest {
     @Test
     void readsALaterVersionThatOnlyAddsFields() {
         String record = STEVE.substring(STEVE.indexOf("0005" + hex("Steve")));
-        String later = "00000006" + "00000003" + "00" + "01" + "0014" + hex(NETHER)
+        String later = "00000007" + "00000003" + "00" + "01" + "0014" + hex(NETHER)
                 + "01" + "28" + record + "abcdef" + "0102030405";
         PositionsMessage.Decoded read = PositionsMessage.read(bytes(later));
         assertNotNull(read);
@@ -155,10 +155,10 @@ class PositionsMessageTest {
     @Test
     void refusesAVersionItCannotRead() {
         byte[] message = bytes(STEVE);
-        message[7] = 6;
+        message[7] = 7;
         assertNull(PositionsMessage.read(message));
         PositionsMessage.Format format = PositionsMessage.format(message);
-        assertEquals(new PositionsMessage.Format(5, 6), format);
+        assertEquals(new PositionsMessage.Format(6, 7), format);
         assertFalse(format.readableBy(PositionsMessage.VERSION));
         assertFalse(new PositionsMessage.Format(1, 1).readableBy(PositionsMessage.VERSION));
     }

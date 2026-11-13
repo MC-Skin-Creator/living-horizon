@@ -280,6 +280,15 @@ public final class RestingPuppet extends RemotePlayer {
     /** What it held in each hand when its player logged off, given back once the sword and shield are put away. */
     private ItemStack held = ItemStack.EMPTY, heldOff = ItemStack.EMPTY;
 
+    /** What the server's simulation says it does, when there is one; null: it lives its life itself. */
+    private PositionsMessage.@Nullable Actor served;
+    private double fromX, fromY, fromZ, toX, toY, toZ;
+    private float toYaw;
+    /** Ticks since the last word of the server: it moves from where it was to there in {@link #SERVED_TICKS}. */
+    private int servedTicks = SERVED_TICKS;
+    /** Between two words of the server, which come every {@link PositionPublisher#PERIOD} ticks. */
+    private static final int SERVED_TICKS = PositionPublisher.PERIOD * PositionPublisher.RESTING_EVERY;
+
     RestingPuppet(ClientLevel level, RestingPlayers.Spot spot, GameProfile profile) {
         super(level, profile);
         this.spot = spot;
@@ -336,6 +345,18 @@ public final class RestingPuppet extends RemotePlayer {
     public Component getDisplayName() {
         return Component.empty().append(getName()).append(" ")
                 .append(Component.translatable("livinghorizon.offline.tag").withStyle(ChatFormatting.GRAY));
+    }
+
+    /**
+     * Seated or riding counts as a passenger for whatever reads the entity rather than its render state
+     * (Entity Model Features' Fresh Animations players): otherwise they stand up on the cushion and sink.
+     */
+    @Override
+    public boolean isPassenger() {
+        if (super.isPassenger()) return true;
+        if (activity == null) return false;
+        Look look = look();
+        return look == Look.SIT || look == Look.RIDE;
     }
 
     /** How it is drawn this tick. */
@@ -442,6 +463,75 @@ public final class RestingPuppet extends RemotePlayer {
         return riding && carried != null ? carried.away() : far;
     }
 
+    /**
+     * What the server's simulation says it does now (null: nothing, it lives its life itself). A new
+     * word starts a move from where it is; the same one again changes nothing.
+     */
+    void serve(PositionsMessage.@Nullable Actor now) {
+        if (now == served) return;
+        PositionsMessage.Actor before = served;
+        served = now;
+        if (now == null) {
+            if (before != null) {
+                // Back to its own life, from where the server left it.
+                placed = false;
+                far = false;
+            }
+            return;
+        }
+        fromX = getX();
+        fromY = getY();
+        fromZ = getZ();
+        toX = now.x();
+        toY = now.y();
+        toZ = now.z();
+        toYaw = now.yaw();
+        servedTicks = 0;
+        // Too far to have walked: it was elsewhere, it simply is here.
+        if (before == null || Math.hypot(toX - fromX, toZ - fromZ) > 6 || Math.abs(toY - fromY) > 3) {
+            snap(toX, toY, toZ);
+            fromX = toX;
+            fromY = toY;
+            fromZ = toZ;
+            yBodyRot = yBodyRotO = toYaw;
+        }
+    }
+
+    /** Doing what the server says, a few ticks behind it: only where it looks and how it crouches is its own. */
+    private void follow(PositionsMessage.Actor actor) {
+        double beforeX = getX(), beforeZ = getZ();
+        if (servedTicks < SERVED_TICKS) servedTicks++;
+        double t = servedTicks / (double) SERVED_TICKS;
+        setPos(fromX + (toX - fromX) * t, fromY + (toY - fromY) * t, fromZ + (toZ - fromZ) * t);
+        boolean bed = actor.activity() == RestingBrain.BED;
+        if (bed) {
+            BlockPos head = new BlockPos(actor.bedX(), actor.bedY(), actor.bedZ());
+            if (!head.equals(this.bed) || activity != Activity.BED) {
+                this.bed = head;
+                setSleepingPos(head);
+                activity = Activity.BED;
+            }
+        } else {
+            if (activity == Activity.BED) {
+                clearSleepingPos();
+                this.bed = null;
+            }
+            activity = switch (actor.activity()) {
+                case RestingBrain.SIT -> Activity.SIT;
+                case RestingBrain.WALK -> Activity.WALK;
+                default -> Activity.IDLE;
+            };
+            turnTo(toYaw, 20);
+        }
+        if (crouched) crouch(false);
+        if (gazed > 0 && gazer != null && !bed) lookAt(gazer, false);
+        else glance(false);
+        double moved = Math.hypot(getX() - beforeX, getZ() - beforeZ);
+        Puppets.walk(this, (float) Math.min(moved * 4.0, 1.0), 0.4f, 1f);
+        Puppets.ground(this, false);
+        setYRot(yBodyRot);
+    }
+
     void tick(ClientLevel level, FarConfig config, Around around, int[] work, @Nullable Entity you) {
         Set<BlockPos> beds = around.beds();
         boolean night = around.night();
@@ -482,10 +572,16 @@ public final class RestingPuppet extends RemotePlayer {
         }
         if (!lively) {
             Puppets.walk(this, 0f, 1f, 1f);
+            Puppets.ground(this, false);
             sit(level);
             return;
         }
 
+        PositionsMessage.Actor says = served;
+        if (says != null) {
+            follow(says);
+            return;
+        }
         if (!near) {
             away(level, beds, night);
             return;
@@ -534,6 +630,7 @@ public final class RestingPuppet extends RemotePlayer {
         arm(wary, wary || shieldTicks > 0);
         double moved = Math.hypot(getX() - before, getZ() - beforeZ);
         Puppets.walk(this, (float) Math.min(moved * 4.0, 1.0), 0.4f, 1f);
+        Puppets.ground(this, activity == Activity.FLY);
         setYRot(yBodyRot);
     }
 
@@ -608,6 +705,7 @@ public final class RestingPuppet extends RemotePlayer {
             setXRot(headPitch);
         }
         Puppets.walk(this, 0f, 1f, 1f);
+        Puppets.ground(this, false);
         setYRot(yBodyRot);
     }
 
@@ -627,6 +725,7 @@ public final class RestingPuppet extends RemotePlayer {
         if (activity == Activity.BED) {
             if (night) {
                 Puppets.walk(this, 0f, 1f, 1f);
+                Puppets.ground(this, false);
                 return;
             }
             // Up in the morning: its loop starts beside the bed.
@@ -640,6 +739,7 @@ public final class RestingPuppet extends RemotePlayer {
         activity = playing.pausing && !night ? Activity.SIT : Activity.IDLE;
         glance(false);
         Puppets.walk(this, (float) Math.min(moved * 4.0, 1.0), 0.4f, 1f);
+        Puppets.ground(this, activity == Activity.FLY);
         setYRot(yBodyRot);
     }
 
@@ -819,7 +919,8 @@ public final class RestingPuppet extends RemotePlayer {
             }
             case BED -> {
                 BlockPos head = bed;
-                if (!night || head == null || !(level.getBlockState(head).getBlock() instanceof BedBlock)) {
+                // A real player sleeping in it (OCCUPIED) takes the bed.
+                if (!night || head == null || !freeOrOurs(level.getBlockState(head))) {
                     leaveBed(beds);
                     start(Activity.IDLE, 40);
                 }
@@ -1702,6 +1803,10 @@ public final class RestingPuppet extends RemotePlayer {
     }
 
     /** The head of a bed nobody really sleeps in. */
+    private static boolean freeOrOurs(BlockState state) {
+        return state.getBlock() instanceof BedBlock && !state.getValue(BedBlock.OCCUPIED);
+    }
+
     private static boolean freeBed(BlockState state) {
         return state.getBlock() instanceof BedBlock
                 && state.getValue(BedBlock.PART) == BedPart.HEAD
@@ -1713,6 +1818,7 @@ public final class RestingPuppet extends RemotePlayer {
     /** Where the blocks are not loaded: standing or sitting where it is, standing at night. */
     private void afar(boolean night) {
         Puppets.walk(this, 0f, 1f, 1f);
+        Puppets.ground(this, false);
         if (activity == Activity.BED) return;
         if (activity == Activity.WALK || activity == Activity.GUARD || activity == Activity.FLY
                 || activity == Activity.FACE || activity == Activity.WARM || activity == Activity.FISH

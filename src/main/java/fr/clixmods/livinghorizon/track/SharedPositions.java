@@ -46,6 +46,11 @@ public final class SharedPositions {
     private PositionsMessage.@Nullable Mobs lastMobs;
     /** The world's seed, when the server shares it, for this client to foresee the first animals itself. */
     private PositionsMessage.@Nullable Seed seed;
+    /** Ticks without news of the server's simulation of the players who logged off before it is no longer followed. */
+    private static final int RESTING_STALE_TICKS = 100;
+    /** What the server's simulation last said, by lower case name. */
+    private final Map<String, PositionsMessage.Actor> resting = new HashMap<>();
+    private int restingAge = RESTING_STALE_TICKS;
     private int ticksSinceNews = STALE_TICKS;
     private boolean active;
     /** The format of the last message from a version of the mod this one cannot read; null when none came. */
@@ -73,6 +78,13 @@ public final class SharedPositions {
         }
         if (message.kind() == PositionsMessage.OFFLINE && message.players() != null && message.part() != null) {
             offlinePart(message.players(), message.part());
+        }
+        if (message.resting() != null) {
+            resting.clear();
+            for (PositionsMessage.Actor actor : message.resting().actors()) {
+                resting.put(actor.name().toLowerCase(java.util.Locale.ROOT), actor);
+            }
+            restingAge = 0;
         }
         if (message.seed() != null) seed = message.seed().dimensions().isEmpty() ? null : message.seed();
         if (message.mobs() != null) {
@@ -110,6 +122,7 @@ public final class SharedPositions {
     /** Once per tick: whether the server shares positions right now. */
     boolean update() {
         if (ticksSinceNews < STALE_TICKS) ticksSinceNews++;
+        if (restingAge < RESTING_STALE_TICKS) restingAge++;
         active = ticksSinceNews < STALE_TICKS;
         return active;
     }
@@ -119,6 +132,8 @@ public final class SharedPositions {
         players.clear();
         offline.clear();
         mobs.clear();
+        resting.clear();
+        restingAge = RESTING_STALE_TICKS;
         dressed.clear();
         lastMobs = null;
         seed = null;
@@ -153,6 +168,14 @@ public final class SharedPositions {
         List<String> names = new ArrayList<>(players.keySet());
         for (String name : offline.keySet()) if (!players.containsKey(name)) names.add(name);
         return names;
+    }
+
+    /**
+     * What the server's simulation has a player who logged off doing: null when the server does not
+     * run it, stopped saying, or does not simulate that player (the game then plays their life itself).
+     */
+    public PositionsMessage.@Nullable Actor resting(String name) {
+        return restingAge < RESTING_STALE_TICKS ? resting.get(name.toLowerCase(java.util.Locale.ROOT)) : null;
     }
 
     /** The published mob a player rides: null when they ride nothing the server publishes. */

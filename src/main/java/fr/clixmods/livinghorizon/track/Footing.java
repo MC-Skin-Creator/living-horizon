@@ -1,10 +1,10 @@
 package fr.clixmods.livinghorizon.track;
 
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CampfireBlock;
 import net.minecraft.world.level.block.DoorBlock;
@@ -52,12 +52,55 @@ final class Footing {
         int top();
     }
 
+    /**
+     * {@code source} where the chunk is held, air where it is not: reading a block of a chunk
+     * that is not loaded would make a server load or generate it.
+     */
+    static Source nonLoading(Source source, Level level) {
+        return new Source() {
+            @Override
+            public BlockState state(BlockPos at) {
+                return source.loaded(at) ? source.state(at) : Blocks.AIR.defaultBlockState();
+            }
+
+            @Override
+            public FluidState fluid(BlockPos at) {
+                return source.loaded(at) ? source.fluid(at) : Blocks.AIR.defaultBlockState().getFluidState();
+            }
+
+            @Override
+            public boolean loaded(BlockPos at) {
+                return source.loaded(at);
+            }
+
+            @Override
+            public VoxelShape collision(BlockState state, BlockPos at) {
+                return source.loaded(at) ? source.collision(state, at) : Shapes.empty();
+            }
+
+            @Override
+            public double fluidHeight(FluidState fluid, BlockPos at) {
+                return source.loaded(at) ? source.fluidHeight(fluid, at) : 0;
+            }
+
+            @Override
+            public int minY() {
+                return source.minY();
+            }
+
+            @Override
+            public int top() {
+                return source.top();
+            }
+        };
+    }
+
     /** The level itself, read on the game's thread. */
-    static Source live(ClientLevel level) {
+    static Source live(Level level) {
         return new Live(level);
     }
 
-    private record Live(ClientLevel level) implements Source {
+    private record Live(Level level) implements Source {
         @Override
         public BlockState state(BlockPos at) {
             return level.getBlockState(at);
@@ -95,15 +138,16 @@ final class Footing {
     }
 
     /**
-     * Whether the client holds the blocks of this column. Never {@code level.hasChunk}: the
+     * Whether the blocks of this column are held. Never {@code level.hasChunk}: the
      * client's level answers yes for every chunk, loaded or not, and an unloaded one reads as air.
+     * On a server this never loads the chunk either.
      */
-    static boolean loaded(ClientLevel level, double x, double z) {
+    static boolean loaded(Level level, double x, double z) {
         return level.getChunkSource().hasChunk(Mth.floor(x) >> 4, Mth.floor(z) >> 4);
     }
 
-    /** {@link #loaded(ClientLevel, double, double)} for the column of a block. */
-    static boolean loaded(ClientLevel level, BlockPos at) {
+    /** {@link #loaded(Level, double, double)} for the column of a block. */
+    static boolean loaded(Level level, BlockPos at) {
         return level.getChunkSource().hasChunk(at.getX() >> 4, at.getZ() >> 4);
     }
 

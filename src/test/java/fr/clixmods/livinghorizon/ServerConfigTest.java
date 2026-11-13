@@ -36,6 +36,8 @@ class ServerConfigTest {
         assertTrue(written.get("seedMobs").getAsBoolean());
         assertEquals(512, written.get("seedMobRange").getAsInt());
         assertFalse(written.get("shareSeed").getAsBoolean());
+        assertTrue(written.get("shareRestingLife").getAsBoolean());
+        assertEquals(64, written.get("maxRestingActors").getAsInt());
         assertFalse(watched.refresh());
     }
 
