@@ -350,6 +350,13 @@ public final class RestingPuppet extends RemotePlayer {
         return look == Look.SIT || look == Look.RIDE;
     }
 
+    /** Vanilla walks getVehicle() while isPassenger() is true, which is null for a seated puppet. */
+    @Override
+    public Entity getRootVehicle() {
+        Entity vehicle = getVehicle();
+        return vehicle == null ? this : vehicle.getRootVehicle();
+    }
+
     /** How it is drawn this tick. */
     public Look look() {
         if (riding) return Look.RIDE;
