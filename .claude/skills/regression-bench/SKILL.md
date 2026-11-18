@@ -68,6 +68,7 @@ match, since the world is the same.
 
 ## Report to the user
 
+Write the report in the user's language (French for this project's author), captions included.
 Every report ends with the pictures, so that the user judges each change for themselves: send
 (`SendUserFile`, display `render`) the review sheet of every node and profile compared,
 `results/<run>/_review/<node>-<profile>.png` (every viewpoint in three columns: the reference,
