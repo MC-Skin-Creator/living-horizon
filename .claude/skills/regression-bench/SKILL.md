@@ -66,6 +66,36 @@ circled in yellow. Below, every node against the reference node (1.21.11): the g
 little differently between versions, so those pictures only inform, but the mob counts must
 match, since the world is the same.
 
+## Report to the user
+
+Every report ends with the pictures, so that the user judges each change for themselves: send
+(`SendUserFile`, display `render`) the review sheet of every node and profile compared,
+`results/<run>/_review/<node>-<profile>.png` (every viewpoint in three columns: the reference,
+this run, and what the bench found, in red framed in yellow, in blue what moves by itself and is
+left out; a viewpoint that changed is framed in red). The third column lets the user check the
+bench as much as the build: a difference they see that is not in red is one the bench missed,
+and is worth a word back. Then the enlarged zooms of the changed ones,
+`_diff/<node>/<profile>/<shot>-zoom.png`. Say for each change what it shows (a mob more or less,
+a mob through the far terrain, a picture not settled) and whether it looks like a regression or
+an intended change, with the changelog entry that explains it when there is one. Never sum up a
+comparison without them.
+
+## References: compare with the last validated release
+
+Once a release is validated, its pictures become the reference (`approve`), and a new build is
+compared with it alone, without playing the old release again:
+
+```
+bench.cmd jars --tag v0.16.0 --nodes 1.20.1,1.21.11,26.2.x,26.3.x --profiles dh,voxy
+bench.cmd approve last                  # v0.16.0 is the reference now
+bench.cmd jars --tag v0.17.0-dev.760 --nodes 1.20.1,1.21.11,26.2.x,26.3.x --profiles dh,voxy
+```
+
+A run of one release with no `--against` is compared with the references (`baselines/<node>/<profile>`,
+`approved.json` says which release). They stay in `LH_BENCH_HOME`, not in the repository: they
+belong to this machine's graphics card and driver, and are approved again after a driver update,
+a pinned mod update (`mods --update`) or a change of the scene (`SCENE_VERSION`).
+
 ## Read a result
 
 What the comparison counts: pixels steady in both pairs (what moves by itself is left out) that
@@ -156,9 +186,10 @@ Iris). A profile whose mods do not exist for a game version is skipped there (Vo
 Complementary), `voxy` (Voxy, then Photon). `run` keeps a profile's pack on from the start.
 
 `speed_mods` are added to every game where they exist and fit: FerriteCore, Lithium (Canary on
-Forge), ModernFix, FastLoad, Smooth Boot, Noisium, Chunky. Never one that changes what is drawn
-or slows a window without the focus: no Dynamic FPS, no culling mod, nothing that rewrites the
-chunk system or the lighting.
+Forge), ModernFix, FastLoad, Smooth Boot, Noisium. Never one that changes what is drawn or slows
+a window without the focus: no Dynamic FPS, no culling mod, nothing that rewrites the chunk
+system or the lighting. A speed mod is one more thing that can break a game: Chunky made Distant
+Horizons crash the world's server on 1.20.1. A game that breaks only with them is no regression.
 
 ## Limits
 

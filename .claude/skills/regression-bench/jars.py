@@ -102,6 +102,8 @@ def release_jar(tag: str, node: str, repository: str, home: Path, github) -> Pat
     for loader in ("neoforge", "forge", "quilt"):
         if node.endswith(f"-{loader}"):
             base, suffix = node[: -len(loader) - 1], f"-{loader}"
+    # The node 26.2.x ships as mc26.2.
+    base = re.sub(r"\.x$", "", base)
     to = home / "jars" / tag / node / "livinghorizon.jar"
     if to.is_file():
         return to
@@ -414,15 +416,32 @@ KEYS = {"F1": (0x70, 0x3B), "F2": (0x71, 0x3C), "T": (0x54, 0x14), "BACK": (0x08
         "ESCAPE": (0x1B, 0x01), "K": (0x4B, 0x25)}
 
 
+# The windows of games drawn through SDL (26.3 on): SDL drops the keys of a window it thinks has
+# lost the focus, which the bench tells every game so that it lets the mouse go.
+SDL_WINDOWS: set[int] = set()
+
+
+def lend_focus(hwnd: int) -> None:
+    """Gives an SDL window the focus back for the keys about to be sent; `release` takes it again."""
+    if hwnd in SDL_WINDOWS:
+        import ctypes
+        ctypes.windll.user32.PostMessageW(hwnd, 0x0006, 1, 0)  # WM_ACTIVATE, active
+        ctypes.windll.user32.PostMessageW(hwnd, 0x0007, 0, 0)  # WM_SETFOCUS
+        time.sleep(0.05)
+
+
 def press(hwnd: int, key: str) -> None:
     """A key straight into the game's window: no focus needed, nothing else on the desktop touched."""
     import ctypes
     vk, scan = KEYS[key]
     user32 = ctypes.windll.user32
+    lend_focus(hwnd)
     user32.PostMessageW(hwnd, 0x0100, vk, 1 | (scan << 16))
     time.sleep(0.03)
     user32.PostMessageW(hwnd, 0x0101, vk, 1 | (scan << 16) | (1 << 30) | (1 << 31))
     time.sleep(0.03)
+    if hwnd in SDL_WINDOWS:
+        release(hwnd)
 
 
 def command(hwnd: int, text: str) -> None:
@@ -430,6 +449,7 @@ def command(hwnd: int, text: str) -> None:
     import ctypes
     user32 = ctypes.windll.user32
     press(hwnd, "T")
+    lend_focus(hwnd)
     time.sleep(0.25)
     # The T that opened the chat may have been typed into it too.
     for _ in range(2):
@@ -438,6 +458,7 @@ def command(hwnd: int, text: str) -> None:
         user32.PostMessageW(hwnd, 0x0102, ord(char), 1)
     time.sleep(0.1)
     press(hwnd, "ENTER")
+    release(hwnd)
 
 
 def teleport(hwnd: int, log: Path, x, y, z, yaw, pitch) -> bool:
@@ -451,7 +472,7 @@ def teleport(hwnd: int, log: Path, x, y, z, yaw, pitch) -> bool:
     for attempt in range(4):
         before = done()
         command(hwnd, f"/tp @s {x} {y} {z} {yaw} {pitch}")
-        deadline = time.time() + 4
+        deadline = time.time() + 10
         while time.time() < deadline:
             if done() > before:
                 return True
@@ -524,6 +545,14 @@ def written(picture: Path) -> bool:
         return False
 
 
+import threading
+
+# Games start one after the other, this many seconds apart: two of one version starting together
+# unpack the same native libraries and the second fails, and the starts are the heaviest part.
+STARTING = threading.Lock()
+STAGGER = 15
+
+
 def close(process, hwnd: int, seconds: int = 120) -> bool:
     """Closes the game as its window's close button does: it saves the world, and the far terrain
     mods write their databases out. Whether it ended by itself in time."""
@@ -591,20 +620,22 @@ def pids(root: int) -> set[int]:
 
 def launch(home: Path, version: str, game: str, game_dir: Path, settle: int, wait: float, out: Path,
            warm: bool = False, shaders: bool = False, shader_settle: int = 40, voxy: bool = False,
-           timeout: int = 900) -> dict:
+           memory: str = "3G", timeout: int = 900) -> dict:
     """Starts the game in the scene, lets it settle, then goes from viewpoint to viewpoint and takes
     a pair of pictures at each; closes the game. `warm`: a tour of the scene instead of the pictures,
     so that the far terrain mods build all of it, then a clean close so that they write it out."""
     import minecraft_launcher_lib as mll
     from bench import stop_tree
     options = {"username": USERNAME, "uuid": PLAYER_UUID, "token": "0", "gameDirectory": str(game_dir),
-               "executablePath": java_for(game, home), "jvmArguments": ["-Xmx3G"],
+               "executablePath": java_for(game, home), "jvmArguments": [f"-Xmx{memory}"],
                "customResolution": True, "resolutionWidth": str(WIDTH), "resolutionHeight": str(HEIGHT),
                "quickPlaySingleplayer": "lh-scene", "launcherName": "lh-bench"}
     argv = mll.command.get_minecraft_command(version, str(minecraft_dir(home)), options)
-    started = time.time()
-    with open(out / "launcher.log", "w", encoding="utf-8", errors="replace") as log:
-        process = subprocess.Popen(argv, cwd=game_dir, stdout=log, stderr=subprocess.STDOUT)
+    with STARTING:
+        started = time.time()
+        with open(out / "launcher.log", "w", encoding="utf-8", errors="replace") as log:
+            process = subprocess.Popen(argv, cwd=game_dir, stdout=log, stderr=subprocess.STDOUT)
+        time.sleep(STAGGER)
     latest = game_dir / "logs" / "latest.log"
     joined = None
     result: dict = {"ok": False, "stopped": None, "shots": []}
@@ -615,8 +646,8 @@ def launch(home: Path, version: str, game: str, game_dir: Path, settle: int, wai
             lock(pids(process.pid), locked)
             text = latest.read_text("utf-8", "replace") if latest.is_file() else ""
             broken = re.search(r"^.*(Error during pre-loading phase|ModLoadingException.*|Minecraft Crash Report|"
-                               r"Crash report saved to.*|Mixin apply.*failed.*|Incompatible mods found.*|Incompatible mod set.*|"
-                               r"ModResolutionException.*)$", text, re.MULTILINE)
+                               r"Crash report saved to.*|.*crash report has been saved.*|Mixin apply.*failed.*|Incompatible mods found.*|Incompatible mod set.*|"
+                               r"ModResolutionException.*|.*/FATAL\].*)$", text, re.MULTILINE)
             if broken:
                 result["stopped"] = "the game broke: " + broken.group(0).strip()[-300:]
                 return result
@@ -633,6 +664,8 @@ def launch(home: Path, version: str, game: str, game_dir: Path, settle: int, wai
             result["stopped"] = "no game window found"
             return result
         hwnd = windows[0]
+        if tuple(int(n) for n in re.findall(r"\d+", game)[:2]) >= (26, 3):
+            SDL_WINDOWS.add(hwnd)
         lock(pids(process.pid), locked)
         shots = game_dir / "screenshots"
         pictures = time.time()
@@ -640,19 +673,31 @@ def launch(home: Path, version: str, game: str, game_dir: Path, settle: int, wai
             # Voxy reads the whole save into its terrain: every chunk the scene holds, the mountain too.
             before = latest.read_text("utf-8", "replace") if latest.is_file() else ""
             command(hwnd, "/voxy import world lh-scene")
+            typed, tries = time.time(), 1
             deadline = time.time() + 300
             store = game_dir / "saves" / "lh-scene" / "voxy"
             sizes: list[int] = []
+            imported = False
             while time.time() < deadline:
                 time.sleep(2)
                 text = latest.read_text("utf-8", "replace")[len(before):]
                 if re.search(r"(?i)import finished", text):
+                    imported = True
                     break
                 # Or once its folder has grown and then not for ten seconds: the message may be shown
                 # on screen only.
                 sizes.append(sum(p.stat().st_size for p in store.rglob("*") if p.is_file()) if store.is_dir() else 0)
+                # Nothing written and nothing said 20 s after typing it: the command did not arrive.
+                if sizes[-1] == sizes[0] and not re.search(r"(?i)import", text) and time.time() - typed > 20 and tries < 3:
+                    command(hwnd, "/voxy import world lh-scene")
+                    typed, tries, sizes = time.time(), tries + 1, []
+                    continue
                 if len(sizes) > 6 and sizes[-1] > sizes[0] and len(set(sizes[-6:])) == 1:
+                    imported = True
                     break
+            if not imported:
+                result["stopped"] = "Voxy's import never ran or never ended: its terrain is not kept"
+                return result
             say(f"  Voxy imported the save in {int(time.time() - deadline + 300)} s")
             time.sleep(TOUR_WAIT)
             result["ok"] = close(process, hwnd)
@@ -735,7 +780,8 @@ def warm_up(home: Path, node: str, tables: dict, jar: Path, extra_mods: list[Pat
 
 
 def play(home: Path, node: str, tables: dict, jar: Path, extra_mods: list[Path], pack: Path | None, out: Path,
-         settle: int, wait: float, version_of_loader: str | None, instance: str, shader_settle: int = 40) -> dict:
+         settle: int, wait: float, version_of_loader: str | None, instance: str, shader_settle: int = 40,
+         memory: str = "3G") -> dict:
     """One jar on one node with a set of mods: one launch, every viewpoint. The far terrain a
     warm-up built is put back into the world first."""
     game, loader = node_parts(node, tables)
@@ -749,7 +795,7 @@ def play(home: Path, node: str, tables: dict, jar: Path, extra_mods: list[Path],
     if key and lod_cache(home, game, key).is_dir():
         restore_lod(game_dir, lod_cache(home, game, key))
     result = launch(home, version, game, game_dir, settle, wait, out, shaders=pack is not None,
-                    shader_settle=shader_settle)
+                    shader_settle=shader_settle, memory=memory)
     failures = [result["stopped"]] if result["stopped"] else []
     if not result["ok"] and (out / "game.log").is_file():
         text = (out / "game.log").read_text("utf-8", "replace")

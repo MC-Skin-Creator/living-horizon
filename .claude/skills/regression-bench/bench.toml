@@ -22,8 +22,9 @@ repository = "MC-Skin-Creator/living-horizon"
 # nothing on screen: no Dynamic FPS (it slows a window without the focus, and the bench's windows
 # never have it), no culling mod (it changes what is drawn), nothing that rewrites the chunk system
 # or the lighting (C2ME, Moonrise, ScalableLux: what Distant Horizons reads, how the scene is lit).
-# Lithium is Canary on Forge; Chunky only pregenerates when asked.
-speed_mods = ["ferrite-core", "lithium", "canary", "modernfix", "fastload", "smooth-boot", "noisium", "chunky"]
+# Lithium is Canary on Forge. Not Chunky: Distant Horizons for 1.20.1 hooks into it before it is
+# loaded and the world's server crashes as the player joins ("Chunky is not loaded").
+speed_mods = ["ferrite-core", "lithium", "canary", "modernfix", "fastload", "smooth-boot", "noisium"]
 
 # One profile is one set of mods, loaded from a folder of its own: every node is played once
 # per profile, with the same game. `mods` are Modrinth projects (their Fabric jar for the
@@ -32,6 +33,7 @@ speed_mods = ["ferrite-core", "lithium", "canary", "modernfix", "fastload", "smo
 #
 # `noise` is how much a channel may differ between the two shots of a pair and still count
 # as steady (0 to 255); `tolerance` how much a steady pixel may differ from the baseline;
+# `optional` mods are added where they exist for the game version and loader.
 # `max_pixels` how many changed pixels, in blobs of two by two at least (a terrain edge shifted
 # by one pixel draws thin lines, which do not count), mark a shot changed: a distant mob is a
 # few dozen pixels, so this stays small. Calibrate it with two runs of the same build.
@@ -53,6 +55,8 @@ max_pixels = 4
 # stand for Embeddium and Oculus on Forge.
 [profiles.dh]
 mods = ["sodium", "iris", "distanthorizons"]
+# Added where it exists: Distant Horizons will not start without it next to an old Sodium (1.20.1).
+optional = ["indium"]
 shaderpack = "complementary-reimagined"
 noise = 10
 tolerance = 16

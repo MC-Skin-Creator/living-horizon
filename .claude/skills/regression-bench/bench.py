@@ -306,11 +306,18 @@ def fitting(projects: list[str], game: str, loader: str, pins: dict, update: boo
 
 
 def with_speed(projects: list[str], speed: list[str], game: str, loader: str, pins: dict,
-               update: bool) -> list[Path] | str:
+               update: bool, optional: list[str] = ()) -> list[Path] | str:
     """The jars of a profile's mods, with every speed mod that exists for this game version and
     loader and fits with them: one that does not is left out, never the profile."""
     modrinth_loader = "fabric" if loader == "quilt" else loader
+    # The profile's own mods first: when one is missing there is nothing to speed up.
+    for project in projects:
+        if not resolve(project, game, modrinth_loader, pins, update):
+            return f"no {project} for {game} on {loader}"
     extra = [p for p in speed if p not in projects and resolve(p, game, modrinth_loader, pins, update)]
+    for project in optional:
+        if project not in projects and resolve(project, game, modrinth_loader, pins, update):
+            projects = projects + [project]
     while True:
         jars = fitting(projects + extra, game, loader, pins, update)
         if not isinstance(jars, str) or not extra:
@@ -650,6 +657,12 @@ def compare_run(run: Path, config: dict, against: Path | None = None) -> dict:
             if (base / "game.log").is_file():
                 cell["log"] = sorted(log_lines(profile_dir / "game.log") - log_lines(base / "game.log"))[:40]
             cell["baseline"] = (base / ("run.json" if against else "approved.json")).is_file()
+            reference = "approved" if not against else against.name
+            if (base / "approved.json").is_file() and not against:
+                reference = "approved " + str(json.loads((base / "approved.json").read_text("utf-8")).get("tag") or "")
+            sheet = review_sheet(profile_dir, base, cell["shots"], run / "_review" / f"{node}-{name}.png",
+                                 f"{node} / {name}: reference {reference.strip()}", run / "_diff" / node / name)
+            cell["review"] = str(sheet.relative_to(run)).replace("\\", "/") if sheet else None
             cell["status"] = status_of(cell)
             summary["cells"].setdefault(node, {})[name] = cell
             # Between versions: this node against the reference node, same profile, same run.
@@ -696,6 +709,56 @@ code{font-size:12px}
 """
 
 
+def review_sheet(new_dir: Path, old_dir: Path, shots: dict, to: Path, title: str, diffs: Path | None = None) -> Path | None:
+    """Every viewpoint of a node and profile on one picture, half size: the reference, this run, and
+    what the comparison found (in red, framed in yellow; in blue what moves by itself and is left
+    out). What a person looks at to say whether a change is a regression, and whether the bench
+    missed one they can see."""
+    from PIL import Image, ImageDraw
+    rows = [shot for shot in shots if (new_dir / f"{shot}-a.png").is_file()]
+    if not rows:
+        return None
+    w, h, label, gap = 427, 240, 18, 6
+    sheet = Image.new("RGB", (w * 3 + gap * 4, 30 + len(rows) * (h + label + gap)), (24, 26, 32))
+    draw = ImageDraw.Draw(sheet)
+    draw.text((gap, 8), f"{title}      reference  |  this run  |  what the bench found", fill=(230, 230, 230))
+    y = 30
+    for shot in rows:
+        verdict = shots[shot]
+        changed = verdict.get("verdict") == "changed"
+        note = f"{shot}: {verdict.get('verdict')}" + (f", {verdict.get('pixels')} px in {verdict.get('places')} places"
+                                                      if changed else "")
+        draw.text((gap, y + 2), note, fill=(255, 120, 110) if changed else (170, 220, 170))
+        for column, folder in enumerate((old_dir, new_dir)):
+            path = folder / f"{shot}-a.png"
+            x = gap + column * (w + gap)
+            if path.is_file():
+                with Image.open(path) as picture:
+                    sheet.paste(picture.convert("RGB").resize((w, h)), (x, y + label))
+            else:
+                draw.text((x + 10, y + label + 10), "no picture", fill=(200, 200, 200))
+            if changed:
+                draw.rectangle((x - 2, y + label - 2, x + w + 1, y + label + h + 1), outline=(255, 40, 40), width=2)
+        # The third panel of the comparison's strip; the picture dimmed when nothing changed.
+        x = gap + 2 * (w + gap)
+        strip = diffs / f"{shot}.png" if diffs else None
+        if changed and strip and strip.is_file():
+            with Image.open(strip) as picture:
+                third = picture.convert("RGB")
+                width = (third.width - 8) // 3
+                sheet.paste(third.crop((2 * (width + 4), 0, third.width, third.height)).resize((w, h)), (x, y + label))
+        elif (new_dir / f"{shot}-a.png").is_file():
+            with Image.open(new_dir / f"{shot}-a.png") as picture:
+                dim = picture.convert("L").convert("RGB").resize((w, h)).point(lambda v: v * 0.35)
+                sheet.paste(dim, (x, y + label))
+            draw.text((x + 10, y + label + 10), "nothing found" if verdict.get("verdict") == "same"
+                      else str(verdict.get("note", verdict.get("verdict"))), fill=(170, 220, 170))
+        y += h + label + gap
+    to.parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(to)
+    return to
+
+
 def report(run: Path, summary: dict, config: dict) -> None:
     cells = summary["cells"]
     nodes = [n for n in config["nodes"] if n in cells] + [n for n in cells if n not in config["nodes"]]
@@ -738,6 +801,8 @@ def report(run: Path, summary: dict, config: dict) -> None:
             for failure in played.get("failures", []):
                 out.append(f"<p class=failed><code>{e(failure)}</code></p>")
             out.append(f"<p><a href='{e(node)}/{e(name)}/game.log'>game log</a></p>")
+            if cell.get("review"):
+                out.append(f"<p class=mute>Every viewpoint, reference | this run:</p><img loading=lazy src='{e(cell['review'])}'>")
             rows = "".join(f"<tr><td>{e(shot)}</td><td class={s['verdict']}>{s['verdict']}</td>"
                            f"<td>{s['pixels'] if 'pixels' in s else e(s.get('note', ''))}</td><td>{s.get('places', '')}</td>"
                            f"<td>{s.get('unsteady', '')}</td></tr>" for shot, s in cell["shots"].items())
@@ -867,7 +932,8 @@ def command_jars(args, config: dict) -> list[Path]:
             projects = [JAR_MODS.get((p, loader), p) for p in profile.get("mods", [])]
             if loader in ("fabric", "quilt"):
                 projects.insert(0, "fabric-api")
-            extra = with_speed(projects, config.get("speed_mods", []), game, loader, pins, args.update_mods)
+            extra = with_speed(projects, config.get("speed_mods", []), game, loader, pins, args.update_mods,
+                               profile.get("optional", []))
             missing = extra if isinstance(extra, str) else None
             pack = None
             if not missing and profile.get("shaderpack"):
@@ -875,7 +941,7 @@ def command_jars(args, config: dict) -> list[Path]:
                 if pin:
                     pack = fetched(profile["shaderpack"], pin)
                 else:
-                    missing = f"no {profile['shaderpack']} for {game}"
+                    say(f"{node} / {name}: no {profile['shaderpack']} for {game}, without shaders only")
             save_pins(pins)
             if missing:
                 say(f"{node} / {name}: {missing}, skipped")
@@ -909,10 +975,12 @@ def command_jars(args, config: dict) -> list[Path]:
         out = runs[tag] / node / name
         say(f"{tag} {node} / {name}: starting")
         # The far terrain is there already: only the game's own chunks and the shaders to wait for.
+        wait = args.wait
         if jars.lod_key(extra):
-            settle = args.settle
-        result = jars.play(HOME, node, tables, jar, extra, pack, out, settle, args.wait, loader_pin,
-                           instance=f"{node}-{name}-{tag}", shader_settle=args.shader_settle)
+            # The far terrain is kept, but loaded from disk as the camera moves: a little more time.
+            settle, wait = args.settle + 10, max(args.wait, 1.0)
+        result = jars.play(HOME, node, tables, jar, extra, pack, out, settle, wait, loader_pin,
+                           instance=f"{node}-{name}-{tag}", shader_settle=args.shader_settle, memory=args.memory)
         result["versions"] = versions
         (out / "stats.json").write_text(json.dumps(result.pop("stats", {}), indent=2), "utf-8")
         (out / "run.json").write_text(json.dumps(result, indent=2), "utf-8")
@@ -931,7 +999,9 @@ def command_jars(args, config: dict) -> list[Path]:
             future.result()
     against = find_run(args.against) if args.against else (runs[args.tag[0]] if len(args.tag) > 1 else None)
     for tag in args.tag:
-        if against and runs[tag] != against:
+        if against is None:
+            compare_run(runs[tag], config)  # with the approved pictures
+        elif runs[tag] != against:
             compare_run(runs[tag], config, against)
     return list(runs.values())
 
@@ -978,7 +1048,9 @@ def command_approve(args, config: dict) -> None:
             if base.is_dir():
                 shutil.rmtree(base)
             shutil.copytree(profile_dir, base)
-            (base / "approved.json").write_text(json.dumps({"run": run.name, "at": dt.datetime.now().isoformat()}), "utf-8")
+            started = json.loads((run / "_run.json").read_text("utf-8")) if (run / "_run.json").is_file() else {}
+            (base / "approved.json").write_text(json.dumps({"run": run.name, "tag": started.get("tag") or started.get("label"),
+                                                            "at": dt.datetime.now().isoformat()}), "utf-8")
             say(f"{node} / {profile_dir.name}: approved from {run.name}")
 
 
@@ -1045,6 +1117,7 @@ def main() -> None:
     jar_parser.add_argument("--shader-settle", type=int, default=40,
                             help="seconds at most for the shader pack to compile and settle once turned on")
     jar_parser.add_argument("--parallel", type=int, help="games at once (default: as many as the memory holds)")
+    jar_parser.add_argument("--memory", default="3G", help="Java heap of each game (2G lets more run at once)")
     jar_parser.add_argument("--against", help="a run to compare with instead of the first release")
     jar_parser.add_argument("--update-mods", action="store_true")
     approve = sub.add_parser("approve", help="make a run's pictures the baselines")
