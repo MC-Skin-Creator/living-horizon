@@ -28,7 +28,8 @@ speed_mods = ["ferrite-core", "lithium", "canary", "modernfix", "fastload", "smo
 
 # One profile is one set of mods, loaded from a folder of its own: every node is played once
 # per profile, with the same game. `mods` are Modrinth projects (their Fabric jar for the
-# node's game version); `shaderpack` a Modrinth shader pack, turned on through Iris.
+# node's game version); `shaderpacks` Modrinth shader packs, turned on one after the other
+# through Iris in the same game (their pictures named after the pack: `photon-mountain`).
 # A profile whose mods do not exist for a game version is skipped on that node.
 #
 # `noise` is how much a channel may differ between the two shots of a pair and still count
@@ -50,21 +51,21 @@ noise = 2
 tolerance = 6
 max_pixels = 4
 
-# Each far terrain mod in one game: its viewpoints without shaders, then the same once the shader
-# pack is turned on in that game (`jars`; `run` keeps the pack on from the start). Sodium and Iris
-# stand for Embeddium and Oculus on Forge.
+# Each far terrain mod in one game: its viewpoints without shaders, then the same with each shader
+# pack in turn, changed in that game (`jars`; `run` keeps the first pack on from the start). Sodium
+# and Iris stand for Embeddium and Oculus on Forge.
 [profiles.dh]
 mods = ["sodium", "iris", "distanthorizons"]
 # Added where it exists: Distant Horizons will not start without it next to an old Sodium (1.20.1).
 optional = ["indium"]
-shaderpack = "complementary-reimagined"
+shaderpacks = ["photon-shader", "complementary-reimagined"]
 noise = 10
 tolerance = 16
 max_pixels = 12
 
 [profiles.voxy]
 mods = ["sodium", "iris", "voxy"]
-shaderpack = "photon-shader"
+shaderpacks = ["photon-shader", "complementary-reimagined"]
 noise = 10
 tolerance = 16
 max_pixels = 12

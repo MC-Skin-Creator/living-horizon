@@ -151,28 +151,57 @@ and the far terrain's warm-up (4 minutes for Distant Horizons, under one for Vox
   without AI that never animate on their own (no horse, no chicken: a horse without AI still
   grazes), fixed ids, a wall and a hill, and north of the spot a mountain with a crowd of iron
   golems right behind it and a control group beside it. Each launch opens a copy of it. Change
-  `scene_commands` and raise `SCENE_VERSION` together: every world is made again once.
+  `scene_commands` and raise `SCENE_VERSION` together: every world is made again once, and
+  every reference must be taken and approved again.
+  Every mob faces the same way (`MOB_YAW`, towards the cameras), and every kind of the scene is
+  listed in the mod's *still* kinds (`stillMobTypes`): its copies far away neither stroll nor turn
+  on the spot. No setting stops a copy's head from glancing about: the simplified pictures are
+  baked head straight, but a copy drawn as a model may turn its head, and a head alone that
+  differs is no regression.
+  In the Nether, a tunnel of blackstone closed on every side (no lava runs into it), rows of
+  Nether mobs and a wall across half of it; in the End, a causeway north of the main island,
+  out of reach of the dragon's fight (no dragon ever comes), the island behind its rows.
 - **The far terrain is built once**: Distant Horizons and Voxy keep theirs in the world
   (`data/DistantHorizons.sqlite` per dimension, `voxy/`). A warm-up launch per game version and
   far terrain mod builds it (Distant Horizons while the game runs and a tour of the scene; Voxy
   with `/voxy import world`), closes the game cleanly so that it is written out, and keeps it in
-  `worlds/<game>/scene-<V>-far/<mod jar>`; every launch after starts with it.
+  `worlds/<game>/scene-<V>-far/<mod jar>`; every launch after starts with it. Each dimension is
+  built in turn: Distant Horizons a minute at the first stop of each tour, Voxy one import per
+  dimension (its command reads the region files of the dimension the player is in).
 - **Settings written before launch**: `config/livinghorizon.json` (no birds or easter eggs,
   every copy still), `options.txt` (render distance 4, so that the mountain is far terrain from
-  its viewpoints; no clouds; `graphicsPreset:"custom"`, or from 1.21.11 the preset puts its own
-  render distance and clouds back), Distant Horizons' clouds off.
+  its viewpoints; no clouds; minimal particles, so no ash or spores in the Nether; lightning
+  flashes hidden, the End's sky too; `graphicsPreset:"custom"`, or from 1.21.11 the preset puts
+  its own render distance and clouds back), Distant Horizons' clouds off.
 - **One launch per far terrain mod**: the game opens the world itself (Quick Play), the bench
-  hides the interface (F1), goes through `VIEWPOINTS` without shaders, turns the shader pack on in
-  the same game (Iris's key K, Oculus's too) and goes through them again (`shaders-<name>`).
-- **At each viewpoint** a `/tp` typed in the chat (checked in the game's log; Escape and again
-  when a menu was in the way), then the game's own screenshots (F2) one after another until
+  hides the interface (F1), goes through `VIEWPOINTS` without shaders, then through them again
+  with each shader pack of the profile, changed in the same game: the agent (below) sets it as
+  the pack Iris holds, shaders off, and Iris's toggle key (K) turns them on with it, again until
+  its log says "Using shaderpack" with that pack (Oculus the same). Iris's reload key would read
+  its settings file again, but only with its debug options on, which change how it draws. The
+  pictures of a pack are named after it: `photon-mountain`, `complementary-end`.
+- **At each viewpoint** an `/execute in <dimension> run tp` typed in the chat (checked in the
+  game's log; Escape and again when a menu was in the way), a few seconds more when it changes
+  dimension, then the game's own screenshots (F2) one after another until
   three in a row match: the chunks round a place just reached take a second or two to draw, in
   bursts. Without shaders a match is under 0.3 % of pixels moved, with them under 3 % (Photon's
   grain).
-- **Hands off**: the keys go straight to each game's window, the windows ignore the mouse and
-  the keyboard, and each game is told it lost the focus so that it lets the mouse go (a window
-  just opened takes it, and the camera would follow the mouse). The machine stays usable; the
-  windows may overlap. Windows only.
+  A picture with sky at the bottom, where every Overworld viewpoint has its ground, is still
+  loading however still it stands (a chunk not yet received): waited for up to 40 s more
+  (`holes`).
+- **Hands off**: the keys go straight to each game's window, and a guard (`Guard`) checks every
+  window of every game four times a second for as long as it runs: turned off for the mouse and
+  the keyboard (again if it comes back on), put back where and as it was if moved, resized or
+  minimised anyway (the taskbar, Windows' shortcuts), and made to give up the focus so that the
+  game lets the mouse go (a window just opened takes it, and the camera would follow the mouse).
+  The machine stays usable; the windows may overlap. Windows only.
+- **The agent**: every game starts with `agent/BenchAgent.java` as a Java agent (`-javaagent`,
+  compiled with the JDK's `javac` into `LH_BENCH_HOME/tools` the first time), which reads lines
+  from a folder in the game's directory. It sets Iris's next pack, by Iris's own class names,
+  which no version obfuscates. And from 26.3 the window is SDL's, which hands a key to the game
+  only while it is the desktop's foreground window: one game at a time, and the user's mouse
+  with it. There the agent types instead, handing the keys and text to the game's keyboard
+  handler on its own thread, by the game's names: from 26.1 the game is not obfuscated.
 - **Mods**: the profile's from Modrinth (the Fabric API added on Fabric and Quilt; Embeddium and
   Oculus stand for Sodium and Iris on Forge), in versions that fit together (`fitting` reads each
   jar's dependencies: Voxy 0.2.16 takes Sodium 0.8.12 at most), plus `speed_mods` where they
@@ -181,10 +210,11 @@ and the far terrain's warm-up (4 minutes for Distant Horizons, under one for Vox
 ## Profiles
 
 `bench.toml` next to this file; `LH_BENCH_HOME/bench.toml` overrides it per key. A profile
-names Modrinth projects (`mods`) and a shader pack (`shaderpack`, a Modrinth project for
-Iris). A profile whose mods do not exist for a game version is skipped there (Voxy before
-1.21.8, and on Forge). Defaults: `vanilla`, `sodium`, `dh` (Distant Horizons, then
-Complementary), `voxy` (Voxy, then Photon). `run` keeps a profile's pack on from the start.
+names Modrinth projects (`mods`) and shader packs (`shaderpacks`, Modrinth projects for Iris).
+A profile whose mods do not exist for a game version is skipped there (Voxy before 1.21.8, and
+on Forge); a pack missing for it is left out. Defaults: `vanilla`, `sodium`, `dh` (Distant
+Horizons) and `voxy` (Voxy), each without shaders, then with Photon, then with Complementary.
+`run` keeps a profile's first pack on from the start.
 
 `speed_mods` are added to every game where they exist and fit: FerriteCore, Lithium (Canary on
 Forge), ModernFix, FastLoad, Smooth Boot, Noisium. Never one that changes what is drawn or slows

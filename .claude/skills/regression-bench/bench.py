@@ -337,8 +337,9 @@ def instance(node: str, game: str, name: str, profile: dict, pins: dict, update:
         say(f"{node} {name}: {jars}, skipped")
         return None
     pack = None
-    if profile.get("shaderpack"):
-        project = profile["shaderpack"]
+    if packs_of(profile):
+        # The client game tests turn one pack on from the start: the first.
+        project = packs_of(profile)[0]
         pin = resolve(project, game, "iris", pins, update)
         if not pin:
             say(f"{node} {name}: no {project} for {game}, skipped")
@@ -360,7 +361,7 @@ def instance(node: str, game: str, name: str, profile: dict, pins: dict, update:
     loaders = [v for v in (loader_needed(j) for j in jars) if v]
     return {"mods": mods if jars else None, "pack": pack, "loader": max(loaders, key=version_key) if loaders else None,
             "versions": {p: pins[game][f"{p}@fabric"]["version"] for p in profile.get("mods", [])}
-            | ({profile["shaderpack"]: pins[game][f"{profile['shaderpack']}@iris"]["version"]} if pack else {})}
+            | ({project: pins[game][f"{project}@iris"]["version"]} if pack else {})}
 
 
 # --- Playing a node ----------------------------------------------------------------------------
@@ -637,11 +638,12 @@ def compare_run(run: Path, config: dict, against: Path | None = None) -> dict:
             base = (against / node / name) if against else HOME / "baselines" / node / name
             played = json.loads((profile_dir / "run.json").read_text("utf-8")) if (profile_dir / "run.json").is_file() else {}
             cell = {"played": played, "shots": {}, "stats": [], "perf": []}
+            labels = [p.split("-")[0] + "-" for p in packs_of(config["profiles"].get(name, {}))]
             for shot in shots_in(profile_dir) or shots_in(base):
-                # The pass without shaders is held to the plain limits; only the shaded one gets the looser ones.
-                plain = shot.startswith("shaders-") or not config["profiles"].get(name, {}).get("shaderpack")
-                shot_limits = limits if plain else {**limits, **{k: config["profiles"]["vanilla"][k]
-                                                                 for k in ("noise", "tolerance", "max_pixels")}}
+                # The pass without shaders is held to the plain limits; only the shaded ones get the looser ones.
+                shaded = not labels or shot.startswith(("shaders-", *labels))
+                shot_limits = limits if shaded else {**limits, **{k: config["profiles"]["vanilla"][k]
+                                                                  for k in ("noise", "tolerance", "max_pixels")}}
                 cell["shots"][shot] = compare_shot(profile_dir, base, shot, shot_limits,
                                                    run / "_diff" / node / name / f"{shot}.png")
             stats_new = json.loads((profile_dir / "stats.json").read_text("utf-8")) if (profile_dir / "stats.json").is_file() else {}
@@ -935,43 +937,43 @@ def command_jars(args, config: dict) -> list[Path]:
             extra = with_speed(projects, config.get("speed_mods", []), game, loader, pins, args.update_mods,
                                profile.get("optional", []))
             missing = extra if isinstance(extra, str) else None
-            pack = None
-            if not missing and profile.get("shaderpack"):
-                pin = resolve(profile["shaderpack"], game, "iris", pins, args.update_mods)
+            packs = []
+            for project in [] if missing else packs_of(profile):
+                pin = resolve(project, game, "iris", pins, args.update_mods)
                 if pin:
-                    pack = fetched(profile["shaderpack"], pin)
+                    packs.append(fetched(project, pin))
                 else:
-                    say(f"{node} / {name}: no {profile['shaderpack']} for {game}, without shaders only")
+                    say(f"{node} / {name}: no {project} for {game}, without it")
             save_pins(pins)
             if missing:
                 say(f"{node} / {name}: {missing}, skipped")
                 continue
             versions = {p.parent.name: p.name for p in extra} | ({loader: loader_pin} if loader_pin else {}) \
-                | ({pack.parent.name: pack.name} if pack else {})
+                | {pack.parent.name: pack.name for pack in packs}
             for tag in args.tag:
                 jar = jars.release_jar(tag, node, config["repository"], HOME, github)
-                tasks.append((tag, node, name, jar, extra, pack, profile.get("settle", args.settle), versions, loader_pin))
+                tasks.append((tag, node, name, jar, extra, packs, profile.get("settle", args.settle), versions, loader_pin))
 
     # The far terrain each set of mods draws, built once per game version and kept: a launch of
     # its own, before the others, since the pictures of every release must start from the same one.
     warmups = {}
-    for tag, node, name, jar, extra, pack, settle, versions, loader_pin in tasks:
+    for tag, node, name, jar, extra, packs, settle, versions, loader_pin in tasks:
         key = jars.lod_key(extra)
         game = jars.node_parts(node, tables)[0]
         if key and not jars.lod_cache(HOME, game, key).is_dir():
-            warmups.setdefault((game, key), (node, name, jar, extra, pack, settle, loader_pin))
+            warmups.setdefault((game, key), (node, name, jar, extra, packs, settle, loader_pin))
 
     def warm(item):
-        (game, key), (node, name, jar, extra, pack, settle, loader_pin) = item
+        (game, key), (node, name, jar, extra, packs, settle, loader_pin) = item
         say(f"{node} / {name}: building the far terrain once ({key})")
         # Distant Horizons builds its terrain while the game runs; Voxy imports the save in seconds.
         wait = args.settle if "voxy" in key.lower() and "distanthorizons" not in key.lower() else max(settle, args.warm_settle)
-        said = jars.warm_up(HOME, node, tables, jar, extra, pack, HOME / "warmups" / f"{node}-{key}",
+        said = jars.warm_up(HOME, node, tables, jar, extra, packs, HOME / "warmups" / f"{node}-{key}",
                             wait, loader_pin, instance=f"{node}-{name}-warmup")
         say(f"{node} / {name}: {said}")
 
     def one(task):
-        tag, node, name, jar, extra, pack, settle, versions, loader_pin = task
+        tag, node, name, jar, extra, packs, settle, versions, loader_pin = task
         out = runs[tag] / node / name
         say(f"{tag} {node} / {name}: starting")
         # The far terrain is there already: only the game's own chunks and the shaders to wait for.
@@ -979,7 +981,7 @@ def command_jars(args, config: dict) -> list[Path]:
         if jars.lod_key(extra):
             # The far terrain is kept, but loaded from disk as the camera moves: a little more time.
             settle, wait = args.settle + 10, max(args.wait, 1.0)
-        result = jars.play(HOME, node, tables, jar, extra, pack, out, settle, wait, loader_pin,
+        result = jars.play(HOME, node, tables, jar, extra, packs, out, settle, wait, loader_pin,
                            instance=f"{node}-{name}-{tag}", shader_settle=args.shader_settle, memory=args.memory)
         result["versions"] = versions
         (out / "stats.json").write_text(json.dumps(result.pop("stats", {}), indent=2), "utf-8")
@@ -1004,6 +1006,11 @@ def command_jars(args, config: dict) -> list[Path]:
         elif runs[tag] != against:
             compare_run(runs[tag], config, against)
     return list(runs.values())
+
+
+def packs_of(profile: dict) -> list[str]:
+    """A profile's shader packs, Modrinth projects: `shaderpacks`, or the one `shaderpack`."""
+    return list(profile.get("shaderpacks") or ([profile["shaderpack"]] if profile.get("shaderpack") else []))
 
 
 # A profile names the Fabric mods; on another loader the same part is another mod.
@@ -1074,7 +1081,7 @@ def command_mods(args, config: dict) -> None:
             continue
         game = tables[node]["mod"]["mc_releases"][-1]
         projects = sorted({p for prof in config["profiles"].values() for p in prof.get("mods", [])})
-        packs = sorted({prof["shaderpack"] for prof in config["profiles"].values() if prof.get("shaderpack")})
+        packs = sorted({p for prof in config["profiles"].values() for p in packs_of(prof)})
         line = []
         for project in projects:
             pin = resolve(project, game, "fabric", pins, args.update)
