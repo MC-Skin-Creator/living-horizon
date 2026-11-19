@@ -189,6 +189,12 @@ and the far terrain's warm-up (4 minutes for Distant Horizons, under one for Vox
   A picture with sky at the bottom, where every Overworld viewpoint has its ground, is still
   loading however still it stands (a chunk not yet received): waited for up to 40 s more
   (`holes`).
+  Before that, the bench asks the game through the agent whether the chunks round the camera are
+  built (`terrain_ready`): Sodium's build queue empty for a second, 40 s at most, what it said
+  kept in `run.json` (`terrain`). Its count of sections is the size of its grid, the same
+  everywhere: a chunk not received yet is not waited for, only one not built. Without it the far terrain
+  mods fill the hole of a chunk not built yet with their own terrain, still enough to pass for a
+  finished picture, and two releases differ where nothing changed.
 - **Hands off**: the keys go straight to each game's window, and a guard (`Guard`) checks every
   window of every game four times a second for as long as it runs: turned off for the mouse and
   the keyboard (again if it comes back on), put back where and as it was if moved, resized or
@@ -212,15 +218,17 @@ and the far terrain's warm-up (4 minutes for Distant Horizons, under one for Vox
 `bench.toml` next to this file; `LH_BENCH_HOME/bench.toml` overrides it per key. A profile
 names Modrinth projects (`mods`) and shader packs (`shaderpacks`, Modrinth projects for Iris).
 A profile whose mods do not exist for a game version is skipped there (Voxy before 1.21.8, and
-on Forge); a pack missing for it is left out. Defaults: `vanilla`, `sodium`, `dh` (Distant
+on Forge); a pack missing for it is left out, and where no Iris fits the far terrain mod (Distant
+Horizons on 1.20.2 and 1.20.4) the profile is played without Iris and its packs. Defaults: `vanilla`, `sodium`, `dh` (Distant
 Horizons) and `voxy` (Voxy), each without shaders, then with Photon, then with Complementary.
 `run` keeps a profile's first pack on from the start.
 
 `speed_mods` are added to every game where they exist and fit: FerriteCore, Lithium (Canary on
-Forge), ModernFix, FastLoad, Smooth Boot, Noisium. Never one that changes what is drawn or slows
+Forge), FastLoad, Smooth Boot, Noisium. Never one that changes what is drawn or slows
 a window without the focus: no Dynamic FPS, no culling mod, nothing that rewrites the chunk
 system or the lighting. A speed mod is one more thing that can break a game: Chunky made Distant
-Horizons crash the world's server on 1.20.1. A game that breaks only with them is no regression.
+Horizons crash the world's server on 1.20.1, ModernFix made Lithium crash it now and then. A
+game that breaks only with them is no regression.
 
 ## Limits
 

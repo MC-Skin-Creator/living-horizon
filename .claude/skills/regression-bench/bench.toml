@@ -23,8 +23,10 @@ repository = "MC-Skin-Creator/living-horizon"
 # never have it), no culling mod (it changes what is drawn), nothing that rewrites the chunk system
 # or the lighting (C2ME, Moonrise, ScalableLux: what Distant Horizons reads, how the scene is lit).
 # Lithium is Canary on Forge. Not Chunky: Distant Horizons for 1.20.1 hooks into it before it is
-# loaded and the world's server crashes as the player joins ("Chunky is not loaded").
-speed_mods = ["ferrite-core", "lithium", "canary", "modernfix", "fastload", "smooth-boot", "noisium"]
+# loaded and the world's server crashes as the player joins ("Chunky is not loaded"). Not
+# ModernFix: on 1.20.1 its block state caches, built while Lithium still registers its flags,
+# crash the world's server now and then ("Cannot register more flags").
+speed_mods = ["ferrite-core", "lithium", "canary", "fastload", "smooth-boot", "noisium"]
 
 # One profile is one set of mods, loaded from a folder of its own: every node is played once
 # per profile, with the same game. `mods` are Modrinth projects (their Fabric jar for the

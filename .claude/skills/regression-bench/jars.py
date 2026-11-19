@@ -128,14 +128,17 @@ def release_jar(tag: str, node: str, repository: str, home: Path, github) -> Pat
     for loader in ("neoforge", "forge", "quilt"):
         if node.endswith(f"-{loader}"):
             base, suffix = node[: -len(loader) - 1], f"-{loader}"
-    # The node 26.2.x ships as mc26.2.
+    # The node 26.2.x ships as mc26.2, 26.1.x as mc26.1.2: the release it was built for.
+    wide = base.endswith(".x")
     base = re.sub(r"\.x$", "", base)
+    patch = r"(\.\d+)*" if wide else ""
+    name = re.compile(rf"\+mc{re.escape(base)}{patch}{re.escape(suffix)}\.jar$")
     to = home / "jars" / tag / node / "livinghorizon.jar"
     if to.is_file():
         return to
     release = github(f"releases/tags/{tag}", repository)
     for asset in release.get("assets", []):
-        if asset["name"].endswith(f"+mc{base}{suffix}.jar"):
+        if name.search(asset["name"]):
             from bench import download
             say(f"downloading {asset['name']}")
             download(asset["browser_download_url"], to)
@@ -306,7 +309,10 @@ def scene(home: Path, game: str) -> Path:
         # Not peaceful: the Nether's and the End's monsters would be refused, or removed as the world
         # opens. They have no AI, and nothing spawns on its own (the spawn rules are off).
         "difficulty=easy",
-        "view-distance=10", "spawn-animals=false", "spawn-npcs=false", "spawn-monsters=false", ""]))
+        # Not spawn-animals=false nor spawn-npcs=false: up to 1.20.x the server then throws out every
+        # animal and villager, summoned ones too. The spawn rules are off, and whatever came while the
+        # chunks were made is removed before the mobs are placed.
+        "view-distance=10", ""]))
     say(f"making the scene's world with the vanilla {game} server (once)")
     server = subprocess.Popen([java_for(game, home), "-Xmx3G", "-jar", "server.jar", "--nogui"], cwd=server_dir,
                               stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -356,25 +362,50 @@ def scene(home: Path, game: str) -> Path:
                     if time.time() > deadline:
                         raise RuntimeError(f"the chunk at {x}, {z} of {dimension} never loaded")
                     time.sleep(2)
-        # The entities load a little after the blocks.
-        time.sleep(20)
-        run("kill @e[type=!minecraft:player]")
-        time.sleep(5)
-        run("kill @e[type=!minecraft:player]")
-        time.sleep(2)
-        for command in commands:
-            run(command)
-        run("say scene built")
-        wait_for(r"scene built", 300)
-        # Whatever came on its own meanwhile.
-        run(f"kill @e[type=!minecraft:player,tag=!{TAG}]")
-        time.sleep(2)
-        run(f"execute if entity @e[tag={TAG}]")
-        answer = wait_for(r"Test (passed|failed)", 60)
-        count = re.search(r"count: (\d+)", answer, re.IGNORECASE)  # "Count: N" from 1.21.11
-        found = int(count.group(1)) if count else 0
+        def count(selector: str, dimension: str = "minecraft:overworld") -> int:
+            run(f"execute in {dimension} if entity {selector}")
+            answer = wait_for(r"Test (passed|failed)", 60)
+            found = re.search(r"count: (\d+)", answer, re.IGNORECASE)  # "Count: N" from 1.21.11
+            return int(found.group(1)) if found else 0
+
+        def missing() -> str:
+            """Which kinds of mob are short, in which dimension: wanted, then held."""
+            short = []
+            for dimension in ("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"):
+                ours = [c for c in commands if " summon " in f" {c}"
+                        and (dimension in c or "execute in" not in c and dimension == "minecraft:overworld")]
+                for kind in sorted(set(KINDS + NETHER_KINDS + END_KINDS)):
+                    wanted = sum(1 for c in ours if f"summon minecraft:{kind} " in c)
+                    if wanted:
+                        # distance=0..: in the dimension the command runs in only.
+                        held = count(f"@e[tag={TAG},type=minecraft:{kind},distance=0..]", dimension)
+                        if held != wanted:
+                            short.append(f"{dimension.split(':')[1]} {kind} {held}/{wanted}")
+            return ", ".join(short) or "none short by kind"
+
+        # The entities load a little after the blocks, later still on a server busy generating:
+        # a mob summoned where they are not loaded yet is lost. Placed again until all of them stay.
+        found = 0
+        for attempt in range(4):
+            time.sleep(20 + 40 * attempt)
+            run("kill @e[type=!minecraft:player]")
+            time.sleep(5)
+            run("kill @e[type=!minecraft:player]")
+            time.sleep(2)
+            for command in commands:
+                run(command)
+            run("say scene built")
+            wait_for(r"scene built", 300)
+            time.sleep(5)
+            # Whatever came on its own meanwhile.
+            run(f"kill @e[type=!minecraft:player,tag=!{TAG}]")
+            time.sleep(2)
+            found = count(f"@e[tag={TAG}]")
+            if found == summons:
+                break
+            say(f"  {found} of {summons} mobs stayed, placing them again: {missing()}")
         if found != summons:
-            raise RuntimeError(f"the scene holds {found} mobs, {summons} were summoned")
+            raise RuntimeError(f"the scene holds {found} mobs, {summons} were summoned: {missing()}")
         say(f"  {found} mobs placed")
         for dimension in ("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"):
             run(f"execute in {dimension} run forceload remove all")
@@ -956,6 +987,7 @@ def launch(home: Path, version: str, game: str, game_dir: Path, settle: int, wai
                 moved = dimension != here
                 here = dimension
                 time.sleep(wait + (5 if moved else 0))
+                result.setdefault("terrain", {})[name] = terrain_ready(hwnd, game_dir)
                 pair, waited = settled_pair(hwnd, shots, before, most=20 if moved else 10,
                                             still=SHADED_STILL if pack else PLAIN_STILL,
                                             first=60 if moved else 10)
@@ -981,6 +1013,35 @@ def launch(home: Path, version: str, game: str, game_dir: Path, settle: int, wai
         result["seconds"] = int(time.time() - started)
         if latest.is_file():
             shutil.copy2(latest, out / "game.log")
+
+
+def terrain_ready(hwnd: int, game_dir: Path, most: float = 40) -> str:
+    """Waits until the game has built the chunks round the camera, as Sodium tells the agent: its
+    build queue empty and no section more for a second. A picture taken before misses chunks, and
+    Voxy or Distant Horizons fill the hole with their own terrain, as still as a finished picture:
+    the two releases then differ where nothing changed. What Sodium said last, for the run's record."""
+    answer_file = game_dir / "lh-bench-ready.txt"
+    started = time.time()
+    counts: list[int] = []
+    said = "?"
+    while time.time() - started < most:
+        answer_file.unlink(missing_ok=True)
+        tell_agent(hwnd, [f"ready {answer_file}"])
+        deadline = time.time() + 2
+        while not answer_file.is_file() and time.time() < deadline:
+            time.sleep(0.05)
+        try:
+            said = answer_file.read_text("utf-8").strip()
+        except OSError:
+            said = "? no answer"
+        if said.startswith("?"):
+            return said  # no Sodium, or no world: nothing to wait for
+        built, sections = said.split()
+        counts = counts + [int(sections)] if built == "1" else []
+        if len(counts) >= 4 and len(set(counts[-4:])) == 1:
+            return said
+        time.sleep(0.25)
+    return f"{said} after {most:.0f} s, not built"
 
 
 def pack_label(pack: Path) -> str:
@@ -1081,5 +1142,5 @@ def play(home: Path, node: str, tables: dict, jar: Path, extra_mods: list[Path],
         text = (out / "game.log").read_text("utf-8", "replace")
         failures += [l.strip() for l in text.splitlines() if re.search(r"Exception|ERROR|FATAL", l)][:8]
     return {"ok": result["ok"], "stopped": result["stopped"], "failures": failures, "shots": result["shots"],
-            "stats": {}, "waited": result.get("waited", {}),
+            "stats": {}, "waited": result.get("waited", {}), "terrain": result.get("terrain", {}),
             "minutes": round(result.get("seconds", 0) / 60, 1)}

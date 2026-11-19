@@ -1,5 +1,6 @@
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -19,6 +20,8 @@ import java.util.List;
  * key &lt;scancode&gt; &lt;keycode&gt;   pressed, then released (games drawn through SDL)
  * text &lt;characters&gt;          typed (the same)
  * iris &lt;pack file&gt;           the shader pack Iris turns on at its next toggle (key K)
+ * ready &lt;file&gt;               writes "1 n" once Sodium has built every section it holds (n of
+ *                            them), "0 n" while it builds, "? why" when it cannot tell
  * </pre>
  *
  * <p>Keys: SDL (Minecraft 26.3 on) hands a key to the game only while its window is the desktop's
@@ -30,6 +33,11 @@ import java.util.List;
  * debug options alone, and they change how it draws. Its toggle key writes the settings it holds
  * in memory, so the pack is set there, shaders off, and the bench presses the toggle key. Iris's
  * classes keep their names on every version, Oculus's too.
+ *
+ * <p>Ready: a picture taken before the chunks round the camera are built misses them, and the far
+ * terrain mods fill the hole with their own terrain, as still as a finished picture. Sodium (and
+ * Embeddium) says whether its build queue is empty and how many sections it holds, under the same
+ * names on every version: built, and no section more for a moment, the picture is complete.
  */
 public final class BenchAgent {
     private BenchAgent() {
@@ -61,6 +69,7 @@ public final class BenchAgent {
                     Files.delete(file);
                     for (String line : lines) {
                         if (line.startsWith("iris ")) iris(line.substring(5));
+                        else if (line.startsWith("ready ")) ready(Paths.get(line.substring(6)));
                         else if (game != null) game.run(line);
                         else System.out.println("lh-bench-agent: no keyboard handler for " + line);
                     }
@@ -88,6 +97,39 @@ public final class BenchAgent {
         config.getClass().getMethod("setShaderPackName", String.class).invoke(config, pack);
         config.getClass().getMethod("setShadersEnabled", boolean.class).invoke(config, false);
         System.out.println("lh-bench-agent: next pack " + pack);
+    }
+
+    /** Whether Sodium has built the chunks it holds, and how many sections it holds. */
+    private static void ready(Path out) throws Exception {
+        String answer;
+        Class<?> type = null;
+        for (String name : new String[]{"net.caffeinemc.mods.sodium.client.render.SodiumWorldRenderer",
+                "me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer"}) {
+            try {
+                type = Class.forName(name, true, gameLoader());
+                break;
+            } catch (ClassNotFoundException e) {
+                // the other name
+            }
+        }
+        if (type == null) {
+            answer = "? no Sodium";
+        } else {
+            Object renderer = type.getMethod("instanceNullable").invoke(null);
+            if (renderer == null) {
+                answer = "? no world drawn yet";
+            } else {
+                boolean built = (boolean) type.getMethod("isTerrainRenderComplete").invoke(renderer);
+                Field field = type.getDeclaredField("renderSectionManager");
+                field.setAccessible(true);
+                Object manager = field.get(renderer);
+                int sections = (int) manager.getClass().getMethod("getTotalSections").invoke(manager);
+                answer = (built ? "1 " : "0 ") + sections;
+            }
+        }
+        Path part = out.resolveSibling(out.getFileName() + ".part");
+        Files.write(part, answer.getBytes(StandardCharsets.UTF_8));
+        Files.move(part, out, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
     }
 
     /** The game's keyboard handler and window, found once the game has started. */

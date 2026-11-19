@@ -26,6 +26,7 @@ import os
 import re
 import shutil
 import subprocess
+import urllib.error
 import sys
 import threading
 import time
@@ -162,7 +163,12 @@ def resolve(project: str, game: str, loader: str, pins: dict, update: bool) -> d
     if key in pins.setdefault(game, {}) and not update:
         return pins[game][key] or None
     query = f'project/{project}/version?game_versions=["{game}"]&loaders=["{loader}"]'
-    versions = modrinth(query.replace('"', "%22").replace("[", "%5B").replace("]", "%5D"))
+    try:
+        versions = modrinth(query.replace('"', "%22").replace("[", "%5B").replace("]", "%5D"))
+    except urllib.error.HTTPError as e:
+        if e.code != 404:
+            raise
+        versions = []  # no such project: a library's id, asked for as a dependency
     chosen = None
     for kind in ("release", "beta", "alpha"):
         chosen = next((v for v in versions if v["version_type"] == kind), None)
@@ -250,19 +256,23 @@ def satisfies(version: str, predicate) -> bool:
     return True
 
 
-def conflicts(metas: dict[str, dict]) -> list[tuple[str, str]]:
-    """(the mod whose version does not fit, why) for every dependency or incompatibility not met
-    among these mods, by Modrinth project."""
+def conflicts(metas: dict[str, dict]) -> list[tuple[str, str, str]]:
+    """(the mod whose version does not fit, why, the mod that says so) for every dependency or
+    incompatibility not met among these mods, by Modrinth project."""
     by_id = {m["id"]: (project, m) for project, m in metas.items() if m.get("id")}
     found = []
     for project, meta in metas.items():
         for other, predicate in meta.get("depends", {}).items():
             if other in by_id and not satisfies(by_id[other][1]["version"], predicate):
-                found.append((by_id[other][0], f"{meta['id']} asks for {other} {predicate}"))
+                found.append((by_id[other][0], f"{meta['id']} asks for {other} {predicate}", project))
         for other, predicate in meta.get("breaks", {}).items():
             if other in by_id and satisfies(by_id[other][1]["version"], predicate):
-                found.append((by_id[other][0], f"{meta['id']} breaks with {other} {predicate}"))
+                found.append((by_id[other][0], f"{meta['id']} breaks with {other} {predicate}", project))
     return found
+
+
+# The mods a profile is about: kept at their newest for the game version, whatever else gives way.
+FAR_TERRAIN = ("distanthorizons", "voxy")
 
 
 def fitting(projects: list[str], game: str, loader: str, pins: dict, update: bool) -> list[Path] | str:
@@ -278,30 +288,55 @@ def fitting(projects: list[str], game: str, loader: str, pins: dict, update: boo
         jars[project] = fetched(project, pin)
     if loader not in ("fabric", "quilt"):
         return list(jars.values())
+    # A mod another one needs and none of these is, published on Modrinth under its own id (Cloth
+    # Config for the Voxy of 1.20.4): added. An id Modrinth does not know (a library inside a jar)
+    # is left to the loader.
+    for _ in range(5):
+        metas = {project: mod_meta(jar) for project, jar in jars.items()}
+        have = {m.get("id") for m in metas.values()}
+        wanted = sorted({dep for m in metas.values() for dep in m.get("depends", {})
+                         if dep not in have and dep not in ("minecraft", "java", "fabricloader", "fabric", "quilt_loader")
+                         and not dep.startswith(("fabric-", "fabric_", "quilted_"))})
+        added = [dep for dep in wanted if dep not in jars and resolve(dep, game, modrinth_loader, pins, update)]
+        for dep in added:
+            jars[dep] = fetched(dep, resolve(dep, game, modrinth_loader, pins, update))
+            say(f"{dep} added: a mod here needs it")
+        if not added:
+            break
     tried: dict[str, set] = {}
     for _ in range(40):
         metas = {project: mod_meta(jar) for project, jar in jars.items()}
         found = conflicts(metas)
         if not found:
             return list(jars.values())
-        project, why = found[0]
-        tried.setdefault(project, set()).add(jars[project].name)
-        query = f'project/{project}/version?game_versions=["{game}"]&loaders=["{modrinth_loader}"]'
-        versions = modrinth(query.replace('"', "%22").replace("[", "%5B").replace("]", "%5D"))
-        for candidate in versions:
-            file = next((f for f in candidate["files"] if f["primary"]), candidate["files"][0])
-            if file["filename"] in tried[project]:
-                continue
-            pin = {"version": candidate["version_number"], "file": file["filename"], "url": file["url"]}
-            jar = fetched(project, pin)
-            tried[project].add(file["filename"])
-            if not any(p == project for p, _ in conflicts({**metas, project: mod_meta(jar)})):
-                say(f"{project} {pin['version']} instead: {why}")
-                pins[game][f"{project}@{modrinth_loader}"] = pin
-                jars[project] = jar
+        target, why, asker = found[0]
+        # The mod named goes down its list; when none of its versions fits, the one that named it
+        # (the newest Sodium breaks with every Iris of 1.21.3: an older Sodium does not). Never a far
+        # terrain mod: an alpha of Distant Horizons from before the mod supports it is no test, and
+        # the profile is played without shaders instead (command_jars).
+        for project in (target, asker) if asker not in FAR_TERRAIN else (target,):
+            tried.setdefault(project, set()).add(jars[project].name)
+            query = f'project/{project}/version?game_versions=["{game}"]&loaders=["{modrinth_loader}"]'
+            versions = modrinth(query.replace('"', "%22").replace("[", "%5B").replace("]", "%5D"))
+            moved = False
+            for candidate in versions:
+                file = next((f for f in candidate["files"] if f["primary"]), candidate["files"][0])
+                if file["filename"] in tried[project]:
+                    continue
+                pin = {"version": candidate["version_number"], "file": file["filename"], "url": file["url"]}
+                jar = fetched(project, pin)
+                tried[project].add(file["filename"])
+                if not any(project in (t, a) and {t, a} == {target, asker}
+                           for t, _, a in conflicts({**metas, project: mod_meta(jar)})):
+                    say(f"{project} {pin['version']} instead: {why}")
+                    pins[game][f"{project}@{modrinth_loader}"] = pin
+                    jars[project] = jar
+                    moved = True
+                    break
+            if moved:
                 break
         else:
-            return f"no version of {project} fits: {why}"
+            return f"no version of {target} fits: {why}"
     return "the mods never fit together"
 
 
@@ -314,17 +349,17 @@ def with_speed(projects: list[str], speed: list[str], game: str, loader: str, pi
     for project in projects:
         if not resolve(project, game, modrinth_loader, pins, update):
             return f"no {project} for {game} on {loader}"
-    extra = [p for p in speed if p not in projects and resolve(p, game, modrinth_loader, pins, update)]
-    for project in optional:
-        if project not in projects and resolve(project, game, modrinth_loader, pins, update):
-            projects = projects + [project]
+    # Optional mods and speed mods alike are left out when they do not fit: never the profile.
+    extra = [p for p in optional if p not in projects and resolve(p, game, modrinth_loader, pins, update)]
+    extra += [p for p in speed if p not in projects + extra and resolve(p, game, modrinth_loader, pins, update)]
     while True:
         jars = fitting(projects + extra, game, loader, pins, update)
         if not isinstance(jars, str) or not extra:
             return jars
-        # Whatever does not fit, the speed mods go first.
+        # Whatever does not fit, the one it names goes first (Indium asking for an older Sodium),
+        # else the last speed mod.
         named = [p for p in extra if p in jars]
-        say(f"speed mod {(named or extra)[-1]} left out: {jars}")
+        say(f"{(named or extra)[-1]} left out: {jars}")
         extra.remove((named or extra)[-1])
 
 
@@ -919,6 +954,8 @@ def command_jars(args, config: dict) -> list[Path]:
     # Everything shared is fetched and installed first, one at a time; then the games run side by side.
     for tag in args.tag:
         run = HOME / "results" / f"{tag}-jars_{stamp}"
+        if run.exists():  # two runs in the same minute
+            run = run.with_name(run.name + dt.datetime.now().strftime("%S"))
         run.mkdir(parents=True)
         runs[tag] = run
         (run / "_run.json").write_text(json.dumps({"tag": tag, "mode": "jars", "nodes": nodes, "profiles": names,
@@ -936,9 +973,18 @@ def command_jars(args, config: dict) -> list[Path]:
                 projects.insert(0, "fabric-api")
             extra = with_speed(projects, config.get("speed_mods", []), game, loader, pins, args.update_mods,
                                profile.get("optional", []))
+            shaders = True
+            if isinstance(extra, str) and re.search(r"\b(iris|oculus)\b", extra):
+                # No Iris that fits the far terrain mod on this version (Distant Horizons on 1.20.2 and
+                # 1.20.4): the far terrain is still worth playing, without shaders.
+                say(f"{node} / {name}: {extra}, played without shaders")
+                projects = [p for p in projects if p not in ("iris", "oculus")]
+                extra = with_speed(projects, config.get("speed_mods", []), game, loader, pins, args.update_mods,
+                                   profile.get("optional", []))
+                shaders = False
             missing = extra if isinstance(extra, str) else None
             packs = []
-            for project in [] if missing else packs_of(profile):
+            for project in [] if missing or not shaders else packs_of(profile):
                 pin = resolve(project, game, "iris", pins, args.update_mods)
                 if pin:
                     packs.append(fetched(project, pin))
