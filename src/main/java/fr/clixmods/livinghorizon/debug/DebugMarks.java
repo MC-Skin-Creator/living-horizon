@@ -45,8 +45,6 @@ public final class DebugMarks {
         TINY(0xFFFFFF55, true),
         /** Not drawn: behind terrain. */
         HIDDEN(0xFFFFAA00, true),
-        /** Not drawn: a copy this close to the player is gone from view, so it cannot be walked up to. */
-        NEAR(0xFFAA7744),
         /** Not drawn: no terrain is drawn under it, neither the game's nor the far terrain. */
         VOID(0xFF5522AA, true),
         /** Not drawn: outside the view. */
