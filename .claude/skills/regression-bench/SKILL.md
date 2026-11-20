@@ -83,19 +83,31 @@ comparison without them.
 
 ## References: compare with the last validated release
 
-Once a release is validated, its pictures become the reference (`approve`), and a new build is
-compared with it alone, without playing the old release again:
+**First, on any machine: `bench.cmd status`.** It says whether this machine has references and
+from which release, game by game, or that it has none yet.
+
+- **References there**: play the build asked for alone; it is compared with them.
+- **None yet** (a new machine, a scene changed): the same command sets them up first. Asked for
+  one release with no `--against`, `jars` finds the games with no reference, plays the newest full
+  release on them (`releases/latest`, never a pre-release: v0.16.0 today), approves it, then plays
+  the build asked for and compares it. Say so to the user before starting: it doubles the time
+  once.
 
 ```
-bench.cmd jars --tag v0.16.0 --nodes 1.20.1,1.21.11,26.2.x,26.3.x --profiles dh,voxy
-bench.cmd approve last                  # v0.16.0 is the reference now
-bench.cmd jars --tag v0.17.0-dev.760 --nodes 1.20.1,1.21.11,26.2.x,26.3.x --profiles dh,voxy
+bench.cmd status
+bench.cmd jars --tag v0.17.0-dev.760 --profiles dh,voxy --fps 10 --parallel 4 --memory 2G
 ```
 
-A run of one release with no `--against` is compared with the references (`baselines/<node>/<profile>`,
-`approved.json` says which release). They stay in `LH_BENCH_HOME`, not in the repository: they
-belong to this machine's graphics card and driver, and are approved again after a driver update,
-a pinned mod update (`mods --update`) or a change of the scene (`SCENE_VERSION`).
+`jar_nodes` in `bench.toml` is the default list of games (ten: one per change in how the mod
+draws, and Forge and NeoForge where most players are); list it to the user before a run and
+take `--nodes` from what they keep. A reference can also be made by hand from any run
+(`approve <run>`), or from a later release once it is validated.
+
+The references stay in `LH_BENCH_HOME`, never in the repository (`baselines/<node>/<profile>`,
+`approved.json` says which release): they belong to this machine's graphics card and driver, and
+are made again after a driver update, a pinned mod update (`mods --update`) or a change of the
+scene (`SCENE_VERSION`). Copy `pins.json` from one machine to another for the same mod versions;
+pictures and frame rates still differ between machines, so references never move between them.
 
 ## Read a result
 
@@ -173,13 +185,18 @@ and the far terrain's warm-up (4 minutes for Distant Horizons, under one for Vox
   its viewpoints; no clouds; minimal particles, so no ash or spores in the Nether; lightning
   flashes hidden, the End's sky too; `graphicsPreset:"custom"`, or from 1.21.11 the preset puts
   its own render distance and clouds back), Distant Horizons' clouds off.
+- **Six viewpoints** (`VIEWPOINTS`): `mountain-high` (the crowd behind the far mountain, all of
+  it hidden), `spot` (the rows from the ground: the game's, then the mod's; the frame rate),
+  `overview` (every row at once), `hill` (the rows behind a hill of the game's hidden), `nether`
+  and `end`. Ten pictures a game: the six without shaders, then `SHADED` (`mountain-high`, `spot`)
+  again with each pack, where a pack changes what the mod does; never the other dimensions.
 - **One launch per far terrain mod**: the game opens the world itself (Quick Play), the bench
-  hides the interface (F1), goes through `VIEWPOINTS` without shaders, then through them again
+  hides the interface (F1), goes through `VIEWPOINTS` without shaders, then through `SHADED` again
   with each shader pack of the profile, changed in the same game: the agent (below) sets it as
   the pack Iris holds, shaders off, and Iris's toggle key (K) turns them on with it, again until
   its log says "Using shaderpack" with that pack (Oculus the same). Iris's reload key would read
   its settings file again, but only with its debug options on, which change how it draws. The
-  pictures of a pack are named after it: `photon-mountain`, `complementary-end`.
+  pictures of a pack are named after it: `photon-mountain-high`, `complementary-spot`.
 - **At each viewpoint** an `/execute in <dimension> run tp` typed in the chat (checked in the
   game's log; Escape and again when a menu was in the way), a few seconds more when it changes
   dimension, then the game's own screenshots (F2) one after another until
@@ -218,7 +235,7 @@ and the far terrain's warm-up (4 minutes for Distant Horizons, under one for Vox
 `jars --fps 10` reads the game's frame rate for 10 s at one view, the spot (facing the rows: the
 near ones the game's, the far ones the mod's), after its pictures without shaders. The agent reads
 the game's own counter once a second (`Minecraft.fps`, `class_310.field_1738` under Fabric's
-names, what the debug screen shows), and `run.json` keeps its mean, low, high and every second
+names, `f_91021_` under old Forge's, what the debug screen shows), and `run.json` keeps its mean, low, high and every second
 (`fps`). The games run with no frame cap then (`maxFps:260`; 60 otherwise, to share the graphics
 card). One game measures at a time: it waits for the others to finish the viewpoint they are at
 (`busy`), they start no other meanwhile, and the guard minimises their windows, so that they

@@ -41,7 +41,8 @@ import java.util.List;
  * names on every version: built, and no section more for a moment, the picture is complete.
  *
  * <p>Frame rate: the game counts its frames each second in a static field of its main class,
- * {@code Minecraft.fps}, which Fabric names {@code class_310.field_1738} on every version. Read
+ * {@code Minecraft.fps}, which Fabric names {@code class_310.field_1738} on every version and
+ * Forge before 1.20.5 {@code f_91021_}. Read
  * once a second, as its debug screen does.
  */
 public final class BenchAgent {
@@ -112,7 +113,7 @@ public final class BenchAgent {
     private static void fps(int seconds, Path out) throws Exception {
         Field counter = null;
         for (String[] name : new String[][]{{"net.minecraft.client.Minecraft", "fps"},
-                {"net.minecraft.class_310", "field_1738"}}) {
+                {"net.minecraft.class_310", "field_1738"}, {"net.minecraft.client.Minecraft", "f_91021_"}}) {
             try {
                 counter = Class.forName(name[0], true, gameLoader()).getDeclaredField(name[1]);
                 break;

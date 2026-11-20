@@ -101,6 +101,26 @@ def latest_dev(repository: str) -> str:
     sys.exit("bench: no develop pre-release found")
 
 
+def latest_stable(repository: str) -> str:
+    """The tag of the newest full release, never a pre-release: what the references start from."""
+    release = github("releases/latest", repository)
+    if not release.get("tag_name"):
+        sys.exit("bench: no full release found")
+    return release["tag_name"]
+
+
+def references(stale: bool = False) -> dict[tuple[str, str], dict]:
+    """The approved references on this machine, by node and profile: the release and when. One of
+    another scene (`SCENE_VERSION`) is no reference any more; `stale` lists those instead."""
+    import jars
+    found = {}
+    for approved in sorted((HOME / "baselines").glob("*/*/approved.json")):
+        data = json.loads(approved.read_text("utf-8"))
+        if (data.get("scene") == jars.SCENE_VERSION) != stale:
+            found[(approved.parent.parent.name, approved.parent.name)] = data
+    return found
+
+
 def checkout(ref: str, config: dict) -> tuple[Path, str]:
     """The source to build and a label for the run. `local` builds the repository this script is in, as it is."""
     if ref == "local":
@@ -937,7 +957,8 @@ def command_run(args, config: dict) -> Path:
 def command_jars(args, config: dict) -> list[Path]:
     """Releases' published jars, on any loader and version, driven from outside (jars.py): one
     launch per release, node and profile, several at once. The later releases are compared with
-    the first (or with --against)."""
+    the first (or with --against); one release alone is compared with this machine's references,
+    which are made first from the newest full release where there are none yet."""
     import jars
     from concurrent.futures import ThreadPoolExecutor
     tables = nodes_of(REPO)
@@ -947,6 +968,16 @@ def command_jars(args, config: dict) -> list[Path]:
     else:
         nodes = pick(args.nodes, known, "node") if args.nodes else config["jar_nodes"]
     names = pick(args.profiles, list(config["profiles"]), "profile")
+    if len(args.tag) == 1 and not args.against and not getattr(args, "no_init", False):
+        have = references()
+        missing = [(n, p) for n in nodes for p in names if (n, p) not in have]
+        stable = latest_stable(config["repository"])
+        if missing and args.tag[0] != stable:
+            say(f"no reference yet for {len(missing)} game(s) on this machine: playing {stable}, the newest full"
+                " release, and approving it first")
+            first = argparse.Namespace(**{**vars(args), "tag": [stable], "no_init": True})
+            for run in command_jars(first, config):
+                approve_run(run, cells=set(missing))
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M")
     pins = load_pins()
     runs: dict[str, Path] = {}
@@ -1090,12 +1121,25 @@ def find_run(name: str) -> Path:
 def command_approve(args, config: dict) -> None:
     run = find_run(args.run)
     nodes = pick(args.nodes, [p.name for p in run.iterdir() if p.is_dir() and not p.name.startswith("_")], "node")
-    for node in nodes:
+    approve_run(run, nodes, args.profiles.split(",") if args.profiles else None, args.force)
+
+
+def approve_run(run: Path, nodes: list[str] | None = None, profiles: list[str] | None = None,
+                force: bool = False, cells: set | None = None) -> None:
+    """Makes a run's pictures (and frame rates) this machine's references, node by node; only the
+    (node, profile) pairs of `cells` when given."""
+    for node in nodes if nodes is not None else [p.name for p in run.iterdir() if p.is_dir() and not p.name.startswith("_")]:
+        if not (run / node).is_dir():
+            continue
         for profile_dir in sorted(p for p in (run / node).iterdir() if p.is_dir()):
-            if args.profiles and profile_dir.name not in args.profiles.split(","):
+            if profiles and profile_dir.name not in profiles:
+                continue
+            if cells is not None and (node, profile_dir.name) not in cells:
+                continue
+            if not (profile_dir / "run.json").is_file():
                 continue
             played = json.loads((profile_dir / "run.json").read_text("utf-8"))
-            if not played.get("ok") and not args.force:
+            if not played.get("ok") and not force:
                 say(f"{node} / {profile_dir.name}: failed, not approved (--force to approve anyway)")
                 continue
             base = HOME / "baselines" / node / profile_dir.name
@@ -1103,8 +1147,10 @@ def command_approve(args, config: dict) -> None:
                 shutil.rmtree(base)
             shutil.copytree(profile_dir, base)
             started = json.loads((run / "_run.json").read_text("utf-8")) if (run / "_run.json").is_file() else {}
+            import jars
             (base / "approved.json").write_text(json.dumps({"run": run.name, "tag": started.get("tag") or started.get("label"),
-                                                            "at": dt.datetime.now().isoformat()}), "utf-8")
+                                                            "at": dt.datetime.now().isoformat(),
+                                                            "scene": jars.SCENE_VERSION}), "utf-8")
             say(f"{node} / {profile_dir.name}: approved from {run.name}")
 
 
@@ -1185,6 +1231,7 @@ def main() -> None:
     mods = sub.add_parser("mods", help="the pinned mod versions")
     mods.add_argument("--update", action="store_true")
     sub.add_parser("runs", help="the runs kept")
+    sub.add_parser("status", help="whether this machine has references, and from which release")
     args = parser.parse_args()
     config = settings()
     HOME.mkdir(parents=True, exist_ok=True)
@@ -1200,6 +1247,19 @@ def main() -> None:
         command_approve(args, config)
     elif args.command == "mods":
         command_mods(args, config)
+    elif args.command == "status":
+        have = references()
+        if not have:
+            print(f"no reference on this machine yet: the first `jars` run plays "
+                  f"{latest_stable(config['repository'])}, the newest full release, and approves it")
+        for (node, profile), approved in sorted(have.items()):
+            print(f"{node:16} {profile:8} {approved.get('tag')}  (approved {approved.get('at', '')[:16]})")
+        old = references(stale=True)
+        if old:
+            print("of an older scene, no reference any more: " + ", ".join(f"{n}/{p}" for n, p in sorted(old)))
+        missing = [(n, p) for n in config["jar_nodes"] for p in ("dh", "voxy") if (n, p) not in have]
+        if have and missing:
+            print("no reference for: " + ", ".join(f"{n}/{p}" for n, p in missing) + " (or no such mod there)")
     elif args.command == "runs":
         for p in sorted((HOME / "results").iterdir() if (HOME / "results").is_dir() else []):
             summary = p / "summary.json"

@@ -4,9 +4,16 @@
 # The Fabric nodes run, from 1.21.4: the client game tests need the Fabric API's module.
 nodes = ["1.21.4", "1.21.5", "1.21.8", "1.21.10", "1.21.11", "26.1.x", "26.2.x", "26.3.x"]
 
-# The nodes `jars` plays by default (published jars, any loader): those the client game tests
-# cannot reach. `--nodes all` plays every node of stonecutter.properties.toml.
-jar_nodes = ["1.20.1-forge", "1.20.1", "1.21.1-neoforge", "1.21.1-forge", "1.21.11-neoforge", "26.3.x-neoforge", "1.21.11-quilt"]
+# The nodes `jars` plays by default (published jars, any loader): one per change in how the mod
+# draws (CLAUDE.md), and the loaders players use most. `--nodes all` plays every node of
+# stonecutter.properties.toml.
+#   1.20.1 Fabric and Forge: the most played modpack version, before the entity render states
+#   1.21.1 Fabric and NeoForge: the other big modpack version
+#   1.21.4: the first with render states; 1.21.10: the feature dispatcher (1.21.9 to 26.1)
+#   1.21.11: the reference; 26.1: not obfuscated; 26.2: PreparedFrame, reversed depth;
+#   26.3: SDL window, GPU path
+jar_nodes = ["1.20.1", "1.20.1-forge", "1.21.1", "1.21.1-neoforge", "1.21.4", "1.21.10", "1.21.11", "26.1.x",
+             "26.2.x", "26.3.x"]
 
 # The node every other is compared with, between versions.
 reference_node = "1.21.11"

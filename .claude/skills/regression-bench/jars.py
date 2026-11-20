@@ -47,28 +47,26 @@ END_FEET = 61
 END_Z = -600
 # Where the pictures are taken: x, y, z, yaw, pitch (yaw 0 faces south, +z, where the rows are).
 VIEWPOINTS = {
-    # The mountain north of the spot, past the render distance, a crowd of golems right behind it:
-    # every one of them must be hidden. One showing through is a line of figures on its face.
-    "mountain": (0.5, -58.4, -20, 180, 0),
-    # The same from higher up, the crowd just below the mountain's ridge.
+    # The mountain north of the spot, past the render distance, a crowd of golems right behind it
+    # and just below its ridge from up here: every one of them must be hidden. One showing through
+    # is a line of figures on its face (the dev.744 bug on Forge 1.20.1).
     "mountain-high": (0.5, -36, -10, 180, 4),
-    # From the side: the control group beside the mountain seen, the crowd still hidden.
-    "mountain-side": (-70, -56, -30, -142, 2),
-    # The spot: the near rows the game draws, the middle ones past its entity distance, the wall.
+    # The spot: the near rows the game draws, the middle ones the mod draws past the game's entity
+    # distance, the far ones read from the save; where the frame rate is read.
     "spot": (0.5, -58.4, 0.5, 0, 0),
     # Above and behind: every row at once, the far ones past the render distance.
     "overview": (0.5, -20, -40, 0, 15),
-    # Behind the wall, facing it: the mobs on the other side must be hidden.
-    "wall": (-36, -58.4, 140, 180, 0),
     # In front of the hill: the far rows behind it hidden, the first one before it seen.
     "hill": (64, -58.4, 150, 0, 0),
-    # From the far end, looking back: the near rows are remembered copies from here.
-    "back": (0.5, -50, 470, 180, 5),
     # The Nether: down a closed tunnel, its rows of mobs going away, half of the far ones behind a wall.
     "nether": (0.5, NETHER_FEET + 1.6, -10, 0, 0),
     # The End: along a causeway in the void, its rows of mobs, the main island far behind them.
     "end": (0.5, END_FEET + 1.6, END_Z - 10, 0, 2),
 }
+# The viewpoints taken again with each shader pack: where a pack changes what the mod does (the
+# depth of the far terrain, its fade), not the other dimensions. Removed for being covered by
+# these: "mountain" and "mountain-side" (mountain-high), "wall" (hill), "back" (overview).
+SHADED = ("mountain-high", "spot")
 # The dimension of each viewpoint not in the Overworld.
 DIMENSIONS = {"nether": "minecraft:the_nether", "end": "minecraft:the_end"}
 
@@ -983,11 +981,14 @@ def launch(home: Path, version: str, game: str, game_dir: Path, settle: int, wai
                         return result
                     time.sleep(3)
                     # The pack compiles, then its frames settle (temporal effects): until two match.
+                    # The game draws nothing while it compiles: Oculus took 47 s for Photon on Forge 1.20.1.
                     settled_pair(hwnd, shots, set(shots.glob("*.png")) if shots.is_dir() else set(),
-                                 most=shader_settle, still=SHADED_STILL)
+                                 most=shader_settle, still=SHADED_STILL, first=120)
                     say(f"  {pack_label(pack)} on and settled in {int(time.time() - turned)} s")
             here = "minecraft:overworld"
             for name, (x, y, z, yaw, pitch) in VIEWPOINTS.items():
+                if pack and name not in SHADED:
+                    continue
                 dimension = DIMENSIONS.get(name, "minecraft:overworld")
                 name = prefix + name
                 if process.poll() is not None:
