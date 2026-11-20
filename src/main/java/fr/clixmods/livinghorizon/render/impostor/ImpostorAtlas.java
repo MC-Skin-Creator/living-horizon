@@ -340,10 +340,25 @@ public final class ImpostorAtlas {
         return relief;
     }
 
-    /** What {@link #relief} should be now; when it changes, every picture is baked again. */
-    private static boolean wantsRelief() {
-        return FarConfig.get().impostorShading && BACKEND.reliefs() && IrisNormals.packReadsNormalMaps();
+    /**
+     * What {@link #relief} should be, as last asked ({@link #askRelief}); when it changes,
+     * every picture is baked again.
+     */
+    private static boolean wantedRelief;
+
+    /**
+     * Asks again what {@link #relief} should be: once a frame, from {@link #bakePending}, and
+     * when the pictures are thrown away. Asking Iris goes through reflection, far too costly
+     * for {@link #sheet}, which is called for every figure every frame.
+     */
+    private static void askRelief() {
+        reliefAskedAt = System.nanoTime();
+        wantedRelief = FarConfig.get().impostorShading && BACKEND.reliefs() && IrisNormals.packReadsNormalMaps();
     }
+
+    /** When {@link #askRelief} last ran: asked again past a second, should {@link #bakePending} not run. */
+    private static long reliefAskedAt = Long.MIN_VALUE;
+    private static final long RELIEF_ASKED_NANOS = 1_000_000_000L;
 
     /** How many levels a sheet has: its colours, then its normal map's while {@link #relief}. */
     static int levels() {
@@ -449,6 +464,7 @@ public final class ImpostorAtlas {
     public static void regenerate() {
         failed = false;
         dirty = true;
+        askRelief();
         settle();
         ImpostorDisk.clear();
     }
@@ -638,7 +654,8 @@ public final class ImpostorAtlas {
 
     /** Drops what a reload or a switch-off made stale. */
     private static void settle() {
-        boolean wanted = wantsRelief();
+        if (reliefAskedAt == Long.MIN_VALUE || System.nanoTime() - reliefAskedAt > RELIEF_ASKED_NANOS) askRelief();
+        boolean wanted = wantedRelief;
         if (wanted != relief) dirty = true;
         if (!dirty) return;
         dirty = false;
@@ -677,6 +694,7 @@ public final class ImpostorAtlas {
     }
 
     private static void bakeQueued() {
+        askRelief();
         settle();
         if (!usable()) {
             for (Request request : QUEUE) QUEUED.remove(request.key);

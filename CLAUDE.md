@@ -800,6 +800,9 @@ come back, add it here in the same pull request: this file is what the next sess
   the mod off, each preset and each part on its own, on their GPU and mods. Run in the world
   `/livinghorizon benchmark world` makes, it starts from a fixed spot and view, so two reports,
   before and after an update, compare. Here, the `perf` game test does the same headless.
+  Another mod reached by reflection (Iris, Voxy, Distant Horizons) is asked once a frame at
+  most, never per figure: `ImpostorAtlas.sheet` asked Iris whether the pack reads normal maps,
+  a `Class.forName` and three lookups for every figure, milliseconds a frame under shaders.
 - **Depth arithmetic** (a distance to a depth and back, in any layout, a matrix stored either
   way, its inverse, the rectangles written into Voxy's depth) lives in `render/DepthMath`, which
   asks the game nothing. A fix to the depth code adds a case to `DepthMathTest`.
