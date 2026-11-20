@@ -85,6 +85,7 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 bool("impostorEntities", c.impostorEntities, v -> c.impostorEntities = v));
         list.addSmall(bool("impostorPlayers", c.impostorPlayers, v -> c.impostorPlayers = v),
                 bool("impostorShading", c.impostorShading, v -> c.impostorShading = v));
+        list.addSmall(bool("impostorAnimation", c.impostorAnimation, v -> c.impostorAnimation = v));
         list.addBig(distance(Shape.AROUND, blocks("impostorDistance", 0, FarConfig.MAX_IMPOSTOR_DISTANCE,
                 c.impostorDistance, v -> c.impostorDistance = v)));
         list.addBig(unit("impostorPixels", "pixels", 0, FarConfig.MAX_IMPOSTOR_PIXELS, c.impostorPixels,

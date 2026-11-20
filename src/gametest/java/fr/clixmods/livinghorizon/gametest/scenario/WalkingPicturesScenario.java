@@ -1,0 +1,170 @@
+package fr.clixmods.livinghorizon.gametest.scenario;
+
+import fr.clixmods.livinghorizon.gametest.Scenario;
+import fr.clixmods.livinghorizon.gametest.Scene;
+import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
+import fr.clixmods.livinghorizon.render.impostor.ImpostorKey;
+import fr.clixmods.livinghorizon.render.impostor.ImpostorWalk;
+import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.player.Player;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Walking mobs drawn as pictures keep walking ({@code impostorAnimation}): a row of mobs past
+ * the game's entity distance, walked to and fro by the server, shown as pictures. Their walk is
+ * baked after their resting pictures; screenshots at two moments of a stride show the legs in
+ * two places, one with the mobs stopped shows them at rest, and the atlas shows each look three
+ * times: at rest, one leg forward, the other.
+ */
+public final class WalkingPicturesScenario implements Scenario {
+    private static final String[] MOBS = {"cow", "pig", "sheep", "horse", "villager", "creeper", "wolf", "iron_golem"};
+    /** Blocks a mob walks a tick: about a strolling mob, legs at four times that. */
+    private static final double PACE = 0.1;
+    /** Ticks walked one way before turning back, so the row stays in view. */
+    private static final int LEG = 60;
+
+    private int walked;
+
+    @Override
+    public String name() {
+        return "walkingpictures";
+    }
+
+    @Override
+    public void run(ClientGameTestContext context) {
+        context.runOnClient(minecraft -> minecraft.options.entityDistanceScaling().set(0.5));
+        Scene.configure(context, config -> {
+            config.impostors = true;
+            config.impostorAnimation = true;
+            config.impostorDistance = 32;
+            config.impostorPixels = 0;
+            config.hideOccludedMobs = false;
+            config.optStillTiny = false;
+        });
+        walked = 0;
+        try (TestSingleplayerContext world = Scene.flatWorld(context)) {
+            for (int i = 0; i < MOBS.length; i++) Scene.summon(world, MOBS[i], (i - (MOBS.length - 1) / 2.0) * 3.2, 45, -90);
+            context.waitTicks(40);
+
+            // Walked long enough for their resting pictures, then their walk, to be baked.
+            walk(context, world, 400);
+            boolean failed = context.computeOnClient(minecraft -> {
+                Scene.log("walkingpictures baked=" + ImpostorAtlas.sheets() + " waiting=" + ImpostorAtlas.waiting()
+                        + " failed=" + ImpostorAtlas.failed() + " mob memory=" + ImpostorAtlas.memory(false) / 1024 + " KB");
+                return ImpostorAtlas.failed();
+            });
+            if (failed) throw new AssertionError("The impostor bake failed, see the log");
+            List<String> missing = context.computeOnClient(WalkingPicturesScenario::unbaked);
+            Scene.log("walkingpictures walks not baked: " + missing);
+            if (missing.contains("minecraft:cow")) throw new AssertionError("The cow's walk was not baked: " + missing);
+
+            context.runOnClient(minecraft -> minecraft.options.fov().set(30));
+            // Two moments of a stride: the cow's legs one way, then the other.
+            int[] first = shotAt(context, world, 1, "walk-a");
+            int[] second = shotAt(context, world, ImpostorWalk.FRAMES, "walk-b");
+            Scene.log("walkingpictures frames at walk-a " + java.util.Arrays.toString(first)
+                    + ", at walk-b " + java.util.Arrays.toString(second));
+
+            // Stopped: their legs come to rest, and so do their pictures.
+            context.waitTicks(40);
+            int[] still = context.computeOnClient(WalkingPicturesScenario::frames);
+            Scene.log("walkingpictures frames standing " + java.util.Arrays.toString(still));
+            for (int frame : still) {
+                if (frame != 0) throw new AssertionError("A mob standing still shows a picture of its walk: "
+                        + java.util.Arrays.toString(still));
+            }
+            Scene.screenshot(context, this, "standing");
+            context.runOnClient(minecraft ->
+                    Scene.log("walkingpictures drawn impostors=" + PolygonStats.impostors() + " models=" + PolygonStats.models()));
+
+            // Off: one picture, standing still, even walking.
+            Scene.configure(context, config -> config.impostorAnimation = false);
+            walk(context, world, 20);
+            context.takeScreenshot(name() + "-off");
+            Scene.configure(context, config -> config.impostorAnimation = true);
+
+            context.runOnClient(minecraft -> minecraft.options.fov().set(70));
+            Scene.screenshotAtlas(context, this);
+        }
+    }
+
+    /**
+     * Walks until the cow shows picture {@code frame} of its walk, then takes a screenshot at
+     * once, before its legs slow down; the picture each mob shows then.
+     */
+    private int[] shotAt(ClientGameTestContext context, TestSingleplayerContext world, int frame, String shot) {
+        for (int tick = 0; tick < 200; tick++) {
+            walk(context, world, 1);
+            int[] frames = context.computeOnClient(WalkingPicturesScenario::frames);
+            if (frames.length > 0 && frames[0] == frame) {
+                context.takeScreenshot(name() + "-" + shot);
+                return frames;
+            }
+        }
+        throw new AssertionError("The cow never showed picture " + frame + " of its walk");
+    }
+
+    /** {@code ticks} ticks of the server walking every mob along x, turning back every {@link #LEG} ticks. */
+    private void walk(ClientGameTestContext context, TestSingleplayerContext world, int ticks) {
+        for (int i = 0; i < ticks; i++, walked++) {
+            boolean back = walked / LEG % 2 == 1;
+            float yaw = back ? 90f : -90f;
+            double step = back ? -PACE : PACE;
+            world.getServer().runOnServer(server -> {
+                for (Entity entity : server.overworld().getAllEntities()) {
+                    if (!(entity instanceof Mob mob)) continue;
+                    mob.setPos(mob.getX() + step, mob.getY(), mob.getZ());
+                    mob.setYRot(yaw);
+                    mob.setYBodyRot(yaw);
+                    mob.setYHeadRot(yaw);
+                }
+            });
+            context.waitTick();
+        }
+    }
+
+    /** The mobs of the row, west to east, the cow first. */
+    private static List<LivingEntity> row(Minecraft minecraft) {
+        List<LivingEntity> row = new ArrayList<>();
+        for (Entity entity : minecraft.level.entitiesForRendering()) {
+            if (entity instanceof LivingEntity living && !(entity instanceof Player)) row.add(living);
+        }
+        row.sort((a, b) -> Double.compare(a.getX(), b.getX()));
+        return row;
+    }
+
+    /** The picture of its walk each mob of the row shows now, as the renderer picks it. */
+    private static int[] frames(Minecraft minecraft) {
+        List<LivingEntity> row = row(minecraft);
+        float partialTick = minecraft.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        int[] frames = new int[row.size()];
+        for (int i = 0; i < frames.length; i++) {
+            LivingEntity mob = row.get(i);
+            frames[i] = ImpostorWalk.frame(mob.walkAnimation.position(partialTick), mob.walkAnimation.speed(partialTick));
+        }
+        return frames;
+    }
+
+    /** The kinds of the row whose walk is not baked yet, every picture of it. */
+    private static List<String> unbaked(Minecraft minecraft) {
+        List<String> missing = new ArrayList<>();
+        for (LivingEntity mob : row(minecraft)) {
+            ImpostorKey key = ImpostorKey.of(mob);
+            for (int frame = 1; frame <= ImpostorWalk.FRAMES; frame++) {
+                if (ImpostorAtlas.sheet(ImpostorKey.frame(key, frame)) == null) {
+                    missing.add(key.type());
+                    break;
+                }
+            }
+        }
+        return missing;
+    }
+}

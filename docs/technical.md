@@ -996,6 +996,40 @@ textures, draws and reads back the views, and writes a sheet into its page. Ever
 - When its look changes, a player or a mob keeps its old picture until the new one is baked;
   a 3D bird is drawn as a model meanwhile.
 
+### Walking
+
+*Animated Pictures* (`impostorAnimation`, on by default) keeps a walking mob walking as a picture,
+rather than gliding along in its resting pose (`ImpostorWalk`).
+
+- **The stride.** The game's models swing legs and arms by `cos(position * 0.6662)` times the
+  walk's speed: a stride every 9.43 of walk position. It is cut into four steps
+  (`ImpostorWalk.PHASES`). Half way between its two ends the legs cross straight down, as they
+  stand at rest, so those two steps show the resting picture every figure has; only the two ends
+  are baked, two sheets more per look (`ImpostorWalk.FRAMES`). Eight steps would take six.
+- **Keys.** Each picture of a walk has a key of its own, as a height has for a flyer:
+  `ImpostorKey.frame(key, n)`, `n` from 1, salted and the same in every game, so the allocator,
+  the disk, the aliases and the budgets need nothing new. A step whose pixels come out the same
+  as the resting picture (a fish, a slime: models that do not swing) is an alias of it.
+- **Baking.** `ImpostorAtlas.staged` sets the state's `walkAnimationPos` to the step and its
+  `walkAnimationSpeed` to `ImpostorWalk.BAKED_SPEED` (0.5, a mob strolling; at the game's 1 a
+  cow's legs reach out at 80 degrees). Before 1.21.2 the stand-ins of `render/state/` set the
+  same on the entity, so every backend bakes them. They wait in a queue of their own, baked once
+  every resting picture asked for is, within the same 3 ms; a step starts as large as the
+  resting picture was grown.
+- **Asked for.** A copy's walk is asked for by `GhostRenderer.prewarm` once its resting picture
+  is baked, and by any picture showing a step not baked yet, which shows the resting picture
+  meanwhile: never a model.
+- **Shown.** `GhostRenderer.stride` reads the figure's own legs (`walkAnimation` at the frame's
+  partial tick, times 3 for a baby before 1.21.2) and picks the nearest step; below a walk speed
+  of `ImpostorWalk.WALKING` it is at rest. A step's sheet is drawn at its own size and feet; the
+  thresholds read the resting one, so a step never decides between model and picture. A copy
+  resting untouched (`MobMemory.Remembered.resting`: its legs were not caught up) is at rest
+  without its legs being read. Only mobs standing on their legs walk: not players, flyers
+  (`fromHeights`), boats, vehicles or riders, and not with *Still Tiny Mobs* holding them.
+- **Cost.** Two sheets more per look of a mob that walks: 340 KB more video memory (680 KB with
+  normal maps), three times its resting picture. The frame's cost is unchanged: one quad a figure.
+  `walkingpictures` shows the stride in two screenshots and the three sheets of each look.
+
 ### Video memory
 
 - **Layout.** Each kind of figure has pages of its own, one sheet per row (512 pixels wide):

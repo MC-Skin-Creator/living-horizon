@@ -383,6 +383,13 @@ public final class FarConfig {
     public boolean impostorShading = true;
 
     /**
+     * Distant mobs drawn as pictures keep walking: a few pictures of their stride are baked
+     * besides the resting one (see {@code ImpostorWalk}), two more per look of a mob that walks,
+     * so three times the video memory for those. Off: one picture, standing still. "Animated Pictures".
+     */
+    public boolean impostorAnimation = true;
+
+    /**
      * Megabytes of video memory the mobs' impostor pictures may take, apart from the players':
      * taken only as looks are met, the picture used longest ago making room when full.
      */

@@ -74,6 +74,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.StrandedScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.UndergroundScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.UnloadScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.VehiclesScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.WalkingPicturesScenario;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
@@ -98,6 +99,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new PlayerSizeScenario(),
             new ImpostorSharingScenario(),
             new ImpostorCrowdScenario(),
+            new WalkingPicturesScenario(),
             new ImpostorEdgesScenario(),
             new ImpostorLongMobsScenario(),
             new ImpostorScreenScenario(),
