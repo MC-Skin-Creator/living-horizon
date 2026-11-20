@@ -22,6 +22,7 @@ import java.util.List;
  * iris &lt;pack file&gt;           the shader pack Iris turns on at its next toggle (key K)
  * ready &lt;file&gt;               writes "1 n" once Sodium has built every section it holds (n of
  *                            them), "0 n" while it builds, "? why" when it cannot tell
+ * fps &lt;seconds&gt; &lt;file&gt;       writes the game's frame rate once a second for that long
  * </pre>
  *
  * <p>Keys: SDL (Minecraft 26.3 on) hands a key to the game only while its window is the desktop's
@@ -38,6 +39,10 @@ import java.util.List;
  * terrain mods fill the hole with their own terrain, as still as a finished picture. Sodium (and
  * Embeddium) says whether its build queue is empty and how many sections it holds, under the same
  * names on every version: built, and no section more for a moment, the picture is complete.
+ *
+ * <p>Frame rate: the game counts its frames each second in a static field of its main class,
+ * {@code Minecraft.fps}, which Fabric names {@code class_310.field_1738} on every version. Read
+ * once a second, as its debug screen does.
  */
 public final class BenchAgent {
     private BenchAgent() {
@@ -70,6 +75,10 @@ public final class BenchAgent {
                     for (String line : lines) {
                         if (line.startsWith("iris ")) iris(line.substring(5));
                         else if (line.startsWith("ready ")) ready(Paths.get(line.substring(6)));
+                        else if (line.startsWith("fps ")) {
+                            String[] parts = line.split(" ", 3);
+                            fps(Integer.parseInt(parts[1]), Paths.get(parts[2]));
+                        }
                         else if (game != null) game.run(line);
                         else System.out.println("lh-bench-agent: no keyboard handler for " + line);
                     }
@@ -97,6 +106,33 @@ public final class BenchAgent {
         config.getClass().getMethod("setShaderPackName", String.class).invoke(config, pack);
         config.getClass().getMethod("setShadersEnabled", boolean.class).invoke(config, false);
         System.out.println("lh-bench-agent: next pack " + pack);
+    }
+
+    /** The game's frame rate, read once a second for {@code seconds}, one number a line. */
+    private static void fps(int seconds, Path out) throws Exception {
+        Field counter = null;
+        for (String[] name : new String[][]{{"net.minecraft.client.Minecraft", "fps"},
+                {"net.minecraft.class_310", "field_1738"}}) {
+            try {
+                counter = Class.forName(name[0], true, gameLoader()).getDeclaredField(name[1]);
+                break;
+            } catch (ClassNotFoundException | NoSuchFieldException e) {
+                // the other names
+            }
+        }
+        StringBuilder lines = new StringBuilder();
+        if (counter == null) {
+            lines.append("? no frame counter\n");
+        } else {
+            counter.setAccessible(true);
+            for (int i = 0; i < seconds; i++) {
+                Thread.sleep(1000);
+                lines.append(counter.getInt(null)).append("\n");
+            }
+        }
+        Path part = out.resolveSibling(out.getFileName() + ".part");
+        Files.write(part, lines.toString().getBytes(StandardCharsets.UTF_8));
+        Files.move(part, out, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
     }
 
     /** Whether Sodium has built the chunks it holds, and how many sections it holds. */

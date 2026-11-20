@@ -1028,7 +1028,8 @@ def command_jars(args, config: dict) -> list[Path]:
             # The far terrain is kept, but loaded from disk as the camera moves: a little more time.
             settle, wait = args.settle + 10, max(args.wait, 1.0)
         result = jars.play(HOME, node, tables, jar, extra, packs, out, settle, wait, loader_pin,
-                           instance=f"{node}-{name}-{tag}", shader_settle=args.shader_settle, memory=args.memory)
+                           instance=f"{node}-{name}-{tag}", shader_settle=args.shader_settle, memory=args.memory,
+                           fps=args.fps)
         result["versions"] = versions
         (out / "stats.json").write_text(json.dumps(result.pop("stats", {}), indent=2), "utf-8")
         (out / "run.json").write_text(json.dumps(result, indent=2), "utf-8")
@@ -1171,6 +1172,9 @@ def main() -> None:
                             help="seconds at most for the shader pack to compile and settle once turned on")
     jar_parser.add_argument("--parallel", type=int, help="games at once (default: as many as the memory holds)")
     jar_parser.add_argument("--memory", default="3G", help="Java heap of each game (2G lets more run at once)")
+    jar_parser.add_argument("--fps", type=int, default=0, metavar="SECONDS",
+                            help="read the frame rate for this many seconds at the spot, without shaders and with "
+                                 "no frame cap: one game at a time, the others holding still and minimised")
     jar_parser.add_argument("--against", help="a run to compare with instead of the first release")
     jar_parser.add_argument("--update-mods", action="store_true")
     approve = sub.add_parser("approve", help="make a run's pictures the baselines")

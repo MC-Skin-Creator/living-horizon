@@ -427,7 +427,11 @@ def scene(home: Path, game: str) -> Path:
 
 # --- One launch, every viewpoint ---------------------------------------------------------------
 
-def prepare(game_dir: Path, mods: list[Path], world: Path, packs: list[Path], version: int | None) -> None:
+def prepare(game_dir: Path, mods: list[Path], world: Path, packs: list[Path], version: int | None,
+            uncapped: bool = False) -> None:
+    """A game's folder: its mods, a copy of the scene, its settings. `uncapped`: no frame rate cap
+    (260 is the game's "unlimited"), for a run whose frame rate is measured; 60 otherwise, so that
+    games side by side share the graphics card."""
     # A game just stopped may hold its files for a moment longer.
     for _ in range(30):
         try:
@@ -453,7 +457,7 @@ def prepare(game_dir: Path, mods: list[Path], world: Path, packs: list[Path], ve
         f"renderDistance:{RENDER_DISTANCE}", "simulationDistance:12", "fov:0.0", "guiScale:2", "bobView:false",
         'renderClouds:"false"', "entityDistanceScaling:0.5", "pauseOnLostFocus:false", "onboardAccessibility:false",
         "skipMultiplayerWarning:true", "joinedFirstServer:true", "tutorialStep:none", "fullscreen:false",
-        "soundCategory_master:0.0", "maxFps:60", "enableVsync:false", "lang:en_us", "darkMojangStudiosBackground:false",
+        "soundCategory_master:0.0", f"maxFps:{260 if uncapped else 60}", "enableVsync:false", "lang:en_us", "darkMojangStudiosBackground:false",
         "narrator:0", "hideServerAddress:true", "showSubtitles:false", "realmsNotifications:false",
         "menuBackgroundBlurriness:0", "chatOpacity:0.0",
         # From 1.21.11 a graphics preset other than custom puts its own render distance, clouds and
@@ -536,10 +540,18 @@ class Guard:
         import ctypes
         from ctypes import wintypes
         user32 = ctypes.windll.user32
-        for hwnd in windows_of(pids(self.root), titled=False):
+        windows = windows_of(pids(self.root), titled=False)
+        # Another game measures its frame rate: this one is minimised meanwhile, and draws next to
+        # nothing (from 1.21.2 the game itself slows a minimised window down).
+        aside = QUIET.is_set() and MEASURED[0] not in windows
+        for hwnd in windows:
             if user32.IsWindowEnabled(hwnd):
                 user32.EnableWindow(hwnd, False)
                 release(hwnd)
+            if aside:
+                if not user32.IsIconic(hwnd):
+                    user32.ShowWindow(hwnd, 7)  # SW_SHOWMINNOACTIVE
+                continue
             if user32.IsIconic(hwnd):
                 user32.ShowWindow(hwnd, 4)  # SW_SHOWNOACTIVATE
                 continue
@@ -863,11 +875,12 @@ def pids(root: int) -> set[int]:
 
 def launch(home: Path, version: str, game: str, game_dir: Path, settle: int, wait: float, out: Path,
            warm: bool = False, packs: list[Path] = (), shader_settle: int = 40, voxy: bool = False,
-           memory: str = "3G", timeout: int = 900) -> dict:
+           memory: str = "3G", timeout: int = 900, fps: int = 0) -> dict:
     """Starts the game in the scene, lets it settle, then goes from viewpoint to viewpoint and takes
     a pair of pictures at each, without shaders, then once more with each pack; closes the game.
     `warm`: a tour of the scene instead of the pictures, so that the far terrain mods build all of
-    it, then a clean close so that they write it out."""
+    it, then a clean close so that they write it out. `fps`: the frame rate read for that many
+    seconds at the spot, without shaders."""
     import minecraft_launcher_lib as mll
     from bench import stop_tree
     arguments = [f"-Xmx{memory}"]
@@ -958,19 +971,21 @@ def launch(home: Path, version: str, game: str, game_dir: Path, settle: int, wai
         for pack in [None, *packs]:
             prefix = pack_label(pack) + "-" if pack else ""
             if pack:
-                # Turned on where the pictures start: the pack compiles for that dimension.
-                x, y, z, yaw, pitch = next(iter(VIEWPOINTS.values()))
-                teleport(hwnd, latest, x, y, z, yaw, pitch)
-                time.sleep(wait)
-                turned = time.time()
-                if not shaders_on(hwnd, latest, game_dir, pack.name):
-                    result["stopped"] = f"the shader pack {pack.name} never loaded"
-                    return result
-                time.sleep(3)
-                # The pack compiles, then its frames settle (temporal effects): until two match.
-                settled_pair(hwnd, shots, set(shots.glob("*.png")) if shots.is_dir() else set(),
-                             most=shader_settle, still=SHADED_STILL)
-                say(f"  {pack_label(pack)} on and settled in {int(time.time() - turned)} s")
+                # No pack change while another game measures: its pictures go with it.
+                with busy():
+                    # Turned on where the pictures start: the pack compiles for that dimension.
+                    x, y, z, yaw, pitch = next(iter(VIEWPOINTS.values()))
+                    teleport(hwnd, latest, x, y, z, yaw, pitch)
+                    time.sleep(wait)
+                    turned = time.time()
+                    if not shaders_on(hwnd, latest, game_dir, pack.name):
+                        result["stopped"] = f"the shader pack {pack.name} never loaded"
+                        return result
+                    time.sleep(3)
+                    # The pack compiles, then its frames settle (temporal effects): until two match.
+                    settled_pair(hwnd, shots, set(shots.glob("*.png")) if shots.is_dir() else set(),
+                                 most=shader_settle, still=SHADED_STILL)
+                    say(f"  {pack_label(pack)} on and settled in {int(time.time() - turned)} s")
             here = "minecraft:overworld"
             for name, (x, y, z, yaw, pitch) in VIEWPOINTS.items():
                 dimension = DIMENSIONS.get(name, "minecraft:overworld")
@@ -978,26 +993,33 @@ def launch(home: Path, version: str, game: str, game_dir: Path, settle: int, wai
                 if process.poll() is not None:
                     result["stopped"] = f"the game ended before {name}"
                     return result
-                before = set(shots.glob("*.png")) if shots.is_dir() else set()
-                if not teleport(hwnd, latest, x, y, z, yaw, pitch, dimension):
-                    result["stopped"] = f"{name}: the teleport never ran"
-                    return result
-                # Into another dimension: its world loaded, its far terrain read from disk, and the
-                # shader pack compiled again for it (Iris makes a pipeline per dimension).
-                moved = dimension != here
-                here = dimension
-                time.sleep(wait + (5 if moved else 0))
-                result.setdefault("terrain", {})[name] = terrain_ready(hwnd, game_dir)
-                pair, waited = settled_pair(hwnd, shots, before, most=20 if moved else 10,
-                                            still=SHADED_STILL if pack else PLAIN_STILL,
-                                            first=60 if moved else 10)
-                if not pair:
-                    result["stopped"] = f"{name}: no screenshot came"
-                    return result
-                shutil.copy2(pair[0], out / f"{name}-a.png")
-                shutil.copy2(pair[1], out / f"{name}-b.png")
-                result["shots"].append(name)
-                result.setdefault("waited", {})[name] = waited
+                with busy():
+                    before = set(shots.glob("*.png")) if shots.is_dir() else set()
+                    if not teleport(hwnd, latest, x, y, z, yaw, pitch, dimension):
+                        result["stopped"] = f"{name}: the teleport never ran"
+                        return result
+                    # Into another dimension: its world loaded, its far terrain read from disk, and the
+                    # shader pack compiled again for it (Iris makes a pipeline per dimension).
+                    moved = dimension != here
+                    here = dimension
+                    time.sleep(wait + (5 if moved else 0))
+                    result.setdefault("terrain", {})[name] = terrain_ready(hwnd, game_dir)
+                    pair, waited = settled_pair(hwnd, shots, before, most=20 if moved else 10,
+                                                still=SHADED_STILL if pack else PLAIN_STILL,
+                                                first=60 if moved else 10)
+                    if not pair:
+                        result["stopped"] = f"{name}: no screenshot came"
+                        return result
+                    shutil.copy2(pair[0], out / f"{name}-a.png")
+                    shutil.copy2(pair[1], out / f"{name}-b.png")
+                    result["shots"].append(name)
+                    result.setdefault("waited", {})[name] = waited
+                if fps and name == "spot":
+                    # One view, one measure: the spot, facing the rows, the near ones the game's and
+                    # the far ones the mod's.
+                    result["fps"] = measure_fps(hwnd, game_dir, fps)
+                    say("  frame rate at the spot: " + (f"{result['fps']['mean']} (low {result['fps']['low']})"
+                                                         if result["fps"] else "not read"))
         say(f"  {len(result['shots'])} viewpoints in {int(time.time() - pictures)} s")
         result["ok"] = True
         return result
@@ -1042,6 +1064,69 @@ def terrain_ready(hwnd: int, game_dir: Path, most: float = 40) -> str:
             return said
         time.sleep(0.25)
     return f"{said} after {most:.0f} s, not built"
+
+
+# One benchmark at a time, and while one runs the other games hold still (no teleport, no
+# screenshot): they share the graphics card. Still drawing their view, they slow it a little, the
+# same for every phase: the mod's cost, the gap between its phases, stays comparable.
+MEASURING = threading.Lock()
+QUIET = threading.Event()
+# The window of the game measuring now: the guard minimises every other one meanwhile.
+MEASURED: list[int] = [0]
+
+
+# How many games are in the middle of a viewpoint or a pack change: a measure waits for them to
+# be done, or it would minimise a window while it takes its picture.
+BUSY = threading.Condition()
+_busy = [0]
+
+
+class busy:
+    """Around one viewpoint's work: started once no game measures, and waited for by a measure."""
+
+    def __enter__(self):
+        with BUSY:
+            while QUIET.is_set():
+                BUSY.wait(1)
+            _busy[0] += 1
+
+    def __exit__(self, *exc):
+        with BUSY:
+            _busy[0] -= 1
+            BUSY.notify_all()
+
+
+def measure_fps(hwnd: int, game_dir: Path, seconds: int) -> dict:
+    """The game's frame rate where it stands, read once a second for `seconds` through the agent:
+    one game at a time, the others holding still and minimised (they draw next to nothing then),
+    so that games side by side do not measure each other. The frame rate's mean, low and high."""
+    answer = game_dir / "lh-bench-fps.txt"
+    with MEASURING:
+        MEASURED[0] = hwnd
+        with BUSY:
+            QUIET.set()
+            # The others finish the viewpoint they are at (two minutes at most), then hold still.
+            deadline = time.time() + 120
+            while _busy[0] and time.time() < deadline:
+                BUSY.wait(1)
+        try:
+            time.sleep(2)  # the others minimised
+            answer.unlink(missing_ok=True)
+            tell_agent(hwnd, [f"fps {seconds} {answer}"])
+            deadline = time.time() + seconds + 15
+            while not answer.is_file() and time.time() < deadline:
+                time.sleep(0.2)
+        finally:
+            QUIET.clear()
+            MEASURED[0] = 0
+    try:
+        values = [int(line) for line in answer.read_text("utf-8").split() if line.isdigit()]
+    except OSError:
+        values = []
+    if not values:
+        return {}
+    return {"mean": round(sum(values) / len(values), 1), "low": min(values), "high": max(values),
+            "seconds": values}
 
 
 def pack_label(pack: Path) -> str:
@@ -1122,7 +1207,7 @@ def warm_up(home: Path, node: str, tables: dict, jar: Path, extra_mods: list[Pat
 
 def play(home: Path, node: str, tables: dict, jar: Path, extra_mods: list[Path], packs: list[Path], out: Path,
          settle: int, wait: float, version_of_loader: str | None, instance: str, shader_settle: int = 40,
-         memory: str = "3G") -> dict:
+         memory: str = "3G", fps: int = 0) -> dict:
     """One jar on one node with a set of mods: one launch, every viewpoint. The far terrain a
     warm-up built is put back into the world first."""
     game, loader = node_parts(node, tables)
@@ -1131,16 +1216,17 @@ def play(home: Path, node: str, tables: dict, jar: Path, extra_mods: list[Path],
     out.mkdir(parents=True, exist_ok=True)
     # A folder per game: several run at once.
     game_dir = home / "instances-jar" / instance
-    prepare(game_dir, [jar, *extra_mods], world, packs, data_version(home, game))
+    prepare(game_dir, [jar, *extra_mods], world, packs, data_version(home, game), uncapped=fps > 0)
     key = lod_key(extra_mods)
     if key and lod_cache(home, game, key).is_dir():
         restore_lod(game_dir, lod_cache(home, game, key))
     result = launch(home, version, game, game_dir, settle, wait, out, packs=packs,
-                    shader_settle=shader_settle, memory=memory)
+                    shader_settle=shader_settle, memory=memory, fps=fps)
     failures = [result["stopped"]] if result["stopped"] else []
     if not result["ok"] and (out / "game.log").is_file():
         text = (out / "game.log").read_text("utf-8", "replace")
         failures += [l.strip() for l in text.splitlines() if re.search(r"Exception|ERROR|FATAL", l)][:8]
     return {"ok": result["ok"], "stopped": result["stopped"], "failures": failures, "shots": result["shots"],
             "stats": {}, "waited": result.get("waited", {}), "terrain": result.get("terrain", {}),
+            "fps": result.get("fps", {}),
             "minutes": round(result.get("seconds", 0) / 60, 1)}

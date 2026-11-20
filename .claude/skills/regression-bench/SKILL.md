@@ -213,6 +213,19 @@ and the far terrain's warm-up (4 minutes for Distant Horizons, under one for Vox
   jar's dependencies: Voxy 0.2.16 takes Sodium 0.8.12 at most), plus `speed_mods` where they
   exist. A mod asking for a newer Fabric Loader gets it.
 
+### Frame rates (`--fps`)
+
+`jars --fps 10` reads the game's frame rate for 10 s at one view, the spot (facing the rows: the
+near ones the game's, the far ones the mod's), after its pictures without shaders. The agent reads
+the game's own counter once a second (`Minecraft.fps`, `class_310.field_1738` under Fabric's
+names, what the debug screen shows), and `run.json` keeps its mean, low, high and every second
+(`fps`). The games run with no frame cap then (`maxFps:260`; 60 otherwise, to share the graphics
+card). One game measures at a time: it waits for the others to finish the viewpoint they are at
+(`busy`), they start no other meanwhile, and the guard minimises their windows, so that they
+draw next to nothing. Frame rates
+compare between versions and builds on one machine only. For the mod's own cost (mod off, each
+part alone) use its `/livinghorizon benchmark`, which takes minutes.
+
 ## Profiles
 
 `bench.toml` next to this file; `LH_BENCH_HOME/bench.toml` overrides it per key. A profile
