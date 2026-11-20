@@ -31,7 +31,8 @@ dependencies {
     if (sc.current.parsed < "1.21.11") compileOnly("org.jspecify:jspecify:1.0.0")
     loomx.applyMojangMappings()
 
-    modImplementation("net.fabricmc:fabric-loader:${property("deps.fabric_loader")}")
+    // -Plh.loader=<version> runs another Fabric Loader, for mods that need a newer one (the regression bench).
+    modImplementation("net.fabricmc:fabric-loader:${findProperty("lh.loader") ?: property("deps.fabric_loader")}")
     // The whole Fabric API: module names change between game versions (the key binding
     // module became a key mapping one in 26.1), and the full jar is one coordinate on all
     // of them. The mod only needs the lifecycle, key binding, command, screen and
@@ -96,6 +97,8 @@ loom {
         findProperty("lh.mods")?.let { property("fabric.addMods", it.toString()) }
         // A shader pack folder to turn on through Iris, which -Plh.mods must hold: -Plh.shaderpack=<folder>.
         findProperty("lh.shaderpack")?.let { property("livinghorizon.shaderpack", it.toString()) }
+        // The regression scenario runs /livinghorizon benchmark at its end: -Plh.perf=true.
+        findProperty("lh.perf")?.let { property("livinghorizon.perf", it.toString()) }
     }
 }
 

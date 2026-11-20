@@ -268,7 +268,9 @@ distant mobs or players, birds, impostors or a screen is checked in the real cli
 scenarios in `src/gametest/java` and takes screenshots to look at. Run
 `.claude/skills/game-test/run.sh [scenario]`, read `SKILL.md` there first, add a scenario
 for what the change touches, and show the user the screenshots. Voxy cannot run there: say so
-when a check depends on it. Distant Horizons runs there on 26.3 (`--with distanthorizons`,
+when a check depends on it. Across versions and with Voxy, Distant Horizons and shader packs,
+on the machine with a graphics card: `.claude/skills/regression-bench/` plays one frozen scene
+on every Fabric node and compares its pictures with the last approved run. Distant Horizons runs there on 26.3 (`--with distanthorizons`,
 Fabric Loader 0.19.5 for the run: see the skill).
 
 ## Debugging checklist
