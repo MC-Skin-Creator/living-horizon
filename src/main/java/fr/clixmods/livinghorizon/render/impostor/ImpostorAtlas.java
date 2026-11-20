@@ -257,7 +257,7 @@ public final class ImpostorAtlas {
                           ImpostorDisk.@Nullable Stored stored, int generation) {
         /** What to bake when the sheet could not be read back. */
         Request bake() {
-            return figure != null ? Request.of(key, figure) : Request.of(key, puppet, GROWN.getOrDefault(key, 1.0));
+            return figure != null ? Request.of(key, figure) : Request.of(key, puppet, grown(key));
         }
     }
 
@@ -268,18 +268,20 @@ public final class ImpostorAtlas {
      * {@code centred} down its tiles once moved there ({@link #CENTRED}), NaN until then.
      */
     record Request(ImpostorKey key, @Nullable Entity puppet, @Nullable ImpostorFigure figure, double grow,
-                   @Nullable Rider rider, float centred) {
+                   @Nullable Rider rider, float centred, int walk) {
         static Request of(ImpostorKey key, Entity puppet, double grow) {
             return of(key, puppet, grow, null);
         }
 
         static Request of(ImpostorKey key, Entity puppet, double grow, @Nullable Rider rider) {
-            return new Request(key, puppet, null, grow, rider, CENTRED.getOrDefault(key, Float.NaN));
+            ImpostorKey.Walk walk = rider == null ? ImpostorKey.walk(key) : null;
+            return new Request(key, puppet, null, grow, rider, CENTRED.getOrDefault(key, Float.NaN),
+                    walk == null ? 0 : walk.frame());
         }
 
         /** One of the mod's own figures: its tile is the size it asks for, never grown. */
         static Request of(ImpostorKey key, ImpostorFigure figure) {
-            return new Request(key, null, figure, 1.0, null, Float.NaN);
+            return new Request(key, null, figure, 1.0, null, Float.NaN, 0);
         }
 
         /** The same figure, baked again with its picture covering {@code grow} times its box. */
@@ -403,6 +405,11 @@ public final class ImpostorAtlas {
             ImpostorAtlas::forget);
 
     private static final Deque<Request> QUEUE = new ArrayDeque<>();
+    /**
+     * The pictures of walks ({@link ImpostorKey#frame}), baked once {@link #QUEUE} is empty: every
+     * figure gets its resting picture first, which also stands in while its walk is baked.
+     */
+    private static final Deque<Request> WALK_QUEUE = new ArrayDeque<>();
     /** Queued, or drawn and waiting for the read back. */
     private static final Set<ImpostorKey> QUEUED = new HashSet<>();
     /** Where each sheet's pictures come from, for the impostor screen. */
@@ -547,7 +554,29 @@ public final class ImpostorAtlas {
                 return;
             }
         }
-        QUEUE.add(Request.of(key, puppet, GROWN.getOrDefault(key, 1.0)));
+        queue(Request.of(key, puppet, grown(key)));
+    }
+
+    /**
+     * How much larger a figure was last baked. A picture of a walk starts as large as its resting
+     * picture: baked smaller, it would only be baked again.
+     */
+    private static double grown(ImpostorKey key) {
+        Double grown = GROWN.get(key);
+        if (grown != null) return grown;
+        ImpostorKey.Walk walk = ImpostorKey.walk(key);
+        return walk == null ? 1.0 : GROWN.getOrDefault(walk.rest(), 1.0);
+    }
+
+    /** Queues a bake: the pictures of a walk after every resting one. */
+    private static void queue(Request request) {
+        (request.walk > 0 ? WALK_QUEUE : QUEUE).add(request);
+    }
+
+    /** The next bake: a resting picture first, then a walk's. */
+    private static @Nullable Request next() {
+        Request request = QUEUE.poll();
+        return request != null ? request : WALK_QUEUE.poll();
     }
 
     /**
@@ -684,6 +713,7 @@ public final class ImpostorAtlas {
         ALIASES.clear();
         LOOKS.clear();
         QUEUE.clear();
+        WALK_QUEUE.clear();
         QUEUED.clear();
         UNLISTED.clear();
         UNLISTED_FIGURES.clear();
@@ -715,7 +745,9 @@ public final class ImpostorAtlas {
         settle();
         if (!usable()) {
             for (Request request : QUEUE) QUEUED.remove(request.key);
+            for (Request request : WALK_QUEUE) QUEUED.remove(request.key);
             QUEUE.clear();
+            WALK_QUEUE.clear();
             for (Loaded loaded : LOADED) QUEUED.remove(loaded.key);
             LOADED.clear();
             QUEUED.removeAll(UNLISTED.keySet());
@@ -749,7 +781,7 @@ public final class ImpostorAtlas {
             if (loaded.generation != generation) continue;
             if (loaded.stored == null || !ImpostorPixels.fits(loaded.stored.levels(), levels())) {
                 ImpostorDisk.forget(loaded.key);
-                QUEUE.add(loaded.bake());
+                queue(loaded.bake());
                 continue;
             }
             QUEUED.remove(loaded.key);
@@ -772,8 +804,8 @@ public final class ImpostorAtlas {
                 return;
             }
         }
-        while (!QUEUE.isEmpty()) {
-            Request request = QUEUE.poll();
+        Request request;
+        while ((request = next()) != null) {
             // Gliding since it was asked for: lying in the air, it is asked for again once it lands.
             if (request.puppet != null && request.puppet.level() != minecraft.level || baked(request.key)
                     || request.puppet instanceof LivingEntity glider && glider.isFallFlying()) {
@@ -811,6 +843,7 @@ public final class ImpostorAtlas {
     private static void fail(Throwable error) {
         failed = true;
         QUEUE.clear();
+        WALK_QUEUE.clear();
         QUEUED.clear();
         UNLISTED.clear();
         UNLISTED_FIGURES.clear();
@@ -899,6 +932,11 @@ public final class ImpostorAtlas {
             if (state == null) throw new LeftOut();
         }
         stage(state, view);
+        if (request.walk > 0 && state instanceof LivingEntityRenderState walking) {
+            // One picture of its walk: its legs where that step of the stride has them.
+            walking.walkAnimationPos = ImpostorWalk.position(request.walk);
+            walking.walkAnimationSpeed = ImpostorWalk.BAKED_SPEED;
+        }
         Posture.baked(state, request.key.posture());
         // Water mobs were in water when last seen; a puppet is in no world.
         if (state instanceof LivingEntityRenderState living && GhostRenderer.livesInWater(puppet)) {
@@ -1052,7 +1090,7 @@ public final class ImpostorAtlas {
                     CENTRED.put(key, feet);
                     growth = fit.growth();
                     if (growth <= 1.01 || request.grow >= MAX_GROW) {
-                        QUEUE.add(request.grown(request.grow));
+                        queue(request.grown(request.grow));
                         again = true;
                         return;
                     }
@@ -1061,7 +1099,7 @@ public final class ImpostorAtlas {
             if (growth > 1.01 && request.grow < MAX_GROW) {
                 double grow = Math.min(MAX_GROW, request.grow * growth);
                 GROWN.put(key, grow);
-                QUEUE.add(request.grown(grow));
+                queue(request.grown(grow));
                 again = true;
                 return;
             }

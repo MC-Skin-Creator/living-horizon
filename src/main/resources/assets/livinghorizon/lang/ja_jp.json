@@ -335,6 +335,8 @@
   "livinghorizon.options.impostorBirds.tooltip": "一定の距離を超えると、遠くに何を表示していても、3Dの鳥がモデルの代わりに平らな画像で描画されます。オフ：どの距離でもモデルのままです。",
   "livinghorizon.options.impostorShading": "シェーダーの照明",
   "livinghorizon.options.impostorShading.tooltip": "シェーダーパックを使うと、簡略化Mobはモデルの形を保ち、法線マップを読むパックがモデルと同じように照らします：片面は日なた、もう片面は日陰（Photon では Normal Mapping をオン）。画像のビデオメモリは2倍になります。オフ：平らな画像で、少し軽くなります。Minecraft 1.21.6 以降。",
+  "livinghorizon.options.impostorAnimation": "動く画像",
+  "livinghorizon.options.impostorAnimation.tooltip": "簡略化Mobが歩き続けます：立っている画像のほかに、歩く姿の画像を数枚作ります。歩くMobのビデオメモリは3倍になります。オフ：画像の中で立ち止まったままです。",
   "livinghorizon.options.impostorMobMemory": "Mob画像のメモリ",
   "livinghorizon.options.impostorMobMemory.tooltip": "簡略化したMobの画像が使えるビデオメモリ（プレイヤーとは別枠）。新しい見た目に出会うたびに少しずつ使われ、いっぱいになると最も長く使われていない画像が場所を空けます。",
   "livinghorizon.options.impostorPlayerMemory": "プレイヤー画像のメモリ",

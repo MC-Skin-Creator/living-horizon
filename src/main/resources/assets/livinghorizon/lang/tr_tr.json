@@ -335,6 +335,8 @@
   "livinghorizon.options.impostorBirds.tooltip": "Belirli bir mesafeden sonra 3B kuşlar, uzakta başka ne gösterilirse gösterilsin, modelleri yerine düz resimler olarak çizilir. KAPALI: her mesafede modellerini korurlar.",
   "livinghorizon.options.impostorShading": "Gölgelendirici Işığı",
   "livinghorizon.options.impostorShading.tooltip": "Bir gölgelendirici paketiyle basit canlılar modellerinin biçimini korur; normal haritalarını okuyan bir paket onları model gibi aydınlatır: bir yüzü güneşte, öbürü gölgede (Photon'da Normal Mapping'i açın). Resimleri iki kat video belleği kaplar. KAPALI: düz resimler, biraz daha hafif. Minecraft 1.21.6'dan itibaren.",
+  "livinghorizon.options.impostorAnimation": "Hareketli Resimler",
+  "livinghorizon.options.impostorAnimation.tooltip": "Basit canlılar yürümeye devam eder: ayakta duran resmin yanında adımlarının birkaç resmi yapılır. Yürüyen canlılar üç kat video belleği kaplar. KAPALI: resimlerinde hareketsiz dururlar.",
   "livinghorizon.options.impostorMobMemory": "Canlı Resimleri Belleği",
   "livinghorizon.options.impostorMobMemory.tooltip": "Basit canlıların resimlerinin kullanabileceği video belleği, oyuncularınkinden ayrı. Yalnızca yeni görünümler çıktıkça kullanılır; dolduğunda en uzun süredir kullanılmayan resim yer açar.",
   "livinghorizon.options.impostorPlayerMemory": "Oyuncu Resimleri Belleği",

@@ -335,6 +335,8 @@
   "livinghorizon.options.impostorBirds.tooltip": "Past a distance, 3D birds are drawn as flat pictures instead of their models, whatever else is shown far away. OFF: they keep their model at any distance.",
   "livinghorizon.options.impostorShading": "Shader Lighting",
   "livinghorizon.options.impostorShading.tooltip": "With a shader pack, simplified mobs keep the shape of their model, so a pack that reads normal maps lights them like the model: one side in the sun, the other in shade (in Photon, turn on Normal Mapping). Their pictures take twice the video memory. OFF: flat pictures, a little lighter. From Minecraft 1.21.6.",
+  "livinghorizon.options.impostorAnimation": "Animated Pictures",
+  "livinghorizon.options.impostorAnimation.tooltip": "Simplified mobs keep walking: a few pictures of their stride are made besides the standing one. The mobs that walk take three times the video memory. OFF: they stand still in their picture.",
   "livinghorizon.options.impostorMobMemory": "Mob Picture Memory",
   "livinghorizon.options.impostorMobMemory.tooltip": "Video memory the pictures of simplified mobs may take, apart from the players'. Taken only as new looks are met; when it is full, the picture unused for longest makes room.",
   "livinghorizon.options.impostorPlayerMemory": "Player Picture Memory",
