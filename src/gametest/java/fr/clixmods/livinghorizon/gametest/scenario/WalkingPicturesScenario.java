@@ -30,6 +30,13 @@ public final class WalkingPicturesScenario implements Scenario {
     private static final double PACE = 0.1;
     /** Ticks walked one way before turning back, so the row stays in view. */
     private static final int LEG = 60;
+    /**
+     * Blocks ahead of the player: within the 80 blocks the server still sends mobs with Entity
+     * Distance at 0.5, past where the game draws the smaller ones itself (the horse and the iron
+     * golem stay its models there). Farther, the mod draws remembered copies, which walk paths
+     * of their own.
+     */
+    private static final int ROW = 66;
 
     private int walked;
 
@@ -51,7 +58,7 @@ public final class WalkingPicturesScenario implements Scenario {
         });
         walked = 0;
         try (TestSingleplayerContext world = Scene.flatWorld(context)) {
-            for (int i = 0; i < MOBS.length; i++) Scene.summon(world, MOBS[i], (i - (MOBS.length - 1) / 2.0) * 3.2, 45, -90);
+            for (int i = 0; i < MOBS.length; i++) Scene.summon(world, MOBS[i], (i - (MOBS.length - 1) / 2.0) * 3.6, ROW, -90);
             context.waitTicks(40);
 
             // Walked long enough for their resting pictures, then their walk, to be baked.
@@ -62,6 +69,8 @@ public final class WalkingPicturesScenario implements Scenario {
                 return ImpostorAtlas.failed();
             });
             if (failed) throw new AssertionError("The impostor bake failed, see the log");
+            int live = context.computeOnClient(minecraft -> row(minecraft).size());
+            if (live < MOBS.length - 1) throw new AssertionError("Only " + live + " mobs of the row are sent");
             List<String> missing = context.computeOnClient(WalkingPicturesScenario::unbaked);
             Scene.log("walkingpictures walks not baked: " + missing);
             if (missing.contains("minecraft:cow")) throw new AssertionError("The cow's walk was not baked: " + missing);
@@ -77,6 +86,7 @@ public final class WalkingPicturesScenario implements Scenario {
             context.waitTicks(40);
             int[] still = context.computeOnClient(WalkingPicturesScenario::frames);
             Scene.log("walkingpictures frames standing " + java.util.Arrays.toString(still));
+            if (still.length < MOBS.length - 1) throw new AssertionError("The row is no longer sent: " + still.length);
             for (int frame : still) {
                 if (frame != 0) throw new AssertionError("A mob standing still shows a picture of its walk: "
                         + java.util.Arrays.toString(still));
