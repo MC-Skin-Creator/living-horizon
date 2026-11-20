@@ -100,25 +100,40 @@ final class IrisLink {
     private static @Nullable Object normalsPipeline;
     private static boolean readsNormals;
     private static boolean normalsUnknown;
+    /** Looked up once: finding them again on every call cost a lot under a shader pack. */
+    private static @Nullable Method pipelineManager, pipelineNullable;
+    /** The class {@link #pipelineNullable} was found on: {@code getMethod} may give a superclass's. */
+    private static @Nullable Class<?> managerClass;
+    /** {@code shouldBindPBR}, for the pipeline class it was found on. */
+    private static java.lang.reflect.@Nullable Field bindsPbr;
 
     /**
      * Whether the shader pack on samples normal maps (Photon with its <em>Normal Mapping</em>,
      * labPBR packs): Iris works it out as it builds the pack's programs, in its pipeline's
      * {@code shouldBindPBR}, which is not its public API. False without a pack, or when it
-     * cannot be read.
+     * cannot be read. Asked once a frame ({@code ImpostorAtlas}), never per figure.
      */
     static boolean readsNormalMaps() {
         if (!shaderPackOn() || normalsUnknown) return false;
         try {
-            Class<?> iris = Class.forName("net.irisshaders.iris.Iris");
-            Object manager = iris.getMethod("getPipelineManager").invoke(null);
-            Object pipeline = manager.getClass().getMethod("getPipelineNullable").invoke(manager);
+            if (pipelineManager == null) {
+                pipelineManager = Class.forName("net.irisshaders.iris.Iris").getMethod("getPipelineManager");
+            }
+            Object manager = pipelineManager.invoke(null);
+            if (pipelineNullable == null || managerClass != manager.getClass()) {
+                pipelineNullable = manager.getClass().getMethod("getPipelineNullable");
+                managerClass = manager.getClass();
+            }
+            Object pipeline = pipelineNullable.invoke(manager);
             if (pipeline == null) return false;
             if (pipeline != normalsPipeline) {
-                java.lang.reflect.Field field = pipeline.getClass().getDeclaredField("shouldBindPBR");
-                field.setAccessible(true);
+                if (bindsPbr == null || bindsPbr.getDeclaringClass() != pipeline.getClass()) {
+                    java.lang.reflect.Field field = pipeline.getClass().getDeclaredField("shouldBindPBR");
+                    field.setAccessible(true);
+                    bindsPbr = field;
+                }
                 // Set as the programs are built: read again for each new pipeline, a moment after.
-                readsNormals = field.getBoolean(pipeline);
+                readsNormals = bindsPbr.getBoolean(pipeline);
                 if (readsNormals) normalsPipeline = pipeline;
             }
             return readsNormals;
