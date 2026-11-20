@@ -2,6 +2,46 @@
 
 ## Próxima versión
 
+## 0.17.0 — 2026-11-20
+
+### Servidor
+
+#### Mejoras
+- **Aspectos de Minecraft Comes Alive compartidos** — En un servidor con Minecraft Comes Alive, Living Horizon ahora comparte el aspecto que cada jugador eligió en él una vez que se desconecta. Los jugadores con el mod ven entonces a los jugadores desconectados tal como Minecraft Comes Alive los muestra, incluso a los que se fueron antes de que llegaran.
+
+### Cliente
+
+#### Novedades
+- **Registro de cambios en tu idioma** — El registro de cambios del juego ya está disponible en todos los idiomas a los que se ha traducido Living Horizon, en lugar de solo en inglés y francés. Sigue el idioma del juego y se muestra en inglés para cualquier otro idioma.
+- **Lista de criaturas ocultas para compartir** — `config/livinghorizon.json` ahora tiene una lista `hiddenMobs` con las criaturas que nunca se muestran a lo lejos, por identificador (`"minecraft:pig"`) o para todo un mod (`"cobblemon:*"`). Los modpacks pueden compartir sus elecciones en una lista breve, y las criaturas marcadas como *Oculto* en *Criaturas y entidades...* se añaden a ella.
+- **Opción para ocultar las criaturas subterráneas** — La nueva opción *Ocultar subterráneas*, desactivada por defecto, deja de dibujar las criaturas lejanas de cuevas, minas y sótanos, que nadie puede ver desde lejos. Esto aligera el juego donde muchas criaturas viven bajo tierra y deja el *Máx. de criaturas* para las de la superficie. Una tecla, sin asignar por defecto, la activa y desactiva en el juego; el Nether y el End nunca se ven afectados.
+
+#### Mejoras
+- **Se acabaron los tirones periódicos** — Living Horizon ahora guarda en segundo plano las criaturas que recuerda y los jugadores desconectados, en lugar de provocar un tirón en el juego una vez por minuto o cuando los jugadores se desconectan.
+- **Menos trabajo gráfico para las criaturas lejanas** — Ocultar las criaturas lejanas tras el terreno lejano ahora solo afecta a la parte de la pantalla donde se encuentran, en lugar de a toda la pantalla. Esto puede dar algo más de rendimiento, sobre todo en altas resoluciones. (Minecraft 1.21.9 y posteriores, con Voxy y shaders, Distant Horizons o Lodistance.)
+- **Mundos que se abren más rápido** — Abrir un mundo o entrar en un servidor donde Living Horizon recuerda muchas criaturas ya no congela el juego un momento: ahora aparecen en cuanto se leen.
+- **Las vagonetas siguen rodando a lo lejos** — Una vagoneta que sigue en movimiento cuando sale de tu vista ahora continúa por sus raíles, hasta donde el juego la seguiría moviendo, en lugar de detenerse donde la viste por última vez. Esto se aplica a las vagonetas activadas en *Criaturas y entidades...*.
+- **Monstruos de otros mods visibles a lo lejos** — Los monstruos de otros mods que las versiones anteriores a la 0.13 ocultaban por defecto ahora se muestran a lo lejos como cualquier otra criatura. Si habías desactivado alguno tú mismo, vuelve a ocultarlo en *Criaturas y entidades...*.
+- **Llegada más fluida a los servidores** — Entrar en un servidor ya no congela el juego un momento cuando hay que mostrar muchas criaturas lejanas o jugadores desconectados. Ahora van apareciendo durante los primeros segundos.
+- **Teletransportes y vuelos rápidos más fluidos** — El juego ya no da tirones cuando te teletransportas, cambias de dimensión o vuelas rápido con élitros, mientras Living Horizon recuerda las muchas criaturas que dejas atrás.
+- **Más fluido con miles de criaturas lejanas** — Con miles de criaturas lejanas a la vista, incluidas las adivinadas, Living Horizon ahora les dedica aproximadamente la mitad de tiempo en cada fotograma, y menos para elegir cuáles mostrar y mantenerlas en movimiento. Se nota sobre todo con valores altos de *Máx. de criaturas* o *Renderizado de criaturas*.
+
+#### Correcciones
+- **Las aves de Ambient Birds siguen volando a lo lejos** — Las aves del mod Ambient Birds ahora siguen volando, con las alas desplegadas, una vez que están más allá de tu distancia de renderizado, en lugar de quedarse congeladas en el cielo.
+- **Las aves y los murciélagos guardan las distancias** — Los murciélagos ahora se alejan cuando caminas hacia ellos, y ningún ave ni murciélago en vuelo se acerca al alcance de tu mano. Ya no puedes quedarte en medio de ellos y atravesarlos a golpes.
+- **Las criaturas que mueren a lo lejos no vuelven** — En los mundos de un jugador, una criatura que muere fuera de tu vista ya no vuelve a aparecer a lo lejos durante unos segundos.
+- **El Enderdragón cobra vida a lo lejos** — Un Enderdragón lejano ahora bate las alas, vuela con la cabeza por delante y curva el cuello y la cola al girar, en lugar de planear rígido con las alas quietas. Surca el cielo en amplios círculos como el de verdad, y siempre conserva su modelo completo en lugar de una imagen simplificada.
+- **Criaturas lejanas siempre visibles en LAN** — Las criaturas lejanas ahora siguen mostrándose después de que el jugador que aloja un mundo en LAN baje su *Distancia de entidades*, en lugar de desaparecer para siempre o durante parte del camino cuando vuelves hacia ellas.
+- **Criaturas de Lycanites Mobs bien mostradas a lo lejos** — Las criaturas lejanas de Lycanites Mobs, como el Jouste, el Krake o el Bobeko, ahora aparecen como imágenes simplificadas en lugar de desaparecer, y se ocultan correctamente tras las colinas de Voxy o de Distant Horizons en lugar de verse a través de ellas. (Forge, Minecraft 1.20.1.)
+- **Cierre inesperado en Mac corregido** — El juego ya no se cierra inesperadamente alrededor de un segundo después de entrar en un mundo en un Mac o con una tarjeta gráfica antigua. Las criaturas lejanas siguen ocultándose tras el terreno lejano en esos equipos, y *Omitir criaturas ocultas* sigue funcionando.
+- **Los jugadores desconectados conservan su aspecto de Minecraft Comes Alive** — Con Minecraft Comes Alive, los jugadores desconectados ahora se muestran con el modelo de aldeano o de jugador personalizado que eligieron, en lugar de su skin normal. Para los jugadores que se desconectaron antes de que llegaras, el mod también debe estar instalado en el servidor.
+- **Las criaturas se quedan en su dimensión** — Las criaturas lejanas ahora solo se muestran en la dimensión en la que las viste, en lugar de aparecer en otra, como calamares flotando en el aire del Nether.
+- **Las criaturas se quedan en su barca o vagoneta** — Las criaturas que van en una barca o una vagoneta ahora siguen visibles a lo lejos con ella, sentadas dentro vaya donde vaya, en lugar de desaparecer o marcharse por su cuenta.
+- **Los jugadores desconectados caen por los bordes** — Un jugador desconectado al que empujas por un saliente ahora cae, en lugar de quedarse en el aire junto al borde.
+- **Los jugadores desconectados se quedan donde están** — Los jugadores desconectados cercanos ya no retroceden unos bloques hasta el lugar donde se desconectaron cuando aparece su skin o su atuendo. Siguen desde donde están, con su nuevo aspecto.
+- **Los ajustes de simplificación se aplican a los jugadores** — Los demás jugadores conectados ahora se convierten en imágenes simplificadas cuando están más allá de la *Distancia de simplificación* o se ven en pantalla más pequeños que el *Tamaño de simplificación*, como las criaturas, en lugar de conservar su modelo completo mientras el juego los muestre. Para ello, *Jugadores simplificados* debe estar activado, como lo está por defecto.
+- **Pasajeros de las naves de Valkyrien Skies en su sitio** — Los asientos, vehículos y pasajeros de una nave de Valkyrien Skies ya no flotan en el lugar equivocado a lo lejos, apartados de su nave. (Minecraft 1.20.1.)
+
 ## 0.16.0 — 2026-11-05
 
 ### Cliente

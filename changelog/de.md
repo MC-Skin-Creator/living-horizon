@@ -2,6 +2,46 @@
 
 ## Nächste Version
 
+## 0.17.0 — 2026-11-20
+
+### Server
+
+#### Verbessert
+- **Aussehen aus Minecraft Comes Alive wird geteilt** — Auf einem Server mit Minecraft Comes Alive teilt Living Horizon jetzt das Aussehen, das jeder Spieler dort gewählt hat, sobald er sich abmeldet. Spieler mit dem Mod sehen Offline-Spieler dann so, wie Minecraft Comes Alive sie darstellt, auch jene, die vor ihrem Beitritt gegangen sind.
+
+### Client
+
+#### Neu
+- **Änderungsprotokoll in deiner Sprache** — Das Änderungsprotokoll im Spiel gibt es jetzt in allen Sprachen, in die Living Horizon übersetzt ist, statt nur auf Englisch und Französisch. Es folgt der Sprache des Spiels und erscheint bei jeder anderen Sprache auf Englisch.
+- **Teilbare Liste ausgeblendeter Kreaturen** — `config/livinghorizon.json` enthält jetzt eine Liste `hiddenMobs` mit den Kreaturen, die nie in der Ferne angezeigt werden, nach ID (`"minecraft:pig"`) oder für eine ganze Mod (`"cobblemon:*"`). Modpacks können ihre Auswahl so in einer kurzen Liste teilen, und Kreaturen, die in *Kreaturen & Objekte …* auf *Versteckt* gesetzt werden, kommen dazu.
+- **Option zum Ausblenden unterirdischer Kreaturen** — Die neue Einstellung *Unter Tage ausblenden*, standardmäßig aus, zeichnet ferne Kreaturen in Höhlen, Minen und Kellern nicht mehr, die ohnehin niemand aus der Ferne sieht. Das entlastet das Spiel dort, wo viele Kreaturen unter der Erde leben, und überlässt die Plätze bei *Max. Kreaturen* denen an der Oberfläche. Eine standardmäßig nicht belegte Taste schaltet sie im Spiel ein und aus; der Nether und das Ende sind nie betroffen.
+
+#### Verbessert
+- **Keine regelmäßigen Ruckler mehr** — Living Horizon speichert die gemerkten Kreaturen und die Offline-Spieler jetzt im Hintergrund, statt das Spiel einmal pro Minute oder beim Abmelden von Spielern ruckeln zu lassen.
+- **Weniger Grafikaufwand für ferne Kreaturen** — Das Verdecken ferner Kreaturen hinter dem fernen Gelände betrifft jetzt nur noch den Teil des Bildschirms, in dem sie stehen, statt den ganzen Bildschirm. Das kann etwas mehr Leistung bringen, vor allem bei hohen Auflösungen. (Minecraft 1.21.9 und neuer, mit Voxy und Shadern, Distant Horizons oder Lodistance.)
+- **Schnelleres Öffnen von Welten** — Das Öffnen einer Welt oder der Beitritt zu einem Server, auf dem sich Living Horizon viele Kreaturen merkt, lässt das Spiel nicht mehr kurz einfrieren: Sie erscheinen jetzt, sobald sie gelesen sind.
+- **Loren rollen in der Ferne weiter** — Eine Lore, die noch fährt, wenn sie aus deiner Sicht verschwindet, rollt jetzt auf ihren Schienen weiter, so weit das Spiel sie fahren lassen würde, statt dort anzuhalten, wo du sie zuletzt gesehen hast. Das gilt für Loren, die in *Kreaturen & Objekte …* eingeschaltet sind.
+- **Monster anderer Mods in der Ferne angezeigt** — Monster aus anderen Mods, die Versionen vor 0.13 standardmäßig ausgeblendet haben, werden jetzt wie alle anderen Kreaturen in der Ferne angezeigt. Wenn du selbst welche ausgeschaltet hattest, blende sie in *Kreaturen & Objekte …* erneut aus.
+- **Flüssigerer Beitritt zu Servern** — Der Beitritt zu einem Server lässt das Spiel nicht mehr kurz einfrieren, wenn viele ferne Kreaturen oder Offline-Spieler angezeigt werden müssen. Sie erscheinen jetzt stattdessen nach und nach in den ersten Sekunden.
+- **Flüssigere Teleports und schnelle Flüge** — Das Spiel ruckelt nicht mehr, wenn du dich teleportierst, die Dimension wechselst oder mit Elytren schnell fliegst, während sich Living Horizon die vielen Kreaturen merkt, die du zurücklässt.
+- **Flüssiger mit Tausenden ferner Kreaturen** — Mit Tausenden ferner Kreaturen in Sicht, erratene Kreaturen eingeschlossen, verbringt Living Horizon jetzt bei jedem Bild etwa halb so viel Zeit mit ihnen und weniger damit, auszuwählen, welche angezeigt werden, und sie in Bewegung zu halten. Das macht sich vor allem bei hohen Werten für *Max. Kreaturen* oder *Kreaturen‐Sichtweite* bemerkbar.
+
+#### Behoben
+- **Die Vögel von Ambient Birds fliegen in der Ferne weiter** — Vögel aus der Mod Ambient Birds fliegen jetzt mit ausgebreiteten Flügeln weiter, sobald sie jenseits deiner Sichtweite sind, statt erstarrt am Himmel zu hängen.
+- **Vögel und Fledermäuse halten Abstand** — Fledermäuse fliegen jetzt davon, wenn du auf sie zugehst, und kein fliegender Vogel und keine fliegende Fledermaus kommt in Reichweite deiner Hand. Du kannst nicht mehr mitten zwischen ihnen stehen und durch sie hindurchschlagen.
+- **In der Ferne gestorbene Kreaturen bleiben verschwunden** — Im Einzelspielermodus taucht eine Kreatur, die außerhalb deiner Sicht stirbt, nicht mehr für ein paar Sekunden in der Ferne wieder auf.
+- **Der Enderdrache erwacht in der Ferne zum Leben** — Ein ferner Enderdrache schlägt jetzt mit den Flügeln, fliegt mit dem Kopf voran und biegt in Kurven Hals und Schwanz, statt steif mit reglosen Flügeln zu gleiten. Er zieht weite Kreise wie der echte und behält immer sein vollständiges Modell statt eines vereinfachten Bildes.
+- **Ferne Kreaturen im LAN weiterhin sichtbar** — Ferne Kreaturen bleiben jetzt sichtbar, nachdem der Spieler, der eine LAN-Welt hostet, seine *Objektweite* verringert hat, statt endgültig oder auf einem Teil des Weges zu verschwinden, wenn du zu ihnen zurückgehst.
+- **Kreaturen aus Lycanites Mobs in der Ferne richtig angezeigt** — Ferne Kreaturen aus Lycanites Mobs wie der Jouste, der Krake oder der Bobeko erscheinen jetzt als vereinfachte Bilder, statt zu verschwinden, und verstecken sich richtig hinter den Hügeln von Voxy oder Distant Horizons, statt durch sie hindurchzuscheinen. (Forge, Minecraft 1.20.1.)
+- **Absturz auf dem Mac behoben** — Das Spiel stürzt nicht mehr etwa eine Sekunde nach dem Betreten einer Welt auf einem Mac oder mit einer älteren Grafikkarte ab. Ferne Kreaturen verstecken sich dort weiterhin hinter dem fernen Gelände, und *Verdeckte auslassen* funktioniert weiter.
+- **Offline-Spieler behalten ihr Aussehen aus Minecraft Comes Alive** — Mit Minecraft Comes Alive werden Offline-Spieler jetzt mit dem Dorfbewohner- oder eigenen Spielermodell angezeigt, das sie gewählt haben, statt mit ihrem einfachen Skin. Für Spieler, die sich vor deinem Beitritt abgemeldet haben, muss der Mod auch auf dem Server installiert sein.
+- **Kreaturen bleiben in ihrer Dimension** — Ferne Kreaturen werden jetzt nur in der Dimension angezeigt, in der du sie gesehen hast, statt in einer anderen aufzutauchen, etwa Tintenfische, die in der Luft des Nethers schweben.
+- **Kreaturen bleiben in ihrem Boot oder ihrer Lore** — Kreaturen in einem Boot oder einer Lore bleiben jetzt mit ihm in der Ferne sichtbar und sitzen darin, wohin es auch fährt, statt zu verschwinden oder allein davonzulaufen.
+- **Offline-Spieler fallen über Kanten** — Ein Offline-Spieler, den du über eine Kante schiebst, fällt jetzt hinunter, statt am Rand in der Luft stehen zu bleiben.
+- **Offline-Spieler bleiben, wo sie sind** — Offline-Spieler in deiner Nähe springen nicht mehr ein paar Blöcke zu ihrem Abmeldeort zurück, wenn ihr Skin oder ihre Ausrüstung erscheint. Sie machen dort weiter, wo sie stehen, in ihrem neuen Aussehen.
+- **Vereinfachungseinstellungen gelten für Spieler** — Andere Online-Spieler werden jetzt wie Kreaturen zu vereinfachten Bildern, sobald sie jenseits der *Vereinfachungsweite* oder auf dem Bildschirm kleiner als die *Vereinfachungsgröße* sind, statt ihr vollständiges Modell zu behalten, solange das Spiel sie anzeigt. Dafür muss *Vereinfachte Spieler* eingeschaltet sein, was standardmäßig der Fall ist.
+- **Passagiere auf Schiffen von Valkyrien Skies am richtigen Ort** — Sitze, Fahrzeuge und Reiter auf einem Schiff von Valkyrien Skies schweben in der Ferne nicht mehr an der falschen Stelle, abseits ihres Schiffs. (Minecraft 1.20.1.)
+
 ## 0.16.0 — 2026-11-05
 
 ### Client
