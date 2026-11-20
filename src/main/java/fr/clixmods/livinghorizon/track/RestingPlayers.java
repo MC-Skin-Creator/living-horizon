@@ -12,6 +12,8 @@ import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.JsonStore;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
+import fr.clixmods.livinghorizon.compat.Mca;
+import fr.clixmods.livinghorizon.compat.McaLook;
 import fr.clixmods.livinghorizon.platform.Platform;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.client.Minecraft;
@@ -76,44 +78,61 @@ public final class RestingPlayers {
      * @param gear     what they wore and held ({@link Gear}), or null when not known
      * @param rest     where they really rest when it is not their spot (in the air, in water), or
      *                 null when it is, or not known yet
+     * @param mca      how they look with Minecraft Comes Alive ({@link McaLook}), or null
      */
     public record Spot(String name, @Nullable UUID id, @Nullable String textures, @Nullable String signature,
                        String dimension, double x, double y, double z, float yaw, long lastSeen,
-                       @Nullable Mount mount, @Nullable List<String> gear, @Nullable Rest rest) {
+                       @Nullable Mount mount, @Nullable List<String> gear, @Nullable Rest rest, @Nullable String mca) {
 
         public Spot(String name, @Nullable UUID id, @Nullable String textures, @Nullable String signature,
                     String dimension, double x, double y, double z, float yaw, long lastSeen,
                     @Nullable Mount mount, @Nullable List<String> gear) {
-            this(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen, mount, gear, null);
+            this(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen, mount, gear, null, null);
+        }
+
+        public Spot(String name, @Nullable UUID id, @Nullable String textures, @Nullable String signature,
+                    String dimension, double x, double y, double z, float yaw, long lastSeen,
+                    @Nullable Mount mount, @Nullable List<String> gear, @Nullable Rest rest) {
+            this(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen, mount, gear, rest, null);
         }
 
         /** Somewhere else: where they rest there is found again. */
         Spot moved(String dimension, double x, double y, double z, float yaw, @Nullable Mount mount) {
-            return new Spot(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen, mount, gear, null);
+            return new Spot(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen, mount, gear, null, mca);
         }
 
         /** The same player, wearing this skin. */
         Spot skinned(Property skin) {
             return new Spot(name, id, Profiles.value(skin), Profiles.signature(skin), dimension, x, y, z, yaw, lastSeen,
-                    mount, gear, rest);
+                    mount, gear, rest, mca);
         }
 
-        /** The same player, in this skin and this gear, logged off at {@code lastSeen} when it is known. */
-        Spot looking(@Nullable String textures, @Nullable String signature, @Nullable List<String> gear, long lastSeen) {
+        /**
+         * The same player, in this skin, this gear and this look of MCA (kept when null), logged
+         * off at {@code lastSeen} when it is known.
+         */
+        Spot looking(@Nullable String textures, @Nullable String signature, @Nullable List<String> gear,
+                     @Nullable String mca, long lastSeen) {
             return new Spot(name, id, textures, signature, dimension, x, y, z, yaw,
-                    lastSeen != 0 ? lastSeen : this.lastSeen, mount, gear, rest);
+                    lastSeen != 0 ? lastSeen : this.lastSeen, mount, gear, rest, mca != null ? mca : this.mca);
         }
 
         Spot dressed(GameProfile profile) {
             Property skin = skinOf(profile);
             return new Spot(name, Profiles.id(profile), skin == null ? textures : Profiles.value(skin),
                     skin == null ? signature : Profiles.signature(skin), dimension, x, y, z, yaw, lastSeen, mount, gear,
-                    rest);
+                    rest, mca);
         }
 
         /** The same player, resting there. */
         Spot resting(@Nullable Rest rest) {
-            return new Spot(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen, mount, gear, rest);
+            return new Spot(name, id, textures, signature, dimension, x, y, z, yaw, lastSeen, mount, gear, rest, mca);
+        }
+
+        /** Resting where {@code other} rests, on the same mount: only how they look may differ. */
+        boolean restsLike(Spot other) {
+            return dimension.equals(other.dimension) && x == other.x && y == other.y && z == other.z && yaw == other.yaw
+                    && Objects.equals(mount, other.mount) && Objects.equals(rest, other.rest);
         }
 
         GameProfile profile() {
@@ -244,6 +263,8 @@ public final class RestingPlayers {
     /** Test players the host of this world placed, which its server shares: among {@link #fakes}. */
     private final Set<String> fromHost = new HashSet<>();
     private @Nullable Path file;
+    /** The file being written; null before the first save. */
+    private @Nullable CompletableFuture<Void> saving;
     private @Nullable Spot lookedAt;
     /** Who is drawn now ({@link #shown}). */
     private List<Spot> shown = List.of();
@@ -320,10 +341,14 @@ public final class RestingPlayers {
 
     void close() {
         if (dirty) save();
+        // Written before the next server reads its file, or the game quits.
+        SaveThread.await(saving, 20, "writing the offline players");
+        saving = null;
         // Asked again on the next server, if they rest there too.
         for (String name : queued) lookups.remove(key(name));
         queued.clear();
         spots.clear();
+        Mca.forget();
         fakes.clear();
         fromHost.clear();
         puppets.clear();
@@ -344,8 +369,13 @@ public final class RestingPlayers {
     /** A player who just logged off, at the last place this client knew, on what they rode, in what they wore. */
     void rest(GameProfile profile, String dimension, double x, double y, double z, float yaw, @Nullable Mount mount,
               @Nullable List<String> gear) {
-        Spot spot = new Spot(Profiles.name(profile), Profiles.id(profile), null, null, dimension, x, y, z, yaw,
-                System.currentTimeMillis(), mount, gear).dressed(profile);
+        UUID id = Profiles.id(profile);
+        // How MCA draws them, for a server that shares nothing of them: it forgets it as this game leaves.
+        Spot known = spots.get(key(Profiles.name(profile)));
+        String mca = id != null ? Mca.seen(id) : null;
+        Spot spot = new Spot(Profiles.name(profile), id, null, null, dimension, x, y, z, yaw,
+                System.currentTimeMillis(), mount, gear, null, mca != null ? mca : known != null ? known.mca() : null)
+                .dressed(profile);
         put(spot);
     }
 
@@ -379,7 +409,8 @@ public final class RestingPlayers {
         // The server knows their skin as it is now, and what they wore.
         if (look != null && !looksLike(spot, look)) {
             spot = spot.looking(look.textures() != null ? look.textures() : spot.textures(),
-                    look.textures() != null ? look.signature() : spot.signature(), look.gear(), report.lastSeen());
+                    look.textures() != null ? look.signature() : spot.signature(), look.gear(), look.mca(),
+                    report.lastSeen());
         }
         put(spot);
         if (spot.textures() == null) lookUp(name);
@@ -387,7 +418,10 @@ public final class RestingPlayers {
 
     /** Whether a spot shows what the server says of how its player looks. */
     private static boolean looksLike(Spot spot, PositionsMessage.Look look) {
-        return (look.textures() == null || look.textures().equals(spot.textures())) && look.gear().equals(spot.gear());
+        // No gear known here is none at all, as the server writes it.
+        List<String> gear = spot.gear() != null ? spot.gear() : List.of();
+        return (look.textures() == null || look.textures().equals(spot.textures())) && look.gear().equals(gear)
+                && (look.mca() == null || look.mca().equals(spot.mca()));
     }
 
     /** The host's test players the server no longer lists: the host cleared them. */
@@ -415,7 +449,7 @@ public final class RestingPlayers {
             placed.add(new PositionsMessage.Player(spot.name(), spot.x(), spot.y(), spot.z(), spot.yaw(), spot.dimension(),
                     false, mount != null, null, mount == null ? null : mount.shared(),
                     new PositionsMessage.Look(spot.textures(), spot.signature(),
-                            spot.gear() != null ? spot.gear() : List.of()),
+                            spot.gear() != null ? spot.gear() : List.of(), spot.mca()),
                     spot.lastSeen(), true));
         }
         return placed;
@@ -447,7 +481,14 @@ public final class RestingPlayers {
     private void put(Spot spot) {
         Spot old = spots.put(key(spot.name()), spot);
         shownStale = true;
-        if (old != null) puppets.remove(old);
+        RestingPuppet puppet = old != null ? puppets.remove(old) : null;
+        if (puppet != null && old.restsLike(spot)) {
+            // Only how they look changed: the same puppet goes on where it is, dressed again.
+            puppet.dress(spot);
+            Mca.dress(puppet.level(), puppet.getUUID(), spot.mca());
+            puppets.put(spot, puppet);
+            if (lookedAt == old) lookedAt = spot;
+        }
         if (!fakes.contains(key(spot.name()))) dirty = true;
     }
 
@@ -599,11 +640,17 @@ public final class RestingPlayers {
 
     // --- Puppets -----------------------------------------------------------------------
 
+    /** The puppet of one of {@link #spots()}, or null when it was not made yet. */
+    public @Nullable RestingPuppet made(Spot spot) {
+        return puppets.get(spot);
+    }
+
     /** The puppet of one of {@link #spots()}, made the first time it is asked for. */
     public RestingPuppet puppet(ClientLevel level, Spot spot) {
         RestingPuppet puppet = puppets.get(spot);
         if (puppet != null) return puppet;
         puppet = Puppets.numbered(new RestingPuppet(level, spot, spot.profile()));
+        Mca.dress(level, puppet.getUUID(), spot.mca());
         // A spot no longer listed (moved, back online) gets one that is not kept: nothing would take it away.
         if (spots.get(key(spot.name())) == spot) puppets.put(spot, puppet);
         return puppet;
@@ -683,6 +730,8 @@ public final class RestingPlayers {
         // Sections copied per tick by all of them together, to look around. Each tick another
         // goes first, so that the same few never take it all.
         int[] work = {WORK};
+        // The grounds their loops read, a few a tick: the one going first this tick reads first.
+        RestingLoop.nextTick();
         Minecraft minecraft = Minecraft.getInstance();
         Entity camera = minecraft.getCameraEntity();
         // The one you look at looks back.
@@ -771,20 +820,27 @@ public final class RestingPlayers {
 
     // --- File --------------------------------------------------------------------------
 
+    /**
+     * Writes the file off the game's thread ({@link SaveThread}): here, only the list of spots is
+     * copied, which never change once made (a new one replaces them).
+     */
     private void save() {
         if (file == null) return;
         dirty = false;
-        long started = Profile.begin(Profile.Section.SAVE_RESTING);
-        long bytes = -1;
-        try {
-            List<Spot> kept = spots.values().stream().filter(spot -> !fakes.contains(key(spot.name()))).toList();
-            JsonStore.write(file, writer -> write(kept, writer));
-            bytes = Files.size(file);
-        } catch (IOException e) {
-            LivingHorizonClient.LOGGER.warn("Could not write {}", file, e);
-        } finally {
-            Profile.end(Profile.Section.SAVE_RESTING, started, bytes);
-        }
+        List<Spot> kept = spots.values().stream().filter(spot -> !fakes.contains(key(spot.name()))).toList();
+        Path to = file;
+        saving = SaveThread.run(() -> {
+            long started = System.nanoTime();
+            long bytes = -1;
+            try {
+                JsonStore.write(to, writer -> write(kept, writer));
+                bytes = Files.size(to);
+            } catch (IOException | RuntimeException e) {
+                LivingHorizonClient.LOGGER.warn("Could not write {}", to, e);
+            } finally {
+                Profile.record(Profile.Section.SAVE_RESTING, System.nanoTime() - started, bytes);
+            }
+        });
     }
 
     /**

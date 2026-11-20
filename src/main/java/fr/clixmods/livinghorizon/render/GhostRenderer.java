@@ -13,6 +13,7 @@ import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.FarViewLink;
 import fr.clixmods.livinghorizon.compat.IceAndFire;
 import fr.clixmods.livinghorizon.compat.OcclusionQueries;
+import fr.clixmods.livinghorizon.compat.ValkyrienSkies;
 import fr.clixmods.livinghorizon.debug.DebugMarks;
 import fr.clixmods.livinghorizon.debug.DebugMarks.Mark;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
@@ -31,6 +32,7 @@ import fr.clixmods.livinghorizon.track.RestingPlayers;
 import fr.clixmods.livinghorizon.track.RestingPuppet;
 import fr.clixmods.livinghorizon.track.SeedDraws;
 import fr.clixmods.livinghorizon.track.SharedPositions;
+import fr.clixmods.livinghorizon.track.Underground;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -60,6 +62,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.phys.Vec3;
@@ -142,16 +145,32 @@ public final class GhostRenderer {
     /** The farthest distant player drawn last frame, which this frame's far plane covers. */
     private static double farthest;
     private static float neededFar;
-    /** Something drawn this far away this frame: the next far plane covers it. */
+    /**
+     * Something drawn this far away this frame, somewhere on screen: the next far plane covers it,
+     * and past the render distance the far terrain's depth is merged over the whole screen.
+     */
     public static void noteDistance(double distance) {
         farthest = Math.max(farthest, distance);
+        if (distance > drawnRange) FarDepth.neededAnywhere();
+    }
+
+    /**
+     * Something drawn this far away this frame, within {@code radius} blocks of {@code (x, y, z)}
+     * from the camera: the next far plane covers it, and the far terrain's depth covers that place.
+     */
+    public static void noteDistance(double distance, double x, double y, double z, double radius) {
+        farthest = Math.max(farthest, distance);
+        FarDepth.around(x, y, z, radius);
         if (distance > drawnRange) FarDepth.needed();
     }
 
     // --- What is worth drawing ----------------------------------------------------------
 
+    /** Nanoseconds a frame may spend making the puppets of players who logged off; one is made at least. */
+    private static final long MAKE_BUDGET = 1_000_000L;
+
     /** The view this frame: where the camera looks, how wide, how many pixels a radian is. */
-    private static double eyeX, eyeY, eyeZ, lookX, lookY, lookZ, viewAngle, pixelsPerRadian, drawnRange;
+    private static double eyeX, eyeY, eyeZ, lookX, lookY, lookZ, viewCos, viewSin, pixelsPerRadian, drawnRange;
     /** Figures drawn this frame, models or pictures, and those left out: for the debug panel. */
     private static int drawn, skipped;
 
@@ -168,7 +187,9 @@ public final class GhostRenderer {
         int width = Math.max(1, minecraft.getWindow().getWidth()), height = Math.max(1, minecraft.getWindow().getHeight());
         // Half the screen's diagonal, as an angle, with a margin for a quick turn of the head.
         double aspect = width / (double) height;
-        viewAngle = Math.atan(Math.tan(fov / 2) * Math.sqrt(1 + aspect * aspect)) + 0.15;
+        double viewAngle = Math.atan(Math.tan(fov / 2) * Math.sqrt(1 + aspect * aspect)) + 0.15;
+        viewCos = Math.cos(viewAngle);
+        viewSin = Math.sin(viewAngle);
         pixelsPerRadian = DepthFar.pixelsPerRadian(minecraft);
         drawnRange = minecraft.options.getEffectiveRenderDistance() * 16 - 16;
         debug = DebugMarks.active();
@@ -202,15 +223,23 @@ public final class GhostRenderer {
         FarConfig config = FarConfig.get();
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (distance < size * 2 + 4) return null;
-        if (config.optViewCulling) {
-            double angle = Math.acos(Mth.clamp((dx * lookX + dy * lookY + dz * lookZ) / distance, -1, 1));
-            if (angle > viewAngle + Math.asin(Math.min(1, size / distance))) return Mark.OUTSIDE;
+        if (config.optViewCulling
+                && Apparent.outsideView((dx * lookX + dy * lookY + dz * lookZ) / distance, size / distance, viewCos, viewSin)) {
+            return Mark.OUTSIDE;
         }
         if (mayVanish && config.optTinyCulling && config.minApparentPixels <= 0
                 && size / distance * pixelsPerRadian < 0.6) {
             return Mark.TINY;
         }
         return null;
+    }
+
+    /** Whether something {@code size} blocks tall standing at {@code x, y, z} is in the view this frame, or right by the camera. */
+    private static boolean inView(double x, double y, double z, double size) {
+        double dx = x - eyeX, dy = y + size * 0.5 - eyeY, dz = z - eyeZ;
+        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (distance < size * 2 + 4) return true;
+        return !Apparent.outsideView((dx * lookX + dy * lookY + dz * lookZ) / distance, size / distance, viewCos, viewSin);
     }
 
     private static @Nullable Mark count(@Nullable Mark why) {
@@ -342,11 +371,12 @@ public final class GhostRenderer {
     /**
      * Whether this entity's renderer can give the mod a state of its own. Before 1.21.9,
      * GeckoLib 4's gives none: it only keeps the one it reuses, for the entity it was last
-     * handed, and draws that entity whatever state it is given.
+     * handed, and draws that entity whatever state it is given. Never an entity Valkyrien
+     * Skies carries on a ship: its renderer places it there itself.
      */
     public static boolean drawable(EntityRenderDispatcher dispatcher, Entity entity) {
         EntityType<?> type = entity.getType();
-        if (LEFT_OUT.contains(type)) return false;
+        if (LEFT_OUT.contains(type) || ValkyrienSkies.onShip(entity)) return false;
         //? if >=1.21.2 && <1.21.9 {
         /*if (PROBED.add(type) && dispatcher.getRenderer(entity).createRenderState() == null) {
             leaveOut(type, null);
@@ -559,6 +589,15 @@ public final class GhostRenderer {
         return MobFlight.pictured(entity) || !(entity instanceof LivingEntity) || IceAndFire.flies(entity);
     }
 
+    /**
+     * Never a picture: the ender dragon, whose body turns, bends and beats its wings along its
+     * flight, read from what it went through and not from where it faces, which no picture turned
+     * view by view shows. There is one at most, and it stays a model.
+     */
+    private static boolean unpictured(Entity entity) {
+        return entity instanceof EnderDragon;
+    }
+
     /** Past the distance set in the options; 0 is no limit. */
     private static boolean tooFar(Entity entity, Vec3 eye, int limit) {
         return limit > 0 && entity.distanceToSqr(eye) > (double) limit * limit;
@@ -582,7 +621,7 @@ public final class GhostRenderer {
                              Vec3 eye, float partialTick, FarConfig config) {
         if (!config.distantMobs && !config.distantEntities) return;
         MobMemory memory = FarPlayerTracker.get().mobs();
-        List<MobMemory.Remembered> shown = memory.shown();
+        List<MobMemory.Remembered> shown = memory.shown(minecraft.level);
         for (MobMemory.Remembered mob : shown) {
             Entity puppet = mob.puppet();
             if (puppet == null) {
@@ -605,6 +644,8 @@ public final class GhostRenderer {
             mob.drawn();
             // Held by easter egg 15, its head turned apart from its body: a model, which shows it.
             if (!Herd.holds(puppet) && impostor(minecraft, eye, puppet, partialTick, config)) continue;
+            // A model plays its idle movements and its legs from its clocks: made up first, if it rested untouched.
+            memory.catchUp(mob);
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
             turned(puppet, body, partialTick);
             // A puppet is in no world, so never in water: fish would be drawn flopping on
@@ -614,11 +655,12 @@ public final class GhostRenderer {
         }
         DrawnGround.ask();
         if (debug && DebugMarks.drawing() && minecraft.level != null) {
-            // The ones remembered but past the most shown at once.
+            // The ones remembered but past the most shown at once, or underground.
             Set<MobMemory.Remembered> listed = Collections.newSetFromMap(new IdentityHashMap<>());
             listed.addAll(shown);
+            boolean underground = Underground.hiding(minecraft.level, config);
             for (MobMemory.Remembered mob : memory.remembered(minecraft.level.dimension().identifier().toString())) {
-                if (!listed.contains(mob)) markRemembered(mob, Mark.SPARE);
+                if (!listed.contains(mob)) markRemembered(mob, underground && mob.underground() ? Mark.UNDERGROUND : Mark.SPARE);
             }
         }
     }
@@ -638,7 +680,8 @@ public final class GhostRenderer {
         if (!Occlusion.hidden(key, entity, dx, dy, dz, boost)) {
             return false;
         }
-        noteDistance(distance);
+        // Its box is where the far terrain's depth is needed (Occlusion.hidden): only the far plane here.
+        farthest = Math.max(farthest, distance);
         skipped++;
         if (debug) DebugMarks.mark(entity, Mark.HIDDEN);
         return true;
@@ -681,31 +724,45 @@ public final class GhostRenderer {
     private static void unseen(List<EntityRenderState> frame, Minecraft minecraft, EntityRenderDispatcher dispatcher,
                                Vec3 eye, float partialTick, FarConfig config) {
         if (!config.distantMobs && !config.distantEntities) return;
+        // Counted for the panel always; boxed and labelled only when the game's mobs are asked for.
         boolean game = debug && DebugMarks.gameMobs();
+        ClientLevel level = minecraft.level;
+        boolean underground = level != null && Underground.hiding(level, config);
         Map<EntityType<?>, Boolean> wanted = WANTED;
         wanted.clear();
         MobMemory memory = FarPlayerTracker.get().mobs();
         for (Entity entity : memory.live()) {
             if (EXTRACTED.contains(entity)) {
                 if (game) DebugMarks.mark(entity, Mark.GAME);
+                else if (debug) DebugMarks.tally(Mark.GAME);
                 continue;
             }
-            if (entity.isRemoved() || entity.isInvisible() || entity.isPassenger() || entity.isVehicle()) continue;
+            // Of a level left, until the next tick lets it go: never drawn at its old place in this one.
+            if (entity.isRemoved() || entity.isInvisible() || entity.level() != level) continue;
+            // A mount with a player on it is drawn with that player; a villager in a minecart,
+            // a cow in a boat, each on its own.
+            if ((entity.isPassenger() || entity.isVehicle()) && carriesPlayer(entity.getRootVehicle())) continue;
             // Its copy is still walking up to it, and drawn in its place.
             if (memory.hides(entity)) continue;
             EntityType<?> type = entity.getType();
             if (!config.shows(MobKinds.creature(type))) continue;
+            // Null once known: hidden whatever its name (FarConfig.hiddenMobs).
             Boolean shown = wanted.get(type);
-            if (shown == null) {
-                shown = config.mobTypes.contains(EntityType.getKey(type).toString());
+            if (shown == null && !wanted.containsKey(type)) {
+                String id = EntityType.getKey(type).toString();
+                shown = config.hidesMob(id) ? null : config.mobTypes.contains(id);
                 wanted.put(type, shown);
             }
-            if (!shown && !(config.rememberNamedMobs && entity.hasCustomName())) continue;
+            if (shown == null || !shown && !(config.rememberNamedMobs && entity.hasCustomName())) continue;
             // Close by, the game leaves a mob out only when the terrain hides it.
             if (entity.distanceToSqr(eye) < 24 * 24) continue;
             if (tooFar(entity, eye, maxDistance(entity, config))) continue;
             // Far View draws it as a box of its own in place of the game's model: once is enough.
             if (FarViewLink.drawsMob(entity, eye)) continue;
+            if (underground && Underground.live(level, entity)) {
+                if (debug) DebugMarks.mark(entity, Mark.UNDERGROUND);
+                continue;
+            }
             if (overVoid(minecraft, eye, entity.getUUID(), entity, config)) continue;
             if (skipped(entity, true)) continue;
             if (occluded(entity.getUUID(), entity, config)) continue;
@@ -739,10 +796,19 @@ public final class GhostRenderer {
         if (level == null) return;
         RestingPlayers resting = FarPlayerTracker.get().resting();
         String dimension = SharedPositions.dimensionId(level.dimension());
+        // Made a few a frame, each dressed and given its mount: joining a server where many
+        // logged off would make them all in one frame. The nearest in view first.
+        long makeUntil = System.nanoTime() + MAKE_BUDGET;
+        boolean made = false;
         // The nearest only, as many as the settings say.
         for (RestingPlayers.Spot spot : resting.shown()) {
             if (!spot.dimension().equals(dimension)) continue;
-            RestingPuppet puppet = resting.puppet(level, spot);
+            RestingPuppet puppet = resting.made(spot);
+            if (puppet == null) {
+                if (!inView(spot.x(), spot.y(), spot.z(), 2) || (made && System.nanoTime() > makeUntil)) continue;
+                puppet = resting.puppet(level, spot);
+                made = true;
+            }
             if (!drawable(dispatcher, puppet)) continue;
             if (tooFar(puppet, eye, config.playerMaxDistance)) continue;
             if (skipped(puppet, true)) continue;
@@ -788,6 +854,13 @@ public final class GhostRenderer {
             Entity hook = puppet.hook();
             if (hook != null) add(frame, minecraft, eye, extract(dispatcher, hook, partialTick), null, true, Mark.PLAYER, config, null);
         }
+        // Then those out of view, with what is left: there when the camera turns to them.
+        for (RestingPlayers.Spot spot : resting.shown()) {
+            if (made && System.nanoTime() > makeUntil) break;
+            if (!spot.dimension().equals(dimension) || resting.made(spot) != null) continue;
+            resting.puppet(level, spot);
+            made = true;
+        }
     }
 
     private static void add(List<EntityRenderState> frame, Minecraft minecraft, Vec3 eye, @Nullable EntityRenderState body,
@@ -825,11 +898,11 @@ public final class GhostRenderer {
         transform.anchorZ = az;
         transform.pull = pull;
         transform.scale = pull * boost * size;
-        if (distance > drawnRange) {
-            // Where it shows on screen: as big as drawn, around its middle, a mount included.
-            double shown = extent * boost;
-            FarDepth.figure(ax, ay + shown * 0.5, az, shown * (mount == null ? 0.75 : 1.5));
-        }
+        // Where it shows on screen: as big as drawn, around its middle, a mount included. Nearer
+        // than the render distance too, for Distant Horizons' fade, which reaches inside it.
+        double shown = extent * boost, radius = shown * (mount == null ? 0.75 : 1.5);
+        if (distance > drawnRange) FarDepth.figure(ax, ay + shown * 0.5, az, radius);
+        else FarDepth.around(ax, ay + shown * 0.5, az, radius);
         LocalPlayer self = minecraft.player;
         ClientLevel level = minecraft.level;
         if (mount != null) place(frame, mount, transform, puppet, kind, config, self, level);
@@ -935,11 +1008,16 @@ public final class GhostRenderer {
     // --- Impostors ------------------------------------------------------------------------
 
     private static long lastPrewarm;
+    /** Copies looked at by one {@link #prewarm}, at most: thousands of them are gone through a share at a time. */
+    private static final int PREWARM_MOST = 1024;
+    /** Where in the list of copies drawn the next {@link #prewarm} starts. */
+    private static int prewarmFrom;
 
     /**
      * Once a second, asks for the pictures of every figure on hand to be baked, near or far,
      * so that they are ready when the figure walks past the impostor distance: every skin,
-     * every kind of mob, in the resource packs as they are.
+     * every kind of mob, in the resource packs as they are. Past {@link #PREWARM_MOST} copies,
+     * the next ones the next second: a figure drawn as a picture asks for its own anyway.
      */
     private static void prewarm(FarConfig config) {
         if (!ImpostorAtlas.usable()) return;
@@ -952,9 +1030,15 @@ public final class GhostRenderer {
             if (puppet != null && !puppet.isFallFlying()) ImpostorAtlas.request(ImpostorKey.of(puppet), puppet);
         }
         if (!config.distantMobs && !config.distantEntities) return;
-        for (MobMemory.Remembered mob : FarPlayerTracker.get().mobs().shown()) {
+        List<MobMemory.Remembered> shown = FarPlayerTracker.get().mobs().shown(Minecraft.getInstance().level);
+        int count = Math.min(shown.size(), PREWARM_MOST);
+        if (prewarmFrom >= shown.size()) prewarmFrom = 0;
+        int from = prewarmFrom;
+        prewarmFrom += count;
+        for (int i = 0; i < count; i++) {
+            MobMemory.Remembered mob = shown.get((from + i) % shown.size());
             Entity puppet = mob.puppet();
-            if (puppet == null || !config.shows(creature(puppet))
+            if (puppet == null || !config.shows(creature(puppet)) || unpictured(puppet)
                     || !(creature(puppet) ? config.impostors : config.impostorEntities)) continue;
             ImpostorKey key = ImpostorKey.of(puppet);
             if (!fromHeights(puppet)) {
@@ -1019,7 +1103,7 @@ public final class GhostRenderer {
                                     double dx, double dy, double dz, float facing) {
         // A glider is tilted along its flight, which no picture baked standing shows.
         if (!ImpostorAtlas.usable() || entity.isPassenger() || entity.isVehicle()
-                || entity instanceof LivingEntity glider && glider.isFallFlying()
+                || entity instanceof LivingEntity glider && glider.isFallFlying() || unpictured(entity)
                 || !drawable(minecraft.getEntityRenderDispatcher(), entity)) {
             return false;
         }
@@ -1150,11 +1234,11 @@ public final class GhostRenderer {
         if (outline != 0 && ImpostorRenderer.OUTLINES) glowing = true;
         ImpostorRenderer.add(ax * pull, ay * pull, az * pull, sheet.worldSize() * pull * boost, sheet, view, light,
                 outline, facing);
-        if (distance > drawnRange) {
-            double extent = sheet.worldSize() * boost;
-            // Round its feet, or round its middle for a picture seen from a height.
-            FarDepth.figure(ax, facing ? ay : ay + extent * 0.5, az, extent * 0.75);
-        }
+        double extent = sheet.worldSize() * boost;
+        // Round its feet, or round its middle for a picture seen from a height.
+        double centre = facing ? ay : ay + extent * 0.5;
+        if (distance > drawnRange) FarDepth.figure(ax, centre, az, extent * 0.75);
+        else FarDepth.around(ax, centre, az, extent * 0.75);
         return true;
     }
 
@@ -1258,6 +1342,55 @@ public final class GhostRenderer {
     public static boolean alwaysRender(Entity entity) {
         FarConfig config = FarConfig.get();
         return config.enabled && config.renderTrackedVehiclesFar && carriesOtherPlayer(entity, 0);
+    }
+
+    /**
+     * Whether the game leaves another player it would draw itself to the mod, to be drawn as a
+     * picture: a figure the game draws is never one, and the game draws players ten times as far
+     * as other entities, far past the impostor distance and down to a few pixels. Their mount too,
+     * when it carries that player alone. Decided on the last frame's view, by the same thresholds
+     * as {@link #picture}; the mod then draws a picture, or the model while that is baked.
+     */
+    public static boolean pictureInstead(Entity entity, double camX, double camY, double camZ) {
+        FarConfig config = FarConfig.get();
+        if (!config.enabled || !config.impostorPlayers || pixelsPerRadian <= 0 || !ImpostorAtlas.usable()) return false;
+        AbstractClientPlayer rider = null;
+        if (entity instanceof AbstractClientPlayer player) {
+            rider = player;
+        } else if (!entity.isPassenger() && entity.getPassengers().size() == 1
+                && entity.getFirstPassenger() instanceof AbstractClientPlayer carried) {
+            rider = carried;
+        }
+        if (rider == null || rider instanceof LocalPlayer || rider.isInvisible() || rider.isSpectator()
+                || rider.isFallFlying()) {
+            return false;
+        }
+        FarPlayer far = FarPlayerTracker.get().player(rider.getUUID());
+        if (far == null || far.live() != rider) return false;
+        Entity mount = rider.getVehicle();
+        double size = Math.max(rider.getBbHeight(), rider.getBbWidth());
+        Entity at = rider;
+        if (mount != null) {
+            // Pictured with its mount, and only on one carrying it alone, on nothing else.
+            if (mount.isPassenger() || mount.getPassengers().size() > 1) return false;
+            size = Math.max(Math.max(mount.getBbHeight(), rider.getY() - mount.getY() + rider.getBbHeight()),
+                    mount.getBbWidth());
+            at = mount;
+        }
+        double dx = at.getX() - camX, dy = at.getY() - camY, dz = at.getZ() - camZ;
+        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        double apparent = distance < 1e-3 ? Double.MAX_VALUE : size / distance * pixelsPerRadian;
+        return ImpostorThreshold.pictured(distance, apparent, SHOWN.containsKey(rider), config.impostorDistance,
+                config.impostorPixels);
+    }
+
+    /** A player, or something carrying one, however deep. */
+    private static boolean carriesPlayer(Entity root) {
+        if (root instanceof AbstractClientPlayer) return true;
+        for (Entity passenger : root.getIndirectPassengers()) {
+            if (passenger instanceof AbstractClientPlayer) return true;
+        }
+        return false;
     }
 
     private static boolean carriesOtherPlayer(Entity entity, int depth) {

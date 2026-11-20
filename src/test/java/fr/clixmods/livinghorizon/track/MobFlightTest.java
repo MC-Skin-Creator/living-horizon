@@ -15,8 +15,18 @@ class MobFlightTest {
         assertEquals(MobFlight.CIRCLE, MobFlight.of("minecraft:phantom"));
         assertEquals(MobFlight.DRIFT, MobFlight.of("minecraft:ghast"));
         assertEquals(MobFlight.DRIFT, MobFlight.of("minecraft:happy_ghast"));
+        assertEquals(MobFlight.SOAR, MobFlight.of("minecraft:ender_dragon"));
         assertNull(MobFlight.of("minecraft:cow"));
         assertNull(MobFlight.of("minecraft:parrot"));
+    }
+
+    @Test
+    void otherModsBirdsWheelAndTheirOtherMobsWalk() {
+        for (String bird : new String[]{"tit", "crow", "jay", "bullfinch", "sparrow", "lark", "seagull", "owl", "woodpecker"}) {
+            assertEquals(MobFlight.WHEEL, MobFlight.of("ambientbirds:" + bird), bird);
+        }
+        assertNull(MobFlight.of("ambientbirds:dodo"));
+        assertNull(MobFlight.of("othermod:crow"));
     }
 
     @Test
@@ -51,6 +61,50 @@ class MobFlightTest {
                 assertTrue(Math.abs(at[0]) <= MobFlight.DRIFT_REACH + 1e-9 && Math.abs(at[2]) <= MobFlight.DRIFT_REACH + 1e-9);
                 assertTrue(Math.abs(at[1]) <= MobFlight.DRIFT_RISE + 1e-9);
             }
+        }
+    }
+
+    @Test
+    void birdsWheelOverTheirSpotAtABirdsPace() {
+        double[] a = new double[3], b = new double[3];
+        for (long seed : SEEDS) {
+            double farthest = 0, flown = 0;
+            MobFlight.WHEEL.at(seed, 0, a);
+            for (int t = 1; t < 20_000; t++) {
+                MobFlight.WHEEL.at(seed, t, b);
+                double out = Math.hypot(b[0], b[2]);
+                farthest = Math.max(farthest, out);
+                assertTrue(out <= MobFlight.WHEEL_REACH_MAX + 1e-9, "out " + out);
+                // Above the spot, clear of the trees it perched in.
+                assertTrue(b[1] >= MobFlight.WHEEL_RISE - 2.001 && b[1] <= MobFlight.WHEEL_RISE + 2.001);
+                flown += Math.sqrt(sq(b[0] - a[0]) + sq(b[1] - a[1]) + sq(b[2] - a[2]));
+                double[] swap = a;
+                a = b;
+                b = swap;
+            }
+            // It goes out to its whole reach, at about the pace of a bird.
+            assertTrue(farthest >= MobFlight.WHEEL_REACH_MIN - 0.1, "reaches " + farthest);
+            double pace = flown / 20_000;
+            assertTrue(pace > 0.12 && pace < 0.3, "pace " + pace);
+        }
+    }
+
+    @Test
+    void theDragonSoarsInWideRoundsAboutItsSpot() {
+        double[] at = new double[3];
+        for (long seed : SEEDS) {
+            double low = Double.MAX_VALUE, high = -Double.MAX_VALUE;
+            for (int t = 0; t < 20_000; t += 7) {
+                MobFlight.SOAR.at(seed, t, at);
+                double across = Math.hypot(at[0], at[2]);
+                assertTrue(across >= MobFlight.SOAR_RADIUS_MIN - 6.001 && across <= MobFlight.SOAR_RADIUS_MAX + 6.001,
+                        "round of " + across);
+                assertTrue(Math.abs(at[1]) <= MobFlight.SOAR_RISE + 2.001, "up " + at[1]);
+                low = Math.min(low, at[1]);
+                high = Math.max(high, at[1]);
+            }
+            // It climbs and dives, never level all the way round.
+            assertTrue(high - low > MobFlight.SOAR_RISE, "rises " + (high - low));
         }
     }
 

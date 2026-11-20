@@ -145,6 +145,9 @@ abstract class LevelRendererMixin {
         AmbientRenderer.submit(pose, frame.cameraRenderState.pos, sink);
         ImpostorRenderer.submit(pose, sink);
         DistancePreview.submit(pose, frame.cameraRenderState.pos, sink);
+        // Every figure is handed over, before the entities are drawn: the far terrain's depth may
+        // be merged around them only.
+        FarDepth.figuresKnown();
     }
 
     /** Moves a distant player's state closer along the line of sight, and scales it to match. */
@@ -176,6 +179,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import fr.clixmods.livinghorizon.ambient.AmbientRenderer;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.FarFog;
+import fr.clixmods.livinghorizon.compat.LycaniteMobs;
 import fr.clixmods.livinghorizon.render.DistancePreview;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
@@ -249,6 +253,8 @@ abstract class LevelRendererMixin {
         AmbientRenderer.submit(pose, camera.position(), sink);
         ImpostorRenderer.submit(pose, sink);
         DistancePreview.submit(pose, camera.position(), sink);
+        // Lycanites Mobs keeps most of its models for a later stage: drawn while the far depth is in.
+        LycaniteMobs.drawQueued();
         buffers.endBatch();
         FarDepth.after();
         FarFog.end();
@@ -260,6 +266,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import fr.clixmods.livinghorizon.ambient.AmbientRenderer;
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.FarFog;
+import fr.clixmods.livinghorizon.compat.LycaniteMobs;
 import fr.clixmods.livinghorizon.render.DistancePreview;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Sink;
@@ -338,6 +345,8 @@ abstract class LevelRendererMixin {
         AmbientRenderer.submit(pose, camera.position(), sink);
         ImpostorRenderer.submit(pose, sink);
         DistancePreview.submit(pose, camera.position(), sink);
+        // Lycanites Mobs keeps most of its models for a later stage: drawn while the far depth is in.
+        LycaniteMobs.drawQueued();
         buffers.endBatch();
         FarDepth.after();
         FarFog.end();

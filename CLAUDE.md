@@ -279,6 +279,15 @@ come back, add it here in the same pull request: this file is what the next sess
 - **Far terrain depth missing** (depth view without Voxy's or Distant Horizons' terrain,
   mobs not hidden behind its hills): read the *Far terrain depth* line of the debug panel or
   `/livinghorizon lod`, with *Lazy far depth* off, since lazy depth hides the real reason.
+  "off" there means a step threw and the depth stays off until a restart: the log says why
+  ("Using the far terrain's depth failed"). "a step changes GL state its bracket did not
+  save": a step's `GlState.save` asks for more than `beforeEntities`' bracket around it.
+- **Part of the far terrain's depth missing, cut along a straight line** (a far mob showing
+  through Voxy's or Distant Horizons' terrain on one side of an edge, the depth view fine):
+  the merge is held to a rectangle round the figures (`FarDepth.region`, *Local Far Depth*).
+  Something drawn past the render distance must hand its place over (`FarDepth.figure` or
+  `around`) or say it has none (`neededAnywhere`), before `FarDepth.before`. Turn
+  `optDepthRegion` off to tell.
 - **Distant Horizons version.** Players run old ones: `DhDepth` and `DhSource` work from
   2.3 on and fall back where its API is missing. Before 3.3.2 there is no depth layout
   (`getDepthRange`, `getDepthDirection`: OpenGL's usual one), before 3.3 the depth texture is
@@ -394,6 +403,12 @@ come back, add it here in the same pull request: this file is what the next sess
   Distant Horizons reports (`getDepthRange`, `getDepthDirection`: reversed and 0..1 on 26.2,
   empty at 0). Measured: sky 0, ground at 53 blocks 0.067, horizon 0.005. `DhDepth.frame`
   combines the two from 26.2 only; older versions keep OpenGL's -1..1.
+- **The game aborts on a Mac, no crash report** (macOS writes one with `jni_FatalError` on the
+  render thread, from LWJGL; the log says "a function that is not available in the current
+  context was called"): an OpenGL call past 4.1, which macOS never goes past. Every such call
+  goes through `compat/GlCalls`, which goes another way where the context lacks it;
+  `OpenGlVersionTest` finds one made anywhere else. Reproduce with Mesa held at 4.1 (see
+  `docs/technical.md`, "OpenGL 4.1 and older"): the game aborts the same way.
 - **Before 1.21.5** the game's depth texture has an unsized format (`GL_DEPTH_COMPONENT`):
   `glTextureStorage2D` refuses it, so anything copied from it is allocated the way the game
   allocates its own. A copy "with no size" or an all-white depth view is this.
@@ -452,14 +467,30 @@ come back, add it here in the same pull request: this file is what the next sess
   simulation distance, a square of chunks that reaches farther on its diagonals. In single
   player `ServerMobs` asks the server where those are and the copies follow; on a server only
   the mod on the server closes that gap.
+- **A mob's copy back for a few seconds after it died far away** (single player; the `followed`
+  scenario failing now and then with "The cow died and its copy stays"): the single player
+  server says it died (`ServerMobs`, `gone`), but the positions it shared before, every 7.5 s,
+  were read again (`MobMemory.sync`) and made a new copy where they had it. A copy forgotten for
+  something the server's last word does not know yet sets that word aside (`MobMemory.setAside`).
 - **Distant mobs gliding to and fro, legs still, or trembling** (past *Animation Distance* or
   under *Min. Animated Size*): a still mob must stand, not play its animation's path without its
   legs; `MobMotion.held` stops its animation's clock. And a puppet's `tickCount` must go on every
   tick: the game plays idle movements at `tickCount` plus the frame's part of a tick, so a stopped
   one replays a tick's worth twenty times a second. Still copies are looked at once in sixteen
-  ticks only once `MobMotion.settled`, and `rest` keeps their clocks going in between: one moved
-  once in sixteen ticks went in jerks. A copy held by easter egg 15 (`Herd.holds`) is never
+  ticks only once `MobMotion.settled`, and left untouched in between: their clocks (tick count,
+  legs, the animation's) are made up all at once (`MobMemory.catchUp`, `MobMotion.rest`) before
+  they are drawn as a model or looked at again. Anything else that reads a copy's tick count or
+  legs catches it up first. Until a copy is looked at, the tick reads only the remembered mob's
+  own fields (`settled`, `vehicle`, `aboard`), never the copy: one read of each copy a tick, for
+  thousands of them, was most of the cost. One moved once in sixteen ticks went in jerks. A copy held by easter egg 15 (`Herd.holds`) is never
   skipped: it turns every tick, or a far herd turned in jerks. The `stillmobs` scenario checks it all.
+- **Distant mobs gone between two distances on another player's server or LAN** (the copies
+  hidden as "too close for a copy" past where the real mobs stop being sent, then forgotten): the
+  reach the mod learnt for that kind of mob (`MobMemory.reach`, the debug panel's reach line) is
+  farther than the server sends now. A LAN host's game sends as far as the host's *Entity
+  Distance* says; it comes down when several mobs stop being sent well inside it
+  (`MobMemory.unlearnReach`). The client's own *Entity Distance* only changes who draws a real
+  mob, the game or the mod. The `handover` scenario checks both.
 - **Distant mobs only turning on the spot**, never walking, after the world was opened, while
   those met since walk: their ground was read (`MobPaths.plan`) where the far world had nothing
   (Voxy or Distant Horizons not open yet, or Voxy turned off for the session by one failed
@@ -467,6 +498,19 @@ come back, add it here in the same pull request: this file is what the next sess
   mob got no animation. A ground read whole is saved with the mob (`Remembered.ground`,
   `MobPaths.Ground.save`) and walked on at once in the next session; a choice read with
   columns missing is not `complete()` and is read again, later and later.
+- **A mob riding something remembered standing, or strolling off** (a villager out of its minecart,
+  a cow out of its boat): the game makes a vehicle's passengers get off before it reports the
+  vehicle removed, so the rider is no longer a passenger when it unloads. `MobMemory.riders`
+  keeps who rode what as of the last tick; the rider's copy then rides its vehicle's copy
+  (`MobMemory.ride`), or it would lag behind a minecart rolling on.
+- **Another mod's mobs hanging still far away** (Ambient Birds' flocks frozen in the sky past
+  the render distance): a mod that makes mobs on the client alone (no server knows them) lets
+  them go where this client holds no chunk, and the game stops moving an entity there.
+  `MobMemory.strand` hands such a mob to its copy until its chunk is back. Another mod's mob
+  drawn perched, invisible or walking far away when it should fly: it is not in
+  `track/ModdedMobs` yet, or what `compat/` reaches in its mod by reflection was renamed (the
+  log says "found, but not the version this mod knows"). Supporting one is an entry there:
+  its flight, and what its copy needs to be drawn as its mod draws it.
 - **Impostors before 1.21.6** (empty or missing pictures, or a figure flashing over the screen
   at the start of a frame): the game has no output override there, so `ImpostorAtlas` bakes
   at the start of the frame (`GameRendererMixin`) into a target of its own, which
@@ -508,6 +552,11 @@ come back, add it here in the same pull request: this file is what the next sess
   again with more room round it (`ImpostorPixels.growth`), drawn smaller in a tile of the same 64
   pixels: tiles two or three times larger took four or nine times the memory for a figure a dozen
   pixels tall. `impostoredges` and `longmobs` show both.
+- **Players online never simplified** (full models far past *Simplification Distance*, or
+  smaller than *Simplification Size*, while offline players are pictures): the game draws other
+  players itself up to ten times the usual entity distance, and a figure it draws is never a
+  picture. `GhostRenderer.pictureInstead` takes them, and their mount, out of the game's frame
+  past either threshold; the `playersize` scenario checks offline and online players.
 - **Distant mobs shaking their heads very fast** (often reported with Entity Culling, more so with
   Chloride or anything that makes the game stop drawing mobs sooner): Entity Culling holds every
   entity out of view until the game's own `renderEntity` draws it, and gives it a shorter tick
@@ -519,6 +568,16 @@ come back, add it here in the same pull request: this file is what the next sess
   GeckoLib 4's `createRenderState()` returns null and its `render` draws the entity it was
   last handed. `GhostRenderer.drawable` leaves such types out (issue #67 is about drawing
   them), and a renderer that throws while extracting is left out too, logged once.
+- **Lycanites Mobs blank or through the far terrain** (Forge 1.20.1: its pictures empty in the
+  impostor screen, its far models seen through Voxy's or Distant Horizons' hills): Lycanites queues
+  the opaque parts of its OBJ models (`VBOBatcher.queueDeferred`) and draws them at Forge's
+  `AFTER_ENTITIES` stage, after the bake and after `FarDepth.after`. `compat/LycaniteMobs.drawQueued`
+  draws the queue after each baked view and before the bracket closes. Another mod that defers its
+  draws that way needs the same.
+- **Entities on a Valkyrien Skies ship drawn in the wrong place far away** (a seat, a vehicle or its
+  rider floating, or nowhere): Valkyrien Skies keeps them in its shipyard, far from the world, and its
+  renderer moves them onto the ship from the camera, whatever place it is handed.
+  `compat/ValkyrienSkies.onShip` leaves them to the game (`GhostRenderer.drawable`).
 - **Perched birds darting to and fro, standing in the air or inside a block** (tits, robins,
   ducks): a move's progress is `timer / length`, so the rest after landing is `rest`, never
   added to `length` (which put an arrived bird back part of the way). Where a bird lands comes
@@ -614,6 +673,11 @@ come back, add it here in the same pull request: this file is what the next sess
   answers. Far, resting and logged-off player puppets are not ticked
   either, on every version (`Player.xCloak` before 1.21.9): not covered yet, and `cape` cannot
   just take any `ClientAvatarEntity`, since live players go through the same `extract` and tick.
+- **The ender dragon frozen far away** (gliding with still wings, always facing one way): its
+  renderer reads its wing clock (`flapTime`) and the heights and yaws its tick records
+  (`flightHistory`, `positions` before 1.21.2), never its yaw, and a puppet never ticks.
+  `MobGait.fly` does that part of its tick; its yaw points behind it (`MobGait.backwards`), and
+  it is never a picture. The `dragon` scenario checks it.
 - **Distant pets standing up** (a cat or wolf told to sit, its copy far away standing and
   strolling): the game saves the order to sit from `orderedToSit`, which only the server sets, so a
   save made on the client says `Sitting:0b`. `MobMemory.onUnload` writes `isInSittingPose()` into
@@ -633,6 +697,23 @@ come back, add it here in the same pull request: this file is what the next sess
   spot in the air, the shore, the boat) is kept with the spot and saved, and a new puppet starts
   there; before the blocks are ever loaded, the far world is asked (`guess`). The `restkept`
   scenario checks it.
+- **Players who logged off in their plain skin with Minecraft Comes Alive** (a villager model up
+  close while they played, Steve or their skin once they left): MCA gives a client a player's look
+  only while that player is online, and draws a player by their id from `MCAClient.playerData`.
+  The look goes with the spot (`PositionsMessage.Look.mca`, `RestingPlayers.Spot.mca`) and
+  `Mca.dress` hands it to MCA as the puppet is made. Nothing happens: the log says "Minecraft
+  Comes Alive found, but not the version this mod knows" (a class or method of MCA renamed:
+  `McaLook.find`, `Mca.find`), or the server has no Living Horizon and this client never saw them.
+  Drawn as two eyes alone, no body: MCA had a look with no gender, clothes or hair (an MCA
+  villager summoned with data skips its set-up; the `mca` scenario summons one without).
+- **Players who logged off jumping back a few blocks, near the camera** (as their skin arrives,
+  or every few seconds in single player): a new `Spot` for the same place made a new
+  `RestingPuppet`, which starts on the spot. A skin fetched from Mojang, the server's word on
+  their look, and the host's own test players echoed by its server (gear `null` here, `[]`
+  there) all did. `RestingPlayers.put` keeps the puppet and dresses it again
+  (`RestingPuppet.dress`) when only the look changed (`Spot.restsLike`). One shoved off a ledge
+  and standing in the air: shoved until its box no longer meets yours, it kept a sliver of the
+  rim under it; past `RIM` it goes over and falls (`tipOver`). The `restingedge` scenario checks both.
 - **A rider turned sideways** (a player resting in a boat facing left or right of it): the seat's
   yaw is the rider's body (`yBodyRot`), which the boat keeps in line with itself, never the head
   (`getYRot`), which looks wherever the player looked as they left.
@@ -669,6 +750,12 @@ come back, add it here in the same pull request: this file is what the next sess
   the messages' table of dimensions, `RestingPlayers.Spot`), never by a number, which cannot
   tell two mods' dimensions apart: message format 2 and the resting file's layout 1 gave them
   all 3, and their readers leave those out.
+- **Mobs of the Overworld drawn in the Nether** (issue #343: squids in the Nether's air, at their
+  Overworld coordinates): Forge and NeoForge never unload the old level's entities as the dimension
+  changes, so they stayed among the live mobs `GhostRenderer` draws past the entity distance; and
+  until the next tick the copies chosen in the old level were still drawn. `MobMemory.forgetPuppets`
+  remembers the old level's live mobs, its tick drops any of another level, and the renderer takes
+  `shown(level)`, empty for a level the copies were not chosen in. The `otherdimension` scenario checks it.
 - **Distant players gone after an update, the log saying "the server shares format vN"**: the
   server and the client run mods whose `PositionsMessage` layouts are too far apart. A field
   added at the end of a record, or after the records, raises `VERSION` only; anything else
@@ -745,6 +832,17 @@ come back, add it here in the same pull request: this file is what the next sess
   spyglass is up, and the guessed mobs are worked out again only when what they depend on
   changed (`Foresight.wantedIfChanged`). The `seedcrowd` scenario measures it all; the
   *Statistics...* screen counts what is kept.
+- **The debug panel's costs compared** (*Tick: choosing mobs* and *Frame: extraction* the
+  largest): each time is per call. Choosing runs once a second, the guessed mobs nested in it;
+  the tick's other parts every tick, the frame's every frame. Compare them per second, or
+  profile the `seedcrowd` and `perf` scenarios with JFR (`-XX:StartFlightRecording` in
+  `JAVA_TOOL_OPTIONS`, then `jfr print --events jdk.ExecutionSample`). *Frame: extraction*
+  with a worst far above its average, every few seconds: something done for every copy at
+  once. A figure's picture key (`ImpostorKey.look`) is worked out again every 5 to 9 s, each
+  at its own moment; worked out for the whole crowd in one frame, or the cache cleared whole
+  past 4096 figures, it was a spike. `GhostRenderer.prewarm` looks at 1024 copies a second at
+  most. With thousands of copies the loops are memory-bound: a map lookup per copy (a UUID's
+  hash) costs more than the arithmetic, so mark copies with a round number, never a set.
 - **Nothing drawn in the world while a distance setting is hovered** (the distance preview,
   `render/DistancePreview`): an entity's render type is fogged like an entity, and the game's
   fog had faded a 128-block fence out completely at the default render distance. From 1.21.11
@@ -794,27 +892,37 @@ come back, add it here in the same pull request: this file is what the next sess
 ## Changelog
 
 **Every change, every push.** Whenever you work on something, write its changelog entry
-in the same pull request, and before every push re-read both changelog files against what
-you are about to push: each player-visible change has its bullet, in both languages, and
+in the same pull request, and before every push re-read its entry files against what
+you are about to push: each player-visible change has its bullet, in every language, and
 no bullet describes something that is not in the diff. Never push first and fix the
 changelog in a later commit or pull request.
 
-A pull request that changes what a player sees or feels adds its entry to
-`changelog/en.md` and `changelog/fr.md`, under `## Unreleased` / `## Prochaine version`
-and nowhere else: a dated section is a version already released, never given an entry, and
-reworded only when the user asks for it. A version
-is split in two parts, **Server** first (what a server owner installs, sets up or gets, and
-what the mod does on a server, a LAN host included), then **Client** (what a player sees and
-feels in game, single player included): `### Server` / `### Client` (`### Serveur` /
-`### Client`), each with the kinds it needs under it, `#### New`, `#### Improved`,
-`#### Fixed` (`#### Nouveautés`, `#### Améliorations`, `#### Corrections`); a kind with
-nothing in it is left out. Both files have the same parts, kinds and number of bullets, in
-the same order. Versions released before the split keep their flat `### New` headings. The
-`changelog` CI job checks all of this.
+A pull request that changes what a player sees or feels adds each of its entries as a file
+of its own in `changelog/unreleased/` (named after the change; its `README.md` has the
+format): `part: server` or `client`, `kind: new`, `improved` or `fixed`, then the bullet in
+each of the 14 languages the mod ships, one line per language (`en:`, `fr:`, `de:`, `es:`,
+`it:`, `pt_br:`, `pl:`, `tr:`, `ru:`, `uk:`, `zh_cn:`, `zh_tw:`, `ja:`, `ko:`), in the words
+vanilla Minecraft and the mod's own `lang/` file use in that language (setting names exactly
+as the game shows them). `changelog/languages.json` lists the languages, the file of each
+(`changelog/<code>.md`) and its headings; a language added to `lang/` is added there too,
+its whole changelog translated. **Never write a bullet into `changelog/<code>.md`**: two pull
+requests editing the same lines there conflicted on every rebase, while two files never do. A dated section there is a version already released, never
+given an entry, and reworded only when the user asks for it. A version is split in two parts,
+**Server** first (what a server owner installs, sets up or gets, and what the mod does on a
+server, a LAN host included), then **Client** (what a player sees and feels in game, single
+player included), each with the kinds it needs, New, Improved, Fixed. Versions released
+before the split keep their flat `### New` headings. The `changelog` CI job checks all of
+this, every language's file against `en.md`; `node .github/scripts/changelog-notes.js
+unreleased <code>` prints the next version's section as it will read. A branch started before
+the entry files moves its bullets into them with `node .github/scripts/changelog-split.js`,
+then keeps `develop`'s `changelog/<code>.md` where they conflict.
 
-The release dates the section, opens a new empty one, and posts the entries on Modrinth
-(Changelog tab), CurseForge (file page) and Discord, and the game shows them in its
-changelog screen. Players read them, so **every entry is written with the
+The release turns the files into the version's section of every `changelog/<code>.md`
+(`### Server` / `#### New` and so on, in the order of the file names), deletes them, and
+posts the entries on Modrinth (Changelog tab), CurseForge (file page) and Nexus Mods in
+English, and on Discord in English and French. The game shows them in its changelog screen,
+in the game's language (English where it has none), under *Unreleased* until then: the build merges the files into the jar's copy
+(`gradle/target.gradle.kts`, the same layout as `.github/scripts/changelog-fragments.js`). Players read them, so **every entry is written with the
 `changelog-writing` skill** (`.claude/skills/changelog-writing/`), which holds the style,
 the vocabulary and examples. In short:
 

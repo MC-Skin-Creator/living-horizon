@@ -54,7 +54,9 @@ public final class DebugMarks {
         /** Not drawn yet: its copy is being built. */
         WAITING(0xFFAA55FF, true),
         /** Not drawn: remembered, but past the most mobs shown at once. */
-        SPARE(0xFF888888, true);
+        SPARE(0xFF888888, true),
+        /** Not drawn: underground, with {@code hideUndergroundMobs}. */
+        UNDERGROUND(0xFF337777, true);
 
         public final int color;
         /** A mob the mod leaves out of the frame, marked by a cross; the real one is not near. */
@@ -156,6 +158,11 @@ public final class DebugMarks {
     /** Last frame's count of one mark, for the panel. */
     public static int count(Mark mark) {
         return LAST[mark.ordinal()];
+    }
+
+    /** Counted for the panel, with nothing drawn round it. */
+    public static void tally(Mark mark) {
+        COUNTS[mark.ordinal()]++;
     }
 
     public static void mark(Entity entity, Mark mark) {
