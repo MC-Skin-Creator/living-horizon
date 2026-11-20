@@ -977,7 +977,7 @@ def launch(home: Path, version: str, game: str, game_dir: Path, settle: int, wai
                     time.sleep(wait)
                     turned = time.time()
                     if not shaders_on(hwnd, latest, game_dir, pack.name):
-                        result["stopped"] = f"the shader pack {pack.name} never loaded"
+                        result["stopped"] = f"the shader pack {pack.name} never loaded, or Iris gave it up"
                         return result
                     time.sleep(3)
                     # The pack compiles, then its frames settle (temporal effects): until two match.
@@ -1145,7 +1145,16 @@ def shaders_on(hwnd: int, log: Path, game_dir: Path, pack: str) -> bool:
     def loaded() -> int:
         return log.read_text("utf-8", "replace").count(f"Using shaderpack: {pack}") if log.is_file() else 0
 
-    before = loaded()
+    def failed() -> int:
+        # Iris loads the pack, then falls back to no shaders when a program does not compile
+        # (Complementary on 26.1 once): pictures "with" the pack would have none.
+        return log.read_text("utf-8", "replace").count("disabling shaders") if log.is_file() else 0
+
+    def toggled() -> int:
+        # The chat line once the toggle is done, the pack compiled or given up.
+        return log.read_text("utf-8", "replace").count("Toggled shaders") if log.is_file() else 0
+
+    before, broken, toggles = loaded(), failed(), toggled()
     for attempt in range(3):
         tell_agent(hwnd, [f"iris {pack}"])
         time.sleep(0.5)
@@ -1153,7 +1162,12 @@ def shaders_on(hwnd: int, log: Path, game_dir: Path, pack: str) -> bool:
         deadline = time.time() + 30
         while time.time() < deadline:
             if loaded() > before:
-                return True
+                # Its programs compile after the line; a failure says so within seconds, the
+                # game frozen meanwhile.
+                end = time.time() + 120
+                while time.time() < end and failed() == broken and toggled() == toggles:
+                    time.sleep(0.5)
+                return failed() == broken
             time.sleep(0.2)
     return False
 
