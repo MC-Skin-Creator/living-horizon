@@ -558,6 +558,15 @@ public final class FarConfig {
         return enabled || distantMobs || distantEntities;
     }
 
+    /**
+     * Whether anything is drawn past the render distance: the distant figures, or the birds,
+     * which fly out there whatever else is shown. What the far terrain's depth, the far plane
+     * and the far fog do follows this, not {@link #anyDistant()} alone.
+     */
+    public boolean anyFar() {
+        return anyDistant() || skyBirds;
+    }
+
     public static FarConfig get() {
         return instance;
     }

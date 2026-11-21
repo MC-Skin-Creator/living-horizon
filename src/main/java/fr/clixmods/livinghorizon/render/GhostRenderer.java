@@ -292,7 +292,7 @@ public final class GhostRenderer {
      */
     public static float farPlane(float vanilla) {
         FarConfig config = FarConfig.get();
-        if (!config.anyDistant() || !config.extendFarPlane) return vanilla;
+        if (!config.anyFar() || !config.extendFarPlane) return vanilla;
         float ecstatic = EcstaticLink.farPlane();
         if (ecstatic > 0f) return ecstatic;
         return Math.max(vanilla, neededFar);

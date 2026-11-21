@@ -861,6 +861,9 @@ neighbours, gulls for a beach, shore or ocean biome.
   while the camera stays within 6 blocks of where it was asked from, for 3 seconds at most;
   otherwise, or under Distant Horizons' fade (`FarDepth.fadesOverFigures`), it asks for the far
   depth around it (`FarDepth.around`, `needed`) as any far figure does.
+- Birds fly past the render distance whatever else is shown: the far terrain's depth, the far
+  plane and the far fog follow `FarConfig.anyFar` (the distant figures or the birds), so a bird
+  hides behind the far terrain even with every distant player, mob and entity off.
 
 ### Calling birds
 
