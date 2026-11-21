@@ -47,6 +47,10 @@ public final class EpicFight {
     private static Object sit;
     private static Object sleep;
     private static Object mount;
+    /** The motion event's methods, looked up once, on the first event: its class is not named in the API. */
+    private static @Nullable Class<?> eventType;
+    private static @Nullable Method inaction;
+    private static @Nullable Method setMotion;
 
     private EpicFight() {
     }
@@ -56,15 +60,18 @@ public final class EpicFight {
         if (!looked) find();
         if (!working) return;
         try {
-            Object patch = ((Optional<?>) getPatch.invoke(null, puppet, clientPlayerPatch)).orElse(null);
+            Object patch = patch(puppet);
+            if (patch == null || (boolean) uninitialized.invoke(patch)) {
+                // Joins once, as the level would; the listener goes on the patch it joined with.
+                onJoinLevel.invoke(null, puppet, puppet.level(), false);
+                patch = patch(puppet);
+                if (patch != null && !(boolean) uninitialized.invoke(patch)) listen(puppet, patch);
+            }
             if (patch != null) {
-                if ((boolean) uninitialized.invoke(patch)) listen(puppet, patch);
                 // How far it moved last tick: Epic Fight walks it from that.
                 dx.setDouble(patch, 0.0);
                 dz.setDouble(patch, Math.hypot(puppet.getX() - puppet.xOld, puppet.getZ() - puppet.zOld));
             }
-            // Joins once: the hook does nothing for a patch already joined.
-            onJoinLevel.invoke(null, puppet, puppet.level(), false);
             preTick.invoke(null, puppet);
         } catch (Throwable error) {
             fail(error);
@@ -86,14 +93,12 @@ public final class EpicFight {
         Object listener = Proxy.newProxyInstance(subscription.getClassLoader(), new Class<?>[]{subscription},
                 (self, method, args) -> switch (method.getName()) {
                     case "fire" -> {
-                        Object event = args[0];
                         Object motion = motion(puppet);
-                        if (working && motion != null && !(boolean) event.getClass().getMethod("inaction").invoke(event)) {
-                            Method set = null;
-                            for (Method candidate : event.getClass().getMethods()) {
-                                if (candidate.getName().equals("setMotion")) set = candidate;
-                            }
-                            if (set != null) set.invoke(event, motion);
+                        try {
+                            if (working && motion != null) setMotion(args[0], motion);
+                        } catch (Throwable error) {
+                            // Never thrown into Epic Fight's own event: the integration turns off instead.
+                            fail(error);
                         }
                         yield null;
                     }
@@ -103,6 +108,26 @@ public final class EpicFight {
                     default -> null;
                 });
         registerEvent.invoke(eventListener.invoke(patch), motionHook, listener, permanent);
+    }
+
+    /** Sets the event's motion, unless Epic Fight plays an action of its own. */
+    private static void setMotion(Object event, Object motion) throws ReflectiveOperationException {
+        Class<?> type = event.getClass();
+        if (type != eventType) {
+            Method set = null;
+            for (Method candidate : type.getMethods()) {
+                if (candidate.getName().equals("setMotion") && candidate.getParameterCount() == 1) set = candidate;
+            }
+            inaction = type.getMethod("inaction");
+            setMotion = set;
+            eventType = type;
+        }
+        Method set = setMotion, acting = inaction;
+        if (set != null && acting != null && !(boolean) acting.invoke(event)) set.invoke(event, motion);
+    }
+
+    private static @Nullable Object patch(RestingPuppet puppet) throws ReflectiveOperationException {
+        return ((Optional<?>) getPatch.invoke(null, puppet, clientPlayerPatch)).orElse(null);
     }
 
     /** The motion its look stands for, or null when Epic Fight's own reading holds. */
