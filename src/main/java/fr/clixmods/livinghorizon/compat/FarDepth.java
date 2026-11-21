@@ -158,7 +158,7 @@ public final class FarDepth {
         // OpenGL costs a wait for the driver, so not on the frames that cannot use the answer.
         FarConfig config = FarConfig.get();
         try {
-            if (!config.anyDistant() || !config.depthOcclusion || !keepsOwnDepth()) return;
+            if (!config.anyFar() || !config.depthOcclusion || !keepsOwnDepth()) return;
         } catch (ReflectiveOperationException e) {
             return;
         }
@@ -191,6 +191,15 @@ public final class FarDepth {
     public static void neededAnywhere() {
         needed = true;
         anywhere = true;
+    }
+
+    /**
+     * Whether Distant Horizons fades its terrain over the game's picture this frame: then
+     * anything drawn past the render distance must say so, even where no terrain stands
+     * between it and the eye, or the fade paints its terrain over it.
+     */
+    public static boolean fadesOverFigures() {
+        return FarConfig.get().optDhFade && DhDepth.available() && !DhDepth.shaderPackOn();
     }
 
     /** The world's entities are submitted: the next drawing of features is theirs. */
@@ -304,7 +313,7 @@ public final class FarDepth {
         try {
             if (gpuPath()) {
                 // Distant Horizons alone: Voxy draws with OpenGL only. No shader pack either.
-                boolean dh = wanted && config.anyDistant() && DhDepth.available() && !DhDepth.shaderPackOn();
+                boolean dh = wanted && config.anyFar() && DhDepth.available() && !DhDepth.shaderPackOn();
                 FRAME.gpuMerge = dh && config.depthOcclusion;
                 FRAME.gpuFade = dh && config.optDhFade;
                 if (!FRAME.gpuMerge) {
@@ -313,7 +322,7 @@ public final class FarDepth {
                 }
                 return;
             }
-            boolean merging = wanted && config.anyDistant() && config.depthOcclusion;
+            boolean merging = wanted && config.anyFar() && config.depthOcclusion;
             boolean queries = wanted && config.anyDistant() && config.hideOccludedMobs && config.optOcclusionQueries;
             // The merge and the test both draw: the GL state is saved once around the two.
             // What the merge touches: Voxy's blit everything, Distant Horizons' and Lodistance's one
@@ -335,10 +344,10 @@ public final class FarDepth {
                     else reason = "neither Voxy, Distant Horizons nor Lodistance is usable";
                 }
                 // Distant Horizons' fade, without a shader pack, needs to know where the entities are.
-                boolean dhFade = wanted && config.anyDistant() && config.optDhFade && DhDepth.available()
+                boolean dhFade = wanted && config.anyFar() && config.optDhFade && DhDepth.available()
                         && !DhDepth.shaderPackOn();
                 // A pack that keeps Voxy's depth apart reads it past the game's: our far figures go there too.
-                boolean voxy = wanted && config.anyDistant() && config.optVoxyShadows && figures > 0 && keepsOwnDepth();
+                boolean voxy = wanted && config.anyFar() && config.optVoxyShadows && figures > 0 && keepsOwnDepth();
                 // The depth view shows the game's depth even when there was nothing to merge.
                 if (!FRAME.merged && (config.debugDepthView != 0 || dhFade || queries || voxy)) FRAME.captured = capture();
                 FRAME.intoVoxy = voxy && (FRAME.merged || FRAME.captured);

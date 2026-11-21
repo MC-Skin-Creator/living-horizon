@@ -12,6 +12,8 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.Locale;
 
 /**
@@ -45,8 +47,6 @@ public final class DebugMarks {
         TINY(0xFFFFFF55, true),
         /** Not drawn: behind terrain. */
         HIDDEN(0xFFFFAA00, true),
-        /** Not drawn: a copy this close to the player is gone from view, so it cannot be walked up to. */
-        NEAR(0xFFAA7744),
         /** Not drawn: no terrain is drawn under it, neither the game's nor the far terrain. */
         VOID(0xFF5522AA, true),
         /** Not drawn: outside the view. */
@@ -56,7 +56,11 @@ public final class DebugMarks {
         /** Not drawn: remembered, but past the most mobs shown at once. */
         SPARE(0xFF888888, true),
         /** Not drawn: underground, with {@code hideUndergroundMobs}. */
-        UNDERGROUND(0xFF337777, true);
+        UNDERGROUND(0xFF337777, true),
+        /** A bird drawn as a 3D model (or a sprite). */
+        BIRD(0xFFFFCC66),
+        /** A bird drawn as a picture of itself (Simplified Birds), the impostors' colour. */
+        BIRD_PICTURE(IMPOSTOR);
 
         public final int color;
         /** A mob the mod leaves out of the frame, marked by a cross; the real one is not near. */
@@ -106,6 +110,7 @@ public final class DebugMarks {
             case FAKE -> config.boxCopies;
             case FORESEEN -> config.boxForeseen;
             case PLAYER -> config.boxPlayers;
+            case BIRD, BIRD_PICTURE -> config.boxBirds;
             default -> config.boxLeftOut;
         };
     }
@@ -169,7 +174,9 @@ public final class DebugMarks {
         mark(entity.getX(), entity.getY(), entity.getZ(), entity.getBbWidth(), entity.getBbHeight(), entity.getType(), mark);
     }
 
-    public static void mark(double x, double y, double z, double width, double height, EntityType<?> type, Mark mark) {
+    /** {@code type} names the figure in its label; null for one that is no entity (a bird). */
+    public static void mark(double x, double y, double z, double width, double height, @Nullable EntityType<?> type,
+                            Mark mark) {
         COUNTS[mark.ordinal()]++;
         boolean cross = crosses && mark.leftOut;
         boolean boxes = DebugMarks.boxes && BOXED[mark.ordinal()], labels = DebugMarks.labels && BOXED[mark.ordinal()];
@@ -188,7 +195,9 @@ public final class DebugMarks {
             }
             if (labels) {
                 double pixels = Math.max(height, width) / Math.max(distance, 1e-3) * pixelsPerRadian;
-                String text = String.format(Locale.ROOT, "%s · %s · %d m · %.1f px", mark.label(),
+                String text = type == null
+                        ? String.format(Locale.ROOT, "%s · %d m · %.1f px", mark.label(), Math.round(distance), pixels)
+                        : String.format(Locale.ROOT, "%s · %s · %d m · %.1f px", mark.label(),
                         I18n.get(type.getDescriptionId()), Math.round(distance), pixels);
                 // A size in the world that grows with the distance: the same few pixels on screen.
                 float scale = (float) (16.0 * distance / pixelsPerRadian * 1.4);

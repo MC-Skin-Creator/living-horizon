@@ -268,7 +268,9 @@ distant mobs or players, birds, impostors or a screen is checked in the real cli
 scenarios in `src/gametest/java` and takes screenshots to look at. Run
 `.claude/skills/game-test/run.sh [scenario]`, read `SKILL.md` there first, add a scenario
 for what the change touches, and show the user the screenshots. Voxy cannot run there: say so
-when a check depends on it. Distant Horizons runs there on 26.3 (`--with distanthorizons`,
+when a check depends on it. Across versions and with Voxy, Distant Horizons and shader packs,
+on the machine with a graphics card: `.claude/skills/regression-bench/` plays one frozen scene
+on every Fabric node and compares its pictures with the last approved run. Distant Horizons runs there on 26.3 (`--with distanthorizons`,
 Fabric Loader 0.19.5 for the run: see the skill).
 
 ## Debugging checklist
@@ -461,6 +463,30 @@ come back, add it here in the same pull request: this file is what the next sess
   the server sends (the copies' near zone, a far player lost inside it) reads
   `track/ServerView`, the render distance cut to the server's; terrain keeps the render
   distance. The `bobby` scenario checks it (`run.sh bobby --with bobby`).
+- **Distant mobs vanishing for good on a server that sends them only up close** (kept only when
+  the player flies off fast; mc.peacefulvanilla.club sends mobs to 24 blocks): a mob the server
+  stops sending near the player reads as killed or despawned and is forgotten. Near is
+  `MobMemory.goneNear`, kept well inside the reach learned for its kind, never a fixed 32 blocks.
+  The reach also learns from where mobs are dropped (`learnReach(Entity)`): sampled once a second
+  only, it came out at 10 blocks for a server sending 16. No fixed distance near the player either:
+  a copy is drawn however close (it exists only while the real mob is not sent), and
+  `MobMemory.nearRange`, where a missing one is forgotten, follows that reach. So a copy of a mob
+  gone (died, moved off) is seen until `reconcile` forgets it: it looks every 5 ticks, after
+  `learnReach`, and forgets after 3 looks; at 5 looks a second apart, one stood in front of the
+  player for 5 s. A mob sent again is kept out of view while its copy walks up to it
+  (`MobMotion.follow`), as the game would walk it: at its kind's pace (`walkPace`, from its
+  movement speed: a cow 0.064 blocks a tick), on the blocks under it (`standAt`), hopping if it
+  hops; faster with the player close. Catching up faster the farther it was, it slid across the
+  ground with its legs racing and went up a ramp through the air. All of it is set on the *Debug*
+  screen (`join*` settings: how far it walks, its pace, the ground, when it gives up, the hurry).
+  The real one takes over a tick after the copy stood on it: removed the tick it arrived, its last
+  step was never drawn and the real one appeared a step ahead. Taking over at once instead (no
+  walk) made it jump and turn on the spot. The `shortrange`, `smallmobs` and `comeback` scenarios
+  check it.
+- **Small mobs vanishing for a few blocks with *Entity Distance* below 100 %** (chickens, cats,
+  wolves; zombies and cows fine): the game culls a mob at a distance that grows with its size, a
+  chicken past 16 blocks at 50 %. `GhostRenderer.unseen` takes over from the game's own test
+  (`Entity.shouldRender`), never from a fixed distance: a fixed 24 blocks left a gap.
 - **Distant mobs jumping or sprinting as the player comes back** (the copy runs or teleports to
   the real mob once it is sent again): the server stops sending a mob at its tracking range
   (160 blocks for animals, scaled by *Entity Distance*) but keeps moving it out to the
@@ -578,6 +604,15 @@ come back, add it here in the same pull request: this file is what the next sess
   rider floating, or nowhere): Valkyrien Skies keeps them in its shipyard, far from the world, and its
   renderer moves them onto the ship from the camera, whatever place it is handed.
   `compat/ValkyrienSkies.onShip` leaves them to the game (`GhostRenderer.drawable`).
+- **Birds seen through the far terrain's hills** (a flock showing through a Voxy or Distant
+  Horizons mountain): birds in open sky leave the far depth alone (`ambient/OpenSky`), from an
+  answer of the far world asked once a second for a line 8 blocks under each, kept 3 s and while
+  the camera stays within 6 blocks. A bird wrongly found clear is drawn over the terrain: check
+  `LodWorld.blocked` for that source (`firstHit`).
+- **Pictures costing frames under a shader pack** (impostors or birds, Iris on): whatever is asked
+  for every picture drawn must not look Iris up by reflection each time. `ImpostorAtlas.wantsRelief`
+  reads the pack's normal maps a few times a second, `IrisLink` keeps its methods and takes no lock
+  once linked.
 - **Perched birds darting to and fro, standing in the air or inside a block** (tits, robins,
   ducks): a move's progress is `timer / length`, so the rest after landing is `rest`, never
   added to `length` (which put an arrived bird back part of the way). Where a bird lands comes
@@ -804,6 +839,11 @@ come back, add it here in the same pull request: this file is what the next sess
   as a truncated jar (`zip END header not found` on the next attempt): `gradle.sh` deletes the
   jars that do not open before trying again. What Forge's Maven served is kept in each Forge
   node's cache entry (`mavenizer/caches/maven/forge`), so a build only asks it for what changed.
+- **A Forge node failing in CI with "Failed to find JDK for version 8"** (`sha256 Invalid` on an
+  `OpenJDK8U` tarball just before): the Mavenizer runs one step on Java 8, found through
+  `JAVA_HOME_8_X64`, or downloads Temurin 8 itself. GitHub served 8u514's tarball as a 1.8 kB
+  block list. The workflows install Zulu 8 for the Forge nodes (`Set up JDK 8 for ForgeGradle`),
+  before the step whose last JDK becomes `JAVA_HOME`; never Temurin 8 there, the same file.
 - **Animals of unexplored land missing or drawn twice** (none far off in a world never explored,
   or one beside the real herd as a chunk loads): they are drawn by `SeedDraws`, foreseen by the
   server around players with the mod (`SeedMobs`) and by the client within *Mob Render Distance*,

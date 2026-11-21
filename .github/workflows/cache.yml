@@ -92,6 +92,17 @@ jobs:
           restore-keys: ${{ steps.keys.outputs.shared-restore }}
           path: ${{ steps.keys.outputs.shared-paths }}
 
+      - name: Set up JDK 8 for ForgeGradle
+        # ForgeGradle's Mavenizer runs one step on Java 8, found through JAVA_HOME_8_X64,
+        # or downloads Temurin 8 itself: GitHub served 8u514's tarball broken (a 1.8 kB
+        # block list), which failed every Forge node without it in its cache. Zulu comes
+        # from Azul's CDN. Before the step below, so that JAVA_HOME stays on 21.
+        if: steps.lookup.outputs.cache-hit != 'true' && endsWith(matrix.entry, '-forge')
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 8
+
       - name: Set up JDKs
         if: steps.lookup.outputs.cache-hit != 'true'
         uses: actions/setup-java@v4
