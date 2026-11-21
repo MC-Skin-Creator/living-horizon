@@ -516,6 +516,8 @@ public final class FarConfig {
     public boolean boxForeseen = true;
     /** Around the distant players. */
     public boolean boxPlayers = true;
+    /** Around the birds: amber as 3D models, magenta as pictures (Simplified Birds). */
+    public boolean boxBirds = true;
     /** Around the mobs left out of the frame (too small, hidden, over the void, outside the view...). */
     public boolean boxLeftOut = true;
     // Outlines, seen through terrain, in the colours of the debug boxes: what draws each figure.

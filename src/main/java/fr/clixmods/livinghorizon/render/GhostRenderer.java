@@ -4,6 +4,7 @@ import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.Stats;
+import fr.clixmods.livinghorizon.ambient.AmbientRenderer;
 import fr.clixmods.livinghorizon.ambient.Ambience;
 import fr.clixmods.livinghorizon.ambient.Herd;
 import fr.clixmods.livinghorizon.compat.DrawnGround;
@@ -560,6 +561,7 @@ public final class GhostRenderer {
         mobs(frame, minecraft, dispatcher, eye, partialTick, config);
         unseen(frame, minecraft, dispatcher, eye, partialTick, config);
         if (config.easterEggs) eggs(frame, minecraft, dispatcher, eye, partialTick, config);
+        if (config.skyBirds && debug) AmbientRenderer.markBirds();
         if (config.skyBirds) {
             // Parrots and bats; the silhouettes are drawn by AmbientRenderer.
             for (Ambience.Flyer flyer : FarPlayerTracker.get().ambience().flyers()) {

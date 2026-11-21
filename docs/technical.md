@@ -851,6 +851,9 @@ neighbours, gulls for a beach, shore or ocean biome.
   (`ambient/AmbientRenderer`). Flying, seen from above, one plane per wing; perched, seen from
   the side, facing the camera.
 - Bats and parrots are the game's own either way.
+- A 3D bird is measured for its picture as a mob is, by its largest size (`AmbientRenderer.extent`):
+  its wingspan flying, its own body perched (`Meshes.perched`, 0.65 to 0.8 of its wingspan).
+  Measured by its wingspan perched, it stayed a model a quarter to a half farther than *Simplification Size* says.
 - A 3D bird is one piece of geometry: its boxes are turned into faces once per model
   (`AmbientRenderer.Meshes`: positions, grain, normals and colours), and each frame only
   writes them, its wings turned on their hinges as they are written.
@@ -1829,7 +1832,7 @@ the mod shares come back by themselves. *Scan Nearby Mobs* runs a scan.
 | `debugBoxes` | Boxes on Mobs | `false` | A coloured box around every distant mob and player, seen through terrain |
 | `debugLabels` | Labels on Mobs | `false` | State, kind, distance and size on screen above each box |
 | `debugGameMobs` | Game's Mobs Too | `false` | Boxes around the mobs the game draws itself too |
-| `box*` | Boxes... | `true` | Which other kinds get their box and label: `boxLiveMobs`, `boxCopies`, `boxForeseen`, `boxPlayers`, `boxLeftOut` |
+| `box*` | Boxes... | `true` | Which other kinds get their box and label: `boxLiveMobs`, `boxCopies`, `boxForeseen`, `boxPlayers`, `boxBirds` (amber as models, magenta as pictures, as large as they are measured for their picture), `boxLeftOut` |
 | `debugDepthView` | Depth View | `0` | `0` off; `1` the game's depth; `2` with the far terrain merged in; `3` after the entities; `4` the whole world |
 | `outline*` | Outlines... | `false` | See [Outlines](#outlines) |
 

@@ -2,6 +2,7 @@ package fr.clixmods.livinghorizon.ambient;
 
 import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.compat.FarDepth;
+import fr.clixmods.livinghorizon.debug.DebugMarks;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -91,7 +92,9 @@ public final class AmbientRenderer {
             for (Egg egg : ambience.more()) egg.submit(pose, camera, collector, partial);
         }
         boolean models = config.birdModels();
+        boolean marks = DebugMarks.active();
         drawn = asModels = asPictures = 0;
+        marked = 0;
         // Distant Horizons' fade paints its terrain over any far figure it is not told of.
         boolean fade = FarDepth.fadesOverFigures();
         long now = System.nanoTime();
@@ -119,7 +122,9 @@ public final class AmbientRenderer {
             int tint = bird.shade;
             int species = bird.species.ordinal();
             drawn++;
-            if (models && impostor(bird, x, y, z, distance, pull, yaw, wingDegrees, config, pixelsPerRadian)) {
+            boolean pictured = models && impostor(bird, x, y, z, distance, pull, yaw, wingDegrees, config, pixelsPerRadian);
+            if (marks) mark(bird, camera, x * pull, y * pull, z * pull, pull, pictured);
+            if (pictured) {
                 asPictures++;
                 continue;
             }
@@ -156,6 +161,37 @@ public final class AmbientRenderer {
         }
     }
 
+    /** Per bird marked this frame: x, y of its bottom, z, size, and 1 for a picture. */
+    private static double[] marks = new double[0];
+    private static int marked;
+
+    /**
+     * Notes the debug box and label of a bird where it is drawn (pulled in past the far plane),
+     * as large as it is measured for its picture: a 3D model or a picture, and its size in pixels.
+     */
+    private static void mark(Ambience.Flyer bird, Vec3 camera, double x, double y, double z, double pull, boolean pictured) {
+        double size = extent(bird) * pull;
+        if ((marked + 1) * 5 > marks.length) marks = Arrays.copyOf(marks, Math.max(80, marks.length * 2));
+        int i = marked++ * 5;
+        marks[i] = camera.x + x;
+        // Flying, its middle is its place; perched, its feet.
+        marks[i + 1] = camera.y + (bird.perched ? y : y - size / 2);
+        marks[i + 2] = camera.z + z;
+        marks[i + 3] = size;
+        marks[i + 4] = pictured ? 1 : 0;
+    }
+
+    /**
+     * The birds' debug boxes and labels, from the frame before: the game's gizmos are only
+     * collected while the entities are extracted, and the birds are submitted after that.
+     */
+    public static void markBirds() {
+        for (int i = 0; i < marked * 5; i += 5) {
+            DebugMarks.mark(marks[i], marks[i + 1], marks[i + 2], marks[i + 3], marks[i + 3], null,
+                    marks[i + 4] > 0 ? DebugMarks.Mark.BIRD_PICTURE : DebugMarks.Mark.BIRD);
+        }
+    }
+
     /** Birds drawn last frame: all of them, those drawn as 3D models, and those drawn as pictures. */
     private static int drawn, asModels, asPictures;
 
@@ -187,7 +223,7 @@ public final class AmbientRenderer {
     private static boolean impostor(Ambience.Flyer bird, double x, double y, double z, double distance, double pull,
                                     float yaw, float wingDegrees, FarConfig config, double pixelsPerRadian) {
         if (!config.impostorBirds || !ImpostorAtlas.usable()) return false;
-        double apparent = distance < 1e-3 ? Double.MAX_VALUE : bird.span * bird.scale / distance * pixelsPerRadian;
+        double apparent = distance < 1e-3 ? Double.MAX_VALUE : extent(bird) / distance * pixelsPerRadian;
         if (!ImpostorThreshold.pictured(distance, apparent, bird.view >= 0, config.impostorDistance, config.impostorPixels)) {
             return false;
         }
@@ -232,6 +268,20 @@ public final class AmbientRenderer {
         pose.popPose();
     }
 
+    /**
+     * Blocks across the bird at its largest, as a mob's box is measured for its picture: its
+     * wingspan flying, its own body perched (a perched bird is half as wide as its wings).
+     */
+    static double extent(Ambience.Flyer bird) {
+        double span = bird.span * bird.scale;
+        return bird.perched && bird.kind == Ambience.Kind.SILHOUETTE ? span * perched(bird.species) : span;
+    }
+
+    /** A perched bird's largest size, in wingspans. */
+    public static float perched(Ambience.Species species) {
+        return meshes(BirdModels.of(species)).perched;
+    }
+
     /** A little lighter or darker from one bird to the next, the same bird always the same. */
     private static float tone(Ambience.Flyer bird) {
         return 0.9f + 0.2f * ((System.identityHashCode(bird) & 255) / 255f);
@@ -253,6 +303,8 @@ public final class AmbientRenderer {
     static final class Meshes {
         final Mesh perch, fly, wing, tip, wingMirrored, tipMirrored;
         final float hingeX, tipX;
+        /** The perched bird's largest size (long, wide or tall), in wingspans. */
+        final float perched;
 
         Meshes(BirdModels.Model model) {
             perch = new Mesh(model, BirdModels.Part.PERCH, false);
@@ -263,6 +315,7 @@ public final class AmbientRenderer {
             tipMirrored = new Mesh(model, BirdModels.Part.TIP, true);
             hingeX = model.hingeX();
             tipX = model.tipX();
+            perched = perch.extent() / model.span();
         }
 
         /**
@@ -349,6 +402,21 @@ public final class AmbientRenderer {
             corners[i + 6] = ny;
             corners[i + 7] = nz;
             return i + STRIDE;
+        }
+
+        /** Its largest size along any axis, in model pixels. */
+        float extent() {
+            float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE, minZ = Float.MAX_VALUE;
+            float maxX = -Float.MAX_VALUE, maxY = -Float.MAX_VALUE, maxZ = -Float.MAX_VALUE;
+            for (int i = 0; i < corners.length; i += STRIDE) {
+                minX = Math.min(minX, corners[i]);
+                maxX = Math.max(maxX, corners[i]);
+                minY = Math.min(minY, corners[i + 1]);
+                maxY = Math.max(maxY, corners[i + 1]);
+                minZ = Math.min(minZ, corners[i + 2]);
+                maxZ = Math.max(maxZ, corners[i + 2]);
+            }
+            return corners.length == 0 ? 0f : Math.max(maxX - minX, Math.max(maxY - minY, maxZ - minZ));
         }
 
         /** As it is, at the pose. */

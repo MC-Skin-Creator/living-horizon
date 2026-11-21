@@ -4,6 +4,7 @@ import fr.clixmods.livinghorizon.ambient.AmbientRenderer;
 import fr.clixmods.livinghorizon.ambient.Ambience.Species;
 import fr.clixmods.livinghorizon.ambient.BirdFigure;
 import fr.clixmods.livinghorizon.ambient.PosedBirds;
+import fr.clixmods.livinghorizon.debug.DebugMarks;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
@@ -178,7 +179,33 @@ public final class BirdsScenario implements Scenario {
         if (context.computeOnClient(minecraft -> AmbientRenderer.asPictures()) < SPECIES.length * 2) {
             throw new AssertionError("The far birds are not pictures with every distant figure off");
         }
+        // The boxes and labels of the birds, as large as they are measured for their pictures:
+        // perched, a bird is its body, well under its wingspan.
         Scene.configure(context, config -> {
+            config.debugBoxes = true;
+            config.debugLabels = true;
+        });
+        Scene.screenshot(context, this, "3d-far-boxes");
+        context.runOnClient(minecraft -> {
+            StringBuilder sizes = new StringBuilder();
+            for (Object[] species : SPECIES) {
+                sizes.append(' ').append(((Species) species[0]).name().toLowerCase(Locale.ROOT)).append('=')
+                        .append(String.format(Locale.ROOT, "%.2f", AmbientRenderer.perched((Species) species[0])));
+            }
+            Scene.log("birds perched size in wingspans:" + sizes);
+        });
+        for (Object[] species : SPECIES) {
+            float perched = context.computeOnClient(minecraft -> AmbientRenderer.perched((Species) species[0]));
+            if (perched <= 0.2f || perched >= 0.9f) {
+                throw new AssertionError("A perched " + species[0] + " is measured " + perched + " wingspans");
+            }
+        }
+        if (context.computeOnClient(minecraft -> DebugMarks.count(DebugMarks.Mark.BIRD_PICTURE)) < SPECIES.length * 2) {
+            throw new AssertionError("The far birds have no debug boxes");
+        }
+        Scene.configure(context, config -> {
+            config.debugBoxes = false;
+            config.debugLabels = false;
             config.enabled = true;
             config.distantMobs = true;
             config.distantEntities = true;
