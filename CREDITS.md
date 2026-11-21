@@ -17,6 +17,8 @@ contribution: name, link to the profile, a few words on what they brought.
 
 - [**JonesJugHead**](https://github.com/JonesJugHead), who made distant mannequins hang
   their capes from where they stand (#190).
+- [**deanxbox**](https://github.com/deanxbox), who made offline players stand, walk and sit
+  properly with Fresh Animations (#348).
 
 ## Testers
 
