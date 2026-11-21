@@ -565,7 +565,7 @@ public final class Ambience {
      */
     private @Nullable Spot summonSpot(ClientLevel level, LocalPlayer self, Place place, @Nullable BlockPos looked,
                                       double beyond) {
-        if (looked != null && level.hasChunk(looked.getX() >> 4, looked.getZ() >> 4)) {
+        if (looked != null && held(level, looked.getX(), looked.getZ())) {
             Spot spot = read(level, looked.getX(), looked.getZ());
             if (spot != null && spot.place == place && Math.hypot(spot.x - self.getX(), spot.z - self.getZ()) >= beyond) {
                 return spot;
@@ -588,7 +588,7 @@ public final class Ambience {
                 double angle = step * Math.PI * 2 / steps;
                 int x = Mth.floor(self.getX() + Math.sin(angle) * radius);
                 int z = Mth.floor(self.getZ() + Math.cos(angle) * radius);
-                if (!level.hasChunk(x >> 4, z >> 4)) continue;
+                if (!held(level, x, z)) continue;
                 Spot spot = read(level, x, z);
                 if (spot != null && spot.place == place) {
                     keep(spot);
@@ -638,7 +638,7 @@ public final class Ambience {
                     : loaded + random.nextDouble() * Math.max(1, reach * 0.8 - loaded);
             int x = Mth.floor(self.getX() - Math.sin(bearing) * distance);
             int z = Mth.floor(self.getZ() + Math.cos(bearing) * distance);
-            if (level.hasChunk(x >> 4, z >> 4)) {
+            if (held(level, x, z)) {
                 Spot read = read(level, x, z);
                 if (read != null) keep(read);
             } else {
@@ -706,10 +706,19 @@ public final class Ambience {
                 || block.is(Blocks.WATER) || block.is(Blocks.GRASS_BLOCK) || block.is(BlockTags.FLOWERS);
     }
 
+    /**
+     * Whether the client holds the blocks of this column. Never {@code level.hasChunk}: the
+     * client's level answers yes for every chunk, and an unloaded one reads as air down to the
+     * bottom of the world, so the far world (Voxy, Distant Horizons) was never asked.
+     */
+    static boolean held(ClientLevel level, int bx, int bz) {
+        return level.getChunkSource().hasChunk(bx >> 4, bz >> 4);
+    }
+
     /** Where to stand at a column: the loaded ground when there is one, otherwise a guess. */
     private static double ground(ClientLevel level, double x, double z, Heightmap.Types surface, double guess) {
         int bx = Mth.floor(x), bz = Mth.floor(z);
-        return level.hasChunk(bx >> 4, bz >> 4) ? level.getHeight(surface, bx, bz) : guess;
+        return held(level, bx, bz) ? level.getHeight(surface, bx, bz) : guess;
     }
 
     private static float silhouetteSize(FarConfig config, double base) {
@@ -943,7 +952,7 @@ public final class Ambience {
             for (int tries = 0; tries < 6; tries++) {
                 double x = sx + r.nextGaussian() * 10, z = sz + r.nextGaussian() * 10;
                 int bx = Mth.floor(x), bz = Mth.floor(z);
-                if (!level.hasChunk(bx >> 4, bz >> 4)) continue;
+                if (!held(level, bx, bz)) continue;
                 int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING, bx, bz);
                 if (level.getFluidState(new BlockPos(bx, top - 1, bz)).isEmpty()) return new double[]{x, top, z};
             }
@@ -1112,7 +1121,7 @@ public final class Ambience {
          */
         boolean loaded(double x, double z) {
             int bx = Mth.floor(x), bz = Mth.floor(z);
-            return level.hasChunk(bx >> 4, bz >> 4)
+            return held(level, bx, bz)
                     && level.getHeight(Heightmap.Types.WORLD_SURFACE, bx, bz) > level.getMinY();
         }
 
@@ -1510,7 +1519,7 @@ public final class Ambience {
          */
         static @Nullable double[] ceiling(ClientLevel level, double x, double z, double near) {
             int bx = Mth.floor(x), bz = Mth.floor(z);
-            if (!level.hasChunk(bx >> 4, bz >> 4)) return null;
+            if (!held(level, bx, bz)) return null;
             int top = level.getHeight(Heightmap.Types.WORLD_SURFACE, bx, bz);
             for (int y = top - 2; y > near - 16 && y > level.getMinY(); y--) {
                 BlockPos at = new BlockPos(bx, y, bz);
