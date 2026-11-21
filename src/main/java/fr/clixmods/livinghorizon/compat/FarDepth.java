@@ -193,6 +193,15 @@ public final class FarDepth {
         anywhere = true;
     }
 
+    /**
+     * Whether Distant Horizons fades its terrain over the game's picture this frame: then
+     * anything drawn past the render distance must say so, even where no terrain stands
+     * between it and the eye, or the fade paints its terrain over it.
+     */
+    public static boolean fadesOverFigures() {
+        return FarConfig.get().optDhFade && DhDepth.available() && !DhDepth.shaderPackOn();
+    }
+
     /** The world's entities are submitted: the next drawing of features is theirs. */
     public static void arm() {
         FRAME.armed = true;

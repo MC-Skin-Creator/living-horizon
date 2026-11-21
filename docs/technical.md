@@ -851,6 +851,16 @@ neighbours, gulls for a beach, shore or ocean biome.
   (`ambient/AmbientRenderer`). Flying, seen from above, one plane per wing; perched, seen from
   the side, facing the camera.
 - Bats and parrots are the game's own either way.
+- A 3D bird is one piece of geometry: its boxes are turned into faces once per model
+  (`AmbientRenderer.Meshes`: positions, grain, normals and colours), and each frame only
+  writes them, its wings turned on their hinges as they are written.
+- Birds past the render distance in open sky leave the far terrain's depth alone
+  (`ambient/OpenSky`): once a second the far world is asked, off the game's thread
+  (`LodWorld.blocked`), whether its terrain stands on the line from the eye to 8 blocks under
+  each of them. A bird found clear only pushes the far plane out (`GhostRenderer.noteFarthest`)
+  while the camera stays within 6 blocks of where it was asked from, for 3 seconds at most;
+  otherwise, or under Distant Horizons' fade (`FarDepth.fadesOverFigures`), it asks for the far
+  depth around it (`FarDepth.around`, `needed`) as any far figure does.
 
 ### Calling birds
 
@@ -1307,8 +1317,8 @@ All of this only matters where far figures are, often a narrow band near the hor
 Lodistance's included, the restore, the fade's mask) is held to it with the scissor
 (`optDepthRegion`, *Local Far Depth*):
 
-- it holds every far figure (`FarDepth.figure`), the nearer ones and the birds
-  (`FarDepth.around`), and each box the occlusion queries test, eight pixels wider;
+- it holds every far figure (`FarDepth.figure`), the nearer ones and the birds that terrain
+  could hide (`FarDepth.around`; not those in open sky, `ambient/OpenSky`), and each box the occlusion queries test, eight pixels wider;
 - outside it the game's depth is never written, so nothing has to be put back there, and the
   copies hold an older frame that nothing reads (`intoVoxy`'s rectangles are held to it too);
 - it is the whole texture when the figures are not all known before the entities are drawn

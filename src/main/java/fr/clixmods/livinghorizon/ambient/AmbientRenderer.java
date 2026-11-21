@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.ambient;
 
 import fr.clixmods.livinghorizon.Profile;
+import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -23,7 +24,11 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Draws the pixel birds, from {@code textures/misc/birds.png}: a 64 by 32 sheet.
@@ -86,6 +91,9 @@ public final class AmbientRenderer {
             for (Egg egg : ambience.more()) egg.submit(pose, camera, collector, partial);
         }
         boolean models = config.birdModels();
+        // Distant Horizons' fade paints its terrain over any far figure it is not told of.
+        boolean fade = FarDepth.fadesOverFigures();
+        long now = System.nanoTime();
         Arrays.fill(ASKED, false);
         for (Ambience.Flyer bird : FarPlayerTracker.get().ambience().flyers()) {
             if (!config.skyBirds || bird.kind != Ambience.Kind.SILHOUETTE) continue;
@@ -95,8 +103,14 @@ public final class AmbientRenderer {
             // Behind the camera, or less than a pixel: the mobs' own tests.
             if (GhostRenderer.outOfSight(x, y, z, bird.span * bird.scale)) continue;
             double distance = Math.sqrt(x * x + y * y + z * z);
-            // A wingspan all round: the model, the silhouette and its picture all fit in it.
-            GhostRenderer.noteDistance(distance, x, y, z, bird.span * bird.scale * 1.5);
+            OpenSky.Clear clear = bird.clear;
+            if (!fade && clear != null && clear.holds(camera, now)) {
+                // In open sky: nothing far can hide it, the far terrain's depth is not needed for it.
+                GhostRenderer.noteFarthest(distance);
+            } else {
+                // A wingspan all round: the model, the silhouette and its picture all fit in it.
+                GhostRenderer.noteDistance(distance, x, y, z, bird.span * bird.scale * 1.5);
+            }
             // Past the far plane: closer and smaller in proportion, the same on screen.
             double pull = distance > reach ? reach / distance : 1.0;
             float yaw = Mth.rotLerp(partial, bird.yawO, bird.yaw);
@@ -171,32 +185,24 @@ public final class AmbientRenderer {
 
     /**
      * A bird model at the pose's origin, turned to {@code yaw} and banked: flying, its middle
-     * there; perched, its feet. {@code span} is its wingspan in blocks.
+     * there; perched, its feet. {@code span} is its wingspan in blocks. One piece of geometry
+     * for the whole bird, its wings turned on their hinges as its vertices are written, from
+     * vertices worked out once per model ({@link Meshes}).
      */
     static void model(PoseStack pose, Sink sink, BirdModels.Model model, float span, boolean perched, float yaw,
                       float bank, float wing, float tone, int light) {
         float size = span / model.span();
+        Meshes meshes = meshes(model);
         pose.pushPose();
         pose.mulPose(Axis.YP.rotationDegrees(-yaw));
         if (perched) {
             pose.scale(size, size, size);
             pose.translate(0f, model.lift(), 0f);
-            sink.draw(pose, MODEL, (at, out) -> boxes(at, out, model, BirdModels.Part.PERCH, false, tone, light));
+            sink.draw(pose, MODEL, (at, out) -> meshes.perch.write(at, out, tone, light));
         } else {
             pose.mulPose(Axis.ZP.rotationDegrees(bank));
             pose.scale(size, size, size);
-            sink.draw(pose, MODEL, (at, out) -> boxes(at, out, model, BirdModels.Part.FLY, false, tone, light));
-            // Each wing turns on its hinge by the beat, and its tip half as much again:
-            // the wing bends as it beats. The -X wing is the mirror of the +X one.
-            for (int side = 1; side >= -1; side -= 2) {
-                boolean mirrored = side < 0;
-                pose.pushPose();
-                hinge(pose, side * model.hingeX(), side * wing);
-                sink.draw(pose, MODEL, (at, out) -> boxes(at, out, model, BirdModels.Part.WING, mirrored, tone, light));
-                hinge(pose, side * model.tipX(), side * wing * 0.5f);
-                sink.draw(pose, MODEL, (at, out) -> boxes(at, out, model, BirdModels.Part.TIP, mirrored, tone, light));
-                pose.popPose();
-            }
+            sink.draw(pose, MODEL, (at, out) -> meshes.flying(at, out, wing, tone, light));
         }
         pose.popPose();
     }
@@ -206,76 +212,156 @@ public final class AmbientRenderer {
         return 0.9f + 0.2f * ((System.identityHashCode(bird) & 255) / 255f);
     }
 
+    /** The meshes of each model, made the first time it is drawn; on the render thread only. */
+    private static final Map<BirdModels.Model, Meshes> MESHES = new IdentityHashMap<>();
+
+    private static Meshes meshes(BirdModels.Model model) {
+        Meshes meshes = MESHES.get(model);
+        if (meshes == null) MESHES.put(model, meshes = new Meshes(model));
+        return meshes;
+    }
+
     /**
-     * The boxes of one part. The body is drawn with the boxes of each pose: {@code FLY} or
-     * {@code PERCH} brings the body along with it.
+     * The boxes of one model as ready-made faces: the body with each pose's own boxes, and
+     * each wing half on both sides. The -X wing is the mirror of the +X one.
      */
-    private static void boxes(PoseStack.Pose at, VertexConsumer out, BirdModels.Model model, BirdModels.Part part,
-                              boolean mirrored, float tone, int light) {
-        boolean withBody = part == BirdModels.Part.FLY || part == BirdModels.Part.PERCH;
-        for (BirdModels.Cube cube : model.cubes()) {
-            if (cube.part() == part || withBody && cube.part() == BirdModels.Part.BODY) {
-                cube(at, out, cube, mirrored, tone, light);
-            }
+    static final class Meshes {
+        final Mesh perch, fly, wing, tip, wingMirrored, tipMirrored;
+        final float hingeX, tipX;
+
+        Meshes(BirdModels.Model model) {
+            perch = new Mesh(model, BirdModels.Part.PERCH, false);
+            fly = new Mesh(model, BirdModels.Part.FLY, false);
+            wing = new Mesh(model, BirdModels.Part.WING, false);
+            tip = new Mesh(model, BirdModels.Part.TIP, false);
+            wingMirrored = new Mesh(model, BirdModels.Part.WING, true);
+            tipMirrored = new Mesh(model, BirdModels.Part.TIP, true);
+            hingeX = model.hingeX();
+            tipX = model.tipX();
+        }
+
+        /**
+         * Flying: the body, then each wing turned on its hinge by the beat, and its tip half as
+         * much again on its own: the wing bends as it beats.
+         */
+        void flying(PoseStack.Pose at, VertexConsumer out, float wing, float tone, int light) {
+            fly.write(at, out, tone, light);
+            float cos = Mth.cos(wing), sin = Mth.sin(wing), tipCos = Mth.cos(wing * 0.5f), tipSin = Mth.sin(wing * 0.5f);
+            this.wing.hinged(at, out, tone, light, hingeX, cos, sin, 0f, 1f, 0f);
+            tip.hinged(at, out, tone, light, hingeX, cos, sin, tipX, tipCos, tipSin);
+            // The -X wing: its hinges mirrored, and turned the other way.
+            wingMirrored.hinged(at, out, tone, light, -hingeX, cos, -sin, 0f, 1f, 0f);
+            tipMirrored.hinged(at, out, tone, light, -hingeX, cos, -sin, -tipX, tipCos, -tipSin);
         }
     }
 
-    /** Turns what follows by {@code radians} about the line along Z through {@code x}. */
-    private static void hinge(PoseStack pose, float x, float radians) {
-        pose.translate(x, 0f, 0f);
-        pose.mulPose(Axis.ZP.rotation(radians));
-        pose.translate(-x, 0f, 0f);
-    }
-
     /**
-     * One box, its six faces turned outwards (the render type culls back faces). Each face
-     * takes a patch of the feather grain as large as itself, one pixel per model pixel, at a
-     * place of its own, so that no two faces look alike.
+     * Faces of boxes, four corners each: position, grain and normal per corner, colour per
+     * face. Each face takes a patch of the feather grain as large as itself, one pixel per
+     * model pixel, at a place of its own, so that no two faces look alike.
      */
-    private static void cube(PoseStack.Pose at, VertexConsumer out, BirdModels.Cube cube, boolean mirrored, float tone,
-                             int light) {
-        float x0 = mirrored ? -cube.x1() : cube.x0(), x1 = mirrored ? -cube.x0() : cube.x1();
-        float y0 = cube.y0(), y1 = cube.y1(), z0 = cube.z0(), z1 = cube.z1();
-        float dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
-        int r = Math.min(255, (int) (((cube.rgb() >> 16) & 255) * tone));
-        int g = Math.min(255, (int) (((cube.rgb() >> 8) & 255) * tone));
-        int b = Math.min(255, (int) ((cube.rgb() & 255) * tone));
-        int seed = cube.hashCode();
-        face(at, out, r, g, b, light, seed, dz, dy, 1, 0, 0, x1, y0, z0, x1, y1, z0, x1, y1, z1, x1, y0, z1);
-        face(at, out, r, g, b, light, seed + 1, dy, dz, -1, 0, 0, x0, y0, z0, x0, y0, z1, x0, y1, z1, x0, y1, z0);
-        face(at, out, r, g, b, light, seed + 2, dx, dz, 0, 1, 0, x0, y1, z0, x0, y1, z1, x1, y1, z1, x1, y1, z0);
-        face(at, out, r, g, b, light, seed + 3, dz, dx, 0, -1, 0, x0, y0, z0, x1, y0, z0, x1, y0, z1, x0, y0, z1);
-        face(at, out, r, g, b, light, seed + 4, dy, dx, 0, 0, 1, x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1);
-        face(at, out, r, g, b, light, seed + 5, dx, dy, 0, 0, -1, x0, y0, z0, x0, y1, z0, x1, y1, z0, x1, y0, z0);
-    }
+    static final class Mesh {
+        /** Per corner: x, y, z, u, v, nx, ny, nz. */
+        private static final int STRIDE = 8;
+        final float[] corners;
+        final int[] colours;
 
-    /**
-     * Four corners counter-clockwise seen from outside, on a {@code width} by {@code height}
-     * patch of grain: from the first corner to the second runs down the patch, from the
-     * second to the third across.
-     */
-    private static void face(PoseStack.Pose at, VertexConsumer out, int r, int g, int b, int light, int seed,
-                             float width, float height, float nx, float ny, float nz,
-                             float x1, float y1, float z1, float x2, float y2, float z2,
-                             float x3, float y3, float z3, float x4, float y4, float z4) {
-        int hash = Mth.murmurHash3Mixer(seed);
-        float u0 = Math.floorMod(hash, Math.max(1, GRAIN - Mth.ceil(width))) / (float) GRAIN;
-        float v0 = Math.floorMod(hash >> 8, Math.max(1, GRAIN - Mth.ceil(height))) / (float) GRAIN;
-        float u1 = u0 + Math.min(width, GRAIN) / GRAIN, v1 = v0 + Math.min(height, GRAIN) / GRAIN;
-        coloured(at, out, r, g, b, light, x1, y1, z1, u0, v0, nx, ny, nz);
-        coloured(at, out, r, g, b, light, x2, y2, z2, u0, v1, nx, ny, nz);
-        coloured(at, out, r, g, b, light, x3, y3, z3, u1, v1, nx, ny, nz);
-        coloured(at, out, r, g, b, light, x4, y4, z4, u1, v0, nx, ny, nz);
-    }
+        /**
+         * The boxes of one part. The body is taken with the boxes of each pose: {@code FLY} or
+         * {@code PERCH} brings the body along with it.
+         */
+        Mesh(BirdModels.Model model, BirdModels.Part part, boolean mirrored) {
+            boolean withBody = part == BirdModels.Part.FLY || part == BirdModels.Part.PERCH;
+            List<BirdModels.Cube> cubes = new ArrayList<>();
+            for (BirdModels.Cube cube : model.cubes()) {
+                if (cube.part() == part || withBody && cube.part() == BirdModels.Part.BODY) cubes.add(cube);
+            }
+            corners = new float[cubes.size() * 6 * 4 * STRIDE];
+            colours = new int[cubes.size() * 6];
+            int face = 0;
+            for (BirdModels.Cube cube : cubes) {
+                float x0 = mirrored ? -cube.x1() : cube.x0(), x1 = mirrored ? -cube.x0() : cube.x1();
+                float y0 = cube.y0(), y1 = cube.y1(), z0 = cube.z0(), z1 = cube.z1();
+                float dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
+                int seed = cube.hashCode();
+                face = face(face, cube.rgb(), seed, dz, dy, 1, 0, 0, x1, y0, z0, x1, y1, z0, x1, y1, z1, x1, y0, z1);
+                face = face(face, cube.rgb(), seed + 1, dy, dz, -1, 0, 0, x0, y0, z0, x0, y0, z1, x0, y1, z1, x0, y1, z0);
+                face = face(face, cube.rgb(), seed + 2, dx, dz, 0, 1, 0, x0, y1, z0, x0, y1, z1, x1, y1, z1, x1, y1, z0);
+                face = face(face, cube.rgb(), seed + 3, dz, dx, 0, -1, 0, x0, y0, z0, x1, y0, z0, x1, y0, z1, x0, y0, z1);
+                face = face(face, cube.rgb(), seed + 4, dy, dx, 0, 0, 1, x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1);
+                face = face(face, cube.rgb(), seed + 5, dx, dy, 0, 0, -1, x0, y0, z0, x0, y1, z0, x1, y1, z0, x1, y0, z0);
+            }
+        }
 
-    private static void coloured(PoseStack.Pose at, VertexConsumer out, int r, int g, int b, int light, float x, float y,
-                                 float z, float u, float v, float nx, float ny, float nz) {
-        out.addVertex(at, x, y, z)
-                .setColor(r, g, b, 255)
-                .setUv(u, v)
-                .setOverlay(OverlayTexture.NO_OVERLAY)
-                .setLight(light)
-                .setNormal(at, nx, ny, nz);
+        /**
+         * Four corners counter-clockwise seen from outside, on a {@code width} by {@code height}
+         * patch of grain: from the first corner to the second runs down the patch, from the
+         * second to the third across. Returns the next face's index.
+         */
+        private int face(int face, int rgb, int seed, float width, float height, float nx, float ny, float nz,
+                         float x1, float y1, float z1, float x2, float y2, float z2,
+                         float x3, float y3, float z3, float x4, float y4, float z4) {
+            int hash = Mth.murmurHash3Mixer(seed);
+            float u0 = Math.floorMod(hash, Math.max(1, GRAIN - Mth.ceil(width))) / (float) GRAIN;
+            float v0 = Math.floorMod(hash >> 8, Math.max(1, GRAIN - Mth.ceil(height))) / (float) GRAIN;
+            float u1 = u0 + Math.min(width, GRAIN) / GRAIN, v1 = v0 + Math.min(height, GRAIN) / GRAIN;
+            colours[face] = rgb;
+            int i = face * 4 * STRIDE;
+            i = corner(i, x1, y1, z1, u0, v0, nx, ny, nz);
+            i = corner(i, x2, y2, z2, u0, v1, nx, ny, nz);
+            i = corner(i, x3, y3, z3, u1, v1, nx, ny, nz);
+            corner(i, x4, y4, z4, u1, v0, nx, ny, nz);
+            return face + 1;
+        }
+
+        private int corner(int i, float x, float y, float z, float u, float v, float nx, float ny, float nz) {
+            corners[i] = x;
+            corners[i + 1] = y;
+            corners[i + 2] = z;
+            corners[i + 3] = u;
+            corners[i + 4] = v;
+            corners[i + 5] = nx;
+            corners[i + 6] = ny;
+            corners[i + 7] = nz;
+            return i + STRIDE;
+        }
+
+        /** As it is, at the pose. */
+        void write(PoseStack.Pose at, VertexConsumer out, float tone, int light) {
+            hinged(at, out, tone, light, 0f, 1f, 0f, 0f, 1f, 0f);
+        }
+
+        /**
+         * Turned about the line along Z through {@code tipX} by the angle of cosine
+         * {@code tipCos} and sine {@code tipSin}, then about the one through {@code hingeX}
+         * by {@code cos} and {@code sin}: a wing's tip on its own hinge, then the whole wing on
+         * the body.
+         */
+        void hinged(PoseStack.Pose at, VertexConsumer out, float tone, int light, float hingeX, float cos, float sin,
+                    float tipX, float tipCos, float tipSin) {
+            float[] c = corners;
+            for (int face = 0; face < colours.length; face++) {
+                int rgb = colours[face];
+                int r = Math.min(255, (int) (((rgb >> 16) & 255) * tone));
+                int g = Math.min(255, (int) (((rgb >> 8) & 255) * tone));
+                int b = Math.min(255, (int) ((rgb & 255) * tone));
+                for (int k = 0, i = face * 4 * STRIDE; k < 4; k++, i += STRIDE) {
+                    // The tip's hinge first, then the wing's.
+                    float x = c[i] - tipX, y = c[i + 1];
+                    float tx = tipX + x * tipCos - y * tipSin, ty = x * tipSin + y * tipCos;
+                    x = tx - hingeX;
+                    float px = hingeX + x * cos - ty * sin, py = x * sin + ty * cos;
+                    float nx = c[i + 5], ny = c[i + 6];
+                    float mx = nx * tipCos - ny * tipSin, my = nx * tipSin + ny * tipCos;
+                    out.addVertex(at, px, py, c[i + 2])
+                            .setColor(r, g, b, 255)
+                            .setUv(c[i + 3], c[i + 4])
+                            .setOverlay(OverlayTexture.NO_OVERLAY)
+                            .setLight(light)
+                            .setNormal(at, mx * cos - my * sin, mx * sin + my * cos, c[i + 7]);
+                }
+            }
+        }
     }
 
     /** Which flying sprite: the gull flies on the plain one, tinted white. */

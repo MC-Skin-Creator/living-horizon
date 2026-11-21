@@ -164,6 +164,15 @@ public final class GhostRenderer {
         if (distance > drawnRange) FarDepth.needed();
     }
 
+    /**
+     * Something drawn this far away this frame that no far terrain can hide (a bird in open
+     * sky, {@code ambient/OpenSky}): the next far plane covers it, and the far terrain's depth
+     * is left alone for it.
+     */
+    public static void noteFarthest(double distance) {
+        farthest = Math.max(farthest, distance);
+    }
+
     // --- What is worth drawing ----------------------------------------------------------
 
     /** Nanoseconds a frame may spend making the puppets of players who logged off; one is made at least. */

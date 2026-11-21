@@ -83,6 +83,8 @@ public final class Ambience {
         public float scale = 1f;
         /** The impostor picture shown last frame, -1 while drawn as a model. */
         int view = -1;
+        /** Seen from there, no far terrain can hide it ({@link OpenSky}); null when not known. */
+        volatile OpenSky.@Nullable Clear clear;
         float beat, beatRate;
         boolean gliding;
 
@@ -279,6 +281,7 @@ public final class Ambience {
     private final RandomSource random = RandomSource.create();
     private final Map<Type, Integer> cooldowns = new EnumMap<>(Type.class);
     private final List<Spot> spots = new ArrayList<>();
+    private final OpenSky openSky = new OpenSky();
     /** Spots the Voxy lookups found, handed over from their thread. */
     private final ConcurrentLinkedQueue<Spot> found = new ConcurrentLinkedQueue<>();
     private @Nullable ClientLevel level;
@@ -492,6 +495,8 @@ public final class Ambience {
             return false;
         });
         for (Group group : groups) flyers.addAll(group.flyers);
+        // Past where the mobs' renderer starts working on the far terrain's depth, a little nearer.
+        openSky.tick(flyers, self.getEyePosition(), Minecraft.getInstance().options.getEffectiveRenderDistance() * 16 - 32);
     }
 
     private @Nullable Group create(Type type, ClientLevel level, LocalPlayer self, double reach, FarConfig config) {
