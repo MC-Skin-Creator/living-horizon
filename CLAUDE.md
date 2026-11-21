@@ -830,6 +830,11 @@ come back, add it here in the same pull request: this file is what the next sess
   as a truncated jar (`zip END header not found` on the next attempt): `gradle.sh` deletes the
   jars that do not open before trying again. What Forge's Maven served is kept in each Forge
   node's cache entry (`mavenizer/caches/maven/forge`), so a build only asks it for what changed.
+- **A Forge node failing in CI with "Failed to find JDK for version 8"** (`sha256 Invalid` on an
+  `OpenJDK8U` tarball just before): the Mavenizer runs one step on Java 8, found through
+  `JAVA_HOME_8_X64`, or downloads Temurin 8 itself. GitHub served 8u514's tarball as a 1.8 kB
+  block list. The workflows install Zulu 8 for the Forge nodes (`Set up JDK 8 for ForgeGradle`),
+  before the step whose last JDK becomes `JAVA_HOME`; never Temurin 8 there, the same file.
 - **Animals of unexplored land missing or drawn twice** (none far off in a world never explored,
   or one beside the real herd as a chunk loads): they are drawn by `SeedDraws`, foreseen by the
   server around players with the mod (`SeedMobs`) and by the client within *Mob Render Distance*,
