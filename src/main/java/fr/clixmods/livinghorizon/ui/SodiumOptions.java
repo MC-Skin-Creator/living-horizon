@@ -97,6 +97,9 @@ public final class SodiumOptions implements ConfigEntryPoint {
                         .addOption(bool(b, "impostorShading", d.impostorShading, v -> FarConfig.get().impostorShading = v,
                                 () -> FarConfig.get().impostorShading)
                                 .setEnabledProvider(any(PICTURED), ids(PICTURED)))
+                        .addOption(bool(b, "impostorAnimation", d.impostorAnimation,
+                                v -> FarConfig.get().impostorAnimation = v, () -> FarConfig.get().impostorAnimation)
+                                .setEnabledProvider(on("impostors"), id("impostors")))
                         .addOption(blocks(b, "impostorDistance", 0, FarConfig.MAX_IMPOSTOR_DISTANCE, d.impostorDistance,
                                 v -> FarConfig.get().impostorDistance = v, () -> FarConfig.get().impostorDistance)
                                 .setEnabledProvider(any(PICTURED), ids(PICTURED)))

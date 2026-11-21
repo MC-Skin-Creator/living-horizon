@@ -21,6 +21,7 @@ import fr.clixmods.livinghorizon.render.impostor.ImpostorKey;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorThreshold;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorViews;
+import fr.clixmods.livinghorizon.render.impostor.ImpostorWalk;
 import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
 import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
@@ -640,7 +641,8 @@ public final class GhostRenderer {
             if (debug) DebugMarks.mark(puppet, copy);
             mob.drawn();
             // Held by easter egg 15, its head turned apart from its body: a model, which shows it.
-            if (!Herd.holds(puppet) && impostor(minecraft, eye, puppet, partialTick, config)) continue;
+            // A copy resting untouched has legs that were not caught up: shown at rest, which it is.
+            if (!Herd.holds(puppet) && impostor(minecraft, eye, puppet, partialTick, config, !mob.resting())) continue;
             // A model plays its idle movements and its legs from its clocks: made up first, if it rested untouched.
             memory.catchUp(mob);
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
@@ -1033,6 +1035,12 @@ public final class GhostRenderer {
             ImpostorKey key = ImpostorKey.of(puppet);
             if (!fromHeights(puppet)) {
                 ImpostorAtlas.request(key, puppet);
+                // Its walk once it has its resting picture, which stands in for every step meanwhile.
+                if (walks(puppet, key, config) && ImpostorAtlas.sheet(key) != null) {
+                    for (int frame = 1; frame <= ImpostorWalk.FRAMES; frame++) {
+                        ImpostorAtlas.request(ImpostorKey.frame(key, frame), puppet);
+                    }
+                }
                 continue;
             }
             // A phantom, a ghast, a dragon, an aircraft: seen from every height, as it flies about.
@@ -1081,7 +1089,18 @@ public final class GhostRenderer {
      * new one is baked: none of it blinks between a model and a picture.
      */
     private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config) {
-        return impostor(minecraft, eye, entity, partialTick, config, 0, 0, 0, Float.NaN);
+        return impostor(minecraft, eye, entity, partialTick, config, true);
+    }
+
+    /** @param mayWalk whether its legs may be read for a picture of its walk: false for a copy resting untouched */
+    private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config,
+                                    boolean mayWalk) {
+        return impostor(minecraft, eye, entity, partialTick, config, 0, 0, 0, Float.NaN, mayWalk);
+    }
+
+    private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config,
+                                    double dx, double dy, double dz, float facing) {
+        return impostor(minecraft, eye, entity, partialTick, config, dx, dy, dz, facing, true);
     }
 
     /**
@@ -1090,7 +1109,7 @@ public final class GhostRenderer {
      * @param facing the way the figure's body is taken to face, NaN for its own: along its bed
      */
     private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config,
-                                    double dx, double dy, double dz, float facing) {
+                                    double dx, double dy, double dz, float facing, boolean mayWalk) {
         // A glider is tilted along its flight, which no picture baked standing shows.
         if (!ImpostorAtlas.usable() || entity.isPassenger() || entity.isVehicle()
                 || entity instanceof LivingEntity glider && glider.isFallFlying() || unpictured(entity)
@@ -1111,8 +1130,33 @@ public final class GhostRenderer {
             dy += ImpostorAtlas.middle(entity);
             key = seenFrom(key, entity, eye, partialTick, dx, dy, dz);
         }
+        int walk = !mayWalk || aloft ? 0 : stride(entity, key, partialTick, config);
         return picture(minecraft, eye, entity, entity, key, null, 0, partialTick, config,
-                dx, dy, dz, yaw, Math.max(entity.getBbHeight(), entity.getBbWidth()), aloft);
+                dx, dy, dz, yaw, Math.max(entity.getBbHeight(), entity.getBbWidth()), aloft, walk);
+    }
+
+    /**
+     * Whether a figure's pictures show its walk ({@link FarConfig#impostorAnimation}): a mob
+     * standing on its legs, not a player, a flyer or a vehicle.
+     */
+    private static boolean walks(Entity entity, ImpostorKey key, FarConfig config) {
+        return config.impostorAnimation && entity instanceof LivingEntity && !(entity instanceof Player)
+                && creature(entity) && key.posture() == ImpostorKey.STANDING && !fromHeights(entity);
+    }
+
+    /**
+     * The picture of its walk a figure shows this frame ({@link ImpostorWalk}), from its own legs:
+     * 0 at rest, standing still or its legs crossing.
+     */
+    private static int stride(Entity entity, ImpostorKey key, float partialTick, FarConfig config) {
+        if (!walks(entity, key, config)) return 0;
+        LivingEntity living = (LivingEntity) entity;
+        float position = living.walkAnimation.position(partialTick);
+        //? if <1.21.2 {
+        /*// The renderer itself sped a baby's legs up before 1.21.2.
+        if (living.isBaby()) position *= 3f;
+        *///?}
+        return ImpostorWalk.frame(position, living.walkAnimation.speed(partialTick));
     }
 
     /** The key of the pictures of {@code at} baked from the height nearest the camera's, round the point given. */
@@ -1153,7 +1197,8 @@ public final class GhostRenderer {
             dy = ImpostorAtlas.middle(mount, new ImpostorAtlas.Rider(rider, seat, turned));
             key = seenFrom(key, mount, eye, partialTick, 0, dy, 0);
         }
-        return picture(minecraft, eye, rider, mount, key, seat, turned, partialTick, config, 0, dy, 0, yaw, extent, aloft);
+        return picture(minecraft, eye, rider, mount, key, seat, turned, partialTick, config, 0, dy, 0, yaw, extent, aloft,
+                0);
     }
 
     /**
@@ -1163,10 +1208,12 @@ public final class GhostRenderer {
      * until the new one is baked. A rider ({@code shown}) is pictured on its mount ({@code at}),
      * sitting at {@code seat} on it, turned {@code turned} degrees from it. {@code facing}: a
      * picture baked from a height, round the figure's middle, turned to the camera up and down too.
+     * {@code walk}: the picture of its walk to show ({@link ImpostorWalk}), its resting one while
+     * that one is baked.
      */
     private static boolean picture(Minecraft minecraft, Vec3 eye, Entity shown, Entity at, ImpostorKey key,
                                    @Nullable Vec3 seat, float turned, float partialTick, FarConfig config,
-                                   double dx, double dy, double dz, float yaw, double size, boolean facing) {
+                                   double dx, double dy, double dz, float yaw, double size, boolean facing, int walk) {
         double x = Mth.lerp(partialTick, at.xOld, at.getX()) + dx;
         double y = Mth.lerp(partialTick, at.yOld, at.getY()) + dy;
         double z = Mth.lerp(partialTick, at.zOld, at.getZ()) + dz;
@@ -1198,6 +1245,13 @@ public final class GhostRenderer {
         if (ImpostorThreshold.enlarged(sheet.worldSize() * boost / distance * pixelsPerRadian, sheet.tile(), last != null)) {
             if (last != null) SHOWN.remove(shown);
             return false;
+        }
+        if (walk > 0) {
+            // A step of its walk, drawn at its own size and feet: one baked larger fits the same figure.
+            ImpostorKey step = ImpostorKey.frame(key, walk);
+            ImpostorAtlas.Sheet stride = ImpostorAtlas.sheet(step);
+            if (stride != null) sheet = stride;
+            else ImpostorAtlas.request(step, at);
         }
         if (distance > drawnRange) FarDepth.needed();
         farthest = Math.max(farthest, distance);

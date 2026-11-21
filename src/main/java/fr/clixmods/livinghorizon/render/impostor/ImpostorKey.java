@@ -149,6 +149,36 @@ public record ImpostorKey(String type, long appearance, int posture) {
     }
 
     /**
+     * The picture of its walk each key of a walking figure ({@link #frame}) is baked in, 1 to
+     * {@link ImpostorWalk#FRAMES}, and the key of its resting picture. {@link #frame} puts a key
+     * back each time it is asked for.
+     */
+    private static final Map<ImpostorKey, Walk> WALKS = new HashMap<>();
+    /** Mixed into the key of a picture of a walk, so that it never meets the figure at rest. */
+    private static final long WALK_SALT = 0x3A1C57E9L;
+
+    /** A picture of a walk: the figure's resting key, and which picture of its walk. */
+    public record Walk(ImpostorKey rest, int frame) {
+    }
+
+    /**
+     * The key of picture {@code frame} of a walking figure's walk ({@link ImpostorWalk}): its own
+     * key for 0, the resting picture it already has. The same in every game, as the figure's own
+     * is, so the pictures of a walk are kept on disk as any mob's are.
+     */
+    public static ImpostorKey frame(ImpostorKey key, int frame) {
+        if (frame == 0) return key;
+        ImpostorKey walking = new ImpostorKey(key.type, key.appearance * 31 + WALK_SALT * (frame + 1), key.posture);
+        WALKS.putIfAbsent(walking, new Walk(key, frame));
+        return walking;
+    }
+
+    /** The walk this key is a picture of, null for a figure at rest. */
+    public static @Nullable Walk walk(ImpostorKey key) {
+        return WALKS.get(key);
+    }
+
+    /**
      * Degrees the camera looks down on this key's figure from, as it is baked: NaN for a
      * figure pictured standing, the way most are, level with it and from its feet.
      */
@@ -210,14 +240,16 @@ public record ImpostorKey(String type, long appearance, int posture) {
         return key;
     }
 
-    /** A sheet thrown away: the height its key is pictured from goes with it. */
+    /** A sheet thrown away: the height its key is pictured from, or the walk it shows, goes with it. */
     public static void forget(ImpostorKey key) {
         HEIGHTS.remove(key);
+        WALKS.remove(key);
     }
 
     public static void forgetAll() {
         KNOWN.clear();
         HEIGHTS.clear();
+        WALKS.clear();
     }
 
     /** What has been learnt to leave out, a copy: by kind of mob, then by synched value. */
