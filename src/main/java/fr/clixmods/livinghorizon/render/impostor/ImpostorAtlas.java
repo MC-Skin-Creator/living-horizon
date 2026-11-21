@@ -497,7 +497,8 @@ public final class ImpostorAtlas {
     /** Whether impostors can be used at all: switched on, and the bake has not failed. */
     public static boolean usable() {
         FarConfig config = FarConfig.get();
-        return config.anyDistant() && config.anyImpostors() && !failed;
+        // Birds are drawn whatever else is: their pictures are baked even with nothing else far away.
+        return (config.anyDistant() && config.anyImpostors() || config.birdImpostors()) && !failed;
     }
 
     /** The pictures of a figure, if baked. Counts as a use, so the sheets in use are kept. */

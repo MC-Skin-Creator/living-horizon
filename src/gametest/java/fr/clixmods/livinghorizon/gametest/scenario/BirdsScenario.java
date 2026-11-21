@@ -1,5 +1,6 @@
 package fr.clixmods.livinghorizon.gametest.scenario;
 
+import fr.clixmods.livinghorizon.ambient.AmbientRenderer;
 import fr.clixmods.livinghorizon.ambient.Ambience.Species;
 import fr.clixmods.livinghorizon.ambient.BirdFigure;
 import fr.clixmods.livinghorizon.ambient.PosedBirds;
@@ -18,7 +19,8 @@ import java.util.Random;
  * and flying, then all of them side by side at their true sizes, a sky full of them, and
  * a gull's wing beat in three steps. Everything in 3D, then the lineup and the sky again
  * in 2D to compare. Last, the 3D birds as impostors: every species far away, perched and
- * flying, as models then as pictures, the sky again as pictures, and the baked atlas.
+ * flying, as models then as pictures, then as pictures with every distant figure off
+ * (Simplified Birds alone), the sky again as pictures, and the baked atlas.
  */
 public final class BirdsScenario implements Scenario {
     /** Each species and a wingspan of its own, in blocks, as the mod gives it. */
@@ -130,7 +132,7 @@ public final class BirdsScenario implements Scenario {
         clear();
         Scene.configure(context, config -> {
             config.birdStyle = "3d";
-            config.impostors = false;
+            config.impostorBirds = false;
             config.impostorDistance = 32;
             config.impostorPixels = 0;
         });
@@ -145,7 +147,7 @@ public final class BirdsScenario implements Scenario {
         look(4f);
         context.runOnClient(minecraft -> minecraft.options.fov().set(40));
         Scene.screenshot(context, this, "3d-far-models");
-        Scene.configure(context, config -> config.impostors = true);
+        Scene.configure(context, config -> config.impostorBirds = true);
         // Every sheet of every species, perched and flying: other scenarios may have left
         // sheets of their own in the atlas, so the birds' are counted.
         int wanted = SPECIES.length * (BirdFigure.all(Species.GULL, false).size() + BirdFigure.all(Species.GULL, true).size());
@@ -161,6 +163,29 @@ public final class BirdsScenario implements Scenario {
         if (context.computeOnClient(minecraft -> PolygonStats.impostors()) < SPECIES.length * 2) {
             throw new AssertionError("The far birds are not drawn as impostors");
         }
+        // Simplified Birds alone: every distant figure and the other pictures off, the birds still pictures.
+        Scene.configure(context, config -> {
+            config.enabled = false;
+            config.distantMobs = false;
+            config.distantEntities = false;
+            config.impostors = false;
+            config.impostorEntities = false;
+            config.impostorPlayers = false;
+        });
+        Scene.screenshot(context, this, "3d-far-impostors-alone");
+        context.runOnClient(minecraft -> Scene.log("birds alone drawn=" + AmbientRenderer.drawn() + " models="
+                + AmbientRenderer.asModels() + " pictures=" + AmbientRenderer.asPictures()));
+        if (context.computeOnClient(minecraft -> AmbientRenderer.asPictures()) < SPECIES.length * 2) {
+            throw new AssertionError("The far birds are not pictures with every distant figure off");
+        }
+        Scene.configure(context, config -> {
+            config.enabled = true;
+            config.distantMobs = true;
+            config.distantEntities = true;
+            config.impostors = true;
+            config.impostorEntities = true;
+            config.impostorPlayers = true;
+        });
         context.runOnClient(minecraft -> minecraft.options.fov().set(70));
         // The sky up close, every bird past the distance.
         Scene.configure(context, config -> config.impostorDistance = 8);

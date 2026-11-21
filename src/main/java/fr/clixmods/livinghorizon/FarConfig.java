@@ -350,6 +350,17 @@ public final class FarConfig {
     /** Boats, vehicles and mannequins as flat pictures too, as mobs are ("Simplified Entities"). */
     public boolean impostorEntities = true;
 
+    /**
+     * 3D birds past {@link #impostorDistance}, or smaller on screen than {@link #impostorPixels},
+     * as flat pictures of themselves ("Simplified Birds"), whatever else is drawn far away.
+     */
+    public boolean impostorBirds = true;
+
+    /** Whether birds are drawn as flat pictures: shown, in 3D, and simplified. */
+    public boolean birdImpostors() {
+        return skyBirds && impostorBirds && birdModels();
+    }
+
     /** Whether anything is drawn as a flat picture: mobs, the other entities or players. */
     public boolean anyImpostors() {
         return impostors || impostorEntities || impostorPlayers;

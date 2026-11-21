@@ -91,6 +91,7 @@ public final class AmbientRenderer {
             for (Egg egg : ambience.more()) egg.submit(pose, camera, collector, partial);
         }
         boolean models = config.birdModels();
+        drawn = asModels = asPictures = 0;
         // Distant Horizons' fade paints its terrain over any far figure it is not told of.
         boolean fade = FarDepth.fadesOverFigures();
         long now = System.nanoTime();
@@ -117,8 +118,15 @@ public final class AmbientRenderer {
             float wingDegrees = Mth.lerp(partial, bird.wingO, bird.wing);
             int tint = bird.shade;
             int species = bird.species.ordinal();
-            if (models && impostor(bird, x, y, z, distance, pull, yaw, wingDegrees, config, pixelsPerRadian)) continue;
-            if (models) bird.view = -1;
+            drawn++;
+            if (models && impostor(bird, x, y, z, distance, pull, yaw, wingDegrees, config, pixelsPerRadian)) {
+                asPictures++;
+                continue;
+            }
+            if (models) {
+                bird.view = -1;
+                asModels++;
+            }
 
             pose.pushPose();
             pose.translate((float) (x * pull), (float) (y * pull), (float) (z * pull));
@@ -148,6 +156,24 @@ public final class AmbientRenderer {
         }
     }
 
+    /** Birds drawn last frame: all of them, those drawn as 3D models, and those drawn as pictures. */
+    private static int drawn, asModels, asPictures;
+
+    /** Birds drawn last frame, for the F3 screen. */
+    public static int drawn() {
+        return drawn;
+    }
+
+    /** Of those, drawn as 3D models. */
+    public static int asModels() {
+        return asModels;
+    }
+
+    /** Of those, drawn as pictures (Simplified Birds). */
+    public static int asPictures() {
+        return asPictures;
+    }
+
     /** The species and poses whose pictures were asked for this frame: two per species, flying then perched. */
     private static final boolean[] ASKED = new boolean[Ambience.Species.values().length * 2];
 
@@ -160,8 +186,7 @@ public final class AmbientRenderer {
      */
     private static boolean impostor(Ambience.Flyer bird, double x, double y, double z, double distance, double pull,
                                     float yaw, float wingDegrees, FarConfig config, double pixelsPerRadian) {
-        // Birds are creatures: pictured under Simplified Mobs.
-        if (!ImpostorAtlas.usable() || !config.impostors) return false;
+        if (!config.impostorBirds || !ImpostorAtlas.usable()) return false;
         double apparent = distance < 1e-3 ? Double.MAX_VALUE : bird.span * bird.scale / distance * pixelsPerRadian;
         if (!ImpostorThreshold.pictured(distance, apparent, bird.view >= 0, config.impostorDistance, config.impostorPixels)) {
             return false;

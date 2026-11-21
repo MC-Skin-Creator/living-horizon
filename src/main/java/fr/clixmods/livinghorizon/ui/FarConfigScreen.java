@@ -84,7 +84,9 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 bool("impostors", c.impostors, v -> c.impostors = v),
                 bool("impostorEntities", c.impostorEntities, v -> c.impostorEntities = v));
         list.addSmall(bool("impostorPlayers", c.impostorPlayers, v -> c.impostorPlayers = v),
-                bool("impostorShading", c.impostorShading, v -> c.impostorShading = v));
+                bool("impostorBirds", c.impostorBirds, v -> c.impostorBirds = v));
+        list.addSmall(bool("impostorShading", c.impostorShading, v -> c.impostorShading = v)
+                .createButton(minecraft.options, 0, 0, 150), null);
         list.addBig(distance(Shape.AROUND, blocks("impostorDistance", 0, FarConfig.MAX_IMPOSTOR_DISTANCE,
                 c.impostorDistance, v -> c.impostorDistance = v)));
         list.addBig(unit("impostorPixels", "pixels", 0, FarConfig.MAX_IMPOSTOR_PIXELS, c.impostorPixels,
