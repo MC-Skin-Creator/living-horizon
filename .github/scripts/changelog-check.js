@@ -2,14 +2,18 @@
 /*
  * Checks the changelog of a pull request against its base branch:
  *
- * - entries only go into the Unreleased section: a released version never gains an
- *   entry, and no new dated section appears for a version that was never tagged
- *   (the release dates the Unreleased section by itself);
+ * - a new entry is a file of its own in changelog/unreleased/, in every language of
+ *   changelog/languages.json (changelog-fragments.js has the format), never a bullet
+ *   written into changelog/<lang>.md: the release puts the files under the version it dates;
+ * - a released version never gains an entry, and no new dated section appears for a
+ *   version that was never tagged;
  * - the section headings are the ones the release scripts read: "### Server" and
- *   "### Client" (Serveur, Client), each with "#### New", "#### Improved", "#### Fixed"
- *   (Nouveautés, Améliorations, Corrections). Released versions written before the
- *   split keep their flat "### New" headings;
- * - en.md and fr.md have the same sections, headings and number of entries.
+ *   "### Client", each with "#### New", "#### Improved", "#### Fixed", in each language's
+ *   words (languages.json). Released versions written before the split keep their flat
+ *   "### New" headings;
+ * - each heading appears once per area of a version;
+ * - every language's file exists and has the same sections, headings and number of
+ *   entries as en.md.
  *
  *   node .github/scripts/changelog-check.js <base-ref>
  */
@@ -18,6 +22,7 @@
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const fragments = require('./changelog-fragments');
 
 const base = process.argv[2];
 if (!base) {
@@ -26,10 +31,8 @@ if (!base) {
 }
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const HEADINGS = { en: ['New', 'Improved', 'Fixed'], fr: ['Nouveautés', 'Améliorations', 'Corrections'] };
-const AREAS = { en: ['Server', 'Client'], fr: ['Serveur', 'Client'] };
-const UNRELEASED = /^(Unreleased|Prochaine version)$/;
-const git = args => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' });
+const { LANGS, HEADINGS, AREAS, UNRELEASED_WORD } = fragments;
+const git = args => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
 
 // [{ version: '0.3.0' | null, kinds: [{ area, heading, entries, flat }] }]
 // "### Server" / "### Client" open an area, "#### New" and so on a kind inside it; a
@@ -43,7 +46,7 @@ function parse(text, lang) {
     const h4 = /^#### (.+?)\s*$/.exec(line);
     if (h2) {
       const dated = /^(\d+\.\d+\.\d+)\s+—\s+\d{4}-\d{2}-\d{2}$/.exec(h2[1]);
-      releases.push({ title: h2[1], version: dated ? dated[1] : null, unreleased: UNRELEASED.test(h2[1]), kinds: [] });
+      releases.push({ title: h2[1], version: dated ? dated[1] : null, unreleased: h2[1] === UNRELEASED_WORD[lang], kinds: [] });
       area = null;
     } else if (h3 && releases.length) {
       if (AREAS[lang].includes(h3[1])) area = h3[1];
@@ -64,18 +67,24 @@ function parse(text, lang) {
 
 const entries = r => r.kinds.reduce((n, k) => n + k.entries, 0);
 const tags = new Set(git(['tag', '--list', 'v*']).split('\n').map(t => t.trim().slice(1)));
-const errors = [];
+const read = fragments.read();
+const errors = read.errors.slice();
 const files = {};
 
-for (const lang of ['en', 'fr']) {
+for (const lang of LANGS) {
   const name = 'changelog/' + lang + '.md';
+  const unreleasedTitle = '"## ' + UNRELEASED_WORD[lang] + '"';
+  if (!fs.existsSync(path.join(ROOT, name))) {
+    errors.push(name + ' is missing: every language of changelog/languages.json has its changelog.');
+    continue;
+  }
   const now = parse(fs.readFileSync(path.join(ROOT, name), 'utf8'), lang);
   let before = [];
   try { before = parse(git(['show', base + ':' + name]), lang); } catch (e) { /* new file */ }
   files[lang] = now;
 
   for (const r of now) {
-    if (!r.version && !r.unreleased) errors.push(name + ': "## ' + r.title + '" is neither "## ' + (lang === 'en' ? 'Unreleased' : 'Prochaine version') + '" nor "## X.Y.Z — YYYY-MM-DD".');
+    if (!r.version && !r.unreleased) errors.push(name + ': "## ' + r.title + '" is neither ' + unreleasedTitle + ' nor "## X.Y.Z — YYYY-MM-DD".');
     for (const k of r.kinds) {
       if (!HEADINGS[lang].includes(k.heading)) {
         errors.push(name + ': "' + (k.flat ? '### ' : '#### ') + k.heading + '" under "' + r.title + '" must be one of ' + HEADINGS[lang].join(', ') + '.');
@@ -85,15 +94,24 @@ for (const lang of ['en', 'fr']) {
         errors.push(name + ': "### ' + k.heading + '" under "' + r.title + '" must sit under "### ' + AREAS[lang].join('" or "### ') + '": only released versions keep the flat layout.');
       }
     }
+    const kindsSeen = new Set();
+    for (const k of r.kinds) {
+      const key = (k.area || '') + '/' + k.heading;
+      if (kindsSeen.has(key)) errors.push(name + ': "' + (k.flat ? '### ' : '#### ') + k.heading + '" appears twice' + (k.area ? ' under "### ' + k.area + '"' : '') + ' of "' + r.title + '": merge its entries into the first one.');
+      kindsSeen.add(key);
+    }
+    if (r.unreleased && entries(r)) {
+      errors.push(name + ': "## ' + r.title + '" has ' + entries(r) + ' entries written into it. Write each one as a file of its own in changelog/unreleased/ (see its README.md) instead: the release adds them here.');
+    }
     if (!r.version) continue;
     const old = before.find(o => o.version === r.version);
     if (old && entries(r) > entries(old)) {
-      errors.push(name + ': ' + r.version + ' is already released and gained an entry. Add it under "## ' + (lang === 'en' ? 'Unreleased' : 'Prochaine version') + '" instead.');
+      errors.push(name + ': ' + r.version + ' is already released and gained an entry. Write it as a file of changelog/unreleased/ instead.');
     } else if (!old && !tags.has(r.version)) {
-      errors.push(name + ': ' + r.version + ' was never released. Add the entries under "## ' + (lang === 'en' ? 'Unreleased' : 'Prochaine version') + '": the release dates it.');
+      errors.push(name + ': ' + r.version + ' was never released. Write the entries as files of changelog/unreleased/: the release dates them.');
     }
   }
-  if (!now.some(r => r.unreleased)) errors.push(name + ': the "## ' + (lang === 'en' ? 'Unreleased' : 'Prochaine version') + '" section is missing.');
+  if (!now.some(r => r.unreleased)) errors.push(name + ': the ' + unreleasedTitle + ' section is missing.');
 }
 
 const shape = (rs, lang) => rs.map(r => (r.version || 'unreleased') + ': ' + r.kinds.map(k => {
@@ -101,11 +119,17 @@ const shape = (rs, lang) => rs.map(r => (r.version || 'unreleased') + ': ' + r.k
   const area = k.area ? AREAS.en[AREAS[lang].indexOf(k.area)] + ' ' : '';
   return area + kind + ' ' + k.entries;
 }).join(', '));
-const en = shape(files.en, 'en'), fr = shape(files.fr, 'fr');
-for (let i = 0; i < Math.max(en.length, fr.length); i++) {
-  if (en[i] !== fr[i]) errors.push('en.md and fr.md differ: "' + (en[i] || 'nothing') + '" in English, "' + (fr[i] || 'nothing') + '" in French.');
+const en = shape(files.en || [], 'en');
+for (const lang of LANGS.filter(l => l !== 'en' && files[l])) {
+  const other = shape(files[lang], lang);
+  for (let i = 0; i < Math.max(en.length, other.length); i++) {
+    if (en[i] !== other[i]) {
+      errors.push('en.md and ' + lang + '.md differ: "' + (en[i] || 'nothing') + '" in en.md, "' + (other[i] || 'nothing') + '" in ' + lang + '.md.');
+      break;
+    }
+  }
 }
 
 for (const e of errors) console.log('::error::' + e);
 if (errors.length) process.exit(1);
-console.log('The changelog is in order.');
+console.log('The changelog is in order: ' + read.fragments.length + ' entries wait for the next release.');

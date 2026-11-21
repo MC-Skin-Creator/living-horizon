@@ -5,6 +5,7 @@ import fr.clixmods.livinghorizon.command.LivingHorizonCommand;
 import fr.clixmods.livinghorizon.compat.LodWorld;
 import fr.clixmods.livinghorizon.debug.BenchmarkWorld;
 import fr.clixmods.livinghorizon.debug.Allocation;
+import fr.clixmods.livinghorizon.debug.DebugHud;
 import fr.clixmods.livinghorizon.debug.ProfileHook;
 import fr.clixmods.livinghorizon.platform.ClientNetwork;
 import fr.clixmods.livinghorizon.platform.Events;
@@ -13,9 +14,11 @@ import fr.clixmods.livinghorizon.render.Occlusion;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.ui.FarConfigScreen;
 import fr.clixmods.livinghorizon.ui.MobList;
+import fr.clixmods.livinghorizon.ui.OfflineHud;
 import fr.clixmods.livinghorizon.ui.OptionsButton;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
@@ -62,6 +65,7 @@ public final class LivingHorizonClient {
     public static final Logger LOGGER = LoggerFactory.getLogger("Living Horizon");
 
     private static KeyMapping toggle;
+    private static KeyMapping underground;
     private static KeyMapping settings;
 
     //? if fabric || quilt {
@@ -117,13 +121,16 @@ public final class LivingHorizonClient {
         *///?}
         toggle = Events.register(new KeyMapping(
                 "key.livinghorizon.toggle", InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(), category));
+        underground = Events.register(new KeyMapping(
+                "key.livinghorizon.underground", InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(), category));
         settings = Events.register(new KeyMapping(
                 "key.livinghorizon.settings", InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(), category));
 
         Events.tick(LivingHorizonClient::tick);
+        Events.hud(LivingHorizonClient::drawHud);
         OptionsButton.register();
-        // Every mod has registered its mobs by now: new kinds are shown far away from the start.
-        Events.started(() -> FarConfig.adoptModdedMobs(MobList.all()));
+        // Every mod has registered its mobs by now: kinds met for the first time are shown far away.
+        Events.started(() -> FarConfig.adoptNewMobs(MobList.all()));
         // Voxy's world cannot close while the readers still hold its sections.
         Events.disconnect(LodWorld::suspend);
         Events.stopping(LodWorld::suspend);
@@ -157,20 +164,39 @@ public final class LivingHorizonClient {
         LOGGER.info("Living Horizon loaded");
     }
 
+    /**
+     * The debug panel (and, before 1.21.9, the depth view it draws) and who a player who logged
+     * off is, under the crosshair: over the world, under the screens. From {@code GuiMixin}, or
+     * Forge's own overlay event where the game's {@code Gui.render} never runs ({@link Events#hud}).
+     */
+    public static void drawHud(GuiGraphics graphics) {
+        OfflineHud.draw(graphics);
+        DebugHud.draw(graphics);
+    }
+
+    /** A line above the hotbar, as the game shows the state of a key it flips. */
+    private static void overlay(Minecraft minecraft, String key) {
+        if (minecraft.player == null) return;
+        Component message = Component.translatable(key);
+        //? if >=26.1 {
+        /*minecraft.player.sendOverlayMessage(message);
+        *///?} else {
+        minecraft.player.displayClientMessage(message, true);
+        //?}
+    }
+
     private static void tick(Minecraft minecraft) {
         while (toggle.consumeClick()) {
             FarConfig config = FarConfig.get();
             config.enabled = !config.enabled;
             FarConfig.save();
-            if (minecraft.player != null) {
-                Component message = Component.translatable(
-                        config.enabled ? "livinghorizon.toggle.on" : "livinghorizon.toggle.off");
-                //? if >=26.1 {
-                /*minecraft.player.sendOverlayMessage(message);
-                *///?} else {
-                minecraft.player.displayClientMessage(message, true);
-                //?}
-            }
+            overlay(minecraft, config.enabled ? "livinghorizon.toggle.on" : "livinghorizon.toggle.off");
+        }
+        while (underground.consumeClick()) {
+            FarConfig config = FarConfig.get();
+            config.hideUndergroundMobs = !config.hideUndergroundMobs;
+            FarConfig.save();
+            overlay(minecraft, config.hideUndergroundMobs ? "livinghorizon.underground.hidden" : "livinghorizon.underground.shown");
         }
         while (settings.consumeClick()) {
             minecraft.setScreen(new FarConfigScreen(minecraft.screen));
@@ -180,6 +206,7 @@ public final class LivingHorizonClient {
         long allocated = Allocation.begin();
         FarPlayerTracker.get().tick(minecraft);
         if (minecraft.level != null) {
+            LodWorld.tick();
             long occluding = Profile.begin(Profile.Section.TICK_OCCLUSION);
             try {
                 Occlusion.tick(minecraft.gameRenderer.getMainCamera().position());

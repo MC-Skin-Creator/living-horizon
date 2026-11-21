@@ -1,0 +1,92 @@
+# The regression bench's settings. A bench.toml in the bench's home folder (LH_BENCH_HOME)
+# overrides any key of this one, table by table.
+
+# The Fabric nodes run, from 1.21.4: the client game tests need the Fabric API's module.
+nodes = ["1.21.4", "1.21.5", "1.21.8", "1.21.10", "1.21.11", "26.1.x", "26.2.x", "26.3.x"]
+
+# The nodes `jars` plays by default (published jars, any loader): one per change in how the mod
+# draws (CLAUDE.md), and the loaders players use most. `--nodes all` plays every node of
+# stonecutter.properties.toml.
+#   1.20.1 Fabric and Forge: the most played modpack version, before the entity render states
+#   1.21.1 Fabric and NeoForge: the other big modpack version
+#   1.21.4: the first with render states; 1.21.10: the feature dispatcher (1.21.9 to 26.1)
+#   1.21.11: the reference; 26.1: not obfuscated; 26.2: PreparedFrame, reversed depth;
+#   26.3: SDL window, GPU path
+jar_nodes = ["1.20.1", "1.20.1-forge", "1.21.1", "1.21.1-neoforge", "1.21.4", "1.21.10", "1.21.11", "26.1.x",
+             "26.2.x", "26.3.x"]
+
+# The node every other is compared with, between versions.
+reference_node = "1.21.11"
+
+# Minutes one game may run before it is stopped.
+timeout_minutes = 60
+
+# The GitHub repository the develop builds are released from.
+repository = "MC-Skin-Creator/living-horizon"
+
+# Mods added to every game to make it start and load faster, each where it exists for the game
+# version and loader and fits with the profile's mods (left out otherwise). Only mods that change
+# nothing on screen: no Dynamic FPS (it slows a window without the focus, and the bench's windows
+# never have it), no culling mod (it changes what is drawn), nothing that rewrites the chunk system
+# or the lighting (C2ME, Moonrise, ScalableLux: what Distant Horizons reads, how the scene is lit).
+# Lithium is Canary on Forge. Not Chunky: Distant Horizons for 1.20.1 hooks into it before it is
+# loaded and the world's server crashes as the player joins ("Chunky is not loaded"). Not
+# ModernFix: on 1.20.1 its block state caches, built while Lithium still registers its flags,
+# crash the world's server now and then ("Cannot register more flags").
+speed_mods = ["ferrite-core", "lithium", "canary", "fastload", "smooth-boot", "noisium"]
+
+# One profile is one set of mods, loaded from a folder of its own: every node is played once
+# per profile, with the same game. `mods` are Modrinth projects (their Fabric jar for the
+# node's game version); `shaderpacks` Modrinth shader packs, turned on one after the other
+# through Iris in the same game (their pictures named after the pack: `photon-mountain`).
+# A profile whose mods do not exist for a game version is skipped on that node.
+#
+# `noise` is how much a channel may differ between the two shots of a pair and still count
+# as steady (0 to 255); `tolerance` how much a steady pixel may differ from the baseline;
+# `optional` mods are added where they exist for the game version and loader.
+# `max_pixels` how many changed pixels, in blobs of two by two at least (a terrain edge shifted
+# by one pixel draws thin lines, which do not count), mark a shot changed: a distant mob is a
+# few dozen pixels, so this stays small. Calibrate it with two runs of the same build.
+
+[profiles.vanilla]
+mods = []
+noise = 2
+tolerance = 6
+max_pixels = 4
+
+[profiles.sodium]
+mods = ["sodium"]
+noise = 2
+tolerance = 6
+max_pixels = 4
+
+# Each far terrain mod in one game: its viewpoints without shaders, then the same with each shader
+# pack in turn, changed in that game (`jars`; `run` keeps the first pack on from the start). Sodium
+# and Iris stand for Embeddium and Oculus on Forge.
+[profiles.dh]
+mods = ["sodium", "iris", "distanthorizons"]
+# Added where it exists: Distant Horizons will not start without it next to an old Sodium (1.20.1).
+optional = ["indium"]
+shaderpacks = ["photon-shader", "complementary-reimagined"]
+noise = 10
+tolerance = 16
+max_pixels = 12
+
+[profiles.voxy]
+mods = ["sodium", "iris", "voxy"]
+shaderpacks = ["photon-shader", "complementary-reimagined"]
+noise = 10
+tolerance = 16
+max_pixels = 12
+
+# Between versions the game itself draws a little differently (its sky, its lighting): those
+# comparisons only inform, with these looser limits: `max_changed` is a share of the steady pixels.
+[cross_version]
+tolerance = 24
+max_changed = 0.02
+
+# A phase of /livinghorizon benchmark (--perf) is marked slower when its average frame time
+# grew by more than this share and this many milliseconds, both.
+[perf]
+slower_share = 0.10
+slower_ms = 0.3

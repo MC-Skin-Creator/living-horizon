@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon.track;
 import com.mojang.authlib.properties.Property;
 import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.ServerConfig;
+import fr.clixmods.livinghorizon.compat.McaLook;
 import fr.clixmods.livinghorizon.platform.Network;
 import fr.clixmods.livinghorizon.platform.Platform;
 import net.minecraft.nbt.CompoundTag;
@@ -104,6 +105,8 @@ public final class PositionPublisher {
     private final Map<String, PositionsMessage.Player> players = new LinkedHashMap<>();
     /** How each player online looks, by name, read every second. */
     private final Map<String, PositionsMessage.Look> looks = new HashMap<>();
+    /** The id of each player seen online, by name: their look with MCA is read by it as they log off. */
+    private final Map<String, UUID> ids = new HashMap<>();
     /** What each player online rides alone, by name: the server takes it away with them when they log off. */
     private final Map<String, PositionsMessage.Mount> riding = new HashMap<>();
     /** Which mount {@link #riding} saved, by name: it is saved again when it changes, and every few seconds. */
@@ -112,6 +115,8 @@ public final class PositionPublisher {
     private final LinkedHashMap<UUID, PositionsMessage.Mob> mobs = new LinkedHashMap<>();
     /** What was last read of each mob's saved data. */
     private final Map<UUID, Read> reads = new HashMap<>();
+    /** The animals of the chunks not generated yet, from the seed: shared with the mobs, never saved. */
+    private final SeedMobs seeded = new SeedMobs();
     /** Test players the host placed with the debug command: shared, never saved. */
     private Map<String, PositionsMessage.Player> tests = Map.of();
     /** Test players handed over by the host's game, not taken yet. */
@@ -165,11 +170,15 @@ public final class PositionPublisher {
         // A player who just joined is sent the mobs as they are now, not as they were a few seconds ago.
         boolean joined = false;
         for (ServerPlayer player : online) joined |= !greeted.contains(player.getUUID()) && Network.canSend(player);
-        if (full || joined) refreshMobs();
+        if (full || joined) {
+            refreshMobs();
+            foresee(online, config, rules);
+        }
 
         Set<UUID> sent = new HashSet<>();
         List<PositionsMessage.Player> shown = onlinePlayers();
         byte[] plain = null;
+        byte[] seed = null;
         for (ServerPlayer player : online) {
             if (!Network.canSend(player)) continue;
             sent.add(player.getUUID());
@@ -180,7 +189,7 @@ public final class PositionPublisher {
                 List<byte[]> offline = PositionsMessage.offline(
                         withLooks(rules.offline(offlinePlayers(), viewer), player));
                 byte[] around = PositionsMessage.mobs(
-                        rules.mobs(viewer.dimension()) ? mobsAround(player) : noMobs(player));
+                        rules.mobs(viewer.dimension()) ? mobsAround(player, config) : noMobs(player));
                 sentBytes[0] += everyone.length + around.length;
                 Network.send(player, everyone);
                 for (byte[] part : offline) {
@@ -188,6 +197,9 @@ public final class PositionPublisher {
                     Network.send(player, part);
                 }
                 Network.send(player, around);
+                if (seed == null) seed = PositionsMessage.seed(seed(config, rules));
+                sentBytes[0] += seed.length;
+                Network.send(player, seed);
             } else if (rules.sameForAll()) {
                 if (plain == null) plain = PositionsMessage.players(rules.online(shown, null));
                 sentBytes[0] += plain.length;
@@ -236,6 +248,7 @@ public final class PositionPublisher {
         for (ServerPlayer player : online) {
             String name = player.getScoreboardName();
             names.add(name);
+            ids.put(name, player.getUUID());
             // Left as they were last seen, online or not: they log off from there.
             if (config.hideSpectators && player.isSpectator() || config.hideInvisible && player.isInvisible()) {
                 hidden.add(name);
@@ -250,11 +263,15 @@ public final class PositionPublisher {
                 ridden.remove(name);
             }
             if (runs % LOOK_EVERY == 0 || !looks.containsKey(name)) looks.put(name, lookOf(player));
-            UUID published = vehicle != null && KINDS.containsKey(EntityType.getKey(vehicle.getType()).toString())
-                    ? vehicle.getUUID() : null;
+            // What they ride, whatever it is: a client that remembers it (a mob shared, a plane it
+            // met) draws it under them, and never on its own again.
+            Entity root = player.getRootVehicle();
+            UUID published = root != player ? root.getUUID() : null;
+            // Gliding with an elytra: their pitch too, which tilts the body along the flight.
+            boolean gliding = player.isFallFlying();
             players.put(name, new PositionsMessage.Player(name, player.getX(), player.getY(), player.getZ(),
                     player.getYRot(), SharedPositions.dimensionId(player.level().dimension()), true,
-                    vehicle != null, published));
+                    vehicle != null, published, null, null, 0, false, gliding, gliding ? player.getXRot() : 0f));
             dirty = true;
         }
         // Those who logged off stay where they were last, as they looked, on what they rode.
@@ -271,6 +288,9 @@ public final class PositionPublisher {
         // The server took the mount away with them: it rests under them now, no longer a mob of its own.
         if (mount != null && taken != null && mobs.remove(taken) != null) reads.remove(taken);
         PositionsMessage.Look look = looks.remove(player.name());
+        // How MCA draws them, which it tells the clients while they are online only.
+        UUID id = ids.get(player.name());
+        if (look != null && id != null && McaLook.present()) look = look.withMca(McaLook.of(server, id));
         return new PositionsMessage.Player(player.name(), player.x(), player.y(), player.z(), player.yaw(),
                 player.dimension(), false, mount != null, null, mount, look, System.currentTimeMillis(), false);
     }
@@ -419,14 +439,54 @@ public final class PositionPublisher {
         return new Read(variant, extra != null && extra.length() <= MAX_EXTRA ? extra : null, runs);
     }
 
-    private PositionsMessage.Mobs mobsAround(ServerPlayer player) {
+    private PositionsMessage.Mobs mobsAround(ServerPlayer player, ServerConfig config) {
         String dimension = SharedPositions.dimensionId(player.level().dimension());
         PositionsMessage.Mobs around = new PositionsMessage.Mobs(new ArrayList<>(), dimension,
                 player.getX(), player.getZ(), MOB_RANGE);
         for (PositionsMessage.Mob mob : mobs.values()) {
             if (around.covers(mob.dimension(), mob.x(), mob.z())) around.mobs().add(mob);
         }
+        if (config.seedMobs) {
+            seeded.addAround((ServerLevel) player.level(), player.getX(), player.getZ(), config.seedMobRange, around.mobs());
+        }
         return around;
+    }
+
+    /**
+     * The world's seed, when the owner shares it ({@code shareSeed}), with the dimensions whose
+     * generator a client can build again: the game's own, where mobs are shared.
+     */
+    private PositionsMessage.Seed seed(ServerConfig config, ShareRules rules) {
+        if (!config.shareSeed || !config.seedMobs) return PositionsMessage.Seed.NONE;
+        List<PositionsMessage.SeedGround> grounds = new ArrayList<>();
+        long seed = 0;
+        for (ServerLevel level : server.getAllLevels()) {
+            String dimension = SharedPositions.dimensionId(level.dimension());
+            if (!rules.mobs(dimension)) continue;
+            String[] keys;
+            try {
+                keys = SeedDraws.vanillaKeys(level);
+            } catch (RuntimeException e) {
+                keys = null;
+            }
+            if (keys == null) continue;
+            grounds.add(new PositionsMessage.SeedGround(dimension, keys[0], keys[1]));
+            seed = level.getSeed();
+        }
+        return grounds.isEmpty() ? PositionsMessage.Seed.NONE : new PositionsMessage.Seed(seed, grounds);
+    }
+
+    /** The animals of the chunks not generated yet, worked out around the players they are shared with. */
+    private void foresee(List<ServerPlayer> online, ServerConfig config, ShareRules rules) {
+        List<ServerPlayer> viewers = new ArrayList<>();
+        if (config.seedMobs) {
+            for (ServerPlayer player : online) {
+                if (Network.canSend(player) && rules.mobs(SharedPositions.dimensionId(player.level().dimension()))) {
+                    viewers.add(player);
+                }
+            }
+        }
+        seeded.update(server, viewers, config.seedMobRange);
     }
 
     /** No mobs, in a circle that covers nothing: the client keeps the mobs it remembers. */
@@ -452,6 +512,28 @@ public final class PositionPublisher {
         if (found > 0) {
             dirty = true;
             LOGGER.info("Living Horizon: {} players of this world shown where they logged off", found);
+        }
+        if (McaLook.present()) dressWithMca();
+    }
+
+    /**
+     * Gives the players who logged off before this version, or before MCA was installed, their
+     * look with MCA, found by the ids the server keeps beside the world.
+     */
+    private void dressWithMca() {
+        Map<String, UUID> byName = new HashMap<>();
+        for (Map.Entry<UUID, String> known : WorldPlayers.names(server.getWorldPath(LevelResource.ROOT)).entrySet()) {
+            byName.put(known.getValue(), known.getKey());
+        }
+        for (Map.Entry<String, PositionsMessage.Player> entry : players.entrySet()) {
+            PositionsMessage.Player player = entry.getValue();
+            UUID id = byName.get(player.name());
+            if (player.online() || id == null || player.look() != null && player.look().mca() != null) continue;
+            String mca = McaLook.of(server, id);
+            if (mca == null) continue;
+            PositionsMessage.Look look = player.look() != null ? player.look() : new PositionsMessage.Look(null, null, List.of());
+            entry.setValue(player.full(player.mount(), look.withMca(mca)));
+            dirty = true;
         }
     }
 

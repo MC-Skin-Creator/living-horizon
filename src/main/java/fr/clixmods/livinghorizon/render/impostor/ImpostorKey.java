@@ -2,6 +2,7 @@ package fr.clixmods.livinghorizon.render.impostor;
 
 import fr.clixmods.livinghorizon.compat.EtfLink;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
+import fr.clixmods.livinghorizon.compat.Mca;
 import fr.clixmods.livinghorizon.track.Puppets;
 import fr.clixmods.livinghorizon.track.RestingPuppet;
 import net.minecraft.ChatFormatting;
@@ -77,8 +78,15 @@ public record ImpostorKey(String type, long appearance, int posture) {
         this(type, appearance, STANDING);
     }
 
-    /** Milliseconds a figure's key is kept before it is worked out again. */
-    private static final long KEEP = 5000;
+    /**
+     * Milliseconds a figure's key is kept before it is worked out again, and up to {@link #SPREAD}
+     * more, depending on the figure: keys worked out together, the whole crowd at once, are not
+     * all worked out again in the same frame.
+     */
+    private static final long KEEP = 5000, SPREAD = 4095;
+
+    /** Figures whose key is kept before those not drawn for a while are forgotten. */
+    private static final int KNOWN_MOST = 4096;
 
     /** Milliseconds within which a value changing twice on one figure is taken as restless. */
     private static final long RESTLESS_WITHIN = 60_000;
@@ -94,6 +102,8 @@ public record ImpostorKey(String type, long appearance, int posture) {
     }
 
     private static final Map<Entity, Known> KNOWN = new IdentityHashMap<>();
+    /** How many figures {@link #KNOWN} may hold before it is looked through: twice what it kept the last time. */
+    private static int knownLimit = KNOWN_MOST;
 
     /**
      * Per kind of mob, the bits of each synched value seen changing on one figure again and
@@ -129,7 +139,8 @@ public record ImpostorKey(String type, long appearance, int posture) {
 
     /**
      * The height each key of a flying figure ({@link #seenFrom}) is pictured from, as an index
-     * of {@link ImpostorViews#HEIGHTS}. A few per look of a phantom or a ghast: never trimmed.
+     * of {@link ImpostorViews#HEIGHTS}. A few per look of a phantom, a ghast, a vehicle or a
+     * rider on one; {@link #seenFrom} puts a key back each time it is asked for.
      */
     private static final Map<ImpostorKey, Integer> HEIGHTS = new HashMap<>();
     /** Mixed into the key of a figure pictured from a height, so that it never meets the same figure standing. */
@@ -180,12 +191,12 @@ public record ImpostorKey(String type, long appearance, int posture) {
         return new ImpostorKey(PLAYER, hash * 31 + type(mount).hashCode());
     }
 
-    /** A player who logged off: sitting on the ground, lying down or in a bed; standing otherwise. */
+    /** A player who logged off: sitting on the ground or in a bed; standing otherwise. */
     public static int posture(Entity entity) {
         if (!(entity instanceof RestingPuppet puppet)) return STANDING;
         return switch (puppet.look()) {
             case SIT -> SEATED;
-            case LIE, BED -> LYING;
+            case BED -> LYING;
             default -> STANDING;
         };
     }
@@ -193,14 +204,24 @@ public record ImpostorKey(String type, long appearance, int posture) {
     private static ImpostorKey look(Entity entity) {
         long now = System.currentTimeMillis();
         Known known = KNOWN.get(entity);
-        if (known != null && now - known.when < KEEP) return known.key;
-        if (KNOWN.size() > 4096) KNOWN.clear();
+        if (known != null && now - known.when < KEEP + (System.identityHashCode(entity) & SPREAD)) return known.key;
+        if (KNOWN.size() > knownLimit) {
+            // Only the figures not asked for since their key was last kept: a copy let go, a mob gone.
+            // Cleared whole, thousands of figures on screen were all worked out again every second.
+            KNOWN.values().removeIf(old -> now - old.when > 2 * (KEEP + SPREAD));
+            knownLimit = Math.max(KNOWN_MOST, KNOWN.size() * 2);
+        }
         Map<Integer, Object> values = values(entity);
         Map<Integer, Change> changes = known == null ? new HashMap<>() : known.changes;
         if (known != null && learn(RESTLESS, type(entity), known.values, values, changes, now)) learnt++;
         ImpostorKey key = compute(entity, values);
         KNOWN.put(entity, new Known(key, now, values, changes));
         return key;
+    }
+
+    /** A sheet thrown away: the height its key is pictured from goes with it. */
+    public static void forget(ImpostorKey key) {
+        HEIGHTS.remove(key);
     }
 
     public static void forgetAll() {
@@ -329,7 +350,15 @@ public record ImpostorKey(String type, long appearance, int posture) {
         /*if (entity instanceof AbstractClientPlayer player) hash = hash * 31 + player.getSkin().hashCode();
         *///?} else
         /*if (entity instanceof AbstractClientPlayer player) hash = hash * 31 + player.getSkinTextureLocation().hashCode();*/
+        // A player Minecraft Comes Alive draws as a villager: its look, which MCA keeps apart.
+        int mca = Mca.lookHash(entity);
+        if (mca != 0) hash = hash * 31 + mca;
         hash = hash(hash, values, restless);
+        // Its size, to about 6%: some mods' mobs take it from a value that keeps changing and
+        // is left out (Ice and Fire's dragons grow with their age, which ticks up). Two of one
+        // look but not one size would share a sheet baked for one of them.
+        hash = hash * 31 + size(entity.getBbWidth());
+        hash = hash * 31 + size(entity.getBbHeight());
         if (entity instanceof LivingEntity living) {
             for (EquipmentSlot slot : EquipmentSlot.values()) hash = hash * 31 + item(living.getItemBySlot(slot));
         }
@@ -375,6 +404,11 @@ public record ImpostorKey(String type, long appearance, int posture) {
             // Another mod's renderer, asked for an entity in no world: its texture is not known.
             return null;
         }
+    }
+
+    /** A size in blocks, in steps of about 6%: the same step for sizes a little apart. */
+    static long size(float blocks) {
+        return Math.round(Math.log(Math.max(blocks, 0.01f)) * 16);
     }
 
     /**

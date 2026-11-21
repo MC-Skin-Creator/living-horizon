@@ -61,6 +61,8 @@ jobs:
         entry: ${{ fromJSON(needs.entries.outputs.entries) }}
     name: fill ${{ matrix.entry }}
     runs-on: ubuntu-latest
+    # As in build.yml: three attempts of 25 minutes at most, then the job is stopped.
+    timeout-minutes: 90
 
     steps:
       - name: Checkout
@@ -89,6 +91,17 @@ jobs:
           key: ${{ steps.keys.outputs.shared-key }}
           restore-keys: ${{ steps.keys.outputs.shared-restore }}
           path: ${{ steps.keys.outputs.shared-paths }}
+
+      - name: Set up JDK 8 for ForgeGradle
+        # ForgeGradle's Mavenizer runs one step on Java 8, found through JAVA_HOME_8_X64,
+        # or downloads Temurin 8 itself: GitHub served 8u514's tarball broken (a 1.8 kB
+        # block list), which failed every Forge node without it in its cache. Zulu comes
+        # from Azul's CDN. Before the step below, so that JAVA_HOME stays on 21.
+        if: steps.lookup.outputs.cache-hit != 'true' && endsWith(matrix.entry, '-forge')
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 8
 
       - name: Set up JDKs
         if: steps.lookup.outputs.cache-hit != 'true'
@@ -125,8 +138,8 @@ jobs:
           else
             tasks=(":$ENTRY:compileJava")
           fi
-          ./gradlew "${tasks[@]}" --stacktrace --configure-on-demand \
-            -Porg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64,JAVA_HOME_21_X64,JAVA_HOME_25_X64
+          # A download that fails or hangs is tried again.
+          .github/scripts/gradle.sh "${tasks[@]}"
           # Nothing may still be writing into the cache while it is saved.
           ./gradlew --stop
 

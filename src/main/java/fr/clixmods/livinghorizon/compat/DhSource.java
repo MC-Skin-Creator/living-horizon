@@ -37,6 +37,15 @@ final class DhSource implements LodSource {
     private MethodHandle isAir, isLiquid, isSolid, biomeName;
     /** Before Distant Horizons 3.0 there is no opacity, and before 2.4 no cache: null then. */
     private @Nullable MethodHandle opacity, softCache;
+    /**
+     * Its database, read directly ({@link #holds}): null on a version whose classes differ, or
+     * once a query failed, and its columns are read one by one instead.
+     */
+    private volatile @Nullable MethodHandle generationSteps;
+    private MethodHandle dhWorld, loadedLevels, levelWrapper, dataProvider, providerRepo, sectionAt, newBytes, bytesOf;
+    private @Nullable MethodHandle timestampAt;
+    /** Sections asked of its database, and those holding at least one chunk. */
+    private final AtomicInteger sections = new AtomicInteger(), sectionsHeld = new AtomicInteger();
 
     /**
      * One reader's cache of Distant Horizons' data, for the level it was made for. Distant
@@ -49,20 +58,47 @@ final class DhSource implements LodSource {
     private static final class Cached {
         final Object level;
         final @Nullable Object cache;
-        final int generation;
+        final Era era;
         long emptied = System.nanoTime();
         boolean missed;
 
-        Cached(Object level, @Nullable Object cache, int generation) {
+        Cached(Object level, @Nullable Object cache, Era era) {
             this.level = level;
             this.cache = cache;
-            this.generation = generation;
+            this.era = era;
         }
     }
 
     private static final long RENEW_NANOS = 30_000_000_000L, MISSED_NANOS = 2_000_000_000L;
-    /** Raised by {@link #clear()}: every reader's cache is made again. */
-    private volatile int generation;
+
+    /**
+     * What reads share until the next {@link #clear()}, which starts another: every reader's
+     * cache is made again, and the heights read before are forgotten.
+     */
+    private static final class Era {
+        /** The height of the highest block of each column read, and until when it is trusted. */
+        final ConcurrentHashMap<Long, Long> tops = new ConcurrentHashMap<>();
+        /** Which chunks of each section its database holds ({@link #holds}), and when that was read. */
+        final ConcurrentHashMap<Long, long[]> held = new ConcurrentHashMap<>();
+        /** The database of the level last asked about, and that level. */
+        volatile @Nullable Database database;
+    }
+
+    private record Database(Object level, Object repo) {
+    }
+
+    /** A level opened for a read, in the era it was opened in. */
+    private record Opened(Object level, Era era) {
+    }
+
+    /**
+     * The era, and the reads waiting on Distant Horizons. Its reads are not waited for when a
+     * world is left, since one can be waiting for the game's thread: a read still running then
+     * asks nothing more and keeps nothing ({@link #left}), and {@link #cancel()} calls it off.
+     */
+    private final ModCalls<Era> calls = new ModCalls<>(new Era());
+    /** The last read on this thread was answered "failed" by Distant Horizons, rather than empty. */
+    private final ThreadLocal<Boolean> unanswered = ThreadLocal.withInitial(() -> false);
 
     private final ThreadLocal<Cached> caches = new ThreadLocal<>();
 
@@ -72,12 +108,27 @@ final class DhSource implements LodSource {
 
     @Override
     public String details() {
-        return reads.get() + " columns read, " + found.get() + " with blocks; last answer: " + lastAnswer;
+        String database = generationSteps == null ? "; its database not read"
+                : "; its database asked about " + sections.get() + " sections, " + sectionsHeld.get() + " with terrain";
+        return reads.get() + " columns read, " + found.get() + " with blocks; last answer: " + lastAnswer + database;
     }
 
     /** The data points of a column, or null; counts the answers and keeps the last message. */
-    private Object @Nullable [] read(Object repo, Object world, int x, int z, Object cache) throws Throwable {
-        Object result = columnAt.invoke(repo, world, x, z, cache);
+    private Object @Nullable [] read(Object repo, Opened opened, int x, int z, Object cache) throws Throwable {
+        unanswered.set(false);
+        if (!calls.enter(opened.era)) return null;
+        Object result;
+        try {
+            result = columnAt.invoke(repo, opened.level, x, z, cache);
+        } catch (Throwable e) {
+            // Called off as the world was left (a version that lets the interrupt through).
+            if (left(opened)) return null;
+            throw e;
+        } finally {
+            calls.leave();
+        }
+        // Called off, or answered for a world left since: not counted.
+        if (left(opened)) return null;
         reads.incrementAndGet();
         if (result == null) {
             lastAnswer = "null";
@@ -86,6 +137,7 @@ final class DhSource implements LodSource {
         Object message = DhLink.message(result);
         if (!DhLink.success(result)) {
             lastAnswer = "failed: " + message;
+            unanswered.set(true);
             return missed();
         }
         Object[] points = (Object[]) DhLink.payload(result);
@@ -122,12 +174,24 @@ final class DhSource implements LodSource {
 
     @Override
     public void clear() {
-        tops.clear();
-        generation++;
+        calls.moveOn(new Era());
     }
 
-    /** The height of the highest block of each column read, and until when it is trusted. */
-    private final ConcurrentHashMap<Long, Long> tops = new ConcurrentHashMap<>();
+    /**
+     * Distant Horizons shuts its threads down as the player leaves, and a read it had queued
+     * then never ends: its reader waited for good, a reader fewer every time a world was left.
+     * Interrupted, the wait ends, and Distant Horizons answers that the read was cancelled.
+     */
+    @Override
+    public void cancel() {
+        calls.callOff();
+    }
+
+    /** A read whose world was left since it was opened: nothing more is asked for it. */
+    private boolean left(Opened opened) {
+        return opened.era != calls.world();
+    }
+
     private static final long TOP_SECONDS = 90;
     private static final int TOPS_KEPT = 300_000;
 
@@ -137,12 +201,13 @@ final class DhSource implements LodSource {
      * and again, and every read makes Distant Horizons build a block of objects: a column is
      * read once, then remembered for a while.
      */
-    private int topOf(Object repo, Object world, Object cache, int x, int z) throws Throwable {
+    private int topOf(Object repo, Opened opened, Object cache, int x, int z) throws Throwable {
+        ConcurrentHashMap<Long, Long> tops = opened.era.tops;
         long key = (long) x << 32 | (z & 0xFFFFFFFFL);
         long now = System.currentTimeMillis() / 1000;
         Long known = tops.get(key);
         if (known != null && (known >>> 32) > now) return (int) known.longValue();
-        Object[] points = read(repo, world, x, z, cache);
+        Object[] points = read(repo, opened, x, z, cache);
         int best = Integer.MIN_VALUE;
         if (points != null) {
             for (Object point : points) {
@@ -168,6 +233,7 @@ final class DhSource implements LodSource {
             try {
                 if (!DhLink.linked()) throw new IllegalStateException("its API is not the one this mod knows");
                 link();
+                linkDatabase();
             } catch (Throwable e) {
                 broken = true;
                 failure = "Distant Horizons found, but too old or unknown (its world needs 2.3 or newer): " + e;
@@ -283,6 +349,8 @@ final class DhSource implements LodSource {
     /** The level Distant Horizons holds for the one the player is in; null while it has none. */
     @Override
     public @Nullable Object open() throws Throwable {
+        // First of all: a clear() from here on leaves this read behind, whichever level it finds.
+        Era era = calls.world();
         // Both are filled in by Distant Horizons once it has started: until then, nothing to read.
         Object proxy = worldProxy.invoke();
         if (proxy == null || terrainRepo.invoke() == null || !(boolean) worldLoaded.invoke(proxy)) return null;
@@ -294,17 +362,145 @@ final class DhSource implements LodSource {
         Object sameDimension = null;
         for (Object level : (Iterable<?>) levels.invoke(proxy)) {
             Object game = wrapped.invoke(level);
-            if (game == current) return level;
+            if (game == current) return new Opened(level, era);
             if (sameDimension == null && game instanceof Level other && other.dimension().equals(current.dimension())) {
                 sameDimension = level;
             }
         }
-        return sameDimension;
+        return sameDimension == null ? null : new Opened(sameDimension, era);
+    }
+
+    /**
+     * Distant Horizons keeps its terrain in a database, by sections of 64 by 64 blocks (4 by 4
+     * chunks), with how far each column was generated. Which sections exist, and which of their
+     * columns hold terrain, is one small query a section, where reading a column through its API
+     * loads or builds the whole section's terrain (a quarter of a second each, measured). Not
+     * called off as a world is left: it never waits for Distant Horizons' threads, and an
+     * interrupt could close its database.
+     */
+    private void linkDatabase() {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.publicLookup();
+            String core = "com.seibel.distanthorizons.core.";
+            Class<?> shared = Class.forName(core + "api.internal.SharedApi");
+            Class<?> world = Class.forName(core + "world.IDhWorld");
+            Class<?> level = Class.forName(core + "level.IDhLevel");
+            Class<?> wrapper = Class.forName(core + "wrapperInterfaces.world.ILevelWrapper");
+            Class<?> provider = Class.forName(core + "file.fullDatafile.V2.FullDataSourceProviderV2");
+            Class<?> repo = Class.forName(core + "sql.repo.FullDataSourceV2Repo");
+            Class<?> section = Class.forName(core + "pos.DhSectionPos");
+            Class<?> bytes = Class.forName("it.unimi.dsi.fastutil.bytes.ByteArrayList", true, repo.getClassLoader());
+            dhWorld = lookup.findStatic(shared, "getAbstractDhWorld",
+                    MethodType.methodType(Class.forName(core + "world.AbstractDhWorld")));
+            loadedLevels = lookup.findVirtual(world, "getAllLoadedLevels", MethodType.methodType(Iterable.class));
+            levelWrapper = lookup.findVirtual(level, "getLevelWrapper", MethodType.methodType(wrapper));
+            dataProvider = lookup.findVirtual(level, "getFullDataProvider", MethodType.methodType(provider));
+            providerRepo = lookup.findGetter(provider, "repo", repo);
+            sectionAt = lookup.findStatic(section, "encode", MethodType.methodType(long.class, byte.class, int.class, int.class));
+            newBytes = lookup.findConstructor(bytes, MethodType.methodType(void.class));
+            bytesOf = lookup.findVirtual(bytes, "toByteArray", MethodType.methodType(byte[].class));
+            timestampAt = Links.optional(lookup, repo, "getTimestampForPos", MethodType.methodType(Long.class, long.class));
+            generationSteps = lookup.findVirtual(repo, "getColumnGenerationStepForPos", MethodType.methodType(void.class, long.class, bytes));
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
+            generationSteps = null;
+            DhLink.fallback("no look at its database: the ground under distant mobs is read column by column, slowly");
+        }
+    }
+
+    private static final long HELD_NANOS = 2_000_000_000L;
+    private static final int SECTIONS_KEPT = 50_000;
+
+    @Override
+    public @Nullable Boolean holds(Object world, int x, int z) throws Throwable {
+        MethodHandle steps = generationSteps;
+        if (steps == null) return null;
+        Opened opened = (Opened) world;
+        if (left(opened)) return null;
+        int cx = x >> 4, cz = z >> 4;
+        long key = (long) (cx >> 2) << 32 | ((cz >> 2) & 0xFFFFFFFFL);
+        long now = System.nanoTime();
+        ConcurrentHashMap<Long, long[]> held = opened.era.held;
+        long[] known = held.get(key);
+        if (known == null || now - known[1] > HELD_NANOS) {
+            Long mask;
+            try {
+                mask = chunksHeld(steps, opened, cx >> 2, cz >> 2);
+            } catch (Throwable e) {
+                // Its database is not what this mod knows: its columns are read instead.
+                generationSteps = null;
+                DhLink.fallback("its database did not answer as expected, read column by column: " + e);
+                LivingHorizonClient.LOGGER.warn("Distant Horizons' database did not answer as expected: its columns are read one by one", e);
+                return null;
+            }
+            if (mask == null || left(opened)) return null;
+            if (held.size() > SECTIONS_KEPT) held.clear();
+            held.put(key, known = new long[]{mask, now});
+        }
+        return (known[0] >> ((cx & 3) * 4 + (cz & 3)) & 1) != 0;
+    }
+
+    /**
+     * The chunks of a section that hold terrain, a bit each ({@code x * 4 + z} within the
+     * section); 0 where the database has no such section, null where it cannot tell.
+     */
+    private @Nullable Long chunksHeld(MethodHandle steps, Opened opened, int sx, int sz) throws Throwable {
+        Object repo = repoOf(opened);
+        if (repo == null) return null;
+        long section = (long) sectionAt.invoke((byte) 6, sx, sz);
+        Object list = newBytes.invoke();
+        steps.invoke(repo, section, list);
+        byte[] generated = (byte[]) bytesOf.invoke(list);
+        sections.incrementAndGet();
+        if (generated.length == 0) {
+            // No steps: no such section, unless a row without them (cannot tell, then).
+            return timestampAt != null && timestampAt.invoke(repo, section) != null ? null : 0L;
+        }
+        if (generated.length != 64 * 64) return null;
+        long mask = 0;
+        // A column at (x, z) within the section is at x * 64 + z; 0 is a column never generated.
+        for (int chunk = 0; chunk < 16; chunk++) {
+            int fromX = (chunk >> 2) * 16, fromZ = (chunk & 3) * 16;
+            search:
+            for (int i = 0; i < 16; i++) {
+                for (int j = 0; j < 16; j++) {
+                    if (generated[(fromX + i) * 64 + fromZ + j] != 0) {
+                        mask |= 1L << chunk;
+                        break search;
+                    }
+                }
+            }
+        }
+        if (mask != 0) sectionsHeld.incrementAndGet();
+        return mask;
+    }
+
+    /** The database of the level read, found among Distant Horizons' levels by its wrapper. */
+    private @Nullable Object repoOf(Opened opened) throws Throwable {
+        Database database = opened.era.database;
+        if (database != null && database.level == opened.level) return database.repo;
+        Object world = dhWorld.invoke();
+        if (world == null) return null;
+        Object game = wrapped.invoke(opened.level);
+        for (Object level : (Iterable<?>) loadedLevels.invoke(world)) {
+            Object wrapper = levelWrapper.invoke(level);
+            if (wrapper == null) continue;
+            if (wrapper == opened.level || game != null && wrapped.invoke(wrapper) == game) {
+                Object repo = providerRepo.invoke(dataProvider.invoke(level));
+                if (repo == null) return null;
+                opened.era.database = new Database(opened.level, repo);
+                return repo;
+            }
+        }
+        return null;
     }
 
     @Override
     public LodWorld.@Nullable Surface column(Object world, int x, int z) throws Throwable {
-        Object[] points = read(terrainRepo.invoke(), world, x, z, cache(world));
+        Opened opened = (Opened) world;
+        if (left(opened)) return null;
+        Object[] points = read(terrainRepo.invoke(), opened, x, z, cache(opened));
+        // Distant Horizons said it could not answer: not the same as a column it holds nothing in.
+        if (points == null && unanswered.get()) throw LodWorld.Unanswered.INSTANCE;
         if (points == null) return null;
         Object best = null;
         int bestTop = Integer.MIN_VALUE;
@@ -331,12 +527,12 @@ final class DhSource implements LodSource {
      * A cache of Distant Horizons' data for this thread and level: without one its reads are
      * far slower. A new one when the level is another.
      */
-    private Object cache(Object world) throws Throwable {
+    private Object cache(Opened opened) throws Throwable {
         Cached cached = caches.get();
-        if (cached == null || cached.level != world || cached.generation != generation) {
+        if (cached == null || cached.level != opened.level || cached.era != opened.era) {
             if (cached != null && cached.cache != null) clearCache.invoke(cached.cache);
             // Without a cache (before 2.4), Distant Horizons reads without one.
-            cached = new Cached(world, softCache == null ? null : softCache.invoke(terrainRepo.invoke()), generation);
+            cached = new Cached(opened.level, softCache == null ? null : softCache.invoke(terrainRepo.invoke()), opened.era);
             caches.set(cached);
         } else if (cached.cache != null) {
             long now = System.nanoTime();
@@ -360,8 +556,10 @@ final class DhSource implements LodSource {
     @Override
     public double firstHit(Object world, double ax, double ay, double az, double dx, double dy, double dz,
                            double from, double to) throws Throwable {
+        Opened opened = (Opened) world;
+        if (left(opened)) return Double.NaN;
         Object repo = terrainRepo.invoke();
-        Object cache = cache(world);
+        Object cache = cache(opened);
         long column = Long.MIN_VALUE;
         int height = Integer.MIN_VALUE;
         for (double t = from; t < to; t += Math.clamp(t / 48.0, 1.0, 8.0)) {
@@ -371,7 +569,7 @@ final class DhSource implements LodSource {
             long key = (long) x << 32 | (z & 0xFFFFFFFFL);
             if (key != column) {
                 column = key;
-                height = topOf(repo, world, cache, x, z);
+                height = topOf(repo, opened, cache, x, z);
             }
             // Under the highest block of a column: inside the ground, or a tree on it.
             if (y < height) return t;

@@ -36,7 +36,9 @@ import java.util.function.Function;
  * Life in the sky and around, purely a picture, on this client only; nothing is spawned
  * anywhere and no AI runs. Flocks cross the sky, birds of prey circle, gulls hang about
  * the coast, pigeons sit on high buildings, robins hop in the fields, tits flit in the
- * trees, bats come out at night. Perched birds fly off when you come close.
+ * trees, bats come out at night. Perched birds fly off when you come close, and nothing
+ * here ever lets you near enough to reach it: it cannot be touched, so it must not look
+ * like it could be.
  *
  * <p>Where each kind goes is read off the terrain: a few columns at a time, from the
  * chunks loaded here or, farther, from Voxy's world - the top block and the biome say
@@ -81,6 +83,8 @@ public final class Ambience {
         public float scale = 1f;
         /** The impostor picture shown last frame, -1 while drawn as a model. */
         int view = -1;
+        /** Seen from there, no far terrain can hide it ({@link OpenSky}); null when not known. */
+        volatile OpenSky.@Nullable Clear clear;
         float beat, beatRate;
         boolean gliding;
 
@@ -148,7 +152,32 @@ public final class Ambience {
             y = yo = ny;
             z = zo = nz;
         }
+
+        /**
+         * The last word on where it flies: never within {@code CLEARANCE} of the player's
+         * body, pushed out along the line between them when it would be. Perched birds are
+         * left alone; they take off long before.
+         */
+        void keepClear(LocalPlayer self) {
+            if (perched) return;
+            double bodyY = Mth.clamp(y, self.getY(), self.getEyeY());
+            double dx = x - self.getX(), dy = y - bodyY, dz = z - self.getZ();
+            double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (distance >= CLEARANCE) return;
+            if (distance < 1e-3) {
+                dx = dz = 0;
+                dy = distance = 1;
+            }
+            double out = CLEARANCE / distance;
+            x = self.getX() + dx * out;
+            y = bodyY + dy * out;
+            z = self.getZ() + dz * out;
+            if (puppet != null) puppet.setPos(x, y, z);
+        }
     }
+
+    /** How close a flyer may come to the player: a block past the reach of a hand. */
+    private static final double CLEARANCE = 4.0;
 
     /** Some flyers that move together, and know when they are done. */
     private abstract static class Group {
@@ -252,6 +281,7 @@ public final class Ambience {
     private final RandomSource random = RandomSource.create();
     private final Map<Type, Integer> cooldowns = new EnumMap<>(Type.class);
     private final List<Spot> spots = new ArrayList<>();
+    private final OpenSky openSky = new OpenSky();
     /** Spots the Voxy lookups found, handed over from their thread. */
     private final ConcurrentLinkedQueue<Spot> found = new ConcurrentLinkedQueue<>();
     private @Nullable ClientLevel level;
@@ -264,8 +294,23 @@ public final class Ambience {
     private final Waver waver = new Waver(calendar);
     private final Bigfoot bigfoot = new Bigfoot(calendar);
     private final GhostBoat ghostBoat = new GhostBoat(calendar);
+    private final GhostVillager ghostVillager = new GhostVillager(calendar);
+    private final Sect sect = new Sect(calendar);
+    private final Statue statue = new Statue(calendar);
+    private final Watcher watcher = new Watcher(calendar);
+    private final Glider glider = new Glider(calendar);
+    private final SkyLanterns skyLanterns = new SkyLanterns(calendar);
+    private final Herd herd = new Herd(calendar);
+    private final LostPet lostPet = new LostPet(calendar);
+    private final SeaCreature seaCreature = new SeaCreature(calendar);
+    private final BirdShape birdShape = new BirdShape(calendar);
+    private final Campfire campfire = new Campfire(calendar);
+    private final Fireworks fireworks = new Fireworks(calendar);
+    /** The easter eggs from 9 on, in their order: 14 and 20 are no more. */
+    private final List<Egg> more = List.of(sect, statue, watcher, glider, skyLanterns, herd, lostPet,
+            seaCreature, birdShape, campfire, fireworks);
 
-    /** When the easter eggs may come by chance, per world. */
+    /** When the easter eggs may come, per world. */
     public EggCalendar calendar() {
         return calendar;
     }
@@ -305,6 +350,88 @@ public final class Ambience {
         return ghostBoat;
     }
 
+    /** Easter egg 8. */
+    public GhostVillager ghostVillager() {
+        return ghostVillager;
+    }
+
+    /** Easter egg 9. */
+    public Sect sect() {
+        return sect;
+    }
+
+    /** Easter egg 10. */
+    public Statue statue() {
+        return statue;
+    }
+
+    /** Easter egg 11. */
+    public Watcher watcher() {
+        return watcher;
+    }
+
+    /** Easter egg 12. */
+    public Glider glider() {
+        return glider;
+    }
+
+    /** Easter egg 13. */
+    public SkyLanterns skyLanterns() {
+        return skyLanterns;
+    }
+
+    /** Easter egg 15. */
+    public Herd herd() {
+        return herd;
+    }
+
+    /** Easter egg 16. */
+    public LostPet lostPet() {
+        return lostPet;
+    }
+
+    /** Easter egg 17. */
+    public SeaCreature seaCreature() {
+        return seaCreature;
+    }
+
+    /** Easter egg 18. */
+    public BirdShape birdShape() {
+        return birdShape;
+    }
+
+    /** Easter egg 19. */
+    public Campfire campfire() {
+        return campfire;
+    }
+
+    /** Easter egg 21. */
+    public Fireworks fireworks() {
+        return fireworks;
+    }
+
+    /** The easter eggs from 9 on. */
+    public List<Egg> more() {
+        return more;
+    }
+
+    /** Easter egg {@code number}, from 9 on; null for another number. */
+    public @Nullable Egg egg(int number) {
+        for (Egg egg : more) if (egg.number() == number) return egg;
+        return null;
+    }
+
+    /**
+     * Blocks past which no bird can be seen. Without a far-terrain mod (Voxy, Distant Horizons
+     * and the others {@link LodWorld} reads), the game's fog ends at the render distance and
+     * paints a bird past it the colour of the fog: only a pale ghost against the sky, which
+     * cost as much as a bird in sight. With one, there is no limit but the birds' own distance.
+     */
+    public static double seenWithin() {
+        if (LodWorld.installed()) return Double.POSITIVE_INFINITY;
+        return Minecraft.getInstance().options.getEffectiveRenderDistance() * 16.0;
+    }
+
     /** Everything flying or perched this tick. */
     public List<Flyer> flyers() {
         return flyers;
@@ -318,24 +445,27 @@ public final class Ambience {
             level = current;
         }
         // The easter eggs: by chance only on the days the calendar allows, one at a time. The
-        // watcher keeps his own nights, out of the others' way: he waits for them, not they for him.
+        // daily ones (3, 4, 5) keep days of their own, alongside the others: nobody waits for them.
         calendar.tick(current);
         boolean eggs = config.easterEggs && current.dimension() == Level.OVERWORLD;
-        boolean free = !ufo.busy() && !pass.busy() && !ghosts.busy()
-                && !waver.busy() && !bigfoot.busy() && !ghostBoat.busy();
+        boolean free = !ufo.busy() && !pass.busy() && !bigfoot.busy() && !ghostBoat.busy() && !ghostVillager.busy();
+        for (Egg egg : more) free &= !egg.busy();
         ufo.tick(current, self, eggs, free && calendar.allows(1));
         pass.tick(current, self, eggs, free && calendar.allows(2));
-        ghosts.tick(current, self, eggs, free && calendar.allows(3));
-        herobrine.tick(current, self, eggs, free);
-        waver.tick(current, self, eggs, free && calendar.allows(5));
+        ghosts.tick(current, self, eggs);
+        herobrine.tick(current, self, eggs);
+        waver.tick(current, self, eggs);
         bigfoot.tick(current, self, eggs, free && calendar.allows(6));
         ghostBoat.tick(current, self, eggs, free && calendar.allows(7));
+        ghostVillager.tick(current, self, eggs, free && calendar.allows(8));
+        for (Egg egg : more) egg.tick(current, self, eggs, free && (!egg.paced() || calendar.allows(egg.number())));
         flyers.clear();
         if (!config.skyBirds || current.dimension() != Level.OVERWORLD) {
             groups.clear();
             return;
         }
-        double reach = Math.max(100, config.birdMaxDistance);
+        // Never farther than they can be seen: without a far terrain, the fog ends at the render distance.
+        double reach = Math.min(Math.max(100, config.birdMaxDistance), Math.max(100, seenWithin()));
         double density = Math.max(0, config.birdDensity) / 100.0;
         boolean day = current.isBrightOutside();
         boolean rain = current.isRaining();
@@ -362,8 +492,13 @@ public final class Ambience {
 
         groups.removeIf(group -> {
             group.age++;
-            if (group.departing >= 0) return !group.depart();
+            if (group.departing >= 0) {
+                boolean gone = !group.depart();
+                for (Flyer flyer : group.flyers) flyer.keepClear(self);
+                return gone;
+            }
             boolean keep = group.tick(this, self, reach) && !config.hiddenBirds.contains(group.type.id);
+            for (Flyer flyer : group.flyers) flyer.keepClear(self);
             // Bats go home at dawn; birds take shelter when it rains.
             if (!group.summoned && group.type == Type.BATS && day) keep = false;
             if (!group.summoned && group.type != Type.BATS && rain && group.age > 200) keep = false;
@@ -372,6 +507,8 @@ public final class Ambience {
             return false;
         });
         for (Group group : groups) flyers.addAll(group.flyers);
+        // Past where the mobs' renderer starts working on the far terrain's depth, a little nearer.
+        openSky.tick(flyers, self.getEyePosition(), Minecraft.getInstance().options.getEffectiveRenderDistance() * 16 - 32);
     }
 
     private @Nullable Group create(Type type, ClientLevel level, LocalPlayer self, double reach, FarConfig config) {
@@ -445,7 +582,7 @@ public final class Ambience {
      */
     private @Nullable Spot summonSpot(ClientLevel level, LocalPlayer self, Place place, @Nullable BlockPos looked,
                                       double beyond) {
-        if (looked != null && level.hasChunk(looked.getX() >> 4, looked.getZ() >> 4)) {
+        if (looked != null && held(level, looked.getX(), looked.getZ())) {
             Spot spot = read(level, looked.getX(), looked.getZ());
             if (spot != null && spot.place == place && Math.hypot(spot.x - self.getX(), spot.z - self.getZ()) >= beyond) {
                 return spot;
@@ -468,7 +605,7 @@ public final class Ambience {
                 double angle = step * Math.PI * 2 / steps;
                 int x = Mth.floor(self.getX() + Math.sin(angle) * radius);
                 int z = Mth.floor(self.getZ() + Math.cos(angle) * radius);
-                if (!level.hasChunk(x >> 4, z >> 4)) continue;
+                if (!held(level, x, z)) continue;
                 Spot spot = read(level, x, z);
                 if (spot != null && spot.place == place) {
                     keep(spot);
@@ -518,7 +655,7 @@ public final class Ambience {
                     : loaded + random.nextDouble() * Math.max(1, reach * 0.8 - loaded);
             int x = Mth.floor(self.getX() - Math.sin(bearing) * distance);
             int z = Mth.floor(self.getZ() + Math.cos(bearing) * distance);
-            if (level.hasChunk(x >> 4, z >> 4)) {
+            if (held(level, x, z)) {
                 Spot read = read(level, x, z);
                 if (read != null) keep(read);
             } else {
@@ -586,10 +723,19 @@ public final class Ambience {
                 || block.is(Blocks.WATER) || block.is(Blocks.GRASS_BLOCK) || block.is(BlockTags.FLOWERS);
     }
 
+    /**
+     * Whether the client holds the blocks of this column. Never {@code level.hasChunk}: the
+     * client's level answers yes for every chunk, and an unloaded one reads as air down to the
+     * bottom of the world, so the far world (Voxy, Distant Horizons) was never asked.
+     */
+    static boolean held(ClientLevel level, int bx, int bz) {
+        return level.getChunkSource().hasChunk(bx >> 4, bz >> 4);
+    }
+
     /** Where to stand at a column: the loaded ground when there is one, otherwise a guess. */
     private static double ground(ClientLevel level, double x, double z, Heightmap.Types surface, double guess) {
         int bx = Mth.floor(x), bz = Mth.floor(z);
-        return level.hasChunk(bx >> 4, bz >> 4) ? level.getHeight(surface, bx, bz) : guess;
+        return held(level, bx, bz) ? level.getHeight(surface, bx, bz) : guess;
     }
 
     private static float silhouetteSize(FarConfig config, double base) {
@@ -823,7 +969,7 @@ public final class Ambience {
             for (int tries = 0; tries < 6; tries++) {
                 double x = sx + r.nextGaussian() * 10, z = sz + r.nextGaussian() * 10;
                 int bx = Mth.floor(x), bz = Mth.floor(z);
-                if (!level.hasChunk(bx >> 4, bz >> 4)) continue;
+                if (!held(level, bx, bz)) continue;
                 int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING, bx, bz);
                 if (level.getFluidState(new BlockPos(bx, top - 1, bz)).isEmpty()) return new double[]{x, top, z};
             }
@@ -992,7 +1138,7 @@ public final class Ambience {
          */
         boolean loaded(double x, double z) {
             int bx = Mth.floor(x), bz = Mth.floor(z);
-            return level.hasChunk(bx >> 4, bz >> 4)
+            return held(level, bx, bz)
                     && level.getHeight(Heightmap.Types.WORLD_SURFACE, bx, bz) > level.getMinY();
         }
 
@@ -1334,10 +1480,17 @@ public final class Ambience {
     /**
      * A few bats around a spot: flitting about, erratic and quick - or, near you, hanging
      * upside down under leaves, a roof, an overhang, until you come close and they drop and
-     * fly off.
+     * fly off. Walk towards them and the whole lot moves off ahead of you, each bat veering
+     * away whenever it strays near.
      */
     private static final class Bats extends Group {
-        final double cx, cy, cz;
+        /** How near the player may come to the middle of the group before it moves off. */
+        private static final double SHY = 16;
+        /** Within this, a bat veers away from the player, the harder the closer. */
+        private static final double VEER = 8;
+
+        double cx, cz;
+        final double cy;
         final double[] vx, vy, vz;
         final boolean[] hanging;
         final int life;
@@ -1383,7 +1536,7 @@ public final class Ambience {
          */
         static @Nullable double[] ceiling(ClientLevel level, double x, double z, double near) {
             int bx = Mth.floor(x), bz = Mth.floor(z);
-            if (!level.hasChunk(bx >> 4, bz >> 4)) return null;
+            if (!held(level, bx, bz)) return null;
             int top = level.getHeight(Heightmap.Types.WORLD_SURFACE, bx, bz);
             for (int y = top - 2; y > near - 16 && y > level.getMinY(); y--) {
                 BlockPos at = new BlockPos(bx, y, bz);
@@ -1399,6 +1552,15 @@ public final class Ambience {
         @Override
         boolean tick(Ambience a, LocalPlayer self, double reach) {
             RandomSource r = a.random;
+            // Someone walking into the swarm: the spot moves off, a little faster than a sprint.
+            double fromSelf = Math.hypot(cx - self.getX(), cz - self.getZ());
+            if (fromSelf < SHY) {
+                double ax = fromSelf < 1e-3 ? 1 : (cx - self.getX()) / fromSelf;
+                double az = fromSelf < 1e-3 ? 0 : (cz - self.getZ()) / fromSelf;
+                double step = Math.min(0.32, SHY - fromSelf);
+                cx += ax * step;
+                cz += az * step;
+            }
             for (int i = 0; i < flyers.size(); i++) {
                 Flyer flyer = flyers.get(i);
                 if (hanging[i]) {
@@ -1420,6 +1582,16 @@ public final class Ambience {
                 vx[i] += r.nextGaussian() * 0.06 + (cx - flyer.x) * 0.004;
                 vy[i] += r.nextGaussian() * 0.04 + (cy - flyer.y) * 0.006;
                 vz[i] += r.nextGaussian() * 0.06 + (cz - flyer.z) * 0.004;
+                // And away from the player, before it gets anywhere near.
+                double bodyY = Mth.clamp(flyer.y, self.getY(), self.getEyeY());
+                double ox = flyer.x - self.getX(), oy = flyer.y - bodyY, oz = flyer.z - self.getZ();
+                double near = Math.sqrt(ox * ox + oy * oy + oz * oz);
+                if (near < VEER && near > 1e-3) {
+                    double push = 0.25 * (1 - near / VEER) / near;
+                    vx[i] += ox * push;
+                    vy[i] += oy * push;
+                    vz[i] += oz * push;
+                }
                 double speed = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i] + vz[i] * vz[i]);
                 if (speed > 0.35) {
                     vx[i] *= 0.35 / speed;

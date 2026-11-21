@@ -16,6 +16,8 @@ gives a repository):
 
 What a job only downloads (the JDKs and the game files Forge fetches, the game's sounds
 and textures NeoForge fetches) is left out: downloading it again is quicker than keeping it.
+Except what Forge's Maven serves (its userdev and the tools it runs, a few MB per node):
+that one server, asked by every Forge job at once, stalls or drops downloads.
 
 A key is a hash of the files that decide the entry's content. The mod's identity and
 version (the "mod" keys of stonecutter.properties.toml) are left out: the release and
@@ -40,13 +42,15 @@ SHARED_PATHS = [
     "~/.gradle/wrapper/dists",
 ]
 
-# Its other folders hold downloads: the JDKs it runs its tools on, the game files.
+# Its other folders hold downloads: the JDKs it runs its tools on, the game files
+# (minecraft/, from Mojang). maven/forge/ is what came from maven.minecraftforge.net.
 FORGE_CACHE = "~/.gradle/caches/minecraftforge/forgegradle/mavenizer/caches"
 
 NODE_PATHS = {
     "forge": [
         f"{FORGE_CACHE}/forge",
         f"{FORGE_CACHE}/mcp",
+        f"{FORGE_CACHE}/maven/forge",
     ],
     "neoforge": [
         "~/.gradle/caches/neoformruntime/intermediate_results",

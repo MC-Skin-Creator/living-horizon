@@ -19,7 +19,8 @@ import java.util.Optional;
  */
 final class IrisLink {
     private static final Links.Status STATUS = new Links.Status();
-    private static boolean linked;
+    /** Set once linked, the rest written before it: read without the lock by every call after. */
+    private static volatile boolean linked;
     private static @Nullable Object api;
     private static @Nullable Method packInUse, shadowPass;
     /** {@code DHCompat}: the planes Iris draws Distant Horizons' terrain with. */
@@ -34,9 +35,22 @@ final class IrisLink {
     private IrisLink() {
     }
 
-    private static synchronized void link() {
+    private static void link() {
+        // Asked many times a frame: no lock once linked.
+        if (!linked) linkOnce();
+    }
+
+    private static synchronized void linkOnce() {
         if (linked) return;
-        linked = true;
+        try {
+            find();
+        } finally {
+            // Only once everything is found: a call that sees it set reads what was found.
+            linked = true;
+        }
+    }
+
+    private static void find() {
         Class<?> type = Links.optionalClass("net.irisshaders.iris.api.v0.IrisApi");
         if (type == null) {
             STATUS.set("not installed");
@@ -92,6 +106,47 @@ final class IrisLink {
         try {
             return (boolean) packInUse.invoke(api);
         } catch (ReflectiveOperationException | RuntimeException e) {
+            return false;
+        }
+    }
+
+    /** The pipeline {@link #readsNormalMaps} was last read from, and what it said. */
+    private static @Nullable Object normalsPipeline;
+    private static boolean readsNormals;
+    private static boolean normalsUnknown;
+    private static java.lang.reflect.@Nullable Method pipelineManager, pipelineNullable;
+
+    /**
+     * Whether the shader pack on samples normal maps (Photon with its <em>Normal Mapping</em>,
+     * labPBR packs): Iris works it out as it builds the pack's programs, in its pipeline's
+     * {@code shouldBindPBR}, which is not its public API. False without a pack, or when it
+     * cannot be read.
+     */
+    static boolean readsNormalMaps() {
+        if (!shaderPackOn() || normalsUnknown) return false;
+        try {
+            // Looked up once: asked for every picture drawn, a class and two methods looked up
+            // by name each time were a good part of a millisecond a frame under a pack.
+            if (pipelineManager == null) {
+                pipelineManager = Class.forName("net.irisshaders.iris.Iris").getMethod("getPipelineManager");
+            }
+            Object manager = pipelineManager.invoke(null);
+            if (pipelineNullable == null || pipelineNullable.getDeclaringClass() != manager.getClass()) {
+                pipelineNullable = manager.getClass().getMethod("getPipelineNullable");
+            }
+            Object pipeline = pipelineNullable.invoke(manager);
+            if (pipeline == null) return false;
+            if (pipeline != normalsPipeline) {
+                java.lang.reflect.Field field = pipeline.getClass().getDeclaredField("shouldBindPBR");
+                field.setAccessible(true);
+                // Set as the programs are built: read again for each new pipeline, a moment after.
+                readsNormals = field.getBoolean(pipeline);
+                if (readsNormals) normalsPipeline = pipeline;
+            }
+            return readsNormals;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
+            normalsUnknown = true;
+            STATUS.fallback("no normal map flag: impostors get none");
             return false;
         }
     }

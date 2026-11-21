@@ -4,11 +4,11 @@
 # screenshots taken. See SKILL.md next to this file.
 #
 #   .claude/skills/game-test/run.sh [scenario[,scenario...]|all] [--sodium] [--shaders <pack folder>]
-#       [--with <mod,mod...>] [--pack <pack,pack...>]
+#       [--with <project[,project...]>]... [--pack <project[,project...]>]
 #
 # --shaders loads Sodium and Iris and turns the shader pack on (an unpacked folder).
-# --with loads other mods, --pack turns resource packs on: Modrinth project names, the
-# latest release of each for the node's game version (entity-model-features, fresh-animations).
+# --with loads other mods, by their Modrinth project (immersive-aircraft), for this run only.
+# --pack turns resource packs on, by their Modrinth project (fresh-animations), for this run only.
 #
 # Runs the active version, 1.21.11. LH_NODE=26.1.x runs another Fabric target (its name in
 # stonecutter.properties.toml); the scenarios are the same on every one.
@@ -21,14 +21,14 @@ SCENARIO="${1:-all}"
 shift || true
 WITH_SODIUM=0
 SHADERS=""
-WITH=""
-PACKS=""
+WITH=()
+PACKS=()
 while [ $# -gt 0 ]; do
     case "$1" in
         --sodium) WITH_SODIUM=1 ;;
         --shaders) WITH_SODIUM=1; SHADERS="$(cd "$2" && pwd)" || { echo "game-test: no shader pack folder $2"; exit 2; }; shift ;;
-        --with) WITH="$2"; shift ;;
-        --pack) PACKS="$2"; shift ;;
+        --with) IFS=, read -ra list <<<"$2"; WITH+=("${list[@]}"); shift ;;
+        --pack) IFS=, read -ra list <<<"$2"; PACKS+=("${list[@]}"); shift ;;
     esac
     shift
 done
@@ -63,7 +63,7 @@ PY
 )" || { echo "game-test: no node ${LH_NODE:-1.21.11} in stonecutter.properties.toml"; exit 2; }
 
 # The latest release, or beta when there is none, of a Modrinth project for this version:
-# a mod for Fabric into $MODS, or a resource pack (loader "minecraft") into $PACKS.
+# a mod for Fabric into $MODS, or a resource pack (loader "minecraft") into $PACKS_DIR.
 download() {
     local project="$1" loader="${2:-fabric}" file url
     if [ "$loader" = minecraft ]; then file="$PACKS_DIR/$project.zip"; else file="$MODS/$project.jar"; fi
@@ -77,32 +77,34 @@ print([f["url"] for f in chosen["files"] if f["primary"]][0] if chosen else "")'
 }
 
 MOD_ARGS=()
-MODS="$ROOT/build/game-test-mods/$GAME_VERSION"
-PACKS_DIR="$ROOT/build/game-test-packs/$GAME_VERSION"
-# The downloads stay for the next runs; only the jars this run asks for are loaded.
-LOADED=()
+MOD_DIRS=()
 if [ "$WITH_SODIUM" = 1 ]; then
-    LOADED+=(sodium)
-    if [ -n "$SHADERS" ]; then
-        LOADED+=(iris)
-        MOD_ARGS+=("-Plh.shaderpack=$SHADERS")
-    fi
-fi
-for project in ${WITH//,/ }; do LOADED+=("$project"); done
-if [ ${#LOADED[@]} -gt 0 ]; then
+    MODS="$ROOT/build/game-test-mods/$GAME_VERSION"
     mkdir -p "$MODS"
-    jars=""
-    for project in "${LOADED[@]}"; do
-        download "$project"
-        jars="${jars:+$jars:}$MODS/$project.jar"
-    done
-    MOD_ARGS+=("-Plh.mods=$jars")
+    download sodium
+    if [ -n "$SHADERS" ]; then
+        download iris
+        MOD_ARGS+=("-Plh.shaderpack=$SHADERS")
+    else
+        rm -f "$MODS/iris.jar"
+    fi
+    MOD_DIRS+=("$MODS")
 fi
-if [ -n "$PACKS" ]; then
+# Each other mod in a folder of its own, so that it is loaded only by the runs that ask for it.
+for project in "${WITH[@]}"; do
+    MODS="$ROOT/build/game-test-mods/$GAME_VERSION-with/$project"
+    mkdir -p "$MODS"
+    download "$project"
+    MOD_DIRS+=("$MODS")
+done
+# Fabric Loader reads several folders, separated as in a class path.
+[ ${#MOD_DIRS[@]} -gt 0 ] && MOD_ARGS+=("-Plh.mods=$(IFS=:; echo "${MOD_DIRS[*]}")")
+if [ ${#PACKS[@]} -gt 0 ]; then
     # Its own folder per run: every pack in it is turned on.
+    PACKS_DIR="$ROOT/build/game-test-packs/$GAME_VERSION"
     rm -rf "$PACKS_DIR/on"
     mkdir -p "$PACKS_DIR/on"
-    for project in ${PACKS//,/ }; do
+    for project in "${PACKS[@]}"; do
         download "$project" minecraft
         cp "$PACKS_DIR/$project.zip" "$PACKS_DIR/on/"
     done
