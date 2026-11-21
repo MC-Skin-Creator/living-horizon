@@ -483,6 +483,7 @@ public final class FarPlayer {
             living.yBodyRot = body;
             living.yHeadRot = head;
             Puppets.walk(living, walk, 0.4f, living.isBaby() ? 3f : 1f);
+            if (living instanceof RemotePlayer) Puppets.ground(living, pitch != 0f);
         }
         entity.tickCount++;
     }

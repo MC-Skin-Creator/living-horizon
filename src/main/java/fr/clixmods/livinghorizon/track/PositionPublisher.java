@@ -63,6 +63,8 @@ public final class PositionPublisher {
     public static final int PERIOD = 4;
     /** Publications between two of everything else (looks, mounts, offline players, mobs): five seconds. */
     private static final int FULL_EVERY = 25;
+    /** Publications between two messages of the simulation of the players who logged off. */
+    static final int RESTING_EVERY = 2;
     /** Publications between two reads of what an online player wears: a second. */
     private static final int LOOK_EVERY = 5;
     /** How far around a player the mobs sent to them reach, in blocks. */
@@ -127,6 +129,9 @@ public final class PositionPublisher {
     private final Set<String> hidden = new HashSet<>();
     /** The players already sent everything: one who is not gets it all at once. */
     private Set<UUID> greeted = new HashSet<>();
+    /** The server's simulation of the players who logged off; made when first needed. */
+    private @Nullable RestingBrain brain;
+    private int brainActors = -1;
     private boolean loaded;
     private boolean dirty;
     private boolean told;
@@ -175,6 +180,7 @@ public final class PositionPublisher {
             foresee(online, config, rules);
         }
 
+        Map<String, PositionsMessage.Actor> resting = restingLife(online, config);
         Set<UUID> sent = new HashSet<>();
         List<PositionsMessage.Player> shown = onlinePlayers();
         byte[] plain = null;
@@ -210,8 +216,79 @@ public final class PositionPublisher {
                 Network.send(player, own);
             }
         }
+        // Every other publication: 2.5 messages a second, the client moves between them.
+        if (resting != null && runs % RESTING_EVERY == 0) {
+            long tick = server.getTickCount();
+            for (ServerPlayer player : online) {
+                if (!sent.contains(player.getUUID())) continue;
+                ShareRules.Viewer viewer = viewer(player);
+                Set<String> allowed = new HashSet<>();
+                for (PositionsMessage.Player each : rules.offline(offlinePlayers(), viewer)) allowed.add(each.name());
+                List<PositionsMessage.Actor> mine = new ArrayList<>();
+                // Only what this viewer can draw: their dimension, within the range the brain simulates in.
+                for (PositionsMessage.Actor actor : resting.values()) {
+                    if (allowed.contains(actor.name()) && actor.dimension().equals(viewer.dimension())
+                            && Math.hypot(actor.x() - viewer.x(), actor.z() - viewer.z()) <= RestingBrain.RANGE) {
+                        mine.add(actor);
+                    }
+                }
+                byte[] message = PositionsMessage.resting(tick, mine);
+                sentBytes[0] += message.length;
+                Network.send(player, message);
+            }
+        }
         greeted = sent;
         if (++runs % SAVE_EVERY == 0 && dirty) save();
+    }
+
+    /**
+     * One step of the simulation of the players who logged off, near the players who can be sent
+     * it; null when the server's owner turned it off, and the games simulate them themselves.
+     */
+    private @Nullable Map<String, PositionsMessage.Actor> restingLife(List<ServerPlayer> online, ServerConfig config) {
+        if (!config.shareRestingLife || !config.shareOfflinePlayers || config.maxRestingActors <= 0) {
+            brain = null;
+            return null;
+        }
+        if (brain == null || brainActors != config.maxRestingActors) {
+            brainActors = config.maxRestingActors;
+            brain = new RestingBrain(new RestingBrain.World() {
+                private final Map<String, Footing.Source> sources = new HashMap<>();
+
+                @Override
+                public Footing.@Nullable Source blocks(String dimension) {
+                    Footing.Source known = sources.get(dimension);
+                    if (known != null) return known;
+                    for (ServerLevel level : server.getAllLevels()) {
+                        if (SharedPositions.dimensionId(level.dimension()).equals(dimension)) {
+                            known = Footing.nonLoading(Footing.live(level), level);
+                            sources.put(dimension, known);
+                            return known;
+                        }
+                    }
+                    return null;
+                }
+
+                @Override
+                public boolean night(String dimension) {
+                    for (ServerLevel level : server.getAllLevels()) {
+                        if (SharedPositions.dimensionId(level.dimension()).equals(dimension)) return !level.isBrightOutside();
+                    }
+                    return false;
+                }
+            }, server.overworld().getSeed() ^ 0x5DEECE66DL, config.maxRestingActors);
+        }
+        List<RestingBrain.Eye> eyes = new ArrayList<>();
+        for (ServerPlayer player : online) {
+            if (Network.canSend(player)) {
+                eyes.add(new RestingBrain.Eye(SharedPositions.dimensionId(player.level().dimension()), player.getX(), player.getZ()));
+            }
+        }
+        List<PositionsMessage.Player> gone = new ArrayList<>();
+        for (PositionsMessage.Player player : players.values()) {
+            if (!player.online() && !tests.containsKey(player.name()) && !hidden.contains(player.name())) gone.add(player);
+        }
+        return brain.step(PERIOD, gone, eyes);
     }
 
     /**
