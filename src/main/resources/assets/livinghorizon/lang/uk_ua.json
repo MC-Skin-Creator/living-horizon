@@ -217,7 +217,7 @@
   "livinghorizon.options.skyBirds": "Показувати птахів",
   "livinghorizon.options.skyBirds.tooltip": "Птахи й кажани всюди довкола: зграї, гуси, хижі птахи, чайки, голуби, вільшанки, синиці, качки, уночі кажани. Більше їх ніхто не бачить.",
   "livinghorizon.options.birdMaxDistance": "Дальність птахів",
-  "livinghorizon.options.birdMaxDistance.tooltip": "Як далеко можуть літати птахи. Далекі мають лише кілька пікселів, як справжні птахи.",
+  "livinghorizon.options.birdMaxDistance.tooltip": "Як далеко можуть літати птахи. Далекі мають лише кілька пікселів, як справжні птахи. Без Voxy, Distant Horizons чи іншого мода далекого рельєфу — не далі дальності промальовки, за якою їх ховає туман.",
   "livinghorizon.options.birdDensity": "Щільність птахів",
   "livinghorizon.options.birdDensity.tooltip": "Скільки птахів, усіх видів разом. 100% — звичайно, 200% — удвічі більше.",
   "livinghorizon.options.birdDensity.zero": "Жодного",

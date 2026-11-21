@@ -217,7 +217,7 @@
   "livinghorizon.options.skyBirds": "Mostra uccelli",
   "livinghorizon.options.skyBirds.tooltip": "Uccelli e pipistrelli tutt'intorno: stormi, oche, rapaci, gabbiani, piccioni, pettirossi, cince, anatre, pipistrelli di notte. Nessun altro li vede.",
   "livinghorizon.options.birdMaxDistance": "Distanza uccelli",
-  "livinghorizon.options.birdMaxDistance.tooltip": "Fin dove possono volare gli uccelli. Quelli lontani sono solo pochi pixel, come gli uccelli veri.",
+  "livinghorizon.options.birdMaxDistance.tooltip": "Fin dove possono volare gli uccelli. Quelli lontani sono solo pochi pixel, come gli uccelli veri. Senza Voxy, Distant Horizons o un altro mod di terreno lontano, non oltre la distanza di rendering, oltre la quale la nebbia li nasconde.",
   "livinghorizon.options.birdDensity": "Densità uccelli",
   "livinghorizon.options.birdDensity.tooltip": "Quanti uccelli, di tutti i tipi insieme. 100% è normale, 200% il doppio.",
   "livinghorizon.options.birdDensity.zero": "Nessuna",

@@ -217,7 +217,7 @@
   "livinghorizon.options.skyBirds": "Kuşları Göster",
   "livinghorizon.options.skyBirds.tooltip": "Her yerde kuşlar ve yarasalar: sürüler, kazlar, yırtıcı kuşlar, martılar, güvercinler, kızılgerdanlar, baştankaralar, ördekler, geceleri yarasalar. Başka kimse onları görmez.",
   "livinghorizon.options.birdMaxDistance": "Kuş Mesafesi",
-  "livinghorizon.options.birdMaxDistance.tooltip": "Kuşların ne kadar uzağa uçabileceği. Uzaktakiler, gerçek kuşlar gibi yalnızca birkaç pikseldir.",
+  "livinghorizon.options.birdMaxDistance.tooltip": "Kuşların ne kadar uzağa uçabileceği. Uzaktakiler, gerçek kuşlar gibi yalnızca birkaç pikseldir. Voxy, Distant Horizons ya da başka bir uzak arazi modu olmadan, sisin onları gizlediği görüş mesafesinden daha öteye gitmezler.",
   "livinghorizon.options.birdDensity": "Kuş Yoğunluğu",
   "livinghorizon.options.birdDensity.tooltip": "Tüm türler bir arada kaç kuş olacağı. %100 normal, %200 iki katı.",
   "livinghorizon.options.birdDensity.zero": "Yok",

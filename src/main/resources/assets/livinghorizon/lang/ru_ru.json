@@ -217,7 +217,7 @@
   "livinghorizon.options.skyBirds": "Показывать птиц",
   "livinghorizon.options.skyBirds.tooltip": "Птицы и летучие мыши повсюду: стаи, гуси, хищные птицы, чайки, голуби, малиновки, синицы, утки, ночью летучие мыши. Больше их никто не видит.",
   "livinghorizon.options.birdMaxDistance": "Дальность птиц",
-  "livinghorizon.options.birdMaxDistance.tooltip": "Как далеко могут летать птицы. Далёкие занимают всего несколько пикселей, как настоящие птицы.",
+  "livinghorizon.options.birdMaxDistance.tooltip": "Как далеко могут летать птицы. Далёкие занимают всего несколько пикселей, как настоящие птицы. Без Voxy, Distant Horizons или другого мода дальнего ландшафта — не дальше дальности прорисовки, за которой их скрывает туман.",
   "livinghorizon.options.birdDensity": "Плотность птиц",
   "livinghorizon.options.birdDensity.tooltip": "Сколько птиц, всех видов вместе. 100% — обычно, 200% — вдвое больше.",
   "livinghorizon.options.birdDensity.zero": "Нет",

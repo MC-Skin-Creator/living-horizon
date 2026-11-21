@@ -217,7 +217,7 @@
   "livinghorizon.options.skyBirds": "顯示鳥類",
   "livinghorizon.options.skyBirds.tooltip": "四周的鳥類和蝙蝠：鳥群、大雁、猛禽、海鷗、鴿子、知更鳥、山雀、鴨子，以及夜間的蝙蝠。其他人看不到牠們。",
   "livinghorizon.options.birdMaxDistance": "鳥類距離",
-  "livinghorizon.options.birdMaxDistance.tooltip": "鳥類最遠能飛多遠。遠處的鳥只有幾個像素大，就像真實的鳥一樣。",
+  "livinghorizon.options.birdMaxDistance.tooltip": "鳥類最遠能飛多遠。遠處的鳥只有幾個像素大，就像真實的鳥一樣。沒有 Voxy、Distant Horizons 或其他遠景地形模組時，不會超過顯示距離，更遠的會被霧遮住。",
   "livinghorizon.options.birdDensity": "鳥類密度",
   "livinghorizon.options.birdDensity.tooltip": "所有種類加起來的鳥類數量。100% 為正常，200% 為兩倍。",
   "livinghorizon.options.birdDensity.zero": "無",

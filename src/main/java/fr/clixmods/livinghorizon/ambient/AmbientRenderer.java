@@ -93,6 +93,7 @@ public final class AmbientRenderer {
         }
         boolean models = config.birdModels();
         boolean marks = DebugMarks.active();
+        double seen = Ambience.seenWithin();
         drawn = asModels = asPictures = 0;
         marked = 0;
         // Distant Horizons' fade paints its terrain over any far figure it is not told of.
@@ -107,6 +108,8 @@ public final class AmbientRenderer {
             // Behind the camera, or less than a pixel: the mobs' own tests.
             if (GhostRenderer.outOfSight(x, y, z, bird.span * bird.scale)) continue;
             double distance = Math.sqrt(x * x + y * y + z * z);
+            // Past the fog, without a far terrain: nothing to see, nothing drawn.
+            if (distance > seen + bird.span * bird.scale) continue;
             OpenSky.Clear clear = bird.clear;
             if (!fade && clear != null && clear.holds(camera, now)) {
                 // In open sky: nothing far can hide it, the far terrain's depth is not needed for it.

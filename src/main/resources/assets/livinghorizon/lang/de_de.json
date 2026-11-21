@@ -217,7 +217,7 @@
   "livinghorizon.options.skyBirds": "Vögel anzeigen",
   "livinghorizon.options.skyBirds.tooltip": "Vögel und Fledermäuse ringsum: Schwärme, Gänse, Greifvögel, Möwen, Tauben, Rotkehlchen, Meisen, Enten, nachts Fledermäuse. Niemand sonst sieht sie.",
   "livinghorizon.options.birdMaxDistance": "Vogelreichweite",
-  "livinghorizon.options.birdMaxDistance.tooltip": "Wie weit entfernt Vögel fliegen können. Ferne Vögel sind nur ein paar Pixel groß, wie echte.",
+  "livinghorizon.options.birdMaxDistance.tooltip": "Wie weit entfernt Vögel fliegen können. Ferne Vögel sind nur ein paar Pixel groß, wie echte. Ohne Voxy, Distant Horizons oder einen anderen Mod für fernes Gelände nicht weiter als die Sichtweite, hinter der der Nebel sie verbirgt.",
   "livinghorizon.options.birdDensity": "Vogeldichte",
   "livinghorizon.options.birdDensity.tooltip": "Wie viele Vögel, alle Arten zusammen. 100 % ist normal, 200 % doppelt so viele.",
   "livinghorizon.options.birdDensity.zero": "Keine",

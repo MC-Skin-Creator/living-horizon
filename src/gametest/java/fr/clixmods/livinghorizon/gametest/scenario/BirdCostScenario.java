@@ -4,6 +4,7 @@ import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.ambient.Ambience;
 import fr.clixmods.livinghorizon.ambient.AmbientRenderer;
+import fr.clixmods.livinghorizon.ambient.PosedBirds;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
@@ -63,6 +64,7 @@ public final class BirdCostScenario implements Scenario {
             Scene.command(world, "fill 28 " + ground + " -32 31 " + (ground + 14) + " -29 stone_bricks");
             context.waitTicks(40);
 
+            fog(context);
             measure(context, "warm-up (3D)", config -> config.skyBirds = true);
             measure(context, "birds off", config -> config.skyBirds = false);
             measure(context, "3D birds", config -> config.skyBirds = true);
@@ -76,6 +78,36 @@ public final class BirdCostScenario implements Scenario {
             });
 
         }
+    }
+
+    /**
+     * Raptors eight times their size at 100 to 400 blocks, 15 degrees up, with no far terrain:
+     * past the render distance (192 blocks here) the fog leaves only pale ghosts of them, and
+     * they are not drawn at all.
+     */
+    private void fog(ClientGameTestContext context) {
+        Scene.configure(context, config -> {
+            config.skyBirds = true;
+            config.birdStyle = "3d";
+            config.impostorBirds = false;
+        });
+        int[] distances = {100, 160, 220, 300, 400};
+        for (int i = 0; i < distances.length; i++) {
+            double d = distances[i], across = (i - 2) * d * 0.12;
+            PosedBirds.add(Ambience.Species.RAPTOR, 2.2f * 8, across, ground + d * Math.tan(Math.toRadians(15)), d,
+                    90f, false, 8f, 0f);
+        }
+        context.runOnClient(minecraft -> {
+            minecraft.player.setYRot(0);
+            minecraft.player.setXRot(-15);
+        });
+        Scene.screenshot(context, this, "fog");
+        // Past the render distance the fog hides them: only the two within it are drawn.
+        int drawn = context.computeOnClient(minecraft -> AmbientRenderer.drawn());
+        Scene.log("birdcost fog: " + drawn + " of " + distances.length + " drawn");
+        if (drawn != 2) throw new AssertionError("Birds past the fog are drawn: " + drawn + " of " + distances.length);
+        PosedBirds.clear();
+        Scene.configure(context, config -> config.skyBirds = false);
     }
 
     /** Clears the birds, applies the settings, calls every kind, and measures a turn of the camera. */

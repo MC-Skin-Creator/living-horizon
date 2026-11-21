@@ -851,6 +851,10 @@ neighbours, gulls for a beach, shore or ocean biome.
   (`ambient/AmbientRenderer`). Flying, seen from above, one plane per wing; perched, seen from
   the side, facing the camera.
 - Bats and parrots are the game's own either way.
+- Without a far-terrain mod (`LodWorld.installed`), the game's fog ends at the render distance
+  and paints a bird past it the colour of the fog, a pale ghost against the sky. Birds then live
+  and are drawn within the render distance only (`Ambience.seenWithin`): with 800 blocks of
+  *Bird Distance*, three groups in four used to fly where nobody could see them.
 - A 3D bird is measured for its picture as a mob is, by its largest size (`AmbientRenderer.extent`):
   its wingspan flying, its own body perched (`Meshes.perched`, 0.65 to 0.8 of its wingspan).
   Measured by its wingspan perched, it stayed a model a quarter to a half farther than *Simplification Size* says.
@@ -1039,7 +1043,7 @@ clock and the page textures are handed in), so `SheetAllocatorTest` checks it on
 
 ### On disk
 
-`ImpostorDisk` keeps the mobs' sheets in `config/livinghorizon/impostors/<fingerprint>/`, so
+`ImpostorDisk` keeps the mobs' and the 3D birds' sheets in `config/livinghorizon/impostors/<fingerprint>/`, so
 that a mob met in an earlier game is read back rather than baked.
 
 - The fingerprint is the game version, the resource packs chosen and their files, the jars in
@@ -1053,7 +1057,7 @@ that a mob met in an earlier game is read back rather than baked.
   tiles the figure's origin stands (file `FORMAT` 4; a file of 3 still reads, its origin where
   its kind puts it, and one of 2, its date unknown). The impostor screen shows it under each name, with
   where the pictures come from (`ImpostorAtlas.Origin`): *Shared*, read back from disk; *New*,
-  baked in this game and saved; *Not saved* (players, riders, birds).
+  baked in this game and saved; *Not saved* (players, riders).
 - A sheet read back is checked against the size of a sheet (`ImpostorDisk.decode`) before
   anything is allocated: a damaged file is baked again, it never asks for more memory.
 - 4096 sheets are kept per fingerprint, some 35 KB each once compressed (about 140 MB), counted
@@ -1071,8 +1075,9 @@ that a mob met in an earlier game is read back rather than baked.
     their species;
   - the picture faces the camera entirely, not only round, since it was baked as seen from
     that height, and the wing beat goes on from one sheet to the next;
-  - they are baked again each game, never kept on disk, and named after the species in the
-    impostor screen.
+  - they are kept on disk like a mob's (`ImpostorAtlas.request` with a figure, `Loaded.figure`):
+    baked again each game, the 96 sheets of the eight species made the first seconds of every
+    world a burst of baking on the render thread. Named after the species in the impostor screen.
 - **Phantoms, ghasts and other mods' birds** (happy ghasts included, `MobFlight.pictured`) are
   mostly seen from below: like a bird, one sheet per height they are seen from (well below,
   below, level, above: `ImpostorViews.HEIGHTS`, part of the key through `ImpostorKey.seenFrom`), baked

@@ -217,7 +217,7 @@
   "livinghorizon.options.skyBirds": "鳥を表示",
   "livinghorizon.options.skyBirds.tooltip": "周囲の鳥とコウモリ：小鳥の群れ、ガン、猛禽類、カモメ、ハト、コマドリ、シジュウカラ、カモ、夜はコウモリ。他の人には見えません。",
   "livinghorizon.options.birdMaxDistance": "鳥の表示距離",
-  "livinghorizon.options.birdMaxDistance.tooltip": "鳥が飛べる距離です。遠くの鳥は、本物の鳥のように数ピクセルにしか見えません。",
+  "livinghorizon.options.birdMaxDistance.tooltip": "鳥が飛べる距離です。遠くの鳥は、本物の鳥のように数ピクセルにしか見えません。Voxy、Distant Horizons、その他の遠方地形Modがない場合は、霧で見えなくなる描画距離より遠くには行きません。",
   "livinghorizon.options.birdDensity": "鳥の密度",
   "livinghorizon.options.birdDensity.tooltip": "全種類を合わせた鳥の数です。100%で標準、200%で2倍です。",
   "livinghorizon.options.birdDensity.zero": "なし",

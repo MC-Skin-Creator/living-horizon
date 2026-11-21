@@ -217,7 +217,7 @@
   "livinghorizon.options.skyBirds": "새 표시",
   "livinghorizon.options.skyBirds.tooltip": "주변의 새와 박쥐: 새 떼, 기러기, 맹금류, 갈매기, 비둘기, 울새, 박새, 오리, 밤에는 박쥐. 다른 사람에게는 보이지 않습니다.",
   "livinghorizon.options.birdMaxDistance": "새 표시 거리",
-  "livinghorizon.options.birdMaxDistance.tooltip": "새가 날아갈 수 있는 거리입니다. 멀리 있는 새는 실제 새처럼 몇 픽셀로만 보입니다.",
+  "livinghorizon.options.birdMaxDistance.tooltip": "새가 날아갈 수 있는 거리입니다. 멀리 있는 새는 실제 새처럼 몇 픽셀로만 보입니다. Voxy, Distant Horizons 등 원거리 지형 모드가 없으면 안개가 가리는 렌더링 거리보다 멀리 가지 않습니다.",
   "livinghorizon.options.birdDensity": "새 밀도",
   "livinghorizon.options.birdDensity.tooltip": "모든 종류를 합친 새의 수입니다. 100%는 보통, 200%는 두 배입니다.",
   "livinghorizon.options.birdDensity.zero": "없음",

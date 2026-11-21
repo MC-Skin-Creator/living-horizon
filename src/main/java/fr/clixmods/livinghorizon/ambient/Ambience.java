@@ -421,6 +421,17 @@ public final class Ambience {
         return null;
     }
 
+    /**
+     * Blocks past which no bird can be seen. Without a far-terrain mod (Voxy, Distant Horizons
+     * and the others {@link LodWorld} reads), the game's fog ends at the render distance and
+     * paints a bird past it the colour of the fog: only a pale ghost against the sky, which
+     * cost as much as a bird in sight. With one, there is no limit but the birds' own distance.
+     */
+    public static double seenWithin() {
+        if (LodWorld.installed()) return Double.POSITIVE_INFINITY;
+        return Minecraft.getInstance().options.getEffectiveRenderDistance() * 16.0;
+    }
+
     /** Everything flying or perched this tick. */
     public List<Flyer> flyers() {
         return flyers;
@@ -453,7 +464,8 @@ public final class Ambience {
             groups.clear();
             return;
         }
-        double reach = Math.max(100, config.birdMaxDistance);
+        // Never farther than they can be seen: without a far terrain, the fog ends at the render distance.
+        double reach = Math.min(Math.max(100, config.birdMaxDistance), Math.max(100, seenWithin()));
         double density = Math.max(0, config.birdDensity) / 100.0;
         boolean day = current.isBrightOutside();
         boolean rain = current.isRaining();

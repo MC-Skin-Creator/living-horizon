@@ -217,7 +217,7 @@
   "livinghorizon.options.skyBirds": "Show Birds",
   "livinghorizon.options.skyBirds.tooltip": "Birds and bats all around: flocks, geese, birds of prey, seagulls, pigeons, robins, tits, ducks, bats at night. Nobody else sees them.",
   "livinghorizon.options.birdMaxDistance": "Bird Distance",
-  "livinghorizon.options.birdMaxDistance.tooltip": "How far away birds can fly. Far ones are only a few pixels, like real birds.",
+  "livinghorizon.options.birdMaxDistance.tooltip": "How far away birds can fly. Far ones are only a few pixels, like real birds. Without Voxy, Distant Horizons or another far-terrain mod, no farther than the render distance, past which the fog hides them.",
   "livinghorizon.options.birdDensity": "Bird Density",
   "livinghorizon.options.birdDensity.tooltip": "How many birds, all kinds together. 100% is normal, 200% twice as many.",
   "livinghorizon.options.birdDensity.zero": "None",

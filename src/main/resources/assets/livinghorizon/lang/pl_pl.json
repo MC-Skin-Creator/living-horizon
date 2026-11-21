@@ -217,7 +217,7 @@
   "livinghorizon.options.skyBirds": "Pokazuj ptaki",
   "livinghorizon.options.skyBirds.tooltip": "Ptaki i nietoperze dookoła: stada, gęsi, ptaki drapieżne, mewy, gołębie, rudziki, sikory, kaczki, nocą nietoperze. Nikt inny ich nie widzi.",
   "livinghorizon.options.birdMaxDistance": "Zasięg ptaków",
-  "livinghorizon.options.birdMaxDistance.tooltip": "Jak daleko mogą latać ptaki. Dalekie to tylko kilka pikseli, jak prawdziwe ptaki.",
+  "livinghorizon.options.birdMaxDistance.tooltip": "Jak daleko mogą latać ptaki. Dalekie to tylko kilka pikseli, jak prawdziwe ptaki. Bez Voxy, Distant Horizons lub innego moda dalekiego terenu nie dalej niż zasięg renderowania, za którym mgła je ukrywa.",
   "livinghorizon.options.birdDensity": "Gęstość ptaków",
   "livinghorizon.options.birdDensity.tooltip": "Ile ptaków, wszystkie rodzaje razem. 100% to norma, 200% dwa razy więcej.",
   "livinghorizon.options.birdDensity.zero": "Brak",

@@ -217,7 +217,7 @@
   "livinghorizon.options.skyBirds": "Mostrar aves",
   "livinghorizon.options.skyBirds.tooltip": "Aves y murciélagos por todas partes: bandadas, gansos, aves rapaces, gaviotas, palomas, petirrojos, herrerillos, patos, murciélagos de noche. Nadie más los ve.",
   "livinghorizon.options.birdMaxDistance": "Distancia de aves",
-  "livinghorizon.options.birdMaxDistance.tooltip": "Hasta qué distancia pueden volar las aves. Las lejanas son solo unos pocos píxeles, como las aves de verdad.",
+  "livinghorizon.options.birdMaxDistance.tooltip": "Hasta qué distancia pueden volar las aves. Las lejanas son solo unos pocos píxeles, como las aves de verdad. Sin Voxy, Distant Horizons u otro mod de terreno lejano, no más allá de la distancia de renderizado, tras la cual la niebla las oculta.",
   "livinghorizon.options.birdDensity": "Densidad de aves",
   "livinghorizon.options.birdDensity.tooltip": "Cuántas aves, de todos los tipos juntos. 100 % es lo normal; 200 %, el doble.",
   "livinghorizon.options.birdDensity.zero": "Ninguna",

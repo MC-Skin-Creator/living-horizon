@@ -218,6 +218,34 @@ public final class BirdsScenario implements Scenario {
         Scene.configure(context, config -> config.impostorDistance = 8);
         sky(context, "3d-impostors");
         Scene.screenshotAtlas(context, this);
+        // Kept on disk: once the resources are reloaded, the sheets are read back, not baked again.
+        int loadsBefore = context.computeOnClient(minecraft -> ImpostorAtlas.loads());
+        int bakesBefore = context.computeOnClient(minecraft -> ImpostorAtlas.bakes());
+        context.runOnClient(minecraft -> minecraft.reloadResourcePacks());
+        context.waitTicks(40);
+        lineupFar(context);
+        context.waitFor(minecraft -> ImpostorAtlas.failed() || birdSheets() >= wanted, 2400);
+        int loaded = context.computeOnClient(minecraft -> ImpostorAtlas.loads()) - loadsBefore;
+        int baked = context.computeOnClient(minecraft -> ImpostorAtlas.bakes()) - bakesBefore;
+        Scene.log("birds after a reload: " + birdSheets() + "/" + wanted + " sheets, " + loaded + " read back, "
+                + baked + " baked");
+        if (loaded < wanted || baked >= wanted) {
+            throw new AssertionError("The bird sheets are baked again rather than read back from disk");
+        }
+    }
+
+    /** Every species far off again, perched and flying, so that their sheets are asked for. */
+    private void lineupFar(ClientGameTestContext context) {
+        PosedBirds.clear();
+        float[] beat = {40f, 5f, -30f};
+        for (int i = 0; i < SPECIES.length; i++) {
+            Species species = (Species) SPECIES[i][0];
+            float span = (float) SPECIES[i][1] * 4;
+            double x = 14.5 - i * 4;
+            PosedBirds.add(species, span, x, ground, 45.5, -150f, true, 0f, 0f);
+            PosedBirds.add(species, span, x, ground + 7, 47.5, -160f, false, beat[i % beat.length], 0f);
+        }
+        look(4f);
     }
 
     /** The bird sheets in the atlas. */

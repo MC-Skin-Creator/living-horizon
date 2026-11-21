@@ -217,7 +217,7 @@
   "livinghorizon.options.skyBirds": "Afficher les oiseaux",
   "livinghorizon.options.skyBirds.tooltip": "Des oiseaux et des chauves-souris tout autour : volées, oies, rapaces, mouettes, pigeons, rouges-gorges, mésanges, canards, chauves-souris la nuit. Personne d'autre ne les voit.",
   "livinghorizon.options.birdMaxDistance": "Distance des oiseaux",
-  "livinghorizon.options.birdMaxDistance.tooltip": "Jusqu'où les oiseaux peuvent voler. Les plus lointains ne font que quelques pixels, comme de vrais oiseaux.",
+  "livinghorizon.options.birdMaxDistance.tooltip": "Jusqu'où les oiseaux peuvent voler. Les plus lointains ne font que quelques pixels, comme de vrais oiseaux. Sans Voxy, Distant Horizons ou un autre mod de terrain lointain, pas plus loin que la distance de rendu, au-delà de laquelle le brouillard les cache.",
   "livinghorizon.options.birdDensity": "Densité des oiseaux",
   "livinghorizon.options.birdDensity.tooltip": "Combien d'oiseaux, toutes espèces confondues. 100 % est normal, 200 % deux fois plus.",
   "livinghorizon.options.birdDensity.zero": "Aucun",
