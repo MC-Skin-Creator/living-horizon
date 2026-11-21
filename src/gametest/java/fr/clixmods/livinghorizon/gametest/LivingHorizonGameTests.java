@@ -16,6 +16,9 @@ import fr.clixmods.livinghorizon.gametest.scenario.DhFogScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FarFogScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FollowedMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.HandoverScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.ShortRangeScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.SmallMobsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.ComebackScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DragonScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FlyersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.GaitsScenario;
@@ -48,8 +51,10 @@ import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OverVoidScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PerchersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PerfScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.BirdCostScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PlayerSizeScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RememberedMobsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.RegressionScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ResizeScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestKeptScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingCrowdScenario;
@@ -94,6 +99,7 @@ import java.util.stream.Collectors;
 public final class LivingHorizonGameTests implements FabricClientGameTest {
     private static final List<Scenario> SCENARIOS = List.of(
             new ImpostorsScenario(),
+            new BirdCostScenario(),
             new ImpostorSizeScenario(),
             new PlayerSizeScenario(),
             new ImpostorSharingScenario(),
@@ -162,9 +168,13 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new DedicatedServerScenario(),
             new ServerWithoutModScenario(),
             new HandoverScenario(),
+            new ShortRangeScenario(),
+            new SmallMobsScenario(),
+            new ComebackScenario(),
             new PerfScenario(),
             new BenchmarkScenario(),
             new BenchmarkWorldScenario(),
+            new RegressionScenario(),
             new MinecartsScenario(),
             new OtherDimensionScenario());
 

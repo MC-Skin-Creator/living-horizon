@@ -350,6 +350,17 @@ public final class FarConfig {
     /** Boats, vehicles and mannequins as flat pictures too, as mobs are ("Simplified Entities"). */
     public boolean impostorEntities = true;
 
+    /**
+     * 3D birds past {@link #impostorDistance}, or smaller on screen than {@link #impostorPixels},
+     * as flat pictures of themselves ("Simplified Birds"), whatever else is drawn far away.
+     */
+    public boolean impostorBirds = true;
+
+    /** Whether birds are drawn as flat pictures: shown, in 3D, and simplified. */
+    public boolean birdImpostors() {
+        return skyBirds && impostorBirds && birdModels();
+    }
+
     /** Whether anything is drawn as a flat picture: mobs, the other entities or players. */
     public boolean anyImpostors() {
         return impostors || impostorEntities || impostorPlayers;
@@ -505,6 +516,8 @@ public final class FarConfig {
     public boolean boxForeseen = true;
     /** Around the distant players. */
     public boolean boxPlayers = true;
+    /** Around the birds: amber as 3D models, magenta as pictures (Simplified Birds). */
+    public boolean boxBirds = true;
     /** Around the mobs left out of the frame (too small, hidden, over the void, outside the view...). */
     public boolean boxLeftOut = true;
     // Outlines, seen through terrain, in the colours of the debug boxes: what draws each figure.
@@ -528,6 +541,25 @@ public final class FarConfig {
     private @Nullable Boolean debugOutlines;
     /** Before version 9, how a player who logged off was drawn: {@code "sleep"}, {@code "sit"} or {@code "hidden"}. */
     private @Nullable String offlinePose;
+    /**
+     * A copy within this many blocks of its real mob, sent again, walks to it before the real one
+     * is shown; farther, the real one takes its place at once. 0: always at once.
+     */
+    public int joinMaxDistance = 48;
+    /** How fast a copy walks to its real mob, in percent of how the game walks a mob of its kind. */
+    public int joinPace = 100;
+    /** A copy walking to its real mob steps up and down the blocks under it, rather than going straight to its feet. */
+    public boolean joinFollowGround = true;
+    /** Seconds a copy walks to its real mob before it lets the real one take over where it stands. */
+    public int joinGiveUpSeconds = 30;
+    /**
+     * Within this many blocks of a copy walking up to its real mob, sent again, or of the real one,
+     * kept out of view meanwhile, the copy hurries ({@link #joinHurrySpeed}); farther, it walks at
+     * its own pace. 0: never hurries.
+     */
+    public int joinHurryDistance = 16;
+    /** How fast a hurrying copy walks up to its real mob, in percent of its own pace: a mob that panics runs at about twice it. */
+    public int joinHurrySpeed = 200;
     /** A panel of what the mod does and costs, in the corner of the screen. */
     public boolean debugHud = false;
     /** 0: off; 1: the game's depth; 2: with the far terrain merged in; 3: after the entities; 4: the whole world drawn. */
@@ -545,6 +577,15 @@ public final class FarConfig {
     /** Whether anything distant is drawn: players, mobs or both, each on its own switch. */
     public boolean anyDistant() {
         return enabled || distantMobs || distantEntities;
+    }
+
+    /**
+     * Whether anything is drawn past the render distance: the distant figures, or the birds,
+     * which fly out there whatever else is shown. What the far terrain's depth, the far plane
+     * and the far fog do follows this, not {@link #anyDistant()} alone.
+     */
+    public boolean anyFar() {
+        return anyDistant() || skyBirds;
     }
 
     public static FarConfig get() {

@@ -1,8 +1,10 @@
 package fr.clixmods.livinghorizon.gametest.scenario;
 
+import fr.clixmods.livinghorizon.ambient.AmbientRenderer;
 import fr.clixmods.livinghorizon.ambient.Ambience.Species;
 import fr.clixmods.livinghorizon.ambient.BirdFigure;
 import fr.clixmods.livinghorizon.ambient.PosedBirds;
+import fr.clixmods.livinghorizon.debug.DebugMarks;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
@@ -18,7 +20,8 @@ import java.util.Random;
  * and flying, then all of them side by side at their true sizes, a sky full of them, and
  * a gull's wing beat in three steps. Everything in 3D, then the lineup and the sky again
  * in 2D to compare. Last, the 3D birds as impostors: every species far away, perched and
- * flying, as models then as pictures, the sky again as pictures, and the baked atlas.
+ * flying, as models then as pictures, then as pictures with every distant figure off
+ * (Simplified Birds alone), the sky again as pictures, and the baked atlas.
  */
 public final class BirdsScenario implements Scenario {
     /** Each species and a wingspan of its own, in blocks, as the mod gives it. */
@@ -130,7 +133,7 @@ public final class BirdsScenario implements Scenario {
         clear();
         Scene.configure(context, config -> {
             config.birdStyle = "3d";
-            config.impostors = false;
+            config.impostorBirds = false;
             config.impostorDistance = 32;
             config.impostorPixels = 0;
         });
@@ -145,7 +148,7 @@ public final class BirdsScenario implements Scenario {
         look(4f);
         context.runOnClient(minecraft -> minecraft.options.fov().set(40));
         Scene.screenshot(context, this, "3d-far-models");
-        Scene.configure(context, config -> config.impostors = true);
+        Scene.configure(context, config -> config.impostorBirds = true);
         // Every sheet of every species, perched and flying: other scenarios may have left
         // sheets of their own in the atlas, so the birds' are counted.
         int wanted = SPECIES.length * (BirdFigure.all(Species.GULL, false).size() + BirdFigure.all(Species.GULL, true).size());
@@ -161,11 +164,88 @@ public final class BirdsScenario implements Scenario {
         if (context.computeOnClient(minecraft -> PolygonStats.impostors()) < SPECIES.length * 2) {
             throw new AssertionError("The far birds are not drawn as impostors");
         }
+        // Simplified Birds alone: every distant figure and the other pictures off, the birds still pictures.
+        Scene.configure(context, config -> {
+            config.enabled = false;
+            config.distantMobs = false;
+            config.distantEntities = false;
+            config.impostors = false;
+            config.impostorEntities = false;
+            config.impostorPlayers = false;
+        });
+        Scene.screenshot(context, this, "3d-far-impostors-alone");
+        context.runOnClient(minecraft -> Scene.log("birds alone drawn=" + AmbientRenderer.drawn() + " models="
+                + AmbientRenderer.asModels() + " pictures=" + AmbientRenderer.asPictures()));
+        if (context.computeOnClient(minecraft -> AmbientRenderer.asPictures()) < SPECIES.length * 2) {
+            throw new AssertionError("The far birds are not pictures with every distant figure off");
+        }
+        // The boxes and labels of the birds, as large as they are measured for their pictures:
+        // perched, a bird is its body, well under its wingspan.
+        Scene.configure(context, config -> {
+            config.debugBoxes = true;
+            config.debugLabels = true;
+        });
+        Scene.screenshot(context, this, "3d-far-boxes");
+        context.runOnClient(minecraft -> {
+            StringBuilder sizes = new StringBuilder();
+            for (Object[] species : SPECIES) {
+                sizes.append(' ').append(((Species) species[0]).name().toLowerCase(Locale.ROOT)).append('=')
+                        .append(String.format(Locale.ROOT, "%.2f", AmbientRenderer.perched((Species) species[0])));
+            }
+            Scene.log("birds perched size in wingspans:" + sizes);
+        });
+        for (Object[] species : SPECIES) {
+            float perched = context.computeOnClient(minecraft -> AmbientRenderer.perched((Species) species[0]));
+            if (perched <= 0.2f || perched >= 0.9f) {
+                throw new AssertionError("A perched " + species[0] + " is measured " + perched + " wingspans");
+            }
+        }
+        if (context.computeOnClient(minecraft -> DebugMarks.count(DebugMarks.Mark.BIRD_PICTURE)) < SPECIES.length * 2) {
+            throw new AssertionError("The far birds have no debug boxes");
+        }
+        Scene.configure(context, config -> {
+            config.debugBoxes = false;
+            config.debugLabels = false;
+            config.enabled = true;
+            config.distantMobs = true;
+            config.distantEntities = true;
+            config.impostors = true;
+            config.impostorEntities = true;
+            config.impostorPlayers = true;
+        });
         context.runOnClient(minecraft -> minecraft.options.fov().set(70));
         // The sky up close, every bird past the distance.
         Scene.configure(context, config -> config.impostorDistance = 8);
         sky(context, "3d-impostors");
         Scene.screenshotAtlas(context, this);
+        // Kept on disk: once the resources are reloaded, the sheets are read back, not baked again.
+        int loadsBefore = context.computeOnClient(minecraft -> ImpostorAtlas.loads());
+        int bakesBefore = context.computeOnClient(minecraft -> ImpostorAtlas.bakes());
+        context.runOnClient(minecraft -> minecraft.reloadResourcePacks());
+        context.waitTicks(40);
+        lineupFar(context);
+        context.waitFor(minecraft -> ImpostorAtlas.failed() || birdSheets() >= wanted, 2400);
+        int loaded = context.computeOnClient(minecraft -> ImpostorAtlas.loads()) - loadsBefore;
+        int baked = context.computeOnClient(minecraft -> ImpostorAtlas.bakes()) - bakesBefore;
+        Scene.log("birds after a reload: " + birdSheets() + "/" + wanted + " sheets, " + loaded + " read back, "
+                + baked + " baked");
+        if (loaded < wanted || baked >= wanted) {
+            throw new AssertionError("The bird sheets are baked again rather than read back from disk");
+        }
+    }
+
+    /** Every species far off again, perched and flying, so that their sheets are asked for. */
+    private void lineupFar(ClientGameTestContext context) {
+        PosedBirds.clear();
+        float[] beat = {40f, 5f, -30f};
+        for (int i = 0; i < SPECIES.length; i++) {
+            Species species = (Species) SPECIES[i][0];
+            float span = (float) SPECIES[i][1] * 4;
+            double x = 14.5 - i * 4;
+            PosedBirds.add(species, span, x, ground, 45.5, -150f, true, 0f, 0f);
+            PosedBirds.add(species, span, x, ground + 7, 47.5, -160f, false, beat[i % beat.length], 0f);
+        }
+        look(4f);
     }
 
     /** The bird sheets in the atlas. */

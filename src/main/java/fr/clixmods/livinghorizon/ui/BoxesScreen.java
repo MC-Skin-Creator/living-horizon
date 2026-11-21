@@ -37,6 +37,7 @@ public final class BoxesScreen extends SideOptionsScreen {
                 bool("boxCopies", c.boxCopies, v -> c.boxCopies = v),
                 bool("boxForeseen", c.boxForeseen, v -> c.boxForeseen = v),
                 bool("boxPlayers", c.boxPlayers, v -> c.boxPlayers = v),
+                bool("boxBirds", c.boxBirds, v -> c.boxBirds = v),
                 bool("boxLeftOut", c.boxLeftOut, v -> c.boxLeftOut = v));
     }
 

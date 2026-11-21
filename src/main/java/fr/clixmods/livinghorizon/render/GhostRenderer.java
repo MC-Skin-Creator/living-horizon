@@ -4,6 +4,7 @@ import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.Stats;
+import fr.clixmods.livinghorizon.ambient.AmbientRenderer;
 import fr.clixmods.livinghorizon.ambient.Ambience;
 import fr.clixmods.livinghorizon.ambient.Herd;
 import fr.clixmods.livinghorizon.compat.DrawnGround;
@@ -164,6 +165,15 @@ public final class GhostRenderer {
         if (distance > drawnRange) FarDepth.needed();
     }
 
+    /**
+     * Something drawn this far away this frame that no far terrain can hide (a bird in open
+     * sky, {@code ambient/OpenSky}): the next far plane covers it, and the far terrain's depth
+     * is left alone for it.
+     */
+    public static void noteFarthest(double distance) {
+        farthest = Math.max(farthest, distance);
+    }
+
     // --- What is worth drawing ----------------------------------------------------------
 
     /** Nanoseconds a frame may spend making the puppets of players who logged off; one is made at least. */
@@ -283,7 +293,7 @@ public final class GhostRenderer {
      */
     public static float farPlane(float vanilla) {
         FarConfig config = FarConfig.get();
-        if (!config.anyDistant() || !config.extendFarPlane) return vanilla;
+        if (!config.anyFar() || !config.extendFarPlane) return vanilla;
         float ecstatic = EcstaticLink.farPlane();
         if (ecstatic > 0f) return ecstatic;
         return Math.max(vanilla, neededFar);
@@ -551,6 +561,7 @@ public final class GhostRenderer {
         mobs(frame, minecraft, dispatcher, eye, partialTick, config);
         unseen(frame, minecraft, dispatcher, eye, partialTick, config);
         if (config.easterEggs) eggs(frame, minecraft, dispatcher, eye, partialTick, config);
+        if (config.skyBirds && debug) AmbientRenderer.markBirds();
         if (config.skyBirds) {
             // Parrots and bats; the silhouettes are drawn by AmbientRenderer.
             for (Ambience.Flyer flyer : FarPlayerTracker.get().ambience().flyers()) {
@@ -631,11 +642,8 @@ public final class GhostRenderer {
             // Where the spyglass looks, as far as it looks.
             if (!config.shows(creature(puppet)) || tooFar(puppet, eye, maxDistance(puppet, config))
                     && !memory.foresight().inScope(puppet.getX(), puppet.getY() + puppet.getBbHeight() / 2, puppet.getZ())) continue;
-            // A copy walking up to its real mob stands for it, however close.
-            if (!memory.handingOver(mob) && tooClose(puppet, eye, memory.nearRange(mob))) {
-                if (debug) DebugMarks.mark(puppet, Mark.NEAR);
-                continue;
-            }
+            // However close: a copy is only kept while the real mob is not sent. One the server
+            // should send there and does not is forgotten within seconds (MobMemory.reconcile).
             if (overVoid(minecraft, eye, mob.id(), puppet, config)) continue;
             if (skipped(puppet, true)) continue;
             if (occluded(mob.id(), puppet, config)) continue;
@@ -700,15 +708,6 @@ public final class GhostRenderer {
         return true;
     }
 
-    /**
-     * Within where the real mob would be sent, a copy is not where the mob is, and could be
-     * walked up to: it is not drawn. See {@link MobMemory#nearRange}.
-     */
-    private static boolean tooClose(Entity puppet, Vec3 eye, double range) {
-        double dx = puppet.getX() - eye.x, dz = puppet.getZ() - eye.z;
-        return dx * dx + dz * dz < range * range;
-    }
-
     private static void markRemembered(MobMemory.Remembered mob, Mark mark) {
         EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getOptional(Identifier.tryParse(mob.type())).orElse(null);
         if (type == null) return;
@@ -754,8 +753,10 @@ public final class GhostRenderer {
                 wanted.put(type, shown);
             }
             if (shown == null || !shown && !(config.rememberNamedMobs && entity.hasCustomName())) continue;
-            // Close by, the game leaves a mob out only when the terrain hides it.
-            if (entity.distanceToSqr(eye) < 24 * 24) continue;
+            // Near enough for the game, which left it out for another reason: out of view, or behind
+            // the terrain. The game's distance grows with the mob's size and its "Entity Distance"
+            // slider: at 50 %, a chicken is left out past 16 blocks, a zombie past 33.
+            if (entity.shouldRender(eye.x, eye.y, eye.z)) continue;
             if (tooFar(entity, eye, maxDistance(entity, config))) continue;
             // Far View draws it as a box of its own in place of the game's model: once is enough.
             if (FarViewLink.drawsMob(entity, eye)) continue;

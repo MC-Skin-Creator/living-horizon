@@ -57,8 +57,8 @@ through them, they cannot block or push you, and mobs ignore them.
 ### Simplified Entities
 
 Many games draw far objects as **impostors**: a flat picture instead of a 3D model. Living
-Horizon does the same for far mobs, vehicles and players, each with its own switch:
-*Simplified Mobs*, *Simplified Entities* and *Simplified Players*. It costs much less to draw,
+Horizon does the same for far mobs, vehicles, players and birds, each with its own switch:
+*Simplified Mobs*, *Simplified Entities*, *Simplified Players* and *Simplified Birds*. It costs much less to draw,
 so you can show many more entities.
 
 Keep *Simplified Mobs* on if you raise *Mob Render Distance* or *Max Mobs*. A *Preset*
