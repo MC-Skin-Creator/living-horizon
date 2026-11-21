@@ -94,6 +94,8 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 () -> FarConfig.get().impostorEntities))
                         .addOption(bool(b, "impostorPlayers", d.impostorPlayers, v -> FarConfig.get().impostorPlayers = v,
                                 () -> FarConfig.get().impostorPlayers))
+                        .addOption(bool(b, "impostorBirds", d.impostorBirds, v -> FarConfig.get().impostorBirds = v,
+                                () -> FarConfig.get().impostorBirds))
                         .addOption(bool(b, "impostorShading", d.impostorShading, v -> FarConfig.get().impostorShading = v,
                                 () -> FarConfig.get().impostorShading)
                                 .setEnabledProvider(any(PICTURED), ids(PICTURED)))
@@ -504,8 +506,8 @@ public final class SodiumOptions implements ConfigEntryPoint {
     }
 
     /** The switches of the flat pictures: what the pictures' distance and size follow, and the mobs' memory. */
-    private static final String[] PICTURED = {"impostors", "impostorEntities", "impostorPlayers"};
-    private static final String[] NOT_PLAYERS = {"impostors", "impostorEntities"};
+    private static final String[] PICTURED = {"impostors", "impostorEntities", "impostorPlayers", "impostorBirds"};
+    private static final String[] NOT_PLAYERS = {"impostors", "impostorEntities", "impostorBirds"};
 
     /** On while any of these switches is on. */
     private static Function<ConfigState, Boolean> any(String[] names) {

@@ -350,6 +350,17 @@ public final class FarConfig {
     /** Boats, vehicles and mannequins as flat pictures too, as mobs are ("Simplified Entities"). */
     public boolean impostorEntities = true;
 
+    /**
+     * 3D birds past {@link #impostorDistance}, or smaller on screen than {@link #impostorPixels},
+     * as flat pictures of themselves ("Simplified Birds"), whatever else is drawn far away.
+     */
+    public boolean impostorBirds = true;
+
+    /** Whether birds are drawn as flat pictures: shown, in 3D, and simplified. */
+    public boolean birdImpostors() {
+        return skyBirds && impostorBirds && birdModels();
+    }
+
     /** Whether anything is drawn as a flat picture: mobs, the other entities or players. */
     public boolean anyImpostors() {
         return impostors || impostorEntities || impostorPlayers;
@@ -505,6 +516,8 @@ public final class FarConfig {
     public boolean boxForeseen = true;
     /** Around the distant players. */
     public boolean boxPlayers = true;
+    /** Around the birds: amber as 3D models, magenta as pictures (Simplified Birds). */
+    public boolean boxBirds = true;
     /** Around the mobs left out of the frame (too small, hidden, over the void, outside the view...). */
     public boolean boxLeftOut = true;
     // Outlines, seen through terrain, in the colours of the debug boxes: what draws each figure.
@@ -564,6 +577,15 @@ public final class FarConfig {
     /** Whether anything distant is drawn: players, mobs or both, each on its own switch. */
     public boolean anyDistant() {
         return enabled || distantMobs || distantEntities;
+    }
+
+    /**
+     * Whether anything is drawn past the render distance: the distant figures, or the birds,
+     * which fly out there whatever else is shown. What the far terrain's depth, the far plane
+     * and the far fog do follows this, not {@link #anyDistant()} alone.
+     */
+    public boolean anyFar() {
+        return anyDistant() || skyBirds;
     }
 
     public static FarConfig get() {

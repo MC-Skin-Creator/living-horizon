@@ -83,6 +83,8 @@ public final class Ambience {
         public float scale = 1f;
         /** The impostor picture shown last frame, -1 while drawn as a model. */
         int view = -1;
+        /** Seen from there, no far terrain can hide it ({@link OpenSky}); null when not known. */
+        volatile OpenSky.@Nullable Clear clear;
         float beat, beatRate;
         boolean gliding;
 
@@ -279,6 +281,7 @@ public final class Ambience {
     private final RandomSource random = RandomSource.create();
     private final Map<Type, Integer> cooldowns = new EnumMap<>(Type.class);
     private final List<Spot> spots = new ArrayList<>();
+    private final OpenSky openSky = new OpenSky();
     /** Spots the Voxy lookups found, handed over from their thread. */
     private final ConcurrentLinkedQueue<Spot> found = new ConcurrentLinkedQueue<>();
     private @Nullable ClientLevel level;
@@ -418,6 +421,17 @@ public final class Ambience {
         return null;
     }
 
+    /**
+     * Blocks past which no bird can be seen. Without a far-terrain mod (Voxy, Distant Horizons
+     * and the others {@link LodWorld} reads), the game's fog ends at the render distance and
+     * paints a bird past it the colour of the fog: only a pale ghost against the sky, which
+     * cost as much as a bird in sight. With one, there is no limit but the birds' own distance.
+     */
+    public static double seenWithin() {
+        if (LodWorld.installed()) return Double.POSITIVE_INFINITY;
+        return Minecraft.getInstance().options.getEffectiveRenderDistance() * 16.0;
+    }
+
     /** Everything flying or perched this tick. */
     public List<Flyer> flyers() {
         return flyers;
@@ -450,7 +464,8 @@ public final class Ambience {
             groups.clear();
             return;
         }
-        double reach = Math.max(100, config.birdMaxDistance);
+        // Never farther than they can be seen: without a far terrain, the fog ends at the render distance.
+        double reach = Math.min(Math.max(100, config.birdMaxDistance), Math.max(100, seenWithin()));
         double density = Math.max(0, config.birdDensity) / 100.0;
         boolean day = current.isBrightOutside();
         boolean rain = current.isRaining();
@@ -492,6 +507,8 @@ public final class Ambience {
             return false;
         });
         for (Group group : groups) flyers.addAll(group.flyers);
+        // Past where the mobs' renderer starts working on the far terrain's depth, a little nearer.
+        openSky.tick(flyers, self.getEyePosition(), Minecraft.getInstance().options.getEffectiveRenderDistance() * 16 - 32);
     }
 
     private @Nullable Group create(Type type, ClientLevel level, LocalPlayer self, double reach, FarConfig config) {

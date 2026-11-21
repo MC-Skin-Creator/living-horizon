@@ -72,7 +72,7 @@ public final class FarFog {
 
     private static DhFog.@Nullable Smooth chooseSmooth(float start) {
         FarConfig config = FarConfig.get();
-        if (!config.anyDistant()) return game("no distant figure shown");
+        if (!config.anyFar()) return game("no distant figure or bird shown");
         if (IrisLink.shaderPackOn()) return game("a shader pack fogs them");
         DhFog.Smooth ecstatic = EcstaticLink.fog(start);
         if (ecstatic != null) {
@@ -97,7 +97,7 @@ public final class FarFog {
             source = "a limit for the tests";
             return far == null ? null : new DhFog.Ramps(environmentalStart, far[0], renderDistanceStart, renderDistanceEnd, far[1]);
         }
-        if (!config.anyDistant()) return game("no distant figure shown");
+        if (!config.anyFar()) return game("no distant figure or bird shown");
         if (IrisLink.shaderPackOn()) return game("a shader pack fogs them");
         // Distant Horizons takes the game's fog away altogether, both ramps; Voxy only the render distance's.
         if (environmentalStart >= NO_RENDER_DISTANCE_FOG && renderDistanceStart >= NO_RENDER_DISTANCE_FOG) {

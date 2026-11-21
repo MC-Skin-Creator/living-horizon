@@ -604,6 +604,15 @@ come back, add it here in the same pull request: this file is what the next sess
   rider floating, or nowhere): Valkyrien Skies keeps them in its shipyard, far from the world, and its
   renderer moves them onto the ship from the camera, whatever place it is handed.
   `compat/ValkyrienSkies.onShip` leaves them to the game (`GhostRenderer.drawable`).
+- **Birds seen through the far terrain's hills** (a flock showing through a Voxy or Distant
+  Horizons mountain): birds in open sky leave the far depth alone (`ambient/OpenSky`), from an
+  answer of the far world asked once a second for a line 8 blocks under each, kept 3 s and while
+  the camera stays within 6 blocks. A bird wrongly found clear is drawn over the terrain: check
+  `LodWorld.blocked` for that source (`firstHit`).
+- **Pictures costing frames under a shader pack** (impostors or birds, Iris on): whatever is asked
+  for every picture drawn must not look Iris up by reflection each time. `ImpostorAtlas.wantsRelief`
+  reads the pack's normal maps a few times a second, `IrisLink` keeps its methods and takes no lock
+  once linked.
 - **Perched birds darting to and fro, standing in the air or inside a block** (tits, robins,
   ducks): a move's progress is `timer / length`, so the rest after landing is `rest`, never
   added to `length` (which put an arrived bird back part of the way). Where a bird lands comes

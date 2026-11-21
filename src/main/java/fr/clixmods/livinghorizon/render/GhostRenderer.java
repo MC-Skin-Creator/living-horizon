@@ -4,6 +4,7 @@ import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
 import fr.clixmods.livinghorizon.Stats;
+import fr.clixmods.livinghorizon.ambient.AmbientRenderer;
 import fr.clixmods.livinghorizon.ambient.Ambience;
 import fr.clixmods.livinghorizon.ambient.Herd;
 import fr.clixmods.livinghorizon.compat.DrawnGround;
@@ -164,6 +165,15 @@ public final class GhostRenderer {
         if (distance > drawnRange) FarDepth.needed();
     }
 
+    /**
+     * Something drawn this far away this frame that no far terrain can hide (a bird in open
+     * sky, {@code ambient/OpenSky}): the next far plane covers it, and the far terrain's depth
+     * is left alone for it.
+     */
+    public static void noteFarthest(double distance) {
+        farthest = Math.max(farthest, distance);
+    }
+
     // --- What is worth drawing ----------------------------------------------------------
 
     /** Nanoseconds a frame may spend making the puppets of players who logged off; one is made at least. */
@@ -283,7 +293,7 @@ public final class GhostRenderer {
      */
     public static float farPlane(float vanilla) {
         FarConfig config = FarConfig.get();
-        if (!config.anyDistant() || !config.extendFarPlane) return vanilla;
+        if (!config.anyFar() || !config.extendFarPlane) return vanilla;
         float ecstatic = EcstaticLink.farPlane();
         if (ecstatic > 0f) return ecstatic;
         return Math.max(vanilla, neededFar);
@@ -551,6 +561,7 @@ public final class GhostRenderer {
         mobs(frame, minecraft, dispatcher, eye, partialTick, config);
         unseen(frame, minecraft, dispatcher, eye, partialTick, config);
         if (config.easterEggs) eggs(frame, minecraft, dispatcher, eye, partialTick, config);
+        if (config.skyBirds && debug) AmbientRenderer.markBirds();
         if (config.skyBirds) {
             // Parrots and bats; the silhouettes are drawn by AmbientRenderer.
             for (Ambience.Flyer flyer : FarPlayerTracker.get().ambience().flyers()) {
