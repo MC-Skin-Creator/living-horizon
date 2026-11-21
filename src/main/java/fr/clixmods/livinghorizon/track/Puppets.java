@@ -109,6 +109,18 @@ public final class Puppets {
     }
 
     /**
+     * What a player's own tick would leave on a puppet: feet on the ground and the step just taken
+     * as its motion. Animation packs that read them (Fresh Animations' players) otherwise take it
+     * for falling, and it floats above the ground, sinks, or moves like a bot.
+     */
+    public static void ground(Entity entity, boolean airborne) {
+        entity.setOnGround(!airborne);
+        if (!airborne) {
+            entity.setDeltaMovement(entity.getX() - entity.xo, 0, entity.getZ() - entity.zo);
+        }
+    }
+
+    /**
      * Moves the legs as if the entity had walked this much; {@code scale} speeds a baby's
      * up, which the renderer itself did before 1.21.2.
      */
