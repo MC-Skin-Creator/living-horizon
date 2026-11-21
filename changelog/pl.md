@@ -2,6 +2,24 @@
 
 ## Następna wersja
 
+## 0.18.0 — 2026-11-21
+
+### Klient
+
+#### Nowości
+- **Uproszczone ptaki** — Nowy przełącznik w sekcji *Wydajność*, domyślnie włączony, rysuje odległe ptaki 3D jako uproszczone obrazy, jak stworzenia. Działa teraz samodzielnie: ptaki zostawały pełnymi modelami, gdy odlegli gracze, stworzenia i byty były wyłączone. Siedzące ptaki przełączają się teraz przy rozmiarze, jaki naprawdę zajmują na ekranie, zamiast pozostawać pełnymi modelami dalej, niż wskazuje *Rozmiar uproszczenia*.
+
+#### Ulepszenia
+- **Ptaki zabierają znacznie mniej klatek na sekundę** — Ptaki latają teraz tylko tam, gdzie możesz je zobaczyć: bez Voxy, Distant Horizons lub innego moda dalekiego terenu żaden nie jest trzymany za zasięgiem renderowania, gdzie i tak ukrywała je mgła. Ich uproszczone obrazy są zapisywane między grami, więc wejście do świata nie przycina już przez kilka sekund, a ptaki 3D i uproszczone obrazy wymagają mniej pracy przy rysowaniu, także z shaderami. Może to dać więcej klatek na sekundę wszędzie, gdzie są ptaki.
+
+#### Poprawki
+- **Ptaki zasłonięte przez dalekie wzgórza** — Ptaki znikają teraz za wzgórzami dalekiego terenu, nawet gdy odlegli gracze, stworzenia i byty są wyłączeni, zamiast prześwitywać przez nie. (Z Voxy, Distant Horizons lub Lodistance.)
+- **Ptaki gromadzą się nad odległymi jeziorami, lasami i wybrzeżami** — Ptaki znajdują teraz wodę, drzewa, pola i wybrzeża na terenie Voxy i Distant Horizons poza twoim zasięgiem renderowania, a nie tylko wokół ciebie. Stada i ptaki morskie rozkładają się dzięki temu naturalnie po całym krajobrazie.
+- **Gracze offline wyglądają poprawnie z Fresh Animations** — Gracze offline nie wyglądają już jak latające roboty i nie zapadają się w ziemię podczas chodzenia z modelem gracza z Fresh Animations, a teraz poprawnie siadają na poduszkach i dywanach.
+- **Płynniejszy powrót stworzeń, gdy się zbliżasz** — Gdy wracasz w pobliże stworzenia pokazanego jako odległa kopia, kopia teraz spieszy tam, gdzie stoi prawdziwe stworzenie, więc prawdziwe przejmuje jej miejsce wcześniej i bez przeskoku, zamiast pozostawać ukryte przez kilka sekund. Kopia stworzenia, którego już nie ma, znika w niecałą sekundę.
+- **Stworzenia zachowane na serwerach, które pokazują je tylko z bliska** — Na serwerach, które wysyłają stworzenia tylko w promieniu kilkudziesięciu bloków, stworzenia, od których się oddalasz, zostają teraz widoczne w oddali, zamiast znikać na dobre. Dotąd były zachowywane tylko wtedy, gdy oddalałeś się szybko.
+- **Małe stworzenia pozostają widoczne przy mniejszej odległości bytów** — Przy *Odl. renderow. bytów* poniżej 100% małe stworzenia, takie jak kurczaki, koty i wilki, pozostają teraz widoczne aż po horyzont, zamiast znikać na kilka bloków, zanim Living Horizon przejmie ich wyświetlanie.
+
 ## 0.17.0 — 2026-11-20
 
 ### Serwer

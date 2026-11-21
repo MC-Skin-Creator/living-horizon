@@ -2,6 +2,24 @@
 
 ## Prossima versione
 
+## 0.18.0 — 2026-11-21
+
+### Client
+
+#### Novità
+- **Uccelli semplificati** — Un nuovo interruttore in *Prestazioni*, attivo per impostazione predefinita, disegna gli uccelli in 3D lontani come immagini semplificate, come le creature. Ora funziona da solo: gli uccelli restavano modelli completi quando giocatori, creature ed entità lontani erano tutti disattivati. Gli uccelli posati ora cambiano alla dimensione che occupano davvero sullo schermo, invece di restare modelli completi più lontano di quanto indichi *Dimensione di semplificazione*.
+
+#### Miglioramenti
+- **Gli uccelli costano molti meno FPS** — Gli uccelli ora volano solo dove puoi vederli: senza Voxy, Distant Horizons o un altro mod di terreno lontano, nessuno viene tenuto oltre la distanza di rendering, dove la nebbia li nascondeva comunque. Le loro immagini semplificate vengono salvate tra una partita e l'altra, quindi entrare in un mondo non scatta più per diversi secondi, e sia gli uccelli in 3D sia le immagini semplificate richiedono meno lavoro per essere disegnati, anche con gli shader. Questo può dare più FPS ovunque ci siano uccelli.
+
+#### Correzioni
+- **Uccelli nascosti dalle colline lontane** — Gli uccelli ora scompaiono dietro le colline del terreno lontano anche quando giocatori, creature ed entità lontani sono tutti disattivati, invece di vedersi attraverso. (Con Voxy, Distant Horizons o Lodistance.)
+- **Gli uccelli si radunano su laghi, foreste e coste lontani** — Gli uccelli ora trovano acqua, alberi, campi e coste sul terreno di Voxy e Distant Horizons oltre la tua distanza di visibilità, invece che solo intorno a te. Stormi e uccelli marini si distribuiscono così in modo naturale su tutto il paesaggio.
+- **Giocatori disconnessi corretti con Fresh Animations** — I giocatori disconnessi non sembrano più robot volanti e non affondano nel terreno quando camminano con il modello giocatore di Fresh Animations, e ora si siedono correttamente su cuscini e tappeti.
+- **Le creature tornano in modo più fluido quando ti avvicini** — Quando torni vicino a una creatura mostrata come copia lontana, la copia ora si affretta verso il punto in cui si trova la creatura vera, che così prende il suo posto prima e senza scatti, invece di restare nascosta per diversi secondi. La copia di una creatura che non c'è più scompare in meno di un secondo.
+- **Creature mantenute sui server che le mostrano solo da vicino** — Sui server che inviano le creature solo entro poche decine di blocchi, le creature da cui ti allontani ora restano in lontananza invece di sparire per sempre. Finora venivano mantenute solo se ti allontanavi rapidamente.
+- **Le creature piccole restano visibili con una distanza delle entità ridotta** — Con la *Distanza delle entità* sotto il 100%, le creature piccole come galline, gatti e lupi ora restano visibili fino in lontananza, invece di sparire per qualche blocco prima che Living Horizon prendesse il posto del gioco.
+
 ## 0.17.0 — 2026-11-20
 
 ### Server

@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## 0.18.0 — 2026-11-21
+
+### Client
+
+#### New
+- **Simplified Birds** — A new switch in *Performance*, on by default, draws distant 3D birds as simplified images, like mobs. It now works on its own: birds were left as full models whenever distant players, mobs and entities were all turned off. Perched birds now switch at the size they really take on screen, instead of staying full models farther than *Simplification Size* says.
+
+#### Improved
+- **Birds cost far fewer frames** — Birds now only fly where you can see them: without Voxy, Distant Horizons or another far-terrain mod, none are kept past the render distance, where the fog hid them anyway. Their simplified images are saved between games, so joining a world no longer stutters for several seconds, and 3D birds and simplified images take less work to draw, under shaders too. This can give more frames per second wherever birds are around.
+
+#### Fixed
+- **Birds hidden by distant hills** — Birds now disappear behind the far terrain's hills even when distant players, mobs and entities are all turned off, instead of showing through them. (With Voxy, Distant Horizons or Lodistance.)
+- **Birds gather over distant lakes, forests and coasts** — Birds now find water, trees, fields and coasts on Voxy's and Distant Horizons' terrain past your render distance, instead of only around you. Flocks and seabirds then settle naturally across the whole landscape.
+- **Offline players look right with Fresh Animations** — Offline players no longer look like flying bots or sink into the ground when they walk with Fresh Animations' player model, and they now sit properly on cushions and carpets.
+- **Smoother return of mobs as you come close** — When you come back near a mob shown as a distant copy, the copy now hurries to where the real mob stands, so the real one takes over sooner and without jumping, instead of staying hidden for several seconds. The copy of a mob that is no longer there disappears within a second.
+- **Mobs kept on servers that only show them up close** — On servers that send mobs only within a few dozen blocks, the mobs you walk away from now stay in the distance instead of vanishing for good. Until now they were only kept if you moved away quickly.
+- **Small mobs stay visible with a lower Entity Distance** — With *Entity Distance* below 100%, small mobs such as chickens, cats and wolves now stay visible all the way into the distance, instead of disappearing for a few blocks before Living Horizon took over.
+
 ## 0.17.0 — 2026-11-20
 
 ### Server

@@ -2,6 +2,24 @@
 
 ## Sonraki sürüm
 
+## 0.18.0 — 2026-11-21
+
+### İstemci
+
+#### Yenilikler
+- **Basit Kuşlar** — *Performans* bölümündeki varsayılan olarak açık yeni bir düğme, uzaktaki 3B kuşları canlılar gibi basitleştirilmiş resimler olarak çizer. Artık tek başına çalışıyor: uzaktaki oyuncular, canlılar ve varlıklar kapalıyken kuşlar tam model olarak kalıyordu. Konmuş kuşlar artık *Basitleştirme Boyutu*'nun söylediğinden daha uzakta tam model kalmak yerine, ekranda gerçekten kapladıkları boyutta değişiyor.
+
+#### İyileştirmeler
+- **Kuşlar çok daha az FPS harcıyor** — Kuşlar artık yalnızca onları görebileceğin yerlerde uçuyor: Voxy, Distant Horizons ya da başka bir uzak arazi modu olmadan, sisin zaten gizlediği görüş mesafesinin ötesinde hiçbiri tutulmuyor. Basitleştirilmiş resimleri oyunlar arasında kaydediliyor; böylece bir dünyaya girmek artık birkaç saniye takılmıyor ve hem 3B kuşları hem basitleştirilmiş resimleri çizmek, gölgelendiricilerle de, daha az iş gerektiriyor. Bu, kuşların olduğu her yerde daha fazla FPS sağlayabilir.
+
+#### Düzeltmeler
+- **Kuşlar uzak tepelerin arkasında gizleniyor** — Uzaktaki oyuncular, canlılar ve varlıklar kapalı olsa bile kuşlar artık uzak arazinin tepelerinin içinden görünmek yerine arkalarında kayboluyor. (Voxy, Distant Horizons ya da Lodistance ile.)
+- **Kuşlar uzaktaki göllerde, ormanlarda ve kıyılarda toplanıyor** — Kuşlar artık yalnızca çevrenizde değil, görüş mesafenizin ötesinde Voxy ve Distant Horizons arazisindeki suyu, ağaçları, tarlaları ve kıyıları da buluyor. Sürüler ve deniz kuşları böylece tüm manzaraya doğal biçimde yayılıyor.
+- **Fresh Animations ile çevrim dışı oyuncular doğru görünüyor** — Çevrim dışı oyuncular Fresh Animations oyuncu modeliyle yürürken artık uçan robotlara benzemiyor ve yere gömülmüyor; ayrıca minderlere ve halılara artık doğru şekilde oturuyor.
+- **Yaklaştığınızda canlılar daha akıcı geri dönüyor** — Uzak bir kopya olarak gösterilen bir canlının yanına döndüğünüzde kopya artık gerçek canlının durduğu yere acele ediyor; böylece gerçek canlı birkaç saniye gizli kalmak yerine daha erken ve sıçramadan devralıyor. Artık orada olmayan bir canlının kopyası bir saniyeden kısa sürede kayboluyor.
+- **Canlıları yalnızca yakından gösteren sunucularda canlılar korunuyor** — Canlıları yalnızca birkaç düzine blok içinde gönderen sunucularda, uzaklaştığınız canlılar artık tamamen kaybolmak yerine uzakta kalıyor. Şimdiye kadar yalnızca hızla uzaklaşırsanız korunuyorlardı.
+- **Küçük canlılar düşük Varlık Mesafesi ile görünür kalıyor** — *Varlık Mesafesi* %100'ün altındayken tavuk, kedi ve kurt gibi küçük canlılar, Living Horizon devralmadan önce birkaç blok boyunca kaybolmak yerine artık uzaklara kadar görünür kalıyor.
+
 ## 0.17.0 — 2026-11-20
 
 ### Sunucu

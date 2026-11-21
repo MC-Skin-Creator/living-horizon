@@ -2,6 +2,24 @@
 
 ## Prochaine version
 
+## 0.18.0 — 2026-11-21
+
+### Client
+
+#### Nouveautés
+- **Oiseaux simplifiés** — Un nouveau réglage dans *Performance*, activé par défaut, dessine les oiseaux en 3D lointains comme des images simplifiées, comme les créatures. Il fonctionne maintenant seul : les oiseaux gardaient leur modèle complet dès que les joueurs, créatures et entités lointains étaient tous désactivés. Les oiseaux posés changent maintenant à la taille qu'ils occupent vraiment à l'écran, au lieu de garder leur modèle plus loin que ne l'indique *Taille de simplification*.
+
+#### Améliorations
+- **Des oiseaux bien moins gourmands en images par seconde** — Les oiseaux ne volent plus que là où vous pouvez les voir : sans Voxy, Distant Horizons ou un autre mod de terrain lointain, aucun n'est gardé au-delà de la distance de rendu, où le brouillard les cachait de toute façon. Leurs images simplifiées sont enregistrées d'une partie à l'autre, si bien que rejoindre un monde ne saccade plus pendant plusieurs secondes, et les oiseaux en 3D comme les images simplifiées demandent moins de travail à dessiner, avec des shaders aussi. Cela peut apporter plus d'images par seconde partout où il y a des oiseaux.
+
+#### Corrections
+- **Oiseaux cachés par les collines lointaines** — Les oiseaux disparaissent maintenant derrière les collines du terrain lointain même quand les joueurs, créatures et entités lointains sont tous désactivés, au lieu d'apparaître à travers. (Avec Voxy, Distant Horizons ou Lodistance.)
+- **Les oiseaux se rassemblent sur les lacs, forêts et côtes lointains** — Les oiseaux trouvent maintenant l'eau, les arbres, les champs et les côtes sur le terrain de Voxy et de Distant Horizons au-delà de votre distance d'affichage, au lieu de seulement autour de vous. Les nuées et les oiseaux marins se répartissent ainsi naturellement sur tout le paysage.
+- **Joueurs déconnectés corrects avec Fresh Animations** — Les joueurs déconnectés ne ressemblent plus à des robots volants et ne s'enfoncent plus dans le sol quand ils marchent avec le modèle de joueur de Fresh Animations, et ils s'assoient maintenant correctement sur les coussins et les tapis.
+- **Retour plus fluide des créatures quand vous approchez** — Lorsque vous revenez près d'une créature affichée comme une copie lointaine, la copie se presse maintenant vers la vraie créature, qui prend ainsi le relais plus tôt et sans saut, au lieu de rester cachée plusieurs secondes. La copie d'une créature qui n'est plus là disparaît en moins d'une seconde.
+- **Créatures gardées sur les serveurs qui ne les montrent que de près** — Sur les serveurs qui n'envoient les créatures qu'à quelques dizaines de blocs, celles dont vous vous éloignez restent maintenant affichées au loin au lieu de disparaître pour de bon. Jusqu'ici, elles n'étaient gardées que si vous vous éloigniez rapidement.
+- **Les petites créatures restent visibles avec une distance des entités réduite** — Avec une *Distance des entités* inférieure à 100 %, les petites créatures comme les poulets, les chats et les loups restent maintenant visibles jusqu'au loin, au lieu de disparaître sur quelques blocs avant que Living Horizon ne prenne le relais.
+
 ## 0.17.0 — 2026-11-20
 
 ### Serveur

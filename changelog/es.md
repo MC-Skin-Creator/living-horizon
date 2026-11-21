@@ -2,6 +2,24 @@
 
 ## Próxima versión
 
+## 0.18.0 — 2026-11-21
+
+### Cliente
+
+#### Novedades
+- **Aves simplificadas** — Un nuevo interruptor en *Rendimiento*, activado por defecto, dibuja las aves en 3D lejanas como imágenes simplificadas, como las criaturas. Ahora funciona por sí solo: las aves conservaban su modelo completo cuando los jugadores, las criaturas y las entidades lejanas estaban todos desactivados. Las aves posadas cambian ahora al tamaño que ocupan de verdad en pantalla, en lugar de seguir como modelos completos más lejos de lo que indica *Tamaño de simplificación*.
+
+#### Mejoras
+- **Las aves consumen muchos menos FPS** — Las aves ahora solo vuelan donde puedes verlas: sin Voxy, Distant Horizons u otro mod de terreno lejano, no se mantiene ninguna más allá de la distancia de renderizado, donde la niebla las ocultaba de todos modos. Sus imágenes simplificadas se guardan entre partidas, así que entrar en un mundo ya no da tirones durante varios segundos, y tanto las aves en 3D como las imágenes simplificadas cuestan menos de dibujar, también con shaders. Esto puede dar más FPS allí donde haya aves.
+
+#### Correcciones
+- **Aves ocultas tras las colinas lejanas** — Las aves ahora desaparecen tras las colinas del terreno lejano aunque los jugadores, las criaturas y las entidades lejanas estén todos desactivados, en lugar de verse a través de ellas. (Con Voxy, Distant Horizons o Lodistance.)
+- **Las aves se reúnen sobre lagos, bosques y costas lejanos** — Las aves ahora encuentran agua, árboles, campos y costas en el terreno de Voxy y Distant Horizons más allá de tu distancia de renderizado, en lugar de solo a tu alrededor. Las bandadas y las aves marinas se reparten así de forma natural por todo el paisaje.
+- **Jugadores desconectados correctos con Fresh Animations** — Los jugadores desconectados ya no parecen robots voladores ni se hunden en el suelo al caminar con el modelo de jugador de Fresh Animations, y ahora se sientan bien en cojines y alfombras.
+- **Las criaturas vuelven con más fluidez cuando te acercas** — Cuando vuelves cerca de una criatura mostrada como una copia lejana, la copia ahora se apresura hacia donde está la criatura real, que toma el relevo antes y sin saltos, en vez de quedar oculta varios segundos. La copia de una criatura que ya no está desaparece en menos de un segundo.
+- **Criaturas conservadas en servidores que solo las muestran de cerca** — En los servidores que solo envían las criaturas a unas pocas decenas de bloques, las criaturas de las que te alejas ahora siguen a lo lejos en vez de desaparecer para siempre. Hasta ahora solo se conservaban si te alejabas rápidamente.
+- **Las criaturas pequeñas siguen visibles con menos distancia de entidades** — Con la *Distancia de entidades* por debajo del 100 %, las criaturas pequeñas como gallinas, gatos y lobos ahora siguen visibles hasta lo lejos, en vez de desaparecer durante unos bloques antes de que Living Horizon tomara el relevo.
+
 ## 0.17.0 — 2026-11-20
 
 ### Servidor

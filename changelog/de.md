@@ -2,6 +2,24 @@
 
 ## Nächste Version
 
+## 0.18.0 — 2026-11-21
+
+### Client
+
+#### Neu
+- **Vereinfachte Vögel** — Ein neuer Schalter unter *Leistung*, standardmäßig an, zeichnet ferne 3D-Vögel als vereinfachte Bilder, wie Kreaturen. Er wirkt jetzt für sich allein: Vögel blieben volle Modelle, sobald ferne Spieler, Kreaturen und Objekte alle ausgeschaltet waren. Sitzende Vögel wechseln jetzt bei der Größe, die sie wirklich auf dem Bildschirm einnehmen, statt weiter als von *Vereinfachungsgröße* angegeben volle Modelle zu bleiben.
+
+#### Verbessert
+- **Vögel kosten deutlich weniger Bilder pro Sekunde** — Vögel fliegen jetzt nur noch dort, wo du sie sehen kannst: Ohne Voxy, Distant Horizons oder einen anderen Mod für fernes Gelände bleibt keiner hinter der Sichtweite, wo der Nebel sie ohnehin verbarg. Ihre vereinfachten Bilder werden zwischen Spielen gespeichert, sodass das Betreten einer Welt nicht mehr mehrere Sekunden lang ruckelt, und 3D-Vögel wie vereinfachte Bilder lassen sich mit weniger Aufwand zeichnen, auch mit Shadern. Das kann mehr Bilder pro Sekunde bringen, wo immer Vögel unterwegs sind.
+
+#### Behoben
+- **Vögel hinter fernen Hügeln verdeckt** — Vögel verschwinden jetzt hinter den Hügeln des fernen Geländes, auch wenn ferne Spieler, Kreaturen und Objekte alle ausgeschaltet sind, statt durch sie hindurch sichtbar zu sein. (Mit Voxy, Distant Horizons oder Lodistance.)
+- **Vögel sammeln sich über fernen Seen, Wäldern und Küsten** — Vögel finden jetzt Wasser, Bäume, Felder und Küsten auf dem Gelände von Voxy und Distant Horizons jenseits deiner Sichtweite, statt nur in deiner Nähe. Schwärme und Seevögel verteilen sich so natürlich über die ganze Landschaft.
+- **Offline-Spieler sehen mit Fresh Animations richtig aus** — Offline-Spieler wirken mit dem Spielermodell von Fresh Animations beim Gehen nicht mehr wie fliegende Roboter und sinken nicht mehr in den Boden ein, und sie sitzen jetzt richtig auf Kissen und Teppichen.
+- **Kreaturen kehren flüssiger zurück, wenn du näher kommst** — Wenn du zu einer Kreatur zurückkehrst, die als ferne Kopie angezeigt wird, eilt die Kopie jetzt dorthin, wo die echte Kreatur steht, sodass die echte früher und ohne Sprung übernimmt, statt mehrere Sekunden verborgen zu bleiben. Die Kopie einer Kreatur, die nicht mehr da ist, verschwindet in weniger als einer Sekunde.
+- **Kreaturen bleiben auf Servern erhalten, die sie nur aus der Nähe zeigen** — Auf Servern, die Kreaturen nur in wenigen Dutzend Blöcken Entfernung senden, bleiben die Kreaturen, von denen du dich entfernst, jetzt in der Ferne sichtbar, statt endgültig zu verschwinden. Bisher blieben sie nur erhalten, wenn du dich schnell entferntest.
+- **Kleine Kreaturen bleiben bei geringerer Objektweite sichtbar** — Mit einer *Objektweite* unter 100 % bleiben kleine Kreaturen wie Hühner, Katzen und Wölfe jetzt bis in die Ferne sichtbar, statt für ein paar Blöcke zu verschwinden, bevor Living Horizon übernahm.
+
 ## 0.17.0 — 2026-11-20
 
 ### Server
