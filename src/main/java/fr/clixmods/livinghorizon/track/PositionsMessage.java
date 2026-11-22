@@ -38,10 +38,12 @@ import java.util.UUID;
  * still read, from a server not updated yet and from the file. Version 4 adds a player gliding
  * with an elytra: a flag version 3 leaves unread, and their pitch at the end of the record.
  * Version 5 adds, after it, how a player who logged off looks with Minecraft Comes Alive.
+ * Version 6 adds, after which part of their list a message is, whether the server lets a client
+ * list the players who logged off in its player list (Tab): version 5 takes them as listed.
  */
 public final class PositionsMessage {
     /** The layout written here. */
-    public static final int VERSION = 5;
+    public static final int VERSION = 6;
     /** The oldest version that reads what is written here: a reader of it or newer skips what it does not know. */
     static final int READABLE_FROM = 3;
     /** The layout of the server's own file ({@link #saved}), apart from the messages'. */
@@ -167,15 +169,21 @@ public final class PositionsMessage {
     /**
      * A message read: its kind, and the list it carries (the other one is null). The players who
      * logged off come in {@code part} of a list that may take several messages; null for the others.
+     * {@code listed}: with them, whether the server lets a client list them in its player list (Tab).
      */
     public record Decoded(byte kind, @Nullable List<Player> players, @Nullable Mobs mobs, @Nullable Part part,
-                          @Nullable Seed seed) {
+                          @Nullable Seed seed, boolean listed) {
         public Decoded(byte kind, @Nullable List<Player> players, @Nullable Mobs mobs) {
-            this(kind, players, mobs, null, null);
+            this(kind, players, mobs, null, null, true);
         }
 
         public Decoded(byte kind, @Nullable List<Player> players, @Nullable Mobs mobs, @Nullable Part part) {
-            this(kind, players, mobs, part, null);
+            this(kind, players, mobs, part, null, true);
+        }
+
+        public Decoded(byte kind, @Nullable List<Player> players, @Nullable Mobs mobs, @Nullable Part part,
+                       @Nullable Seed seed) {
+            this(kind, players, mobs, part, seed, true);
         }
     }
 
@@ -254,7 +262,12 @@ public final class PositionsMessage {
      * it takes, in order. A client takes the list once the last has come.
      */
     public static List<byte[]> offline(List<Player> players) {
-        return offline(players, MAX_BYTES);
+        return offline(players, true, MAX_BYTES);
+    }
+
+    /** The same, saying whether a client may list them in its player list (Tab). */
+    public static List<byte[]> offline(List<Player> players, boolean listed) {
+        return offline(players, listed, MAX_BYTES);
     }
 
     /**
@@ -285,8 +298,12 @@ public final class PositionsMessage {
     }
 
     static List<byte[]> offline(List<Player> players, int limit) {
+        return offline(players, true, limit);
+    }
+
+    static List<byte[]> offline(List<Player> players, boolean listed, int limit) {
         // Each message says which part of the list it is, before the players: room kept for it.
-        int head = 1 + 2 * COUNT;
+        int head = 1 + 2 * COUNT + 1;
         List<Encoder> encoders = new ArrayList<>();
         List<Records> lists = new ArrayList<>();
         Encoder encoder = new Encoder(limit, head);
@@ -321,6 +338,8 @@ public final class PositionsMessage {
                 writeRecord(out, which -> {
                     writeVarint(which, index);
                     writeVarint(which, count);
+                    // From version 6, last: version 5 leaves it unread.
+                    which.writeBoolean(listed);
                 });
                 part.writeTo(out);
             }));
@@ -390,7 +409,9 @@ public final class PositionsMessage {
                 DataInputStream head = readRecord(in);
                 Part part = new Part(readVarint(head), readVarint(head));
                 if (part.index() < 0 || part.index() >= part.count()) return null;
-                return new Decoded(kind, readPlayers(in, dimensions), null, part);
+                // Before version 6 the server did not say: listed.
+                boolean listed = head.available() <= 0 || head.readBoolean();
+                return new Decoded(kind, readPlayers(in, dimensions), null, part, null, listed);
             }
             if (kind == MOBS) {
                 DataInputStream head = readRecord(in);

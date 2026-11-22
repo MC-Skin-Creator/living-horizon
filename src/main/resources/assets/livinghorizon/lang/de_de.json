@@ -39,6 +39,8 @@
   "livinghorizon.options.offlineRoam.tooltip": "Wie weit sich Offline‐Spieler von ihrem Abmeldeort entfernen, um umherzulaufen und ein Bett, eine Truhe oder einen Arbeitsblock zu suchen. 50 Blöcke sind etwa ein Dorf.",
   "livinghorizon.options.offlineNames": "Offline‐Spielernamen",
   "livinghorizon.options.offlineNames.tooltip": "Zeigt den Namen eines Offline‐Spielers über ihm an, mit dem Zusatz (offline). Aus der Nähe betrachtet steht dort auch, wann er zuletzt gesehen wurde.",
+  "livinghorizon.options.offlineTabList": "Offline in Spielerliste",
+  "livinghorizon.options.offlineTabList.tooltip": "Führt abgemeldete Spieler in der Spielerliste (Tab) nach den Online‐Spielern auf, mit ihrem Kopf und dem Zusatz (offline). Nur, wenn der Server es erlaubt.",
   "livinghorizon.offline.tag": "(offline)",
   "livinghorizon.offline.lastSeen": "%s – zuletzt gesehen am %s",
   "livinghorizon.offline.unknown": "%s – offline",

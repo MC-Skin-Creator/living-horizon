@@ -39,6 +39,8 @@
   "livinghorizon.options.offlineRoam.tooltip": "Até que distância de onde saíram os jogadores offline andam e procuram uma cama, um baú ou uma estação de trabalho. 50 blocos é mais ou menos uma vila.",
   "livinghorizon.options.offlineNames": "Nomes offline",
   "livinghorizon.options.offlineNames.tooltip": "Exibe o nome de um jogador offline acima dele, marcado (offline). De perto, mostra quando ele foi visto pela última vez.",
+  "livinghorizon.options.offlineTabList": "Offline na lista",
+  "livinghorizon.options.offlineTabList.tooltip": "Adiciona os jogadores que saíram à lista de jogadores (Tab), depois dos online, com a cabeça deles e marcados (offline). Só se o servidor permitir.",
   "livinghorizon.offline.tag": "(offline)",
   "livinghorizon.offline.lastSeen": "%s — visto pela última vez %s",
   "livinghorizon.offline.unknown": "%s — offline",

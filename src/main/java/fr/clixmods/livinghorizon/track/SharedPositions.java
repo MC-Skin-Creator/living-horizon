@@ -53,6 +53,8 @@ public final class SharedPositions {
     /** The players who logged off, from the parts of the list received so far; null between two lists. */
     private @Nullable List<PositionsMessage.Player> comingOffline;
     private int expectedPart;
+    /** Whether the server lets this client list the players who logged off in its player list (Tab). */
+    private boolean offlineListed = true;
 
     /** A message from the server, on the game's thread. */
     void receive(byte[] data) {
@@ -72,7 +74,7 @@ public final class SharedPositions {
             active = true;
         }
         if (message.kind() == PositionsMessage.OFFLINE && message.players() != null && message.part() != null) {
-            offlinePart(message.players(), message.part());
+            offlinePart(message.players(), message.part(), message.listed());
         }
         if (message.seed() != null) seed = message.seed().dimensions().isEmpty() ? null : message.seed();
         if (message.mobs() != null) {
@@ -89,7 +91,7 @@ public final class SharedPositions {
      * One part of the list of players who logged off: the list is taken once whole, so that
      * nobody seems to have left between two of its parts. A part out of order drops the list.
      */
-    private void offlinePart(List<PositionsMessage.Player> part, PositionsMessage.Part which) {
+    private void offlinePart(List<PositionsMessage.Player> part, PositionsMessage.Part which, boolean listed) {
         if (which.index() == 0) {
             comingOffline = new ArrayList<>();
         } else if (comingOffline == null || which.index() != expectedPart) {
@@ -99,6 +101,7 @@ public final class SharedPositions {
         comingOffline.addAll(part);
         expectedPart = which.index() + 1;
         if (!which.last()) return;
+        offlineListed = listed;
         offline.clear();
         for (PositionsMessage.Player player : comingOffline) {
             offline.put(player.name(), player);
@@ -123,6 +126,7 @@ public final class SharedPositions {
         lastMobs = null;
         seed = null;
         comingOffline = null;
+        offlineListed = true;
         ticksSinceNews = STALE_TICKS;
         active = false;
         unreadable = null;
@@ -134,6 +138,14 @@ public final class SharedPositions {
      */
     public PositionsMessage.@Nullable Format unreadable() {
         return unreadable;
+    }
+
+    /**
+     * Whether the players who logged off may be listed in the player list (Tab): what the server
+     * with the mod last said; yes from a server without it, which says nothing.
+     */
+    public boolean offlineListed() {
+        return offlineListed;
     }
 
     public boolean active() {

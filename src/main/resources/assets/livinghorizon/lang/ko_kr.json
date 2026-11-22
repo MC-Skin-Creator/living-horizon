@@ -39,6 +39,8 @@
   "livinghorizon.options.offlineRoam.tooltip": "오프라인 플레이어가 접속을 종료한 곳에서 얼마나 멀리까지 돌아다니며 침대, 상자, 직업 블록을 찾는지 정합니다. 50블록은 대략 마을 하나 크기입니다.",
   "livinghorizon.options.offlineNames": "오프라인 플레이어 이름",
   "livinghorizon.options.offlineNames.tooltip": "오프라인 플레이어의 머리 위에 (오프라인) 표시와 함께 이름을 보여줍니다. 가까이에서 보면 마지막으로 본 시각이 표시됩니다.",
+  "livinghorizon.options.offlineTabList": "플레이어 목록에 표시",
+  "livinghorizon.options.offlineTabList.tooltip": "접속을 종료한 플레이어를 온라인 플레이어 다음에 머리와 (오프라인) 표시와 함께 플레이어 목록(Tab)에 보여줍니다. 서버가 허용하는 경우에만 적용됩니다.",
   "livinghorizon.offline.tag": "(오프라인)",
   "livinghorizon.offline.lastSeen": "%s — 마지막 확인: %s",
   "livinghorizon.offline.unknown": "%s — 오프라인",

@@ -43,6 +43,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PhotonVoxyScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorShadingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OcclusionScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.OfflineTabListScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OtherDimensionScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LinksScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LodistanceScenario;
@@ -101,6 +102,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
     private static final List<Scenario> SCENARIOS = List.of(
             new ImpostorsScenario(),
             new RestingCostScenario(),
+            new OfflineTabListScenario(),
             new BirdCostScenario(),
             new ImpostorSizeScenario(),
             new PlayerSizeScenario(),
