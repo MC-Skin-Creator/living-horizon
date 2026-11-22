@@ -58,6 +58,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.RegressionScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ResizeScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestKeptScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingCrowdScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.RestingCostScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingLoopScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingMountScenario;
@@ -99,6 +100,7 @@ import java.util.stream.Collectors;
 public final class LivingHorizonGameTests implements FabricClientGameTest {
     private static final List<Scenario> SCENARIOS = List.of(
             new ImpostorsScenario(),
+            new RestingCostScenario(),
             new BirdCostScenario(),
             new ImpostorSizeScenario(),
             new PlayerSizeScenario(),
