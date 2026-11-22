@@ -24,7 +24,9 @@ public final class RestingCostScenario implements Scenario {
     /** The flat world's grass is the block below this one. */
     private static final int GROUND = -60;
     private static final int CROWD = 50, RADIUS = 40;
-    private static final int SETTLE = 100, FRAMES = 200;
+    private static final int SETTLE = 100;
+    /** Frames per measure: fewer under a shader pack, where llvmpipe takes a second a frame. */
+    private static final int FRAMES = Integer.getInteger("lh.restingcost.frames", 200);
 
     @Override
     public String name() {
@@ -50,6 +52,18 @@ public final class RestingCostScenario implements Scenario {
                 return (int) resting.shown().stream().filter(spot -> resting.made(spot) != null).count();
             });
             Scene.log("restingcost: " + made + " puppets made");
+            if (Boolean.getBoolean("lh.restingcost.names")) {
+                // Their names alone, on and off in turn: what a shader pack makes of them.
+                context.runOnClient(minecraft -> look(minecraft, FRAMES / 8));
+                context.waitTicks(20);
+                Scene.screenshot(context, this, "names");
+                for (int i = 0; i < 3; i++) {
+                    measure(context, "players, names", config -> { }, 40);
+                    measure(context, "players, no names", config -> config.offlineNames = false, 40);
+                }
+                measure(context, "players off", config -> config.offlinePlayers = false, 40);
+                return;
+            }
 
             measure(context, "warm-up", config -> { }, SETTLE);
             measure(context, "players, defaults", config -> { }, SETTLE);
