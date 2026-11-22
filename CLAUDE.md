@@ -993,6 +993,11 @@ the vocabulary and examples. In short:
 
 `.claude/skills/issue-from-comment/` turns a pasted comment into a GitHub issue.
 
+**Whenever the user sends a problem** (a player's message, a crash, a bug report, a
+screenshot), first look for an existing issue, open and closed (`gh issue list --state all
+--search …`, by symptom, version, loader and mod), and say which one matches, or that none
+does, before anything else. A closed one may mean the fix is not released yet, or came back.
+
 **When a pull request that resolves an issue is merged, close the issue and tick its box.**
 GitHub closes an issue on its own only when a "Closes #N" pull request lands on `main`, the
 default branch; pull requests go to `develop`, so the issue stays open. As soon as the merge
