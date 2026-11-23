@@ -103,7 +103,8 @@ public final class DailyLifeScenario implements Scenario {
                 context.waitTick();
                 waved = puppet(context, "Greeter", RestingPuppet::greeting) == Boolean.TRUE;
             }
-            Scene.log("dailylife: " + (waved ? "a wave" : "no wave"));
+            Scene.log("dailylife: " + (waved ? "a wave" : "no wave") + ", the greeter "
+                    + puppet(context, "Greeter", p -> p.state() + " at " + p.blockPosition().toShortString()));
             context.waitTicks(4);
             Scene.screenshot(context, this, "wave");
             if (!waved) throw new AssertionError("dailylife: nobody waved");

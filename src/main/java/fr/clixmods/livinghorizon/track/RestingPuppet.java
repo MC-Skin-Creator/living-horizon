@@ -1681,7 +1681,10 @@ public final class RestingPuppet extends RemotePlayer {
      * {@link #shutForgotten} once its puppet is gone. A lid or a door left open on this client
      * would stay open.
      */
-    private record Opened(Runnable shut, long[] touched) {
+    private record Opened(Runnable shut, long[] touched, int[] users) {
+        Opened(Runnable shut, long touched) {
+            this(shut, new long[]{touched}, new int[]{1});
+        }
     }
 
     private static final Map<BlockPos, Opened> OPENED = new java.util.HashMap<>();
@@ -1705,21 +1708,28 @@ public final class RestingPuppet extends RemotePlayer {
     private void openChest(BlockPos at) {
         BlockEntity entity = level().getBlockEntity(at);
         if (!(entity instanceof ChestBlockEntity) && !(entity instanceof EnderChestBlockEntity)) return;
-        if (OPENED.containsKey(at)) return;
+        openChest = at.immutable();
+        // Open already, another of them at it: it shuts once the last one leaves.
+        Opened already = OPENED.get(openChest);
+        if (already != null) {
+            already.users()[0]++;
+            return;
+        }
         entity.triggerEvent(1, 1);
-        openChest = at;
-        OPENED.put(at.immutable(), new Opened(() -> {
+        OPENED.put(openChest, new Opened(() -> {
             BlockEntity now = level().getBlockEntity(at);
             if (now != null) now.triggerEvent(1, 0);
-        }, new long[]{level().getGameTime()}));
+        }, level().getGameTime()));
     }
 
     private void closeChest() {
         BlockPos at = openChest;
         openChest = null;
         if (at == null) return;
-        Opened opened = OPENED.remove(at);
-        if (opened != null) opened.shut().run();
+        Opened opened = OPENED.get(at);
+        if (opened == null || --opened.users()[0] > 0) return;
+        OPENED.remove(at);
+        opened.shut().run();
     }
 
     /**
@@ -1739,7 +1749,7 @@ public final class RestingPuppet extends RemotePlayer {
             opened.add(lower);
             OPENED.put(lower, new Opened(() -> {
                 for (BlockPos block : blocks) setOpen(level, block, false);
-            }, new long[]{level.getGameTime()}));
+            }, level.getGameTime()));
             return;
         }
     }
