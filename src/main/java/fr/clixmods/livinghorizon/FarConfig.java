@@ -168,6 +168,9 @@ public final class FarConfig {
      */
     public boolean offlineNames = true;
 
+    /** "(offline)" after their name above a player who logged off, in the world. */
+    public boolean offlineTag = true;
+
     /**
      * The players who logged off listed in the player list (Tab), after those online, with their
      * head and marked offline, when the server allows it ({@code ServerConfig#offlineInTabList}).

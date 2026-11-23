@@ -443,14 +443,14 @@ rider and mount wait on the spot.
   shows the time the server saw them leave; *offline* without a date only comes from a file
   an older version saved.
 - That time is kept in the file with their spot (`lastSeen`, milliseconds since 1970).
-- `offlineNames` turns both off.
+- `offlineNames` turns both off; `offlineTag` leaves the name and drops *(offline)* after it.
 
 ### In the player list
 
 - The player list (Tab) lists them after those online (`ui/OfflineTabList`,
   `mixin/PlayerTabOverlayMixin`): every one known on this server, any dimension, the last to
-  leave first, within the list's 80 rows, their head, their name in grey with *(offline)*, and
-  the bars of a player with no connection. An entry is kept per player while their skin stays
+  leave first, within the list's 80 rows, their head, their name in grey, and the bars of a
+  player with no connection. An entry is kept per player while their skin stays
   the same.
 - In a world played alone the game opens the list only when someone else is in it; with such
   players to list it opens (`mixin/GuiTabListMixin`, on the game's `isLocalServer` test there).
@@ -1798,6 +1798,7 @@ and a slider dragged past its end is released beside it. Sodium's page cannot as
 | `offlineLife` | Offline Player Activity | `true` | | They live their life around their spot; off, they sit on it |
 | `offlineRoam` | Roaming Radius | `50` blocks | 8 to 128 | How far from their spot they walk around and look for a bed or a chest (50 is about a village) |
 | `offlineNames` | Offline Player Names | `true` | | Their name above them, marked offline, and when they were last seen, under the crosshair |
+| `offlineTag` | Offline Mark | `true` | | *(offline)* after their name above them |
 | `offlineTabList` | Offline in Player List | `true` | | They are listed in the player list (Tab) after those online, where the server allows it |
 
 *Clear Offline Players* forgets every player who logged off on this server. On a server with

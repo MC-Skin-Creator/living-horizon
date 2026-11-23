@@ -115,10 +115,10 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 bool("offlineNames", c.offlineNames, v -> c.offlineNames = v),
                 bool("offlineTabList", c.offlineTabList, v -> c.offlineTabList = v));
         list.addSmall(
+                bool("offlineTag", c.offlineTag, v -> c.offlineTag = v).createButton(minecraft.options, 0, 0, 150),
                 Button.builder(Component.translatable(KEY + "forgetSleepers"), b -> confirm("forgetSleepers",
                                 () -> FarPlayerTracker.get().resting().forgetAll()))
-                        .tooltip(Tooltip.create(Component.translatable(KEY + "forgetSleepers.tooltip"))).build(),
-                null);
+                        .tooltip(Tooltip.create(Component.translatable(KEY + "forgetSleepers.tooltip"))).build());
 
         // In three parts, as on Sodium's page: what goes for both, then the mobs, then the other entities.
         header(Component.translatable(KEY + "mobs"));

@@ -331,9 +331,10 @@ public final class RestingPuppet extends RemotePlayer {
         return info;
     }
 
-    /** Its name, marked offline: what its name tag says. */
+    /** Its name, marked offline unless the player turned that off: what its name tag says. */
     @Override
     public Component getDisplayName() {
+        if (!FarConfig.get().offlineTag) return getName();
         return Component.empty().append(getName()).append(" ")
                 .append(Component.translatable("livinghorizon.offline.tag").withStyle(ChatFormatting.GRAY));
     }

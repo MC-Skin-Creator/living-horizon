@@ -20,7 +20,7 @@ import java.util.Objects;
 
 /**
  * The players who logged off, in the player list (Tab), after those online: their head, their
- * name in grey marked offline, and the "no connection" bars. Every one known on this server,
+ * name in grey, and the "no connection" bars. Every one known on this server,
  * in any dimension, the last to leave first, when the server allows it
  * ({@code ServerConfig#offlineInTabList}; a server without the mod says nothing, and this
  * client lists those it saw itself).
@@ -85,15 +85,13 @@ public final class OfflineTabList {
         return entry.info();
     }
 
-    /** A player who logged off, as the list shows one: no ping, the name in grey, marked offline. */
+    /** A player who logged off, as the list shows one: no ping, the name in grey. */
     private static final class OfflineInfo extends PlayerInfo {
         private final Component name;
 
         OfflineInfo(RestingPlayers.Spot spot) {
             super(spot.profile(), false);
-            name = Component.empty().append(Component.literal(spot.name()).withStyle(ChatFormatting.GRAY))
-                    .append(" ")
-                    .append(Component.translatable("livinghorizon.offline.tag").withStyle(ChatFormatting.DARK_GRAY));
+            name = Component.literal(spot.name()).withStyle(ChatFormatting.GRAY);
         }
 
         /** Below 0: the list draws the bars of a player with no connection. */
