@@ -3,6 +3,7 @@ package fr.clixmods.livinghorizon;
 import com.mojang.blaze3d.platform.InputConstants;
 import fr.clixmods.livinghorizon.command.LivingHorizonCommand;
 import fr.clixmods.livinghorizon.compat.LodWorld;
+import fr.clixmods.livinghorizon.compat.MapMarkers;
 import fr.clixmods.livinghorizon.debug.BenchmarkWorld;
 import fr.clixmods.livinghorizon.debug.Allocation;
 import fr.clixmods.livinghorizon.debug.DebugHud;
@@ -205,6 +206,7 @@ public final class LivingHorizonClient {
         long started = System.nanoTime();
         long allocated = Allocation.begin();
         FarPlayerTracker.get().tick(minecraft);
+        MapMarkers.tick(minecraft);
         if (minecraft.level != null) {
             LodWorld.tick();
             long occluding = Profile.begin(Profile.Section.TICK_OCCLUSION);

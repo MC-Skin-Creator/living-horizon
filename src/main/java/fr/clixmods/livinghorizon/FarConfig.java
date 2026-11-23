@@ -169,6 +169,15 @@ public final class FarConfig {
     public boolean offlineNames = true;
 
     /**
+     * The players online past the render distance that a server with the mod shares, on the
+     * maps of Xaero's Minimap, Xaero's World Map and JourneyMap.
+     */
+    public boolean mapPlayers = true;
+
+    /** The players who logged off on JourneyMap's maps (Xaero's draw only players online). */
+    public boolean mapOfflinePlayers = true;
+
+    /**
      * Mobs met on the way stay where they were once out of range, living there on their
      * own (no AI: a stroll around, a look around, grazing).
      */
