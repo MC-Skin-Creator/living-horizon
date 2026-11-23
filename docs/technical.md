@@ -338,9 +338,9 @@ under 48.
   arm rummaging, and shut as they leave.
 - **A bite**: two or three of bread, an apple or cooked beef, with the game's eating animation
   (the living flags' "using" bit, the item in hand) and crumbs. A meal lasts them 5 to 10
-  minutes before they may eat again; then, while idle or seated, about once in a minute and a
-  half on average (three times as often by a fire), 2 times in 10 on arriving at a fire and 3
-  in 10 on getting up.
+  minutes before they may eat again, and each starts as if it had eaten up to 10 minutes ago,
+  drawn as it is made, so that they never all eat at once; then, idle, seated or by a fire
+  alike, about once in a minute and a half on average, and 3 times in 10 on getting up.
 - **Doors and gates** on their way are opened on this client only, both halves of a door,
   with no neighbour updated, and shut as they were once they are 2 blocks past it; never with
   you within 4 blocks (you would walk through here while the server has it shut), and shut at

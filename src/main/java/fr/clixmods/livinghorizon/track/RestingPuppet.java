@@ -173,8 +173,8 @@ public final class RestingPuppet extends RemotePlayer {
     /** In a hundred, the chance by day that it goes to something the place has: crops, an animal, a book. */
     private static final int CHORE_CHANCE = 14;
     /**
-     * In ten thousand, the chance each tick that it takes a bite while idle or seated (three times
-     * that by the fire), once it has digested its last meal; and ticks a meal lasts it, at least.
+     * In ten thousand, the chance each tick that it takes a bite, wherever it is, once it has
+     * digested its last meal; and ticks a meal lasts it, at least.
      */
     private static final int SNACK_CHANCE = 3, FED = 6000;
     /** Ticks a bite lasts, as the game eats; and ticks between two bites. */
@@ -328,8 +328,8 @@ public final class RestingPuppet extends RemotePlayer {
     private @Nullable BlockPos openChest;
     /** Bites left to take, the ticks into this one, and what it eats. */
     private int bites, biting;
-    /** Ticks before it is hungry again: a meal lasts it a while. */
-    private int fed;
+    /** Ticks before it is hungry again: a meal lasts it a while. Drawn when made, so that they never all eat at once. */
+    private int fed = -1;
     private ItemStack food = ItemStack.EMPTY;
     /** The campfire it stands by, for a circle round it. */
     private @Nullable BlockPos fire;
@@ -1346,7 +1346,6 @@ public final class RestingPuppet extends RemotePlayer {
             case WARM -> {
                 start(Activity.WARM, 300 + random.nextInt(300));
                 if (focus != null) circleRound(BlockPos.containing(focus));
-                if (random.nextInt(10) < 2) snack();
             }
             case GARDEN -> {
                 start(Activity.GARDEN, 200 + random.nextInt(240));
@@ -1810,10 +1809,11 @@ public final class RestingPuppet extends RemotePlayer {
     }
 
     private void eat(ClientLevel level) {
+        if (fed < 0) fed = random.nextInt(2 * FED);
         if (fed > 0) fed--;
         if (bites <= 0) {
             if ((activity == Activity.IDLE || activity == Activity.SIT || activity == Activity.WARM) && chat == null
-                    && random.nextInt(10000) < SNACK_CHANCE * (activity == Activity.WARM ? 3 : 1)) {
+                    && random.nextInt(10000) < SNACK_CHANCE) {
                 snack();
             }
             return;
