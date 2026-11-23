@@ -656,7 +656,7 @@ public final class RestingPuppet extends RemotePlayer {
         }
         keepDoors(level, you);
         if (activity != Activity.FLY && activity != Activity.GUARD && activity != Activity.BED) {
-            dodge(you);
+            dodge(level, you);
             eat(level);
             notice();
         }
@@ -1920,13 +1920,17 @@ public final class RestingPuppet extends RemotePlayer {
     // --- You ---------------------------------------------------------------------------------------
 
 
-    /** You running at it: a step aside, out of your way, before you reach it. */
-    private void dodge(@Nullable Entity you) {
+    /**
+     * You running at it while it walks your way, facing you and seeing you: a step aside, out of
+     * your way, before you reach it, then on along its way. Standing, seated or busy, it never moves.
+     */
+    private void dodge(ClientLevel level, @Nullable Entity you) {
         if (dodgeWait > 0) {
             dodgeWait--;
             return;
         }
-        if (you == null || !you.isSprinting() || activity == Activity.WALK || activity == Activity.READ) return;
+        List<Walkway.Step> way = path;
+        if (you == null || !you.isSprinting() || activity != Activity.WALK || way == null || pathIndex >= way.size()) return;
         Vec3 motion = you.getDeltaMovement().multiply(1, 0, 1);
         double speed = motion.length();
         if (speed < 0.1) return;
@@ -1936,17 +1940,20 @@ public final class RestingPuppet extends RemotePlayer {
         // Across your way, to the side it already stands on.
         Vec3 dir = motion.scale(1 / speed);
         double side = dir.x * toMe.z - dir.z * toMe.x;
-        double off = Math.abs(side);
-        if (off > 1.4) return;
+        if (Math.abs(side) > 1.4) return;
+        // Coming towards you, and seeing you.
+        if (Math.abs(wrap(yawTowards(you.getX() - getX(), you.getZ() - getZ()) - yBodyRot)) > 60) return;
+        if (!seen(level, you.getEyePosition())) return;
         Vec3 aside = new Vec3(-dir.z, 0, dir.x).scale(side >= 0 ? -1 : 1);
         for (double reach : new double[]{2.2, 1.6, -2.2}) {
             BlockPos to = BlockPos.containing(getX() + aside.x * reach, getY() + 0.01, getZ() + aside.z * reach);
             double height = Footing.stand(blocks, to.getX(), to.getY(), to.getZ());
             if (Double.isNaN(height)) continue;
             dodgeWait = 60;
-            start(Activity.WALK, 0);
-            then = Activity.IDLE;
-            path = List.of(new Walkway.Step(to.getX(), to.getY(), to.getZ(), height));
+            List<Walkway.Step> detour = new ArrayList<>();
+            detour.add(new Walkway.Step(to.getX(), to.getY(), to.getZ(), height));
+            detour.addAll(way.subList(pathIndex, way.size()));
+            path = detour;
             pathIndex = 0;
             return;
         }

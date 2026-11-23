@@ -350,8 +350,8 @@ under 48.
   blocks, who sets off the same way half a second to a second and a half later. In the evening
   those by the same campfire chat in a circle round it (a `Chat` whose middle is the fire), up to
   five.
-- **You**: running at it, it steps aside across your way
-  before you reach it. A block placed or broken within 7 blocks of its eyes (`ClientLevelBlockMixin`,
+- **You**: running at one walking your way, facing you and seeing you, it steps aside across
+  your way before you reach it, and goes on; standing, seated or busy, it never moves. A block placed or broken within 7 blocks of its eyes (`ClientLevelBlockMixin`,
   a new block only, never a change of state) has it look there a few seconds.
 - **At the water's edge**, where open water runs 3 blocks out from a spot they can reach, they
   may fish for a minute or so: a rod in hand, the bobber on the water with the game's line,
