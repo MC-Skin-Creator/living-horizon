@@ -1801,6 +1801,7 @@ public final class RestingPuppet extends RemotePlayer {
 
     /** Two or three bites of something, the game's own animation and crumbs. */
     private void snack() {
+        if (fed < 0) fed = random.nextInt(2 * FED);
         if (bites > 0 || fed > 0 || armed || raised) return;
         fed = FED + random.nextInt(FED);
         food = MEALS.get(random.nextInt(MEALS.size())).copy();
