@@ -16,15 +16,14 @@ see a living world.
 
 ### Mobs on the horizon
 
-All mobs are visible from far away, on the game's terrain and **on Voxy and Distant
-Horizons terrain**. This works for any entity Minecraft can draw, mobs and vehicles from
-other mods included.
+All mobs stay visible far past your render distance, on the game's terrain. With a
+far-terrain mod such as **Voxy** or **Distant Horizons**, they show on its terrain too.
 
-- **On the far terrain** — Distant mobs walk on the ground of Voxy, Distant Horizons,
-  Lodistance, Ecstatic and Far View, and hide behind its hills. Without these mods,
-  they show on the game's own terrain.
-- **Alive, not frozen** — Mobs walk, graze, hop and look around. Phantoms, ghasts and the
-  ender dragon fly. Pets told to sit stay seated.
+<details>
+<summary>Everything about distant mobs</summary>
+
+- **Alive, not frozen** — Mobs walk, graze, hop and look around, and hide behind hills.
+  Phantoms, ghasts and the ender dragon fly. Pets told to sit stay seated.
 - **With their ride** — A mob in a boat or a minecart stays in it. A rolling minecart keeps
   rolling along its rails.
 - **Remembered** — A mob stays where you last saw it, from one session to the next. One that
@@ -35,40 +34,52 @@ other mods included.
   put in land nobody has explored, and where. A guessed mob may not be there when you arrive.
   This needs the mod on the server, and works in single player. Look through a spyglass to
   see them farther away, or press *Guess Nearby Mobs* to show them up to 1024 chunks around.
-- **Mobs and vehicles from other mods** — Modded mobs show too. Planes from Immersive
-  Aircraft stay where they were left, like boats.
+- **Boats and vehicles** — Boats stay where they were left. Mobs and vehicles from other mods
+  show too, such as Immersive Aircraft's planes.
 - **Your choice** — Show or hide each mob and vehicle in *Mobs & Entities...*. Mobs with a
   name tag can always be shown. *Hide Underground Mobs* leaves out mobs in caves and mines,
   with a key to switch it in game.
 
+</details>
+
 ### Players at any distance
 
-- **Every player, everywhere** — Other players are visible at any distance, with their skin,
-  gear and mount. Players gliding with an elytra glide, and pilots keep their plane. This
-  needs the mod on the server.
+Other players are visible at any distance, with their skin, gear and mount. This needs the
+mod on the server.
 
 **Players who logged off live on.** When a player logs off, a copy with their name appears
 where they left, until the player comes back.
 
-- **A day of their own** — They stroll, sit, look in chests and use workstations. They sleep
-  in a bed at night, gather by a campfire in the evening and take shelter from the rain.
+<details>
+<summary>Everything about players</summary>
+
+- **Gliding and riding** — Players gliding with an elytra glide far away, and riders keep
+  their mount.
+- **A day of their own** — Players who logged off stroll, sit, look in chests and use
+  workstations. They sleep in a bed at night, gather by a campfire in the evening and take
+  shelter from the rain.
 - **Together** — Two of them nearby may walk up to each other and chat. One near water may
   stop to fish.
 - **Aware of you** — They look back at you when you look at them up close, and crouch when
   you crouch. They raise a shield against monsters. You can push them out of your way.
 - **With their mount** — A player who left on a horse, in a boat or on a happy ghast keeps
-  riding it. One who left swimming waits on the shore or rows a boat. One who left flying
-  stays in the air in their plane.
+  riding it. One who left swimming waits on the shore or rows a boat.
 - **Named** — Their name shows with *(offline)*. Look at one up close to see when they were
   last seen.
 - **Even before you joined** — On a server with the mod, you see the players who left before
   you arrived. In single player, the world's players show from the start, even those from
   before the mod was installed.
-- **Minecraft Comes Alive** — They keep the look they chose in it.
+- **Their look from other mods** — They keep the look a mod gave them, such as their
+  Minecraft Comes Alive model.
+
+</details>
 
 ### Birds in the sky
 
 Birds fly over the land and are visible from far away.
+
+<details>
+<summary>Everything about birds</summary>
 
 - **Many kinds** — Flocks, geese flying in a V, birds of prey, seagulls over the coast,
   pigeons on tall buildings, robins, tits, ducks, parrots and bats at night. Pick them in
@@ -80,11 +91,14 @@ Birds fly over the land and are visible from far away.
 - **As many as you like** — *Bird Density*, *Bird Distance*, *Bird Size* and *Min. Flight
   Height* set how many you see, how far, how big and how high.
 
+</details>
+
 ### Easy to set up
 
+<details>
+<summary>Everything about the settings</summary>
+
 - **Presets** — *Low*, *Normal*, *High* and *Ultra* set everything at once.
-- **Two places** — The settings are in the Options screen and in Sodium's *Video Settings*
-  (Sodium 0.8 and later).
 - **See the distance** — When you change a distance, its limit shows in the world behind
   the menu.
 - **Exact values** — Right-click a slider that ends in *Unlimited* to type a value. The
@@ -92,8 +106,11 @@ Birds fly over the land and are visible from far away.
 - **Keys** — Switch distant players on and off, or open the settings, with a key of your
   choice.
 - **In your language** — The mod and its in-game changelog are in 14 languages.
-- **Shader packs** — Distant mobs are lit by the pack. With packs that read normal maps,
-  such as Photon, their pictures are lit too (*Shader Lighting*).
+- **Where you look for them** — The settings are in the Options screen, and in other mods'
+  menus such as Sodium's *Video Settings*.
+- **Shader packs** — Distant mobs are lit by shader packs, such as Photon.
+
+</details>
 
 ## Performance
 
