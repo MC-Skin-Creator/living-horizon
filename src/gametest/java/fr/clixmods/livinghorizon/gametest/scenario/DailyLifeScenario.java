@@ -18,8 +18,7 @@ import java.util.function.Function;
  * The daily life of players who logged off, on a small homestead: one crouched over the wheat,
  * one by a cow with wheat in hand, one rummaging in a chest, one reading by a lectern inside a
  * hut whose door opens as they walk in and shuts behind them, one eating; three in a circle round
- * the campfire in the evening; one waving at you the first time you come by, and one looking at
- * a block placed beside them. A screenshot of each.
+ * the campfire in the evening; and one looking at a block placed beside them. A screenshot of each.
  */
 public final class DailyLifeScenario implements Scenario {
     /** The flat world's grass is the block below this one. */
@@ -91,23 +90,6 @@ public final class DailyLifeScenario implements Scenario {
             Scene.command(world, "tp @a -7.5 " + (G + 1) + " -2.5 facing -13 " + G + " -2.5");
             context.waitTicks(10);
             Scene.screenshot(context, this, "read");
-
-            // You come by someone who never saw you this session: they wave once free. Placed well
-            // away from where the camera went, then come up to.
-            spawn(context, world, "Greeter", 30.5, 30.5);
-            Scene.command(world, "tp @a 30.5 " + G + " 60.5");
-            context.waitTicks(120);
-            Scene.command(world, "tp @a 30.5 " + G + " 36.5 facing 30.5 " + (G + 1) + " 30.5");
-            boolean waved = false;
-            for (int i = 0; i < 600 && !waved; i++) {
-                context.waitTick();
-                waved = puppet(context, "Greeter", RestingPuppet::greeting) == Boolean.TRUE;
-            }
-            Scene.log("dailylife: " + (waved ? "a wave" : "no wave") + ", the greeter "
-                    + puppet(context, "Greeter", p -> p.state() + " at " + p.blockPosition().toShortString()));
-            context.waitTicks(4);
-            Scene.screenshot(context, this, "wave");
-            if (!waved) throw new AssertionError("dailylife: nobody waved");
 
             // A block placed beside the shepherd: they look at it.
             Scene.command(world, "setblock 2 " + G + " -2 gold_block");

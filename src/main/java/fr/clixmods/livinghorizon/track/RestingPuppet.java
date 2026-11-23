@@ -100,9 +100,8 @@ import java.util.concurrent.CompletableFuture;
  * a lectern or a bookshelf, and eats now and then, by the fire in the evening above all, or as it
  * gets up. Two close by may go to the same thing together, one after the other. In the evening
  * those by the same campfire chat in a circle round it. Doors and gates open as it walks through,
- * on this client only and never with you near them; it greets you with a wave the first time it
- * sees you in a session, steps out of your way when you run at it, and looks at a block placed or
- * broken next to it.
+ * on this client only and never with you near them; it steps out of your way when you run at it,
+ * and looks at a block placed or broken next to it.
  *
  * <p>Look at it and it looks back at you; facing you, it crouches when you crouch. Walk into
  * it and it is shoved aside, as players push each other; it never pushes back, being a
@@ -138,7 +137,7 @@ public final class RestingPuppet extends RemotePlayer {
      * a chat, a place by the fire), whether it is night, and whether the evening has come.
      */
     record Around(Set<BlockPos> beds, List<Vec3> fishers, Collection<RestingPuppet> crowd, boolean night,
-                  boolean evening, Set<String> greeted) {
+                  boolean evening) {
     }
 
     /** Blocks per tick², the drag and the most it falls in one tick: the game's own. */
@@ -179,8 +178,8 @@ public final class RestingPuppet extends RemotePlayer {
     private static final int SNACK_CHANCE = 3, FED = 6000;
     /** Ticks a bite lasts, as the game eats; and ticks between two bites. */
     private static final int BITE = 32, BETWEEN_BITES = 12;
-    /** Blocks from you within which it greets you, and within which a door is never opened. */
-    private static final double GREET = 9, DOOR_CLEAR = 4;
+    /** Blocks from you within which a door is never opened. */
+    private static final double DOOR_CLEAR = 4;
     /** Blocks: a block placed or broken this near draws its eyes; you running at it this near, it steps aside. */
     private static final double NOTICE = 7, RUN_AT = 6;
     /** Most in one chat. */
@@ -334,7 +333,7 @@ public final class RestingPuppet extends RemotePlayer {
     /** The campfire it stands by, for a circle round it. */
     private @Nullable BlockPos fire;
     /** Ticks left of its wave, and of looking at a block that changed. */
-    private int waving, noticing;
+    private int noticing;
     private @Nullable Vec3 noticed;
     /** Ticks before it may step out of your way again. */
     private int dodgeWait;
@@ -657,7 +656,6 @@ public final class RestingPuppet extends RemotePlayer {
         }
         keepDoors(level, you);
         if (activity != Activity.FLY && activity != Activity.GUARD && activity != Activity.BED) {
-            greet(level, you, around.greeted());
             dodge(you);
             eat(level);
             notice();
@@ -993,7 +991,7 @@ public final class RestingPuppet extends RemotePlayer {
                 && wet(level)) {
             timer = Math.min(timer, 1);
         }
-        if (gazed <= 0 && activity != Activity.TALK && chat == null && waving <= 0 && noticing <= 0) {
+        if (gazed <= 0 && activity != Activity.TALK && chat == null && noticing <= 0) {
             glance(activity == Activity.FACE || activity == Activity.WARM || activity == Activity.FISH
                     || activity == Activity.GARDEN || activity == Activity.TEND || activity == Activity.READ);
         }
@@ -1855,10 +1853,6 @@ public final class RestingPuppet extends RemotePlayer {
         if (activity != Activity.GARDEN && activity != Activity.TEND && activity != Activity.READ) holdOwn();
     }
 
-    /** Waving at you now, for the game tests. */
-    public boolean greeting() {
-        return waving > 0;
-    }
 
     /** Looking at a block that just changed, for the game tests. */
     public boolean noticing() {
@@ -1925,26 +1919,6 @@ public final class RestingPuppet extends RemotePlayer {
 
     // --- You ---------------------------------------------------------------------------------------
 
-    /** The first time it sees you this session, near: turned to you, a wave of the hand. Only when free. */
-    private void greet(ClientLevel level, @Nullable Entity you, Set<String> greeted) {
-        if (waving > 0) {
-            waving--;
-            if (you != null) faceAt(you.getEyePosition(), 12);
-            if (waving == 30 || waving == 20 || waving == 10) gesture(InteractionHand.MAIN_HAND);
-            return;
-        }
-        if (you == null || chat != null || bites > 0
-                || activity != Activity.IDLE && activity != Activity.SIT && activity != Activity.FACE && activity != Activity.WARM) {
-            return;
-        }
-        double distance = you.distanceToSqr(this);
-        if (distance > GREET * GREET || distance < 4 || tickCount % 10 != 0) return;
-        String name = spot.name().toLowerCase(java.util.Locale.ROOT);
-        if (greeted.contains(name) || !seen(level, you.getEyePosition())) return;
-        greeted.add(name);
-        if (activity == Activity.SIT) start(Activity.IDLE, 60 + random.nextInt(40));
-        waving = 36;
-    }
 
     /** You running at it: a step aside, out of your way, before you reach it. */
     private void dodge(@Nullable Entity you) {
@@ -1987,7 +1961,7 @@ public final class RestingPuppet extends RemotePlayer {
     }
 
     private void notice() {
-        if (noticing <= 0 || waving > 0 || gazed > 0) return;
+        if (noticing <= 0 || gazed > 0) return;
         noticing--;
         Vec3 at = noticed;
         if (at != null) lookAt(at, false);

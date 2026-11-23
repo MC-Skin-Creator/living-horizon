@@ -350,8 +350,7 @@ under 48.
   blocks, who sets off the same way half a second to a second and a half later. In the evening
   those by the same campfire chat in a circle round it (a `Chat` whose middle is the fire), up to
   five.
-- **You**: the first time each sees you this session within 9 blocks (seen, at least 2 away),
-  if free, it turns to you and waves three times. Running at it, it steps aside across your way
+- **You**: running at it, it steps aside across your way
   before you reach it. A block placed or broken within 7 blocks of its eyes (`ClientLevelBlockMixin`,
   a new block only, never a change of state) has it look there a few seconds.
 - **At the water's edge**, where open water runs 3 blocks out from a spot they can reach, they

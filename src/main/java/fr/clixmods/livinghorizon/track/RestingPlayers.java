@@ -249,8 +249,6 @@ public final class RestingPlayers {
      * A spot replaced or removed takes its puppet with it.
      */
     private final Map<Spot, RestingPuppet> puppets = new IdentityHashMap<>();
-    /** Those who greeted you already this session, by name in lower case: once each. */
-    private final Set<String> greeted = new HashSet<>();
     /** Names whose skin was asked for, or will be: each once. */
     private final Set<String> lookups = new HashSet<>();
     /** Names waiting for their skin to be asked, one at a time ({@link #LOOKUP_GAP}). */
@@ -354,7 +352,6 @@ public final class RestingPlayers {
         fakes.clear();
         fromHost.clear();
         puppets.clear();
-        greeted.clear();
         RestingPuppet.forgetOpened();
         shown = List.of();
         lookedAt = null;
@@ -731,7 +728,7 @@ public final class RestingPlayers {
         boolean night = !level.isBrightOutside();
         // The evening: from late afternoon until dark, when they gather by the fire.
         boolean evening = !night && Math.floorMod(dayTime(level), 24000L) >= EVENING;
-        RestingPuppet.Around around = new RestingPuppet.Around(beds, fishers, puppets.values(), night, evening, greeted);
+        RestingPuppet.Around around = new RestingPuppet.Around(beds, fishers, puppets.values(), night, evening);
         // Sections copied per tick by all of them together, to look around. Each tick another
         // goes first, so that the same few never take it all.
         int[] work = {WORK};
