@@ -17,6 +17,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Avatar;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -74,8 +75,11 @@ import java.util.concurrent.CompletableFuture;
  * <p>In the evening it goes to stand in front of a campfire or a furnace it can reach, each
  * on a spot of its own.
  *
- * <p>Two of them close by may walk up to each other and chat a while, face to face, nodding
- * as they talk; never a third, and never another pair close by.
+ * <p>Two of them close by may walk up to each other and chat a while, and others join them, up
+ * to five in a circle ({@link Chat}): one speaks at a time, each in a way of their own (nodding,
+ * explaining with a hand, looking round at the others, laughing), the others turned to them,
+ * nodding now and then, laughing with them; now and then nobody speaks. Each leaves when they
+ * have had enough; never another group close by.
  *
  * <p>Look at it and it looks back at you; facing you, it crouches when you crouch. Walk into
  * it and it is shoved aside, as players push each other; it never pushes back, being a
@@ -137,14 +141,18 @@ public final class RestingPuppet extends RemotePlayer {
     /** Degrees: how far it turns its head from its body, and how near facing you counts as facing you. */
     private static final float NECK = 75, FACING = 30;
     /**
-     * Blocks: how far it looks for someone to chat with, how far apart two pairs keep, and how
-     * far from each other the two stand.
+     * Blocks: how far it looks for someone to chat with, how far apart two groups keep, and how
+     * far from each other two stand; a group of more stands round in a circle as wide.
      */
     private static final double TALK_REACH = 24, TALKERS_APART = 16, TALK_GAP = 2;
     /** Ticks the one called waits for the other to come, and a chat lasts at least. */
     private static final int TALK_WAIT = 600, CHAT = 400;
-    /** Ticks each speaks before the other answers. */
-    private static final int TURN_TO_SPEAK = 60;
+    /** Most in one chat. */
+    private static final int CHAT_MOST = 5;
+    /** In a hundred, the chance it joins a group chatting near rather than calls someone over. */
+    private static final int JOIN_CHANCE = 70;
+    /** In a hundred, the chance it goes to join a group chatting near, whatever it would do otherwise. */
+    private static final int GROUP_PULL = 40;
     /** Ticks a fish takes to come to the bobber, and the bobber stays under once it bites. */
     private static final int WAKE = 40, DIP = 12;
     /** The game lays a sleeper this high above the block of its bed. */
@@ -264,9 +272,11 @@ public final class RestingPuppet extends RemotePlayer {
     /** Its bobber while the line is out, drawn with it; ticks to the next bite, or before casting again. */
     private @Nullable FishingHook hook;
     private int bite;
-    /** Who it chats with, or walks up to for that; whether it went to them, rather than waited. */
-    private @Nullable RestingPuppet partner;
-    private boolean caller;
+    /** The chat it is in, or walks up to; null when none. */
+    private @Nullable Chat chat;
+    /** Ticks before it nods while listening, and before it looks at another of the group. */
+    private int nodIn, glanceIn;
+    private @Nullable RestingPuppet glancedAt;
     /** Your eyes while you look at it, and for {@link #GAZE} ticks after; whether you crouch. */
     private @Nullable Vec3 gazer;
     private int gazed;
@@ -918,6 +928,10 @@ public final class RestingPuppet extends RemotePlayer {
                 && towardsHearth(around.crowd())) {
             return;
         }
+        // A group chatting near draws people in: they come and join it, more often than not.
+        if (map != null && random.nextInt(100) < GROUP_PULL && towardsGroup(map, new ArrayList<>(around.crowd()))) {
+            return;
+        }
         int roll = random.nextInt(100);
         if (roll < 30 || map == null) {
             start(Activity.IDLE, 60 + random.nextInt(100));
@@ -1205,9 +1219,15 @@ public final class RestingPuppet extends RemotePlayer {
             case WARM -> start(Activity.WARM, 300 + random.nextInt(300));
             case TALK -> {
                 start(Activity.TALK, CHAT + random.nextInt(CHAT));
-                // Both talk as long, the one who waited from now on too.
-                RestingPuppet other = partner;
-                if (other != null && other.partner == this) other.timer = timer;
+                // Someone new: those there, the one who waited above all, stay a while with them.
+                Chat joined = chat;
+                if (joined != null) {
+                    for (RestingPuppet other : joined.members) {
+                        if (other != this && other.activity == Activity.TALK && other.timer < CHAT / 2) {
+                            other.timer = CHAT / 2 + other.random.nextInt(CHAT);
+                        }
+                    }
+                }
             }
             case FISH -> {
                 start(Activity.FISH, 900 + random.nextInt(900));
@@ -1326,38 +1346,128 @@ public final class RestingPuppet extends RemotePlayer {
 
     // --- A chat ------------------------------------------------------------------------------
 
-    /** Who it chats with, or walks up to or waits for, for that; null when nobody. */
-    public @Nullable RestingPuppet partner() {
-        return partner;
+    /**
+     * People chatting together: who is in it (those on their way included), who speaks and how,
+     * worked out once a tick by whichever of them ticks first. Two to start with, up to
+     * {@link #CHAT_MOST}; over when fewer than two are left.
+     */
+    static final class Chat {
+        /** How one speaks: each turn its own. */
+        enum Way { NOD, EXPLAIN, LOOK_ROUND, LAUGH, CALM }
+
+        final List<RestingPuppet> members = new ArrayList<>();
+        private @Nullable RestingPuppet speaker;
+        private Way way = Way.NOD;
+        private int turnLeft;
+        private long tickedAt = Long.MIN_VALUE;
+        private final Random random;
+
+        Chat(Random random) {
+            this.random = random;
+        }
+
+        /** Those there, standing in the circle, not on their way. */
+        List<RestingPuppet> present() {
+            List<RestingPuppet> there = new ArrayList<>(members.size());
+            for (RestingPuppet member : members) {
+                if (member.activity == Activity.TALK && member.path == null && member.route == null) there.add(member);
+            }
+            return there;
+        }
+
+        /** The middle of those there: what each turns its body to. */
+        Vec3 middle() {
+            List<RestingPuppet> there = present();
+            if (there.isEmpty()) return members.get(0).position();
+            double x = 0, z = 0, y = 0;
+            for (RestingPuppet member : there) {
+                x += member.getX();
+                y += member.getY();
+                z += member.getZ();
+            }
+            return new Vec3(x / there.size(), y / there.size(), z / there.size());
+        }
+
+        /** Who speaks now, and how, once a tick: a new turn now and then, sometimes a pause. */
+        void tick(long now) {
+            if (tickedAt == now) return;
+            tickedAt = now;
+            List<RestingPuppet> there = present();
+            if (there.size() < 2) {
+                speaker = null;
+                return;
+            }
+            if (speaker != null && !there.contains(speaker)) turnLeft = 0;
+            if (--turnLeft > 0) return;
+            RestingPuppet last = speaker;
+            if (last != null && random.nextInt(5) == 0) {
+                // A moment when nobody speaks.
+                speaker = null;
+                turnLeft = 20 + random.nextInt(40);
+                return;
+            }
+            List<RestingPuppet> next = new ArrayList<>(there);
+            if (next.size() > 1) next.remove(last);
+            speaker = next.get(random.nextInt(next.size()));
+            Way[] ways = Way.values();
+            way = ways[random.nextInt(ways.length)];
+            turnLeft = 40 + random.nextInt(way == Way.LAUGH ? 40 : 110);
+        }
+
+        boolean full() {
+            return members.size() >= CHAT_MOST;
+        }
     }
 
-    /** Chatting now: face to face with the other, both there. */
+    /** Someone it chats with, or walks up to or waits for, for that; null when nobody. */
+    public @Nullable RestingPuppet partner() {
+        Chat in = chat;
+        if (in == null) return null;
+        for (RestingPuppet member : in.members) if (member != this) return member;
+        return null;
+    }
+
+    /** Everyone in its chat, itself included, those on their way too; empty when none. */
+    public List<RestingPuppet> chatMates() {
+        Chat in = chat;
+        return in == null ? List.of() : List.copyOf(in.members);
+    }
+
+    /** Chatting now: in the circle, with at least one other there. */
     public boolean chatting() {
-        RestingPuppet other = partner;
-        return activity == Activity.TALK && other != null && other.partner == this && other.activity == Activity.TALK;
+        Chat in = chat;
+        return activity == Activity.TALK && in != null && in.present().size() >= 2 && in.present().contains(this);
+    }
+
+    /** Who speaks in its chat now; null when nobody does, or it chats with no one. */
+    public @Nullable RestingPuppet speaker() {
+        Chat in = chat;
+        return in == null ? null : in.speaker;
     }
 
     /** Free to be called over for a chat: living its life near the camera, on foot, doing nothing much. */
     private boolean free() {
-        return lively && near && !far && !riding && partner == null && route == null && path == null
+        return lively && near && !far && !riding && chat == null && route == null && path == null
                 && (activity == Activity.IDLE || activity == Activity.SIT || activity == Activity.FACE
                 || activity == Activity.WARM);
     }
 
     /**
-     * To someone free within {@link #TALK_REACH} blocks, to chat: it walks to a spot
-     * {@link #TALK_GAP} blocks from them, who waits, turned to it. Never when another pair
+     * To a chat: mostly a group chatting within {@link #TALK_REACH} blocks that has room, to a
+     * spot of the circle with the most room; otherwise someone free, to a spot
+     * {@link #TALK_GAP} blocks from them, who waits, turned to it. Never when another group
      * chats within {@link #TALKERS_APART} blocks of them.
      */
     private boolean towardsChat(Walkway.Survey map, Collection<RestingPuppet> crowd) {
         List<RestingPuppet> others = new ArrayList<>(crowd);
         if (others.size() < 2) return false;
+        if (random.nextInt(100) < JOIN_CHANCE && towardsGroup(map, others)) return true;
         int first = random.nextInt(others.size());
         BlockPos at = feet();
         for (int i = 0; i < others.size(); i++) {
             RestingPuppet other = others.get((first + i) % others.size());
             if (other == this || !other.free() || other.distanceToSqr(this) > TALK_REACH * TALK_REACH) continue;
-            if (chatNear(crowd, other)) continue;
+            if (chatNear(crowd, other, null)) continue;
             BlockPos them = other.feet();
             Walkway.Step best = null;
             double bestDistance = Double.MAX_VALUE;
@@ -1372,62 +1482,180 @@ public final class RestingPuppet extends RemotePlayer {
                 }
             }
             if (best == null || !routeTo(best, Activity.TALK)) continue;
-            partner = other;
-            caller = true;
-            other.calledBy(this);
+            Chat started = new Chat(new Random(random.nextLong()));
+            started.members.add(other);
+            started.members.add(this);
+            chat = started;
+            other.calledBy(started);
             return true;
         }
         return false;
     }
 
-    /** Whether another pair chats, or is about to, within {@link #TALKERS_APART} blocks of {@code them}. */
-    private boolean chatNear(Collection<RestingPuppet> crowd, RestingPuppet them) {
+    /** To a group chatting near, with room for one more, at the spot of its circle with the most room. */
+    private boolean towardsGroup(Walkway.Survey map, List<RestingPuppet> others) {
+        BlockPos at = feet();
+        for (RestingPuppet other : others) {
+            Chat group = other.chat;
+            if (other == this || group == null || group.full() || other.distanceToSqr(this) > TALK_REACH * TALK_REACH) continue;
+            List<RestingPuppet> there = group.present();
+            if (there.size() < 2) continue;
+            Vec3 middle = group.middle();
+            // Wider as they are more, and the spot farthest round from everyone in it.
+            double radius = Math.max(TALK_GAP / 2 + 0.4, 0.55 * (group.members.size() + 1) * 0.6 + 0.3);
+            Walkway.Step best = null;
+            double bestScore = -Double.MAX_VALUE;
+            for (Walkway.Step step : map.spots()) {
+                if (Math.abs(step.y() - Mth.floor(middle.y)) > 1) continue;
+                double sx = step.x() + 0.5, sz = step.z() + 0.5;
+                double out = Math.hypot(sx - middle.x, sz - middle.z);
+                if (Math.abs(out - radius) > 0.7) continue;
+                double room = Double.MAX_VALUE;
+                for (RestingPuppet member : group.members) {
+                    room = Math.min(room, Math.hypot(sx - member.getX(), sz - member.getZ()));
+                }
+                if (room < 1.2) continue;
+                double score = room - 0.05 * Math.sqrt(step.distanceSqr(at.getX(), at.getZ()));
+                if (score > bestScore) {
+                    best = step;
+                    bestScore = score;
+                }
+            }
+            if (best == null || !routeTo(best, Activity.TALK)) continue;
+            group.members.add(this);
+            chat = group;
+            return true;
+        }
+        return false;
+    }
+
+    /** Whether another group chats, or is about to, within {@link #TALKERS_APART} blocks of {@code them}. */
+    private boolean chatNear(Collection<RestingPuppet> crowd, RestingPuppet them, @Nullable Chat but) {
         for (RestingPuppet other : crowd) {
-            if (other == this || other == them || other.partner == null) continue;
+            if (other == this || other == them || other.chat == null || other.chat == but) continue;
             if (other.distanceToSqr(them) < TALKERS_APART * TALKERS_APART) return true;
         }
         return false;
     }
 
     /** Called over for a chat: it stops what it does and waits, turned to the one coming. */
-    private void calledBy(RestingPuppet other) {
+    private void calledBy(Chat started) {
         start(Activity.TALK, TALK_WAIT);
-        partner = other;
-        caller = false;
-    }
-
-    /** The chat over, or never started: the other is free again, and goes back to its life. */
-    private void hangUp() {
-        RestingPuppet other = partner;
-        partner = null;
-        if (other == null || other.partner != this) return;
-        other.partner = null;
-        if (other.activity == Activity.TALK) other.start(Activity.IDLE, 40 + other.random.nextInt(60));
+        chat = started;
     }
 
     /**
-     * A tick of a chat: turned to the other, its head nodding while it speaks, still while it
-     * listens; each speaks in turn. Waiting for the other to come, it watches them come.
+     * It leaves its chat, or never got there: the others go on while two of them are left;
+     * the last one goes back to its life.
+     */
+    private void hangUp() {
+        Chat in = chat;
+        chat = null;
+        glancedAt = null;
+        if (in == null) return;
+        in.members.remove(this);
+        if (in.speaker == this) in.speaker = null;
+        if (in.members.size() >= 2) return;
+        for (RestingPuppet other : List.copyOf(in.members)) {
+            other.chat = null;
+            if (other.activity == Activity.TALK) other.start(Activity.IDLE, 40 + other.random.nextInt(60));
+        }
+        in.members.clear();
+    }
+
+    /**
+     * A tick of a chat: turned to the middle of the circle, its head to whoever speaks. The one
+     * who speaks does so its own way; the others listen, nodding now and then, sometimes looking
+     * at another of them, laughing when the speaker laughs. Waiting for the others, it watches
+     * them come.
      */
     private void talk() {
-        RestingPuppet other = partner;
-        if (other == null || other.partner != this || other.far) {
+        Chat in = chat;
+        if (in == null || !in.members.contains(this) || far) {
             start(Activity.IDLE, 20 + random.nextInt(40));
             return;
         }
-        boolean both = other.activity == Activity.TALK;
-        if (both && other.distanceToSqr(this) > (TALK_GAP + 2) * (TALK_GAP + 2)) {
-            // Pushed apart or carried off: the chat is over.
+        in.tick(level().getGameTime());
+        List<RestingPuppet> there = in.present();
+        if (there.size() < 2) {
+            // Waiting: turned to the nearest on its way.
+            RestingPuppet coming = null;
+            for (RestingPuppet member : in.members) {
+                if (member != this && (coming == null || member.distanceToSqr(this) < coming.distanceToSqr(this))) {
+                    coming = member;
+                }
+            }
+            if (coming != null) lookAt(coming.getEyePosition(), true);
+            return;
+        }
+        Vec3 middle = in.middle();
+        double reach = TALK_GAP + 0.6 * there.size() + 1.5;
+        if (middle.distanceToSqr(position()) > reach * reach) {
+            // Pushed out or carried off: this chat is over for it.
             start(Activity.IDLE, 20 + random.nextInt(40));
             return;
         }
-        lookAt(other.getEyePosition(), true);
-        if (!both) return;
-        boolean speaking = (tickCount / TURN_TO_SPEAK) % 2 == (caller ? 0 : 1);
-        float nod = speaking ? (float) Math.sin(tickCount * 0.5) * 7f : (tickCount % 90 < 12 ? 6f : 0f);
-        float sway = speaking ? (float) Math.sin(tickCount * 0.17) * 6f : 0f;
-        yHeadRot += sway;
+        // Just come: it turns to them quickly; then only follows the circle as it shifts.
+        float toMiddle = yawTowards(middle.x - getX(), middle.z - getZ());
+        turnTo(toMiddle, Math.abs(wrap(toMiddle - yBodyRot)) > 45 ? 20 : 8);
+        RestingPuppet speaker = in.speaker;
+        oAttackAnim = attackAnim;
+        updateSwingTime();
+        if (speaker == this) {
+            speak(in, there);
+            return;
+        }
+        // Listening: at the speaker, or now and then at another; with nobody speaking, round them.
+        if (--glanceIn <= 0) {
+            glanceIn = 40 + random.nextInt(80);
+            glancedAt = speaker == null || random.nextInt(4) == 0 ? there.get(random.nextInt(there.size())) : null;
+            if (glancedAt == this) glancedAt = null;
+        }
+        RestingPuppet target = glancedAt != null && there.contains(glancedAt) ? glancedAt : speaker;
+        if (target != null) lookAt(target.getEyePosition(), false);
+        float nod = 0f;
+        if (speaker != null && in.way == Chat.Way.LAUGH && (tickCount + getId()) % 3 != 0) {
+            nod = (float) Math.sin(tickCount * 1.2) * 4f - 6f;
+        } else if (--nodIn <= 0) {
+            nodIn = 30 + random.nextInt(90);
+        } else if (nodIn < 12) {
+            nod = 6f * (float) Math.sin(nodIn * Math.PI / 6);
+        }
         setXRot(headPitch + nod);
+    }
+
+    /** Its turn to speak, its own way this time. */
+    private void speak(Chat in, List<RestingPuppet> there) {
+        RestingPuppet first = there.get(0) == this ? there.get(1) : there.get(0);
+        switch (in.way) {
+            case NOD -> {
+                lookAt(first.getEyePosition(), false);
+                yHeadRot += (float) Math.sin(tickCount * 0.17) * 6f;
+                setXRot(headPitch + (float) Math.sin(tickCount * 0.5) * 7f);
+            }
+            case EXPLAIN -> {
+                lookAt(first.getEyePosition(), false);
+                yHeadRot += (float) Math.sin(tickCount * 0.09) * 12f;
+                setXRot(headPitch + (float) Math.sin(tickCount * 0.3) * 4f);
+                if (tickCount % (18 + Math.floorMod(getId(), 9)) == 0) swing(InteractionHand.MAIN_HAND);
+            }
+            case LOOK_ROUND -> {
+                // To each in turn.
+                List<RestingPuppet> others = new ArrayList<>(there);
+                others.remove(this);
+                RestingPuppet at = others.get((tickCount / 25) % others.size());
+                lookAt(at.getEyePosition(), false);
+                setXRot(headPitch + (float) Math.sin(tickCount * 0.45) * 5f);
+            }
+            case LAUGH -> {
+                lookAt(first.getEyePosition(), false);
+                setXRot(headPitch - 10f + (float) Math.sin(tickCount * 1.3) * 5f);
+            }
+            case CALM -> {
+                lookAt(first.getEyePosition(), false);
+                setXRot(headPitch + (tickCount % 30 < 8 ? 5f : 0f));
+            }
+        }
     }
 
     // --- Fishing ---------------------------------------------------------------------------

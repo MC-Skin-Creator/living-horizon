@@ -314,11 +314,19 @@ under 48.
   times in ten, to stand in front of a campfire, a soul campfire, a furnace, a blast furnace or
   a smoker they can reach, one of the three nearest, on a spot beside it nobody else stands on
   or walks to, for 15 to 30 seconds.
-- **A chat**: by day one of them may walk up to another within 24 blocks who is idle, seated
-  or looking at something, to a spot 2 blocks from them; the other waits, turned to it, then
-  both talk face to face for 20 to 40 seconds, each nodding while it speaks, in turn. Never a
-  third, and never another pair within 16 blocks. Night, a monster, a hit or a push of more
-  than a few blocks ends it.
+- **A chat** (`RestingPuppet.Chat`): by day one of them may walk up to another within 24
+  blocks who is idle, seated or looking at something, to a spot 2 blocks from them; the other
+  waits, turned to it. Most often (7 in 10) one rather joins a group chatting within 24 blocks
+  with room, and whatever it would do next, 4 times in 10 it goes to join one, to the spot of its circle farthest from everyone, up to five in all. Each turns its
+  body to the middle of those there and stays 20 to 40 seconds, its own time, then leaves; the
+  chat ends when one is left. One speaks at a time, chosen anew every 2 to 7 seconds, never twice
+  in a row, in a way of its own each turn: nodding, explaining with a swing of the hand, looking
+  round at each of the others, laughing (head back, quick nods, some of the others laughing
+  along) or calmly; one turn in five is a pause where nobody speaks. The others look at the
+  speaker, at another of them now and then, and nod at moments of their own. The group's state
+  is worked out once a tick by whichever member ticks first. Never another group within 16
+  blocks of the one called over. Night, a monster, a hit or a push out of the circle ends it
+  for that one.
 - **At the water's edge**, where open water runs 3 blocks out from a spot they can reach, they
   may fish for a minute or so: a rod in hand, the bobber on the water with the game's line,
   a fish's wake now and then, a bite that pulls the bobber under, the line reeled in and cast
