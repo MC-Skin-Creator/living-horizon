@@ -172,8 +172,11 @@ public final class RestingPuppet extends RemotePlayer {
     private static final int TALK_WAIT = 600, CHAT = 400;
     /** In a hundred, the chance by day that it goes to something the place has: crops, an animal, a book. */
     private static final int CHORE_CHANCE = 14;
-    /** In a thousand, the chance each tick that it takes a bite while idle, seated or by the fire. */
-    private static final int SNACK_CHANCE = 2;
+    /**
+     * In ten thousand, the chance each tick that it takes a bite while idle or seated (three times
+     * that by the fire), once it has digested its last meal; and ticks a meal lasts it, at least.
+     */
+    private static final int SNACK_CHANCE = 3, FED = 6000;
     /** Ticks a bite lasts, as the game eats; and ticks between two bites. */
     private static final int BITE = 32, BETWEEN_BITES = 12;
     /** Blocks from you within which it greets you, and within which a door is never opened. */
@@ -325,6 +328,8 @@ public final class RestingPuppet extends RemotePlayer {
     private @Nullable BlockPos openChest;
     /** Bites left to take, the ticks into this one, and what it eats. */
     private int bites, biting;
+    /** Ticks before it is hungry again: a meal lasts it a while. */
+    private int fed;
     private ItemStack food = ItemStack.EMPTY;
     /** The campfire it stands by, for a circle round it. */
     private @Nullable BlockPos fire;
@@ -956,7 +961,7 @@ public final class RestingPuppet extends RemotePlayer {
                     start(Activity.IDLE, 40 + random.nextInt(40));
                     // Up for the day: a look at the sky, then breakfast now and then.
                     headPitch = -35;
-                    if (!night && random.nextBoolean()) snack();
+                    if (!night && random.nextInt(10) < 3) snack();
                 }
                 return;
             }
@@ -1341,7 +1346,7 @@ public final class RestingPuppet extends RemotePlayer {
             case WARM -> {
                 start(Activity.WARM, 300 + random.nextInt(300));
                 if (focus != null) circleRound(BlockPos.containing(focus));
-                if (random.nextInt(10) < 3) snack();
+                if (random.nextInt(10) < 2) snack();
             }
             case GARDEN -> {
                 start(Activity.GARDEN, 200 + random.nextInt(240));
@@ -1515,6 +1520,7 @@ public final class RestingPuppet extends RemotePlayer {
             case "chest" -> towardsChest();
             case "eat" -> {
                 start(Activity.SIT, 200);
+                fed = 0;
                 snack();
                 yield true;
             }
@@ -1796,16 +1802,18 @@ public final class RestingPuppet extends RemotePlayer {
 
     /** Two or three bites of something, the game's own animation and crumbs. */
     private void snack() {
-        if (bites > 0 || armed || raised) return;
+        if (bites > 0 || fed > 0 || armed || raised) return;
+        fed = FED + random.nextInt(FED);
         food = MEALS.get(random.nextInt(MEALS.size())).copy();
         bites = 2 + random.nextInt(2);
         biting = 0;
     }
 
     private void eat(ClientLevel level) {
+        if (fed > 0) fed--;
         if (bites <= 0) {
             if ((activity == Activity.IDLE || activity == Activity.SIT || activity == Activity.WARM) && chat == null
-                    && random.nextInt(1000) < SNACK_CHANCE * (activity == Activity.WARM ? 4 : 1)) {
+                    && random.nextInt(10000) < SNACK_CHANCE * (activity == Activity.WARM ? 3 : 1)) {
                 snack();
             }
             return;
