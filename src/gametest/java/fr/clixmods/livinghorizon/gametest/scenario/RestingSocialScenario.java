@@ -149,10 +149,12 @@ public final class RestingSocialScenario implements Scenario {
                     if (!puppet.warming()) continue;
                     double fire = Math.min(Math.hypot(puppet.getX() - 40.5, puppet.getZ() - 0.5),
                             Math.hypot(puppet.getX() - 44.5, puppet.getZ() - 0.5));
-                    if (fire > 1.6) continue;
+                    // Two blocks out round the campfire, beside the furnace.
+                    if (fire > 2.8) continue;
                     if (spots.contains(puppet.blockPosition())) throw new AssertionError("restingsocial: two on one spot by the fire");
                     spots.add(puppet.blockPosition());
-                    double fx = Math.hypot(puppet.getX() - 40.5, puppet.getZ() - 0.5) < 1.6 ? 40.5 : 44.5;
+                    double fx = Math.hypot(puppet.getX() - 40.5, puppet.getZ() - 0.5)
+                            < Math.hypot(puppet.getX() - 44.5, puppet.getZ() - 0.5) ? 40.5 : 44.5;
                     float toward = (float) Math.toDegrees(Math.atan2(-(fx - puppet.getX()), 0.5 - puppet.getZ()));
                     by.add(puppet.getName().getString() + " at " + puppet.blockPosition().toShortString() + ", "
                             + Math.abs(Mth.wrapDegrees(toward - puppet.yBodyRot)) + " degrees off facing it, " + puppet.state());
@@ -167,7 +169,8 @@ public final class RestingSocialScenario implements Scenario {
             StringBuilder line = new StringBuilder();
             for (RestingPuppet puppet : puppets(minecraft)) {
                 if (!puppet.warming()) continue;
-                double fx = Math.hypot(puppet.getX() - 40.5, puppet.getZ() - 0.5) < 1.6 ? 40.5 : 44.5;
+                double fx = Math.hypot(puppet.getX() - 40.5, puppet.getZ() - 0.5)
+                            < Math.hypot(puppet.getX() - 44.5, puppet.getZ() - 0.5) ? 40.5 : 44.5;
                 float toward = (float) Math.toDegrees(Math.atan2(-(fx - puppet.getX()), 0.5 - puppet.getZ()));
                 float off = Math.abs(Mth.wrapDegrees(toward - puppet.yBodyRot));
                 if (off > 40) throw new AssertionError("restingsocial: " + puppet.getName().getString() + " turned " + off + " degrees from the fire");

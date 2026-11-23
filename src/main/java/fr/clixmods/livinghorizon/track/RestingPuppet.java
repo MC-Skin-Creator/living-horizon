@@ -238,6 +238,10 @@ public final class RestingPuppet extends RemotePlayer {
     /** Where it warms itself in the evening: a fire, a furnace. */
     private static final Set<Block> HEARTHS = Set.of(
             Blocks.CAMPFIRE, Blocks.SOUL_CAMPFIRE, Blocks.FURNACE, Blocks.BLAST_FURNACE, Blocks.SMOKER);
+    /** Campfires, stood round two blocks out; and where a spot two blocks from one lies. */
+    private static final Set<Block> CAMPFIRES = Set.of(Blocks.CAMPFIRE, Blocks.SOUL_CAMPFIRE);
+    private static final int[][] AROUND_FIRE = {{2, 0}, {-2, 0}, {0, 2}, {0, -2}, {2, 1}, {2, -1}, {-2, 1}, {-2, -1},
+            {1, 2}, {-1, 2}, {1, -2}, {-1, -2}};
     /** In the evening, the chance in a hundred that it goes to a fire rather than its usual day. */
     private static final int WARM_CHANCE = 60;
     /** In ten players, how many take shelter from the rain; and blocks above a spot looked at for a roof. */
@@ -1258,11 +1262,18 @@ public final class RestingPuppet extends RemotePlayer {
         List<Walkway.Step> covers = new ArrayList<>();
         for (Walkway.Step spot : map.spots()) {
             if (roofed(copy, spot)) covers.add(spot);
+            // Round a campfire, two blocks out: close enough to warm up, never in the flames.
+            for (int[] off : AROUND_FIRE) {
+                BlockPos block = new BlockPos(spot.x() + off[0], spot.y(), spot.z() + off[1]);
+                if (CAMPFIRES.contains(copy.state(block).getBlock())) {
+                    hearths.putIfAbsent(new BlockPos(spot.x(), spot.y(), spot.z()), new Sight(block, spot));
+                }
+            }
             for (Direction side : Direction.Plane.HORIZONTAL) {
                 BlockPos next = new BlockPos(spot.x() + side.getStepX(), spot.y(), spot.z() + side.getStepZ());
                 BlockState state = copy.state(next);
-                // Every spot beside a fire: several of them may stand round it.
-                if (HEARTHS.contains(state.getBlock())) {
+                // Every spot beside a furnace: several of them may stand round it.
+                if (HEARTHS.contains(state.getBlock()) && !CAMPFIRES.contains(state.getBlock())) {
                     hearths.putIfAbsent(new BlockPos(spot.x(), spot.y(), spot.z()), new Sight(next, spot));
                 }
                 // A crop on farmland, at the height of its feet; a lectern or a shelf of books.

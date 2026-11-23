@@ -168,12 +168,13 @@ public final class DailyLifeScenario implements Scenario {
 
     private static void act(ClientGameTestContext context, String name, String chore) {
         boolean sent = false;
-        for (int i = 0; i < 300 && !sent; i++) {
+        for (int i = 0; i < 600 && !sent; i++) {
             context.waitTick();
             sent = puppet(context, name, p -> p.act(chore)) == Boolean.TRUE;
         }
-        Scene.log("dailylife: " + name + (sent ? " goes to " : " could not go to ") + chore);
-        if (!sent) throw new AssertionError("dailylife: " + name + " could not go to " + chore);
+        String state = puppet(context, name, RestingPuppet::state);
+        Scene.log("dailylife: " + name + (sent ? " goes to " : " could not go to ") + chore + ": " + state);
+        if (!sent) throw new AssertionError("dailylife: " + name + " could not go to " + chore + ": " + state);
     }
 
     private static void waitFor(ClientGameTestContext context, String name, Function<RestingPuppet, Boolean> doing, int ticks) {

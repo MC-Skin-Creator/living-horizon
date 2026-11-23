@@ -312,8 +312,9 @@ under 48.
   looking for a bed. The others carry on.
 - **In the evening** (from 11000 ticks into the day until dark), at each choice they go, six
   times in ten, to stand in front of a campfire, a soul campfire, a furnace, a blast furnace or
-  a smoker they can reach, one of the three nearest, on a spot beside it nobody else stands on
-  or walks to, for 15 to 30 seconds.
+  a smoker they can reach, one of the three nearest, on a spot nobody else stands on or walks
+  to, for 15 to 30 seconds: beside a furnace, two blocks out round a campfire (twelve spots,
+  `AROUND_FIRE`), never in its flames.
 - **A chat** (`RestingPuppet.Chat`): by day one of them may walk up to another within 24
   blocks who is idle, seated or looking at something, to a spot 2 blocks from them; the other
   waits, turned to it. Most often (7 in 10) one rather joins a group chatting within 24 blocks
