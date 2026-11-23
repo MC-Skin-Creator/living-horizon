@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.track;
 
 import com.mojang.authlib.GameProfile;
+import fr.clixmods.livinghorizon.render.GhostRenderer;
 //? if >=1.21.9
 import net.minecraft.client.entity.ClientAvatarState;
 //? if >=1.21.9
@@ -48,6 +49,16 @@ public final class Puppets {
         return numbered(type.create(level, EntitySpawnReason.LOAD));
         //?} else
         /*return numbered(type.create(level));*/
+    }
+
+    /**
+     * Puts a fish, a squid or an axolotl in water, where it was when last seen. A puppet is in
+     * no world and never ticks, so nothing else ever does, and whatever asks the entity takes it
+     * for stranded: Entity Model Features' animations do, and Fresh Animations lays such a fish
+     * on its side, flapping. Does nothing to any other mob.
+     */
+    public static void inWater(Entity entity) {
+        if (GhostRenderer.livesInWater(entity)) entity.wasTouchingWater = true;
     }
 
     /**

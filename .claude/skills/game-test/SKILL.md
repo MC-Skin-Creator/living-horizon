@@ -19,7 +19,15 @@ into a virtual display (Xvfb).
 .claude/skills/game-test/run.sh all --sodium     # with Sodium loaded too
 .claude/skills/game-test/run.sh impostors --shaders <pack folder>   # Sodium, Iris and a shader pack
 .claude/skills/game-test/run.sh vehicles --with immersive-aircraft   # another mod, by its Modrinth project
+.claude/skills/game-test/run.sh entityfeatures --with entitytexturefeatures,entity-model-features --pack fresh-animations
 ```
+
+`--with` loads other mods and `--pack` turns resource packs on, by their Modrinth project name:
+the latest release of each for the node's game version, downloaded once into
+`build/game-test-mods/` (a folder per mod, loaded only by the runs that ask for it) and
+`build/game-test-packs/`. A pack is copied into the game's
+`resourcepacks/` folder and turned on, on top, before the first scenario (`Scene.resourcePacks`);
+`Scene.packs` turns one on or off from a scenario.
 
 It takes 1 to 3 minutes per scenario. The script:
 
@@ -110,7 +118,8 @@ thread), `setScreen`, `clickScreenButton(translation key)`, `takeScreenshot`. Th
 - **Who draws a mob.** The game draws a mob within its entity distance; past it, while
   the server still sends it, the mod draws the real mob; once the server stops sending
   it, the mod draws its remembered copy. `entityDistanceScaling` at 0.5 makes the game
-  stop early (about 35 blocks for a cow), so mobs at 50 blocks are the mod's.
+  stop early, but its entity distance grows with the render distance: at the default 12
+  chunks it still draws a cow 51 blocks away, so mobs at 60 blocks or more are the mod's.
 - **Remembered mobs.** The server still sends mobs 150 blocks away: go 200 blocks away
   (`tp`) and wait about 300 ticks. A mob that vanishes within 32 blocks of where the
   player was is taken as killed and forgotten, so the mobs must stand farther than that
@@ -150,7 +159,8 @@ thread), `setScreen`, `clickScreenButton(translation key)`, `takeScreenshot`. Th
   (with 0.19.3 its access widener is not applied: `IllegalAccessError` as the game starts).
 - Sodium can be added (`--sodium`, downloaded from Modrinth into `build/game-test-mods`). The
   `sodium` scenario shows the mod's pages in Sodium's video settings; without Sodium it does nothing.
-- Any other mod can be added by its Modrinth project, `--with <project>` (repeatable): its
+- Any other mod can be added by its Modrinth project, `--with <project>` (repeatable, or a
+  comma list; Entity Culling for `headturn`, ETF and EMF for `entityfeatures`): its
   Fabric jar for the node's game version, in a folder of its own, loaded by that run only. Its
   own dependencies are not fetched; the Fabric API is there already. The `vehicles` scenario
   checks Immersive Aircraft's aircraft with `--with immersive-aircraft`, the minecart without.
