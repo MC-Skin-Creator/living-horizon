@@ -36,6 +36,9 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.DoorBlock;
+//? if >=26.1 {
+/*import net.minecraft.world.level.block.FarmlandBlock;
+*///?} else
 import net.minecraft.world.level.block.FarmBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.StemBlock;
@@ -641,8 +644,7 @@ public final class RestingPuppet extends RemotePlayer {
             }
         }
         // The arm swings it starts (a gesture, a wave), played out as the game plays a player's.
-        oAttackAnim = attackAnim;
-        updateSwingTime();
+        tickSwing();
         Runnable go = following;
         if (go != null && --followIn <= 0) {
             following = null;
@@ -961,7 +963,7 @@ public final class RestingPuppet extends RemotePlayer {
             case FACE -> {
                 if (focus != null && gazed <= 0) faceAt(focus, 6);
                 // Rummaging in the chest it opened.
-                if (openChest != null && tickCount % (14 + Math.floorMod(getId(), 7)) == 0) swing(InteractionHand.MAIN_HAND);
+                if (openChest != null && tickCount % (14 + Math.floorMod(getId(), 7)) == 0) gesture(InteractionHand.MAIN_HAND);
             }
             case WARM -> {
                 if (chat != null) talk();
@@ -1278,7 +1280,7 @@ public final class RestingPuppet extends RemotePlayer {
                 }
                 // A crop on farmland, at the height of its feet; a lectern or a shelf of books.
                 if ((state.getBlock() instanceof CropBlock || state.getBlock() instanceof StemBlock)
-                        && copy.state(next.below()).getBlock() instanceof FarmBlock) {
+                        && farmland(copy.state(next.below()))) {
                     crops.putIfAbsent(new BlockPos(spot.x(), spot.y(), spot.z()), new Sight(next, spot));
                 }
                 if (BOOKS.contains(state.getBlock())) reads.putIfAbsent(new BlockPos(spot.x(), spot.y(), spot.z()), new Sight(next, spot));
@@ -1605,7 +1607,7 @@ public final class RestingPuppet extends RemotePlayer {
             faceAt(crop.add(Math.sin(tickCount * 0.02) * 0.8, -0.3, Math.cos(tickCount * 0.023) * 0.8), 4);
             setXRot(Math.max(getXRot(), 35f));
         }
-        if (tickCount % (24 + Math.floorMod(getId(), 17)) == 0) swing(InteractionHand.MAIN_HAND);
+        if (tickCount % (24 + Math.floorMod(getId(), 17)) == 0) gesture(InteractionHand.MAIN_HAND);
     }
 
     /** By its animal, the food held out: it follows it with its eyes, offers it now and then. */
@@ -1616,7 +1618,7 @@ public final class RestingPuppet extends RemotePlayer {
             return;
         }
         if (gazed <= 0) faceAt(animal.position().add(0, animal.getBbHeight() * 0.6, 0), 8);
-        if (tickCount % (30 + Math.floorMod(getId(), 23)) == 0) swing(InteractionHand.MAIN_HAND);
+        if (tickCount % (30 + Math.floorMod(getId(), 23)) == 0) gesture(InteractionHand.MAIN_HAND);
     }
 
     /** Seated by its book's shelf or lectern, the book in hand, head down; a page turned now and then. */
@@ -1629,7 +1631,23 @@ public final class RestingPuppet extends RemotePlayer {
         headPitch = approach(headPitch, 42f, 3);
         yHeadRot = yBodyRot + headYaw;
         setXRot(headPitch);
-        if (tickCount % 100 == 0) swing(InteractionHand.OFF_HAND);
+        if (tickCount % 100 == 0) gesture(InteractionHand.OFF_HAND);
+    }
+
+    /** Tilled soil, whose name changed in 26.1. */
+    private static boolean farmland(BlockState state) {
+        //? if >=26.1 {
+        /*return state.getBlock() instanceof FarmlandBlock;
+        *///?} else
+        return state.getBlock() instanceof FarmBlock;
+    }
+
+    /** Crumbs of what it eats, the game's own; made of the item alone from 26.1. */
+    private ItemParticleOption crumbs() {
+        //? if >=26.1 {
+        /*return new ItemParticleOption(ParticleTypes.ITEM, food.getItem());
+        *///?} else
+        return new ItemParticleOption(ParticleTypes.ITEM, food);
     }
 
     /** Leaving a chore: its own things back in hand, on its feet, the chest shut. */
@@ -1796,7 +1814,7 @@ public final class RestingPuppet extends RemotePlayer {
             if (biting % 4 == 0) {
                 Vec3 look = getViewVector(1f);
                 for (int i = 0; i < 3; i++) {
-                    level.addParticle(new ItemParticleOption(ParticleTypes.ITEM, food), getX() + look.x * 0.35,
+                    level.addParticle(crumbs(), getX() + look.x * 0.35,
                             getEyeY() - 0.15, getZ() + look.z * 0.35, (random.nextDouble() - 0.5) * 0.1, 0.05,
                             (random.nextDouble() - 0.5) * 0.1);
                 }
@@ -1893,7 +1911,7 @@ public final class RestingPuppet extends RemotePlayer {
         if (waving > 0) {
             waving--;
             if (you != null) faceAt(you.getEyePosition(), 12);
-            if (waving == 30 || waving == 20 || waving == 10) swing(InteractionHand.MAIN_HAND);
+            if (waving == 30 || waving == 20 || waving == 10) gesture(InteractionHand.MAIN_HAND);
             return;
         }
         if (you == null || chat != null || bites > 0
@@ -2261,7 +2279,7 @@ public final class RestingPuppet extends RemotePlayer {
                 lookAt(first.getEyePosition(), false);
                 yHeadRot += (float) Math.sin(tickCount * 0.09) * 12f;
                 setXRot(headPitch + (float) Math.sin(tickCount * 0.3) * 4f);
-                if (tickCount % (18 + Math.floorMod(getId(), 9)) == 0) swing(InteractionHand.MAIN_HAND);
+                if (tickCount % (18 + Math.floorMod(getId(), 9)) == 0) gesture(InteractionHand.MAIN_HAND);
             }
             case LOOK_ROUND -> {
                 // To each in turn.
@@ -2280,6 +2298,25 @@ public final class RestingPuppet extends RemotePlayer {
                 setXRot(headPitch + (tickCount % 30 < 8 ? 5f : 0f));
             }
         }
+    }
+
+    /** A swing of the arm: a gesture, the game's own, which 26.3 makes of a kind and a length. */
+    private void gesture(InteractionHand hand) {
+        //? if >=26.3 {
+        /*swing(hand, net.minecraft.world.item.component.SwingAnimation.DEFAULT, false);
+        *///?} else {
+        swing(hand);
+        //?}
+    }
+
+    /** The arm's swing played on by a tick, as the game's tick does for a player, which a puppet never runs. */
+    private void tickSwing() {
+        //? if >=26.3 {
+        /*swingState.tick();
+        *///?} else {
+        oAttackAnim = attackAnim;
+        updateSwingTime();
+        //?}
     }
 
     // --- Fishing ---------------------------------------------------------------------------
