@@ -18,6 +18,11 @@ accessible method net/minecraft/world/entity/Display$BlockDisplay setBlockState 
 # How long a far player has been gliding, which tilts their body; tick() counts it, and a puppet never runs it.
 accessible field net/minecraft/world/entity/LivingEntity fallFlyTicks I
 
+# The swing of an arm, played on by the tick, which a puppet never runs: a gesture of a player who
+# logged off. From 26.3 a state of its own (before, attackAnim and updateSwingTime).
+# @since 26.3
+accessible field net/minecraft/world/entity/LivingEntity swingState Lnet/minecraft/world/entity/LivingEntity$SwingState;
+
 # A mannequin takes the skin its profile was looked up to in tick(), which a puppet never runs.
 # @since 1.21.9
 accessible field net/minecraft/client/entity/ClientMannequin skinLookup Ljava/util/concurrent/CompletableFuture;

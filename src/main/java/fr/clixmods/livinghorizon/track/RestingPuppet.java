@@ -1599,8 +1599,7 @@ public final class RestingPuppet extends RemotePlayer {
         float toMiddle = yawTowards(middle.x - getX(), middle.z - getZ());
         turnTo(toMiddle, Math.abs(wrap(toMiddle - yBodyRot)) > 45 ? 20 : 8);
         RestingPuppet speaker = in.speaker;
-        oAttackAnim = attackAnim;
-        updateSwingTime();
+        tickSwing();
         if (speaker == this) {
             speak(in, there);
             return;
@@ -1637,7 +1636,7 @@ public final class RestingPuppet extends RemotePlayer {
                 lookAt(first.getEyePosition(), false);
                 yHeadRot += (float) Math.sin(tickCount * 0.09) * 12f;
                 setXRot(headPitch + (float) Math.sin(tickCount * 0.3) * 4f);
-                if (tickCount % (18 + Math.floorMod(getId(), 9)) == 0) swing(InteractionHand.MAIN_HAND);
+                if (tickCount % (18 + Math.floorMod(getId(), 9)) == 0) gesture(InteractionHand.MAIN_HAND);
             }
             case LOOK_ROUND -> {
                 // To each in turn.
@@ -1656,6 +1655,25 @@ public final class RestingPuppet extends RemotePlayer {
                 setXRot(headPitch + (tickCount % 30 < 8 ? 5f : 0f));
             }
         }
+    }
+
+    /** A swing of the arm: a gesture, the game's own, which 26.3 makes of a kind and a length. */
+    private void gesture(InteractionHand hand) {
+        //? if >=26.3 {
+        /*swing(hand, net.minecraft.world.item.component.SwingAnimation.DEFAULT, false);
+        *///?} else {
+        swing(hand);
+        //?}
+    }
+
+    /** The arm's swing played on by a tick, as the game's tick does for a player, which a puppet never runs. */
+    private void tickSwing() {
+        //? if >=26.3 {
+        /*swingState.tick();
+        *///?} else {
+        oAttackAnim = attackAnim;
+        updateSwingTime();
+        //?}
     }
 
     // --- Fishing ---------------------------------------------------------------------------
