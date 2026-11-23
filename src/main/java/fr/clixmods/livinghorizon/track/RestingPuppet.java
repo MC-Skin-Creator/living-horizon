@@ -11,6 +11,7 @@ import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.player.RemotePlayer;
 //? if >=1.20.5
 import net.minecraft.core.particles.ColorParticleOption;
+import net.minecraft.core.particles.ItemParticleOption;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
@@ -24,6 +25,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.projectile.FishingHook;
@@ -32,6 +34,15 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.FarmBlock;
+import net.minecraft.world.level.block.FenceGateBlock;
+import net.minecraft.world.level.block.StemBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.block.entity.EnderChestBlockEntity;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.ClipContext;
@@ -81,6 +92,15 @@ import java.util.concurrent.CompletableFuture;
  * nodding now and then, laughing with them; now and then nobody speaks. Each leaves when they
  * have had enough; never another group close by.
  *
+ * <p>By day, where the place has them, it sees to its crops crouched with seeds in hand, goes up
+ * to an animal with the food it likes, opens a chest and rummages in it, reads a book sitting by
+ * a lectern or a bookshelf, and eats now and then, by the fire in the evening above all, or as it
+ * gets up. Two close by may go to the same thing together, one after the other. In the evening
+ * those by the same campfire chat in a circle round it. Doors and gates open as it walks through,
+ * on this client only and never with you near them; it greets you with a wave the first time it
+ * sees you in a session, steps out of your way when you run at it, and looks at a block placed or
+ * broken next to it.
+ *
  * <p>Look at it and it looks back at you; facing you, it crouches when you crouch. Walk into
  * it and it is shoved aside, as players push each other; it never pushes back, being a
  * picture on this client only.
@@ -108,14 +128,14 @@ public final class RestingPuppet extends RemotePlayer {
     /** How it is drawn. */
     public enum Look { STAND, SIT, BED, RIDE }
 
-    private enum Activity { IDLE, SIT, WALK, FACE, WARM, FISH, TALK, BED, GUARD, FLY }
+    private enum Activity { IDLE, SIT, WALK, FACE, WARM, FISH, TALK, BED, GUARD, FLY, GARDEN, TEND, READ }
 
     /**
      * What all of them share this tick: the beds kept, where they fish, every one of them (for
      * a chat, a place by the fire), whether it is night, and whether the evening has come.
      */
     record Around(Set<BlockPos> beds, List<Vec3> fishers, Collection<RestingPuppet> crowd, boolean night,
-                  boolean evening) {
+                  boolean evening, Set<String> greeted) {
     }
 
     /** Blocks per tick², the drag and the most it falls in one tick: the game's own. */
@@ -147,6 +167,16 @@ public final class RestingPuppet extends RemotePlayer {
     private static final double TALK_REACH = 24, TALKERS_APART = 16, TALK_GAP = 2;
     /** Ticks the one called waits for the other to come, and a chat lasts at least. */
     private static final int TALK_WAIT = 600, CHAT = 400;
+    /** In a hundred, the chance by day that it goes to something the place has: crops, an animal, a book. */
+    private static final int CHORE_CHANCE = 14;
+    /** In a thousand, the chance each tick that it takes a bite while idle, seated or by the fire. */
+    private static final int SNACK_CHANCE = 2;
+    /** Ticks a bite lasts, as the game eats; and ticks between two bites. */
+    private static final int BITE = 32, BETWEEN_BITES = 12;
+    /** Blocks from you within which it greets you, and within which a door is never opened. */
+    private static final double GREET = 9, DOOR_CLEAR = 4;
+    /** Blocks: a block placed or broken this near draws its eyes; you running at it this near, it steps aside. */
+    private static final double NOTICE = 7, RUN_AT = 6;
     /** Most in one chat. */
     private static final int CHAT_MOST = 5;
     /** In a hundred, the chance it joins a group chatting near rather than calls someone over. */
@@ -196,6 +226,14 @@ public final class RestingPuppet extends RemotePlayer {
             Blocks.COMPOSTER, Blocks.LECTERN, Blocks.CARTOGRAPHY_TABLE, Blocks.BREWING_STAND, Blocks.CAULDRON,
             Blocks.FLETCHING_TABLE, Blocks.GRINDSTONE, Blocks.LOOM, Blocks.SMITHING_TABLE, Blocks.STONECUTTER,
             Blocks.JUKEBOX, Blocks.BELL);
+
+    /** What it reads beside: a lectern, a shelf of books. */
+    private static final Set<Block> BOOKS = Set.of(Blocks.LECTERN, Blocks.BOOKSHELF, Blocks.CHISELED_BOOKSHELF);
+    /** The food an animal likes, the first of these it takes; what a player eats. */
+    private static final List<ItemStack> FODDER = List.of(new ItemStack(Items.WHEAT), new ItemStack(Items.CARROT),
+            new ItemStack(Items.WHEAT_SEEDS), new ItemStack(Items.BEETROOT), new ItemStack(Items.POTATO));
+    private static final List<ItemStack> MEALS = List.of(new ItemStack(Items.BREAD), new ItemStack(Items.APPLE),
+            new ItemStack(Items.COOKED_BEEF));
 
     /** Where it warms itself in the evening: a fire, a furnace. */
     private static final Set<Block> HEARTHS = Set.of(
@@ -272,6 +310,29 @@ public final class RestingPuppet extends RemotePlayer {
     /** Its bobber while the line is out, drawn with it; ticks to the next bite, or before casting again. */
     private @Nullable FishingHook hook;
     private int bite;
+    /** Crops it can tend, books it can read: the spot beside each. */
+    private List<Sight> crops = List.of(), reads = List.of();
+    /** The animal it sees to, or walks up to. */
+    private @Nullable Animal tended;
+    /** The chest whose lid it opened, to close again. */
+    private @Nullable BlockPos openChest;
+    /** Bites left to take, the ticks into this one, and what it eats. */
+    private int bites, biting;
+    private ItemStack food = ItemStack.EMPTY;
+    /** The campfire it stands by, for a circle round it. */
+    private @Nullable BlockPos fire;
+    /** Ticks left of its wave, and of looking at a block that changed. */
+    private int waving, noticing;
+    private @Nullable Vec3 noticed;
+    /** Ticks before it may step out of your way again. */
+    private int dodgeWait;
+    /** Everyone resting near the camera, as of this tick: for a circle round a fire. */
+    private Collection<RestingPuppet> crowd = List.of();
+    /** Doors and gates it opened, to close again once through, as they were. */
+    private final List<BlockPos> opened = new ArrayList<>();
+    /** One that goes to the same thing as another, a little after: ticks before it sets off. */
+    private int followIn;
+    private @Nullable Runnable following;
     /** The chat it is in, or walks up to; null when none. */
     private @Nullable Chat chat;
     /** Ticks before it nods while listening, and before it looks at another of the group. */
@@ -375,7 +436,7 @@ public final class RestingPuppet extends RemotePlayer {
         if (raised && activity != Activity.BED) return Look.STAND;
         return switch (activity) {
             case BED -> Look.BED;
-            case SIT -> Look.SIT;
+            case SIT, READ -> Look.SIT;
             default -> Look.STAND;
         };
     }
@@ -438,7 +499,8 @@ public final class RestingPuppet extends RemotePlayer {
             faceAt(from, 0);
             return;
         }
-        if (activity == Activity.BED || activity == Activity.SIT || activity == Activity.FISH || activity == Activity.TALK) {
+        if (activity == Activity.BED || activity == Activity.SIT || activity == Activity.FISH || activity == Activity.TALK
+                || activity == Activity.GARDEN || activity == Activity.TEND || activity == Activity.READ) {
             // Out of bed: the bed is free again, the next look for one finds it.
             leaveBedIfIn();
             bed = null;
@@ -486,6 +548,7 @@ public final class RestingPuppet extends RemotePlayer {
     }
 
     private void tickOwn(ClientLevel level, FarConfig config, Around around, int[] work, @Nullable Entity you) {
+        crowd = around.crowd();
         Set<BlockPos> beds = around.beds();
         boolean night = around.night();
         setOldPosAndRot();
@@ -572,6 +635,21 @@ public final class RestingPuppet extends RemotePlayer {
             if (activity != Activity.WALK && activity != Activity.BED && activity != Activity.FLY && path == null) {
                 settle(level, false);
             }
+        }
+        // The arm swings it starts (a gesture, a wave), played out as the game plays a player's.
+        oAttackAnim = attackAnim;
+        updateSwingTime();
+        Runnable go = following;
+        if (go != null && --followIn <= 0) {
+            following = null;
+            if (activity == Activity.IDLE && route == null) go.run();
+        }
+        keepDoors(level, you);
+        if (activity != Activity.FLY && activity != Activity.GUARD && activity != Activity.BED) {
+            greet(level, you, around.greeted());
+            dodge(you);
+            eat(level);
+            notice();
         }
         if (activity != Activity.FLY && activity != Activity.GUARD) respond();
         boolean wary = activity == Activity.GUARD || activity == Activity.FLY;
@@ -869,13 +947,25 @@ public final class RestingPuppet extends RemotePlayer {
                 BlockPos head = bed;
                 if (!night || head == null || !(level.getBlockState(head).getBlock() instanceof BedBlock)) {
                     leaveBed(beds);
-                    start(Activity.IDLE, 40);
+                    start(Activity.IDLE, 40 + random.nextInt(40));
+                    // Up for the day: a look at the sky, then breakfast now and then.
+                    headPitch = -35;
+                    if (!night && random.nextBoolean()) snack();
                 }
                 return;
             }
-            case FACE, WARM -> {
+            case FACE -> {
                 if (focus != null && gazed <= 0) faceAt(focus, 6);
+                // Rummaging in the chest it opened.
+                if (openChest != null && tickCount % (14 + Math.floorMod(getId(), 7)) == 0) swing(InteractionHand.MAIN_HAND);
             }
+            case WARM -> {
+                if (chat != null) talk();
+                else if (focus != null && gazed <= 0) faceAt(focus, 6);
+            }
+            case GARDEN -> garden();
+            case TEND -> tend();
+            case READ -> readBook();
             case FISH -> {
                 if (night) start(Activity.IDLE, 20);
                 else fish(level);
@@ -892,8 +982,9 @@ public final class RestingPuppet extends RemotePlayer {
                 && wet(level)) {
             timer = Math.min(timer, 1);
         }
-        if (gazed <= 0 && activity != Activity.TALK) {
-            glance(activity == Activity.FACE || activity == Activity.WARM || activity == Activity.FISH);
+        if (gazed <= 0 && activity != Activity.TALK && chat == null && waving <= 0 && noticing <= 0) {
+            glance(activity == Activity.FACE || activity == Activity.WARM || activity == Activity.FISH
+                    || activity == Activity.GARDEN || activity == Activity.TEND || activity == Activity.READ);
         }
         if (--timer <= 0) decide(level, around);
     }
@@ -928,8 +1019,10 @@ public final class RestingPuppet extends RemotePlayer {
                 && towardsHearth(around.crowd())) {
             return;
         }
+        // Something the place has to do: crops, an animal, a book.
+        if (map != null && random.nextInt(100) < CHORE_CHANCE && towardsChore(level, map)) return;
         // A group chatting near draws people in: they come and join it, more often than not.
-        if (map != null && random.nextInt(100) < GROUP_PULL && towardsGroup(map, new ArrayList<>(around.crowd()))) {
+        if (map != null && random.nextInt(100) < GROUP_PULL && towardsGroup(map, new ArrayList<>(around.crowd()), null)) {
             return;
         }
         int roll = random.nextInt(100);
@@ -948,6 +1041,7 @@ public final class RestingPuppet extends RemotePlayer {
 
     private void start(Activity next, int ticks) {
         reelIn();
+        leaveChore(next);
         if (next != Activity.TALK) hangUp();
         if (next != Activity.WARM) warmAt = null;
         if (next != Activity.FISH) fishingFrom = null;
@@ -1021,6 +1115,7 @@ public final class RestingPuppet extends RemotePlayer {
         if (free.isEmpty()) return false;
         Sight sight = free.get(random.nextInt(free.size()));
         if (!routeTo(sight.front(), Activity.WARM)) return false;
+        bringAlong(follower -> follower.towardsHearth(follower.crowd));
         focus = Vec3.atCenterOf(sight.block());
         warmAt = new BlockPos(sight.front().x(), sight.front().y(), sight.front().z());
         return true;
@@ -1092,7 +1187,8 @@ public final class RestingPuppet extends RemotePlayer {
 
     /** What it read around its spot: where it can walk, from the copy of the blocks it read, and what is there to go to. */
     private record Area(BlockCopy blocks, Walkway.@Nullable Survey map, List<Sight> sights, List<Sight> sleeps,
-                        List<Sight> hearths, List<Shore> shores, List<Walkway.Step> covers) {
+                        List<Sight> hearths, List<Shore> shores, List<Walkway.Step> covers, List<Sight> crops,
+                        List<Sight> reads) {
     }
 
     /**
@@ -1145,6 +1241,8 @@ public final class RestingPuppet extends RemotePlayer {
         shores = read.shores();
         hearths = read.hearths();
         covers = read.covers();
+        crops = read.crops();
+        reads = read.reads();
         // Idle for want of knowing better (no bed known at night): think again with what it now knows.
         if (activity == Activity.IDLE) timer = Math.min(timer, 20);
     }
@@ -1153,9 +1251,10 @@ public final class RestingPuppet extends RemotePlayer {
     private static Area read(BlockCopy copy, BlockPos at, BlockPos home, int radius, int budget) {
         Walkway.Survey map = Walkway.around((x, y, z) -> Footing.stand(copy, x, y, z), at.getX(), at.getY(), at.getZ(),
                 home.getX(), home.getZ(), radius, budget);
-        if (map == null) return new Area(copy, null, List.of(), List.of(), List.of(), List.of(), List.of());
+        if (map == null) return new Area(copy, null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         Map<BlockPos, Sight> sights = new LinkedHashMap<>(), sleeps = new LinkedHashMap<>(), hearths = new LinkedHashMap<>();
         Map<BlockPos, Shore> shores = new LinkedHashMap<>();
+        Map<BlockPos, Sight> crops = new LinkedHashMap<>(), reads = new LinkedHashMap<>();
         List<Walkway.Step> covers = new ArrayList<>();
         for (Walkway.Step spot : map.spots()) {
             if (roofed(copy, spot)) covers.add(spot);
@@ -1166,6 +1265,12 @@ public final class RestingPuppet extends RemotePlayer {
                 if (HEARTHS.contains(state.getBlock())) {
                     hearths.putIfAbsent(new BlockPos(spot.x(), spot.y(), spot.z()), new Sight(next, spot));
                 }
+                // A crop on farmland, at the height of its feet; a lectern or a shelf of books.
+                if ((state.getBlock() instanceof CropBlock || state.getBlock() instanceof StemBlock)
+                        && copy.state(next.below()).getBlock() instanceof FarmBlock) {
+                    crops.putIfAbsent(new BlockPos(spot.x(), spot.y(), spot.z()), new Sight(next, spot));
+                }
+                if (BOOKS.contains(state.getBlock())) reads.putIfAbsent(new BlockPos(spot.x(), spot.y(), spot.z()), new Sight(next, spot));
                 if (INTERESTING.contains(state.getBlock())) {
                     sights.putIfAbsent(next, new Sight(next, spot));
                 } else if (state.getBlock() instanceof BedBlock) {
@@ -1178,7 +1283,8 @@ public final class RestingPuppet extends RemotePlayer {
             }
         }
         return new Area(copy, map, new ArrayList<>(sights.values()), new ArrayList<>(sleeps.values()),
-                new ArrayList<>(hearths.values()), new ArrayList<>(shores.values()), covers);
+                new ArrayList<>(hearths.values()), new ArrayList<>(shores.values()), covers,
+                new ArrayList<>(crops.values()), new ArrayList<>(reads.values()));
     }
 
     /** Something over a spot within {@link #ROOF} blocks that keeps the rain off: a roof, leaves. */
@@ -1215,8 +1321,28 @@ public final class RestingPuppet extends RemotePlayer {
     private void arrive(ClientLevel level, Set<BlockPos> beds) {
         path = null;
         switch (then) {
-            case FACE -> start(Activity.FACE, 100 + random.nextInt(140));
-            case WARM -> start(Activity.WARM, 300 + random.nextInt(300));
+            case FACE -> {
+                start(Activity.FACE, 100 + random.nextInt(140));
+                if (focus != null) openChest(BlockPos.containing(focus));
+            }
+            case WARM -> {
+                start(Activity.WARM, 300 + random.nextInt(300));
+                if (focus != null) circleRound(BlockPos.containing(focus));
+                if (random.nextInt(10) < 3) snack();
+            }
+            case GARDEN -> {
+                start(Activity.GARDEN, 200 + random.nextInt(240));
+                hold(new ItemStack(Items.WHEAT_SEEDS));
+                setPose(Pose.CROUCHING);
+            }
+            case TEND -> {
+                start(Activity.TEND, 140 + random.nextInt(160));
+                if (!food.isEmpty()) hold(food.copy());
+            }
+            case READ -> {
+                start(Activity.READ, 300 + random.nextInt(400));
+                hold(new ItemStack(Items.BOOK));
+            }
             case TALK -> {
                 start(Activity.TALK, CHAT + random.nextInt(CHAT));
                 // Someone new: those there, the one who waited above all, stay a while with them.
@@ -1258,6 +1384,7 @@ public final class RestingPuppet extends RemotePlayer {
         List<Walkway.Step> way = path;
         if (way == null || pathIndex >= way.size()) return true;
         Walkway.Step next = way.get(pathIndex);
+        openDoor(level, new BlockPos(next.x(), next.y(), next.z()));
         double tx = next.x() + 0.5, tz = next.z() + 0.5, ty = next.height();
         double dx = tx - getX(), dz = tz - getZ();
         double distance = Math.sqrt(dx * dx + dz * dz);
@@ -1344,6 +1471,480 @@ public final class RestingPuppet extends RemotePlayer {
         return Math.abs(wrap(yawTowards(target.x - getX(), target.z - getZ()) - yBodyRot)) < FACING;
     }
 
+    // --- Daily life ---------------------------------------------------------------------------
+
+    /**
+     * To something the place has to do, one of those it has: crops to see to, an animal to feed,
+     * a book to read. Nobody else's: one to a crop, an animal, a book.
+     */
+    private boolean towardsChore(ClientLevel level, Walkway.Survey map) {
+        List<Runnable> choices = new ArrayList<>();
+        List<Boolean> done = new ArrayList<>();
+        if (!crops.isEmpty()) choices.add(() -> done.add(towardsSight(crops, Activity.GARDEN)));
+        if (!reads.isEmpty()) choices.add(() -> done.add(towardsSight(reads, Activity.READ)));
+        choices.add(() -> done.add(towardsAnimal(level, map)));
+        java.util.Collections.shuffle(choices, random);
+        for (Runnable choice : choices) {
+            choice.run();
+            if (done.get(done.size() - 1)) return true;
+        }
+        return false;
+    }
+
+    /** For the game tests and the debug tools: it goes to this chore now, if the place has it. */
+    public boolean act(String chore) {
+        Walkway.Survey map = known;
+        if (map == null || !lively || far || riding) return false;
+        return switch (chore) {
+            case "garden" -> towardsSight(crops, Activity.GARDEN);
+            case "read" -> towardsSight(reads, Activity.READ);
+            case "tend" -> towardsAnimal((ClientLevel) level(), map);
+            case "chest" -> towardsChest();
+            case "eat" -> {
+                start(Activity.SIT, 200);
+                snack();
+                yield true;
+            }
+            default -> false;
+        };
+    }
+
+    /** One of {@code sights} nobody else goes to, one of the nearest. */
+    private boolean towardsSight(List<Sight> sights, Activity then) {
+        if (sights.isEmpty()) return false;
+        BlockPos at = feet();
+        List<Sight> nearest = new ArrayList<>(sights);
+        nearest.removeIf(sight -> taken(sight.block()));
+        if (nearest.isEmpty()) return false;
+        nearest.sort(Comparator.comparingDouble(sight -> sight.front().distanceSqr(at.getX(), at.getZ())));
+        Sight sight = nearest.get(random.nextInt(Math.min(4, nearest.size())));
+        if (!routeTo(sight.front(), then)) return false;
+        focus = Vec3.atCenterOf(sight.block());
+        aim = sight.block();
+        return true;
+    }
+
+    /** The block another of them sees to, or walks to. */
+    private boolean taken(BlockPos block) {
+        for (RestingPuppet other : crowd) {
+            if (other != this && block.equals(other.aim)) return true;
+        }
+        return false;
+    }
+
+    /** To a chest it can reach, to open it and rummage in it. */
+    private boolean towardsChest() {
+        List<Sight> chests = new ArrayList<>();
+        for (Sight sight : sights) {
+            BlockState state = level().getBlockState(sight.block());
+            if (state.is(Blocks.CHEST) || state.is(Blocks.TRAPPED_CHEST) || state.is(Blocks.ENDER_CHEST)) chests.add(sight);
+        }
+        if (chests.isEmpty()) return false;
+        Sight sight = chests.get(random.nextInt(chests.size()));
+        if (!routeTo(sight.front(), Activity.FACE)) return false;
+        focus = Vec3.atCenterOf(sight.block());
+        return true;
+    }
+
+    /** To an animal grown, loaded around its spot, with the food it likes in hand; one each. */
+    private boolean towardsAnimal(ClientLevel level, Walkway.Survey map) {
+        BlockPos home = home();
+        List<Animal> animals = level.getEntitiesOfClass(Animal.class, new net.minecraft.world.phys.AABB(home).inflate(roam),
+                animal -> animal.isAlive() && !animal.isBaby());
+        if (animals.isEmpty()) return false;
+        BlockPos at = feet();
+        for (int tries = 0; tries < 4; tries++) {
+            Animal animal = animals.get(random.nextInt(animals.size()));
+            boolean seen = false;
+            for (RestingPuppet other : crowd) seen |= other != this && other.tended == animal;
+            if (seen) continue;
+            ItemStack likes = ItemStack.EMPTY;
+            for (ItemStack each : FODDER) {
+                if (animal.isFood(each)) {
+                    likes = each;
+                    break;
+                }
+            }
+            if (likes.isEmpty()) continue;
+            Walkway.Step best = null;
+            double bestDistance = Double.MAX_VALUE;
+            for (Walkway.Step step : map.spots()) {
+                if (Math.abs(step.y() - animal.getBlockY()) > 1) continue;
+                double apart = Math.hypot(step.x() + 0.5 - animal.getX(), step.z() + 0.5 - animal.getZ());
+                if (apart < 1.3 || apart > 2.6) continue;
+                double distance = step.distanceSqr(at.getX(), at.getZ());
+                if (distance < bestDistance) {
+                    best = step;
+                    bestDistance = distance;
+                }
+            }
+            if (best == null || !routeTo(best, Activity.TEND)) continue;
+            tended = animal;
+            food = likes;
+            return true;
+        }
+        return false;
+    }
+
+    /** Crouched by its crops, seeds in hand: its hand over one, then another. */
+    private void garden() {
+        Vec3 crop = focus;
+        if (crop == null) return;
+        if (gazed <= 0) {
+            faceAt(crop.add(Math.sin(tickCount * 0.02) * 0.8, -0.3, Math.cos(tickCount * 0.023) * 0.8), 4);
+            setXRot(Math.max(getXRot(), 35f));
+        }
+        if (tickCount % (24 + Math.floorMod(getId(), 17)) == 0) swing(InteractionHand.MAIN_HAND);
+    }
+
+    /** By its animal, the food held out: it follows it with its eyes, offers it now and then. */
+    private void tend() {
+        Animal animal = tended;
+        if (animal == null || !animal.isAlive() || animal.isRemoved() || animal.distanceToSqr(this) > 36) {
+            start(Activity.IDLE, 30 + random.nextInt(40));
+            return;
+        }
+        if (gazed <= 0) faceAt(animal.position().add(0, animal.getBbHeight() * 0.6, 0), 8);
+        if (tickCount % (30 + Math.floorMod(getId(), 23)) == 0) swing(InteractionHand.MAIN_HAND);
+    }
+
+    /** Seated by its book's shelf or lectern, the book in hand, head down; a page turned now and then. */
+    private void readBook() {
+        Vec3 shelf = focus;
+        if (shelf != null) turnTo(yawTowards(shelf.x - getX(), shelf.z - getZ()) + 50, 4);
+        if (gazed > 0) return;
+        boolean turning = tickCount % 100 < 8;
+        headYaw = approach(headYaw, turning ? 12f : (float) Math.sin(tickCount * 0.03) * 4f, 3);
+        headPitch = approach(headPitch, 42f, 3);
+        yHeadRot = yBodyRot + headYaw;
+        setXRot(headPitch);
+        if (tickCount % 100 == 0) swing(InteractionHand.OFF_HAND);
+    }
+
+    /** Leaving a chore: its own things back in hand, on its feet, the chest shut. */
+    private void leaveChore(Activity next) {
+        if (next != activity) {
+            if (activity == Activity.GARDEN && !crouched) setPose(Pose.STANDING);
+            if (activity == Activity.GARDEN || activity == Activity.TEND || activity == Activity.READ) holdOwn();
+            if (next != Activity.TEND) tended = null;
+            if (next != Activity.GARDEN && next != Activity.READ && next != Activity.WALK) aim = null;
+        }
+        if (next != Activity.FACE) closeChest();
+        if (next != Activity.WARM) fire = null;
+        if (next != Activity.IDLE && next != Activity.SIT && next != Activity.WARM) stopEating();
+    }
+
+    /** The block it sees to, or walks to: a crop, a book. */
+    private @Nullable BlockPos aim;
+
+    private void hold(ItemStack stack) {
+        if (!armed) setItemSlot(EquipmentSlot.MAINHAND, stack);
+    }
+
+    private void holdOwn() {
+        if (!armed) setItemSlot(EquipmentSlot.MAINHAND, held.copy());
+    }
+
+    // --- Chests and doors, on this client only ------------------------------------------------
+
+    /**
+     * What the puppets opened, by block: shut again by whoever opened it, or by
+     * {@link #shutForgotten} once its puppet is gone. A lid or a door left open on this client
+     * would stay open.
+     */
+    private record Opened(Runnable shut, long[] touched) {
+    }
+
+    private static final Map<BlockPos, Opened> OPENED = new java.util.HashMap<>();
+
+    /** Shuts what no puppet holds open any more: one let go with a door or a chest open. */
+    static void shutForgotten(ClientLevel level) {
+        long now = level.getGameTime();
+        OPENED.entrySet().removeIf(entry -> {
+            if (now - entry.getValue().touched()[0] < 40) return false;
+            entry.getValue().shut().run();
+            return true;
+        });
+    }
+
+    /** Every puppet's chests and doors forgotten, the level gone. */
+    static void forgetOpened() {
+        OPENED.clear();
+    }
+
+    /** Opens the lid of the chest there, if it is one: the game's own animation, nothing in it touched. */
+    private void openChest(BlockPos at) {
+        BlockEntity entity = level().getBlockEntity(at);
+        if (!(entity instanceof ChestBlockEntity) && !(entity instanceof EnderChestBlockEntity)) return;
+        if (OPENED.containsKey(at)) return;
+        entity.triggerEvent(1, 1);
+        openChest = at;
+        OPENED.put(at.immutable(), new Opened(() -> {
+            BlockEntity now = level().getBlockEntity(at);
+            if (now != null) now.triggerEvent(1, 0);
+        }, new long[]{level().getGameTime()}));
+    }
+
+    private void closeChest() {
+        BlockPos at = openChest;
+        openChest = null;
+        if (at == null) return;
+        Opened opened = OPENED.remove(at);
+        if (opened != null) opened.shut().run();
+    }
+
+    /**
+     * Opens the door or gate it is about to walk through, on this client, both halves of a door;
+     * never with you within {@link #DOOR_CLEAR} blocks, who would walk through it here while the
+     * server has it shut.
+     */
+    private void openDoor(ClientLevel level, BlockPos at) {
+        for (BlockPos each : new BlockPos[]{at, at.above()}) {
+            BlockState state = level.getBlockState(each);
+            boolean door = state.getBlock() instanceof DoorBlock, gate = state.getBlock() instanceof FenceGateBlock;
+            if (!door && !gate || state.getValue(DoorBlock.OPEN) || youNear(each)) continue;
+            BlockPos lower = door && state.getValue(DoorBlock.HALF) == DoubleBlockHalf.UPPER ? each.below() : each.immutable();
+            if (OPENED.containsKey(lower)) continue;
+            List<BlockPos> blocks = door ? List.of(lower, lower.above()) : List.of(lower);
+            for (BlockPos block : blocks) setOpen(level, block, true);
+            opened.add(lower);
+            OPENED.put(lower, new Opened(() -> {
+                for (BlockPos block : blocks) setOpen(level, block, false);
+            }, new long[]{level.getGameTime()}));
+            return;
+        }
+    }
+
+    /** Its doors held open while it walks through, shut once it is through or you come near. */
+    private void keepDoors(ClientLevel level, @Nullable Entity you) {
+        for (int i = opened.size() - 1; i >= 0; i--) {
+            BlockPos door = opened.get(i);
+            Opened open = OPENED.get(door);
+            if (open == null) {
+                opened.remove(i);
+                continue;
+            }
+            boolean through = Vec3.atBottomCenterOf(door).distanceToSqr(position()) > 2.2 * 2.2;
+            if (through || youNear(door)) {
+                OPENED.remove(door);
+                open.shut().run();
+                opened.remove(i);
+            } else {
+                open.touched()[0] = level.getGameTime();
+            }
+        }
+        if (openChest != null) {
+            Opened chest = OPENED.get(openChest);
+            if (chest != null) chest.touched()[0] = level.getGameTime();
+        }
+    }
+
+    private static boolean youNear(BlockPos at) {
+        Entity you = Minecraft.getInstance().player;
+        return you != null && you.distanceToSqr(Vec3.atCenterOf(at)) < DOOR_CLEAR * DOOR_CLEAR;
+    }
+
+    /** A door or gate open or shut on this client, as it was, if nothing else changed it meanwhile. */
+    private static void setOpen(ClientLevel level, BlockPos at, boolean open) {
+        BlockState state = level.getBlockState(at);
+        if (!(state.getBlock() instanceof DoorBlock) && !(state.getBlock() instanceof FenceGateBlock)) return;
+        if (state.getValue(DoorBlock.OPEN) == open) return;
+        // Told to the renderer, no neighbour updated: the server's word on it stays the law.
+        level.setBlock(at, state.setValue(DoorBlock.OPEN, open), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+    }
+
+    // --- A bite ---------------------------------------------------------------------------------
+
+    /** Two or three bites of something, the game's own animation and crumbs. */
+    private void snack() {
+        if (bites > 0 || armed || raised) return;
+        food = MEALS.get(random.nextInt(MEALS.size())).copy();
+        bites = 2 + random.nextInt(2);
+        biting = 0;
+    }
+
+    private void eat(ClientLevel level) {
+        if (bites <= 0) {
+            if ((activity == Activity.IDLE || activity == Activity.SIT || activity == Activity.WARM) && chat == null
+                    && random.nextInt(1000) < SNACK_CHANCE * (activity == Activity.WARM ? 4 : 1)) {
+                snack();
+            }
+            return;
+        }
+        if (raised || armed) {
+            stopEating();
+            return;
+        }
+        if (biting == 0) {
+            hold(food.copy());
+            getEntityData().set(DATA_LIVING_ENTITY_FLAGS, (byte) 1);
+        }
+        biting++;
+        if (biting < BITE) {
+            useItemRemaining = BITE - biting;
+            if (biting % 4 == 0) {
+                Vec3 look = getViewVector(1f);
+                for (int i = 0; i < 3; i++) {
+                    level.addParticle(new ItemParticleOption(ParticleTypes.ITEM, food), getX() + look.x * 0.35,
+                            getEyeY() - 0.15, getZ() + look.z * 0.35, (random.nextDouble() - 0.5) * 0.1, 0.05,
+                            (random.nextDouble() - 0.5) * 0.1);
+                }
+            }
+        } else if (biting == BITE) {
+            getEntityData().set(DATA_LIVING_ENTITY_FLAGS, (byte) 0);
+        } else if (biting >= BITE + BETWEEN_BITES) {
+            biting = 0;
+            if (--bites <= 0) stopEating();
+        }
+    }
+
+    private void stopEating() {
+        if (bites <= 0 && biting == 0) return;
+        boolean wasEating = biting > 0 && biting < BITE;
+        bites = 0;
+        biting = 0;
+        if (wasEating && !raised) getEntityData().set(DATA_LIVING_ENTITY_FLAGS, (byte) 0);
+        if (activity != Activity.GARDEN && activity != Activity.TEND && activity != Activity.READ) holdOwn();
+    }
+
+    /** Waving at you now, for the game tests. */
+    public boolean greeting() {
+        return waving > 0;
+    }
+
+    /** Looking at a block that just changed, for the game tests. */
+    public boolean noticing() {
+        return noticing > 0;
+    }
+
+    /** Eating now, for the game tests. */
+    public boolean eating() {
+        return bites > 0;
+    }
+
+    /** At a chore now, for the game tests: {@code garden}, {@code tend}, {@code read}, {@code chest}; null for none. */
+    public @Nullable String chore() {
+        return switch (activity) {
+            case GARDEN -> "garden";
+            case TEND -> "tend";
+            case READ -> "read";
+            case FACE -> openChest != null ? "chest" : null;
+            default -> null;
+        };
+    }
+
+    // --- Round the fire ---------------------------------------------------------------------------
+
+    /** By a campfire: a circle with those already there, a chat round it. */
+    private void circleRound(BlockPos block) {
+        BlockState state = level().getBlockState(block);
+        if (!state.is(Blocks.CAMPFIRE) && !state.is(Blocks.SOUL_CAMPFIRE)) return;
+        fire = block.immutable();
+        for (RestingPuppet other : crowd) {
+            if (other == this || other.activity != Activity.WARM || !block.equals(other.fire)) continue;
+            Chat round = other.chat;
+            if (round != null) {
+                if (round.full()) return;
+                round.members.add(this);
+                chat = round;
+                return;
+            }
+            Chat started = new Chat(new Random(random.nextLong()));
+            started.centre = Vec3.atBottomCenterOf(block).add(0, 0.5, 0);
+            started.members.add(other);
+            started.members.add(this);
+            other.chat = started;
+            chat = started;
+            return;
+        }
+    }
+
+    /**
+     * Someone free right beside it now and then comes along, a moment after it sets off, to the
+     * same thing: the two walk there one after the other.
+     */
+    private void bringAlong(java.util.function.Predicate<RestingPuppet> goes) {
+        if (following != null) return;
+        for (RestingPuppet other : crowd) {
+            if (other == this || !other.free() || other.following != null || other.distanceToSqr(this) > 5 * 5) continue;
+            if (random.nextBoolean()) return;
+            other.start(Activity.IDLE, 80);
+            other.following = () -> goes.test(other);
+            other.followIn = 12 + random.nextInt(16);
+            return;
+        }
+    }
+
+    // --- You ---------------------------------------------------------------------------------------
+
+    /** The first time it sees you this session, near: turned to you, a wave of the hand. Only when free. */
+    private void greet(ClientLevel level, @Nullable Entity you, Set<String> greeted) {
+        if (waving > 0) {
+            waving--;
+            if (you != null) faceAt(you.getEyePosition(), 12);
+            if (waving == 30 || waving == 20 || waving == 10) swing(InteractionHand.MAIN_HAND);
+            return;
+        }
+        if (you == null || chat != null || bites > 0
+                || activity != Activity.IDLE && activity != Activity.SIT && activity != Activity.FACE && activity != Activity.WARM) {
+            return;
+        }
+        double distance = you.distanceToSqr(this);
+        if (distance > GREET * GREET || distance < 4 || tickCount % 10 != 0) return;
+        String name = spot.name().toLowerCase(java.util.Locale.ROOT);
+        if (greeted.contains(name) || !seen(level, you.getEyePosition())) return;
+        greeted.add(name);
+        if (activity == Activity.SIT) start(Activity.IDLE, 60 + random.nextInt(40));
+        waving = 36;
+    }
+
+    /** You running at it: a step aside, out of your way, before you reach it. */
+    private void dodge(@Nullable Entity you) {
+        if (dodgeWait > 0) {
+            dodgeWait--;
+            return;
+        }
+        if (you == null || !you.isSprinting() || activity == Activity.WALK || activity == Activity.READ) return;
+        Vec3 motion = you.getDeltaMovement().multiply(1, 0, 1);
+        double speed = motion.length();
+        if (speed < 0.1) return;
+        Vec3 toMe = position().subtract(you.position()).multiply(1, 0, 1);
+        double ahead = toMe.dot(motion) / speed;
+        if (ahead < 0.5 || ahead > RUN_AT) return;
+        // Across your way, to the side it already stands on.
+        Vec3 dir = motion.scale(1 / speed);
+        double side = dir.x * toMe.z - dir.z * toMe.x;
+        double off = Math.abs(side);
+        if (off > 1.4) return;
+        Vec3 aside = new Vec3(-dir.z, 0, dir.x).scale(side >= 0 ? -1 : 1);
+        for (double reach : new double[]{2.2, 1.6, -2.2}) {
+            BlockPos to = BlockPos.containing(getX() + aside.x * reach, getY() + 0.01, getZ() + aside.z * reach);
+            double height = Footing.stand(blocks, to.getX(), to.getY(), to.getZ());
+            if (Double.isNaN(height)) continue;
+            dodgeWait = 60;
+            start(Activity.WALK, 0);
+            then = Activity.IDLE;
+            path = List.of(new Walkway.Step(to.getX(), to.getY(), to.getZ(), height));
+            pathIndex = 0;
+            return;
+        }
+    }
+
+    /** A block placed or broken near it: it looks there a moment. */
+    void noticeBlock(BlockPos at) {
+        if (activity == Activity.BED || activity == Activity.FLY || activity == Activity.GUARD || !lively || far || riding) return;
+        if (Vec3.atCenterOf(at).distanceToSqr(getEyePosition()) > NOTICE * NOTICE) return;
+        noticed = Vec3.atCenterOf(at);
+        noticing = 50 + random.nextInt(30);
+    }
+
+    private void notice() {
+        if (noticing <= 0 || waving > 0 || gazed > 0) return;
+        noticing--;
+        Vec3 at = noticed;
+        if (at != null) lookAt(at, false);
+    }
+
     // --- A chat ------------------------------------------------------------------------------
 
     /**
@@ -1370,13 +1971,20 @@ public final class RestingPuppet extends RemotePlayer {
         List<RestingPuppet> present() {
             List<RestingPuppet> there = new ArrayList<>(members.size());
             for (RestingPuppet member : members) {
-                if (member.activity == Activity.TALK && member.path == null && member.route == null) there.add(member);
+                if ((member.activity == Activity.TALK || member.activity == Activity.WARM)
+                        && member.path == null && member.route == null) {
+                    there.add(member);
+                }
             }
             return there;
         }
 
+        /** Round a campfire: its middle, whoever stands there. */
+        @Nullable Vec3 centre;
+
         /** The middle of those there: what each turns its body to. */
         Vec3 middle() {
+            if (centre != null) return centre;
             List<RestingPuppet> there = present();
             if (there.isEmpty()) return members.get(0).position();
             double x = 0, z = 0, y = 0;
@@ -1436,7 +2044,8 @@ public final class RestingPuppet extends RemotePlayer {
     /** Chatting now: in the circle, with at least one other there. */
     public boolean chatting() {
         Chat in = chat;
-        return activity == Activity.TALK && in != null && in.present().size() >= 2 && in.present().contains(this);
+        return (activity == Activity.TALK || activity == Activity.WARM) && in != null && in.present().size() >= 2
+                && in.present().contains(this);
     }
 
     /** Who speaks in its chat now; null when nobody does, or it chats with no one. */
@@ -1461,7 +2070,7 @@ public final class RestingPuppet extends RemotePlayer {
     private boolean towardsChat(Walkway.Survey map, Collection<RestingPuppet> crowd) {
         List<RestingPuppet> others = new ArrayList<>(crowd);
         if (others.size() < 2) return false;
-        if (random.nextInt(100) < JOIN_CHANCE && towardsGroup(map, others)) return true;
+        if (random.nextInt(100) < JOIN_CHANCE && towardsGroup(map, others, null)) return true;
         int first = random.nextInt(others.size());
         BlockPos at = feet();
         for (int i = 0; i < others.size(); i++) {
@@ -1492,12 +2101,16 @@ public final class RestingPuppet extends RemotePlayer {
         return false;
     }
 
-    /** To a group chatting near, with room for one more, at the spot of its circle with the most room. */
-    private boolean towardsGroup(Walkway.Survey map, List<RestingPuppet> others) {
+    /**
+     * To a group chatting near ({@code only} that one when given), with room for one more, at the
+     * spot of its circle with the most room.
+     */
+    private boolean towardsGroup(Walkway.Survey map, List<RestingPuppet> others, @Nullable Chat only) {
         BlockPos at = feet();
         for (RestingPuppet other : others) {
             Chat group = other.chat;
             if (other == this || group == null || group.full() || other.distanceToSqr(this) > TALK_REACH * TALK_REACH) continue;
+            if (only != null && group != only || group.centre != null) continue;
             List<RestingPuppet> there = group.present();
             if (there.size() < 2) continue;
             Vec3 middle = group.middle();
@@ -1524,6 +2137,8 @@ public final class RestingPuppet extends RemotePlayer {
             if (best == null || !routeTo(best, Activity.TALK)) continue;
             group.members.add(this);
             chat = group;
+            if (only == null) bringAlong(follower -> follower.known != null
+                    && follower.towardsGroup(follower.known, new ArrayList<>(follower.crowd), group));
             return true;
         }
         return false;
@@ -1599,8 +2214,6 @@ public final class RestingPuppet extends RemotePlayer {
         float toMiddle = yawTowards(middle.x - getX(), middle.z - getZ());
         turnTo(toMiddle, Math.abs(wrap(toMiddle - yBodyRot)) > 45 ? 20 : 8);
         RestingPuppet speaker = in.speaker;
-        oAttackAnim = attackAnim;
-        updateSwingTime();
         if (speaker == this) {
             speak(in, there);
             return;
@@ -1983,7 +2596,8 @@ public final class RestingPuppet extends RemotePlayer {
         if (activity == Activity.BED) return;
         if (activity == Activity.WALK || activity == Activity.GUARD || activity == Activity.FLY
                 || activity == Activity.FACE || activity == Activity.WARM || activity == Activity.FISH
-                || activity == Activity.TALK) {
+                || activity == Activity.TALK || activity == Activity.GARDEN || activity == Activity.TEND
+                || activity == Activity.READ) {
             calmDownQuietly();
         }
         if (night) {

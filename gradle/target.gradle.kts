@@ -181,6 +181,8 @@ extra["lhMixins"] = buildList {
     }
     // Distant Horizons' fade, which would paint its terrain over the distant figures.
     add("DhClientApiMixin")
+    // A block placed or broken near players who logged off: they look at it.
+    add("ClientLevelBlockMixin")
     add("EntityMixin")
     add("EntityRenderDispatcherMixin")
     // The light of the figures the mod extracts, where the client has none.

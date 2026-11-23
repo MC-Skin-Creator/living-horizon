@@ -249,6 +249,8 @@ public final class RestingPlayers {
      * A spot replaced or removed takes its puppet with it.
      */
     private final Map<Spot, RestingPuppet> puppets = new IdentityHashMap<>();
+    /** Those who greeted you already this session, by name in lower case: once each. */
+    private final Set<String> greeted = new HashSet<>();
     /** Names whose skin was asked for, or will be: each once. */
     private final Set<String> lookups = new HashSet<>();
     /** Names waiting for their skin to be asked, one at a time ({@link #LOOKUP_GAP}). */
@@ -352,6 +354,8 @@ public final class RestingPlayers {
         fakes.clear();
         fromHost.clear();
         puppets.clear();
+        greeted.clear();
+        RestingPuppet.forgetOpened();
         shown = List.of();
         lookedAt = null;
         file = null;
@@ -360,6 +364,7 @@ public final class RestingPlayers {
     /** Puppets belong to one level; a new dimension needs new ones. */
     void forgetPuppets() {
         puppets.clear();
+        RestingPuppet.forgetOpened();
         shown = List.of();
         lookedAt = null;
     }
@@ -726,7 +731,7 @@ public final class RestingPlayers {
         boolean night = !level.isBrightOutside();
         // The evening: from late afternoon until dark, when they gather by the fire.
         boolean evening = !night && Math.floorMod(dayTime(level), 24000L) >= EVENING;
-        RestingPuppet.Around around = new RestingPuppet.Around(beds, fishers, puppets.values(), night, evening);
+        RestingPuppet.Around around = new RestingPuppet.Around(beds, fishers, puppets.values(), night, evening, greeted);
         // Sections copied per tick by all of them together, to look around. Each tick another
         // goes first, so that the same few never take it all.
         int[] work = {WORK};
@@ -752,6 +757,16 @@ public final class RestingPlayers {
             if (puppet.restFound()) rested.add(spot);
         }
         for (Spot spot : rested) keepRest(spot, puppets.get(spot).rest());
+        // A door or a lid a puppet let go of open, shut again.
+        RestingPuppet.shutForgotten(level);
+    }
+
+    /**
+     * A block placed or broken on this client, by you or anyone: those near enough look at it a
+     * moment. On the game's thread, as the level changes it.
+     */
+    public void blockChanged(BlockPos at) {
+        for (RestingPuppet puppet : puppets.values()) puppet.noticeBlock(at);
     }
 
     /** Ticks into the day when the evening starts: an hour of the game's before sunset. */

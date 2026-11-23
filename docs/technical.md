@@ -327,6 +327,30 @@ under 48.
   is worked out once a tick by whichever member ticks first. Never another group within 16
   blocks of the one called over. Night, a monster, a hit or a push out of the circle ends it
   for that one.
+- **Chores**, by day, 14 times in 100 when the place has them, one to a block or an animal:
+  crouched beside a crop on farmland, wheat seeds in hand, a hand over one now and then
+  (nothing harvested or planted); by a grown animal loaded around their spot, with the first of
+  wheat, carrot, seeds, beetroot or potato it likes, offered now and then (the animal never
+  follows: the server moves it); seated beside a lectern or a shelf of books, a book in hand,
+  head down, a page turned now and then. A chest looked at (one of the things in front of which
+  they stop) has its lid opened through the game's own block event (`triggerEvent(1, n)`), the
+  arm rummaging, and shut as they leave.
+- **A bite**: two or three of bread, an apple or cooked beef, with the game's eating animation
+  (the living flags' "using" bit, the item in hand) and crumbs; now and then while idle or
+  seated, four times as often by a fire, sometimes on arriving there, and on getting up.
+- **Doors and gates** on their way are opened on this client only, both halves of a door,
+  with no neighbour updated, and shut as they were once they are 2 blocks past it; never with
+  you within 4 blocks (you would walk through here while the server has it shut), and shut at
+  once if you come near. What a puppet let go of open (a door, a lid) is shut within 2 seconds
+  by `shutForgotten`.
+- **Together**: one setting off to a group or a fire brings now and then someone free within 5
+  blocks, who sets off the same way half a second to a second and a half later. In the evening
+  those by the same campfire chat in a circle round it (a `Chat` whose middle is the fire), up to
+  five.
+- **You**: the first time each sees you this session within 9 blocks (seen, at least 2 away),
+  if free, it turns to you and waves three times. Running at it, it steps aside across your way
+  before you reach it. A block placed or broken within 7 blocks of its eyes (`ClientLevelBlockMixin`,
+  a new block only, never a change of state) has it look there a few seconds.
 - **At the water's edge**, where open water runs 3 blocks out from a spot they can reach, they
   may fish for a minute or so: a rod in hand, the bobber on the water with the game's line,
   a fish's wake now and then, a bite that pulls the bobber under, the line reeled in and cast
