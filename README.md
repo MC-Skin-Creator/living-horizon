@@ -18,25 +18,82 @@ see a living world.
 
 All mobs are visible from far away, on the game's terrain and **on Voxy and Distant
 Horizons terrain**. This works for any entity Minecraft can draw, mobs and vehicles from
-other mods included. Choose which ones in *Mobs & Entities...*.
+other mods included.
 
-Land nobody has explored yet has its mobs too. The mod guesses from the world's seed which
-mobs the game will put there, and where. A guessed mob may not be there when you arrive.
-This needs the mod on the server, and works in single player. Look through a spyglass to
-see them farther away, or press *Guess Nearby Mobs* to show them up to 1024 chunks around.
+- **On the far terrain** — Distant mobs walk on the ground of Voxy, Distant Horizons,
+  Lodistance, Ecstatic and Far View, and hide behind its hills. Without these mods,
+  they show on the game's own terrain.
+- **Alive, not frozen** — Mobs walk, graze, hop and look around. Phantoms, ghasts and the
+  ender dragon fly. Pets told to sit stay seated.
+- **With their ride** — A mob in a boat or a minecart stays in it. A rolling minecart keeps
+  rolling along its rails.
+- **Remembered** — A mob stays where you last saw it, from one session to the next. One that
+  died or left is forgotten when you come near.
+- **Mobs you never met** — On a server with the mod, the server shares the mobs it knows. In
+  single player, the mod reads the mobs around you when you first open a world.
+- **Mobs in unexplored land** — The mod guesses from the world's seed which mobs the game will
+  put in land nobody has explored, and where. A guessed mob may not be there when you arrive.
+  This needs the mod on the server, and works in single player. Look through a spyglass to
+  see them farther away, or press *Guess Nearby Mobs* to show them up to 1024 chunks around.
+- **Mobs and vehicles from other mods** — Modded mobs show too. Planes from Immersive
+  Aircraft stay where they were left, like boats.
+- **Your choice** — Show or hide each mob and vehicle in *Mobs & Entities...*. Mobs with a
+  name tag can always be shown. *Hide Underground Mobs* leaves out mobs in caves and mines,
+  with a key to switch it in game.
 
 ### Players at any distance
 
-Other players are visible at any distance, with their gear and their mount.
+- **Every player, everywhere** — Other players are visible at any distance, with their skin,
+  gear and mount. Players gliding with an elytra glide, and pilots keep their plane. This
+  needs the mod on the server.
 
 **Players who logged off live on.** When a player logs off, a copy with their name appears
-where they left. It walks around, sits, opens chests and sleeps at night, until the player
-comes back.
+where they left, until the player comes back.
+
+- **A day of their own** — They stroll, sit, look in chests and use workstations. They sleep
+  in a bed at night, gather by a campfire in the evening and take shelter from the rain.
+- **Together** — Two of them nearby may walk up to each other and chat. One near water may
+  stop to fish.
+- **Aware of you** — They look back at you when you look at them up close, and crouch when
+  you crouch. They raise a shield against monsters. You can push them out of your way.
+- **With their mount** — A player who left on a horse, in a boat or on a happy ghast keeps
+  riding it. One who left swimming waits on the shore or rows a boat. One who left flying
+  stays in the air in their plane.
+- **Named** — Their name shows with *(offline)*. Look at one up close to see when they were
+  last seen.
+- **Even before you joined** — On a server with the mod, you see the players who left before
+  you arrived. In single player, the world's players show from the start, even those from
+  before the mod was installed.
+- **Minecraft Comes Alive** — They keep the look they chose in it.
 
 ### Birds in the sky
 
-Birds fly over the land and are visible from far away: flocks, geese, birds of prey, gulls,
-ducks, bats... They land on trees, buildings, fields and beaches.
+Birds fly over the land and are visible from far away.
+
+- **Many kinds** — Flocks, geese flying in a V, birds of prey, seagulls over the coast,
+  pigeons on tall buildings, robins, tits, ducks, parrots and bats at night. Pick them in
+  *Bird Types...*.
+- **They land** — Birds perch on trees, buildings, fields and beaches. Ducks swim. Pigeons
+  and bats fly off when you come close.
+- **Small 3D models** — They flap their wings and stand on their legs. *Bird Style* brings
+  back flat 2D birds.
+- **As many as you like** — *Bird Density*, *Bird Distance*, *Bird Size* and *Min. Flight
+  Height* set how many you see, how far, how big and how high.
+
+### Easy to set up
+
+- **Presets** — *Low*, *Normal*, *High* and *Ultra* set everything at once.
+- **Two places** — The settings are in the Options screen and in Sodium's *Video Settings*
+  (Sodium 0.8 and later).
+- **See the distance** — When you change a distance, its limit shows in the world behind
+  the menu.
+- **Exact values** — Right-click a slider that ends in *Unlimited* to type a value. The
+  arrow keys move any slider one step.
+- **Keys** — Switch distant players on and off, or open the settings, with a key of your
+  choice.
+- **In your language** — The mod and its in-game changelog are in 14 languages.
+- **Shader packs** — Distant mobs are lit by the pack. With packs that read normal maps,
+  such as Photon, their pictures are lit too (*Shader Lighting*).
 
 ## Performance
 
@@ -116,7 +173,7 @@ each other as usual. What a player's game saw on its own stays in its memory.
 ## Getting started
 
 1. Install the file for your game version and loader (see *Requirements*). Voxy, Distant
-   Horizons, Lodistance and Ecstatic are optional.
+   Horizons, Lodistance, Ecstatic and Far View are optional.
 2. Keep the default settings. *Restore Defaults* puts them back.
 
 Open the settings from the Options screen, Mod Menu, Sodium's *Video Settings* (Sodium 0.8
@@ -133,7 +190,7 @@ and later) or `/livinghorizon config`.
 
 - Minecraft 1.20 to 1.21.11 and 26.1 to 26.3.
 - Fabric or Quilt (with [Fabric API](https://modrinth.com/mod/fabric-api)), NeoForge or Forge.
-- [Voxy](https://modrinth.com/mod/voxy), [Distant Horizons](https://modrinth.com/mod/distanthorizons), [Lodistance](https://www.curseforge.com/minecraft/mc-mods/lodistance) or [Ecstatic](https://modrinth.com/mod/ecstatic): optional.
+- [Voxy](https://modrinth.com/mod/voxy), [Distant Horizons](https://modrinth.com/mod/distanthorizons), [Lodistance](https://www.curseforge.com/minecraft/mc-mods/lodistance), [Ecstatic](https://modrinth.com/mod/ecstatic) or [Far View](https://www.curseforge.com/minecraft/mc-mods/far-view): optional.
 - [Mod Menu](https://modrinth.com/mod/modmenu): optional, on Fabric and Quilt.
 
 Download from the [releases](https://github.com/MC-Skin-Creator/living-horizon/releases)
@@ -162,6 +219,7 @@ page, one file per game version and loader:
 | [Distant Horizons](https://modrinth.com/mod/distanthorizons) | From 2.3 on. Mobs and players are visible on its terrain. |
 | [Lodistance](https://www.curseforge.com/minecraft/mc-mods/lodistance) | Fabric, 26.3. Mobs and players are visible on its terrain, with OpenGL and without shaders. |
 | [Ecstatic](https://modrinth.com/mod/ecstatic) | NeoForge, 1.21.1, single player. Mobs are visible on its terrain, without shaders. |
+| [Far View](https://www.curseforge.com/minecraft/mc-mods/far-view) | Forge and NeoForge, 1.20.1 to 1.21.4. Mobs are visible on its terrain. |
 | [Bobby](https://modrinth.com/mod/bobby) | Mobs and players are visible on the terrain it keeps past the server's view distance. |
 | [Iris](https://modrinth.com/mod/iris) | Shader packs work, such as the two below. |
 | [Photon](https://modrinth.com/shader/photon-shader) | Shader pack. Checked: it works. |
@@ -219,7 +277,7 @@ can limit. A mob only shows once your game or the server has seen it.
 <details>
 <summary>Does it work with my mod?</summary>
 
-Most likely. Voxy, Distant Horizons, Lodistance, Ecstatic, Bobby, Sodium, Iris and shader packs work with it (see
+Most likely. Voxy, Distant Horizons, Lodistance, Ecstatic, Far View, Bobby, Sodium, Iris and shader packs work with it (see
 *Compatibility*). Living Horizon only adds its own figures: it does not change how other
 mods draw the world. Mods not tested yet are listed under the
 [`mod compatibility`](https://github.com/MC-Skin-Creator/living-horizon/labels/mod%20compatibility)
@@ -240,7 +298,7 @@ differently, ask me to add support for it, in an
 </details>
 
 <details>
-<summary>Do I need Voxy, Distant Horizons, Lodistance or Ecstatic?</summary>
+<summary>Do I need Voxy, Distant Horizons, Lodistance, Ecstatic or Far View?</summary>
 
 No. Without them, distant mobs and players show on the game's own terrain, out to your
 render distance. With one of them, they also show on its far terrain.
