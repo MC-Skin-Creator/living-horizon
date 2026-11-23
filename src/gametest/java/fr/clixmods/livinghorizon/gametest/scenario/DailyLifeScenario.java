@@ -92,13 +92,16 @@ public final class DailyLifeScenario implements Scenario {
             context.waitTicks(10);
             Scene.screenshot(context, this, "read");
 
-            // You come by: the gardener, who never saw you this session, waves.
-            Scene.command(world, "tp @a 6.5 " + G + " 18.5 facing 6.5 " + (G + 1) + " 8.5");
+            // You come by someone who never saw you this session: they wave once free. Placed well
+            // away from where the camera went, then come up to.
+            spawn(context, world, "Greeter", 30.5, 30.5);
+            Scene.command(world, "tp @a 30.5 " + G + " 60.5");
+            context.waitTicks(120);
+            Scene.command(world, "tp @a 30.5 " + G + " 36.5 facing 30.5 " + (G + 1) + " 30.5");
             boolean waved = false;
-            for (int i = 0; i < 100 && !waved; i++) {
+            for (int i = 0; i < 600 && !waved; i++) {
                 context.waitTick();
-                waved = puppet(context, "Gardener", RestingPuppet::greeting) == Boolean.TRUE;
-                if (!waved) waved = anyone(context, RestingPuppet::greeting);
+                waved = puppet(context, "Greeter", RestingPuppet::greeting) == Boolean.TRUE;
             }
             Scene.log("dailylife: " + (waved ? "a wave" : "no wave"));
             context.waitTicks(4);
