@@ -41,7 +41,7 @@
   "livinghorizon.options.offlineNames.tooltip": "Affiche le pseudo d'un joueur déconnecté au-dessus de lui, avec (hors ligne). Le viser de près indique quand il a été vu pour la dernière fois.",
   "livinghorizon.options.mapPlayers": "Joueurs sur les cartes",
   "livinghorizon.options.mapPlayers.tooltip": "Affiche sur Xaero's Minimap, Xaero's World Map et JourneyMap les joueurs lointains que partage un serveur avec le mod, avec leur tête.",
-  "livinghorizon.options.mapOfflinePlayers": "Déconnectés sur cartes",
+  "livinghorizon.options.mapOfflinePlayers": "Hors ligne sur cartes",
   "livinghorizon.options.mapOfflinePlayers.tooltip": "Affiche les joueurs déconnectés sur les cartes de JourneyMap, avec leur tête, marqués (hors ligne).",
   "livinghorizon.offline.tag": "(hors ligne)",
   "livinghorizon.offline.lastSeen": "%s — vu pour la dernière fois le %s",

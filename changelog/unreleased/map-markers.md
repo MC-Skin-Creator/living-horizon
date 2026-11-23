@@ -3,7 +3,7 @@ kind: new
 
 en: **Players on your maps** — Distant players that a server with the mod shares now appear with their head on Xaero's Minimap, Xaero's World Map and JourneyMap, past your render distance. On JourneyMap, players who logged off show too, paler and marked (offline). Turn them off with *Players on Maps* and *Offline on Maps*.
 
-fr: **Les joueurs sur vos cartes** — Les joueurs lointains que partage un serveur avec le mod apparaissent maintenant avec leur tête sur Xaero's Minimap, Xaero's World Map et JourneyMap, au-delà de votre distance de rendu. Sur JourneyMap, les joueurs déconnectés s'affichent aussi, plus pâles et marqués (hors ligne). Désactivez-les avec *Joueurs sur les cartes* et *Déconnectés sur cartes*.
+fr: **Les joueurs sur vos cartes** — Les joueurs lointains que partage un serveur avec le mod apparaissent maintenant avec leur tête sur Xaero's Minimap, Xaero's World Map et JourneyMap, au-delà de votre distance de rendu. Sur JourneyMap, les joueurs déconnectés s'affichent aussi, plus pâles et marqués (hors ligne). Désactivez-les avec *Joueurs sur les cartes* et *Hors ligne sur cartes*.
 
 de: **Spieler auf deinen Karten** — Entfernte Spieler, die ein Server mit der Mod teilt, erscheinen jetzt mit ihrem Kopf auf Xaero's Minimap, Xaero's World Map und JourneyMap, jenseits deiner Sichtweite. Auf JourneyMap erscheinen auch abgemeldete Spieler, blasser und mit dem Zusatz (offline). Abschalten lässt es sich mit *Spieler auf Karten* und *Offline auf Karten*.
 
