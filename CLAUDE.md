@@ -260,6 +260,13 @@ baseline, no commit back, no Modrinth, CurseForge, Nexus Mods or Discord. A push
 The mod version is `mod.version` in `stonecutter.properties.toml`; the Minecraft version
 never touches it.
 
+## Sending a build to the user
+
+A jar built for the user (a test build of a branch or of several pull requests merged
+locally) is sent as a `.zip` holding the `.jar`, never the `.jar` alone: a `.jar` does not go
+through the Claude app's conversations. Name it after what it holds and the node
+(`livinghorizon-<what>-mc26.3-fabric.zip`), and never push the local branch it was built from.
+
 ## Testing in the game
 
 Unit tests (`./gradlew build`) do not show what the game draws. A change to rendering,
