@@ -118,101 +118,119 @@ performance: you can lower your simulation distance and still see a living world
 
 ## Features
 
-### Mobs on the horizon
+### Distant mobs
 
-All mobs stay visible far past your render distance, on the game's terrain. With a
-far-terrain mod such as **Voxy** or **Distant Horizons**, they show on its terrain too.
+Shows mobs far past your render distance. These distant mobs are light copies of the real
+ones, with no AI.
 
 <details>
-<summary>Everything about distant mobs</summary>
+<summary>How distant mobs work</summary>
 
-- **Alive, not frozen** — Mobs walk, graze, hop and look around, and hide behind hills.
-  Phantoms, ghasts and the ender dragon fly. Pets told to sit stay seated.
-- **With their ride** — A mob in a boat or a minecart stays in it. A rolling minecart keeps
-  rolling along its rails.
-- **Remembered** — A mob stays where you last saw it, from one session to the next. One that
-  died or left is forgotten when you come near.
-- **Mobs you never met** — On a server with the mod, the server shares the mobs it knows. In
-  single player, the mod reads the mobs around you when you first open a world.
-- **Mobs in unexplored land** — The mod guesses from the world's seed which mobs the game will
-  put in land nobody has explored, and where. A guessed mob may not be there when you arrive.
-  This needs the mod on the server, and works in single player. Look through a spyglass to
-  see them farther away, or press *Guess Nearby Mobs* to show them up to 1024 chunks around.
-- **Boats and vehicles** — Boats stay where they were left. Mobs and vehicles from other mods
-  show too, such as Immersive Aircraft's planes.
-- **Your choice** — Show or hide each mob and vehicle in *Mobs & Entities...*. Mobs with a
-  name tag can always be shown. *Hide Underground Mobs* leaves out mobs in caves and mines,
-  with a key to switch it in game.
+- They play ready-made animations that fit the ground around them: they walk, graze, hop and
+  look around. Phantoms, ghasts and the ender dragon fly.
+- A mob shows where your game or the server last saw it, and stays there from one session to
+  the next. If it died or left since, it is forgotten when you come near.
+- On a server with the mod, the server shares the mobs it knows, even those you never met.
+  In single player, the mod reads the mobs around you the first time you open a world.
+- **Guessed mobs** fill the land nobody has explored yet. The mod works out from the world's
+  seed which mobs the game would put there, and where. They fill a world drawn far away by
+  Distant Horizons, for example. They are a guess: they may be gone, or stand a little
+  elsewhere, when you get there. This needs the mod on the server, and works in single
+  player. Look through a spyglass to see them farther away, or press *Guess Nearby Mobs* to
+  show them up to 1024 chunks around.
+- They stand on the game's terrain, and on the terrain of far-terrain mods such as Voxy or
+  Distant Horizons. Hills hide them.
+- Far away, they become flat pictures instead of 3D models (*Simplified Mobs*). They cost much
+  less to draw, so you can show many more.
+- A mob in a boat or a minecart stays in it, and a rolling minecart keeps rolling. Pets told
+  to sit stay seated.
+- Boats stay where they were left, and so do vehicles from other mods, such as Immersive
+  Aircraft's planes.
+- *Mobs & Entities...* shows or hides each kind. Mobs with a name tag can always be shown.
+  *Hide Underground Mobs* leaves out the mobs in caves and mines.
+- They are only visual. Farms, spawning and the mob cap do not change, and you cannot hit a
+  distant mob.
 
 </details>
 
-### Players at any distance
+### Distant players
 
-Other players are visible at any distance, with their skin, gear and mount. This needs the
-mod on the server.
-
-**Players who logged off live on.** When a player logs off, a copy with their name appears
-where they left, until the player comes back.
+Shows other players at any distance, with their skin, gear and mount. This needs the mod on
+the server: it shares their positions with the players who have the mod.
 
 <details>
-<summary>Everything about players</summary>
+<summary>How distant players work</summary>
 
-- **Gliding and riding** — Players gliding with an elytra glide far away, and riders keep
-  their mount.
-- **A day of their own** — Players who logged off stroll, sit, look in chests and use
-  workstations. They sleep in a bed at night, gather by a campfire in the evening and take
-  shelter from the rain.
-- **Together** — Two of them nearby may walk up to each other and chat. One near water may
-  stop to fish.
-- **Aware of you** — They look back at you when you look at them up close, and crouch when
-  you crouch. They raise a shield against monsters. You can push them out of your way.
-- **With their mount** — A player who left on a horse, in a boat or on a happy ghast keeps
-  riding it. One who left swimming waits on the shore or rows a boat.
-- **Named** — Their name shows with *(offline)*. Look at one up close to see when they were
-  last seen.
-- **Even before you joined** — On a server with the mod, you see the players who left before
-  you arrived. In single player, the world's players show from the start, even those from
-  before the mod was installed.
-- **Their look from other mods** — They keep the look a mod gave them, such as their
-  Minecraft Comes Alive model.
+- Your game draws each player where the server says they are. A player gliding with an
+  elytra is shown gliding.
+- Far away, they become flat pictures instead of 3D models (*Simplified Players*).
+- The server's owner chooses what is shared: how far, with teammates only, and which players
+  and dimensions stay hidden. Players in spectator mode or invisible are never shared.
+- *Player Render Distance* limits how far you see them.
+
+</details>
+
+### Players who logged off
+
+When a player logs off, a copy with their name stays where they left, until they come back.
+It is only visual: the world does not know it exists.
+
+<details>
+<summary>How players who logged off work</summary>
+
+- Up close, they have a small AI. They stroll, sit, look in chests and use workstations. They
+  sleep in a bed at night, gather by a campfire in the evening and take shelter from the
+  rain. Two of them nearby may chat, and one near water may fish.
+- Far away, they play ready-made animations.
+- They look back at you when you look at them up close, crouch when you crouch, and raise a
+  shield against monsters.
+- You can push them out of your way. They cannot push you, and mobs ignore them.
+- They keep their mount: a horse, a boat, a happy ghast. One who left swimming waits on the
+  shore, or rows a boat.
+- Their name shows with *(offline)*. Look at one up close to see when they were last seen.
+- On a server with the mod, you see those who left before you joined. In single player, the
+  world's players show from the start, even those from before the mod was installed.
+  Without the mod on the server, you only see those you saw leave.
+- They keep the look another mod gave them, such as their Minecraft Comes Alive model.
+- *Max Offline* limits how many show at once, and *Roaming Radius* how far they wander.
 
 </details>
 
 ### Birds in the sky
 
-Birds fly over the land and are visible from far away.
+Adds birds to the Overworld's sky, visible from far away. They exist in your game only: two
+players do not see the same birds.
 
 <details>
-<summary>Everything about birds</summary>
+<summary>How birds work</summary>
 
-- **Many kinds** — Flocks, geese flying in a V, birds of prey, seagulls over the coast,
-  pigeons on tall buildings, robins, tits, ducks, parrots and bats at night. Pick them in
-  *Bird Types...*.
-- **They land** — Birds perch on trees, buildings, fields and beaches. Ducks swim. Pigeons
-  and bats fly off when you come close.
-- **Small 3D models** — They flap their wings and stand on their legs. *Bird Style* brings
-  back flat 2D birds.
-- **As many as you like** — *Bird Density*, *Bird Distance*, *Bird Size* and *Min. Flight
-  Height* set how many you see, how far, how big and how high.
+- Up close, they have a small AI. They perch on trees, buildings, fields and beaches, ducks
+  swim, and pigeons and bats fly off when you come close.
+- Far away, they play ready-made flights.
+- Flocks, geese flying in a V, birds of prey, seagulls over the coast, pigeons on tall
+  buildings, robins, tits, ducks, parrots and bats at night. *Bird Types...* picks them.
+- They are small 3D models that flap their wings. *Bird Style* turns them into flat 2D birds.
+- *Bird Density*, *Bird Distance*, *Bird Size* and *Min. Flight Height* set how many you see,
+  how far, how big and how high.
 
 </details>
 
-### Easy to set up
+### Settings
+
+Open them from the Options screen or `/livinghorizon config`.
 
 <details>
-<summary>Everything about the settings</summary>
+<summary>What the settings offer</summary>
 
-- **Presets** — *Low*, *Normal*, *High* and *Ultra* set everything at once.
-- **See the distance** — When you change a distance, its limit shows in the world behind
-  the menu.
-- **Exact values** — Right-click a slider that ends in *Unlimited* to type a value. The
-  arrow keys move any slider one step.
-- **Keys** — Switch distant players on and off, or open the settings, with a key of your
-  choice.
-- **In your language** — The mod and its in-game changelog are in 14 languages.
-- **Where you look for them** — The settings are in the Options screen, and in other mods'
-  menus such as Sodium's *Video Settings*.
-- **Shader packs** — Distant mobs are lit by shader packs, such as Photon.
+- A *Preset* (*Low*, *Normal*, *High*, *Ultra*) sets everything at once.
+- When you change a distance, its limit shows in the world behind the menu.
+- Right-click a slider that ends in *Unlimited* to type a value. The arrow keys move any
+  slider one step.
+- Keys of your choice switch distant players on and off, switch *Hide Underground Mobs* and
+  open the settings.
+- The mod and its in-game changelog are in 14 languages.
+- The settings are also in other mods' menus, such as Sodium's *Video Settings*.
+- Distant mobs are lit by shader packs, such as Photon.
 
 </details>
 
@@ -236,8 +254,8 @@ Everything works in single player. On a server, some features need the mod on th
 
 | Feature | Single player | LAN | Server with the mod | Server without the mod |
 |---|---|---|---|---|
-| Mobs on the horizon | ✓ | ✓ | ✓ | Only the mobs you met |
-| Players at any distance | — | ✓ | ✓ | ✗ |
+| Distant mobs | ✓ | ✓ | ✓ | Only the mobs you met |
+| Distant players | — | ✓ | ✓ | ✗ |
 | Players who logged off | ✓ | ✓ | ✓ | Only those you saw leave |
 | Birds | ✓ | ✓ | ✓ | ✓ |
 
