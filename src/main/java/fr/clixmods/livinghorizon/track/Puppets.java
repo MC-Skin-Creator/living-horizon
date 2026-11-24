@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.track;
 
 import com.mojang.authlib.GameProfile;
+import fr.clixmods.livinghorizon.render.GhostRenderer;
 //? if >=1.21.9
 import net.minecraft.client.entity.ClientAvatarState;
 //? if >=1.21.9
@@ -48,6 +49,16 @@ public final class Puppets {
         return numbered(type.create(level, EntitySpawnReason.LOAD));
         //?} else
         /*return numbered(type.create(level));*/
+    }
+
+    /**
+     * Puts a fish, a squid or an axolotl in water, where it was when last seen. A puppet is in
+     * no world and never ticks, so nothing else ever does, and whatever asks the entity takes it
+     * for stranded: Entity Model Features' animations do, and Fresh Animations lays such a fish
+     * on its side, flapping. Does nothing to any other mob.
+     */
+    public static void inWater(Entity entity) {
+        if (GhostRenderer.livesInWater(entity)) entity.wasTouchingWater = true;
     }
 
     /**
@@ -106,6 +117,18 @@ public final class Puppets {
         state.yCloakO = mannequin.yo;
         state.zCloakO = mannequin.zo;
         //?}
+    }
+
+    /**
+     * What a player's own tick would leave on a puppet: feet on the ground and the step just taken
+     * as its motion. Animation packs that read them (Fresh Animations' players) otherwise take it
+     * for falling, and it floats above the ground, sinks, or moves like a bot.
+     */
+    public static void ground(Entity entity, boolean airborne) {
+        entity.setOnGround(!airborne);
+        if (!airborne) {
+            entity.setDeltaMovement(entity.getX() - entity.xo, 0, entity.getZ() - entity.zo);
+        }
     }
 
     /**

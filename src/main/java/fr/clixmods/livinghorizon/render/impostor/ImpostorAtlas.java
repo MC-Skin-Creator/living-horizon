@@ -74,7 +74,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  *
  * <p>Besides entities, the mod's own figures are baked the same way ({@link ImpostorFigure}:
  * the 3D birds), drawn by the mod instead of an entity renderer, seen from the height the
- * figure asks for, and baked again each game rather than kept on disk.
+ * figure asks for, and kept on disk as the mobs' sheets are.
  */
 public final class ImpostorAtlas {
     /**
@@ -253,7 +253,12 @@ public final class ImpostorAtlas {
     }
 
     /** A sheet read from disk, to upload; no sheet when it could not be read, to bake instead. */
-    private record Loaded(ImpostorKey key, Entity puppet, ImpostorDisk.@Nullable Stored stored, int generation) {
+    private record Loaded(ImpostorKey key, @Nullable Entity puppet, @Nullable ImpostorFigure figure,
+                          ImpostorDisk.@Nullable Stored stored, int generation) {
+        /** What to bake when the sheet could not be read back. */
+        Request bake() {
+            return figure != null ? Request.of(key, figure) : Request.of(key, puppet, GROWN.getOrDefault(key, 1.0));
+        }
     }
 
     /**
@@ -342,8 +347,21 @@ public final class ImpostorAtlas {
 
     /** What {@link #relief} should be now; when it changes, every picture is baked again. */
     private static boolean wantsRelief() {
-        return FarConfig.get().impostorShading && BACKEND.reliefs() && IrisNormals.packReadsNormalMaps();
+        // Asked for every picture drawn, every frame: the pack's answer is read again a few
+        // times a second only, which is soon enough after a pack was changed.
+        long now = System.nanoTime();
+        if (!reliefRead || now - reliefAsked > RELIEF_EVERY) {
+            reliefRead = true;
+            reliefAsked = now;
+            reliefWanted = FarConfig.get().impostorShading && BACKEND.reliefs() && IrisNormals.packReadsNormalMaps();
+        }
+        return reliefWanted;
     }
+
+    /** Nanoseconds between two readings of whether the pack lights the pictures with normal maps. */
+    private static final long RELIEF_EVERY = 250_000_000L;
+    private static long reliefAsked;
+    private static boolean reliefRead, reliefWanted;
 
     /** How many levels a sheet has: its colours, then its normal map's while {@link #relief}. */
     static int levels() {
@@ -391,6 +409,8 @@ public final class ImpostorAtlas {
     private static final Map<ImpostorKey, Origin> ORIGINS = new HashMap<>();
     /** Mobs asked for before the sheets on disk were listed: asked for again once they are. */
     private static final Map<ImpostorKey, Entity> UNLISTED = new LinkedHashMap<>();
+    /** The mod's own figures asked for before the sheets on disk were listed. */
+    private static final Map<ImpostorKey, ImpostorFigure> UNLISTED_FIGURES = new LinkedHashMap<>();
     /** Sheets read from disk, handed over by the disk's thread. */
     private static final Queue<Loaded> LOADED = new ConcurrentLinkedQueue<>();
     /** Sheets read from disk rather than baked, and views drawn, since the game started. */
@@ -463,7 +483,7 @@ public final class ImpostorAtlas {
         DISK,
         /** Baked in this game and saved: the worlds opened later and the next games read it back. */
         SAVED,
-        /** Baked in this game and not kept on disk: players, riders, the mod's own figures. */
+        /** Baked in this game and not kept on disk: players and riders. */
         TEMPORARY
     }
 
@@ -497,7 +517,8 @@ public final class ImpostorAtlas {
     /** Whether impostors can be used at all: switched on, and the bake has not failed. */
     public static boolean usable() {
         FarConfig config = FarConfig.get();
-        return config.anyDistant() && config.anyImpostors() && !failed;
+        // Birds are drawn whatever else is: their pictures are baked even with nothing else far away.
+        return (config.anyDistant() && config.anyImpostors() || config.birdImpostors()) && !failed;
     }
 
     /** The pictures of a figure, if baked. Counts as a use, so the sheets in use are kept. */
@@ -522,7 +543,7 @@ public final class ImpostorAtlas {
             if (ImpostorDisk.has(key)) {
                 int asked = generation;
                 ImpostorDisk.read(key).whenComplete((stored, error) ->
-                        LOADED.add(new Loaded(key, puppet, error == null ? stored : null, asked)));
+                        LOADED.add(new Loaded(key, puppet, null, error == null ? stored : null, asked)));
                 return;
             }
         }
@@ -538,9 +559,22 @@ public final class ImpostorAtlas {
         QUEUE.add(Request.of(key, mount, GROWN.getOrDefault(key, 1.0), rider));
     }
 
-    /** Asks for one of the mod's own figures to be baked, within the next few frames. */
+    /**
+     * Asks for one of the mod's own figures to be baked, within the next few frames; read back
+     * from disk when an earlier game baked it, as a mob's sheet is.
+     */
     public static void request(ImpostorKey key, ImpostorFigure figure) {
         if (failed || sheet(key) != null || refused(key) || !QUEUED.add(key)) return;
+        if (!ImpostorDisk.ready()) {
+            UNLISTED_FIGURES.put(key, figure);
+            return;
+        }
+        if (ImpostorDisk.has(key)) {
+            int asked = generation;
+            ImpostorDisk.read(key).whenComplete((stored, error) ->
+                    LOADED.add(new Loaded(key, null, figure, error == null ? stored : null, asked)));
+            return;
+        }
         QUEUE.add(Request.of(key, figure));
     }
 
@@ -652,6 +686,7 @@ public final class ImpostorAtlas {
         QUEUE.clear();
         QUEUED.clear();
         UNLISTED.clear();
+        UNLISTED_FIGURES.clear();
         BAKING.clear();
         LOADED.clear();
         GROWN.clear();
@@ -685,6 +720,8 @@ public final class ImpostorAtlas {
             LOADED.clear();
             QUEUED.removeAll(UNLISTED.keySet());
             UNLISTED.clear();
+            QUEUED.removeAll(UNLISTED_FIGURES.keySet());
+            UNLISTED_FIGURES.clear();
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();
@@ -698,13 +735,21 @@ public final class ImpostorAtlas {
                 request(mob.getKey(), mob.getValue());
             }
         }
+        if (!UNLISTED_FIGURES.isEmpty() && ImpostorDisk.ready()) {
+            List<Map.Entry<ImpostorKey, ImpostorFigure>> listed = new ArrayList<>(UNLISTED_FIGURES.entrySet());
+            UNLISTED_FIGURES.clear();
+            for (Map.Entry<ImpostorKey, ImpostorFigure> figure : listed) {
+                QUEUED.remove(figure.getKey());
+                request(figure.getKey(), figure.getValue());
+            }
+        }
         long end = System.nanoTime() + BUDGET;
         Loaded loaded;
         while ((loaded = LOADED.poll()) != null) {
             if (loaded.generation != generation) continue;
             if (loaded.stored == null || !ImpostorPixels.fits(loaded.stored.levels(), levels())) {
                 ImpostorDisk.forget(loaded.key);
-                QUEUE.add(Request.of(loaded.key, loaded.puppet, GROWN.getOrDefault(loaded.key, 1.0)));
+                QUEUE.add(loaded.bake());
                 continue;
             }
             QUEUED.remove(loaded.key);
@@ -768,6 +813,7 @@ public final class ImpostorAtlas {
         QUEUE.clear();
         QUEUED.clear();
         UNLISTED.clear();
+        UNLISTED_FIGURES.clear();
         LivingHorizonClient.LOGGER.error("Impostors could not be baked, falling back to full models", error);
     }
 
@@ -1043,8 +1089,8 @@ public final class ImpostorAtlas {
             }
             if (!place(key, index, size, request.feet(), levels)) return;
             BAKING.remove(index);
-            // The mod's own figures are not kept: their sheets have no entity to be read for.
-            boolean kept = !player(key) && request.figure == null;
+            // Mobs and the mod's own figures are kept; players come and go.
+            boolean kept = !player(key);
             long now = System.currentTimeMillis();
             String world = world();
             if (ALLOCATOR.contains(key)) ORIGINS.put(key, new Origin(kept ? Source.SAVED : Source.TEMPORARY, now, world));

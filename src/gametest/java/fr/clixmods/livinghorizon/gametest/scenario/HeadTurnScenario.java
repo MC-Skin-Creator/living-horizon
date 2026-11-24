@@ -31,7 +31,7 @@ public final class HeadTurnScenario implements Scenario {
     public void run(ClientGameTestContext context) {
         Scene.log("headturn entity culling " + FabricLoader.getInstance().isModLoaded("entityculling"));
         context.runOnClient(minecraft -> {
-            // The game stops drawing a cow at about 35 blocks: at 60 the mod draws it.
+            // The game stops drawing a cow at about 51 blocks: at 60 the mod draws it.
             minecraft.options.entityDistanceScaling().set(0.5);
             minecraft.options.fov().set(30);
         });

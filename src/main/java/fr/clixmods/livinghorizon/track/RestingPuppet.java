@@ -2,6 +2,7 @@ package fr.clixmods.livinghorizon.track;
 
 import com.mojang.authlib.GameProfile;
 import fr.clixmods.livinghorizon.FarConfig;
+import fr.clixmods.livinghorizon.compat.EpicFight;
 import fr.clixmods.livinghorizon.compat.LodWorld;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -338,6 +339,25 @@ public final class RestingPuppet extends RemotePlayer {
                 .append(Component.translatable("livinghorizon.offline.tag").withStyle(ChatFormatting.GRAY));
     }
 
+    /**
+     * Seated or riding counts as a passenger for whatever reads the entity rather than its render state
+     * (Entity Model Features' Fresh Animations players): otherwise they stand up on the cushion and sink.
+     */
+    @Override
+    public boolean isPassenger() {
+        if (super.isPassenger()) return true;
+        if (activity == null) return false;
+        Look look = look();
+        return look == Look.SIT || look == Look.RIDE;
+    }
+
+    /** Vanilla walks getVehicle() while isPassenger() is true, which is null for a seated puppet. */
+    @Override
+    public Entity getRootVehicle() {
+        Entity vehicle = getVehicle();
+        return vehicle == null ? this : vehicle.getRootVehicle();
+    }
+
     /** How it is drawn this tick. */
     public Look look() {
         if (riding) return Look.RIDE;
@@ -443,6 +463,19 @@ public final class RestingPuppet extends RemotePlayer {
     }
 
     void tick(ClientLevel level, FarConfig config, Around around, int[] work, @Nullable Entity you) {
+        // Never in the level, so never ticked by it: Epic Fight's hooks around its own tick.
+        EpicFight.beforeTick(this);
+        try {
+            tickOwn(level, config, around, work, you);
+        } finally {
+            // It never moves through the game, which says whether it stands; animations ask
+            // (Epic Fight, Entity Model Features packs). On its feet unless thrown or carried.
+            setOnGround(!riding && activity != Activity.FLY);
+            EpicFight.afterTick(this);
+        }
+    }
+
+    private void tickOwn(ClientLevel level, FarConfig config, Around around, int[] work, @Nullable Entity you) {
         Set<BlockPos> beds = around.beds();
         boolean night = around.night();
         setOldPosAndRot();
@@ -482,6 +515,7 @@ public final class RestingPuppet extends RemotePlayer {
         }
         if (!lively) {
             Puppets.walk(this, 0f, 1f, 1f);
+            Puppets.ground(this, false);
             sit(level);
             return;
         }
@@ -534,6 +568,7 @@ public final class RestingPuppet extends RemotePlayer {
         arm(wary, wary || shieldTicks > 0);
         double moved = Math.hypot(getX() - before, getZ() - beforeZ);
         Puppets.walk(this, (float) Math.min(moved * 4.0, 1.0), 0.4f, 1f);
+        Puppets.ground(this, activity == Activity.FLY);
         setYRot(yBodyRot);
     }
 
@@ -608,6 +643,7 @@ public final class RestingPuppet extends RemotePlayer {
             setXRot(headPitch);
         }
         Puppets.walk(this, 0f, 1f, 1f);
+        Puppets.ground(this, false);
         setYRot(yBodyRot);
     }
 
@@ -627,6 +663,7 @@ public final class RestingPuppet extends RemotePlayer {
         if (activity == Activity.BED) {
             if (night) {
                 Puppets.walk(this, 0f, 1f, 1f);
+                Puppets.ground(this, false);
                 return;
             }
             // Up in the morning: its loop starts beside the bed.
@@ -640,6 +677,7 @@ public final class RestingPuppet extends RemotePlayer {
         activity = playing.pausing && !night ? Activity.SIT : Activity.IDLE;
         glance(false);
         Puppets.walk(this, (float) Math.min(moved * 4.0, 1.0), 0.4f, 1f);
+        Puppets.ground(this, activity == Activity.FLY);
         setYRot(yBodyRot);
     }
 
@@ -1713,6 +1751,7 @@ public final class RestingPuppet extends RemotePlayer {
     /** Where the blocks are not loaded: standing or sitting where it is, standing at night. */
     private void afar(boolean night) {
         Puppets.walk(this, 0f, 1f, 1f);
+        Puppets.ground(this, false);
         if (activity == Activity.BED) return;
         if (activity == Activity.WALK || activity == Activity.GUARD || activity == Activity.FLY
                 || activity == Activity.FACE || activity == Activity.WARM || activity == Activity.FISH

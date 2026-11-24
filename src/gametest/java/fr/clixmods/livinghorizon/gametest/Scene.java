@@ -68,6 +68,54 @@ public final class Scene {
         });
     }
 
+    /**
+     * Turns on the resource packs given by {@code -Plh.resourcepacks=<folder>} (run.sh's
+     * {@code --pack}): every zip in it, copied into the game's folder, on top of the others.
+     * Nothing without the property.
+     */
+    static void resourcePacks(ClientGameTestContext context) {
+        String folder = System.getProperty("livinghorizon.resourcepacks", "");
+        if (folder.isBlank()) return;
+        java.util.List<String> ids = context.computeOnClient(minecraft -> {
+            java.util.List<String> names = new java.util.ArrayList<>();
+            try (var files = java.nio.file.Files.list(java.nio.file.Path.of(folder))) {
+                for (java.nio.file.Path zip : files.filter(file -> file.toString().endsWith(".zip")).sorted().toList()) {
+                    java.nio.file.Files.copy(zip, minecraft.getResourcePackDirectory().resolve(zip.getFileName().toString()),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    names.add("file/" + zip.getFileName());
+                }
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException("Could not copy the resource packs of " + folder, e);
+            }
+            return names;
+        });
+        packs(context, ids, true);
+    }
+
+    /**
+     * Turns these resource packs on, on top of the others, or off, by their id in the pack
+     * list ({@code file/<name>} for one in the game's folder), and waits for the game to read them.
+     */
+    public static void packs(ClientGameTestContext context, java.util.List<String> ids, boolean on) {
+        boolean changed = context.computeOnClient(minecraft -> {
+            var repository = minecraft.getResourcePackRepository();
+            repository.reload();
+            boolean any = false;
+            for (String id : ids) {
+                if (!repository.isAvailable(id)) {
+                    throw new AssertionError("No resource pack " + id + ", there are " + repository.getAvailableIds());
+                }
+                any |= on ? repository.addPack(id) : repository.removePack(id);
+            }
+            minecraft.options.updateResourcePacks(repository);
+            log("resource packs " + repository.getSelectedIds());
+            return any;
+        });
+        if (!changed) return;
+        context.waitFor(minecraft -> minecraft.getOverlay() == null);
+        context.waitTicks(5);
+    }
+
     /** Back to the defaults between scenarios: settings, options, no screen. */
     static void reset(ClientGameTestContext context) {
         context.setScreen(() -> null);

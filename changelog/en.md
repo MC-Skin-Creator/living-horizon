@@ -2,6 +2,75 @@
 
 ## Unreleased
 
+## 0.18.1 — 2026-11-24
+
+### Client
+
+#### Fixed
+- **Distant players and mobs animated by Entity Model Features packs** — With Entity Model Features and a resource pack that animates players or mobs, the players and mobs Living Horizon draws now move as the pack says, instead of walking with their arms only and their legs still. Seated offline players keep their legs bent. (Minecraft 1.20.1 to 1.21.1.)
+- **Distant axolotls and fish swim as they should** — With Entity Model Features and Fresh Animations, distant axolotls, squid and fish now swim normally, instead of lying on their side, flapping as if out of the water.
+- **Offline players move with Epic Fight** — With Epic Fight installed, offline players now walk, sit, sleep and ride with its animations, instead of standing frozen in one pose while they move. (NeoForge, Minecraft 1.21.1, with Epic Fight 21.)
+- **Distant mobs keep their pack's textures** — With Entity Texture Features and Entity Model Features, as Fresh Animations needs them, distant mobs now keep the pack's textures, instead of losing them or all taking the texture and pose of one other mob. (Minecraft 1.20.1 to 1.21.8.)
+- **Each distant mob keeps its own random texture** — With Entity Texture Features and a resource pack of random mob textures, the simplified images of distant mobs (*Simplified Mobs*) now each keep their own texture, instead of all wearing the texture of the first one pictured.
+
+## 0.18.0 — 2026-11-21
+
+### Client
+
+#### New
+- **Simplified Birds** — A new switch in *Performance*, on by default, draws distant 3D birds as simplified images, like mobs. It now works on its own: birds were left as full models whenever distant players, mobs and entities were all turned off. Perched birds now switch at the size they really take on screen, instead of staying full models farther than *Simplification Size* says.
+
+#### Improved
+- **Birds cost far fewer frames** — Birds now only fly where you can see them: without Voxy, Distant Horizons or another far-terrain mod, none are kept past the render distance, where the fog hid them anyway. Their simplified images are saved between games, so joining a world no longer stutters for several seconds, and 3D birds and simplified images take less work to draw, under shaders too. This can give more frames per second wherever birds are around.
+
+#### Fixed
+- **Birds hidden by distant hills** — Birds now disappear behind the far terrain's hills even when distant players, mobs and entities are all turned off, instead of showing through them. (With Voxy, Distant Horizons or Lodistance.)
+- **Birds gather over distant lakes, forests and coasts** — Birds now find water, trees, fields and coasts on Voxy's and Distant Horizons' terrain past your render distance, instead of only around you. Flocks and seabirds then settle naturally across the whole landscape.
+- **Offline players look right with Fresh Animations** — Offline players no longer look like flying bots or sink into the ground when they walk with Fresh Animations' player model, and they now sit properly on cushions and carpets.
+- **Smoother return of mobs as you come close** — When you come back near a mob shown as a distant copy, the copy now hurries to where the real mob stands, so the real one takes over sooner and without jumping, instead of staying hidden for several seconds. The copy of a mob that is no longer there disappears within a second.
+- **Mobs kept on servers that only show them up close** — On servers that send mobs only within a few dozen blocks, the mobs you walk away from now stay in the distance instead of vanishing for good. Until now they were only kept if you moved away quickly.
+- **Small mobs stay visible with a lower Entity Distance** — With *Entity Distance* below 100%, small mobs such as chickens, cats and wolves now stay visible all the way into the distance, instead of disappearing for a few blocks before Living Horizon took over.
+
+## 0.17.0 — 2026-11-20
+
+### Server
+
+#### Improved
+- **Minecraft Comes Alive looks shared** — On a server with Minecraft Comes Alive, Living Horizon now shares the look each player chose in it once they log off. Players with the mod then see offline players as Minecraft Comes Alive draws them, even those who left before they joined.
+
+### Client
+
+#### New
+- **Changelog in your language** — The in-game changelog is now available in every language Living Horizon is translated into, instead of only English and French. It follows the game's language, and shows English for any other language.
+- **Shareable list of hidden mobs** — `config/livinghorizon.json` now has a `hiddenMobs` list of the mobs never shown in the distance, by id (`"minecraft:pig"`) or for a whole mod (`"cobblemon:*"`). Modpacks can share their choices in one short list, and mobs set to *Hidden* in *Mobs & Entities...* are added to it.
+- **Option to hide underground mobs** — The new *Hide Underground Mobs* setting, off by default, stops drawing distant mobs in caves, mines and cellars, which nobody can see from afar. This lightens the game where many mobs live underground and leaves *Max Mobs* to those on the surface. A key, unbound by default, turns it on and off in game; the Nether and the End are never affected.
+
+#### Improved
+- **No more regular hitches** — Living Horizon now saves the mobs it remembers and the offline players in the background, instead of making the game hitch once a minute or as players log off.
+- **Less graphics work for distant mobs** — Hiding distant mobs behind the far terrain now only works on the part of the screen where they stand, instead of the whole screen. This can give a little more performance, mostly at high resolutions. (Minecraft 1.21.9 and later, with Voxy and shaders, Distant Horizons or Lodistance.)
+- **Faster world opening** — Opening a world or joining a server where Living Horizon remembers many mobs no longer freezes the game for a moment: they now appear as soon as they are read.
+- **Minecarts keep rolling in the distance** — A minecart still moving when it leaves your view now carries on along its rails, as far as the game would keep it running, instead of stopping where you last saw it. This applies to minecarts turned on in *Mobs & Entities...*.
+- **Other mods' monsters shown in the distance** — Monsters from other mods that versions before 0.13 hid by default are now shown in the distance like every other mob. If you had turned some off yourself, hide them again in *Mobs & Entities...*.
+- **Smoother arrival on servers** — Joining a server no longer freezes the game for a moment when many distant mobs or offline players are to be shown. They now appear over the first few seconds instead.
+- **Smoother teleports and fast flights** — The game no longer hitches when you teleport, change dimension or fly fast with an elytra, while Living Horizon remembers the many mobs you leave behind.
+- **Smoother with thousands of distant mobs** — With thousands of distant mobs in view, estimated mobs included, Living Horizon now spends about half as much time on them at every frame, and less to pick which ones to show and to keep them moving. This matters most with a high *Max Mobs* or *Mob Render Distance*.
+
+#### Fixed
+- **Ambient Birds' birds keep flying in the distance** — Birds from the Ambient Birds mod now keep flying, wings spread, once they are past your render distance, instead of hanging frozen in the sky.
+- **Birds and bats keep their distance** — Bats now fly away when you walk towards them, and no flying bird or bat comes within reach of your hand. You can no longer stand among them and swing through them.
+- **Mobs that die far away stay gone** — In single player, a mob that dies out of your sight no longer comes back in the distance for a few seconds.
+- **The ender dragon comes alive in the distance** — A distant ender dragon now beats its wings, flies head first and bends its neck and tail as it turns, instead of gliding stiffly with its wings still. It soars in wide circles like the real one, and always keeps its full model rather than a simplified image.
+- **Distant mobs stay visible on LAN** — Distant mobs now stay shown after the player hosting a LAN world lowers their *Entity Distance*, instead of vanishing for good or for part of the way as you walk back to them.
+- **Lycanites Mobs shown correctly in the distance** — Distant Lycanites mobs such as the Jouste, the Krake or the Bobeko now appear as simplified images instead of vanishing, and hide properly behind Voxy's or Distant Horizons' hills instead of showing through them. (Forge, Minecraft 1.20.1.)
+- **Crash on Mac fixed** — The game no longer crashes about a second after you join a world on a Mac or an older graphics card. Distant mobs still hide behind the far terrain there, and *Skip Hidden Mobs* keeps working.
+- **Offline players keep their Minecraft Comes Alive look** — With Minecraft Comes Alive, offline players are now shown with the villager or custom player model they chose, instead of their plain skin. Players who logged off before you joined need the mod on the server too.
+- **Mobs stay in their own dimension** — Distant mobs are now only shown in the dimension where you saw them, instead of appearing in another one, such as squids floating in the Nether's air.
+- **Mobs stay in their boat or minecart** — Mobs riding a boat or a minecart now stay visible in the distance with it, seated inside wherever it goes, instead of vanishing or walking off on their own.
+- **Offline players fall off edges** — An offline player you push over a ledge now falls, instead of staying in the air at the edge.
+- **Offline players stay where they are** — Offline players near you no longer jump back a few blocks to where they logged off when their skin or outfit appears. They carry on from where they stand, in their new look.
+- **Simplification settings apply to players** — Other players online now become simplified images once they are past the *Simplification Distance* or smaller on screen than the *Simplification Size*, as mobs do, instead of keeping their full model as long as the game shows them. This needs *Simplified Players* on, as it is by default.
+- **Valkyrien Skies ships' passengers in the right place** — Seats, vehicles and riders on a Valkyrien Skies ship no longer float in the wrong place in the distance, away from their ship. (Minecraft 1.20.1.)
+
 ## 0.16.0 — 2026-11-05
 
 ### Client

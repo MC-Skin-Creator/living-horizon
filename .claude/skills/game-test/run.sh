@@ -3,10 +3,12 @@
 # src/gametest/java, under a virtual display. Prints the scenario log lines and the
 # screenshots taken. See SKILL.md next to this file.
 #
-#   .claude/skills/game-test/run.sh [scenario[,scenario...]|all] [--sodium] [--shaders <pack folder>] [--with <project>]...
+#   .claude/skills/game-test/run.sh [scenario[,scenario...]|all] [--sodium] [--shaders <pack folder>]
+#       [--with <project[,project...]>]... [--pack <project[,project...]>]
 #
 # --shaders loads Sodium and Iris and turns the shader pack on (an unpacked folder).
-# --with loads another mod, by its Modrinth project (immersive-aircraft), for this run only.
+# --with loads other mods, by their Modrinth project (immersive-aircraft), for this run only.
+# --pack turns resource packs on, by their Modrinth project (fresh-animations), for this run only.
 #
 # Runs the active version, 1.21.11. LH_NODE=26.1.x runs another Fabric target (its name in
 # stonecutter.properties.toml); the scenarios are the same on every one.
@@ -20,11 +22,13 @@ shift || true
 WITH_SODIUM=0
 SHADERS=""
 WITH=()
+PACKS=()
 while [ $# -gt 0 ]; do
     case "$1" in
         --sodium) WITH_SODIUM=1 ;;
         --shaders) WITH_SODIUM=1; SHADERS="$(cd "$2" && pwd)" || { echo "game-test: no shader pack folder $2"; exit 2; }; shift ;;
-        --with) WITH+=("$2"); shift ;;
+        --with) IFS=, read -ra list <<<"$2"; WITH+=("${list[@]}"); shift ;;
+        --pack) IFS=, read -ra list <<<"$2"; PACKS+=("${list[@]}"); shift ;;
     esac
     shift
 done
@@ -58,16 +62,18 @@ with open(sys.argv[1], "rb") as f:
 PY
 )" || { echo "game-test: no node ${LH_NODE:-1.21.11} in stonecutter.properties.toml"; exit 2; }
 
-# The latest release, or beta when there is none, of a Modrinth project for this version.
+# The latest release, or beta when there is none, of a Modrinth project for this version:
+# a mod for Fabric into $MODS, or a resource pack (loader "minecraft") into $PACKS_DIR.
 download() {
-    local project="$1" url
-    [ -s "$MODS/$project.jar" ] && return 0
-    url="$(curl -sS "https://api.modrinth.com/v2/project/$project/version?game_versions=%5B%22$GAME_VERSION%22%5D&loaders=%5B%22fabric%22%5D" \
+    local project="$1" loader="${2:-fabric}" file url
+    if [ "$loader" = minecraft ]; then file="$PACKS_DIR/$project.zip"; else file="$MODS/$project.jar"; fi
+    [ -s "$file" ] && return 0
+    url="$(curl -sS "https://api.modrinth.com/v2/project/$project/version?game_versions=%5B%22$GAME_VERSION%22%5D&loaders=%5B%22$loader%22%5D" \
         | python3 -c 'import json,sys
 versions = json.load(sys.stdin)
 chosen = next((v for v in versions if v["version_type"] == "release"), versions[0] if versions else None)
 print([f["url"] for f in chosen["files"] if f["primary"]][0] if chosen else "")')"
-    [ -n "$url" ] && curl -sSfL -o "$MODS/$project.jar" "$url" || { echo "game-test: could not download $project"; exit 2; }
+    [ -n "$url" ] && curl -sSfL -o "$file" "$url" || { echo "game-test: could not download $project"; exit 2; }
 }
 
 MOD_ARGS=()
@@ -93,6 +99,17 @@ for project in "${WITH[@]}"; do
 done
 # Fabric Loader reads several folders, separated as in a class path.
 [ ${#MOD_DIRS[@]} -gt 0 ] && MOD_ARGS+=("-Plh.mods=$(IFS=:; echo "${MOD_DIRS[*]}")")
+if [ ${#PACKS[@]} -gt 0 ]; then
+    # Its own folder per run: every pack in it is turned on.
+    PACKS_DIR="$ROOT/build/game-test-packs/$GAME_VERSION"
+    rm -rf "$PACKS_DIR/on"
+    mkdir -p "$PACKS_DIR/on"
+    for project in "${PACKS[@]}"; do
+        download "$project" minecraft
+        cp "$PACKS_DIR/$project.zip" "$PACKS_DIR/on/"
+    done
+    MOD_ARGS+=("-Plh.resourcepacks=$PACKS_DIR/on")
+fi
 
 command -v xvfb-run >/dev/null || { echo "game-test: xvfb-run is missing (apt-get install xvfb)"; exit 2; }
 

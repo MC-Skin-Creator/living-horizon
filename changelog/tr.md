@@ -2,6 +2,75 @@
 
 ## Sonraki sürüm
 
+## 0.18.1 — 2026-11-24
+
+### İstemci
+
+#### Düzeltmeler
+- **Entity Model Features paketleriyle canlanan uzaktaki oyuncular ve canlılar** — Entity Model Features ve oyuncuları ya da canlıları canlandıran bir kaynak paketiyle, Living Horizon'ın çizdiği oyuncular ve canlılar artık paketin öngördüğü gibi hareket ediyor; yalnızca kollarıyla, bacakları hareketsiz yürümüyor. Oturan çevrim dışı oyuncuların bacakları bükülü kalıyor. (Minecraft 1.20.1 ile 1.21.1 arası.)
+- **Uzaktaki aksolotllar ve balıklar olması gerektiği gibi yüzüyor** — Entity Model Features ve Fresh Animations ile uzaktaki aksolotllar, mürekkep balıkları ve balıklar artık normal yüzüyor; sudan çıkmış gibi yan yatıp çırpınmıyor.
+- **Çevrim dışı oyuncular Epic Fight ile hareket ediyor** — Epic Fight yüklüyken çevrim dışı oyuncular artık onun animasyonlarıyla yürüyor, oturuyor, uyuyor ve biniyor; hareket ederken tek bir pozda donup kalmıyor. (NeoForge, Minecraft 1.21.1, Epic Fight 21 ile.)
+- **Uzaktaki canlılar paketlerinin dokularını koruyor** — Fresh Animations'ın gerektirdiği gibi Entity Texture Features ve Entity Model Features ile uzaktaki canlılar artık paketin dokularını koruyor; onları kaybetmiyor ya da hepsi başka tek bir canlının dokusunu ve duruşunu almıyor. (Minecraft 1.20.1 ile 1.21.8 arası.)
+- **Her uzak canlı kendi rastgele dokusunu koruyor** — Entity Texture Features ve canlılar için rastgele dokular içeren bir kaynak paketiyle, uzaktaki canlıların basitleştirilmiş görüntüleri (*Basit Canlılar*) artık her biri kendi dokusunu koruyor; hepsi ilk çizilenin dokusunu taşımıyor.
+
+## 0.18.0 — 2026-11-21
+
+### İstemci
+
+#### Yenilikler
+- **Basit Kuşlar** — *Performans* bölümündeki varsayılan olarak açık yeni bir düğme, uzaktaki 3B kuşları canlılar gibi basitleştirilmiş resimler olarak çizer. Artık tek başına çalışıyor: uzaktaki oyuncular, canlılar ve varlıklar kapalıyken kuşlar tam model olarak kalıyordu. Konmuş kuşlar artık *Basitleştirme Boyutu*'nun söylediğinden daha uzakta tam model kalmak yerine, ekranda gerçekten kapladıkları boyutta değişiyor.
+
+#### İyileştirmeler
+- **Kuşlar çok daha az FPS harcıyor** — Kuşlar artık yalnızca onları görebileceğin yerlerde uçuyor: Voxy, Distant Horizons ya da başka bir uzak arazi modu olmadan, sisin zaten gizlediği görüş mesafesinin ötesinde hiçbiri tutulmuyor. Basitleştirilmiş resimleri oyunlar arasında kaydediliyor; böylece bir dünyaya girmek artık birkaç saniye takılmıyor ve hem 3B kuşları hem basitleştirilmiş resimleri çizmek, gölgelendiricilerle de, daha az iş gerektiriyor. Bu, kuşların olduğu her yerde daha fazla FPS sağlayabilir.
+
+#### Düzeltmeler
+- **Kuşlar uzak tepelerin arkasında gizleniyor** — Uzaktaki oyuncular, canlılar ve varlıklar kapalı olsa bile kuşlar artık uzak arazinin tepelerinin içinden görünmek yerine arkalarında kayboluyor. (Voxy, Distant Horizons ya da Lodistance ile.)
+- **Kuşlar uzaktaki göllerde, ormanlarda ve kıyılarda toplanıyor** — Kuşlar artık yalnızca çevrenizde değil, görüş mesafenizin ötesinde Voxy ve Distant Horizons arazisindeki suyu, ağaçları, tarlaları ve kıyıları da buluyor. Sürüler ve deniz kuşları böylece tüm manzaraya doğal biçimde yayılıyor.
+- **Fresh Animations ile çevrim dışı oyuncular doğru görünüyor** — Çevrim dışı oyuncular Fresh Animations oyuncu modeliyle yürürken artık uçan robotlara benzemiyor ve yere gömülmüyor; ayrıca minderlere ve halılara artık doğru şekilde oturuyor.
+- **Yaklaştığınızda canlılar daha akıcı geri dönüyor** — Uzak bir kopya olarak gösterilen bir canlının yanına döndüğünüzde kopya artık gerçek canlının durduğu yere acele ediyor; böylece gerçek canlı birkaç saniye gizli kalmak yerine daha erken ve sıçramadan devralıyor. Artık orada olmayan bir canlının kopyası bir saniyeden kısa sürede kayboluyor.
+- **Canlıları yalnızca yakından gösteren sunucularda canlılar korunuyor** — Canlıları yalnızca birkaç düzine blok içinde gönderen sunucularda, uzaklaştığınız canlılar artık tamamen kaybolmak yerine uzakta kalıyor. Şimdiye kadar yalnızca hızla uzaklaşırsanız korunuyorlardı.
+- **Küçük canlılar düşük Varlık Mesafesi ile görünür kalıyor** — *Varlık Mesafesi* %100'ün altındayken tavuk, kedi ve kurt gibi küçük canlılar, Living Horizon devralmadan önce birkaç blok boyunca kaybolmak yerine artık uzaklara kadar görünür kalıyor.
+
+## 0.17.0 — 2026-11-20
+
+### Sunucu
+
+#### İyileştirmeler
+- **Minecraft Comes Alive görünümleri paylaşılıyor** — Minecraft Comes Alive kurulu bir sunucuda Living Horizon artık her oyuncunun orada seçtiği görünümü, oyuncu çevrim dışı olduğunda paylaşıyor. Modu kullanan oyuncular böylece çevrim dışı oyuncuları, kendileri katılmadan önce ayrılanlar dahil, Minecraft Comes Alive'ın gösterdiği şekilde görüyor.
+
+### İstemci
+
+#### Yenilikler
+- **Kendi dilinde değişiklik günlüğü** — Oyun içi değişiklik günlüğü artık yalnızca İngilizce ve Fransızca değil, Living Horizon'un çevrildiği tüm dillerde sunuluyor. Oyunun dilini izler, diğer dillerde ise İngilizce gösterilir.
+- **Paylaşılabilir gizli canlılar listesi** — `config/livinghorizon.json` artık uzakta asla gösterilmeyen canlıların kimliğe göre (`"minecraft:pig"`) ya da bir modun tamamı için (`"cobblemon:*"`) yazıldığı bir `hiddenMobs` listesi içeriyor. Mod paketleri seçimlerini kısa tek bir listeyle paylaşabilir; *Canlılar ve Varlıklar...* ekranında *Gizli* yapılan canlılar da bu listeye eklenir.
+- **Yeraltındaki canlıları gizleme seçeneği** — Varsayılan olarak kapalı olan yeni *Yeraltındakileri Gizle* ayarı, kimsenin uzaktan göremeyeceği mağaralardaki, madenlerdeki ve mahzenlerdeki uzak canlıların çizilmesini durdurur. Bu, çok sayıda canlının yeraltında yaşadığı yerlerde oyunu hafifletir ve *En Fazla Canlı* sınırını yüzeydekilere bırakır. Varsayılan olarak atanmamış bir tuş onu oyun içinde açıp kapatır; Nether ve End bundan asla etkilenmez.
+
+#### İyileştirmeler
+- **Düzenli takılmalar sona erdi** — Living Horizon artık hatırladığı canlıları ve çevrim dışı oyuncuları arka planda kaydediyor; oyun eskisi gibi dakikada bir ya da oyuncular çevrim dışı olurken takılmıyor.
+- **Uzaktaki canlılar için daha az grafik yükü** — Uzaktaki canlıları uzak arazinin arkasında gizlemek artık tüm ekran yerine yalnızca ekranın onların bulunduğu kısmında çalışıyor. Bu, özellikle yüksek çözünürlüklerde biraz daha fazla performans sağlayabilir. (Minecraft 1.21.9 ve sonrası; Voxy ve gölgelendiricilerle, Distant Horizons ile ya da Lodistance ile.)
+- **Dünyalar daha hızlı açılıyor** — Living Horizon'ın çok sayıda canlı hatırladığı bir dünyayı açmak ya da böyle bir sunucuya katılmak artık oyunu bir anlığına dondurmuyor: canlılar okunur okunmaz beliriyor.
+- **Vagonlar uzakta ilerlemeye devam ediyor** — Görüş alanınızdan çıkarken hâlâ hareket eden bir vagon artık onu en son gördüğünüz yerde durmak yerine, oyunun onu ilerletmeye devam edeceği kadar rayları üzerinde yoluna devam ediyor. Bu, *Canlılar ve Varlıklar...* ekranında açılan vagonlar için geçerlidir.
+- **Diğer modların canavarları uzakta gösteriliyor** — 0.13'ten önceki sürümlerin varsayılan olarak gizlediği diğer modların canavarları artık diğer tüm canlılar gibi uzakta gösteriliyor. Bazılarını kendiniz kapatmışsanız *Canlılar ve Varlıklar...* ekranından yeniden gizleyin.
+- **Sunuculara daha akıcı giriş** — Çok sayıda uzak canlı ya da çevrim dışı oyuncu gösterilecekken bir sunucuya katılmak artık oyunu bir anlığına dondurmuyor. Bunun yerine ilk birkaç saniye içinde yavaş yavaş beliriyorlar.
+- **Daha akıcı ışınlanmalar ve hızlı uçuşlar** — Işınlandığınızda, boyut değiştirdiğinizde ya da elitrayla hızlı uçtuğunuzda, Living Horizon geride bıraktığınız çok sayıda canlıyı hatırlarken oyun artık takılmıyor.
+- **Binlerce uzak canlıyla daha akıcı** — Görüş alanında tahmini canlılar dahil binlerce uzak canlı varken Living Horizon artık her karede onlara eskisinin yaklaşık yarısı kadar zaman harcıyor; hangilerinin gösterileceğini seçmek ve onları hareket ettirmek için de daha az zaman harcıyor. Fark en çok yüksek bir *En Fazla Canlı* ya da *Canlı Görüş Mesafesi* değeriyle hissedilir.
+
+#### Düzeltmeler
+- **Ambient Birds kuşları uzakta uçmaya devam ediyor** — Ambient Birds modunun kuşları, görüş mesafenizin ötesine geçtiklerinde artık gökyüzünde donup kalmak yerine kanatları açık halde uçmaya devam ediyor.
+- **Kuşlar ve yarasalar mesafelerini koruyor** — Yarasalar artık siz onlara doğru yürüdüğünüzde uzaklaşıyor ve uçan hiçbir kuş ya da yarasa elinizin erişebileceği mesafeye girmiyor. Artık aralarında durup kolunuzu içlerinden geçirerek sallayamazsınız.
+- **Uzakta ölen canlılar geri gelmiyor** — Tek oyunculuda, görüşünüzün dışında ölen bir canlı artık birkaç saniyeliğine uzakta yeniden belirmiyor.
+- **Ender Ejderhası uzakta hayat buluyor** — Uzaktaki bir Ender Ejderhası artık kanatları kıpırdamadan kaskatı süzülmek yerine kanat çırpıyor, başı önde uçuyor ve dönerken boynunu ve kuyruğunu büküyor. Gerçeği gibi geniş daireler çizerek süzülüyor ve basit bir görüntü yerine her zaman tam modelini koruyor.
+- **Uzaktaki canlılar yerel ağda görünür kalıyor** — Yerel ağ dünyasını açan oyuncu *Varlık Mesafesi* ayarını düşürdüğünde uzaktaki canlılar artık siz onlara doğru geri yürürken tamamen ya da yolun bir kısmında kaybolmak yerine görünür kalıyor.
+- **Lycanites Mobs uzakta doğru gösteriliyor** — Jouste, Krake ya da Bobeko gibi uzaktaki Lycanites canlıları artık kaybolmak yerine basit görüntüler olarak beliriyor ve Voxy'nin veya Distant Horizons'ın tepelerinin içinden görünmek yerine arkalarında doğru şekilde gizleniyor. (Forge, Minecraft 1.20.1.)
+- **Mac'teki çökme düzeltildi** — Oyun artık Mac'te ya da eski bir ekran kartında bir dünyaya katıldıktan yaklaşık bir saniye sonra çökmüyor. Uzaktaki canlılar orada da uzak arazinin arkasında gizlenmeye devam ediyor ve *Gizli Canlıları Atla* çalışmayı sürdürüyor.
+- **Çevrim dışı oyuncular Minecraft Comes Alive görünümlerini koruyor** — Minecraft Comes Alive ile çevrim dışı oyuncular artık sade görünümleri yerine seçtikleri köylü ya da özel oyuncu modeliyle gösteriliyor. Siz katılmadan önce çevrim dışı olan oyuncular için modun sunucuda da kurulu olması gerekir.
+- **Canlılar kendi boyutlarında kalıyor** — Uzaktaki canlılar artık başka bir boyutta, örneğin Nether'in havasında süzülen mürekkep balıkları gibi belirmek yerine yalnızca onları gördüğünüz boyutta gösteriliyor.
+- **Canlılar teknelerinde ya da vagonlarında kalıyor** — Bir tekneye ya da vagona binmiş canlılar artık kaybolmak ya da kendi başlarına yürüyüp gitmek yerine, araç nereye giderse gitsin içinde oturur halde onunla birlikte uzakta görünür kalıyor.
+- **Çevrim dışı oyuncular kenarlardan düşüyor** — Bir uçurumun kenarından ittiğiniz çevrim dışı bir oyuncu artık kenarda havada asılı kalmak yerine düşüyor.
+- **Çevrim dışı oyuncular oldukları yerde kalıyor** — Yakınınızdaki çevrim dışı oyuncular, görünümleri ya da kıyafetleri belirdiğinde artık çevrim dışı oldukları yere birkaç blok geri sıçramıyor. Yeni görünümleriyle bulundukları yerden devam ediyorlar.
+- **Basitleştirme ayarları oyunculara da uygulanıyor** — Çevrim içi diğer oyuncular artık, oyun onları gösterdiği sürece tam modellerini korumak yerine, canlılar gibi *Basitleştirme Mesafesi* ötesine geçtiklerinde ya da ekranda *Basitleştirme Boyutu* değerinden küçük göründüklerinde basit görüntülere dönüşüyor. Bunun için *Basit Oyuncular* ayarının açık olması gerekir; varsayılan olarak açıktır.
+- **Valkyrien Skies gemilerinin yolcuları doğru yerde** — Bir Valkyrien Skies gemisindeki koltuklar, araçlar ve biniciler artık uzakta, gemilerinden uzak yanlış bir yerde süzülmüyor. (Minecraft 1.20.1.)
+
 ## 0.16.0 — 2026-11-05
 
 ### İstemci

@@ -2,6 +2,75 @@
 
 ## Prossima versione
 
+## 0.18.1 — 2026-11-24
+
+### Client
+
+#### Correzioni
+- **Giocatori e creature lontani animati dai pacchetti di Entity Model Features** — Con Entity Model Features e un pacchetto di risorse che anima i giocatori o le creature, i giocatori e le creature disegnati da Living Horizon ora si muovono come previsto dal pacchetto, invece di camminare muovendo solo le braccia, con le gambe ferme. I giocatori disconnessi seduti tengono le gambe piegate. (Minecraft da 1.20.1 a 1.21.1.)
+- **Axolotl e pesci lontani nuotano come dovrebbero** — Con Entity Model Features e Fresh Animations, gli axolotl, i calamari e i pesci lontani ora nuotano normalmente, invece di restare sdraiati su un fianco, dimenandosi come fuori dall'acqua.
+- **I giocatori disconnessi si muovono con Epic Fight** — Con Epic Fight installato, i giocatori disconnessi ora camminano, si siedono, dormono e cavalcano con le sue animazioni, invece di restare immobili in un'unica posa mentre si spostano. (NeoForge, Minecraft 1.21.1, con Epic Fight 21.)
+- **Le creature lontane mantengono le texture del loro pacchetto** — Con Entity Texture Features ed Entity Model Features, come richiede Fresh Animations, le creature lontane ora mantengono le texture del pacchetto, invece di perderle o di assumere tutte la texture e la posa di un'unica altra creatura. (Minecraft da 1.20.1 a 1.21.8.)
+- **Ogni creatura lontana mantiene la sua texture casuale** — Con Entity Texture Features e un pacchetto di risorse con texture casuali per le creature, le immagini semplificate delle creature lontane (*Creature semplificate*) ora mantengono ciascuna la propria texture, invece di avere tutte quella della prima disegnata.
+
+## 0.18.0 — 2026-11-21
+
+### Client
+
+#### Novità
+- **Uccelli semplificati** — Un nuovo interruttore in *Prestazioni*, attivo per impostazione predefinita, disegna gli uccelli in 3D lontani come immagini semplificate, come le creature. Ora funziona da solo: gli uccelli restavano modelli completi quando giocatori, creature ed entità lontani erano tutti disattivati. Gli uccelli posati ora cambiano alla dimensione che occupano davvero sullo schermo, invece di restare modelli completi più lontano di quanto indichi *Dimensione di semplificazione*.
+
+#### Miglioramenti
+- **Gli uccelli costano molti meno FPS** — Gli uccelli ora volano solo dove puoi vederli: senza Voxy, Distant Horizons o un altro mod di terreno lontano, nessuno viene tenuto oltre la distanza di rendering, dove la nebbia li nascondeva comunque. Le loro immagini semplificate vengono salvate tra una partita e l'altra, quindi entrare in un mondo non scatta più per diversi secondi, e sia gli uccelli in 3D sia le immagini semplificate richiedono meno lavoro per essere disegnati, anche con gli shader. Questo può dare più FPS ovunque ci siano uccelli.
+
+#### Correzioni
+- **Uccelli nascosti dalle colline lontane** — Gli uccelli ora scompaiono dietro le colline del terreno lontano anche quando giocatori, creature ed entità lontani sono tutti disattivati, invece di vedersi attraverso. (Con Voxy, Distant Horizons o Lodistance.)
+- **Gli uccelli si radunano su laghi, foreste e coste lontani** — Gli uccelli ora trovano acqua, alberi, campi e coste sul terreno di Voxy e Distant Horizons oltre la tua distanza di visibilità, invece che solo intorno a te. Stormi e uccelli marini si distribuiscono così in modo naturale su tutto il paesaggio.
+- **Giocatori disconnessi corretti con Fresh Animations** — I giocatori disconnessi non sembrano più robot volanti e non affondano nel terreno quando camminano con il modello giocatore di Fresh Animations, e ora si siedono correttamente su cuscini e tappeti.
+- **Le creature tornano in modo più fluido quando ti avvicini** — Quando torni vicino a una creatura mostrata come copia lontana, la copia ora si affretta verso il punto in cui si trova la creatura vera, che così prende il suo posto prima e senza scatti, invece di restare nascosta per diversi secondi. La copia di una creatura che non c'è più scompare in meno di un secondo.
+- **Creature mantenute sui server che le mostrano solo da vicino** — Sui server che inviano le creature solo entro poche decine di blocchi, le creature da cui ti allontani ora restano in lontananza invece di sparire per sempre. Finora venivano mantenute solo se ti allontanavi rapidamente.
+- **Le creature piccole restano visibili con una distanza delle entità ridotta** — Con la *Distanza delle entità* sotto il 100%, le creature piccole come galline, gatti e lupi ora restano visibili fino in lontananza, invece di sparire per qualche blocco prima che Living Horizon prendesse il posto del gioco.
+
+## 0.17.0 — 2026-11-20
+
+### Server
+
+#### Miglioramenti
+- **Aspetti di Minecraft Comes Alive condivisi** — Su un server con Minecraft Comes Alive, Living Horizon ora condivide l'aspetto che ogni giocatore vi ha scelto quando si disconnette. I giocatori con la mod vedono così i giocatori disconnessi come li mostra Minecraft Comes Alive, anche quelli usciti prima del loro arrivo.
+
+### Client
+
+#### Novità
+- **Registro delle modifiche nella tua lingua** — Il registro delle modifiche nel gioco è ora disponibile in tutte le lingue in cui è tradotto Living Horizon, invece che solo in inglese e francese. Segue la lingua del gioco e viene mostrato in inglese per qualsiasi altra lingua.
+- **Elenco condivisibile di creature nascoste** — `config/livinghorizon.json` ora contiene un elenco `hiddenMobs` delle creature mai mostrate in lontananza, per ID (`"minecraft:pig"`) o per un'intera mod (`"cobblemon:*"`). I modpack possono condividere le proprie scelte in un breve elenco, e le creature impostate su *Nascosto* in *Creature ed entità...* vi vengono aggiunte.
+- **Opzione per nascondere le creature sotterranee** — La nuova opzione *Nascondi sotterranee*, disattivata per impostazione predefinita, smette di disegnare le creature lontane in grotte, miniere e cantine, che nessuno può vedere da lontano. Questo alleggerisce il gioco dove molte creature vivono sottoterra e lascia il *Limite creature* a quelle in superficie. Un tasto, non assegnato per impostazione predefinita, la attiva e disattiva durante il gioco; il Nether e l'End non sono mai interessati.
+
+#### Miglioramenti
+- **Niente più scatti periodici** — Living Horizon ora salva in background le creature che ricorda e i giocatori disconnessi, invece di provocare uno scatto nel gioco una volta al minuto o quando i giocatori si disconnettono.
+- **Meno lavoro grafico per le creature lontane** — Nascondere le creature lontane dietro il terreno lontano ora riguarda solo la parte dello schermo in cui si trovano, invece dell'intero schermo. Questo può dare un po' più di prestazioni, soprattutto ad alte risoluzioni. (Minecraft 1.21.9 e successive, con Voxy e shader, Distant Horizons o Lodistance.)
+- **Apertura dei mondi più rapida** — Aprire un mondo o entrare in un server in cui Living Horizon ricorda molte creature non blocca più il gioco per un momento: ora compaiono non appena vengono lette.
+- **I vagonetti continuano a correre in lontananza** — Un vagonetto ancora in movimento quando esce dalla tua vista ora prosegue lungo i suoi binari, fin dove il gioco lo farebbe andare avanti, invece di fermarsi dove l'hai visto l'ultima volta. Questo vale per i vagonetti attivati in *Creature ed entità...*.
+- **Mostri di altre mod visibili in lontananza** — I mostri di altre mod che le versioni precedenti alla 0.13 nascondevano per impostazione predefinita ora sono mostrati in lontananza come qualsiasi altra creatura. Se ne avevi disattivati alcuni tu stesso, nascondili di nuovo in *Creature ed entità...*.
+- **Arrivo più fluido sui server** — Entrare in un server non blocca più il gioco per un momento quando ci sono molte creature lontane o molti giocatori disconnessi da mostrare. Ora compaiono gradualmente nei primi secondi.
+- **Teletrasporti e voli veloci più fluidi** — Il gioco non ha più scatti quando ti teletrasporti, cambi dimensione o voli veloce con le elitre, mentre Living Horizon ricorda le molte creature che ti lasci alle spalle.
+- **Più fluido con migliaia di creature lontane** — Con migliaia di creature lontane in vista, comprese quelle stimate, Living Horizon ora dedica loro circa la metà del tempo a ogni fotogramma, e meno per scegliere quali mostrare e farle muovere. La differenza si nota soprattutto con valori alti di *Limite creature* o *Visibilità creature*.
+
+#### Correzioni
+- **Gli uccelli di Ambient Birds continuano a volare in lontananza** — Gli uccelli della mod Ambient Birds ora continuano a volare, con le ali spiegate, quando si trovano oltre la tua distanza di visibilità, invece di restare immobili nel cielo.
+- **Uccelli e pipistrelli mantengono le distanze** — I pipistrelli ora volano via quando cammini verso di loro, e nessun uccello o pipistrello in volo arriva alla portata della tua mano. Non puoi più metterti in mezzo a loro e attraversarli a colpi.
+- **Le creature che muoiono lontano non tornano più** — In giocatore singolo, una creatura che muore fuori dalla tua vista non ricompare più in lontananza per qualche secondo.
+- **L'Enderdrago prende vita in lontananza** — Un Enderdrago lontano ora batte le ali, vola con la testa in avanti e piega il collo e la coda quando vira, invece di planare rigido con le ali immobili. Si libra in ampi cerchi come quello vero, e mantiene sempre il suo modello completo invece di un'immagine semplificata.
+- **Le creature lontane restano visibili in LAN** — Le creature lontane ora restano visibili dopo che il giocatore che ospita un mondo in LAN abbassa la sua *Distanza delle entità*, invece di sparire per sempre o per parte del tragitto mentre torni verso di loro.
+- **Creature di Lycanites Mobs mostrate correttamente in lontananza** — Le creature lontane di Lycanites Mobs, come il Jouste, il Krake o il Bobeko, ora compaiono come immagini semplificate invece di sparire, e si nascondono correttamente dietro le colline di Voxy o di Distant Horizons invece di vedersi attraverso di esse. (Forge, Minecraft 1.20.1.)
+- **Arresto anomalo su Mac risolto** — Il gioco non si arresta più circa un secondo dopo che sei entrato in un mondo su un Mac o con una scheda grafica meno recente. Le creature lontane continuano a nascondersi dietro il terreno lontano su questi sistemi, e *Salta creature nascoste* continua a funzionare.
+- **I giocatori disconnessi mantengono il loro aspetto di Minecraft Comes Alive** — Con Minecraft Comes Alive, i giocatori disconnessi ora vengono mostrati con il modello da villico o da giocatore personalizzato che hanno scelto, invece della loro semplice skin. Per i giocatori disconnessi prima del tuo arrivo, la mod deve essere installata anche sul server.
+- **Le creature restano nella loro dimensione** — Le creature lontane ora sono mostrate solo nella dimensione in cui le hai viste, invece di apparire in un'altra, come calamari che fluttuano nell'aria del Nether.
+- **Le creature restano nella loro barca o nel loro vagonetto** — Le creature a bordo di una barca o di un vagonetto ora restano visibili in lontananza insieme a esso, sedute all'interno ovunque vada, invece di sparire o di andarsene per conto loro.
+- **I giocatori disconnessi cadono dai bordi** — Un giocatore disconnesso che spingi oltre una sporgenza ora cade, invece di restare sospeso in aria sul bordo.
+- **I giocatori disconnessi restano dove sono** — I giocatori disconnessi vicini a te non tornano più indietro di qualche blocco fino al punto in cui si sono disconnessi quando compaiono la loro skin o il loro equipaggiamento. Proseguono da dove si trovano, con il nuovo aspetto.
+- **Le opzioni di semplificazione valgono per i giocatori** — Gli altri giocatori online ora diventano immagini semplificate quando si trovano oltre la *Distanza di semplificazione* o appaiono sullo schermo più piccoli della *Dimensione di semplificazione*, come le creature, invece di mantenere il loro modello completo finché il gioco li mostra. Per questo *Giocatori semplificati* deve essere attivo, come lo è per impostazione predefinita.
+- **I passeggeri delle navi di Valkyrien Skies al loro posto** — Sedili, veicoli e passeggeri a bordo di una nave di Valkyrien Skies non fluttuano più nel punto sbagliato in lontananza, lontano dalla loro nave. (Minecraft 1.20.1.)
+
 ## 0.16.0 — 2026-11-05
 
 ### Client

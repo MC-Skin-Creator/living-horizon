@@ -48,7 +48,7 @@ never added to a level (`track/Puppets`).
 | root | `LivingHorizonCommon` (entry point on both sides, opens the network channel), `LivingHorizonClient` (client entry point), `FarConfig` (the settings file), `QualityPreset`, `Stats` |
 | `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`, `SeedDraws`, `SeedMobs`, `Foresight`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
 | `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`, the distance settings drawn in the world (`DistancePreview`); `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
-| `compat/` | Voxy, Distant Horizons, Lodistance and Far View: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `LodistanceSource`, `FarViewSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `LodistanceLink`, `FarViewLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`); Lycanites Mobs, whose queued models are drawn in time (`LycaniteMobs`); Valkyrien Skies, whose ships' entities are left to it (`ValkyrienSkies`); Minecraft Comes Alive, handed the look of the players who logged off (`McaLook`, `Mca`) |
+| `compat/` | Voxy, Distant Horizons, Lodistance and Far View: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `LodistanceSource`, `FarViewSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `LodistanceLink`, `FarViewLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`); Lycanites Mobs, whose queued models are drawn in time (`LycaniteMobs`); Valkyrien Skies, whose ships' entities are left to it (`ValkyrienSkies`); Minecraft Comes Alive, handed the look of the players who logged off (`McaLook`, `Mca`); Entity Texture Features, asked which texture a mob wears and told which entity the mod draws (`EtfLink`) |
 | `ambient/` | The birds (`Ambience`, `BirdModels`, `BirdFigure`, `AmbientRenderer`) and the easter eggs |
 | `platform/` | What differs between loaders: events, network, config folder |
 | `ui/` | The settings screens (`FarConfigScreen` and its sub-screens, `SodiumOptions`), the impostor screen, the text under the crosshair (`OfflineHud`) |
@@ -805,6 +805,27 @@ below), and other flyers and swimmers get a flat disc at their own height.
   second (out of view, hidden, too small) is not ticked at all until it is drawn again: no
   animation, no ground read, only moved where the server says it is.
 
+### Entity Model Features, Entity Texture Features and Fresh Animations
+
+The figures are drawn by the game's own renderers, so a mod that changes those changes the
+figures too: EMF's models and its animations (Fresh Animations), ETF's random and emissive
+textures. The `entityfeatures` game test runs with them (`--with
+entitytexturefeatures,entity-model-features --pack fresh-animations`). What they need of a copy:
+
+- **Its id**: ETF picks a mob's texture from its UUID, which a remembered copy keeps (it is read
+  from the mob's saved data), so a copy wears the texture its mob wore.
+- **In water**: EMF's animations ask the entity, not the render state, whether it is in water.
+  A copy is in no world and never ticks, so a fish's copy is put in water once, when it is made
+  (`Puppets.inWater`), or Fresh Animations lays it on its side, flapping.
+- **Before 1.21.9**, ETF and EMF only act inside the game's own draw of an entity, which tells
+  ETF which entity it draws; the mod draws through the renderer, and tells ETF itself
+  (`EtfLink.drawing`), as that draw does.
+- **Impostors**: the texture ETF picks is in the impostor key (see
+  [Same look, same picture](#same-look-same-picture)). A model EMF changes on a resource reload
+  is baked again: the fingerprint on disk holds the packs.
+- EMF slows the animations of far entities on its own (*Animation LOD distance*, in its
+  settings): far copies animate at its pace, as far entities of the game do.
+
 ## Birds
 
 Purely a picture, on this client (`ambient/Ambience`): nothing is spawned and no AI runs.
@@ -851,6 +872,26 @@ neighbours, gulls for a beach, shore or ocean biome.
   (`ambient/AmbientRenderer`). Flying, seen from above, one plane per wing; perched, seen from
   the side, facing the camera.
 - Bats and parrots are the game's own either way.
+- Without a far-terrain mod (`LodWorld.installed`), the game's fog ends at the render distance
+  and paints a bird past it the colour of the fog, a pale ghost against the sky. Birds then live
+  and are drawn within the render distance only (`Ambience.seenWithin`): with 800 blocks of
+  *Bird Distance*, three groups in four used to fly where nobody could see them.
+- A 3D bird is measured for its picture as a mob is, by its largest size (`AmbientRenderer.extent`):
+  its wingspan flying, its own body perched (`Meshes.perched`, 0.65 to 0.8 of its wingspan).
+  Measured by its wingspan perched, it stayed a model a quarter to a half farther than *Simplification Size* says.
+- A 3D bird is one piece of geometry: its boxes are turned into faces once per model
+  (`AmbientRenderer.Meshes`: positions, grain, normals and colours), and each frame only
+  writes them, its wings turned on their hinges as they are written.
+- Birds past the render distance in open sky leave the far terrain's depth alone
+  (`ambient/OpenSky`): once a second the far world is asked, off the game's thread
+  (`LodWorld.blocked`), whether its terrain stands on the line from the eye to 8 blocks under
+  each of them. A bird found clear only pushes the far plane out (`GhostRenderer.noteFarthest`)
+  while the camera stays within 6 blocks of where it was asked from, for 3 seconds at most;
+  otherwise, or under Distant Horizons' fade (`FarDepth.fadesOverFigures`), it asks for the far
+  depth around it (`FarDepth.around`, `needed`) as any far figure does.
+- Birds fly past the render distance whatever else is shown: the far terrain's depth, the far
+  plane and the far fog follow `FarConfig.anyFar` (the distant figures or the birds), so a bird
+  hides behind the far terrain even with every distant player, mob and entity off.
 
 ### Calling birds
 
@@ -866,8 +907,9 @@ or the weather (`Ambience.summon`).
 
 ## Impostors
 
-In game: three switches, each on by default and on its own: *Simplified Mobs* (`impostors`, mobs
-and birds), *Simplified Entities* (`impostorEntities`: boats, vehicles and mannequins, the
+In game: four switches, each on by default and on its own: *Simplified Mobs* (`impostors`),
+*Simplified Birds* (`impostorBirds`: the 3D birds, whatever else is drawn far away, so the
+pictures are baked with nothing but birds on, `FarConfig.birdImpostors`), *Simplified Entities* (`impostorEntities`: boats, vehicles and mannequins, the
 *Entities* tab of the list of mobs, `GhostRenderer.creature`) and *Simplified Players*
 (`impostorPlayers`). Past `impostorDistance` blocks, a distant figure is not extracted and
 submitted as a model: a flat picture of it, always turned to the camera, is drawn instead
@@ -957,6 +999,11 @@ textures, draws and reads back the views, and writes a sheet into its page. Ever
   (variant, colour, profession, baby, pose; not health, air, score or being on fire), what
   it wears, however worn, and its box to about 6%: some mods' mobs take their size from a
   value that keeps changing (an Ice and Fire dragon's age), which the key leaves out.
+- **Random textures**: with Entity Texture Features, the texture a pack dresses the mob in, by
+  name, when it is not the game's own (`compat/EtfLink`); never a blink. It comes from the mob's
+  UUID, which is in none of its synched data: without it, every far cow of a pack of random cows
+  wore the first one baked. The game's texture it stands in for is asked of the renderer once per
+  look.
 - **Left out**: what never shows (positions, times, owners, sound variants, names but the four
   the game draws differently: Dinnerbone, Grumm, jeb_ and Toast) and,
   learnt per kind of mob, what keeps changing on one (a dolphin drying, a zombie raising its
@@ -1022,7 +1069,7 @@ clock and the page textures are handed in), so `SheetAllocatorTest` checks it on
 
 ### On disk
 
-`ImpostorDisk` keeps the mobs' sheets in `config/livinghorizon/impostors/<fingerprint>/`, so
+`ImpostorDisk` keeps the mobs' and the 3D birds' sheets in `config/livinghorizon/impostors/<fingerprint>/`, so
 that a mob met in an earlier game is read back rather than baked.
 
 - The fingerprint is the game version, the resource packs chosen and their files, the jars in
@@ -1036,7 +1083,7 @@ that a mob met in an earlier game is read back rather than baked.
   tiles the figure's origin stands (file `FORMAT` 4; a file of 3 still reads, its origin where
   its kind puts it, and one of 2, its date unknown). The impostor screen shows it under each name, with
   where the pictures come from (`ImpostorAtlas.Origin`): *Shared*, read back from disk; *New*,
-  baked in this game and saved; *Not saved* (players, riders, birds).
+  baked in this game and saved; *Not saved* (players, riders).
 - A sheet read back is checked against the size of a sheet (`ImpostorDisk.decode`) before
   anything is allocated: a damaged file is baked again, it never asks for more memory.
 - 4096 sheets are kept per fingerprint, some 35 KB each once compressed (about 140 MB), counted
@@ -1054,8 +1101,9 @@ that a mob met in an earlier game is read back rather than baked.
     their species;
   - the picture faces the camera entirely, not only round, since it was baked as seen from
     that height, and the wing beat goes on from one sheet to the next;
-  - they are baked again each game, never kept on disk, and named after the species in the
-    impostor screen.
+  - they are kept on disk like a mob's (`ImpostorAtlas.request` with a figure, `Loaded.figure`):
+    baked again each game, the 96 sheets of the eight species made the first seconds of every
+    world a burst of baking on the render thread. Named after the species in the impostor screen.
 - **Phantoms, ghasts and other mods' birds** (happy ghasts included, `MobFlight.pictured`) are
   mostly seen from below: like a bird, one sheet per height they are seen from (well below,
   below, level, above: `ImpostorViews.HEIGHTS`, part of the key through `ImpostorKey.seenFrom`), baked
@@ -1307,8 +1355,8 @@ All of this only matters where far figures are, often a narrow band near the hor
 Lodistance's included, the restore, the fade's mask) is held to it with the scissor
 (`optDepthRegion`, *Local Far Depth*):
 
-- it holds every far figure (`FarDepth.figure`), the nearer ones and the birds
-  (`FarDepth.around`), and each box the occlusion queries test, eight pixels wider;
+- it holds every far figure (`FarDepth.figure`), the nearer ones and the birds that terrain
+  could hide (`FarDepth.around`; not those in open sky, `ambient/OpenSky`), and each box the occlusion queries test, eight pixels wider;
 - outside it the game's depth is never written, so nothing has to be put back there, and the
   copies hold an older frame that nothing reads (`intoVoxy`'s rectangles are held to it too);
 - it is the whole texture when the figures are not all known before the entities are drawn
@@ -1501,7 +1549,7 @@ debug options. `/livinghorizon debug` turns the panel and the boxes on or off to
 | Panel | `debugHud` | Top left: cost per tick and frame, what became of every distant mob in the last frame, far terrain reads and depth, how far this server sends mobs, which optimisations are on |
 | Cost per section | `debugHud` | A second column of the panel, and `/livinghorizon`: for each part of the mod the last time, a smoothed average and the worst of the last 5 seconds, which an average alone hides (a save of 100 ms once a minute). A time is that of one call: choosing runs once a second (guessed mobs included, nested in it), so its time is spread over twenty ticks, while the other parts of the tick run every tick and those of the frame every frame. Sections: the client tick (following the server's mobs, choosing, building copies, reading the ground, motion, the copies resting between two looks included, resting players, birds, hidden mobs), the frame (extraction, each step of the far terrain's depth, the occlusion queries, baking and storing the flat pictures, submitting birds and flat pictures), the saves with their size in bytes, and the server's publication. Over 2 ms shows yellow, over 8 ms red. With OpenGL the GPU's time is shown too for the depth steps, the occlusion boxes and the baking (`GL_TIME_ELAPSED` queries read a few frames later, never waited for), and so is what the game's thread allocates per tick; both are measured only while the panel or the command was asked for in the last 10 seconds. Each section is named `livinghorizon:<section>` in the game's profiler (F3 pie chart, spark). Code: `Profile`, `debug/ProfileHook`, `debug/GpuTimer` |
 | Panel in F3 | `living_horizon` in the game's debug options (F3 + F6, from 1.21.9) | The panel's lines in the F3 screen. `/livinghorizon debug` turns it on too |
-| Polygons in F3 | `fake_entities` in the game's debug options (F3 + F6, from 1.21.9) | The polygons of the mod's own entities (distant players and mobs, never the game's), split into full models and impostors (one quad each), and a line of impostor sheets baked and waiting |
+| Polygons in F3 | `fake_entities` in the game's debug options (F3 + F6, from 1.21.9) | The polygons of the mod's own entities (distant players and mobs, never the game's), split into full models and impostors (one quad each); with birds shown, a line of the birds drawn, as 3D models and as impostors; and a line of impostor sheets baked and waiting |
 | Boxes (from 1.21.11) | `debugBoxes` | A box around every distant mob and player, seen through terrain, coloured by what became of it (below). A dot in the middle keeps it visible when the box is smaller than its lines |
 | Game's mobs | `debugGameMobs` | Boxes around the mobs the game draws itself too |
 | Boxes per kind | `box*`, in *Boxes...* | The boxes and labels of one kind on their own switch: real ones drawn by the mod, copies, foreseen animals, players, those not drawn (the game's are `debugGameMobs`) |
@@ -1737,7 +1785,8 @@ and a slider dragged past its end is released beside it. Sodium's page cannot as
 
 | Setting | In game | Default | Range | What it does |
 |---|---|---|---|---|
-| `impostors` | Simplified Mobs | `true` | | Far mobs and birds drawn as a flat picture of themselves (see [Impostors](#impostors)) |
+| `impostors` | Simplified Mobs | `true` | | Far mobs drawn as a flat picture of themselves (see [Impostors](#impostors)) |
+| `impostorBirds` | Simplified Birds | `true` | | 3D birds past the same distance or size drawn as pictures, even with every distant figure off |
 | `impostorEntities` | Simplified Entities | `true` | | Far boats, vehicles and mannequins drawn as pictures too, from every height; set from `impostors` when it came (layout 12) |
 | `impostorPlayers` | Simplified Players | `true` | | Distant players become impostors too; off, they keep their whole model at any distance |
 | `impostorShading` | Shader Lighting | `true` | | Under a shader pack that reads normal maps, the pictures are baked evenly lit with a normal map each, so the pack lights them like the models; twice the video memory. From 1.21.6 |
@@ -1814,7 +1863,7 @@ the mod shares come back by themselves. *Scan Nearby Mobs* runs a scan.
 | `debugBoxes` | Boxes on Mobs | `false` | A coloured box around every distant mob and player, seen through terrain |
 | `debugLabels` | Labels on Mobs | `false` | State, kind, distance and size on screen above each box |
 | `debugGameMobs` | Game's Mobs Too | `false` | Boxes around the mobs the game draws itself too |
-| `box*` | Boxes... | `true` | Which other kinds get their box and label: `boxLiveMobs`, `boxCopies`, `boxForeseen`, `boxPlayers`, `boxLeftOut` |
+| `box*` | Boxes... | `true` | Which other kinds get their box and label: `boxLiveMobs`, `boxCopies`, `boxForeseen`, `boxPlayers`, `boxBirds` (amber as models, magenta as pictures, as large as they are measured for their picture), `boxLeftOut` |
 | `debugDepthView` | Depth View | `0` | `0` off; `1` the game's depth; `2` with the far terrain merged in; `3` after the entities; `4` the whole world |
 | `outline*` | Outlines... | `false` | See [Outlines](#outlines) |
 

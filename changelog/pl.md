@@ -2,6 +2,75 @@
 
 ## Następna wersja
 
+## 0.18.1 — 2026-11-24
+
+### Klient
+
+#### Poprawki
+- **Odlegli gracze i stworzenia animowani przez paczki Entity Model Features** — Z Entity Model Features i paczką zasobów, która animuje graczy lub stworzenia, gracze i stworzenia rysowani przez Living Horizon poruszają się teraz tak, jak przewiduje paczka, zamiast chodzić samymi rękami z nieruchomymi nogami. Siedzący gracze offline mają zgięte nogi. (Minecraft od 1.20.1 do 1.21.1.)
+- **Odległe aksolotle i ryby pływają jak należy** — Z Entity Model Features i Fresh Animations odległe aksolotle, kałamarnice i ryby pływają teraz normalnie, zamiast leżeć na boku i trzepotać się jak na lądzie.
+- **Gracze offline poruszają się z Epic Fight** — Z zainstalowanym Epic Fight gracze offline chodzą, siadają, śpią i jeżdżą teraz z jego animacjami, zamiast zastygać w jednej pozie podczas ruchu. (NeoForge, Minecraft 1.21.1, z Epic Fight 21.)
+- **Odległe stworzenia zachowują tekstury paczki** — Z Entity Texture Features i Entity Model Features, których wymaga Fresh Animations, odległe stworzenia zachowują teraz tekstury paczki, zamiast je tracić albo wszystkie przyjmować teksturę i pozę jednego innego stworzenia. (Minecraft od 1.20.1 do 1.21.8.)
+- **Każde odległe stworzenie zachowuje własną losową teksturę** — Z Entity Texture Features i paczką zasobów z losowymi teksturami stworzeń uproszczone obrazy odległych stworzeń (*Uproszczone stworzenia*) zachowują teraz każde własną teksturę, zamiast wszystkie nosić teksturę pierwszego narysowanego.
+
+## 0.18.0 — 2026-11-21
+
+### Klient
+
+#### Nowości
+- **Uproszczone ptaki** — Nowy przełącznik w sekcji *Wydajność*, domyślnie włączony, rysuje odległe ptaki 3D jako uproszczone obrazy, jak stworzenia. Działa teraz samodzielnie: ptaki zostawały pełnymi modelami, gdy odlegli gracze, stworzenia i byty były wyłączone. Siedzące ptaki przełączają się teraz przy rozmiarze, jaki naprawdę zajmują na ekranie, zamiast pozostawać pełnymi modelami dalej, niż wskazuje *Rozmiar uproszczenia*.
+
+#### Ulepszenia
+- **Ptaki zabierają znacznie mniej klatek na sekundę** — Ptaki latają teraz tylko tam, gdzie możesz je zobaczyć: bez Voxy, Distant Horizons lub innego moda dalekiego terenu żaden nie jest trzymany za zasięgiem renderowania, gdzie i tak ukrywała je mgła. Ich uproszczone obrazy są zapisywane między grami, więc wejście do świata nie przycina już przez kilka sekund, a ptaki 3D i uproszczone obrazy wymagają mniej pracy przy rysowaniu, także z shaderami. Może to dać więcej klatek na sekundę wszędzie, gdzie są ptaki.
+
+#### Poprawki
+- **Ptaki zasłonięte przez dalekie wzgórza** — Ptaki znikają teraz za wzgórzami dalekiego terenu, nawet gdy odlegli gracze, stworzenia i byty są wyłączeni, zamiast prześwitywać przez nie. (Z Voxy, Distant Horizons lub Lodistance.)
+- **Ptaki gromadzą się nad odległymi jeziorami, lasami i wybrzeżami** — Ptaki znajdują teraz wodę, drzewa, pola i wybrzeża na terenie Voxy i Distant Horizons poza twoim zasięgiem renderowania, a nie tylko wokół ciebie. Stada i ptaki morskie rozkładają się dzięki temu naturalnie po całym krajobrazie.
+- **Gracze offline wyglądają poprawnie z Fresh Animations** — Gracze offline nie wyglądają już jak latające roboty i nie zapadają się w ziemię podczas chodzenia z modelem gracza z Fresh Animations, a teraz poprawnie siadają na poduszkach i dywanach.
+- **Płynniejszy powrót stworzeń, gdy się zbliżasz** — Gdy wracasz w pobliże stworzenia pokazanego jako odległa kopia, kopia teraz spieszy tam, gdzie stoi prawdziwe stworzenie, więc prawdziwe przejmuje jej miejsce wcześniej i bez przeskoku, zamiast pozostawać ukryte przez kilka sekund. Kopia stworzenia, którego już nie ma, znika w niecałą sekundę.
+- **Stworzenia zachowane na serwerach, które pokazują je tylko z bliska** — Na serwerach, które wysyłają stworzenia tylko w promieniu kilkudziesięciu bloków, stworzenia, od których się oddalasz, zostają teraz widoczne w oddali, zamiast znikać na dobre. Dotąd były zachowywane tylko wtedy, gdy oddalałeś się szybko.
+- **Małe stworzenia pozostają widoczne przy mniejszej odległości bytów** — Przy *Odl. renderow. bytów* poniżej 100% małe stworzenia, takie jak kurczaki, koty i wilki, pozostają teraz widoczne aż po horyzont, zamiast znikać na kilka bloków, zanim Living Horizon przejmie ich wyświetlanie.
+
+## 0.17.0 — 2026-11-20
+
+### Serwer
+
+#### Ulepszenia
+- **Udostępnianie wyglądu z Minecraft Comes Alive** — Na serwerze z Minecraft Comes Alive Living Horizon udostępnia teraz wygląd, który każdy gracz w nim wybrał, gdy tylko się wyloguje. Gracze z modem widzą wtedy graczy offline tak, jak pokazuje ich Minecraft Comes Alive, nawet tych, którzy wyszli przed ich dołączeniem.
+
+### Klient
+
+#### Nowości
+- **Lista zmian w twoim języku** — Lista zmian w grze jest teraz dostępna we wszystkich językach, na które przetłumaczono Living Horizon, a nie tylko po angielsku i francusku. Wyświetla się w języku gry, a w każdym innym języku po angielsku.
+- **Lista ukrytych stworzeń do udostępniania** — `config/livinghorizon.json` zawiera teraz listę `hiddenMobs` ze stworzeniami, które nigdy nie są pokazywane w oddali, według identyfikatora (`"minecraft:pig"`) lub dla całego moda (`"cobblemon:*"`). Paczki modów mogą udostępniać swoje wybory w jednej krótkiej liście, a stworzenia ustawione na *Ukryte* w *Stworzenia i byty...* są do niej dodawane.
+- **Opcja ukrywania stworzeń pod ziemią** — Nowe ustawienie *Ukryj pod ziemią*, domyślnie wyłączone, przestaje rysować odległe stworzenia w jaskiniach, kopalniach i piwnicach, których i tak nikt nie widzi z daleka. Odciąża to grę tam, gdzie wiele stworzeń żyje pod ziemią, i zostawia limit *Maks. stworzeń* dla tych na powierzchni. Klawisz, domyślnie nieprzypisany, włącza i wyłącza tę opcję w grze; Nether i End nigdy nie są nią objęte.
+
+#### Ulepszenia
+- **Koniec z regularnymi przycięciami** — Living Horizon zapisuje teraz w tle zapamiętane stworzenia i graczy offline, zamiast powodować przycięcia gry raz na minutę lub wtedy, gdy gracze się wylogowują.
+- **Mniej pracy grafiki przy odległych stworzeniach** — Ukrywanie odległych stworzeń za dalekim terenem obejmuje teraz tylko tę część ekranu, w której się znajdują, a nie cały ekran. Może to nieco poprawić wydajność, głównie w wysokich rozdzielczościach. (Minecraft 1.21.9 i nowsze, z Voxy i shaderami, z Distant Horizons lub Lodistance.)
+- **Szybsze otwieranie światów** — Otwarcie świata lub dołączenie do serwera, na którym Living Horizon pamięta wiele stworzeń, nie zamraża już gry na chwilę: stworzenia pojawiają się teraz, gdy tylko zostaną wczytane.
+- **Wagoniki toczą się dalej w oddali** — Wagonik, który wciąż jedzie, gdy znika ci z oczu, toczy się teraz dalej po torach, tak daleko, jak prowadziłaby go gra, zamiast zatrzymywać się tam, gdzie widziano go ostatnio. Dotyczy to wagoników włączonych w *Stworzenia i byty...*.
+- **Potwory z innych modów widoczne w oddali** — Potwory z innych modów, które wersje sprzed 0.13 domyślnie ukrywały, są teraz pokazywane w oddali jak każde inne stworzenie. Jeśli część z nich wyłączono ręcznie, ukryj je ponownie w *Stworzenia i byty...*.
+- **Płynniejsze wejście na serwery** — Dołączenie do serwera nie zamraża już gry na chwilę, gdy trzeba pokazać wiele odległych stworzeń lub graczy offline. Zamiast tego pojawiają się teraz stopniowo w ciągu pierwszych kilku sekund.
+- **Płynniejsze teleportacje i szybkie loty** — Gra nie zacina się już, gdy teleportujesz się, zmieniasz wymiar lub szybko lecisz na elytrach, podczas gdy Living Horizon zapamiętuje wiele stworzeń, które zostawiasz za sobą.
+- **Płynniej z tysiącami odległych stworzeń** — Gdy w polu widzenia są tysiące odległych stworzeń, łącznie ze zgadniętymi, Living Horizon poświęca im teraz w każdej klatce mniej więcej o połowę mniej czasu, a także mniej na wybór, które pokazać, i na utrzymanie ich w ruchu. Ma to największe znaczenie przy wysokich wartościach *Maks. stworzeń* lub *Zasięg render. stworzeń*.
+
+#### Poprawki
+- **Ptaki z Ambient Birds latają dalej w oddali** — Ptaki z moda Ambient Birds latają teraz dalej z rozłożonymi skrzydłami, gdy znajdą się poza twoim zasięgiem renderowania, zamiast wisieć nieruchomo na niebie.
+- **Ptaki i nietoperze trzymają dystans** — Nietoperze odlatują teraz, gdy idziesz w ich stronę, a żaden latający ptak ani nietoperz nie zbliża się na wyciągnięcie ręki. Nie możesz już stanąć pośród nich i wymachiwać ręką prosto przez nie.
+- **Stworzenia, które zginą daleko, już nie wracają** — W trybie jednoosobowym stworzenie, które zginie poza twoim polem widzenia, nie pojawia się już na kilka sekund z powrotem w oddali.
+- **Smok Endu ożywa w oddali** — Odległy smok Endu macha teraz skrzydłami, leci głową naprzód i wygina szyję oraz ogon na zakrętach, zamiast sztywno szybować z nieruchomymi skrzydłami. Zatacza szerokie kręgi jak prawdziwy i zawsze zachowuje pełny model zamiast uproszczonego obrazu.
+- **Odległe stworzenia widoczne w LAN** — Odległe stworzenia pozostają teraz widoczne, gdy gracz będący gospodarzem świata w LAN zmniejszy swoje ustawienie *Odl. renderow. bytów*, zamiast znikać na dobre lub na części drogi, gdy do nich wracasz.
+- **Stworzenia z Lycanites Mobs poprawnie pokazywane w oddali** — Odległe stworzenia z Lycanites Mobs, takie jak Jouste, Krake czy Bobeko, pojawiają się teraz jako uproszczone obrazy, zamiast znikać, i poprawnie chowają się za wzgórzami Voxy lub Distant Horizons, zamiast przez nie prześwitywać. (Forge, Minecraft 1.20.1.)
+- **Naprawiono awarię na Macu** — Gra nie ulega już awarii mniej więcej sekundę po dołączeniu do świata na Macu lub ze starszą kartą graficzną. Odległe stworzenia nadal chowają się tam za dalekim terenem, a *Pomijaj zasłonięte* wciąż działa.
+- **Gracze offline zachowują wygląd z Minecraft Comes Alive** — Z Minecraft Comes Alive gracze offline są teraz pokazywani z wybranym przez siebie modelem osadnika lub własnym modelem gracza, a nie ze zwykłym skinem. W przypadku graczy, którzy wylogowali się przed twoim dołączeniem, mod musi być też zainstalowany na serwerze.
+- **Stworzenia zostają w swoim wymiarze** — Odległe stworzenia są teraz pokazywane tylko w wymiarze, w którym je widziałeś, zamiast pojawiać się w innym, na przykład kałamarnice unoszące się w powietrzu Netheru.
+- **Stworzenia zostają w łódce lub wagoniku** — Stworzenia jadące łódką lub wagonikiem pozostają teraz widoczne w oddali razem z nim, siedząc w środku, dokądkolwiek jedzie, zamiast znikać lub odchodzić samodzielnie.
+- **Gracze offline spadają z krawędzi** — Gracz offline zepchnięty przez ciebie z półki teraz spada, zamiast zawisać w powietrzu przy krawędzi.
+- **Gracze offline zostają na miejscu** — Gracze offline w twoim pobliżu nie przeskakują już o kilka bloków do miejsca wylogowania, gdy pojawi się ich skin lub strój. Kontynuują z miejsca, w którym stoją, w nowym wyglądzie.
+- **Ustawienia uproszczenia obejmują graczy** — Inni gracze online stają się teraz uproszczonymi obrazami, gdy są dalej niż *Odległość uproszczenia* lub na ekranie mniejsi niż *Rozmiar uproszczenia*, tak jak stworzenia, zamiast zachowywać pełny model, dopóki gra ich pokazuje. Wymaga to włączonej opcji *Uproszczeni gracze*, co jest ustawieniem domyślnym.
+- **Pasażerowie statków Valkyrien Skies we właściwym miejscu** — Siedzenia, pojazdy i jeźdźcy na statku Valkyrien Skies nie unoszą się już w oddali w złym miejscu, z dala od swojego statku. (Minecraft 1.20.1.)
+
 ## 0.16.0 — 2026-11-05
 
 ### Klient

@@ -105,7 +105,8 @@ players do not see the same birds.
 - Far away, they play ready-made flights.
 - Flocks, geese flying in a V, birds of prey, seagulls over the coast, pigeons on tall
   buildings, robins, tits, ducks, parrots and bats at night. *Bird Types...* picks them.
-- They are small 3D models that flap their wings. *Bird Style* turns them into flat 2D birds.
+- They are small 3D models that flap their wings, and flat pictures far away (*Simplified
+  Birds*). *Bird Style* turns them into flat 2D birds.
 - *Bird Density*, *Bird Distance*, *Bird Size* and *Min. Flight Height* set how many you see,
   how far, how big and how high.
 
@@ -121,9 +122,9 @@ distance and still see a living world.
 
 - **Simplified Mobs**, **Simplified Entities** and **Simplified Players**: past the
   *Simplification Distance*, or when smaller on screen than the *Simplification Size*, a
-  mob, a vehicle or a player is drawn as a flat picture instead of a 3D model. Many games do
-  the same with far objects, which they call impostors. It costs much less to draw, so you
-  can show many more.
+  mob, a vehicle or a player is drawn as a flat picture instead of a 3D model.
+  **Simplified Birds** does the same for far birds. Many games do the same with far
+  objects, which they call impostors. It costs much less to draw, so you can show many more.
 - With *Smooth Simplification*, a figure first turns to the angle of its picture, so the
   switch does not jump.
 - The pictures are saved on your disk and reused in your next sessions. They are made again
@@ -501,7 +502,7 @@ describe how the project works.
 - Build: `./gradlew :1.21.11:build` for one target, `./gradlew buildAndCollect` for every jar.
 - License: source-available under the [Living Horizon License](LICENSE), copyright 2026
   clixmods. The unchanged jar may be redistributed with credit; forks are not allowed.
-- Credits: made by clixmods. Contributors: JonesJugHead. Testers: ISessen, largitalian. Full list in [CREDITS.md](CREDITS.md).
+- Credits: made by clixmods. Contributors: JonesJugHead, deanxbox, KIRILLAND78. Testers: ISessen, largitalian. Full list in [CREDITS.md](CREDITS.md).
 - Contributing: pull requests to this repository only, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Minecraft is a trademark of Mojang Studios. This project is not affiliated with or
