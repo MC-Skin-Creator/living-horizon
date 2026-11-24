@@ -27,18 +27,20 @@ the mod does, in plain words, and nothing else. Everything technical lives in
 ## Structure
 
 Keep this order. A new feature goes in the section it belongs to, never in a new one
-unless it is as big as the three below.
+unless it is as big as the ones below.
 
 1. **Intro**, three or four sentences: the mod shows mobs and players far past the render
    distance; it draws them on the game's terrain and on **Voxy** and **Distant Horizons**
    terrain; it can also help performance.
-2. **Features**, the three main ones, in this order:
-   - **Mobs on the horizon** first: all mobs, on the game's terrain and **on Voxy and
-     Distant Horizons terrain** (in bold), any entity Minecraft can draw.
-   - **Players at any distance**, then **players who logged off live on**.
-   - **Birds in the sky**.
+2. **Features**, one `###` per feature, in this order: **Distant mobs**, **Distant
+   players**, **Offline players**, **Birds**, **Settings**. Each opens with one or two
+   sentences: what it shows and what it is (light copies with no AI, only visual, needs the
+   mod on the server). Then a `<details>` block, `<summary>How … work</summary>`, holds a
+   plain bullet list of how it behaves, with its limits (guessed mobs may be gone when you
+   arrive). Describe the game alone first; other mods come only as examples after it
+   ("such as Voxy or Distant Horizons"), never as a feature of their own.
 3. **Performance**, in three subsections: *No AI far away* (ready-made animations, small AI
-   up close only; players who logged off are only visual), *Simplified Entities* (impostors:
+   up close only; offline players are only visual), *Simplified Entities* (impostors:
    flat pictures instead of 3D models), *Everything runs on your computer* (not in sync
    between players).
 4. **Multiplayer**: the table of each feature in single player, LAN, server with the mod,
