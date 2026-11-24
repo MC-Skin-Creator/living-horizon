@@ -17,8 +17,7 @@ the mod does, in plain words, and nothing else. Everything technical lives in
    `src/main/resources/assets/livinghorizon/lang/en_us.json`, exactly as the game shows them.
 3. Write the change following the rules below.
 4. Change the store description in the same commit, so both say the same thing. It is the
-   README without *Useful commands*, the versions table, *Compatibility* and *More*, and
-   with *Performance* in three bullets. Keep the two summaries of `store/listing.md` in their
+   README without *Useful commands*, the versions table, *Compatibility* and *More*. Keep the two summaries of `store/listing.md` in their
    limits (256 characters on Modrinth, 200 on CurseForge).
 5. Commit as `docs(readme): ...`. Documentation gets no changelog entry.
 6. Tell the user that the platform pages are not updated by any workflow: the description
@@ -33,27 +32,23 @@ unless it is as big as the ones below.
    distance; it draws them on the game's terrain and on **Voxy** and **Distant Horizons**
    terrain; it can also help performance.
 2. **Features**, one `###` per feature, in this order: **Distant Mobs**, **Distant
-   Players**, **Offline Players**, **Birds**, **Settings**. Each opens with one or two
+   Players**, **Offline Players**, **Birds**, **Performance**, **Settings**. Each opens with one or two
    sentences: what it shows and what it is (light copies with no AI, only visual, needs the
    mod on the server). Then a `<details>` block, `<summary>How … work</summary>`, holds a
    plain bullet list of how it behaves, with its limits (guessed mobs may be gone when you
    arrive). Describe the game alone first; other mods come only as examples after it
    ("such as Voxy or Distant Horizons"), never as a feature of their own.
-3. **Performance**, in three subsections: *No AI far away* (ready-made animations, small AI
-   up close only; offline players are only visual), *Simplified Entities* (impostors:
-   flat pictures instead of 3D models), *Everything runs on your computer* (not in sync
-   between players).
-4. **Multiplayer**: the table of each feature in single player, LAN, server with the mod,
+3. **Multiplayer**: the table of each feature in single player, LAN, server with the mod,
    server without the mod, then how to set up a server.
-5. **Getting started**, **Useful commands**, **Requirements** (with the versions table),
+4. **Getting started**, **Useful commands**, **Requirements** (with the versions table),
    **Compatibility**.
-6. **FAQ**: the questions players ask again and again (what is only visual, compatibility,
+5. **FAQ**: the questions players ask again and again (what is only visual, compatibility,
    modded mobs, servers, modpacks, AI and Modrinth). Grouped under `###` topics, each
    question a collapsible block: `<details>`, `<summary>` with the question in plain text,
    a blank line, the answer, a blank line, `</details>`. A short answer, a pointer to the
    section above rather than a copy of it. The store keeps it, with the mods named in place
    of *Compatibility*, no pointer to a README-only section, and every link absolute.
-7. **Made with AI**, **More**.
+6. **Made with AI**, **More**.
 
 ## Tone
 

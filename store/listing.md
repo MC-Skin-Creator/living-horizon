@@ -215,6 +215,40 @@ players do not see the same birds.
 
 </details>
 
+### Performance
+
+Living Horizon draws less the farther away things are. You can lower your simulation
+distance and still see a living world.
+
+<details>
+<summary>How the mod stays light</summary>
+
+- **Simplified Mobs**, **Simplified Entities** and **Simplified Players**: past the
+  *Simplification Distance*, or when smaller on screen than the *Simplification Size*, a
+  mob, a vehicle or a player is drawn as a flat picture instead of a 3D model. Many games do
+  the same with far objects, which they call impostors. It costs much less to draw, so you
+  can show many more.
+- With *Smooth Simplification*, a figure first turns to the angle of its picture, so the
+  switch does not jump.
+- The pictures are saved on your disk and reused in your next sessions. They are made again
+  only after a change of resource packs, mods or game version. *Mob Picture Memory* and
+  *Player Picture Memory* limit the video memory they take.
+- Distant mobs have no AI: they play ready-made animations. Offline players and birds have a
+  small AI only when you are close.
+- Past the *Animation Distance*, or when smaller on screen than the *Min. Animated Size*,
+  mobs stop walking and stand still.
+- *Skip Hidden Mobs* does not draw the mobs that the terrain hides entirely.
+  *Hide Underground Mobs* leaves out the mobs in caves and mines.
+- *Max Mobs*, *Max Entities* and *Max Offline* limit how many are shown at once, nearest
+  first.
+- A *Preset* (*Low*, *Normal*, *High*, *Ultra*) sets all of this at once. Keep *Simplified
+  Mobs* on if you raise *Mob Render Distance* or *Max Mobs*.
+- Everything runs on your computer. The server only shares positions, so it stays light,
+  and two players can see the same far mob doing different things.
+- **Careful:** *Max Mobs* and *Mob Render Distance* both on *Unlimited* can crash the game.
+
+</details>
+
 ### Settings
 
 Open them from the Options screen or `/livinghorizon config`.
@@ -233,20 +267,6 @@ Open them from the Options screen or `/livinghorizon config`.
 - Distant mobs are lit by shader packs, such as Photon.
 
 </details>
-
-## Performance
-
-- **No AI far away.** Far entities play ready-made animations that fit the ground around
-  them. Offline players and birds have a small AI only when you are close.
-- **Simplified Entities.** Far mobs, vehicles and players are drawn as flat pictures instead
-  of 3D models. It costs much less to draw, so you can show many more entities.
-- **Everything runs on your computer.** The server only shares positions, so two players
-  can see the same far mob doing different things.
-
-Offline players are only visual: you walk through them, they cannot block or push
-you, and mobs ignore them.
-
-**Careful:** *Max Mobs* and *Mob Render Distance* both on *Unlimited* can crash the game.
 
 ## Multiplayer
 
