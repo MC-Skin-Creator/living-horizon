@@ -21,7 +21,8 @@ the mod does, in plain words, and nothing else. Everything technical lives in
    limits (256 characters on Modrinth, 200 on CurseForge).
 5. Commit as `docs(readme): ...`. Documentation gets no changelog entry.
 6. Tell the user that the platform pages are not updated by any workflow: the description
-   is pasted by hand on Modrinth, CurseForge and Nexus Mods.
+   is pasted by hand on Modrinth, CurseForge and Nexus Mods. CurseForge gets the text that
+   `node .github/scripts/store-description.js curseforge` prints: its editor breaks `<details>`.
 
 ## Structure
 

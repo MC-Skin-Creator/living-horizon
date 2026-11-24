@@ -101,8 +101,9 @@ Renaming a file on Nexus makes the next release create a new one beside it.
 
 ## Description of the mod (both platforms)
 
-Markdown. Modrinth takes it as is; on CurseForge, paste it in the editor and let it
-format the headings and lists.
+Markdown. Modrinth takes it as is. CurseForge's editor drops `<details>` and `<summary>`
+and breaks the folded blocks: paste what `node .github/scripts/store-description.js
+curseforge` prints instead, the same text with every block unfolded under a bold line.
 
 ```markdown
 # Living Horizon
