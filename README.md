@@ -14,62 +14,156 @@ see a living world.
 
 ## Features
 
-### Mobs on the horizon
+### Distant Mobs
 
-All mobs are visible from far away, on the game's terrain and **on Voxy and Distant
-Horizons terrain**. This works for any entity Minecraft can draw, mobs and vehicles from
-other mods included. Choose which ones in *Mobs & Entities...*.
+Shows mobs far past your render distance. These distant mobs are light copies of the real
+ones, with no AI.
 
-Land nobody has explored yet has its mobs too. The mod guesses from the world's seed which
-mobs the game will put there, and where. A guessed mob may not be there when you arrive.
-This needs the mod on the server, and works in single player. Look through a spyglass to
-see them farther away, or press *Guess Nearby Mobs* to show them up to 1024 chunks around.
+<details>
+<summary>How distant mobs work</summary>
 
-### Players at any distance
+- They play ready-made animations that fit the ground around them: they walk, graze, hop and
+  look around. Phantoms, ghasts and the ender dragon fly.
+- A mob shows where your game or the server last saw it, and stays there from one session to
+  the next. If it died or left since, it is forgotten when you come near.
+- On a server with the mod, the server shares the mobs it knows, even those you never met.
+  In single player, the mod reads the mobs around you the first time you open a world.
+- **Guessed mobs** fill the land nobody has explored yet. The mod works out from the world's
+  seed which mobs the game would put there, and where. They fill a world drawn far away by
+  Distant Horizons, for example. They are a guess: they may be gone, or stand a little
+  elsewhere, when you get there. This needs the mod on the server, and works in single
+  player. Look through a spyglass to see them farther away, or press *Guess Nearby Mobs* to
+  show them up to 1024 chunks around.
+- They stand on the game's terrain, and on the terrain of far-terrain mods such as Voxy or
+  Distant Horizons. Hills hide them.
+- Far away, they become flat pictures instead of 3D models (*Simplified Mobs*). They cost much
+  less to draw, so you can show many more.
+- A mob in a boat or a minecart stays in it, and a rolling minecart keeps rolling. Pets told
+  to sit stay seated.
+- Boats stay where they were left, and so do vehicles from other mods, such as Immersive
+  Aircraft's planes.
+- *Mobs & Entities...* shows or hides each kind. Mobs with a name tag can always be shown.
+  *Hide Underground Mobs* leaves out the mobs in caves and mines.
+- They are only visual. Farms, spawning and the mob cap do not change, and you cannot hit a
+  distant mob.
 
-Other players are visible at any distance, with their gear and their mount.
+</details>
 
-**Players who logged off live on.** When a player logs off, a copy with their name appears
-where they left. It walks around, sits, opens chests and sleeps at night, until the player
-comes back.
+### Distant Players
 
-### Birds in the sky
+Shows other players at any distance, with their skin, gear and mount. This needs the mod on
+the server: it shares their positions with the players who have the mod.
 
-Birds fly over the land and are visible from far away: flocks, geese, birds of prey, gulls,
-ducks, bats... They land on trees, buildings, fields and beaches.
+<details>
+<summary>How distant players work</summary>
 
-## Performance
+- Your game draws each player where the server says they are. A player gliding with an
+  elytra is shown gliding.
+- Far away, they become flat pictures instead of 3D models (*Simplified Players*).
+- The server's owner chooses what is shared: how far, with teammates only, and which players
+  and dimensions stay hidden. Players in spectator mode or invisible are never shared.
+- *Player Render Distance* limits how far you see them.
 
-The mod uses two techniques to stay light.
+</details>
 
-### No AI far away
+### Offline Players
 
-Far entities have no AI. They play ready-made animations that fit the ground around them.
+When a player logs off, a copy with their name stays where they left, until they come back.
+It is only visual: the world does not know it exists.
 
-- **Mobs**: no AI. They walk, graze and look around.
-- **Players who logged off**: a small AI when you are close, so they use beds and chests.
-  Ready-made animations when you are far.
-- **Birds**: a small AI when you are close, ready-made flights when you are far.
+<details>
+<summary>How offline players work</summary>
 
-Players who logged off are only visual. The world does not know they exist: you walk
-through them, they cannot block or push you, and mobs ignore them.
+- Up close, they have a small AI. They stroll, sit, look in chests and use workstations. They
+  sleep in a bed at night, gather by a campfire in the evening and take shelter from the
+  rain. Two of them nearby may chat, and one near water may fish.
+- Far away, they play ready-made animations.
+- They look back at you when you look at them up close, crouch when you crouch, and raise a
+  shield against monsters.
+- You can push them out of your way. They cannot push you, and mobs ignore them.
+- They keep their mount: a horse, a boat, a happy ghast. One who left swimming waits on the
+  shore, or rows a boat.
+- Their name shows with *(offline)*. Look at one up close to see when they were last seen.
+- On a server with the mod, you see those who left before you joined. In single player, the
+  world's players show from the start, even those from before the mod was installed.
+  Without the mod on the server, you only see those you saw leave.
+- They keep the look another mod gave them, such as their Minecraft Comes Alive model.
+- *Max Offline* limits how many show at once, and *Roaming Radius* how far they wander.
 
-### Simplified Entities
+</details>
 
-Many games draw far objects as **impostors**: a flat picture instead of a 3D model. Living
-Horizon does the same for far mobs, vehicles, players and birds, each with its own switch:
-*Simplified Mobs*, *Simplified Entities*, *Simplified Players* and *Simplified Birds*. It costs much less to draw,
-so you can show many more entities.
+### Birds
 
-Keep *Simplified Mobs* on if you raise *Mob Render Distance* or *Max Mobs*. A *Preset*
-(*Low*, *Normal*, *High*, *Ultra*) sets everything at once.
+Adds birds to the Overworld's sky, visible from far away. They exist in your game only: two
+players do not see the same birds.
 
-**Careful:** *Max Mobs* and *Mob Render Distance* both on *Unlimited* can crash the game.
+<details>
+<summary>How birds work</summary>
 
-### Everything runs on your computer
+- Up close, they have a small AI. They perch on trees, buildings, fields and beaches, ducks
+  swim, and pigeons and bats fly off when you come close.
+- Far away, they play ready-made flights.
+- Flocks, geese flying in a V, birds of prey, seagulls over the coast, pigeons on tall
+  buildings, robins, tits, ducks, parrots and bats at night. *Bird Types...* picks them.
+- They are small 3D models that flap their wings, and flat pictures far away (*Simplified
+  Birds*). *Bird Style* turns them into flat 2D birds.
+- *Bird Density*, *Bird Distance*, *Bird Size* and *Min. Flight Height* set how many you see,
+  how far, how big and how high.
 
-Your game handles the far animations, the players who logged off and the birds. The server
-only shares positions. So two players can see the same far mob doing different things.
+</details>
+
+### Performance
+
+Living Horizon draws less the farther away things are. You can lower your simulation
+distance and still see a living world.
+
+<details>
+<summary>How the mod stays light</summary>
+
+- **Simplified Mobs**, **Simplified Entities** and **Simplified Players**: past the
+  *Simplification Distance*, or when smaller on screen than the *Simplification Size*, a
+  mob, a vehicle or a player is drawn as a flat picture instead of a 3D model.
+  **Simplified Birds** does the same for far birds. Many games do the same with far
+  objects, which they call impostors. It costs much less to draw, so you can show many more.
+- With *Smooth Simplification*, a figure first turns to the angle of its picture, so the
+  switch does not jump.
+- The pictures are saved on your disk and reused in your next sessions. They are made again
+  only after a change of resource packs, mods or game version. *Mob Picture Memory* and
+  *Player Picture Memory* limit the video memory they take.
+- Distant mobs have no AI: they play ready-made animations. Offline players and birds have a
+  small AI only when you are close.
+- Past the *Animation Distance*, or when smaller on screen than the *Min. Animated Size*,
+  mobs stop walking and stand still.
+- *Skip Hidden Mobs* does not draw the mobs that the terrain hides entirely.
+  *Hide Underground Mobs* leaves out the mobs in caves and mines.
+- *Max Mobs*, *Max Entities* and *Max Offline* limit how many are shown at once, nearest
+  first.
+- A *Preset* (*Low*, *Normal*, *High*, *Ultra*) sets all of this at once. Keep *Simplified
+  Mobs* on if you raise *Mob Render Distance* or *Max Mobs*.
+- Everything runs on your computer. The server only shares positions, so it stays light,
+  and two players can see the same far mob doing different things.
+- **Careful:** *Max Mobs* and *Mob Render Distance* both on *Unlimited* can crash the game.
+
+</details>
+
+### Settings
+
+Open them from the Options screen or `/livinghorizon config`.
+
+<details>
+<summary>What the settings offer</summary>
+
+- A *Preset* (*Low*, *Normal*, *High*, *Ultra*) sets everything at once.
+- When you change a distance, its limit shows in the world behind the menu.
+- Right-click a slider that ends in *Unlimited* to type a value. The arrow keys move any
+  slider one step.
+- Keys of your choice switch distant players on and off, switch *Hide Underground Mobs* and
+  open the settings.
+- The mod and its in-game changelog are in 14 languages.
+- The settings are also in other mods' menus, such as Sodium's *Video Settings*.
+- Distant mobs are lit by shader packs, such as Photon.
+
+</details>
 
 ## Multiplayer
 
@@ -77,9 +171,9 @@ Everything works in single player. On a server, some features need the mod on th
 
 | Feature | Single player | World opened to LAN | Server with the mod | Server without the mod |
 |---|---|---|---|---|
-| Mobs on the horizon | ✓ | ✓ | ✓ | Only the mobs you met |
-| Players at any distance | — | ✓ | ✓ | ✗ |
-| Players who logged off | ✓ | ✓ | ✓, even those who left before you joined | Only those you saw leave |
+| Distant Mobs | ✓ | ✓ | ✓ | Only the mobs you met |
+| Distant Players | — | ✓ | ✓ | ✗ |
+| Offline Players | ✓ | ✓ | ✓, even those who left before you joined | Only those you saw leave |
 | Birds | ✓ | ✓ | ✓ | ✓ |
 
 - **Server**: put the same jar in the server's `mods/` folder (with the Fabric API on Fabric
@@ -104,7 +198,7 @@ choose what it shares. Changes apply after a few seconds, without a restart.
 | `hideInvisible` | `true` | Never shares invisible players |
 | `hiddenPlayers` | `[]` | Names never shared, such as `["Steve"]` |
 | `hiddenDimensions` | `[]` | Dimensions where nothing is shared, such as `["minecraft:the_nether"]` |
-| `shareOfflinePlayers` | `true` | Shares players who logged off where they left |
+| `shareOfflinePlayers` | `true` | Shares offline players where they left |
 | `shareMobs` | `true` | Shares the remembered mobs past the view distance |
 | `seedMobs` | `true` | Shares the mobs of land nobody has explored yet, guessed from the seed |
 | `seedMobRange` | `512` | How far from a player those mobs are shared, in blocks, up to `2048` |
@@ -116,7 +210,7 @@ each other as usual. What a player's game saw on its own stays in its memory.
 ## Getting started
 
 1. Install the file for your game version and loader (see *Requirements*). Voxy, Distant
-   Horizons, Lodistance and Ecstatic are optional.
+   Horizons, Lodistance, Ecstatic and Far View are optional.
 2. Keep the default settings. *Restore Defaults* puts them back.
 
 Open the settings from the Options screen, Mod Menu, Sodium's *Video Settings* (Sodium 0.8
@@ -133,7 +227,7 @@ and later) or `/livinghorizon config`.
 
 - Minecraft 1.20 to 1.21.11 and 26.1 to 26.3.
 - Fabric or Quilt (with [Fabric API](https://modrinth.com/mod/fabric-api)), NeoForge or Forge.
-- [Voxy](https://modrinth.com/mod/voxy), [Distant Horizons](https://modrinth.com/mod/distanthorizons), [Lodistance](https://www.curseforge.com/minecraft/mc-mods/lodistance) or [Ecstatic](https://modrinth.com/mod/ecstatic): optional.
+- [Voxy](https://modrinth.com/mod/voxy), [Distant Horizons](https://modrinth.com/mod/distanthorizons), [Lodistance](https://www.curseforge.com/minecraft/mc-mods/lodistance), [Ecstatic](https://modrinth.com/mod/ecstatic) or [Far View](https://www.curseforge.com/minecraft/mc-mods/far-view): optional.
 - [Mod Menu](https://modrinth.com/mod/modmenu): optional, on Fabric and Quilt.
 
 Download from the [releases](https://github.com/MC-Skin-Creator/living-horizon/releases)
@@ -162,6 +256,7 @@ page, one file per game version and loader:
 | [Distant Horizons](https://modrinth.com/mod/distanthorizons) | From 2.3 on. Mobs and players are visible on its terrain. |
 | [Lodistance](https://www.curseforge.com/minecraft/mc-mods/lodistance) | Fabric, 26.3. Mobs and players are visible on its terrain, with OpenGL and without shaders. |
 | [Ecstatic](https://modrinth.com/mod/ecstatic) | NeoForge, 1.21.1, single player. Mobs are visible on its terrain, without shaders. |
+| [Far View](https://www.curseforge.com/minecraft/mc-mods/far-view) | Forge and NeoForge, 1.20.1 to 1.21.4. Mobs are visible on its terrain. |
 | [Bobby](https://modrinth.com/mod/bobby) | Mobs and players are visible on the terrain it keeps past the server's view distance. |
 | [Iris](https://modrinth.com/mod/iris) | Shader packs work, such as the two below. |
 | [Photon](https://modrinth.com/shader/photon-shader) | Shader pack. Checked: it works. |
@@ -219,7 +314,7 @@ can limit. A mob only shows once your game or the server has seen it.
 <details>
 <summary>Does it work with my mod?</summary>
 
-Most likely. Voxy, Distant Horizons, Lodistance, Ecstatic, Bobby, Sodium, Iris and shader packs work with it (see
+Most likely. Voxy, Distant Horizons, Lodistance, Ecstatic, Far View, Bobby, Sodium, Iris and shader packs work with it (see
 *Compatibility*). Living Horizon only adds its own figures: it does not change how other
 mods draw the world. Mods not tested yet are listed under the
 [`mod compatibility`](https://github.com/MC-Skin-Creator/living-horizon/labels/mod%20compatibility)
@@ -240,7 +335,7 @@ differently, ask me to add support for it, in an
 </details>
 
 <details>
-<summary>Do I need Voxy, Distant Horizons, Lodistance or Ecstatic?</summary>
+<summary>Do I need Voxy, Distant Horizons, Lodistance, Ecstatic or Far View?</summary>
 
 No. Without them, distant mobs and players show on the game's own terrain, out to your
 render distance. With one of them, they also show on its far terrain.
@@ -284,7 +379,7 @@ On a server, the mod only sends positions to the players who have it.
 
 No. Almost everything works in single player, and you can join any server with it. But
 players at any distance need the mod on the server, and the server then shares more mobs and
-players who logged off. See *Multiplayer*.
+offline players. See *Multiplayer*.
 
 </details>
 
