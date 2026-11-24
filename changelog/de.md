@@ -2,6 +2,17 @@
 
 ## Nächste Version
 
+## 0.18.1 — 2026-11-24
+
+### Client
+
+#### Behoben
+- **Ferne Spieler und Kreaturen mit den Animationen von Entity-Model-Features-Paketen** — Mit Entity Model Features und einem Ressourcenpaket, das Spieler oder Kreaturen animiert, bewegen sich die Spieler und Kreaturen, die Living Horizon zeichnet, jetzt so, wie das Paket es vorsieht, statt nur mit den Armen zu laufen, während die Beine stillstehen. Sitzende Offline-Spieler behalten ihre Beine angewinkelt. (Minecraft 1.20.1 bis 1.21.1.)
+- **Ferne Axolotl und Fische schwimmen, wie sie sollen** — Mit Entity Model Features und Fresh Animations schwimmen ferne Axolotl, Tintenfische und Fische jetzt normal, statt auf der Seite zu liegen und zu zappeln, als wären sie an Land.
+- **Offline-Spieler bewegen sich mit Epic Fight** — Mit installiertem Epic Fight gehen, sitzen, schlafen und reiten Offline-Spieler jetzt mit dessen Animationen, statt beim Bewegen in einer einzigen Pose zu erstarren. (NeoForge, Minecraft 1.21.1, mit Epic Fight 21.)
+- **Ferne Kreaturen behalten die Texturen ihres Pakets** — Mit Entity Texture Features und Entity Model Features, wie Fresh Animations sie braucht, behalten ferne Kreaturen jetzt die Texturen des Pakets, statt sie zu verlieren oder alle die Textur und Haltung einer einzigen anderen Kreatur anzunehmen. (Minecraft 1.20.1 bis 1.21.8.)
+- **Jede ferne Kreatur behält ihre eigene Zufallstextur** — Mit Entity Texture Features und einem Ressourcenpaket mit zufälligen Kreaturentexturen behalten die vereinfachten Bilder ferner Kreaturen (*Vereinfachte Kreaturen*) jetzt jeweils ihre eigene Textur, statt alle die Textur der ersten abgebildeten zu tragen.
+
 ## 0.18.0 — 2026-11-21
 
 ### Client

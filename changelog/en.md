@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.18.1 — 2026-11-24
+
+### Client
+
+#### Fixed
+- **Distant players and mobs animated by Entity Model Features packs** — With Entity Model Features and a resource pack that animates players or mobs, the players and mobs Living Horizon draws now move as the pack says, instead of walking with their arms only and their legs still. Seated offline players keep their legs bent. (Minecraft 1.20.1 to 1.21.1.)
+- **Distant axolotls and fish swim as they should** — With Entity Model Features and Fresh Animations, distant axolotls, squid and fish now swim normally, instead of lying on their side, flapping as if out of the water.
+- **Offline players move with Epic Fight** — With Epic Fight installed, offline players now walk, sit, sleep and ride with its animations, instead of standing frozen in one pose while they move. (NeoForge, Minecraft 1.21.1, with Epic Fight 21.)
+- **Distant mobs keep their pack's textures** — With Entity Texture Features and Entity Model Features, as Fresh Animations needs them, distant mobs now keep the pack's textures, instead of losing them or all taking the texture and pose of one other mob. (Minecraft 1.20.1 to 1.21.8.)
+- **Each distant mob keeps its own random texture** — With Entity Texture Features and a resource pack of random mob textures, the simplified images of distant mobs (*Simplified Mobs*) now each keep their own texture, instead of all wearing the texture of the first one pictured.
+
 ## 0.18.0 — 2026-11-21
 
 ### Client

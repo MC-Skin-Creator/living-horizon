@@ -2,6 +2,17 @@
 
 ## 下一版本
 
+## 0.18.1 — 2026-11-24
+
+### 客户端
+
+#### 修复
+- **远处的玩家和生物使用 Entity Model Features 资源包的动画** — 使用 Entity Model Features 和为玩家或生物制作动画的资源包时，Living Horizon 绘制的玩家和生物现在会按资源包的设计移动，而不再只摆动手臂、双腿不动。坐着的离线玩家会保持双腿弯曲。（Minecraft 1.20.1 至 1.21.1。）
+- **远处的美西螈和鱼正常游动** — 使用 Entity Model Features 和 Fresh Animations 时，远处的美西螈、鱿鱼和鱼现在会正常游动，而不再侧躺着扑腾，像离开了水一样。
+- **离线玩家随 Epic Fight 动起来** — 安装 Epic Fight 后，离线玩家现在会用它的动画行走、坐下、睡觉和骑乘，而不再在移动时僵在同一个姿势。（NeoForge，Minecraft 1.21.1，搭配 Epic Fight 21。）
+- **远处生物保留资源包的纹理** — 按 Fresh Animations 的需要使用 Entity Texture Features 和 Entity Model Features 时，远处生物现在会保留资源包的纹理，而不再丢失纹理，或全都采用另一个生物的纹理和姿势。（Minecraft 1.20.1 至 1.21.8。）
+- **每个远处生物保留各自的随机纹理** — 使用 Entity Texture Features 和带有随机生物纹理的资源包时，远处生物的简化图像（*简化生物*）现在会各自保留自己的纹理，而不再全都使用第一个绘制的生物的纹理。
+
 ## 0.18.0 — 2026-11-21
 
 ### 客户端

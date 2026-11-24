@@ -2,6 +2,17 @@
 
 ## Prossima versione
 
+## 0.18.1 — 2026-11-24
+
+### Client
+
+#### Correzioni
+- **Giocatori e creature lontani animati dai pacchetti di Entity Model Features** — Con Entity Model Features e un pacchetto di risorse che anima i giocatori o le creature, i giocatori e le creature disegnati da Living Horizon ora si muovono come previsto dal pacchetto, invece di camminare muovendo solo le braccia, con le gambe ferme. I giocatori disconnessi seduti tengono le gambe piegate. (Minecraft da 1.20.1 a 1.21.1.)
+- **Axolotl e pesci lontani nuotano come dovrebbero** — Con Entity Model Features e Fresh Animations, gli axolotl, i calamari e i pesci lontani ora nuotano normalmente, invece di restare sdraiati su un fianco, dimenandosi come fuori dall'acqua.
+- **I giocatori disconnessi si muovono con Epic Fight** — Con Epic Fight installato, i giocatori disconnessi ora camminano, si siedono, dormono e cavalcano con le sue animazioni, invece di restare immobili in un'unica posa mentre si spostano. (NeoForge, Minecraft 1.21.1, con Epic Fight 21.)
+- **Le creature lontane mantengono le texture del loro pacchetto** — Con Entity Texture Features ed Entity Model Features, come richiede Fresh Animations, le creature lontane ora mantengono le texture del pacchetto, invece di perderle o di assumere tutte la texture e la posa di un'unica altra creatura. (Minecraft da 1.20.1 a 1.21.8.)
+- **Ogni creatura lontana mantiene la sua texture casuale** — Con Entity Texture Features e un pacchetto di risorse con texture casuali per le creature, le immagini semplificate delle creature lontane (*Creature semplificate*) ora mantengono ciascuna la propria texture, invece di avere tutte quella della prima disegnata.
+
 ## 0.18.0 — 2026-11-21
 
 ### Client

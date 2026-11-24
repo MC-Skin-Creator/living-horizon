@@ -2,6 +2,17 @@
 
 ## Sonraki sürüm
 
+## 0.18.1 — 2026-11-24
+
+### İstemci
+
+#### Düzeltmeler
+- **Entity Model Features paketleriyle canlanan uzaktaki oyuncular ve canlılar** — Entity Model Features ve oyuncuları ya da canlıları canlandıran bir kaynak paketiyle, Living Horizon'ın çizdiği oyuncular ve canlılar artık paketin öngördüğü gibi hareket ediyor; yalnızca kollarıyla, bacakları hareketsiz yürümüyor. Oturan çevrim dışı oyuncuların bacakları bükülü kalıyor. (Minecraft 1.20.1 ile 1.21.1 arası.)
+- **Uzaktaki aksolotllar ve balıklar olması gerektiği gibi yüzüyor** — Entity Model Features ve Fresh Animations ile uzaktaki aksolotllar, mürekkep balıkları ve balıklar artık normal yüzüyor; sudan çıkmış gibi yan yatıp çırpınmıyor.
+- **Çevrim dışı oyuncular Epic Fight ile hareket ediyor** — Epic Fight yüklüyken çevrim dışı oyuncular artık onun animasyonlarıyla yürüyor, oturuyor, uyuyor ve biniyor; hareket ederken tek bir pozda donup kalmıyor. (NeoForge, Minecraft 1.21.1, Epic Fight 21 ile.)
+- **Uzaktaki canlılar paketlerinin dokularını koruyor** — Fresh Animations'ın gerektirdiği gibi Entity Texture Features ve Entity Model Features ile uzaktaki canlılar artık paketin dokularını koruyor; onları kaybetmiyor ya da hepsi başka tek bir canlının dokusunu ve duruşunu almıyor. (Minecraft 1.20.1 ile 1.21.8 arası.)
+- **Her uzak canlı kendi rastgele dokusunu koruyor** — Entity Texture Features ve canlılar için rastgele dokular içeren bir kaynak paketiyle, uzaktaki canlıların basitleştirilmiş görüntüleri (*Basit Canlılar*) artık her biri kendi dokusunu koruyor; hepsi ilk çizilenin dokusunu taşımıyor.
+
 ## 0.18.0 — 2026-11-21
 
 ### İstemci
