@@ -66,13 +66,13 @@ the server: it shares their positions with the players who have the mod.
 
 </details>
 
-### Players who logged off
+### Offline players
 
 When a player logs off, a copy with their name stays where they left, until they come back.
 It is only visual: the world does not know it exists.
 
 <details>
-<summary>How players who logged off work</summary>
+<summary>How offline players work</summary>
 
 - Up close, they have a small AI. They stroll, sit, look in chests and use workstations. They
   sleep in a bed at night, gather by a campfire in the evening and take shelter from the
@@ -139,11 +139,11 @@ The mod uses two techniques to stay light.
 Far entities have no AI. They play ready-made animations that fit the ground around them.
 
 - **Mobs**: no AI. They walk, graze and look around.
-- **Players who logged off**: a small AI when you are close, so they use beds and chests.
+- **Offline players**: a small AI when you are close, so they use beds and chests.
   Ready-made animations when you are far.
 - **Birds**: a small AI when you are close, ready-made flights when you are far.
 
-Players who logged off are only visual. The world does not know they exist: you walk
+Offline players are only visual. The world does not know they exist: you walk
 through them, they cannot block or push you, and mobs ignore them.
 
 ### Simplified Entities
@@ -160,7 +160,7 @@ Keep *Simplified Mobs* on if you raise *Mob Render Distance* or *Max Mobs*. A *P
 
 ### Everything runs on your computer
 
-Your game handles the far animations, the players who logged off and the birds. The server
+Your game handles the far animations, the offline players and the birds. The server
 only shares positions. So two players can see the same far mob doing different things.
 
 ## Multiplayer
@@ -171,7 +171,7 @@ Everything works in single player. On a server, some features need the mod on th
 |---|---|---|---|---|
 | Distant mobs | ✓ | ✓ | ✓ | Only the mobs you met |
 | Distant players | — | ✓ | ✓ | ✗ |
-| Players who logged off | ✓ | ✓ | ✓, even those who left before you joined | Only those you saw leave |
+| Offline players | ✓ | ✓ | ✓, even those who left before you joined | Only those you saw leave |
 | Birds | ✓ | ✓ | ✓ | ✓ |
 
 - **Server**: put the same jar in the server's `mods/` folder (with the Fabric API on Fabric
@@ -196,7 +196,7 @@ choose what it shares. Changes apply after a few seconds, without a restart.
 | `hideInvisible` | `true` | Never shares invisible players |
 | `hiddenPlayers` | `[]` | Names never shared, such as `["Steve"]` |
 | `hiddenDimensions` | `[]` | Dimensions where nothing is shared, such as `["minecraft:the_nether"]` |
-| `shareOfflinePlayers` | `true` | Shares players who logged off where they left |
+| `shareOfflinePlayers` | `true` | Shares offline players where they left |
 | `shareMobs` | `true` | Shares the remembered mobs past the view distance |
 | `seedMobs` | `true` | Shares the mobs of land nobody has explored yet, guessed from the seed |
 | `seedMobRange` | `512` | How far from a player those mobs are shared, in blocks, up to `2048` |
@@ -377,7 +377,7 @@ On a server, the mod only sends positions to the players who have it.
 
 No. Almost everything works in single player, and you can join any server with it. But
 players at any distance need the mod on the server, and the server then shares more mobs and
-players who logged off. See *Multiplayer*.
+offline players. See *Multiplayer*.
 
 </details>
 

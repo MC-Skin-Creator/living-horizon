@@ -20,7 +20,7 @@ Create > Project > **Mod**.
 |---|---|
 | Name | `Living Horizon` |
 | URL (slug) | `living-horizon` |
-| Summary (256 max) | `Shows mobs and players far past your render distance, on the game's terrain and on Voxy and Distant Horizons terrain. Players who logged off live on, and birds fill the sky.` |
+| Summary (256 max) | `Shows mobs and players far past your render distance, on the game's terrain and on Voxy and Distant Horizons terrain. Offline players live on, and birds fill the sky.` |
 | Visibility | Public once ready (draft until the first version is approved) |
 | Categories (pick up to 3 featured) | `Decoration`, `Mobs`, `Utility` |
 | Client side | **Required** |
@@ -170,13 +170,13 @@ the server: it shares their positions with the players who have the mod.
 
 </details>
 
-### Players who logged off
+### Offline players
 
 When a player logs off, a copy with their name stays where they left, until they come back.
 It is only visual: the world does not know it exists.
 
 <details>
-<summary>How players who logged off work</summary>
+<summary>How offline players work</summary>
 
 - Up close, they have a small AI. They stroll, sit, look in chests and use workstations. They
   sleep in a bed at night, gather by a campfire in the evening and take shelter from the
@@ -237,13 +237,13 @@ Open them from the Options screen or `/livinghorizon config`.
 ## Performance
 
 - **No AI far away.** Far entities play ready-made animations that fit the ground around
-  them. Players who logged off and birds have a small AI only when you are close.
+  them. Offline players and birds have a small AI only when you are close.
 - **Simplified Entities.** Far mobs, vehicles and players are drawn as flat pictures instead
   of 3D models. It costs much less to draw, so you can show many more entities.
 - **Everything runs on your computer.** The server only shares positions, so two players
   can see the same far mob doing different things.
 
-Players who logged off are only visual: you walk through them, they cannot block or push
+Offline players are only visual: you walk through them, they cannot block or push
 you, and mobs ignore them.
 
 **Careful:** *Max Mobs* and *Mob Render Distance* both on *Unlimited* can crash the game.
@@ -256,7 +256,7 @@ Everything works in single player. On a server, some features need the mod on th
 |---|---|---|---|---|
 | Distant mobs | ✓ | ✓ | ✓ | Only the mobs you met |
 | Distant players | — | ✓ | ✓ | ✗ |
-| Players who logged off | ✓ | ✓ | ✓ | Only those you saw leave |
+| Offline players | ✓ | ✓ | ✓ | Only those you saw leave |
 | Birds | ✓ | ✓ | ✓ | ✓ |
 
 To set up a server, put the same file in its `mods` folder. Nothing else to set up. Players
@@ -264,7 +264,7 @@ without the mod can still join. The server shares every player's position with t
 who have the mod: tell your players. Players in spectator mode or invisible are never shared.
 
 The server writes `config/livinghorizon-server.json` the first time it starts. Edit it to
-choose what it shares: players online, players who logged off, mobs, how far, with teammates
+choose what it shares: players online, offline players, mobs, how far, with teammates
 only, and which players and dimensions are never shared. Changes apply after a few seconds.
 
 ## Getting started
@@ -392,7 +392,7 @@ On a server, the mod only sends positions to the players who have it.
 
 No. Almost everything works in single player, and you can join any server with it. But
 players at any distance need the mod on the server, and the server then shares more mobs and
-players who logged off. See *Multiplayer*.
+offline players. See *Multiplayer*.
 
 </details>
 
