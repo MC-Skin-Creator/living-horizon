@@ -196,7 +196,7 @@ It is only visual: the world does not know it exists.
 
 </details>
 
-### Birds in the sky
+### Birds
 
 Adds birds to the Overworld's sky, visible from far away. They exist in your game only: two
 players do not see the same birds.
