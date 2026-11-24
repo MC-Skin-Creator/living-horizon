@@ -32,8 +32,8 @@ unless it is as big as the ones below.
 1. **Intro**, three or four sentences: the mod shows mobs and players far past the render
    distance; it draws them on the game's terrain and on **Voxy** and **Distant Horizons**
    terrain; it can also help performance.
-2. **Features**, one `###` per feature, in this order: **Distant mobs**, **Distant
-   players**, **Offline players**, **Birds**, **Settings**. Each opens with one or two
+2. **Features**, one `###` per feature, in this order: **Distant Mobs**, **Distant
+   Players**, **Offline Players**, **Birds**, **Settings**. Each opens with one or two
    sentences: what it shows and what it is (light copies with no AI, only visual, needs the
    mod on the server). Then a `<details>` block, `<summary>How … work</summary>`, holds a
    plain bullet list of how it behaves, with its limits (guessed mobs may be gone when you

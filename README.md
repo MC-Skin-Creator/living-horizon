@@ -14,7 +14,7 @@ see a living world.
 
 ## Features
 
-### Distant mobs
+### Distant Mobs
 
 Shows mobs far past your render distance. These distant mobs are light copies of the real
 ones, with no AI.
@@ -49,7 +49,7 @@ ones, with no AI.
 
 </details>
 
-### Distant players
+### Distant Players
 
 Shows other players at any distance, with their skin, gear and mount. This needs the mod on
 the server: it shares their positions with the players who have the mod.
@@ -66,7 +66,7 @@ the server: it shares their positions with the players who have the mod.
 
 </details>
 
-### Offline players
+### Offline Players
 
 When a player logs off, a copy with their name stays where they left, until they come back.
 It is only visual: the world does not know it exists.
@@ -169,9 +169,9 @@ Everything works in single player. On a server, some features need the mod on th
 
 | Feature | Single player | World opened to LAN | Server with the mod | Server without the mod |
 |---|---|---|---|---|
-| Distant mobs | ✓ | ✓ | ✓ | Only the mobs you met |
-| Distant players | — | ✓ | ✓ | ✗ |
-| Offline players | ✓ | ✓ | ✓, even those who left before you joined | Only those you saw leave |
+| Distant Mobs | ✓ | ✓ | ✓ | Only the mobs you met |
+| Distant Players | — | ✓ | ✓ | ✗ |
+| Offline Players | ✓ | ✓ | ✓, even those who left before you joined | Only those you saw leave |
 | Birds | ✓ | ✓ | ✓ | ✓ |
 
 - **Server**: put the same jar in the server's `mods/` folder (with the Fabric API on Fabric
