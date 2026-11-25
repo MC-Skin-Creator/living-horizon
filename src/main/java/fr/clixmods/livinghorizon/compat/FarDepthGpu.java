@@ -17,7 +17,15 @@ import com.mojang.renderpearl.api.pipeline.CompareOp;
 import com.mojang.renderpearl.api.pipeline.CompiledRenderPipeline;
 import com.mojang.renderpearl.api.pipeline.DepthStencilState;
 import com.mojang.renderpearl.api.pipeline.PrimitiveTopology;
+//? if >=26.4 {
+/^import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.renderpearl.api.pipeline.RenderPassLayout;
+import net.minecraft.client.renderer.RenderPassLayouts;
+import net.minecraft.client.renderer.pipeline.RenderPipelines;
+^///?} else {
 import com.mojang.renderpearl.api.pipeline.RenderPipeline;
+import net.minecraft.client.renderer.RenderPipelines;
+//?}
 import com.mojang.renderpearl.api.pipeline.UniformType;
 import com.mojang.renderpearl.api.textures.FilterMode;
 import com.mojang.renderpearl.api.textures.GpuSampler;
@@ -28,7 +36,6 @@ import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MappableRingBuffer;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
@@ -64,8 +71,12 @@ public final class FarDepthGpu {
                     .build())
             .withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
             // Drawn in the world's pass, with its colour target: written to depth only.
+            //? if >=26.4 {
+            /^.withColorTargetState(new ColorTargetState(Optional.empty(), ColorTargetState.WRITE_NONE))
+            ^///?} else {
             .withColorTargetState(new ColorTargetState(Optional.empty(), ColorTargetState.DEFAULT.format(),
                     ColorTargetState.WRITE_NONE))
+            //?}
             // Only where Distant Horizons' terrain is nearer than what the game drew.
             .withDepthStencilState(new DepthStencilState(
                     DepthFar.REVERSED ? CompareOp.GREATER_THAN : CompareOp.LESS_THAN, true))
@@ -111,8 +122,26 @@ public final class FarDepthGpu {
                     .withUniform("LhVisibility", UniformType.UNIFORM_BUFFER)
                     .build())
             .withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
+            //? if >=26.4 {
+            /^.withColorTargetState(new ColorTargetState(Optional.empty(), ColorTargetState.WRITE_ALL))
+            ^///?} else
             .withColorTargetState(new ColorTargetState(Optional.empty(), GpuFormat.RGBA8_UNORM, ColorTargetState.WRITE_ALL))
             .build();
+    // One depth texture drawn into another: the game's own pipeline until 26.4, which has none.
+    //? if >=26.4 {
+    /^private static final RenderPipeline BLIT = RenderPipeline.builder(RenderPipelines.GLOBALS_SNIPPET)
+            .withLocation(Identifier.fromNamespaceAndPath(NAMESPACE, "pipeline/far_blit_depth"))
+            .withVertexShader("core/screenquad")
+            .withFragmentShader(Identifier.fromNamespaceAndPath(NAMESPACE, "core/far_blit_depth"))
+            .withBindGroupLayout(BindGroupLayout.builder()
+                    .withUniform("InSampler", UniformType.COMBINED_IMAGE_SAMPLER)
+                    .build())
+            .withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
+            .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, true))
+            .build();
+    ^///?} else
+    private static final RenderPipeline BLIT = RenderPipelines.BLIT_DEPTH;
+
     /^* Mobs tested per frame: the boxes fit the 16 KiB every device gives a uniform buffer. The others wait a frame. ^/
     private static final int VISIBILITY_MAX = 480;
     private static final int VISIBILITY_SIZE = new Std140SizeCalculator().putMat4f().putVec4().get() + VISIBILITY_MAX * 32;
@@ -211,6 +240,9 @@ public final class FarDepthGpu {
                 FarDepth.gpuResult(false, preparedReason, 0, 0);
                 return;
             }
+            //? if >=26.4 {
+            /^CompiledRenderPipeline pipeline = RenderSystem.getCompiledPipelineNullable(MERGE, pass.activeSubpass());
+            ^///?} else
             CompiledRenderPipeline pipeline = RenderSystem.getCompiledPipelineNullable(MERGE);
             if (pipeline == null) {
                 FarDepth.gpuResult(false, "the depth merge pipeline did not compile", 0, 0);
@@ -236,8 +268,8 @@ public final class FarDepthGpu {
             GpuTexture depth = main.getDepthTexture();
             GpuTextureView depthView = main.getDepthTextureView();
             if (depth == null || depthView == null) return;
-            CompiledRenderPipeline mask = RenderSystem.getCompiledPipelineNullable(FADE_MASK);
-            CompiledRenderPipeline blit = RenderSystem.getCompiledPipelineNullable(RenderPipelines.BLIT_DEPTH);
+            CompiledRenderPipeline mask = compiled(FADE_MASK, true);
+            CompiledRenderPipeline blit = compiled(BLIT, true);
             if (mask == null || blit == null) return;
             GpuTextureView copy = savedView(depth);
 
@@ -262,8 +294,7 @@ public final class FarDepthGpu {
 
             CommandEncoder encoder = RenderSystem.getDevice().createCommandEncoder();
             blitDepth(encoder, blit, depthView, copy, "Living Horizon: depth before the fade");
-            try (RenderPass pass = encoder.createRenderPass(RenderPassDescriptor.builder(() -> "Living Horizon: fade mask")
-                    .withDepthAttachment(depthView).build())) {
+            try (RenderPass pass = depthPass(encoder, "Living Horizon: fade mask", depthView)) {
                 RenderSystem.bindDefaultUniforms(pass);
                 pass.setPipeline(mask);
                 pass.setUniform("InSampler", copy, nearest());
@@ -284,7 +315,7 @@ public final class FarDepthGpu {
         fading = false;
         try {
             RenderTarget main = Minecraft.getInstance().gameRenderer.mainRenderTarget();
-            CompiledRenderPipeline blit = RenderSystem.getCompiledPipelineNullable(RenderPipelines.BLIT_DEPTH);
+            CompiledRenderPipeline blit = compiled(BLIT, true);
             if (blit == null || savedView == null || main.getDepthTextureView() == null) return;
             blitDepth(RenderSystem.getDevice().createCommandEncoder(), blit, savedView, main.getDepthTextureView(),
                     "Living Horizon: depth after the fade");
@@ -324,7 +355,7 @@ public final class FarDepthGpu {
             Minecraft minecraft = Minecraft.getInstance();
             RenderTarget main = minecraft.gameRenderer.mainRenderTarget();
             GpuTextureView depth = main.getDepthTextureView();
-            CompiledRenderPipeline pipeline = RenderSystem.getCompiledPipelineNullable(VISIBILITY);
+            CompiledRenderPipeline pipeline = compiled(VISIBILITY, false);
             if (depth == null || pipeline == null) return;
             if (visibility == null || visibility.isClosed()) {
                 visibility = RenderSystem.getDevice().createTexture(() -> "Living Horizon visibility",
@@ -349,8 +380,7 @@ public final class FarDepthGpu {
                 }
             }
             CommandEncoder encoder = RenderSystem.getDevice().createCommandEncoder();
-            try (RenderPass pass = encoder.createRenderPass(RenderPassDescriptor.builder(() -> "Living Horizon: visibility")
-                    .withColorAttachment(visibilityView).build())) {
+            try (RenderPass pass = colourPass(encoder, "Living Horizon: visibility", visibilityView)) {
                 RenderSystem.bindDefaultUniforms(pass);
                 pass.setPipeline(pipeline);
                 pass.setUniform("InSampler", depth, nearest());
@@ -364,6 +394,10 @@ public final class FarDepthGpu {
             READBACK_COUNTS[index] = n;
             READBACK_FRAMES[index] = OcclusionQueries.frame();
             READBACK_BUSY[index] = true;
+            //? if >=26.4 {
+            /^encoder.copyTextureToBuffer(visibility, READBACK_BUFFERS[index], 0, 0);
+            RenderSystem.queueFencedTask(() -> readBack(index));
+            ^///?} else
             encoder.copyTextureToBuffer(visibility, READBACK_BUFFERS[index], 0, () -> readBack(index), 0);
         } catch (Throwable e) {
             fail(e);
@@ -406,7 +440,7 @@ public final class FarDepthGpu {
             RenderTarget main = Minecraft.getInstance().gameRenderer.mainRenderTarget();
             GpuTexture depth = main.getDepthTexture();
             GpuTextureView depthView = main.getDepthTextureView();
-            CompiledRenderPipeline blit = RenderSystem.getCompiledPipelineNullable(RenderPipelines.BLIT_DEPTH);
+            CompiledRenderPipeline blit = compiled(BLIT, true);
             if (depth == null || depthView == null || blit == null) return;
             int w = depth.getWidth(0), h = depth.getHeight(0);
             if (viewDepth == null || viewDepth.isClosed() || viewDepth.getWidth(0) != w || viewDepth.getHeight(0) != h
@@ -431,7 +465,7 @@ public final class FarDepthGpu {
             Minecraft minecraft = Minecraft.getInstance();
             RenderTarget main = minecraft.gameRenderer.mainRenderTarget();
             GpuTextureView color = main.getColorTextureView();
-            CompiledRenderPipeline pipeline = RenderSystem.getCompiledPipelineNullable(VIEW);
+            CompiledRenderPipeline pipeline = compiled(VIEW, false);
             if (color == null || pipeline == null) return;
             if (viewUniforms == null) {
                 viewUniforms = new MappableRingBuffer(() -> "Living Horizon depth view", GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_MAP_WRITE, VIEW_SIZE);
@@ -445,8 +479,7 @@ public final class FarDepthGpu {
                         .putVec4(terms[0], terms[1], planes[0], FarDepth.VIEW_FAR)
                         .putVec4(DepthFar.REVERSED ? 1f : 0f, DepthFar.zeroToOne() ? 1f : 0f, 0f, 0f);
             }
-            try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(
-                    RenderPassDescriptor.builder(() -> "Living Horizon: depth view").withColorAttachment(color).build())) {
+            try (RenderPass pass = colourPass(RenderSystem.getDevice().createCommandEncoder(), "Living Horizon: depth view", color)) {
                 RenderSystem.bindDefaultUniforms(pass);
                 pass.setPipeline(pipeline);
                 pass.setUniform("InSampler", viewDepthView, nearest());
@@ -461,8 +494,7 @@ public final class FarDepthGpu {
     /^* One depth texture drawn into another, as the game does it. ^/
     private static void blitDepth(CommandEncoder encoder, CompiledRenderPipeline blit, GpuTextureView from,
                                   GpuTextureView to, String label) {
-        try (RenderPass pass = encoder.createRenderPass(RenderPassDescriptor.builder(() -> label)
-                .withDepthAttachment(to).build())) {
+        try (RenderPass pass = depthPass(encoder, label, to)) {
             RenderSystem.bindDefaultUniforms(pass);
             pass.setPipeline(blit);
             pass.setUniform("InSampler", from, nearest());
@@ -484,6 +516,31 @@ public final class FarDepthGpu {
         return savedView;
     }
 
+    // From 26.4 a pass names the layout of its attachments, and a pipeline is compiled for one:
+    // the depth alone, or a colour target alone, as each pass here draws into.
+
+    private static RenderPass depthPass(CommandEncoder encoder, String label, GpuTextureView depth) {
+        //? if >=26.4 {
+        /^return encoder.createRenderPass(() -> label, RenderPassLayouts.DEPTH_ONLY, depth);
+        ^///?} else
+        return encoder.createRenderPass(RenderPassDescriptor.builder(() -> label).withDepthAttachment(depth).build());
+    }
+
+    private static RenderPass colourPass(CommandEncoder encoder, String label, GpuTextureView colour) {
+        //? if >=26.4 {
+        /^return encoder.createRenderPass(() -> label, RenderPassLayouts.COLOR_ONLY, colour);
+        ^///?} else
+        return encoder.createRenderPass(RenderPassDescriptor.builder(() -> label).withColorAttachment(colour).build());
+    }
+
+    private static @Nullable CompiledRenderPipeline compiled(RenderPipeline pipeline, boolean depthOnly) {
+        //? if >=26.4 {
+        /^RenderPassLayout layout = depthOnly ? RenderPassLayouts.DEPTH_ONLY : RenderPassLayouts.COLOR_ONLY;
+        return RenderSystem.getCompiledPipelineNullable(pipeline, layout.subpass(0));
+        ^///?} else
+        return RenderSystem.getCompiledPipelineNullable(pipeline);
+    }
+
     private static GpuBuffer next(MappableRingBuffer ring) {
         ring.rotate();
         return ring.currentBuffer();
@@ -499,6 +556,11 @@ public final class FarDepthGpu {
      ^/
     public static void compileAll() {
         for (RenderPipeline pipeline : new RenderPipeline[]{MERGE, FADE_MASK, VIEW, VISIBILITY}) {
+            //? if >=26.4 {
+            /^RenderPassLayout layout = pipeline == FADE_MASK ? RenderPassLayouts.DEPTH_ONLY
+                    : pipeline == MERGE ? RenderPassLayouts.COLOR_DEPTH : RenderPassLayouts.COLOR_ONLY;
+            if (RenderSystem.getCompiledPipelineNullable(pipeline, layout.subpass(0)) == null) {
+            ^///?} else
             if (RenderSystem.getCompiledPipelineNullable(pipeline) == null) {
                 throw new IllegalStateException(pipeline.getLocation() + " did not compile");
             }

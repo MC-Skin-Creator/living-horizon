@@ -110,7 +110,9 @@ final class OverrideBake implements BakeBackend {
             for (int level = 0; level < ImpostorAtlas.MIPS; level++) {
                 int wide = width >> level, tall = height >> level;
                 try (NativeImage empty = new NativeImage(wide, tall, true)) {
-                    //? if >=26.2 {
+                    //? if >=26.4 {
+                    /*empty.writeToGpuTexture(encoder, texture, level, 0, 0, 0);
+                    *///?} elif >=26.2 {
                     /*encoder.writeToTexture(texture, empty, level, 0, 0, 0);
                     *///?} else {
                     encoder.writeToTexture(texture, empty, level, 0, 0, 0, wide, tall, 0, 0);
@@ -238,8 +240,9 @@ final class OverrideBake implements BakeBackend {
                 //? if >=26.3 {
                 /*ImpostorAtlas.draw(minecraft, request, view, pose, target.storage);
                 try (FeatureRenderDispatcher.PreparedFrame frame = features.prepareFrame(target.storage);
-                     RenderPass pass = encoder.createRenderPass(() -> "living horizon impostor", target.colorView,
-                             Optional.empty(), target.depthView, OptionalDouble.empty())) {
+                     RenderPass pass = encoder.createRenderPass(() -> "living horizon impostor",
+                             /^? if >=26.4 {^/ /^net.minecraft.client.renderer.RenderPassLayouts.COLOR_DEPTH, ^//^?}^/
+                             target.colorView, Optional.empty(), target.depthView, OptionalDouble.empty())) {
                     RenderSystem.bindDefaultUniforms(pass);
                     FeatureRenderDispatcher.renderAllFeatures(pass, frame);
                 }
@@ -257,6 +260,12 @@ final class OverrideBake implements BakeBackend {
                 if (direct != null) direct[view] = readDepth(target.depth, render);
                 boolean last = view == ImpostorViews.VIEWS - 1;
                 // Before the colour: done by the time the last colour copy says it is.
+                // From 26.4 a copy says nothing when it is done: a task fenced after it does.
+                //? if >=26.4 {
+                /*if (depths != null) encoder.copyTextureToBuffer(target.depth, depths, (long) depthBytes * view, 0);
+                encoder.copyTextureToBuffer(target.color, buffer, (long) bytes * view, 0);
+                if (last) RenderSystem.queueFencedTask(() -> readBack(request, buffer, depths, direct, readBack));
+                *///?} else {
                 if (depths != null) {
                     encoder.copyTextureToBuffer(target.depth, depths, /*? if >=1.21.11 {*/ (long) /*?} else {*/ /*(int) *//*?}*/ depthBytes * view,
                             () -> {
@@ -265,6 +274,7 @@ final class OverrideBake implements BakeBackend {
                 encoder.copyTextureToBuffer(target.color, buffer, /*? if >=1.21.11 {*/ (long) /*?} else {*/ /*(int) *//*?}*/ bytes * view,
                         last ? () -> readBack(request, buffer, depths, direct, readBack) : () -> {
                         }, 0);
+                //?}
             }
             sent = true;
         } finally {
@@ -364,7 +374,9 @@ final class OverrideBake implements BakeBackend {
                 for (int column = 0; column < width; column++) strip.setPixelABGR(column, row, pixels[row * width + column]);
             }
             CommandEncoder encoder = RenderSystem.getDevice().createCommandEncoder();
-            //? if >=26.2 {
+            //? if >=26.4 {
+            /*strip.writeToGpuTexture(encoder, page.getTexture(), level, 0, x, y);
+            *///?} elif >=26.2 {
             /*encoder.writeToTexture(page.getTexture(), strip, level, 0, x, y);
             *///?} else {
             encoder.writeToTexture(page.getTexture(), strip, level, 0, x, y, width, height, 0, 0);

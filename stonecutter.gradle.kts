@@ -222,5 +222,11 @@ stonecutter parameters {
                 "(?<=\\bgraphics)\\) \\{ int mouseX = graphics\\.mouseX\\(\\), mouseY = graphics\\.mouseY\\(\\); float partialTick = graphics\\.partialTicks\\(\\);",
                 ", int mouseX, int mouseY, float partialTick) {")
         replace("(?<=\\(graphics), mouseX, mouseY, partialTick\\)", ")", "LH_NEVER_A", "LH_NEVER_B")
+        // The game's AbstractTexture is gone: the impostors' pages are textures of the mod's own.
+        replace("\\bimport net\\.minecraft\\.client\\.renderer\\.texture\\.AbstractTexture;",
+                "// AbstractTexture is ImpostorTexture from 26.4.", "LH_NEVER_A", "LH_NEVER_B")
+        replace("(?<!texture\\.)\\bAbstractTexture\\b", "ImpostorTexture", "LH_NEVER_A", "LH_NEVER_B")
+        // The full-screen vertex shader is a triangle by name too.
+        replace("\"core/screenquad\"", "\"core/screentriangle\"", "\"core/screentriangle\"", "\"core/screenquad\"")
     }
 }

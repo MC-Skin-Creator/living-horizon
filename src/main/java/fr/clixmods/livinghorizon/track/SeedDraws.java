@@ -315,6 +315,9 @@ public final class SeedDraws {
             NoiseColumn column = source.generator().getBaseColumn(x, z, height, source.random());
             for (int y = height.getMinY() + height.getHeight() - 1; y >= height.getMinY(); y--) {
                 BlockState state = column.getBlock(y);
+                // From 26.4 the column leaves its solid blocks null: the dimension's default block,
+                // put in later.
+                if (state == null) return y + 1;
                 if (state.isAir()) continue;
                 return state.getFluidState().isEmpty() ? y + 1 : Integer.MIN_VALUE;
             }
