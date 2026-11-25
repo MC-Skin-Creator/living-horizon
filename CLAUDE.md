@@ -943,6 +943,17 @@ come back, add it here in the same pull request: this file is what the next sess
   replaces `Gui.render` without calling it, so `GuiMixin` never runs there. `Events.hud` draws
   them from Forge's `RenderGuiEvent.Post` instead; from 1.20.6 Forge keeps the game's `Gui`.
   Anything else hooked into `Gui.render` needs the same.
+- **26.4, built on a pre-release** (`deps.minecraft` in its tables; the node and the sources
+  say 26.4): set it to the release once out. Fabric and Quilt only until NeoForge and Forge
+  have a build (`notYetForge` in `settings.gradle.kts`), and no Sodium yet. What 26.4 changed
+  that is easy to miss: `Mth.clamp` is gone (`Clamp`, which never throws on crossed bounds,
+  where `Math.clamp` does); the server no longer sends the hashed seed, so `MobMemory.worldOf`
+  tells worlds apart by name or address alone there; a noise column leaves its solid blocks
+  null (`SeedDraws.top`), and the spawn odds come from the zoomed biome of the block; still and
+  flowing fluids are one fluid; the impostors' pages are `ImpostorTexture`, served by an
+  external provider that never closes them; a render pass names a `RenderPassLayout` and a
+  pipeline is compiled for a subpass (`FarDepthGpu.compiled`), and a copy to a buffer is
+  followed by `RenderSystem.queueFencedTask` instead of a callback.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.
