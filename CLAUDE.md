@@ -60,7 +60,7 @@ client class.
 |---|---|
 | Mod id / package | `livinghorizon` / `fr.clixmods.livinghorizon` |
 | Loaders | Fabric, Quilt (on the Fabric API), NeoForge (from 1.20.6), Forge: one node per game version and loader |
-| Minecraft | `1.20.1`, `1.20.2`, `1.20.4`, `1.20.6`, `1.21.1`, `1.21.3`, `1.21.4`, `1.21.5`, `1.21.8`, `1.21.10`, `1.21.11` (the active one), `26.1.x`, `26.2.x` and `26.3.x`, through Stonecutter; a node covers the releases its table names |
+| Minecraft | `1.20.1`, `1.20.2`, `1.20.4`, `1.20.6`, `1.21.1`, `1.21.3`, `1.21.4`, `1.21.5`, `1.21.8`, `1.21.10`, `1.21.11` (the active one), `26.1.x`, `26.2.x`, `26.3.x` and `26.4.x` (the 26.4 pre-release, Fabric and Quilt only until NeoForge and Forge have a build), through Stonecutter; a node covers the releases its table names |
 | Mappings | Official Mojang mappings on every target |
 | Java | 17 up to 1.20.4, 21 from 1.20.5, 25 on 26.x |
 | Command | `/livinghorizon` |

@@ -8,9 +8,10 @@
 val game = extra["lhGame"] as String
 val unobfuscated = extra["lhUnobfuscated"] as Boolean
 
-// "26.1.2" against "26.1": numeric, part by part, a missing part being zero.
+// "26.1.2" against "26.1": numeric, part by part, a missing part being zero. A pre-release
+// ("26.4-pre-1") counts as the release it comes before.
 fun atLeast(version: String): Boolean {
-    val a = game.split(".").map { it.toInt() }
+    val a = game.substringBefore('-').split(".").map { it.toInt() }
     val b = version.split(".").map { it.toInt() }
     for (i in 0 until maxOf(a.size, b.size)) {
         val x = a.getOrElse(i) { 0 }

@@ -50,6 +50,8 @@ stonecutter {
             "26.1.x" to "26.1.2",
             "26.2.x" to "26.2",
             "26.3.x" to "26.3",
+            // A pre-release until 26.4 ships: the node keeps its name, the version moves on.
+            "26.4.x" to "26.4-pre-1",
         )
 
         // Fabric targets: named after the game version alone.
@@ -62,14 +64,18 @@ stonecutter {
         // NeoForge targets, built by ModDevGradle: the -neoforge suffix is read the same way.
         // None before 1.20.6: 1.20.1's NeoForge is Forge 47 under another name, and 1.20.2
         // and 1.20.4 had one with the older metadata format.
-        val noNeoForge = setOf("1.20.1", "1.20.2", "1.20.4")
+        // Nor on a game version NeoForge or Forge has no build for yet (a pre-release).
+        val notYetForge = setOf("26.4.x")
+        val noNeoForge = setOf("1.20.1", "1.20.2", "1.20.4") + notYetForge
         for ((name, minecraft) in targets.filter { it.first !in noNeoForge }) {
             version("$name-neoforge", minecraft).buildscript("build.neoforge.gradle.kts")
         }
 
         // Forge targets, built by ForgeGradle. "-neoforge" does not end in "-forge", so the
         // two suffixes never answer to each other's name.
-        for ((name, minecraft) in targets) version("$name-forge", minecraft).buildscript("build.forge.gradle.kts")
+        for ((name, minecraft) in targets.filter { it.first !in notYetForge }) {
+            version("$name-forge", minecraft).buildscript("build.forge.gradle.kts")
+        }
 
         vcsVersion = "1.21.11"
     }
