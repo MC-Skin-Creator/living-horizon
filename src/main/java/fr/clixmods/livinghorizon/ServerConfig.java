@@ -37,6 +37,8 @@ public final class ServerConfig {
     private static final Logger LOGGER = LoggerFactory.getLogger("Living Horizon");
     /** The farthest {@link #seedMobRange}. */
     public static final int MAX_SEED_MOB_RANGE = 2048;
+    /** The most {@link #maxRestingActors}. */
+    public static final int MAX_RESTING_ACTORS = 256;
 
     /** Online players shared past the server's view distance. */
     public boolean sharePlayers = true;
@@ -54,6 +56,13 @@ public final class ServerConfig {
     public List<String> hiddenDimensions = new ArrayList<>();
     /** Players who logged off shared where they left. */
     public boolean shareOfflinePlayers = true;
+    /**
+     * The players who logged off live their life on the server, near the players with the mod, so
+     * that all of them see the same thing; false leaves each game to simulate them itself.
+     */
+    public boolean shareRestingLife = true;
+    /** Most of them simulated at once: 0 to {@link #MAX_RESTING_ACTORS}. */
+    public int maxRestingActors = 64;
     /** Remembered mobs shared past the server's view distance. */
     public boolean shareMobs = true;
     /**
@@ -89,6 +98,7 @@ public final class ServerConfig {
     private void tidy() {
         if (playerRange < 0) playerRange = 0;
         seedMobRange = Math.max(0, Math.min(seedMobRange, MAX_SEED_MOB_RANGE));
+        maxRestingActors = Math.max(0, Math.min(maxRestingActors, MAX_RESTING_ACTORS));
         if (hiddenPlayers == null) hiddenPlayers = new ArrayList<>();
         if (hiddenDimensions == null) hiddenDimensions = new ArrayList<>();
         hiddenPlayers.removeIf(name -> name == null || name.isBlank());
