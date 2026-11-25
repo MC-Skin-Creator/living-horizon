@@ -164,6 +164,8 @@ mod.mc_compat = ">=26.4- <26.5-"
 mod.mc_releases = ["26.4-pre-1"]
 mod.release_type = "alpha"
 
+# The game the node is built on while 26.4 is not out: the sources compare against 26.4.
+deps.minecraft = "26.4-pre-1"
 deps.fabric_api = "0.167.1+26.4"
 # Compile only: the "Configure" button in Mod Menu. The mod runs without it.
 deps.modmenu = "22.0.0-alpha.7"
@@ -460,6 +462,8 @@ mod.mc_compat = '">=26.4- <26.5-"'
 mod.mc_releases = ["26.4-pre-1"]
 mod.release_type = "alpha"
 
+# The game the node is built on while 26.4 is not out: the sources compare against 26.4.
+deps.minecraft = "26.4-pre-1"
 deps.fabric_api = "0.167.1+26.4"
 deps.modmenu = "22.0.0-alpha.7"
 

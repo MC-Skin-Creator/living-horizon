@@ -25,7 +25,8 @@ apply(from = rootProject.file("gradle/target.gradle.kts"))
 val requiredJava: JavaVersion = project.extra["lhJava"] as JavaVersion
 
 dependencies {
-    minecraft("com.mojang:minecraft:${sc.current.version}")
+    // The release, or the pre-release deps.minecraft names before it is out.
+    minecraft("com.mojang:minecraft:${findProperty("deps.minecraft") ?: sc.current.version}")
     // The code is annotated with jspecify's @Nullable, which the game ships from 1.21.11 on.
     // Before that it is only needed to compile: an annotation nobody reads at run time.
     if (sc.current.parsed < "1.21.11") compileOnly("org.jspecify:jspecify:1.0.0")

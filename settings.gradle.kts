@@ -50,8 +50,8 @@ stonecutter {
             "26.1.x" to "26.1.2",
             "26.2.x" to "26.2",
             "26.3.x" to "26.3",
-            // A pre-release until 26.4 ships: the node keeps its name, the version moves on.
-            "26.4.x" to "26.4-pre-1",
+            // Built on a pre-release until 26.4 ships (deps.minecraft in its tables).
+            "26.4.x" to "26.4",
         )
 
         // Fabric targets: named after the game version alone.

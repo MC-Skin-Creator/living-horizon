@@ -170,6 +170,10 @@ final class BlockCopy implements Footing.Source {
     @Override
     public double fluidHeight(FluidState fluid, BlockPos at) {
         if (fluid.isEmpty()) return 0;
+        // From 26.4 still and flowing water (or lava) are one fluid.
+        //? if >=26.4 {
+        /*return fluid.getType() == fluid(at.above()).getType() ? 1 : fluid.getOwnHeight();
+        *///?} else
         return fluid.getType().isSame(fluid(at.above()).getType()) ? 1 : fluid.getOwnHeight();
     }
 

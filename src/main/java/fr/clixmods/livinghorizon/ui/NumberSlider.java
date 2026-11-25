@@ -358,7 +358,14 @@ public final class NumberSlider extends AbstractSliderButton {
             return Math.clamp(v, min, unlimited ? UNLIMITED - 1 : max);
         }
 
-        //? if >=26.2 {
+        // 26.4 asks a value set for a factory of buttons, which is handed the option itself.
+        //? if >=26.4 {
+        /*@Override
+        public OptionInstance.ButtonFactory<Integer> buttonFactory() {
+            return (option, tooltip, options, x, y, width, changed) ->
+                    new NumberSlider(x, y, width, option, this, tooltip, changed::valueChanged);
+        }
+        *///?} else if >=26.2 {
         /*@Override
         public Function<OptionInstance<Integer>, AbstractWidget> createButton(OptionInstance.TooltipSupplier<Integer> tooltip,
                 Options options, int x, int y, int width, OptionInstance.ValueUpdateListener<? super Integer> changed) {

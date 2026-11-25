@@ -34,7 +34,15 @@ accessible field net/minecraft/client/entity/ClientAvatarState zCloakO D
 
 # A fish's copy, which never ticks, is put in water (Puppets.inWater); before 1.21.2, with no
 # render states, any figure is told it swims while it is drawn.
+# @until 26.3
 accessible field net/minecraft/world/entity/Entity wasTouchingWater Z
+
+# The same from 26.4, where an entity keeps a tracker per fluid it is in.
+# @since 26.4
+accessible field net/minecraft/world/entity/Entity fluidInteraction Lnet/minecraft/world/entity/EntityFluidInteraction;
+accessible method net/minecraft/world/entity/EntityFluidInteraction getOrCreateTrackerFor (Lnet/minecraft/core/Holder;)Lnet/minecraft/world/entity/EntityFluidInteraction$Tracker;
+accessible class net/minecraft/world/entity/EntityFluidInteraction$Tracker
+accessible field net/minecraft/world/entity/EntityFluidInteraction$Tracker height D
 
 # Before 1.21.2, with no render states: a figure is told it swims, stands still or walks
 # while it is drawn, and the faces of each cube of a model are counted as it is drawn.

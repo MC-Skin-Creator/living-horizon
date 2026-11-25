@@ -706,6 +706,10 @@ public final class MobMemory {
      * only by it - a proxy, a multiworld plugin, two saves called the same.
      */
     private static long worldOf(ClientLevel level) {
+        // 26.4 no longer sends the hashed seed: one world per name or address there.
+        //? if >=26.4 {
+        /*return 0;
+        *///?} else
         return level.getBiomeManager().biomeZoomSeed;
     }
 

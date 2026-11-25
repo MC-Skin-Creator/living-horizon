@@ -18,6 +18,9 @@ import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.level.LevelHeightAccessor;
+//? if >=26.4 {
+/*import net.minecraft.world.level.levelgen.NoiseColumn;
+*///?} else
 import net.minecraft.world.level.NoiseColumn;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeManager;
@@ -177,7 +180,9 @@ public final class SeedDraws {
         if (settings.isEmpty() || preset.isEmpty()) return null;
         Holder<MultiNoiseBiomeSourceParameterList> list = preset.get();
         NoiseBasedChunkGenerator generator = new NoiseBasedChunkGenerator(MultiNoiseBiomeSource.createFromPreset(list), settings.get());
-        //? if >=26.3 {
+        //? if >=26.4 {
+        /*RandomState random = RandomState.createForGenerator(lookup.lookupOrThrow(Registries.NOISE), seed, generator, height);
+        *///?} else if >=26.3 {
         /*RandomState random = RandomState.create(lookup.lookupOrThrow(Registries.NOISE), seed, settings.get().value());
         *///?} else
         RandomState random = RandomState.create(settings.get().value(), lookup.lookupOrThrow(Registries.NOISE), seed);
@@ -224,7 +229,12 @@ public final class SeedDraws {
         // The biome the game reads for them: at the chunk's corner, at the top of the world.
         Holder<Biome> biome = biomes.getBiome(new BlockPos(minX, topY(source.height()), minZ));
         // From 26.3 the animals and their odds are environment attributes: the dimension's, then the biome's.
-        //? if >=26.3 {
+        // 26.4 reads both from the zoomed biome of that block; 26.3 the odds from the unzoomed one.
+        //? if >=26.4 {
+        /*MobSpawnSettings settings = attribute(source, biome, EnvironmentAttributes.NATURAL_MOB_SPAWNS);
+        float probability = attribute(source, biome, EnvironmentAttributes.CREATURE_WORLD_GEN_SPAWN_PROBABILITY);
+        var creatures = settings.getMobsToSpawn(MobCategory.CREATURE);
+        *///?} else if >=26.3 {
         /*MobSpawnSettings settings = attribute(source, biome, EnvironmentAttributes.NATURAL_MOB_SPAWNS);
         Holder<Biome> noiseBiome = biomes.getNoiseBiomeAtPosition(minX + 0.5, topY(source.height()) + 0.5, minZ + 0.5);
         float probability = attribute(source, noiseBiome, EnvironmentAttributes.CREATURE_WORLD_GEN_SPAWN_PROBABILITY);

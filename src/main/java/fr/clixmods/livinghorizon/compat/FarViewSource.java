@@ -177,6 +177,10 @@ final class FarViewSource implements LodSource {
         if (top == EMPTY) return null;
         found.incrementAndGet();
         BlockState block = block(region.blocks, i);
+        // From 26.4 still and flowing water are one fluid.
+        //? if >=26.4 {
+        /*boolean water = block != null && block.getFluidState().getType() == Fluids.WATER;
+        *///?} else
         boolean water = block != null && block.getFluidState().getType().isSame(Fluids.WATER);
         return new LodWorld.Surface(top, "", water, block);
     }

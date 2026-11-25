@@ -208,4 +208,19 @@ stonecutter parameters {
         replace("\\bpose\\.mulPose\\(", "pose.rotate(", "\\bpose\\.rotate\\(", "pose.mulPose(")
         replace("\\bInputConstants\\.Type\\.KEYSYM\\b", "InputConstants.Type.KEYBOARD", "\\bInputConstants\\.Type\\.KEYBOARD\\b", "InputConstants.Type.KEYSYM")
     }
+
+    // 26.4 removed Mth.clamp for Java's Math.clamp, which throws when the bounds cross: the
+    // mod's own Clamp keeps the game's old behaviour.
+    replacements.regex(current.parsed >= "26.4") {
+        replace("\\bMth\\.clamp\\(", "fr.clixmods.livinghorizon.Clamp.clamp(",
+                "\\bfr\\.clixmods\\.livinghorizon\\.Clamp\\.clamp\\(", "Mth.clamp(")
+        // A screen or widget is drawn from the extractor alone, which knows the mouse and the
+        // frame's part of a tick. Anchored after "graphics", which 26.1's replacements rename
+        // around, so that the two never touch the same text.
+        replace("(?<=\\bgraphics), int mouseX, int mouseY, float partialTick\\) \\{",
+                ") { int mouseX = graphics.mouseX(), mouseY = graphics.mouseY(); float partialTick = graphics.partialTicks();",
+                "(?<=\\bgraphics)\\) \\{ int mouseX = graphics\\.mouseX\\(\\), mouseY = graphics\\.mouseY\\(\\); float partialTick = graphics\\.partialTicks\\(\\);",
+                ", int mouseX, int mouseY, float partialTick) {")
+        replace("(?<=\\(graphics), mouseX, mouseY, partialTick\\)", ")", "LH_NEVER_A", "LH_NEVER_B")
+    }
 }
