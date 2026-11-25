@@ -385,6 +385,11 @@ public final class ImpostorAtlas {
                 @Override
                 public AbstractTexture open(int number, int width, int height) {
                     AbstractTexture texture = BACKEND.create("living horizon impostors " + number, width, height);
+                    // From 26.4 the texture manager is handed a provider, which serves ours as it is.
+                    //? if >=26.4 {
+                    /*Minecraft.getInstance().getTextureManager().registerProvider(id(number),
+                            new net.minecraft.client.renderer.texture.ExternalTextureProvider(texture, (name, path) -> { }));
+                    *///?} else
                     Minecraft.getInstance().getTextureManager().register(id(number), texture);
                     if (relief) {
                         IrisNormals.register(texture.getClass(), ImpostorAtlas::normalsOf);
@@ -396,6 +401,9 @@ public final class ImpostorAtlas {
                 @Override
                 public void release(int number, AbstractTexture texture) {
                     Minecraft.getInstance().getTextureManager().release(id(number));
+                    // Its provider does not close what it serves.
+                    //? if >=26.4
+                    /*texture.close();*/
                     AbstractTexture normals = NORMALS.remove(number);
                     if (normals != null) normals.close();
                 }

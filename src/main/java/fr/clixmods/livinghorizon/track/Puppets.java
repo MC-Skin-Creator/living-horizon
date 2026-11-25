@@ -58,7 +58,13 @@ public final class Puppets {
      * on its side, flapping. Does nothing to any other mob.
      */
     public static void inWater(Entity entity) {
-        if (GhostRenderer.livesInWater(entity)) entity.wasTouchingWater = true;
+        if (!GhostRenderer.livesInWater(entity)) return;
+        // From 26.4 an entity tracks each fluid it is in; in water means some height of it.
+        //? if >=26.4 {
+        /*entity.fluidInteraction.getOrCreateTrackerFor(net.minecraft.world.level.material.Fluids.WATER.builtInRegistryHolder()).height =
+                entity.getBbHeight();
+        *///?} else
+        entity.wasTouchingWater = true;
     }
 
     /**

@@ -157,6 +157,21 @@ deps.modmenu = "21.0.0"
 # Compile only: Living Horizon's pages in Sodium's video settings, from Sodium 0.8 on.
 deps.sodium = "0.9.2+mc26.3"
 
+["26.4.x"]
+# A pre-release: Fabric's trailing "-" lets its pre-releases in. No Sodium for 26.4 yet,
+# so no pages in its video settings; NeoForge and Forge have no 26.4 build yet either.
+mod.mc_compat = ">=26.4- <26.5-"
+mod.mc_releases = ["26.4-pre-1"]
+mod.release_type = "alpha"
+
+# The game the node is built on while 26.4 is not out: the sources compare against 26.4.
+deps.minecraft = "26.4-pre-1"
+# The Fabric API for 26.4 asks for Fabric Loader 0.20.
+deps.fabric_loader = "0.20.1"
+deps.fabric_api = "0.167.1+26.4"
+# Compile only: the "Configure" button in Mod Menu. The mod runs without it.
+deps.modmenu = "22.0.0-alpha.7"
+
 
 # NeoForge targets: the same game versions, built by ModDevGradle. mod.mc_compat and
 # deps.neoforge_compat are Maven version ranges here, the syntax neoforge.mods.toml
@@ -439,6 +454,20 @@ mod.mc_releases = ["26.3"]
 deps.fabric_api = "0.162.0+26.3"
 deps.modmenu = "21.0.0"
 deps.sodium = "0.9.2+mc26.3"
+
+loomx.loom_version = "1.15.1"
+loomx.loom_remap_plugin = "org.quiltmc.loom"
+loomx.loom_unobf_plugin = "org.quiltmc.loom"
+
+["26.4.x-quilt"]
+mod.mc_compat = '">=26.4- <26.5-"'
+mod.mc_releases = ["26.4-pre-1"]
+mod.release_type = "alpha"
+
+# The game the node is built on while 26.4 is not out: the sources compare against 26.4.
+deps.minecraft = "26.4-pre-1"
+deps.fabric_api = "0.167.1+26.4"
+deps.modmenu = "22.0.0-alpha.7"
 
 loomx.loom_version = "1.15.1"
 loomx.loom_remap_plugin = "org.quiltmc.loom"

@@ -60,7 +60,7 @@ client class.
 |---|---|
 | Mod id / package | `livinghorizon` / `fr.clixmods.livinghorizon` |
 | Loaders | Fabric, Quilt (on the Fabric API), NeoForge (from 1.20.6), Forge: one node per game version and loader |
-| Minecraft | `1.20.1`, `1.20.2`, `1.20.4`, `1.20.6`, `1.21.1`, `1.21.3`, `1.21.4`, `1.21.5`, `1.21.8`, `1.21.10`, `1.21.11` (the active one), `26.1.x`, `26.2.x` and `26.3.x`, through Stonecutter; a node covers the releases its table names |
+| Minecraft | `1.20.1`, `1.20.2`, `1.20.4`, `1.20.6`, `1.21.1`, `1.21.3`, `1.21.4`, `1.21.5`, `1.21.8`, `1.21.10`, `1.21.11` (the active one), `26.1.x`, `26.2.x`, `26.3.x` and `26.4.x` (the 26.4 pre-release, Fabric and Quilt only until NeoForge and Forge have a build), through Stonecutter; a node covers the releases its table names |
 | Mappings | Official Mojang mappings on every target |
 | Java | 17 up to 1.20.4, 21 from 1.20.5, 25 on 26.x |
 | Command | `/livinghorizon` |
@@ -943,6 +943,17 @@ come back, add it here in the same pull request: this file is what the next sess
   replaces `Gui.render` without calling it, so `GuiMixin` never runs there. `Events.hud` draws
   them from Forge's `RenderGuiEvent.Post` instead; from 1.20.6 Forge keeps the game's `Gui`.
   Anything else hooked into `Gui.render` needs the same.
+- **26.4, built on a pre-release** (`deps.minecraft` in its tables; the node and the sources
+  say 26.4): set it to the release once out. Fabric and Quilt only until NeoForge and Forge
+  have a build (`notYetForge` in `settings.gradle.kts`), and no Sodium yet. What 26.4 changed
+  that is easy to miss: `Mth.clamp` is gone (`Clamp`, which never throws on crossed bounds,
+  where `Math.clamp` does); the server no longer sends the hashed seed, so `MobMemory.worldOf`
+  tells worlds apart by name or address alone there; a noise column leaves its solid blocks
+  null (`SeedDraws.top`), and the spawn odds come from the zoomed biome of the block; still and
+  flowing fluids are one fluid; the impostors' pages are `ImpostorTexture`, served by an
+  external provider that never closes them; a render pass names a `RenderPassLayout` and a
+  pipeline is compiled for a subpass (`FarDepthGpu.compiled`), and a copy to a buffer is
+  followed by `RenderSystem.queueFencedTask` instead of a callback.
 - **Reproduce first.** `LH_NODE=<node> .claude/skills/game-test/run.sh <scenario>` on the
   player's game version, OpenGL errors are in `build/game-test.log`; the `depthview`
   scenario shows the depth view.

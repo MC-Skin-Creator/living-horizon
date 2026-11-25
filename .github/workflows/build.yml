@@ -133,6 +133,7 @@ jobs:
           - '26.1.x'
           - '26.2.x'
           - '26.3.x'
+          - '26.4.x'
           # The same game versions on the other loaders: the same sources, another build script.
           - '1.20.6-neoforge'
           - '1.21.1-neoforge'
@@ -159,6 +160,7 @@ jobs:
           - '26.1.x-quilt'
           - '26.2.x-quilt'
           - '26.3.x-quilt'
+          - '26.4.x-quilt'
           - '1.20.1-forge'
           - '1.20.2-forge'
           - '1.20.4-forge'

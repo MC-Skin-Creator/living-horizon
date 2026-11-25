@@ -21,8 +21,13 @@ import java.util.Map;
  */
 @Mixin(DebugScreenEntryList.class)
 abstract class DebugScreenEntryListMixin {
+    //? if >=26.4 {
+    /*@Shadow
+    private Map<net.minecraft.resources.ResourceKey<net.minecraft.client.gui.components.debug.DebugScreenEntry>, DebugScreenEntryStatus> allStatuses;
+    *///?} else {
     @Shadow
     private Map<Identifier, DebugScreenEntryStatus> allStatuses;
+    //?}
 
     @Shadow
     public abstract void rebuildCurrentList();
