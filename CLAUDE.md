@@ -735,7 +735,10 @@ come back, add it here in the same pull request: this file is what the next sess
   otherwise moves it a quarter of the way: `Puppets.cape` sets it outright in
   `GhostRenderer.extract`, since each impostor view is baked from one call (`ImpostorAtlas.staged`).
   The `mannequins` scenario checks it, and counts the cape's pixels (a gold block stands in for
-  one) in the copy's baked picture, since the data can be right while the picture is not. When
+  one) in the copy's baked picture, since the data can be right while the picture is not. It
+  counts the gold's hue, back views against front ones: the picture is shaded like a model in
+  the world (the cape's back at 198 of red, which a test for bright gold never found), and
+  kai's blond hair shows from the front. When
   reading its atlas screenshot, know the game's default skins: kai is blond in dark clothes, Alex
   has orange hair and a green shirt, and a player's name shows its default skin until Mojang
   answers. Far, resting and logged-off player puppets are not ticked

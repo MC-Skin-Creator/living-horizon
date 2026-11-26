@@ -4,6 +4,7 @@ import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorKey;
+import fr.clixmods.livinghorizon.render.impostor.ImpostorViews;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
 import fr.clixmods.livinghorizon.track.MobMemory;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -127,9 +128,13 @@ public final class MannequinsScenario implements Scenario {
             // The cape in the picture: gold pixels in the caped copy's sheet, which its back views show.
             int[] rect = context.computeOnClient(minecraft -> Scene.atlasRect(caped[0]));
             if (rect == null) throw new AssertionError("the caped mannequin copy has no impostor sheet");
-            int gold = goldPixels(atlas, rect);
-            Scene.log("mannequins cape pixels in the sheet: " + gold);
-            if (gold == 0) throw new AssertionError("the caped mannequin copy's picture shows no cape");
+            // Kai is blond, so a few gold pixels show from the front too: the back views must hold
+            // many more, the cape seen whole.
+            int[] gold = goldPixels(atlas, rect);
+            int back = gold[3] + gold[4] + gold[5], front = gold[7] + gold[0] + gold[1];
+            Scene.log("mannequins cape pixels in the sheet: " + back + " from behind, " + front + " from the front, by view "
+                    + java.util.Arrays.toString(gold));
+            if (back < 30 || back < 3 * front) throw new AssertionError("the caped mannequin copy's picture shows no cape");
         }
         //?} else
         /*Scene.log("mannequins: none before 1.21.9");*/
@@ -142,20 +147,26 @@ public final class MannequinsScenario implements Scenario {
                 + profile + "}");
     }
 
-    /** Pixels of the gold block's yellow inside this part of a screenshot: left, top, width, height. */
-    private static int goldPixels(Path screenshot, int[] rect) {
+    /**
+     * Pixels of the gold block's yellow inside this part of a screenshot (left, top, width,
+     * height), counted for each of the sheet's views. A hue, not a brightness: the pictures are
+     * shaded like a model in the world, and the back of the cape comes out at 198 of red at most.
+     */
+    private static int[] goldPixels(Path screenshot, int[] rect) {
         BufferedImage image;
         try {
             image = ImageIO.read(screenshot.toFile());
         } catch (IOException e) {
             throw new AssertionError("could not read " + screenshot, e);
         }
-        int gold = 0;
+        int[] gold = new int[ImpostorViews.VIEWS];
         for (int y = rect[1]; y < Math.min(image.getHeight(), rect[1] + rect[3]); y++) {
             for (int x = rect[0]; x < Math.min(image.getWidth(), rect[0] + rect[2]); x++) {
                 int rgb = image.getRGB(x, y);
                 int red = (rgb >> 16) & 0xFF, green = (rgb >> 8) & 0xFF, blue = rgb & 0xFF;
-                if (red > 200 && green > 170 && blue < 120) gold++;
+                if (red > 110 && green > 0.75 * red && blue < 0.6 * green) {
+                    gold[Math.min(ImpostorViews.VIEWS - 1, (x - rect[0]) * ImpostorViews.VIEWS / rect[2])]++;
+                }
             }
         }
         return gold;
