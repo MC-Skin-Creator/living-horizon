@@ -42,7 +42,7 @@
   "livinghorizon.options.offlineTag": "Mention hors ligne",
   "livinghorizon.options.offlineTag.tooltip": "Ajoute (hors ligne) après le pseudo au-dessus des joueurs déconnectés, dans le monde.",
   "livinghorizon.options.offlineTabList": "Déconnectés dans Tab",
-  "livinghorizon.options.offlineTabList.tooltip": "Ajoute les joueurs déconnectés à la liste des joueurs (Tab), après ceux en ligne, avec leur tête et leur pseudo grisé. Seulement si le serveur l'autorise.",
+  "livinghorizon.options.offlineTabList.tooltip": "Ajoute les joueurs déconnectés à la liste des joueurs (Tab), après ceux en ligne, avec leur tête et leur pseudo grisé. Un serveur peut le désactiver pour tous : aucun joueur déconnecté n'est alors listé, quel que soit ce réglage.",
   "livinghorizon.offline.tag": "(hors ligne)",
   "livinghorizon.offline.lastSeen": "%s — vu pour la dernière fois le %s",
   "livinghorizon.offline.unknown": "%s — hors ligne",

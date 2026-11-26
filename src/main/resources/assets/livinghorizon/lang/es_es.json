@@ -42,7 +42,7 @@
   "livinghorizon.options.offlineTag": "Marca sin conexión",
   "livinghorizon.options.offlineTag.tooltip": "Añade (sin conexión) tras el nombre encima de los jugadores desconectados, en el mundo.",
   "livinghorizon.options.offlineTabList": "Desconectados en la lista",
-  "livinghorizon.options.offlineTabList.tooltip": "Añade a la lista de jugadores (Tab) los jugadores desconectados, tras los conectados, con su cabeza y su nombre en gris. Solo si el servidor lo permite.",
+  "livinghorizon.options.offlineTabList.tooltip": "Añade a la lista de jugadores (Tab) los jugadores desconectados, tras los conectados, con su cabeza y su nombre en gris. Un servidor puede desactivarlo para todos: entonces no se muestra ningún jugador desconectado, sea cual sea este ajuste.",
   "livinghorizon.offline.tag": "(sin conexión)",
   "livinghorizon.offline.lastSeen": "%s — visto por última vez el %s",
   "livinghorizon.offline.unknown": "%s — sin conexión",

@@ -42,7 +42,7 @@
   "livinghorizon.options.offlineTag": "오프라인 표시",
   "livinghorizon.options.offlineTag.tooltip": "세계에서 접속을 종료한 플레이어 머리 위 이름 뒤에 (오프라인)을 붙입니다.",
   "livinghorizon.options.offlineTabList": "플레이어 목록에 표시",
-  "livinghorizon.options.offlineTabList.tooltip": "접속을 종료한 플레이어를 온라인 플레이어 다음에 머리와 회색 이름으로 플레이어 목록(Tab)에 보여줍니다. 서버가 허용하는 경우에만 적용됩니다.",
+  "livinghorizon.options.offlineTabList.tooltip": "접속을 종료한 플레이어를 온라인 플레이어 다음에 머리와 회색 이름으로 플레이어 목록(Tab)에 보여줍니다. 서버가 모두에게 이 기능을 끌 수 있으며, 그 경우 이 설정과 관계없이 오프라인 플레이어가 표시되지 않습니다.",
   "livinghorizon.offline.tag": "(오프라인)",
   "livinghorizon.offline.lastSeen": "%s — 마지막 확인: %s",
   "livinghorizon.offline.unknown": "%s — 오프라인",

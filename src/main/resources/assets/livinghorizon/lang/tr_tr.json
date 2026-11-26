@@ -42,7 +42,7 @@
   "livinghorizon.options.offlineTag": "Çevrim Dışı İşareti",
   "livinghorizon.options.offlineTag.tooltip": "Dünyada, oyundan çıkan oyuncuların üstündeki adın ardına (çevrim dışı) ekler.",
   "livinghorizon.options.offlineTabList": "Listede Çevrim Dışı",
-  "livinghorizon.options.offlineTabList.tooltip": "Oyundan çıkan oyuncuları, çevrim içi olanlardan sonra, kafaları ve gri adlarıyla oyuncu listesine (Tab) ekler. Yalnızca sunucu izin veriyorsa.",
+  "livinghorizon.options.offlineTabList.tooltip": "Oyundan çıkan oyuncuları, çevrim içi olanlardan sonra, kafaları ve gri adlarıyla oyuncu listesine (Tab) ekler. Bir sunucu bunu herkes için kapatabilir: o zaman bu ayar ne olursa olsun hiçbir çevrim dışı oyuncu listelenmez.",
   "livinghorizon.offline.tag": "(çevrim dışı)",
   "livinghorizon.offline.lastSeen": "%s — son görülme: %s",
   "livinghorizon.offline.unknown": "%s — çevrim dışı",

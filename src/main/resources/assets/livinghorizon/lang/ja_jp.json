@@ -42,7 +42,7 @@
   "livinghorizon.options.offlineTag": "オフライン表示",
   "livinghorizon.options.offlineTag.tooltip": "ワールドで、ログアウトしたプレイヤーの頭上の名前の後に（オフライン）を付けます。",
   "livinghorizon.options.offlineTabList": "プレイヤーリストに表示",
-  "livinghorizon.options.offlineTabList.tooltip": "ログアウトしたプレイヤーを、オンラインのプレイヤーの後にプレイヤーリスト（Tab）へ頭と灰色の名前で表示します。サーバーが許可している場合のみ。",
+  "livinghorizon.options.offlineTabList.tooltip": "ログアウトしたプレイヤーを、オンラインのプレイヤーの後にプレイヤーリスト（Tab）へ頭と灰色の名前で表示します。サーバーは全員に対してこれをオフにできます。その場合、この設定に関係なくログアウトしたプレイヤーは表示されません。",
   "livinghorizon.offline.tag": "（オフライン）",
   "livinghorizon.offline.lastSeen": "%s — 最終確認：%s",
   "livinghorizon.offline.unknown": "%s — オフライン",

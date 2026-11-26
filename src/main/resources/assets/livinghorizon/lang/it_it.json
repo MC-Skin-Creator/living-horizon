@@ -42,7 +42,7 @@
   "livinghorizon.options.offlineTag": "Segno non in linea",
   "livinghorizon.options.offlineTag.tooltip": "Aggiunge (non in linea) dopo il nome sopra i giocatori disconnessi, nel mondo.",
   "livinghorizon.options.offlineTabList": "Disconnessi nell'elenco",
-  "livinghorizon.options.offlineTabList.tooltip": "Aggiunge all'elenco giocatori (Tab) i giocatori disconnessi, dopo quelli connessi, con la loro testa e il nome in grigio. Solo se il server lo consente.",
+  "livinghorizon.options.offlineTabList.tooltip": "Aggiunge all'elenco giocatori (Tab) i giocatori disconnessi, dopo quelli connessi, con la loro testa e il nome in grigio. Un server può disattivarlo per tutti: in quel caso nessun giocatore disconnesso viene elencato, qualunque sia questa impostazione.",
   "livinghorizon.offline.tag": "(non in linea)",
   "livinghorizon.offline.lastSeen": "%s — visto l'ultima volta il %s",
   "livinghorizon.offline.unknown": "%s — non in linea",

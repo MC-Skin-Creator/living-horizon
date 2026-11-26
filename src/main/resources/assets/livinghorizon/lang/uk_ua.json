@@ -42,7 +42,7 @@
   "livinghorizon.options.offlineTag": "Позначка офлайн",
   "livinghorizon.options.offlineTag.tooltip": "Додає (не в мережі) після імені над гравцями, які вийшли з гри, у світі.",
   "livinghorizon.options.offlineTabList": "Не в мережі у списку",
-  "livinghorizon.options.offlineTabList.tooltip": "Додає гравців, які вийшли з гри, до списку гравців (Tab), після тих, хто в мережі, з їхньою головою та сірим ім’ям. Лише якщо сервер це дозволяє.",
+  "livinghorizon.options.offlineTabList.tooltip": "Додає гравців, які вийшли з гри, до списку гравців (Tab), після тих, хто в мережі, з їхньою головою та сірим ім’ям. Сервер може вимкнути це для всіх: тоді гравців, які вийшли з гри, не показано, хоч би яким був цей параметр.",
   "livinghorizon.offline.tag": "(не в мережі)",
   "livinghorizon.offline.lastSeen": "%s — востаннє в мережі: %s",
   "livinghorizon.offline.unknown": "%s — не в мережі",

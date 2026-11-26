@@ -42,7 +42,7 @@
   "livinghorizon.options.offlineTag": "Offline Mark",
   "livinghorizon.options.offlineTag.tooltip": "Adds (offline) after the name above players who logged off, in the world.",
   "livinghorizon.options.offlineTabList": "Offline in Player List",
-  "livinghorizon.options.offlineTabList.tooltip": "Lists players who logged off in the player list (Tab), after those online, with their head and their name in grey. Only where the server allows it.",
+  "livinghorizon.options.offlineTabList.tooltip": "Lists players who logged off in the player list (Tab), after those online, with their head and their name in grey. A server can turn this off for everyone: then nobody who logged off is listed, whatever this setting says.",
   "livinghorizon.offline.tag": "(offline)",
   "livinghorizon.offline.lastSeen": "%s — last seen %s",
   "livinghorizon.offline.unknown": "%s — offline",

@@ -42,7 +42,7 @@
   "livinghorizon.options.offlineTag": "Пометка офлайн",
   "livinghorizon.options.offlineTag.tooltip": "Добавляет (офлайн) после имени над вышедшими игроками в мире.",
   "livinghorizon.options.offlineTabList": "Офлайн в списке",
-  "livinghorizon.options.offlineTabList.tooltip": "Добавляет вышедших игроков в список игроков (Tab), после тех, кто в сети, с их головой и серым именем. Только если сервер это разрешает.",
+  "livinghorizon.options.offlineTabList.tooltip": "Добавляет вышедших игроков в список игроков (Tab), после тех, кто в сети, с их головой и серым именем. Сервер может отключить это для всех: тогда вышедшие игроки не показываются, как бы ни был задан этот параметр.",
   "livinghorizon.offline.tag": "(офлайн)",
   "livinghorizon.offline.lastSeen": "%s — последний раз в сети: %s",
   "livinghorizon.offline.unknown": "%s — офлайн",

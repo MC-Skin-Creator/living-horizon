@@ -42,7 +42,7 @@
   "livinghorizon.options.offlineTag": "Marca offline",
   "livinghorizon.options.offlineTag.tooltip": "Adiciona (offline) após o nome acima dos jogadores que saíram, no mundo.",
   "livinghorizon.options.offlineTabList": "Offline na lista",
-  "livinghorizon.options.offlineTabList.tooltip": "Adiciona os jogadores que saíram à lista de jogadores (Tab), depois dos online, com a cabeça deles e o nome em cinza. Só se o servidor permitir.",
+  "livinghorizon.options.offlineTabList.tooltip": "Adiciona os jogadores que saíram à lista de jogadores (Tab), depois dos online, com a cabeça deles e o nome em cinza. Um servidor pode desativar isso para todos: então nenhum jogador offline é listado, seja qual for esta opção.",
   "livinghorizon.offline.tag": "(offline)",
   "livinghorizon.offline.lastSeen": "%s — visto pela última vez %s",
   "livinghorizon.offline.unknown": "%s — offline",
