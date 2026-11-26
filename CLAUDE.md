@@ -585,6 +585,11 @@ come back, add it here in the same pull request: this file is what the next sess
   again with more room round it (`ImpostorPixels.growth`), drawn smaller in a tile of the same 64
   pixels: tiles two or three times larger took four or nine times the memory for a figure a dozen
   pixels tall. `impostoredges` and `longmobs` show both.
+- **Players online turning all at once into their picture** (mobs turning smoothly): the game
+  draws them itself until they are pictures, so the mod's own turn never touched them.
+  `GhostRenderer.pictureInstead` notes their turn and `EntityRendererTurnMixin` applies it to the
+  state the game extracts (`turnedByGame`, which leaves the mod's own extractions alone: applied
+  twice, the turn ran ahead). The `impostorturn` scenario logs a player online's body step by step.
 - **Players online never simplified** (full models far past *Simplification Distance*, or
   smaller than *Simplification Size*, while offline players are pictures): the game draws other
   players itself up to ten times the usual entity distance, and a figure it draws is never a
@@ -601,7 +606,17 @@ come back, add it here in the same pull request: this file is what the next sess
   fish lying on their side far away; before 1.21.9, far mobs in the game's textures, or all in
   the texture and pose of one other mob):
   ETF picks a texture from the mob's UUID, which no synched value shows, so `ImpostorKey` asks
-  `EtfLink.worn`. EMF asks the entity, not the render state, whether it is in water, and a copy
+  `EtfLink.worn`; a pack's model variants (a ram with horns or not) likewise, `EmfLink.variant`:
+  left out, a far sheep changed models as it walked, its walk baked from another sheep. Even
+  with every variant in the key, two mobs of one look differ in what no key reads (Fresh
+  Animations' `random(id)`, a pack's random parts): a look's resting picture and every step of
+  its walk are baked from one mob (`ImpostorAtlas.walking`, `WALKERS`, `BAKED_FROM`); the
+  `walkingpictures` scenario checks it with two cows. Pictures
+  of Fresh Animations' mobs leaning, head down, or in another pose in each view: EMF reads the
+  entity's own stride and ground, not the state's; `ImpostorAtlas.steady` and `stride` set them
+  for the bake. Never turn a living figure itself view by view (Fresh Animations smooths the turn:
+  a back view came out side on), nor reset its age (it lays pigs down), nor pause EMF (its models
+  stand upright without their animations). EMF asks the entity, not the render state, whether it is in water, and a copy
   never ticks: `Puppets.inWater` puts a fish's copy in water when it is made. Before 1.21.9 ETF
   and EMF act only inside the game's draw of an entity, which tells ETF which one; the mod draws
   through the renderer and tells it itself (`EtfLink.drawing`); an EMF pack that walks the legs

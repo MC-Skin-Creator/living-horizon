@@ -28,6 +28,27 @@ class ImpostorKeyTest {
     }
 
     @Test
+    void picturesOfAWalkHaveKeysOfTheirOwn() {
+        ImpostorKey rest = new ImpostorKey(COW, 1234L);
+        assertEquals(rest, ImpostorKey.frame(rest, 0));
+        assertNull(ImpostorKey.walk(rest));
+        ImpostorKey first = ImpostorKey.frame(rest, 1), second = ImpostorKey.frame(rest, 2);
+        assertNotEquals(rest, first);
+        assertNotEquals(first, second);
+        assertEquals(COW, first.type());
+        // The same in every game, as the resting key is: kept on disk.
+        assertEquals(first, ImpostorKey.frame(new ImpostorKey(COW, 1234L), 1));
+        assertEquals(new ImpostorKey.Walk(rest, 2), ImpostorKey.walk(second));
+        // Never the key of a picture seen from a height.
+        for (int height = 0; height < ImpostorViews.HEIGHTS.length; height++) {
+            assertNotEquals(first, ImpostorKey.seenFrom(rest, height));
+            assertNotEquals(second, ImpostorKey.seenFrom(rest, height));
+        }
+        ImpostorKey.forget(first);
+        assertNull(ImpostorKey.walk(first));
+    }
+
+    @Test
     void numbersAndFlagsAreBits() {
         assertEquals(0L, ImpostorKey.bits(null));
         assertEquals(1L, ImpostorKey.bits(true));

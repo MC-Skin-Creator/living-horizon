@@ -196,6 +196,8 @@ public final class MobMemory {
         public UUID id() { return id; }
         public @Nullable Entity puppet() { return gone ? null : puppet; }
         public boolean waiting() { return !gone && puppet == null && !failed; }
+        /** Resting untouched, its legs not caught up since ({@code MobMemory.catchUp}): still, whatever they say. */
+        public boolean resting() { return settled || owed > 0; }
         /** The dimension it was seen in, by id ({@code minecraft:overworld}). */
         public String dimension() { return dimension; }
         public double x() { return x; }
