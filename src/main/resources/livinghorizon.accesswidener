@@ -36,13 +36,16 @@ accessible field net/minecraft/client/entity/ClientAvatarState zCloakO D
 # render states, any figure is told it swims while it is drawn.
 accessible field net/minecraft/world/entity/Entity wasTouchingWater Z
 
-# Before 1.21.2, with no render states: a figure is told it swims, stands still or walks
-# while it is drawn, and the faces of each cube of a model are counted as it is drawn.
-# @until 1.21.1
-accessible field net/minecraft/world/entity/Entity wasEyeInWater Z
+# A figure's own stride, set while it is baked (ImpostorAtlas.stride): before 1.21.2 there are no
+# render states, and on every version some renderers (Entity Model Features) read the entity's.
 accessible field net/minecraft/world/entity/WalkAnimationState position F
 accessible field net/minecraft/world/entity/WalkAnimationState speed F
 accessible field net/minecraft/world/entity/WalkAnimationState speedOld F
+
+# Before 1.21.2, with no render states: a figure is told it swims while it is drawn, and the
+# faces of each cube of a model are counted as it is drawn.
+# @until 1.21.1
+accessible field net/minecraft/world/entity/Entity wasEyeInWater Z
 accessible class net/minecraft/client/model/geom/ModelPart$Polygon
 accessible field net/minecraft/client/model/geom/ModelPart$Cube polygons [Lnet/minecraft/client/model/geom/ModelPart$Polygon;
 

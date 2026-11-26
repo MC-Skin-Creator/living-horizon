@@ -12,6 +12,7 @@ import fr.clixmods.livinghorizon.compat.LycaniteMobs;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
+import fr.clixmods.livinghorizon.compat.EmfLink;
 import fr.clixmods.livinghorizon.compat.IrisNormals;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Posture;
@@ -483,6 +484,7 @@ public final class ImpostorAtlas {
     /** The game's textures were reloaded: every picture may be out of date. */
     public static void invalidate() {
         dirty = true;
+        EmfLink.reloaded();
     }
 
     /**
@@ -832,6 +834,11 @@ public final class ImpostorAtlas {
             };
             Runnable turnedBack = request.puppet != null ? facingBack(request.puppet) : () -> {
             };
+            // Its clocks and legs held, as its rider's: see steady.
+            Runnable played = request.puppet != null ? steady(request.puppet) : () -> {
+            };
+            Runnable riderPlayed = request.rider != null ? steady(request.rider.entity()) : () -> {
+            };
             try {
                 bake(minecraft, request);
             } catch (LeftOut leftOut) {
@@ -844,6 +851,8 @@ public final class ImpostorAtlas {
             } finally {
                 back.run();
                 turnedBack.run();
+                played.run();
+                riderPlayed.run();
             }
             if (System.nanoTime() > end) return;
         }
@@ -937,7 +946,12 @@ public final class ImpostorAtlas {
         Entity puppet = request.puppet;
         // A boat, a minecart: no body to turn in its state, the entity itself is turned
         // for each view, the way stage turns a mob's body. Put back after the bake.
+        // A boat, a minecart: no body to turn in its state, the entity itself is turned
+        // for each view, the way stage turns a mob's body. Put back after the bake. A mob is turned
+        // in its state only: Fresh Animations smooths a body turning, and a mob turned view by view
+        // was pictured from the side where its back should be.
         if (!(puppet instanceof LivingEntity)) turn(puppet, ImpostorViews.facing(view));
+        if (puppet instanceof LivingEntity living) stride(living, request.walk);
         EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), puppet, 1.0f, FULL_BRIGHT);
         if (state == null) throw new LeftOut();
         if (puppet instanceof LivingEntity && !(state instanceof LivingEntityRenderState)) {
@@ -991,6 +1005,35 @@ public final class ImpostorAtlas {
         return request.rider == null ? Posture.bakedLift(request.key.posture()) : 0;
     }
 
+    /**
+     * Stands a figure on the ground, still, while it is baked; gives back what puts it back as it
+     * was. Some renderers read the entity rather than its state: Entity Model Features plays Fresh
+     * Animations on the entity's own stride and whether it is on the ground, and a copy in no world
+     * is not, so a mob was pictured as if it jumped, head down and hindquarters up, and the eight
+     * views of one picture, drawn one after the other, came out each in another pose. Its age is
+     * left alone: Fresh Animations lays a pig down, or sits a mob, on timers counted from it.
+     */
+    private static Runnable steady(Entity puppet) {
+        boolean grounded = puppet.onGround();
+        puppet.setOnGround(true);
+        Runnable back = () -> puppet.setOnGround(grounded);
+        if (!(puppet instanceof LivingEntity living)) return back;
+        float position = living.walkAnimation.position, speed = living.walkAnimation.speed,
+                speedOld = living.walkAnimation.speedOld;
+        return () -> {
+            back.run();
+            living.walkAnimation.position = position;
+            living.walkAnimation.speed = speed;
+            living.walkAnimation.speedOld = speedOld;
+        };
+    }
+
+    /** Sets a figure's own legs at picture {@code frame} of its walk, or at rest for 0, steady. */
+    private static void stride(LivingEntity living, int frame) {
+        living.walkAnimation.position = frame == 0 ? 0 : ImpostorWalk.position(frame);
+        living.walkAnimation.speed = living.walkAnimation.speedOld = frame == 0 ? 0 : ImpostorWalk.BAKED_SPEED;
+    }
+
     /** Turns an entity itself to face {@code facing}, level, for the view being baked. */
     private static void turn(Entity puppet, float facing) {
         puppet.setYRot(facing);
@@ -1029,6 +1072,7 @@ public final class ImpostorAtlas {
 
     /** A rider's state for one view: on the mount, turned with it, in the riding pose. */
     private static EntityRenderState stagedRider(Minecraft minecraft, Rider rider, int view) {
+        if (rider.entity instanceof LivingEntity living) stride(living, 0);
         EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), rider.entity, 1.0f, FULL_BRIGHT);
         if (state == null) throw new LeftOut();
         stage(state, view);

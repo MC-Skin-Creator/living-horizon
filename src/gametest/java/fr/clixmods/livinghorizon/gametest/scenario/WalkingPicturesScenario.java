@@ -126,6 +126,10 @@ public final class WalkingPicturesScenario implements Scenario {
                         + java.util.Arrays.toString(still));
             }
             Scene.screenshot(context, this, "standing");
+            // The same mobs as their models, standing too, to compare their pose with the pictures'.
+            Scene.configure(context, config -> config.impostors = false);
+            Scene.screenshot(context, this, "standing-models");
+            Scene.configure(context, config -> config.impostors = true);
             context.runOnClient(minecraft ->
                     Scene.log("walkingpictures drawn impostors=" + PolygonStats.impostors() + " models=" + PolygonStats.models()));
 

@@ -601,7 +601,13 @@ come back, add it here in the same pull request: this file is what the next sess
   fish lying on their side far away; before 1.21.9, far mobs in the game's textures, or all in
   the texture and pose of one other mob):
   ETF picks a texture from the mob's UUID, which no synched value shows, so `ImpostorKey` asks
-  `EtfLink.worn`. EMF asks the entity, not the render state, whether it is in water, and a copy
+  `EtfLink.worn`; a pack's model variants (a ram with horns or not) likewise, `EmfLink.variant`:
+  left out, a far sheep changed models as it walked, its walk baked from another sheep. Pictures
+  of Fresh Animations' mobs leaning, head down, or in another pose in each view: EMF reads the
+  entity's own stride and ground, not the state's; `ImpostorAtlas.steady` and `stride` set them
+  for the bake. Never turn a living figure itself view by view (Fresh Animations smooths the turn:
+  a back view came out side on), nor reset its age (it lays pigs down), nor pause EMF (its models
+  stand upright without their animations). EMF asks the entity, not the render state, whether it is in water, and a copy
   never ticks: `Puppets.inWater` puts a fish's copy in water when it is made. Before 1.21.9 ETF
   and EMF act only inside the game's draw of an entity, which tells ETF which one; the mod draws
   through the renderer and tells it itself (`EtfLink.drawing`); an EMF pack that walks the legs

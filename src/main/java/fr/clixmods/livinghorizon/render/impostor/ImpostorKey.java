@@ -2,6 +2,7 @@ package fr.clixmods.livinghorizon.render.impostor;
 
 import fr.clixmods.livinghorizon.compat.EtfLink;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
+import fr.clixmods.livinghorizon.compat.EmfLink;
 import fr.clixmods.livinghorizon.compat.Mca;
 import fr.clixmods.livinghorizon.track.Puppets;
 import fr.clixmods.livinghorizon.track.RestingPuppet;
@@ -405,7 +406,10 @@ public record ImpostorKey(String type, long appearance, int posture) {
             for (EquipmentSlot slot : EquipmentSlot.values()) hash = hash * 31 + item(living.getItemBySlot(slot));
         }
         long worn = worn(entity, type, hash);
-        return new ImpostorKey(type, worn == 0 ? hash : hash * 31 + worn);
+        if (worn != 0) hash = hash * 31 + worn;
+        // Which of a pack's models it wears, through Entity Model Features: a ram with horns or not.
+        int model = EmfLink.variant(entity);
+        return new ImpostorKey(type, model == 0 ? hash : hash * 31 + 0x6D0DE1L * model);
     }
 
     /**

@@ -48,7 +48,7 @@ never added to a level (`track/Puppets`).
 | root | `LivingHorizonCommon` (entry point on both sides, opens the network channel), `LivingHorizonClient` (client entry point), `FarConfig` (the settings file), `QualityPreset`, `Stats` |
 | `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`, `SeedDraws`, `SeedMobs`, `Foresight`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
 | `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`, the distance settings drawn in the world (`DistancePreview`); `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
-| `compat/` | Voxy, Distant Horizons, Lodistance and Far View: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `LodistanceSource`, `FarViewSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `LodistanceLink`, `FarViewLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`); Lycanites Mobs, whose queued models are drawn in time (`LycaniteMobs`); Valkyrien Skies, whose ships' entities are left to it (`ValkyrienSkies`); Minecraft Comes Alive, handed the look of the players who logged off (`McaLook`, `Mca`); Entity Texture Features, asked which texture a mob wears and told which entity the mod draws (`EtfLink`) |
+| `compat/` | Voxy, Distant Horizons, Lodistance and Far View: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `LodistanceSource`, `FarViewSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `LodistanceLink`, `FarViewLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`); Lycanites Mobs, whose queued models are drawn in time (`LycaniteMobs`); Valkyrien Skies, whose ships' entities are left to it (`ValkyrienSkies`); Minecraft Comes Alive, handed the look of the players who logged off (`McaLook`, `Mca`); Entity Texture Features, asked which texture a mob wears and told which entity the mod draws (`EtfLink`); Entity Model Features, asked which of a pack's models a mob wears (`EmfLink`) |
 | `ambient/` | The birds (`Ambience`, `BirdModels`, `BirdFigure`, `AmbientRenderer`) and the easter eggs |
 | `platform/` | What differs between loaders: events, network, config folder |
 | `ui/` | The settings screens (`FarConfigScreen` and its sub-screens, `SodiumOptions`), the impostor screen, the text under the crosshair (`OfflineHud`) |
@@ -838,8 +838,20 @@ entitytexturefeatures,entity-model-features --pack fresh-animations`). What they
   ETF which entity it draws; the mod draws through the renderer, and tells ETF itself
   (`EtfLink.drawing`), as that draw does.
 - **Impostors**: the texture ETF picks is in the impostor key (see
-  [Same look, same picture](#same-look-same-picture)). A model EMF changes on a resource reload
-  is baked again: the fingerprint on disk holds the packs.
+  [Same look, same picture](#same-look-same-picture)), and so is the model EMF picks when a pack
+  gives a kind several (`EmfLink.variant`: its model root's picker, ETF's
+  `ETFVariantSuffixProvider.getSuffixForEntity`; Fresh Animations picks a cow's, a pig's, a
+  villager's from the block under it). A model EMF changes on a resource reload is baked again:
+  the fingerprint on disk holds the packs.
+- **Baked standing**: EMF plays Fresh Animations on the entity's own stride and whether it is on
+  the ground, not on the render state's. `ImpostorAtlas.steady` stands the figure on the ground and
+  sets its own stride (`ImpostorAtlas.stride`: rest, or the step of a walk) while it is baked:
+  a copy is not on the ground, and a cow was pictured as if it jumped, head down and hindquarters
+  up; a mob baked mid-stride had its legs apart in some views. Its age is left alone, since Fresh
+  Animations lays a pig down on timers counted from it, and a mob is turned in its state only,
+  since Fresh Animations smooths a body turning: turned on the entity, a cow seen from behind was
+  pictured from the side. EMF's own pause (`pauseAllCustomAnimationsForEntity`) is no answer: its
+  models stand upright without their animations, bodies vertical.
 - EMF slows the animations of far entities on its own (*Animation LOD distance*, in its
   settings): far copies animate at its pace, as far entities of the game do.
 
@@ -1020,7 +1032,7 @@ textures, draws and reads back the views, and writes a sheet into its page. Ever
   name, when it is not the game's own (`compat/EtfLink`); never a blink. It comes from the mob's
   UUID, which is in none of its synched data: without it, every far cow of a pack of random cows
   wore the first one baked. The game's texture it stands in for is asked of the renderer once per
-  look.
+  look. With Entity Model Features, which of a pack's models it wears too (`compat/EmfLink`).
 - **Left out**: what never shows (positions, times, owners, sound variants, names but the four
   the game draws differently: Dinnerbone, Grumm, jeb_ and Toast) and,
   learnt per kind of mob, what keeps changing on one (a dolphin drying, a zombie raising its
