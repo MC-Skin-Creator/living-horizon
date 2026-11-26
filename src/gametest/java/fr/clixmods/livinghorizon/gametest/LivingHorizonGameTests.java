@@ -36,6 +36,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.ImpostorSharingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorSizeScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorTurnScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.MapMarkersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LanShareScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.MannequinsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.MinecartsScenario;
@@ -100,6 +101,7 @@ import java.util.stream.Collectors;
 public final class LivingHorizonGameTests implements FabricClientGameTest {
     private static final List<Scenario> SCENARIOS = List.of(
             new ImpostorsScenario(),
+            new MapMarkersScenario(),
             new BirdCostScenario(),
             new ImpostorSizeScenario(),
             new PlayerSizeScenario(),

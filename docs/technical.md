@@ -440,6 +440,25 @@ rider and mount wait on the spot.
 - That time is kept in the file with their spot (`lastSeen`, milliseconds since 1970).
 - `offlineNames` turns both off.
 
+### On other mods' maps
+
+`compat/MapMarkers` lists, once a second, the players past the render distance: those online
+a server with the mod shares (`FarPlayer.Source.SHARED`, placed, not vanished) and those who
+logged off in the camera's dimension. Players the game loaded are left to the maps' own radar.
+
+- **Xaero's Minimap and World Map** (`compat/XaeroMaps`): a tracker registered with each, as
+  FTB Teams or Open Parties and Claims do (`HudMod.getRenderedPlayerTrackerManager()`,
+  `WorldMap.playerTrackerSystemManager`), a `Proxy` of their interfaces reading the list. Xaero
+  draws a tracked player only from the game's list of players online (`getPlayerInfo(UUID)`), so
+  players who logged off are not handed over. Reflection only: their jars say "All Rights
+  Reserved".
+- **JourneyMap** (`compat/JourneyMapLink`): API version 2 (JourneyMap 6, 1.20.6 on), markers
+  with the player's head from their skin, those who logged off paler, shown under the mod's id
+  and all taken back before the next list. Their name is the marker's title, shown when pointed
+  at: written under each head, a crowd hid every head.
+- `mapPlayers` and `mapOfflinePlayers` turn each off. The `maps` scenario checks it
+  (`--with journeymap --with xaeros-minimap --with xaeros-world-map`).
+
 ## Distant mobs
 
 Animals, villagers, golems, allays and named mobs stay visible once out of range, where they
@@ -1807,6 +1826,8 @@ and a slider dragged past its end is released beside it. Sodium's page cannot as
 | `offlineLife` | Offline Player Activity | `true` | | They live their life around their spot; off, they sit on it |
 | `offlineRoam` | Roaming Radius | `50` blocks | 8 to 128 | How far from their spot they walk around and look for a bed or a chest (50 is about a village) |
 | `offlineNames` | Offline Player Names | `true` | | Their name above them, marked offline, and when they were last seen, under the crosshair |
+| `mapPlayers` | Players on Maps | `true` | | Distant players a server with the mod shares on Xaero's Minimap, Xaero's World Map and JourneyMap |
+| `mapOfflinePlayers` | Offline on Maps | `true` | | Players who logged off on JourneyMap's maps |
 
 *Clear Offline Players* forgets every player who logged off on this server. On a server with
 the mod, they come back at their last position.

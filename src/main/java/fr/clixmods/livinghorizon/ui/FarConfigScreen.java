@@ -112,6 +112,9 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 bool("offlineLife", c.offlineLife, v -> c.offlineLife = v),
                 distance(Shape.AROUND, blocks("offlineRoam", 8, 128, c.offlineRoam, v -> c.offlineRoam = v)));
         list.addSmall(
+                bool("mapPlayers", c.mapPlayers, v -> c.mapPlayers = v),
+                bool("mapOfflinePlayers", c.mapOfflinePlayers, v -> c.mapOfflinePlayers = v));
+        list.addSmall(
                 bool("offlineNames", c.offlineNames, v -> c.offlineNames = v).createButton(minecraft.options, 0, 0, 150),
                 Button.builder(Component.translatable(KEY + "forgetSleepers"), b -> confirm("forgetSleepers",
                                 () -> FarPlayerTracker.get().resting().forgetAll()))
