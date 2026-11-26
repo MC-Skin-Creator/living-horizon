@@ -19,6 +19,13 @@ import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 buildscript {
     repositories {
         maven("https://maven.quiltmc.org/repository/release/") { name = "Quilt" }
+    // The game's own libraries that only Mojang serves: Quilt Loom asks Maven Central alone for
+    // them, and 26.2's metadata, republished on 2026-11-25, names an LWJGL FreeType build of
+    // Mojang's ("3.4.1-mojang-2.15.0.3") that Central does not have.
+    maven("https://libraries.minecraft.net/") {
+        name = "Mojang libraries"
+        content { includeGroup("org.lwjgl") }
+    }
         maven("https://maven.fabricmc.net/") { name = "Fabric" }
         mavenCentral()
         gradlePluginPortal()
