@@ -10,6 +10,8 @@ import fr.clixmods.livinghorizon.ambient.Herd;
 import fr.clixmods.livinghorizon.compat.DrawnGround;
 import fr.clixmods.livinghorizon.compat.EcstaticLink;
 import fr.clixmods.livinghorizon.compat.EntityCulling;
+//? if <1.21.9
+/*import fr.clixmods.livinghorizon.compat.EtfLink;*/
 import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.FarViewLink;
 import fr.clixmods.livinghorizon.compat.IceAndFire;
@@ -437,8 +439,13 @@ public final class GhostRenderer {
         Vec3 offset = renderer.getRenderOffset(state);
         pose.pushPose();
         pose.translate(x + offset.x, y + offset.y, z + offset.z);
-        renderer.render(state, pose, buffers, light);
-        pose.popPose();
+        Runnable told = EtfLink.drawing(state);
+        try {
+            renderer.render(state, pose, buffers, light);
+        } finally {
+            told.run();
+            pose.popPose();
+        }
     }
     *///?} elif <1.21.2 {
     /*/^*
@@ -456,9 +463,11 @@ public final class GhostRenderer {
         pose.pushPose();
         pose.translate(x + offset.x, y + offset.y, z + offset.z);
         state.apply();
+        Runnable told = EtfLink.drawing(state);
         try {
             renderer.render(entity, Mth.lerp(tick, entity.yRotO, entity.getYRot()), tick, pose, buffers, light);
         } finally {
+            told.run();
             state.restore();
             pose.popPose();
         }
@@ -656,9 +665,7 @@ public final class GhostRenderer {
             memory.catchUp(mob);
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
             turned(puppet, body, partialTick);
-            // A puppet is in no world, so never in water: fish would be drawn flopping on
-            // their side, as on land. Water mobs were in water when last seen.
-            if (body instanceof LivingEntityRenderState living && livesInWater(puppet)) living.isInWater = true;
+            // Water mobs are in water, as when last seen: see Puppets.inWater.
             add(frame, minecraft, eye, body, null, true, copy, config, mob.id());
         }
         DrawnGround.ask();

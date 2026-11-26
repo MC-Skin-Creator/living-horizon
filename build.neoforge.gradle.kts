@@ -26,7 +26,8 @@ val requiredJava: JavaVersion = project.extra["lhJava"] as JavaVersion
 val lhAccessTransformer: File = project.extra["lhAccessTransformer"] as File
 
 neoForge {
-    version = sc.properties["deps.neoforge"]
+    // -Plh.neoforge=<version> plays on another NeoForge build, for a mod in -Plh.mods that needs one.
+    version = findProperty("lh.neoforge")?.toString() ?: sc.properties["deps.neoforge"]
     accessTransformers.from(lhAccessTransformer)
 
     mods {
@@ -56,13 +57,24 @@ neoForge {
 }
 
 repositories {
-    maven("https://maven.caffeinemc.net/releases") {
-        name = "CaffeineMC"
-        content { includeGroup("net.caffeinemc") }
+    // Asked of its own repository alone, never of Maven Central first: fifty-odd builds at once
+    // drew Central's "429 Too Many Requests" on Sodium's API.
+    exclusiveContent {
+        forRepository { maven("https://maven.caffeinemc.net/releases") { name = "CaffeineMC" } }
+        filter { includeGroup("net.caffeinemc") }
     }
 }
 
+// Other mods to play with in runClient (Epic Fight...), as on Fabric: -Plh.mods=<folder of jars>.
+// Never part of the build or the jar.
+val localRuntime: Configuration by configurations.creating
+configurations.runtimeClasspath { extendsFrom(localRuntime) }
+
 dependencies {
+    findProperty("lh.mods")?.let { folder ->
+        // A relative folder is read from the repository's root, not the target's.
+        localRuntime(fileTree(rootProject.file(folder.toString())) { include("*.jar") })
+    }
     // The code is annotated with jspecify's @Nullable, which the game ships from 1.21.11 on.
     // Before that it is only needed to compile: an annotation nobody reads at run time.
     if (sc.current.parsed < "1.21.11") compileOnly("org.jspecify:jspecify:1.0.0")

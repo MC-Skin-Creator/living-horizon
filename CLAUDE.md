@@ -260,6 +260,13 @@ baseline, no commit back, no Modrinth, CurseForge, Nexus Mods or Discord. A push
 The mod version is `mod.version` in `stonecutter.properties.toml`; the Minecraft version
 never touches it.
 
+## Sending a build to the user
+
+A jar built for the user (a test build of a branch or of several pull requests merged
+locally) is sent as a `.zip` holding the `.jar`, never the `.jar` alone: a `.jar` does not go
+through the Claude app's conversations. Name it after what it holds and the node
+(`livinghorizon-<what>-mc26.3-fabric.zip`), and never push the local branch it was built from.
+
 ## Testing in the game
 
 Unit tests (`./gradlew build`) do not show what the game draws. A change to rendering,
@@ -589,6 +596,17 @@ come back, add it here in the same pull request: this file is what the next sess
   that turns the head without `yHeadRotO`. A mob the mod draws in the game's place is told seen
   (`compat/EntityCulling.drawn`, from `GhostRenderer`); the `headturn` scenario checks it with
   Entity Culling in `-Plh.mods`.
+- **Distant mobs wrong with Entity Texture Features, Entity Model Features or Fresh Animations**
+  (every far cow of a pack of random textures in one texture as an impostor; Fresh Animations'
+  fish lying on their side far away; before 1.21.9, far mobs in the game's textures, or all in
+  the texture and pose of one other mob):
+  ETF picks a texture from the mob's UUID, which no synched value shows, so `ImpostorKey` asks
+  `EtfLink.worn`. EMF asks the entity, not the render state, whether it is in water, and a copy
+  never ticks: `Puppets.inWater` puts a fish's copy in water when it is made. Before 1.21.9 ETF
+  and EMF act only inside the game's draw of an entity, which tells ETF which one; the mod draws
+  through the renderer and tells it itself (`EtfLink.drawing`); an EMF pack that walks the legs
+  reads its limb speed from there too (legs still, arms swinging, before 1.21.2). The `entityfeatures` scenario
+  checks it: `run.sh entityfeatures --with entitytexturefeatures,entity-model-features --pack fresh-animations`.
 - **Crash extracting a distant mob on 1.21.2 to 1.21.8** (`NullPointerException` under
   `GhostRenderer.state`, often blamed on another mod's mixin into `extractRenderState`):
   GeckoLib 4's `createRenderState()` returns null and its `render` draws the entity it was
@@ -839,6 +857,20 @@ come back, add it here in the same pull request: this file is what the next sess
   as a truncated jar (`zip END header not found` on the next attempt): `gradle.sh` deletes the
   jars that do not open before trying again. What Forge's Maven served is kept in each Forge
   node's cache entry (`mavenizer/caches/maven/forge`), so a build only asks it for what changed.
+- **CI jobs failing on Maven Central's "429 Too Many Requests"** (`Could not HEAD
+  .../repo.maven.apache.org/...`, often on Mod Menu or Sodium's API, a few nodes of a run):
+  fifty-odd runners ask Central at once. A mod's artifacts are asked of its own repository
+  alone (`exclusiveContent` in the build scripts: TerraformersMC, CaffeineMC), and
+  `gradle.sh` waits a minute and a half or more before trying again after a 429. A 429 on
+  something else means a dependency only Central serves: re-run the failed jobs later.
+- **A Quilt node failing with "Could not find org.lwjgl:…-mojang-…"** (only Maven Central
+  searched): Mojang republished a version's metadata with a library build only its own
+  repository serves (26.2's on 2026-11-25: `lwjgl-freetype:3.4.1-mojang-2.15.0.3`), and Quilt
+  Loom keeps a repository of its own, exclusive to `org.lwjgl`, on Central (`MavenCentralLWJGL`):
+  no other repository may serve LWJGL. `build.quilt.gradle.kts` points that one at
+  `libraries.minecraft.net`, which serves both kinds. Quilt Loom also read the POMs of the game's
+  libraries there, whose parents only Central serves (a 429 on `jackson-parent`, `guava-parent`):
+  that repository gives jars alone on Quilt, as Fabric Loom does.
 - **A Forge node failing in CI with "Failed to find JDK for version 8"** (`sha256 Invalid` on an
   `OpenJDK8U` tarball just before): the Mavenizer runs one step on Java 8, found through
   `JAVA_HOME_8_X64`, or downloads Temurin 8 itself. GitHub served 8u514's tarball as a 1.8 kB
@@ -992,6 +1024,11 @@ the vocabulary and examples. In short:
 ## Issues
 
 `.claude/skills/issue-from-comment/` turns a pasted comment into a GitHub issue.
+
+**Whenever the user sends a problem** (a player's message, a crash, a bug report, a
+screenshot), first look for an existing issue, open and closed (`gh issue list --state all
+--search …`, by symptom, version, loader and mod), and say which one matches, or that none
+does, before anything else. A closed one may mean the fix is not released yet, or came back.
 
 **When a pull request that resolves an issue is merged, close the issue and tick its box.**
 GitHub closes an issue on its own only when a "Closes #N" pull request lands on `main`, the

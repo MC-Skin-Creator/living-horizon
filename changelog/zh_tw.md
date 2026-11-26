@@ -2,6 +2,17 @@
 
 ## 下一版本
 
+## 0.18.1 — 2026-11-24
+
+### 用戶端
+
+#### 修正
+- **遠處的玩家與生物使用 Entity Model Features 資源包的動畫** — 使用 Entity Model Features 與為玩家或生物製作動畫的資源包時，Living Horizon 繪製的玩家與生物現在會依資源包的設計移動，而不再只擺動手臂、雙腿不動。坐著的離線玩家會保持雙腿彎曲。（Minecraft 1.20.1 至 1.21.1。）
+- **遠處的六角恐龍和魚正常游動** — 使用 Entity Model Features 與 Fresh Animations 時，遠處的六角恐龍、魷魚和魚現在會正常游動，而不再側躺著拍動，像離開了水一樣。
+- **離線玩家隨 Epic Fight 動起來** — 安裝 Epic Fight 後，離線玩家現在會以它的動畫行走、坐下、睡覺與騎乘，而不再於移動時僵在同一個姿勢。（NeoForge，Minecraft 1.21.1，搭配 Epic Fight 21。）
+- **遠處生物保留資源包的材質** — 依 Fresh Animations 的需要使用 Entity Texture Features 與 Entity Model Features 時，遠處生物現在會保留資源包的材質，而不再遺失材質，或全都採用另一個生物的材質與姿勢。（Minecraft 1.20.1 至 1.21.8。）
+- **每個遠處生物保留各自的隨機材質** — 使用 Entity Texture Features 與帶有隨機生物材質的資源包時，遠處生物的簡化圖像（*簡化生物*）現在會各自保留自己的材質，而不再全都使用第一個繪製的生物的材質。
+
 ## 0.18.0 — 2026-11-21
 
 ### 用戶端

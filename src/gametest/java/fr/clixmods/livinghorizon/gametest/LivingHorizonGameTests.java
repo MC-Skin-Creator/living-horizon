@@ -12,6 +12,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.DistancePreviewScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EasterEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EggFiguresScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.EntityFeaturesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DhFogScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FarFogScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FollowedMobsScenario;
@@ -157,6 +158,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new BobbyScenario(),
             new SittingPetsScenario(),
             new HeadTurnScenario(),
+            new EntityFeaturesScenario(),
             new GaitsScenario(),
             new StillMobsScenario(),
             new FlyersScenario(),
@@ -194,6 +196,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             }
         }
         Scene.shaderPack(context);
+        Scene.resourcePacks(context);
         for (Scenario scenario : SCENARIOS) {
             if (!all && !names.contains(scenario.name())) continue;
             Scene.log("scenario " + scenario.name() + " starts");

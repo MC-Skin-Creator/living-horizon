@@ -2,6 +2,17 @@
 
 ## Następna wersja
 
+## 0.18.1 — 2026-11-24
+
+### Klient
+
+#### Poprawki
+- **Odlegli gracze i stworzenia animowani przez paczki Entity Model Features** — Z Entity Model Features i paczką zasobów, która animuje graczy lub stworzenia, gracze i stworzenia rysowani przez Living Horizon poruszają się teraz tak, jak przewiduje paczka, zamiast chodzić samymi rękami z nieruchomymi nogami. Siedzący gracze offline mają zgięte nogi. (Minecraft od 1.20.1 do 1.21.1.)
+- **Odległe aksolotle i ryby pływają jak należy** — Z Entity Model Features i Fresh Animations odległe aksolotle, kałamarnice i ryby pływają teraz normalnie, zamiast leżeć na boku i trzepotać się jak na lądzie.
+- **Gracze offline poruszają się z Epic Fight** — Z zainstalowanym Epic Fight gracze offline chodzą, siadają, śpią i jeżdżą teraz z jego animacjami, zamiast zastygać w jednej pozie podczas ruchu. (NeoForge, Minecraft 1.21.1, z Epic Fight 21.)
+- **Odległe stworzenia zachowują tekstury paczki** — Z Entity Texture Features i Entity Model Features, których wymaga Fresh Animations, odległe stworzenia zachowują teraz tekstury paczki, zamiast je tracić albo wszystkie przyjmować teksturę i pozę jednego innego stworzenia. (Minecraft od 1.20.1 do 1.21.8.)
+- **Każde odległe stworzenie zachowuje własną losową teksturę** — Z Entity Texture Features i paczką zasobów z losowymi teksturami stworzeń uproszczone obrazy odległych stworzeń (*Uproszczone stworzenia*) zachowują teraz każde własną teksturę, zamiast wszystkie nosić teksturę pierwszego narysowanego.
+
 ## 0.18.0 — 2026-11-21
 
 ### Klient
