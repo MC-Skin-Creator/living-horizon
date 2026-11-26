@@ -1,5 +1,7 @@
 package fr.clixmods.livinghorizon.mixin;
 
+// Render states came in 1.21.2.
+//? if >=1.21.2 {
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
@@ -23,3 +25,4 @@ abstract class EntityRendererTurnMixin {
         GhostRenderer.turnedByGame(entity, cir.getReturnValue(), partialTick);
     }
 }
+//?}
