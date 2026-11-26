@@ -352,6 +352,7 @@ public final class RestingPlayers {
         fakes.clear();
         fromHost.clear();
         puppets.clear();
+        RestingPuppet.forgetOpened();
         shown = List.of();
         lookedAt = null;
         file = null;
@@ -360,6 +361,7 @@ public final class RestingPlayers {
     /** Puppets belong to one level; a new dimension needs new ones. */
     void forgetPuppets() {
         puppets.clear();
+        RestingPuppet.forgetOpened();
         shown = List.of();
         lookedAt = null;
     }
@@ -752,6 +754,16 @@ public final class RestingPlayers {
             if (puppet.restFound()) rested.add(spot);
         }
         for (Spot spot : rested) keepRest(spot, puppets.get(spot).rest());
+        // A door or a lid a puppet let go of open, shut again.
+        RestingPuppet.shutForgotten(level);
+    }
+
+    /**
+     * A block placed or broken on this client, by you or anyone: those near enough look at it a
+     * moment. On the game's thread, as the level changes it.
+     */
+    public void blockChanged(BlockPos at) {
+        for (RestingPuppet puppet : puppets.values()) puppet.noticeBlock(at);
     }
 
     /** Ticks into the day when the evening starts: an hour of the game's before sunset. */

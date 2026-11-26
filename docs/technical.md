@@ -312,13 +312,47 @@ under 48.
   looking for a bed. The others carry on.
 - **In the evening** (from 11000 ticks into the day until dark), at each choice they go, six
   times in ten, to stand in front of a campfire, a soul campfire, a furnace, a blast furnace or
-  a smoker they can reach, one of the three nearest, on a spot beside it nobody else stands on
-  or walks to, for 15 to 30 seconds.
-- **A chat**: by day one of them may walk up to another within 24 blocks who is idle, seated
-  or looking at something, to a spot 2 blocks from them; the other waits, turned to it, then
-  both talk face to face for 20 to 40 seconds, each nodding while it speaks, in turn. Never a
-  third, and never another pair within 16 blocks. Night, a monster, a hit or a push of more
-  than a few blocks ends it.
+  a smoker they can reach, one of the three nearest, on a spot nobody else stands on or walks
+  to, for 15 to 30 seconds: beside a furnace, two blocks out round a campfire (twelve spots,
+  `AROUND_FIRE`), never in its flames.
+- **A chat** (`RestingPuppet.Chat`): by day one of them may walk up to another within 24
+  blocks who is idle, seated or looking at something, to a spot 2 blocks from them; the other
+  waits, turned to it. Most often (7 in 10) one rather joins a group chatting within 24 blocks
+  with room, and whatever it would do next, 4 times in 10 it goes to join one, to the spot of its circle farthest from everyone, up to five in all. Each turns its
+  body to the middle of those there and stays 20 to 40 seconds, its own time, then leaves; the
+  chat ends when one is left. One speaks at a time, chosen anew every 2 to 7 seconds, never twice
+  in a row, in a way of its own each turn: nodding, explaining with a swing of the hand, looking
+  round at each of the others, laughing (head back, quick nods, some of the others laughing
+  along) or calmly; one turn in five is a pause where nobody speaks. The others look at the
+  speaker, at another of them now and then, and nod at moments of their own. The group's state
+  is worked out once a tick by whichever member ticks first. Never another group within 16
+  blocks of the one called over. Night, a monster, a hit or a push out of the circle ends it
+  for that one.
+- **Chores**, by day, 14 times in 100 when the place has them, one to a block or an animal:
+  crouched beside a crop on farmland, wheat seeds in hand, a hand over one now and then
+  (nothing harvested or planted); by a grown animal loaded around their spot, with the first of
+  wheat, carrot, seeds, beetroot or potato it likes, offered now and then (the animal never
+  follows: the server moves it); seated beside a lectern or a shelf of books, a book in hand,
+  head down, a page turned now and then. A chest looked at (one of the things in front of which
+  they stop) has its lid opened through the game's own block event (`triggerEvent(1, n)`), the
+  arm rummaging, and shut as they leave.
+- **A bite**: two or three of bread, an apple or cooked beef, with the game's eating animation
+  (the living flags' "using" bit, the item in hand) and crumbs. A meal lasts them 5 to 10
+  minutes before they may eat again, and each starts as if it had eaten up to 10 minutes ago,
+  drawn as it is made, so that they never all eat at once; then, idle, seated or by a fire
+  alike, about once in a minute and a half on average, and 3 times in 10 on getting up.
+- **Doors and gates** on their way are opened on this client only, both halves of a door,
+  with no neighbour updated, and shut as they were once they are 2 blocks past it; never with
+  you within 4 blocks (you would walk through here while the server has it shut), and shut at
+  once if you come near. What a puppet let go of open (a door, a lid) is shut within 2 seconds
+  by `shutForgotten`.
+- **Together**: one setting off to a group or a fire brings now and then someone free within 5
+  blocks, who sets off the same way half a second to a second and a half later. In the evening
+  those by the same campfire chat in a circle round it (a `Chat` whose middle is the fire), up to
+  five.
+- **You**: running at one walking your way, facing you and seeing you, it steps aside across
+  your way before you reach it, and goes on; standing, seated or busy, it never moves. A block placed or broken within 7 blocks of its eyes (`ClientLevelBlockMixin`,
+  a new block only, never a change of state) has it look there a few seconds.
 - **At the water's edge**, where open water runs 3 blocks out from a spot they can reach, they
   may fish for a minute or so: a rod in hand, the bobber on the water with the game's line,
   a fish's wake now and then, a bite that pulls the bobber under, the line reeled in and cast
