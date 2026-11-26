@@ -5,6 +5,7 @@ import fr.clixmods.livinghorizon.ambient.BirdFigure;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorKey;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorViews;
+import fr.clixmods.livinghorizon.render.impostor.ImpostorWalk;
 import fr.clixmods.livinghorizon.track.LastSeen;
 import fr.clixmods.livinghorizon.track.MobKinds;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -30,6 +31,7 @@ import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -56,6 +58,10 @@ public final class ImpostorScreen extends Screen {
     private static final int SKY = 0xFF9DB8E8, NAME_COLOR = 0xFFFFFFFF, DIM = 0xFFA0A0A0, OVER = 0xFFFF6060;
     /** Where the pictures come from: shared from disk, new and saved, not saved. */
     private static final int SHARED_COLOR = 0xFF60E060, SAVED_COLOR = 0xFFFFE060;
+    /** A figure whose pictures walk, and one standing still. */
+    private static final int ANIMATED_COLOR = 0xFF70C8FF;
+    /** Milliseconds each step of a walk is shown for: a stride about as long as a strolling mob's. */
+    private static final long STEP = 240;
 
     /** The pictures a tab shows. */
     public enum Tab { MOBS, ENTITIES, PLAYERS }
@@ -66,6 +72,11 @@ public final class ImpostorScreen extends Screen {
 
     private final @Nullable Screen parent;
     private List<ImpostorAtlas.Baked> rows = List.of();
+    /**
+     * The pictures of each figure's walk, by its resting key, 1 to {@link ImpostorWalk#FRAMES}; a
+     * figure missing from it stands still. Its pictures are not rows of their own.
+     */
+    private final Map<ImpostorKey, ImpostorAtlas.Sheet[]> walks = new HashMap<>();
     private double scroll;
     private boolean dragging;
     private static final int BAR_WIDTH = 6;
@@ -181,9 +192,9 @@ public final class ImpostorScreen extends Screen {
         return sum;
     }
 
-    /** As tall as a view, or as the four lines beside it: name, origin, date, world. */
+    /** As tall as a view, or as the five lines beside it: name, animated or not, origin, date, world. */
     private int rowHeight() {
-        return Math.max(tile(), 4 * LINE) + 6;
+        return Math.max(tile(), 5 * LINE) + 6;
     }
 
     private int bottom() {
@@ -200,11 +211,21 @@ public final class ImpostorScreen extends Screen {
 
         // A copy to sort: before 1.21.9 the atlas hands out List.of(), which refuses sort.
         rows = new ArrayList<>(ImpostorAtlas.baked());
-        rows.removeIf(row -> tabOf(row.key()) != tab);
+        walks(rows);
+        rows.removeIf(row -> tabOf(row.key()) != tab || ImpostorKey.walk(row.key()) != null);
         boolean players = tab == Tab.PLAYERS;
         boolean over = ImpostorAtlas.memory(players) > ImpostorAtlas.memoryLimit(players);
         graphics.drawCenteredString(font, status(rows.size()), width / 2, 44, over ? OVER : DIM);
-        if (!rows.isEmpty()) graphics.drawCenteredString(font, origins(rows), width / 2, 56, DIM);
+        if (!rows.isEmpty()) {
+            Component line = origins(rows);
+            if (tab == Tab.MOBS && !walks.isEmpty()) {
+                // How many walk, and what their walks take: Animated Pictures costs video memory.
+                long bytes = (long) walks.size() * ImpostorWalk.FRAMES * ImpostorAtlas.sheetBytes();
+                line = line.copy().append("  ·  ").append(Component.translatable(KEY + "animatedCount", walks.size(),
+                        megabytes(bytes)).withStyle(style -> style.withColor(ANIMATED_COLOR & 0xFFFFFF)));
+            }
+            graphics.drawCenteredString(font, line, width / 2, 56, DIM);
+        }
         rows.sort(ORDER);
         scroll = Mth.clamp(scroll, 0, maxScroll());
 
@@ -307,10 +328,40 @@ public final class ImpostorScreen extends Screen {
     }
     *///?}
 
+    /**
+     * Gathers the pictures of each figure's walk, from every picture baked: one shared with
+     * another's (the same pixels) is that one's sheet. Only a walk with every picture counts.
+     */
+    private void walks(List<ImpostorAtlas.Baked> all) {
+        walks.clear();
+        Map<ImpostorKey, ImpostorAtlas.Sheet> sheets = new HashMap<>();
+        for (ImpostorAtlas.Baked row : all) sheets.put(row.key(), row.sheet());
+        for (ImpostorAtlas.Baked row : all) {
+            if (ImpostorKey.walk(row.key()) != null || tabOf(row.key()) != Tab.MOBS) continue;
+            ImpostorAtlas.Sheet[] steps = new ImpostorAtlas.Sheet[ImpostorWalk.FRAMES];
+            boolean whole = true;
+            for (int frame = 1; frame <= ImpostorWalk.FRAMES && whole; frame++) {
+                ImpostorKey key = ImpostorKey.frameKey(row.key(), frame);
+                ImpostorKey shared = ImpostorAtlas.aliasOf(key);
+                steps[frame - 1] = sheets.get(shared != null ? shared : key);
+                whole = steps[frame - 1] != null;
+            }
+            if (whole) walks.put(row.key(), steps);
+        }
+    }
+
+    /** The sheet a row shows now: its resting one, or the step its walk is at. */
+    private ImpostorAtlas.Sheet shown(ImpostorAtlas.Baked row) {
+        ImpostorAtlas.Sheet[] steps = walks.get(row.key());
+        if (steps == null) return row.sheet();
+        int frame = ImpostorWalk.frame((int) (System.currentTimeMillis() / STEP % ImpostorWalk.PHASES));
+        return frame == 0 ? row.sheet() : steps[frame - 1];
+    }
+
     private void drawRow(GuiGraphics graphics, ImpostorAtlas.Baked row, int x, int y, int tile, int scale) {
         drawLabel(graphics, row, x, y, tile);
         x += NAME;
-        ImpostorAtlas.Sheet sheet = row.sheet();
+        ImpostorAtlas.Sheet sheet = shown(row);
         Identifier page = ImpostorAtlas.id(sheet.page());
         for (int view = 0; view < ImpostorViews.VIEWS; view++) {
             graphics.fill(x, y, x + tile, y + tile, SKY);
@@ -343,18 +394,31 @@ public final class ImpostorScreen extends Screen {
     /** The name, and where, when and in which world its pictures were made, beside its views. */
     private void drawLabel(GuiGraphics graphics, ImpostorAtlas.Baked row, int x, int y, int tile) {
         ImpostorAtlas.Origin origin = row.origin();
-        List<Component> lines = new ArrayList<>(4);
+        List<Component> lines = new ArrayList<>(5);
+        List<Integer> colors = new ArrayList<>(5);
         lines.add(name(row));
+        colors.add(NAME_COLOR);
+        if (tab == Tab.MOBS) {
+            // Walking pictures, or one standing still: the setting off, past its distance, or not baked yet.
+            boolean animated = walks.containsKey(row.key());
+            lines.add(Component.translatable(KEY + (animated ? "animated" : "still")));
+            colors.add(animated ? ANIMATED_COLOR : DIM);
+        }
         if (origin != null) {
             lines.add(Component.translatable(KEY + "origin." + origin.source().name().toLowerCase(Locale.ROOT)));
+            colors.add(color(origin.source()));
             String date = LastSeen.format(origin.bakedAt(), minecraft.getLanguageManager().getSelected(),
                     ZoneId.systemDefault(), FormatStyle.SHORT);
             lines.add(date == null ? Component.translatable(KEY + "baked.unknown") : Component.literal(date));
-            if (!origin.world().isEmpty()) lines.add(Component.literal(origin.world()));
+            colors.add(DIM);
+            if (!origin.world().isEmpty()) {
+                lines.add(Component.literal(origin.world()));
+                colors.add(DIM);
+            }
         }
         int top = y + Math.max(0, (tile - lines.size() * LINE) / 2);
         for (int i = 0; i < lines.size(); i++) {
-            int color = i == 0 ? NAME_COLOR : i == 1 ? color(origin.source()) : DIM;
+            int color = colors.get(i);
             String text = font.plainSubstrByWidth(lines.get(i).getString(), NAME - 6);
             graphics.drawString(font, text, x, top + i * LINE, color);
         }

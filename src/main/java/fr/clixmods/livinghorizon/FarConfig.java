@@ -54,7 +54,7 @@ public final class FarConfig {
     @SerializedName(value = "depthOcclusion", alternate = "voxyOcclusion")
     public boolean depthOcclusion = true;
 
-    private static final int CURRENT = 14;
+    private static final int CURRENT = 15;
 
     /** The game's own namespace, the one an id without a colon belongs to. */
     private static final String GAME = "minecraft";
@@ -410,6 +410,16 @@ public final class FarConfig {
     public boolean impostorAnimation = true;
 
     /**
+     * Blocks: past this, pictures stand still again, even of a mob walking ("Animated Picture
+     * Distance"). Only mobs within it have their walk baked, so it bounds the video memory
+     * {@link #impostorAnimation} takes too. Never without a limit.
+     */
+    public int impostorAnimationDistance = 256;
+
+    /** Range of {@link #impostorAnimationDistance}. */
+    public static final int MIN_ANIMATION_DISTANCE = 16, MAX_ANIMATION_DISTANCE = 2000;
+
+    /**
      * Megabytes of video memory the mobs' impostor pictures may take, apart from the players':
      * taken only as looks are met, the picture used longest ago making room when full.
      */
@@ -740,11 +750,20 @@ public final class FarConfig {
             }
             if (!unsure.isEmpty()) config.unsortedMobs = unsure;
         }
+        if (config.version < 15) {
+            // Animated pictures came with a distance of their own, which the presets set: settings on
+            // a preset stay on it.
+            for (QualityPreset preset : QualityPreset.values()) {
+                if (preset.matchesScale(config)) config.impostorAnimationDistance = preset.animationDistance();
+            }
+        }
         // Written by hand out of range: the nearest end.
         config.impostorMobMemory = Math.clamp(config.impostorMobMemory, MIN_MOB_MEMORY, MAX_MOB_MEMORY);
         config.impostorPlayerMemory = Math.clamp(config.impostorPlayerMemory, MIN_PLAYER_MEMORY, MAX_PLAYER_MEMORY);
         config.impostorPixels = Math.clamp(config.impostorPixels, 0, MAX_IMPOSTOR_PIXELS);
         config.impostorDistance = Math.clamp(config.impostorDistance, 0, MAX_IMPOSTOR_DISTANCE);
+        config.impostorAnimationDistance = Math.clamp(config.impostorAnimationDistance, MIN_ANIMATION_DISTANCE,
+                MAX_ANIMATION_DISTANCE);
         config.version = CURRENT;
     }
 

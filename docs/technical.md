@@ -1063,7 +1063,10 @@ textures, draws and reads back the views, and writes a sheet into its page. Ever
 ### Walking
 
 *Animated Pictures* (`impostorAnimation`, on by default) keeps a walking mob walking as a picture,
-rather than gliding along in its resting pose (`ImpostorWalk`).
+rather than gliding along in its resting pose (`ImpostorWalk`), up to *Animated Picture Distance*
+(`impostorAnimationDistance`, 256 blocks; 128 on *Potato* and *Low*, 512 on *High*, 1024 on
+*Ultra*). Past it a picture stands, and a copy's walk is never asked for: the distance bounds the
+video memory the walks take as well as which mobs walk.
 
 - **The stride.** The game's models swing legs and arms by `cos(position * 0.6662)` times the
   walk's speed: a stride every 9.43 of walk position. It is cut into four steps
@@ -1081,8 +1084,8 @@ rather than gliding along in its resting pose (`ImpostorWalk`).
   every resting picture asked for is, within the same 3 ms; a step starts as large as the
   resting picture was grown.
 - **Asked for.** A copy's walk is asked for by `GhostRenderer.prewarm` once its resting picture
-  is baked, and by any picture showing a step not baked yet, which shows the resting picture
-  meanwhile: never a model.
+  is baked and the copy is within *Animated Picture Distance*, and by any picture showing a step not
+  baked yet, which shows the resting picture meanwhile: never a model.
 - **Shown.** `GhostRenderer.stride` reads the figure's own legs (`walkAnimation` at the frame's
   partial tick, times 3 for a baby before 1.21.2) and picks the nearest step; below a walk speed
   of `ImpostorWalk.WALKING` it is at rest. A step's sheet is drawn at its own size and feet; the
@@ -1093,6 +1096,14 @@ rather than gliding along in its resting pose (`ImpostorWalk`).
 - **Cost.** Two sheets more per look of a mob that walks: 340 KB more video memory (680 KB with
   normal maps), three times its resting picture. The frame's cost is unchanged: one quad a figure.
   `walkingpictures` shows the stride in two screenshots and the three sheets of each look.
+- **Preview.** *Picture Preview...* shows a walk as one row, not three: *Animated* under its name
+  while every picture of its walk is baked, its views stepping through them; *Still* otherwise
+  (the setting off, past the distance, not baked yet). The line under the memory counts the
+  animated looks and what their walks take.
+- **Potato** (`QualityPreset.POTATO`), the lowest preset, draws every mob the mod draws as a
+  picture from 16 blocks: walking pictures stand in for the models the weakest computers cannot
+  afford. The presets set *Animated Picture Distance*; settings saved on a preset before it existed
+  are given that preset's (`FarConfig.migrate`, version 15).
 
 ### Video memory
 

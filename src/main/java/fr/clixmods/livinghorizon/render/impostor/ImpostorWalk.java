@@ -49,7 +49,7 @@ public final class ImpostorWalk {
     }
 
     /** The picture of a step: 0 where the legs cross, otherwise the steps in order, the crossings skipped. */
-    static int frame(int phase) {
+    public static int frame(int phase) {
         int half = PHASES / 2, quarter = PHASES / 4;
         int within = phase % half;
         if (within == quarter) return 0;

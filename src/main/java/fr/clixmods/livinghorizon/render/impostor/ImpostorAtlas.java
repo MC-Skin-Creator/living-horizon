@@ -158,6 +158,19 @@ public final class ImpostorAtlas {
         return relief ? 2 * ROW_BYTES : ROW_BYTES;
     }
 
+    /** Bytes of video memory one sheet takes now, its normal map's included. */
+    public static long sheetBytes() {
+        return rowBytesNow();
+    }
+
+    /**
+     * The figure whose sheet {@code key} shares, its pixels being the same, or null for none.
+     * Does not count as a use: for the impostor screen.
+     */
+    public static @Nullable ImpostorKey aliasOf(ImpostorKey key) {
+        return ALIASES.get(key);
+    }
+
     /** Bytes of video memory the pages of the players, or of the mobs, take now. */
     public static long memory(boolean players) {
         return (long) ALLOCATOR.taken(players) * rowBytesNow();

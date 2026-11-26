@@ -2,10 +2,12 @@ package fr.clixmods.livinghorizon.gametest.scenario;
 
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
+import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorAtlas;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorKey;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorWalk;
 import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
+import fr.clixmods.livinghorizon.ui.ImpostorScreen;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
@@ -81,6 +83,28 @@ public final class WalkingPicturesScenario implements Scenario {
             int[] second = shotAt(context, world, ImpostorWalk.FRAMES, "walk-b");
             Scene.log("walkingpictures frames at walk-a " + java.util.Arrays.toString(first)
                     + ", at walk-b " + java.util.Arrays.toString(second));
+            walk(context, world, 2);
+            int striding = context.computeOnClient(minecraft -> GhostRenderer.striding());
+            Scene.log("walkingpictures pictures striding while walking: " + striding);
+
+            // Past Animated Picture Distance: walking, yet standing in their pictures.
+            Scene.configure(context, config -> config.impostorAnimationDistance = 32);
+            walk(context, world, 20);
+            int past = context.computeOnClient(minecraft -> GhostRenderer.striding());
+            Scene.log("walkingpictures pictures striding past the distance: " + past);
+            if (past != 0) throw new AssertionError(past + " pictures stride past Animated Picture Distance");
+            Scene.configure(context, config -> config.impostorAnimationDistance = new fr.clixmods.livinghorizon.FarConfig()
+                    .impostorAnimationDistance);
+            walk(context, world, 20);
+            int back = context.computeOnClient(minecraft -> GhostRenderer.striding());
+            Scene.log("walkingpictures pictures striding back within it: " + back);
+
+            // The preview: one row per mob, marked animated, its views stepping through its walk.
+            context.setScreen(() -> new ImpostorScreen(null));
+            Scene.screenshot(context, this, "preview-a");
+            context.waitTicks(5);
+            Scene.screenshot(context, this, "preview-b");
+            context.setScreen(() -> null);
 
             // Stopped: their legs come to rest, and so do their pictures.
             context.waitTicks(40);
@@ -99,6 +123,8 @@ public final class WalkingPicturesScenario implements Scenario {
             Scene.configure(context, config -> config.impostorAnimation = false);
             walk(context, world, 20);
             context.takeScreenshot(name() + "-off");
+            int off = context.computeOnClient(minecraft -> GhostRenderer.striding());
+            if (off != 0) throw new AssertionError(off + " pictures stride with Animated Pictures off");
             Scene.configure(context, config -> config.impostorAnimation = true);
 
             context.runOnClient(minecraft -> minecraft.options.fov().set(70));

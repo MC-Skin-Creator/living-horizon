@@ -109,6 +109,11 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 v -> FarConfig.get().impostorPixels = v, () -> FarConfig.get().impostorPixels,
                                 unit("impostorPixels", "pixels", 0))
                                 .setEnabledProvider(any(PICTURED), ids(PICTURED)))
+                        .addOption(blocks(b, "impostorAnimationDistance", FarConfig.MIN_ANIMATION_DISTANCE,
+                                FarConfig.MAX_ANIMATION_DISTANCE, d.impostorAnimationDistance,
+                                v -> FarConfig.get().impostorAnimationDistance = v,
+                                () -> FarConfig.get().impostorAnimationDistance)
+                                .setEnabledProvider(all(ANIMATED), ids(ANIMATED)))
                         .addOption(integer(b, "impostorMobMemory", FarConfig.MIN_MOB_MEMORY, FarConfig.MAX_MOB_MEMORY,
                                 d.impostorMobMemory, v -> FarConfig.get().impostorMobMemory = v,
                                 () -> FarConfig.get().impostorMobMemory,
@@ -517,6 +522,18 @@ public final class SodiumOptions implements ConfigEntryPoint {
     /** The switches of the flat pictures: what the pictures' distance and size follow, and the mobs' memory. */
     private static final String[] PICTURED = {"impostors", "impostorEntities", "impostorPlayers", "impostorBirds"};
     private static final String[] NOT_PLAYERS = {"impostors", "impostorEntities", "impostorBirds"};
+    /** The switches walking pictures need: mobs as pictures, and their walk. */
+    private static final String[] ANIMATED = {"impostors", "impostorAnimation"};
+
+    /** On while every one of these switches is on. */
+    private static Function<ConfigState, Boolean> all(String[] names) {
+        return state -> {
+            for (String name : names) {
+                if (!state.readBooleanOption(id(name))) return false;
+            }
+            return true;
+        };
+    }
 
     /** On while any of these switches is on. */
     private static Function<ConfigState, Boolean> any(String[] names) {
@@ -544,7 +561,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
 
     /** {@link QualityPreset}, and the settings that match none of them. */
     public enum Preset {
-        LOW(QualityPreset.LOW), NORMAL(QualityPreset.NORMAL), HIGH(QualityPreset.HIGH), ULTRA(QualityPreset.ULTRA),
+        POTATO(QualityPreset.POTATO), LOW(QualityPreset.LOW), NORMAL(QualityPreset.NORMAL), HIGH(QualityPreset.HIGH), ULTRA(QualityPreset.ULTRA),
         CUSTOM(null);
 
         final @Nullable QualityPreset preset;

@@ -176,10 +176,15 @@ public record ImpostorKey(String type, long appearance, int posture) {
      * is, so the pictures of a walk are kept on disk as any mob's are.
      */
     public static ImpostorKey frame(ImpostorKey key, int frame) {
-        if (frame == 0) return key;
-        ImpostorKey walking = new ImpostorKey(key.type, key.appearance * 31 + WALK_SALT * (frame + 1), key.posture);
-        WALKS.putIfAbsent(walking, new Walk(key, frame));
+        ImpostorKey walking = frameKey(key, frame);
+        if (frame != 0) WALKS.putIfAbsent(walking, new Walk(key, frame));
         return walking;
+    }
+
+    /** The key {@link #frame} gives, without noting what it is a picture of: to look a picture up, not to bake it. */
+    public static ImpostorKey frameKey(ImpostorKey key, int frame) {
+        if (frame == 0) return key;
+        return new ImpostorKey(key.type, key.appearance * 31 + WALK_SALT * (frame + 1), key.posture);
     }
 
     /** The walk this key is a picture of, null for a figure at rest. */

@@ -186,6 +186,13 @@ public final class GhostRenderer {
     private static double eyeX, eyeY, eyeZ, lookX, lookY, lookZ, viewCos, viewSin, pixelsPerRadian, drawnRange;
     /** Figures drawn this frame, models or pictures, and those left out: for the debug panel. */
     private static int drawn, skipped;
+    /** Pictures drawn this frame at a step of their walk, and the frame before: for the game tests. */
+    private static int striding, strode;
+
+    /** Pictures drawn at a step of their walk in the last whole frame. */
+    public static int striding() {
+        return strode;
+    }
 
     private static void view(Camera camera, Minecraft minecraft) {
         Vec3 eye = camera.position();
@@ -530,6 +537,8 @@ public final class GhostRenderer {
         long started = System.nanoTime();
         drawn = 0;
         skipped = 0;
+        strode = striding;
+        striding = 0;
 
         for (FarPlayer player : config.enabled ? FarPlayerTracker.get().players() : List.<FarPlayer>of()) {
             AbstractClientPlayer live = player.live();
@@ -1053,8 +1062,10 @@ public final class GhostRenderer {
             ImpostorKey key = ImpostorKey.of(puppet);
             if (!fromHeights(puppet)) {
                 ImpostorAtlas.request(key, puppet);
-                // Its walk once it has its resting picture, which stands in for every step meanwhile.
-                if (walks(puppet, key, config) && ImpostorAtlas.sheet(key) != null) {
+                // Its walk once it has its resting picture, which stands in for every step meanwhile,
+                // and only within Animated Picture Distance: the walk takes video memory.
+                if (walks(puppet, key, config) && within(puppet, config.impostorAnimationDistance)
+                        && ImpostorAtlas.sheet(key) != null) {
                     for (int frame = 1; frame <= ImpostorWalk.FRAMES; frame++) {
                         ImpostorAtlas.request(ImpostorKey.frame(key, frame), puppet);
                     }
@@ -1151,6 +1162,12 @@ public final class GhostRenderer {
         int walk = !mayWalk || aloft ? 0 : stride(entity, key, partialTick, config);
         return picture(minecraft, eye, entity, entity, key, null, 0, partialTick, config,
                 dx, dy, dz, yaw, Math.max(entity.getBbHeight(), entity.getBbWidth()), aloft, walk);
+    }
+
+    /** Whether a figure is within {@code blocks} of the camera. */
+    private static boolean within(Entity entity, int blocks) {
+        Vec3 eye = Minecraft.getInstance().gameRenderer.getMainCamera().position();
+        return entity.distanceToSqr(eye) <= (double) blocks * blocks;
     }
 
     /**
@@ -1264,12 +1281,17 @@ public final class GhostRenderer {
             if (last != null) SHOWN.remove(shown);
             return false;
         }
-        if (walk > 0) {
+        // Past Animated Picture Distance it stands, walking or not, and its walk is never asked for.
+        if (walk > 0 && distance <= config.impostorAnimationDistance) {
             // A step of its walk, drawn at its own size and feet: one baked larger fits the same figure.
             ImpostorKey step = ImpostorKey.frame(key, walk);
             ImpostorAtlas.Sheet stride = ImpostorAtlas.sheet(step);
-            if (stride != null) sheet = stride;
-            else ImpostorAtlas.request(step, at);
+            if (stride != null) {
+                sheet = stride;
+                striding++;
+            } else {
+                ImpostorAtlas.request(step, at);
+            }
         }
         if (distance > drawnRange) FarDepth.needed();
         farthest = Math.max(farthest, distance);
