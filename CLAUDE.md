@@ -866,8 +866,9 @@ come back, add it here in the same pull request: this file is what the next sess
 - **A Quilt node failing with "Could not find org.lwjgl:…-mojang-…"** (only Maven Central
   searched): Mojang republished a version's metadata with a library build only its own
   repository serves (26.2's on 2026-11-25: `lwjgl-freetype:3.4.1-mojang-2.15.0.3`), and Quilt
-  Loom asks Central alone for it. `build.quilt.gradle.kts` adds `libraries.minecraft.net` for
-  `org.lwjgl`; another group named that way needs adding there too.
+  Loom keeps a repository of its own, exclusive to `org.lwjgl`, on Central (`MavenCentralLWJGL`):
+  no other repository may serve LWJGL. `build.quilt.gradle.kts` points that one at
+  `libraries.minecraft.net`, which serves both kinds.
 - **A Forge node failing in CI with "Failed to find JDK for version 8"** (`sha256 Invalid` on an
   `OpenJDK8U` tarball just before): the Mavenizer runs one step on Java 8, found through
   `JAVA_HOME_8_X64`, or downloads Temurin 8 itself. GitHub served 8u514's tarball as a 1.8 kB
