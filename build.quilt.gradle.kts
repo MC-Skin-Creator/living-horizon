@@ -47,13 +47,16 @@ loom.accessWidenerPath = project.extra["lhAccessWidener"] as File
 
 repositories {
     maven("https://maven.quiltmc.org/repository/release/") { name = "Quilt" }
-    maven("https://maven.terraformersmc.com/releases") {
-        name = "TerraformersMC"
-        content { includeGroup("com.terraformersmc") }
+    // Asked of its own repository alone, never of Maven Central first: fifty-odd builds at once
+    // drew Central's "429 Too Many Requests" on Mod Menu.
+    exclusiveContent {
+        forRepository { maven("https://maven.terraformersmc.com/releases") { name = "TerraformersMC" } }
+        filter { includeGroup("com.terraformersmc") }
     }
-    maven("https://maven.caffeinemc.net/releases") {
-        name = "CaffeineMC"
-        content { includeGroup("net.caffeinemc") }
+    // The same for Sodium's API, on CaffeineMC's own repository.
+    exclusiveContent {
+        forRepository { maven("https://maven.caffeinemc.net/releases") { name = "CaffeineMC" } }
+        filter { includeGroup("net.caffeinemc") }
     }
 }
 

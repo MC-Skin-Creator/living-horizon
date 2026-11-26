@@ -857,6 +857,12 @@ come back, add it here in the same pull request: this file is what the next sess
   as a truncated jar (`zip END header not found` on the next attempt): `gradle.sh` deletes the
   jars that do not open before trying again. What Forge's Maven served is kept in each Forge
   node's cache entry (`mavenizer/caches/maven/forge`), so a build only asks it for what changed.
+- **CI jobs failing on Maven Central's "429 Too Many Requests"** (`Could not HEAD
+  .../repo.maven.apache.org/...`, often on Mod Menu or Sodium's API, a few nodes of a run):
+  fifty-odd runners ask Central at once. A mod's artifacts are asked of its own repository
+  alone (`exclusiveContent` in the build scripts: TerraformersMC, CaffeineMC), and
+  `gradle.sh` waits a minute and a half or more before trying again after a 429. A 429 on
+  something else means a dependency only Central serves: re-run the failed jobs later.
 - **A Forge node failing in CI with "Failed to find JDK for version 8"** (`sha256 Invalid` on an
   `OpenJDK8U` tarball just before): the Mavenizer runs one step on Java 8, found through
   `JAVA_HOME_8_X64`, or downloads Temurin 8 itself. GitHub served 8u514's tarball as a 1.8 kB
