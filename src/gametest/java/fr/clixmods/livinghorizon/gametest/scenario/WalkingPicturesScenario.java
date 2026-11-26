@@ -32,9 +32,9 @@ public final class WalkingPicturesScenario implements Scenario {
      */
     //? if >=1.21.9 {
     private static final String[] MOBS = {"cow", "pig", "sheep", "horse", "villager", "creeper", "wolf", "iron_golem",
-            "mannequin"};
+            "mannequin", "cow"};
     //?} else
-    /*private static final String[] MOBS = {"cow", "pig", "sheep", "horse", "villager", "creeper", "wolf", "iron_golem"};*/
+    /*private static final String[] MOBS = {"cow", "pig", "sheep", "horse", "villager", "creeper", "wolf", "iron_golem", "cow"};*/
     /** Blocks a mob walks a tick: about a strolling mob, legs at four times that. */
     private static final double PACE = 0.1;
     /** Ticks walked one way before turning back, so the row stays in view. */
@@ -83,6 +83,14 @@ public final class WalkingPicturesScenario implements Scenario {
             List<String> missing = context.computeOnClient(WalkingPicturesScenario::unbaked);
             Scene.log("walkingpictures walks not baked: " + missing);
             if (missing.contains("minecraft:cow")) throw new AssertionError("The cow's walk was not baked: " + missing);
+            // Two cows of one look: its resting picture and its walk come from one of them, not one each.
+            String cows = context.computeOnClient(minecraft -> {
+                ImpostorKey key = ImpostorKey.of(row(minecraft).get(0));
+                return ImpostorAtlas.walker(key) + " " + ImpostorAtlas.bakedFrom(key);
+            });
+            Scene.log("walkingpictures cows' walk from, resting picture from: " + cows);
+            String[] from = cows.split(" ");
+            if (!from[0].equals(from[1])) throw new AssertionError("A look's walk and resting picture show two mobs: " + cows);
             //? if >=1.21.9 {
             if (missing.contains("minecraft:mannequin")) throw new AssertionError("The mannequin's walk was not baked");
             //?}

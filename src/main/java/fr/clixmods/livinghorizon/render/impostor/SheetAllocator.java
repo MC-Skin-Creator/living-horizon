@@ -183,7 +183,9 @@ final class SheetAllocator<K, T> {
         Page page = page(index / ROWS);
         if (page == null) return null;
         ImpostorAtlas.Sheet sheet = new ImpostorAtlas.Sheet(index, page.rows, worldSize, feet);
-        sheets.put(key, sheet);
+        // Baked again into a row of its own: the row it had is given back.
+        ImpostorAtlas.Sheet old = sheets.put(key, sheet);
+        if (old != null && old.index() != index) free(old.index());
         touch(key);
         return sheet;
     }

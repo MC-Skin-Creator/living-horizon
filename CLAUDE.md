@@ -602,7 +602,11 @@ come back, add it here in the same pull request: this file is what the next sess
   the texture and pose of one other mob):
   ETF picks a texture from the mob's UUID, which no synched value shows, so `ImpostorKey` asks
   `EtfLink.worn`; a pack's model variants (a ram with horns or not) likewise, `EmfLink.variant`:
-  left out, a far sheep changed models as it walked, its walk baked from another sheep. Pictures
+  left out, a far sheep changed models as it walked, its walk baked from another sheep. Even
+  with every variant in the key, two mobs of one look differ in what no key reads (Fresh
+  Animations' `random(id)`, a pack's random parts): a look's resting picture and every step of
+  its walk are baked from one mob (`ImpostorAtlas.walking`, `WALKERS`, `BAKED_FROM`); the
+  `walkingpictures` scenario checks it with two cows. Pictures
   of Fresh Animations' mobs leaning, head down, or in another pose in each view: EMF reads the
   entity's own stride and ground, not the state's; `ImpostorAtlas.steady` and `stride` set them
   for the bake. Never turn a living figure itself view by view (Fresh Animations smooths the turn:

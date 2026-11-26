@@ -1096,6 +1096,14 @@ video memory the walks take as well as which mobs walk.
   same on the entity, so every backend bakes them. They wait in a queue of their own, baked once
   every resting picture asked for is, within the same 3 ms; a step starts as large as the
   resting picture was grown.
+- **One mob per walk.** Every picture of a look's walk, and its resting picture, is baked from
+  one mob (`ImpostorAtlas.walking`): the first seen walking asks for the whole walk, and its
+  resting picture is baked again from it when it came from another mob, replacing the old one in
+  a row of its own once ready (`Request.anew`, `SheetAllocator.put` gives the old row back), never
+  missing meanwhile. Two mobs of one look may differ in what no key reads (a pack's random parts,
+  Fresh Animations' values drawn from a mob's id, a second layer's texture): baked from two, a far
+  sheep had horns on one step and none on the next. Another mob of the look leaves the walk to its
+  owner (`WALKERS`) unless the owner has not had it baked within 20 s.
 - **Asked for.** A copy's walk is asked for by `GhostRenderer.prewarm` once its resting picture
   is baked and the copy is within *Animated Picture Distance*, and by any picture showing a step not
   baked yet, which shows the resting picture meanwhile: never a model.
