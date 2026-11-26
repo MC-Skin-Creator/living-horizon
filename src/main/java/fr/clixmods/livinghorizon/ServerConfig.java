@@ -54,6 +54,8 @@ public final class ServerConfig {
     public List<String> hiddenDimensions = new ArrayList<>();
     /** Players who logged off shared where they left. */
     public boolean shareOfflinePlayers = true;
+    /** Players who logged off listed in the player list (Tab) of the players with the mod. */
+    public boolean offlineInTabList = true;
     /** Remembered mobs shared past the server's view distance. */
     public boolean shareMobs = true;
     /**

@@ -151,7 +151,9 @@ Their layout, from version 3:
 - the records, each after its length (a varint). The players who logged off come after which
   part of their list the message is and how many parts there are. Version 4 marks a gliding
   player with the last bit of their flags, and writes their pitch at the end of the record:
-  version 3 leaves both unread, and reads the rest of the record as before.
+  version 3 leaves both unread, and reads the rest of the record as before. Version 6 writes,
+  after which part of their list a message of players who logged off is, whether the server
+  lets the client list them in its player list (Tab): version 5 reads them as listed.
 
 A message stays under 1 MiB, past which the game refuses it (`MAX_BYTES`). The players who
 logged off go in as many messages as it takes, none left out; the client takes the list once
@@ -191,6 +193,9 @@ the game's but a team's name:
   sends the world's seed to the players with the mod, for their game to foresee them anywhere
   itself, where the dimension's generator is the game's own: whoever has the seed knows where
   everything in the world is.
+- `offlineInTabList` (on) lets the clients list the players who logged off in their player
+  list (Tab); off, the list of players who logged off says so (from version 6) and the clients
+  list those online only. A client of version 5 or older lists them whatever it says.
 - `sharePlayers`, `shareOfflinePlayers`, `shareMobs` switch each list off. The players
   message is still sent, empty but for the player themselves, so the client knows the
   server has the mod. Mobs switched off, or a player in a hidden dimension, get an empty
@@ -438,7 +443,19 @@ rider and mount wait on the spot.
   shows the time the server saw them leave; *offline* without a date only comes from a file
   an older version saved.
 - That time is kept in the file with their spot (`lastSeen`, milliseconds since 1970).
-- `offlineNames` turns both off.
+- `offlineNames` turns both off; `offlineTag` leaves the name and drops *(offline)* after it.
+
+### In the player list
+
+- The player list (Tab) lists them after those online (`ui/OfflineTabList`,
+  `mixin/PlayerTabOverlayMixin`): every one known on this server, any dimension, the last to
+  leave first, within the list's 80 rows, their head, their name in grey, and the bars of a
+  player with no connection. An entry is kept per player while their skin stays
+  the same.
+- In a world played alone the game opens the list only when someone else is in it; with such
+  players to list it opens (`mixin/GuiTabListMixin`, on the game's `isLocalServer` test there).
+  Forge before 1.20.6 draws the list in an overlay of its own, which this misses.
+- `offlineTabList` turns it off; the server's `offlineInTabList` too, for everyone with the mod.
 
 ## Distant mobs
 
@@ -1807,6 +1824,8 @@ and a slider dragged past its end is released beside it. Sodium's page cannot as
 | `offlineLife` | Offline Player Activity | `true` | | They live their life around their spot; off, they sit on it |
 | `offlineRoam` | Roaming Radius | `50` blocks | 8 to 128 | How far from their spot they walk around and look for a bed or a chest (50 is about a village) |
 | `offlineNames` | Offline Player Names | `true` | | Their name above them, marked offline, and when they were last seen, under the crosshair |
+| `offlineTag` | Offline Mark | `true` | | *(offline)* after their name above them |
+| `offlineTabList` | Offline in Player List | `true` | | They are listed in the player list (Tab) after those online, where the server allows it |
 
 *Clear Offline Players* forgets every player who logged off on this server. On a server with
 the mod, they come back at their last position.

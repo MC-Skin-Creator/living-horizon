@@ -145,6 +145,12 @@ public final class SodiumOptions implements ConfigEntryPoint {
                         .addOption(bool(b, "offlineNames", d.offlineNames, v -> FarConfig.get().offlineNames = v,
                                 () -> FarConfig.get().offlineNames)
                                 .setEnabledProvider(on("offlinePlayers"), id("offlinePlayers")))
+                        .addOption(bool(b, "offlineTag", d.offlineTag, v -> FarConfig.get().offlineTag = v,
+                                () -> FarConfig.get().offlineTag)
+                                .setEnabledProvider(on("offlinePlayers"), id("offlinePlayers")))
+                        .addOption(bool(b, "offlineTabList", d.offlineTabList, v -> FarConfig.get().offlineTabList = v,
+                                () -> FarConfig.get().offlineTabList)
+                                .setEnabledProvider(on("offlinePlayers"), id("offlinePlayers")))
                         .addOption(button(b, "forgetSleepers", parent -> confirm(parent, "forgetSleepers",
                                 () -> FarPlayerTracker.get().resting().forgetAll()))));
     }

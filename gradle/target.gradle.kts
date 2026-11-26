@@ -190,6 +190,9 @@ extra["lhMixins"] = buildList {
     // From 26.1 the projection with view bobbing in it only goes to the GPU: read on its way.
     if (atLeast("26.1")) add("GameRendererProjectionMixin")
     add("GuiMixin")
+    // The players who logged off in the player list (Tab), and the list open for them alone.
+    add("GuiTabListMixin")
+    add("PlayerTabOverlayMixin")
     // The feature renderers came in 1.21.9.
     if (atLeast("1.21.9")) {
         add("FeatureRenderDispatcherMixin")
