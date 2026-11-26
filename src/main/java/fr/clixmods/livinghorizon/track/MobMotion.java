@@ -10,6 +10,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -115,6 +116,7 @@ final class MobMotion {
         if (ticks <= 0) return;
         held += ticks;
         puppet.setOldPosAndRot();
+        puppet.setDeltaMovement(Vec3.ZERO);
         puppet.yBodyRotO = puppet.yBodyRot;
         puppet.yHeadRotO = puppet.yHeadRot;
         if (puppet.getId() != restedId) {
@@ -151,6 +153,7 @@ final class MobMotion {
         lift = 0;
         apply(puppet, 0);
         puppet.setOldPosAndRot();
+        puppet.setDeltaMovement(Vec3.ZERO);
         puppet.yBodyRotO = body + backwards;
         puppet.yHeadRotO = head + backwards;
         MobGait.moved(puppet);
@@ -477,6 +480,9 @@ final class MobMotion {
         puppet.yHeadRotO = puppet.yHeadRot;
         // Where it already stands, the game would only make it the same box again.
         if (puppet.getX() != x || puppet.getY() != y + lift || puppet.getZ() != z) puppet.setPos(x, y + lift, z);
+        // The step just taken as its motion, as a mob the server moves has: GeckoLib 4 plays a
+        // mob's walk only when it moves, read there, and a copy walking with none slid in its idle.
+        puppet.setDeltaMovement(puppet.getX() - puppet.xo, puppet.getY() - puppet.yo, puppet.getZ() - puppet.zo);
         puppet.setYRot(body + backwards);
         puppet.setXRot(pitch);
         puppet.yBodyRot = body + backwards;
