@@ -66,6 +66,8 @@
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "게임은 보트 같은 작은 개체를 일찍 숨기기 때문에, 보트에 탄 플레이어가 허공에 떠 있게 됩니다. 플레이어가 타고 있는 동안 탈것을 계속 표시합니다.",
   "livinghorizon.options.impostorTurn": "부드러운 간소화",
   "livinghorizon.options.impostorTurn.tooltip": "간소화된 이미지로 바뀌려는 멀리 있는 몹이나 플레이어가 먼저 이미지가 보여줄 각도로 돌아서, 전환이 튀지 않게 합니다. 꺼짐: 이미지로 바뀔 때 한 번에 돌아섬.",
+  "livinghorizon.options.impostorTurnDistance": "부드러운 회전 거리",
+  "livinghorizon.options.impostorTurnDistance.tooltip": "멀리 있는 몹이나 플레이어가 간소화된 그림이 되기 전에, 그림이 보여 줄 각도로 몇 블록에 걸쳐 돌아서는지 정합니다. 클수록 더 천천히 부드럽게 돕니다.",
   "livinghorizon.options.distantMobs": "몹 표시",
   "livinghorizon.options.distantMobs.tooltip": "동물, 주민, 골렘이 범위를 벗어나도 있던 자리에서 돌아다니고, 주위를 둘러보고, 풀을 뜯으며 계속 보입니다.",
   "livinghorizon.options.maxDistantMobs": "최대 몹 수",

@@ -66,6 +66,8 @@
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "Игра рано скрывает мелкие сущности вроде лодок, и игрок в лодке парил бы в пустоте. Транспорт остаётся видимым, пока на нём едет игрок.",
   "livinghorizon.options.impostorTurn": "Плавное упрощение",
   "livinghorizon.options.impostorTurn.tooltip": "Далёкий моб или игрок, который вот-вот станет упрощённым изображением, сначала поворачивается под тем углом, под которым его покажет изображение, чтобы переход не был скачком. Выключено: поворачивается рывком, когда его сменяет изображение.",
+  "livinghorizon.options.impostorTurnDistance": "Дальность плавного поворота",
+  "livinghorizon.options.impostorTurnDistance.tooltip": "На скольких блоках до превращения в упрощённую картинку далёкий моб или игрок поворачивается к углу, под которым его покажет картинка. Больше — медленнее и мягче поворот.",
   "livinghorizon.options.distantMobs": "Показывать мобов",
   "livinghorizon.options.distantMobs.tooltip": "Животные, крестьяне и големы остаются видимыми вне зоны досягаемости, там, где были: бродят, оглядываются и щиплют траву.",
   "livinghorizon.options.maxDistantMobs": "Макс. мобов",

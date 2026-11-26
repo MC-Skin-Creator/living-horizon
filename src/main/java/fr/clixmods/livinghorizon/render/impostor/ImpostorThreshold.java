@@ -18,9 +18,6 @@ public final class ImpostorThreshold {
     /** How far inside a threshold a pictured figure must come to get its model back. */
     public static final double RETURN = 0.95;
 
-    /** Where a model starts turning to its picture, as a share of the thresholds. */
-    public static final double TURN_FROM = 0.80;
-
     /** How many times larger than its pixels a picture may be shown. */
     public static final double MAX_ENLARGED = 2;
 
@@ -53,21 +50,28 @@ public final class ImpostorThreshold {
     }
 
     /**
-     * How far a model has come towards its picture, 0 to 1: 0 until it is past a fifth of the way
-     * inside the distance or the size ({@link #TURN_FROM}), 1 from where a picture would come back
-     * to its model ({@link #RETURN}) on, so that neither switch moves it. In between, eased.
+     * How far a model has come towards its picture, 0 to 1: 0 until it is {@code span} blocks from
+     * where a picture would come back to its model ({@link #RETURN}), 1 from there on, so that
+     * neither switch moves it; in between, eased. Where the size decides, the distance at which it
+     * would is worked out from how its size on screen falls with the distance. The same number of
+     * blocks at any distance: a share of the thresholds turned a figure over 20 blocks at 128, and
+     * over two at 16, at once.
      *
      * @param distance     blocks from the eye to the figure
      * @param pixels       the figure's height (or width, the larger) on screen, in pixels
      * @param fromDistance blocks past which a figure is a picture; 0 for none
      * @param belowPixels  pixels under which a figure is a picture; 0 for none
+     * @param span         blocks over which it turns ({@code FarConfig.impostorTurnDistance})
      */
-    public static double approach(double distance, double pixels, int fromDistance, int belowPixels) {
+    public static double approach(double distance, double pixels, int fromDistance, int belowPixels, double span) {
         if (distance < 1e-3) return 0;
-        double near = 0;
-        if (fromDistance > 0) near = ease(distance, fromDistance * TURN_FROM, fromDistance * RETURN);
-        if (belowPixels > 0) near = Math.max(near, ease(-pixels, -belowPixels / TURN_FROM, -belowPixels / RETURN));
-        return near;
+        double back = Double.MAX_VALUE;
+        if (fromDistance > 0) back = fromDistance * RETURN;
+        // Its size on screen falls as one over the distance: it comes back to its model where it would be that tall.
+        if (belowPixels > 0 && pixels > 0) back = Math.min(back, distance * pixels * RETURN / belowPixels);
+        if (back == Double.MAX_VALUE) return 0;
+        if (span <= 0) return distance >= back ? 1 : 0;
+        return ease(distance, back - span, back);
     }
 
     /** 0 at {@code from}, 1 at {@code to}, a smooth step in between. */

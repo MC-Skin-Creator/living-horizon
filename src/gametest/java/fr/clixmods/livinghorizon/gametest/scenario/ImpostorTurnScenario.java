@@ -28,6 +28,8 @@ public final class ImpostorTurnScenario implements Scenario {
     private static final double ROW = 50;
     private static final double NEAR = 36;
     private static final double STEP = 0.08;
+    /** A player online beside the row, which the game draws itself, 20 degrees off a picture's angle too. */
+    private Entity turner;
 
     @Override
     public String name() {
@@ -52,6 +54,12 @@ public final class ImpostorTurnScenario implements Scenario {
             }
             context.waitTicks(40);
             context.runOnClient(minecraft -> {
+                turner = PlayerSizeScenario.online(minecraft, "Turner", (MOBS.length + 1) / 2.0 * 2.2, ROW);
+                turner.setYRot(200);
+                ((LivingEntity) turner).setYBodyRot(200);
+                ((LivingEntity) turner).yBodyRotO = 200;
+                ((LivingEntity) turner).setYHeadRot(200);
+                ImpostorAtlas.request(ImpostorKey.of(turner), turner);
                 for (Entity entity : minecraft.level.entitiesForRendering()) {
                     if (entity instanceof LivingEntity && !(entity instanceof Player)) {
                         ImpostorAtlas.request(ImpostorKey.of(entity), entity);
@@ -68,6 +76,7 @@ public final class ImpostorTurnScenario implements Scenario {
 
             int steps = (int) Math.round((ROW - NEAR) / STEP);
             int frame = 0, nearPictured = -1, farPictured = -1;
+            java.util.List<Float> bodies = new java.util.ArrayList<>();
             for (int pass = 0; pass < 2; pass++) {
                 for (int s = 0; s <= steps; s++, frame++) {
                     double distance = pass == 0 ? NEAR + s * STEP : ROW - s * STEP;
@@ -86,6 +95,7 @@ public final class ImpostorTurnScenario implements Scenario {
                         return count;
                     });
                     context.takeScreenshot(String.format(Locale.ROOT, "%s-%04d-d%.2f-p%d", name(), frame, distance, pictured));
+                    if (pass == 0) bodies.add(context.computeOnClient(this::turnerBody));
                     if (pass == 0 && s == 0) nearPictured = pictured;
                     if (pass == 0 && s == steps) {
                         farPictured = pictured;
@@ -95,11 +105,40 @@ public final class ImpostorTurnScenario implements Scenario {
             }
             Scene.log("impostorturn frames=" + frame + " pictured at " + NEAR + "=" + nearPictured
                     + " at " + ROW + "=" + farPictured);
+            // The player the game draws turns too, a little at each step, never all at once.
+            float first = bodies.get(0);
+            float last = bodies.get(bodies.size() - 1);
+            int between = 0;
+            float largest = 0;
+            for (int i = 0; i < bodies.size(); i++) {
+                float body = bodies.get(i);
+                if (Float.isNaN(body)) continue;
+                if (Math.abs(net.minecraft.util.Mth.wrapDegrees(body - first)) > 1
+                        && Math.abs(net.minecraft.util.Mth.wrapDegrees(body - last)) > 1) between++;
+                if (i > 0 && !Float.isNaN(bodies.get(i - 1))) {
+                    largest = Math.max(largest, Math.abs(net.minecraft.util.Mth.wrapDegrees(body - bodies.get(i - 1))));
+                }
+            }
+            StringBuilder series = new StringBuilder();
+            for (int i = 0; i < bodies.size(); i += 4) series.append(String.format(Locale.ROOT, " %.1f", bodies.get(i)));
+            Scene.log("impostorturn player online body every 0.32 blocks from " + NEAR + ":" + series);
+            Scene.log(String.format(Locale.ROOT, "impostorturn player online: body %.1f to %.1f, %d steps between,"
+                    + " largest step %.1f degrees", first, last, between, largest));
+            if (between < 10) throw new AssertionError("The player online turned at once: " + between + " steps between");
             if (farPictured < MOBS.length) throw new AssertionError("Not every mob became a picture at " + ROW + " blocks");
         }
     }
 
     /** One line per mob: how far, drawn as a picture or not, its picture baked or not. */
+    /** The player online's body as the game extracts it this frame, turned or not; NaN once it is a picture. */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private float turnerBody(net.minecraft.client.Minecraft minecraft) {
+        net.minecraft.client.renderer.entity.EntityRenderer renderer = minecraft.getEntityRenderDispatcher().getRenderer(turner);
+        Object state = renderer.createRenderState(turner, 1f);
+        return state instanceof net.minecraft.client.renderer.entity.state.LivingEntityRenderState living
+                ? living.bodyRot : Float.NaN;
+    }
+
     private static void describe(net.minecraft.client.Minecraft minecraft, String when) {
         Scene.log("impostorturn " + when + " sheets=" + ImpostorAtlas.sheets() + " waiting=" + ImpostorAtlas.waiting()
                 + " failed=" + ImpostorAtlas.failed());

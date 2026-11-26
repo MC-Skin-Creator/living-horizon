@@ -60,26 +60,34 @@ class ImpostorThresholdTest {
     @Test
     void aModelTurnsToItsPictureAsItNearsIt() {
         // 128 blocks: still from 102.4, wholly turned from where a picture comes back, 121.6.
-        assertEquals(0, ImpostorThreshold.approach(90, 500, 128, 0));
-        assertEquals(0, ImpostorThreshold.approach(102, 500, 128, 0));
-        double half = ImpostorThreshold.approach(112, 500, 128, 0);
+        // Over the last 5 blocks before 121.6, where a picture would come back.
+        assertEquals(0, ImpostorThreshold.approach(90, 500, 128, 0, 5));
+        assertEquals(0, ImpostorThreshold.approach(116.5, 500, 128, 0, 5));
+        double half = ImpostorThreshold.approach(119.1, 500, 128, 0, 5);
         assertTrue(half > 0.3 && half < 0.7, "halfway " + half);
-        assertTrue(ImpostorThreshold.approach(115, 500, 128, 0) > half);
-        assertEquals(1, ImpostorThreshold.approach(122, 500, 128, 0));
-        assertEquals(1, ImpostorThreshold.approach(127, 500, 128, 0));
+        assertTrue(ImpostorThreshold.approach(120, 500, 128, 0, 5) > half);
+        assertEquals(1, ImpostorThreshold.approach(121.6, 500, 128, 0, 5));
+        assertEquals(1, ImpostorThreshold.approach(127, 500, 128, 0, 5));
+        // The same number of blocks at a short distance: never all at once.
+        assertEquals(0, ImpostorThreshold.approach(10, 500, 16, 0, 5));
+        double shortHalf = ImpostorThreshold.approach(12.7, 500, 16, 0, 5);
+        assertTrue(shortHalf > 0.3 && shortHalf < 0.7, "halfway at 16 blocks " + shortHalf);
+        // No span: at once, where the picture comes back.
+        assertEquals(0, ImpostorThreshold.approach(121, 500, 128, 0, 0));
+        assertEquals(1, ImpostorThreshold.approach(122, 500, 128, 0, 0));
     }
 
     @Test
     void aModelSmallOnScreenTurnsToo() {
-        // 20 pixels: still above 25, wholly turned under 21.05.
-        assertEquals(0, ImpostorThreshold.approach(60, 26, 0, 20));
-        double half = ImpostorThreshold.approach(60, 23, 0, 20);
+        // 20 pixels: back to its model above 21.05, which it would be 26 * 0.95 / 20 times as far off.
+        assertEquals(0, ImpostorThreshold.approach(60, 26, 0, 20, 5));
+        double half = ImpostorThreshold.approach(60, 22, 0, 20, 5);
         assertTrue(half > 0 && half < 1, "between " + half);
-        assertEquals(1, ImpostorThreshold.approach(60, 21, 0, 20));
+        assertEquals(1, ImpostorThreshold.approach(60, 21, 0, 20, 5));
         // The nearer of the two counts.
-        assertEquals(1, ImpostorThreshold.approach(125, 500, 128, 20));
+        assertEquals(1, ImpostorThreshold.approach(125, 500, 128, 20, 5));
         // Both off: never turned.
-        assertEquals(0, ImpostorThreshold.approach(5000, 1, 0, 0));
-        assertEquals(0, ImpostorThreshold.approach(0, 0, 128, 20));
+        assertEquals(0, ImpostorThreshold.approach(5000, 1, 0, 0, 5));
+        assertEquals(0, ImpostorThreshold.approach(0, 0, 128, 20, 5));
     }
 }

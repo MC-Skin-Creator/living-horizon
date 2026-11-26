@@ -66,6 +66,8 @@
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "The game hides small entities like boats early, so a player in a boat would float on nothing. Keeps a vehicle shown while a player rides it.",
   "livinghorizon.options.impostorTurn": "Smooth Simplification",
   "livinghorizon.options.impostorTurn.tooltip": "A distant mob or player about to become a simplified image first turns to the angle the image will show it at, so the switch does not jump. Off: it turns all at once as the image takes over.",
+  "livinghorizon.options.impostorTurnDistance": "Smooth Turn Distance",
+  "livinghorizon.options.impostorTurnDistance.tooltip": "How many blocks before becoming a simplified image a distant mob or player takes to turn to the angle the image shows it at. More is a slower, gentler turn.",
   "livinghorizon.options.distantMobs": "Show Mobs",
   "livinghorizon.options.distantMobs.tooltip": "Animals, villagers and golems stay visible once out of range, where they were, wandering, looking around and grazing.",
   "livinghorizon.options.maxDistantMobs": "Max Mobs",

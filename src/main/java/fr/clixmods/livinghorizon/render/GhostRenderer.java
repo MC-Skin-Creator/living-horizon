@@ -1359,7 +1359,8 @@ public final class GhostRenderer {
      */
     private static void turn(Entity shown, ImpostorKey key, @Nullable Shown last, float yaw, double ax, double az,
                              double distance, double apparent, double size, FarConfig config) {
-        double share = ImpostorThreshold.approach(distance, apparent, config.impostorDistance, config.impostorPixels);
+        double share = ImpostorThreshold.approach(distance, apparent, config.impostorDistance, config.impostorPixels,
+                config.impostorTurnDistance);
         ImpostorAtlas.Sheet sheet = share <= 0 || !(shown instanceof LivingEntity) ? null : ImpostorAtlas.sheet(key);
         // A figure too large for its picture stays a model: never turned in steps.
         if (sheet == null || ImpostorThreshold.enlarged(sheet.worldSize()
@@ -1382,8 +1383,24 @@ public final class GhostRenderer {
      * way the picture shows it, its head straight ahead and level, as it is pictured.
      */
     private static void turned(Entity entity, @Nullable EntityRenderState state, float partialTick) {
+        turned(entity, state, partialTick, 0);
+    }
+
+    /**
+     * Another player the game draws itself, near enough to the thresholds to turn to its picture:
+     * the game extracts it, and leaves it to the mod only once it is a picture
+     * ({@link #pictureInstead}), so without this it turned all at once as the picture took over.
+     * Noted by {@link #pictureInstead}, which the game asks as it culls, before the mod's frame.
+     * Called as the game extracts any entity; nothing for the ones the mod extracts itself.
+     */
+    public static void turnedByGame(Entity entity, @Nullable EntityRenderState state, float partialTick) {
+        if (extractLight >= 0 || !(entity instanceof AbstractClientPlayer) || entity instanceof LocalPlayer) return;
+        turned(entity, state, partialTick, 1);
+    }
+
+    private static void turned(Entity entity, @Nullable EntityRenderState state, float partialTick, int late) {
         Turn turn = TURNS.get(entity);
-        if (turn == null || turn.frame != frame || !(state instanceof LivingEntityRenderState living)
+        if (turn == null || frame - turn.frame > late || !(state instanceof LivingEntityRenderState living)
                 || !(entity instanceof LivingEntity mob)) {
             return;
         }
@@ -1490,8 +1507,13 @@ public final class GhostRenderer {
         double dx = at.getX() - camX, dy = at.getY() - camY, dz = at.getZ() - camZ;
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
         double apparent = distance < 1e-3 ? Double.MAX_VALUE : size / distance * pixelsPerRadian;
-        return ImpostorThreshold.pictured(distance, apparent, SHOWN.containsKey(rider), config.impostorDistance,
+        boolean pictured = ImpostorThreshold.pictured(distance, apparent, SHOWN.containsKey(rider), config.impostorDistance,
                 config.impostorPixels);
+        // Still the game's to draw: turned towards its picture as it nears it, as the mod's models are.
+        if (!pictured && mount == null && config.impostorTurn) {
+            turn(rider, ImpostorKey.of(rider), SHOWN.get(rider), rider.yBodyRot, dx, dz, distance, apparent, size, config);
+        }
+        return pictured;
     }
 
     /** A player, or something carrying one, however deep. */

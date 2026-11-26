@@ -66,6 +66,8 @@
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "遊戲會較早隱藏船等小型實體，使坐船的玩家懸浮在空中。玩家騎乘期間持續顯示其載具。",
   "livinghorizon.options.impostorTurn": "平滑簡化",
   "livinghorizon.options.impostorTurn.tooltip": "即將變為簡化圖像的遠處生物或玩家會先轉向圖像將顯示它的角度，讓切換不再跳動。關閉：在圖像接替時一下子轉過去。",
+  "livinghorizon.options.impostorTurnDistance": "平滑轉向距離",
+  "livinghorizon.options.impostorTurnDistance.tooltip": "遠處的生物或玩家在變為簡化圖像之前，用多少格轉向圖像所顯示的角度。數值越大，轉向越慢、越柔和。",
   "livinghorizon.options.distantMobs": "顯示生物",
   "livinghorizon.options.distantMobs.tooltip": "動物、村民和魔像離開範圍後仍然可見，留在原處遊蕩、張望和吃草。",
   "livinghorizon.options.maxDistantMobs": "最大生物數量",

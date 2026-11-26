@@ -66,6 +66,8 @@
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "Гра рано приховує малі сутності, як-от човни, тож гравець у човні ширяв би в порожнечі. Транспорт залишається видимим, доки на ньому їде гравець.",
   "livinghorizon.options.impostorTurn": "Плавне спрощення",
   "livinghorizon.options.impostorTurn.tooltip": "Далекий моб або гравець, який ось-ось стане спрощеним зображенням, спершу повертається під тим кутом, під яким його покаже зображення, щоб перехід не був стрибком. Вимкнено: повертається ривком, коли його змінює зображення.",
+  "livinghorizon.options.impostorTurnDistance": "Відстань плавного повороту",
+  "livinghorizon.options.impostorTurnDistance.tooltip": "На скількох блоках до перетворення на спрощене зображення далекий моб чи гравець повертається до кута, під яким його покаже зображення. Більше — повільніший і м'якший поворот.",
   "livinghorizon.options.distantMobs": "Показувати мобів",
   "livinghorizon.options.distantMobs.tooltip": "Тварини, селяни й ґолеми залишаються видимими поза зоною досяжності, там, де були: блукають, роззираються й скубуть траву.",
   "livinghorizon.options.maxDistantMobs": "Макс. мобів",

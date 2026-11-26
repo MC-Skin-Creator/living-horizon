@@ -56,6 +56,9 @@ public final class DebugScreen extends SideOptionsScreen {
                 unit("joinGiveUpSeconds", "seconds", 1, 120, c.joinGiveUpSeconds, v -> c.joinGiveUpSeconds = v),
                 unit("joinHurryDistance", "blocks", 0, 64, c.joinHurryDistance, v -> c.joinHurryDistance = v),
                 unit("joinHurrySpeed", "percent", 100, 400, c.joinHurrySpeed, v -> c.joinHurrySpeed = v));
+        // A whole row: its name is long in most languages.
+        list.addBig(unit("impostorTurnDistance", "blocks", FarConfig.MIN_TURN_DISTANCE, FarConfig.MAX_TURN_DISTANCE,
+                c.impostorTurnDistance, v -> c.impostorTurnDistance = v));
 
         header(Component.translatable(KEY + "debug.optimisations"));
         list.addSmall(

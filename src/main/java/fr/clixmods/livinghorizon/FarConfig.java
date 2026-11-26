@@ -525,6 +525,15 @@ public final class FarConfig {
      */
     public boolean impostorTurn = true;
 
+    /**
+     * Blocks over which a model nearing its picture turns to it, before where the picture takes
+     * over ({@code ImpostorThreshold.approach}). "Smooth Simplification Distance".
+     */
+    public int impostorTurnDistance = 5;
+
+    /** Range of {@link #impostorTurnDistance}. */
+    public static final int MIN_TURN_DISTANCE = 1, MAX_TURN_DISTANCE = 32;
+
     // --- Debug -----------------------------------------------------------------------------
 
     /** A coloured box around every distant mob and player, seen through terrain. */
@@ -764,6 +773,7 @@ public final class FarConfig {
         config.impostorDistance = Math.clamp(config.impostorDistance, 0, MAX_IMPOSTOR_DISTANCE);
         config.impostorAnimationDistance = Math.clamp(config.impostorAnimationDistance, MIN_ANIMATION_DISTANCE,
                 MAX_ANIMATION_DISTANCE);
+        config.impostorTurnDistance = Math.clamp(config.impostorTurnDistance, MIN_TURN_DISTANCE, MAX_TURN_DISTANCE);
         config.version = CURRENT;
     }
 

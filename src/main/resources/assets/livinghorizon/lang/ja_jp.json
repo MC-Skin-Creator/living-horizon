@@ -66,6 +66,8 @@
   "livinghorizon.options.renderTrackedVehiclesFar.tooltip": "ゲームはボートなどの小さなエンティティを早めに非表示にするため、ボートに乗ったプレイヤーが何もない所に浮いてしまいます。プレイヤーが乗っている間は乗り物を表示し続けます。",
   "livinghorizon.options.impostorTurn": "なめらかな簡略化",
   "livinghorizon.options.impostorTurn.tooltip": "簡略化画像に切り替わる直前の遠くのMobやプレイヤーは、まず画像に映る角度へ向きを変え、切り替わりが飛ばないようにします。オフ：画像に切り替わる瞬間に一気に向きが変わる。",
+  "livinghorizon.options.impostorTurnDistance": "なめらかな回転の距離",
+  "livinghorizon.options.impostorTurnDistance.tooltip": "遠くのMobやプレイヤーが簡略化画像になる前に、画像が映す角度へ何ブロックかけて向きを変えるか。大きいほどゆっくりなめらかに回ります。",
   "livinghorizon.options.distantMobs": "Mobを表示",
   "livinghorizon.options.distantMobs.tooltip": "動物、村人、ゴーレムが範囲外に出ても、その場所で歩き回ったり、周りを見回したり、草を食べたりしながら見え続けます。",
   "livinghorizon.options.maxDistantMobs": "最大Mob数",

@@ -585,6 +585,11 @@ come back, add it here in the same pull request: this file is what the next sess
   again with more room round it (`ImpostorPixels.growth`), drawn smaller in a tile of the same 64
   pixels: tiles two or three times larger took four or nine times the memory for a figure a dozen
   pixels tall. `impostoredges` and `longmobs` show both.
+- **Players online turning all at once into their picture** (mobs turning smoothly): the game
+  draws them itself until they are pictures, so the mod's own turn never touched them.
+  `GhostRenderer.pictureInstead` notes their turn and `EntityRendererTurnMixin` applies it to the
+  state the game extracts (`turnedByGame`, which leaves the mod's own extractions alone: applied
+  twice, the turn ran ahead). The `impostorturn` scenario logs a player online's body step by step.
 - **Players online never simplified** (full models far past *Simplification Distance*, or
   smaller than *Simplification Size*, while offline players are pictures): the game draws other
   players itself up to ten times the usual entity distance, and a figure it draws is never a

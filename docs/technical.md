@@ -1062,13 +1062,19 @@ textures, draws and reads back the views, and writes a sheet into its page. Ever
   (a dragon twenty blocks long just past the distance), and a picture kept stays one until 5%
   past that.
 - It keeps a picture until it has turned 8 degrees past the edge between it and the next one.
-- A mob or player model nearing its picture turns to it: from 80% of either threshold to the
-  point a picture would come back (95%), its body is eased to the yaw the picture will show it at
+- A mob or player model nearing its picture turns to it: over the last *Smooth Turn Distance*
+  blocks (`impostorTurnDistance`, 5) before the point a picture would come back (95% of the
+  distance, or where its size on screen would be 5% over the size, worked out from how that size
+  falls with the distance), its body is eased to the yaw the picture will show it at
   (`ImpostorViews.yaw`, the same 8-degree stickiness), head straight and level
-  (`ImpostorThreshold.approach`, `GhostRenderer.turn` / `turned`). Only once its sheet is baked
-  and not too large to be shown; never on a mount or in a bed. The picture then starts on the
-  view the model had turned to. *Smooth Simplification* in the debug screen (`impostorTurn`)
-  turns it off.
+  (`ImpostorThreshold.approach`, `GhostRenderer.turn` / `turned`). A share of the thresholds
+  before (from 80%) turned a figure over 20 blocks at 128 and two at 16. Only once its sheet is
+  baked and not too large to be shown; never on a mount or in a bed. The picture then starts on
+  the view the model had turned to. Another player online is drawn by the game itself until it is
+  a picture: `GhostRenderer.pictureInstead`, which the game asks as it culls, notes its turn, and
+  `EntityRendererTurnMixin` gives it to the state the game extracts (`turnedByGame`, from 1.21.2;
+  before, such a player still turns at once). *Smooth Simplification* and *Smooth Turn Distance*
+  are in the debug screen.
 - When its look changes, a player or a mob keeps its old picture until the new one is baked;
   a 3D bird is drawn as a model meanwhile.
 
