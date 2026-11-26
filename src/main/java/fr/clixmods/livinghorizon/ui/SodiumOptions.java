@@ -101,7 +101,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 .setEnabledProvider(any(PICTURED), ids(PICTURED)))
                         .addOption(bool(b, "impostorAnimation", d.impostorAnimation,
                                 v -> FarConfig.get().impostorAnimation = v, () -> FarConfig.get().impostorAnimation)
-                                .setEnabledProvider(on("impostors"), id("impostors")))
+                                .setEnabledProvider(any(PICTURED), ids(PICTURED)))
                         .addOption(blocks(b, "impostorDistance", 0, FarConfig.MAX_IMPOSTOR_DISTANCE, d.impostorDistance,
                                 v -> FarConfig.get().impostorDistance = v, () -> FarConfig.get().impostorDistance)
                                 .setEnabledProvider(any(PICTURED), ids(PICTURED)))
@@ -113,7 +113,8 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 FarConfig.MAX_ANIMATION_DISTANCE, d.impostorAnimationDistance,
                                 v -> FarConfig.get().impostorAnimationDistance = v,
                                 () -> FarConfig.get().impostorAnimationDistance)
-                                .setEnabledProvider(all(ANIMATED), ids(ANIMATED)))
+                                .setEnabledProvider(state -> any(PICTURED).apply(state)
+                                        && state.readBooleanOption(id("impostorAnimation")), ids(ANIMATED)))
                         .addOption(integer(b, "impostorMobMemory", FarConfig.MIN_MOB_MEMORY, FarConfig.MAX_MOB_MEMORY,
                                 d.impostorMobMemory, v -> FarConfig.get().impostorMobMemory = v,
                                 () -> FarConfig.get().impostorMobMemory,
@@ -522,18 +523,9 @@ public final class SodiumOptions implements ConfigEntryPoint {
     /** The switches of the flat pictures: what the pictures' distance and size follow, and the mobs' memory. */
     private static final String[] PICTURED = {"impostors", "impostorEntities", "impostorPlayers", "impostorBirds"};
     private static final String[] NOT_PLAYERS = {"impostors", "impostorEntities", "impostorBirds"};
-    /** The switches walking pictures need: mobs as pictures, and their walk. */
-    private static final String[] ANIMATED = {"impostors", "impostorAnimation"};
-
-    /** On while every one of these switches is on. */
-    private static Function<ConfigState, Boolean> all(String[] names) {
-        return state -> {
-            for (String name : names) {
-                if (!state.readBooleanOption(id(name))) return false;
-            }
-            return true;
-        };
-    }
+    /** The switches animated pictures follow: any figure as a picture, and their movement. */
+    private static final String[] ANIMATED = {"impostors", "impostorEntities", "impostorPlayers", "impostorBirds",
+            "impostorAnimation"};
 
     /** On while any of these switches is on. */
     private static Function<ConfigState, Boolean> any(String[] names) {

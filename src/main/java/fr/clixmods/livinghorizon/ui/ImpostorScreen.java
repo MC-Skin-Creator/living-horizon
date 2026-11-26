@@ -218,10 +218,11 @@ public final class ImpostorScreen extends Screen {
         graphics.drawCenteredString(font, status(rows.size()), width / 2, 44, over ? OVER : DIM);
         if (!rows.isEmpty()) {
             Component line = origins(rows);
-            if (tab == Tab.MOBS && !walks.isEmpty()) {
+            long animated = rows.stream().filter(row -> walks.containsKey(row.key())).count();
+            if (animated > 0) {
                 // How many walk, and what their walks take: Animated Pictures costs video memory.
-                long bytes = (long) walks.size() * ImpostorWalk.FRAMES * ImpostorAtlas.sheetBytes();
-                line = line.copy().append("  ·  ").append(Component.translatable(KEY + "animatedCount", walks.size(),
+                long bytes = animated * ImpostorWalk.FRAMES * ImpostorAtlas.sheetBytes();
+                line = line.copy().append("  ·  ").append(Component.translatable(KEY + "animatedCount", animated,
                         megabytes(bytes)).withStyle(style -> style.withColor(ANIMATED_COLOR & 0xFFFFFF)));
             }
             graphics.drawCenteredString(font, line, width / 2, 56, DIM);
@@ -337,7 +338,7 @@ public final class ImpostorScreen extends Screen {
         Map<ImpostorKey, ImpostorAtlas.Sheet> sheets = new HashMap<>();
         for (ImpostorAtlas.Baked row : all) sheets.put(row.key(), row.sheet());
         for (ImpostorAtlas.Baked row : all) {
-            if (ImpostorKey.walk(row.key()) != null || tabOf(row.key()) != Tab.MOBS) continue;
+            if (ImpostorKey.walk(row.key()) != null) continue;
             ImpostorAtlas.Sheet[] steps = new ImpostorAtlas.Sheet[ImpostorWalk.FRAMES];
             boolean whole = true;
             for (int frame = 1; frame <= ImpostorWalk.FRAMES && whole; frame++) {
@@ -398,8 +399,9 @@ public final class ImpostorScreen extends Screen {
         List<Integer> colors = new ArrayList<>(5);
         lines.add(name(row));
         colors.add(NAME_COLOR);
-        if (tab == Tab.MOBS) {
-            // Walking pictures, or one standing still: the setting off, past its distance, or not baked yet.
+        if (!row.key().type().startsWith(BirdFigure.KEY)) {
+            // Moving pictures, or one standing still: the setting off, past its distance, or not baked yet.
+            // The 3D birds beat their wings from one picture to the next, a row each.
             boolean animated = walks.containsKey(row.key());
             lines.add(Component.translatable(KEY + (animated ? "animated" : "still")));
             colors.add(animated ? ANIMATED_COLOR : DIM);

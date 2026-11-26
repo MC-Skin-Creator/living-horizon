@@ -48,6 +48,20 @@ public final class ImpostorWalk {
         return frame(phase(position));
     }
 
+    /**
+     * The picture of a figure {@code cycles} of the way through a movement that repeats (a boat's
+     * oars: a turn of 2 pi), whole turns left out: the nearest step, as for a stride.
+     */
+    public static int frameAt(double cycles) {
+        if (!Double.isFinite(cycles)) return 0;
+        return frame((int) Math.floorMod(Math.round(cycles * PHASES), (long) PHASES));
+    }
+
+    /** How far through its movement picture {@code frame} (1 to {@link #FRAMES}) is baked, 0 to 1. */
+    public static double cycle(int frame) {
+        return position(frame) / PERIOD;
+    }
+
     /** The picture of a step: 0 where the legs cross, otherwise the steps in order, the crossings skipped. */
     public static int frame(int phase) {
         int half = PHASES / 2, quarter = PHASES / 4;

@@ -1063,8 +1063,10 @@ public final class GhostRenderer {
             if (!fromHeights(puppet)) {
                 ImpostorAtlas.request(key, puppet);
                 // Its walk once it has its resting picture, which stands in for every step meanwhile,
-                // and only within Animated Picture Distance: the walk takes video memory.
-                if (walks(puppet, key, config) && within(puppet, config.impostorAnimationDistance)
+                // only within Animated Picture Distance, and only while it walks: the walk takes video
+                // memory, which a mob shown standing still or a mannequin would never use.
+                if (walks(puppet, key, config) && !mob.resting() && within(puppet, config.impostorAnimationDistance)
+                        && ((LivingEntity) puppet).walkAnimation.speed(1f) >= ImpostorWalk.WALKING
                         && ImpostorAtlas.sheet(key) != null) {
                     for (int frame = 1; frame <= ImpostorWalk.FRAMES; frame++) {
                         ImpostorAtlas.request(ImpostorKey.frame(key, frame), puppet);
@@ -1175,8 +1177,30 @@ public final class GhostRenderer {
      * standing on its legs, not a player, a flyer or a vehicle.
      */
     private static boolean walks(Entity entity, ImpostorKey key, FarConfig config) {
-        return config.impostorAnimation && entity instanceof LivingEntity && !(entity instanceof Player)
-                && creature(entity) && key.posture() == ImpostorKey.STANDING && !fromHeights(entity);
+        // Mobs, players and mannequins alike: each is pictured only under its own switch already.
+        return config.impostorAnimation && entity instanceof LivingEntity && key.posture() == ImpostorKey.STANDING
+                && !fromHeights(entity);
+    }
+
+    /**
+     * The picture of its movement a rider and its mount show together this frame: the mount's
+     * stride (a horse, a camel), or the stroke of a boat's oars while they row; 0 for anything else.
+     */
+    private static int carrying(Entity mount, float partialTick, FarConfig config) {
+        if (!config.impostorAnimation) return 0;
+        if (mount instanceof LivingEntity && !fromHeights(mount)) {
+            LivingEntity living = (LivingEntity) mount;
+            return ImpostorWalk.frame(living.walkAnimation.position(partialTick), living.walkAnimation.speed(partialTick));
+        }
+        // Its oars, from 1.21.2, where a boat's picture can be baked with them anywhere in a stroke.
+        //? if >=1.21.2 {
+        if (mount instanceof net.minecraft.world.entity.vehicle.boat.AbstractBoat boat
+                && (boat.getPaddleState(0) || boat.getPaddleState(1))) {
+            int side = boat.getPaddleState(0) ? 0 : 1;
+            return ImpostorWalk.frameAt((boat.getRowingTime(side, partialTick) - ImpostorAtlas.OARS) / (2 * Math.PI));
+        }
+        //?}
+        return 0;
     }
 
     /**
@@ -1233,7 +1257,7 @@ public final class GhostRenderer {
             key = seenFrom(key, mount, eye, partialTick, 0, dy, 0);
         }
         return picture(minecraft, eye, rider, mount, key, seat, turned, partialTick, config, 0, dy, 0, yaw, extent, aloft,
-                0);
+                carrying(mount, partialTick, config));
     }
 
     /**
@@ -1289,8 +1313,10 @@ public final class GhostRenderer {
             if (stride != null) {
                 sheet = stride;
                 striding++;
-            } else {
+            } else if (seat == null) {
                 ImpostorAtlas.request(step, at);
+            } else {
+                ImpostorAtlas.request(step, at, new ImpostorAtlas.Rider(shown, seat, turned));
             }
         }
         if (distance > drawnRange) FarDepth.needed();

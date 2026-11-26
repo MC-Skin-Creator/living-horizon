@@ -198,6 +198,11 @@ public record ImpostorKey(String type, long appearance, int posture) {
      */
     public static float elevation(ImpostorKey key) {
         Integer height = HEIGHTS.get(key);
+        if (height == null) {
+            // A picture of a movement is seen from the height its resting picture is.
+            Walk walk = WALKS.get(key);
+            if (walk != null) height = HEIGHTS.get(walk.rest());
+        }
         return height == null ? Float.NaN : ImpostorViews.HEIGHTS[height];
     }
 

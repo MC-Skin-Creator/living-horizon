@@ -1062,8 +1062,9 @@ textures, draws and reads back the views, and writes a sheet into its page. Ever
 
 ### Walking
 
-*Animated Pictures* (`impostorAnimation`, on by default) keeps a walking mob walking as a picture,
-rather than gliding along in its resting pose (`ImpostorWalk`), up to *Animated Picture Distance*
+*Animated Pictures* (`impostorAnimation`, on by default) keeps whatever is pictured moving, rather
+than gliding along in its resting pose (`ImpostorWalk`): mobs, players and mannequins walk, a rider's
+mount walks under it, a boat's oars row (from 1.21.2), up to *Animated Picture Distance*
 (`impostorAnimationDistance`, 256 blocks; 128 on *Potato* and *Low*, 512 on *High*, 1024 on
 *Ultra*). Past it a picture stands, and a copy's walk is never asked for: the distance bounds the
 video memory the walks take as well as which mobs walk.
@@ -1091,8 +1092,18 @@ video memory the walks take as well as which mobs walk.
   of `ImpostorWalk.WALKING` it is at rest. A step's sheet is drawn at its own size and feet; the
   thresholds read the resting one, so a step never decides between model and picture. A copy
   resting untouched (`MobMemory.Remembered.resting`: its legs were not caught up) is at rest
-  without its legs being read. Only mobs standing on their legs walk: not players, flyers
-  (`fromHeights`), boats, vehicles or riders, and not with *Still Tiny Mobs* holding them.
+  without its legs being read.
+- **Scope.** Anything living on its legs: mobs, players (online, far, logged off and standing) and
+  mannequins, each under its own switch (`GhostRenderer.walks`). A rider's picture takes its mount's
+  stride, or the stroke of its boat's oars while they row (`GhostRenderer.carrying`, the same phases
+  over a stroke of 2 pi, shifted by `ImpostorAtlas.OARS` so that its two ends are the pictures). A
+  picture of a movement seen from a height (a boat) keeps that height (`ImpostorKey.elevation` reads
+  its resting key's) and stands where its resting picture was centred. Not animated: flyers seen from
+  every height (phantoms, ghasts), whose wings and tentacles follow their age, not a stride; vehicles
+  of other mods, which give nothing to read; a boat's oars before 1.21.2, which the game reads from
+  the boat itself; the 3D birds, which beat their wings sheet to sheet already. Players' walks are
+  asked for only while one is drawn walking, never by `prewarm`: their sheets are thrown away once
+  unused.
 - **Cost.** Two sheets more per look of a mob that walks: 340 KB more video memory (680 KB with
   normal maps), three times its resting picture. The frame's cost is unchanged: one quad a figure.
   `walkingpictures` shows the stride in two screenshots and the three sheets of each look.

@@ -19,6 +19,8 @@ import fr.clixmods.livinghorizon.render.Sink;
 import fr.clixmods.livinghorizon.track.Puppets;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
+//? if >=1.21.2
+import net.minecraft.client.renderer.entity.state.BoatRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.client.renderer.rendertype.RenderType;
@@ -287,9 +289,10 @@ public final class ImpostorAtlas {
         }
 
         static Request of(ImpostorKey key, Entity puppet, double grow, @Nullable Rider rider) {
-            ImpostorKey.Walk walk = rider == null ? ImpostorKey.walk(key) : null;
-            return new Request(key, puppet, null, grow, rider, CENTRED.getOrDefault(key, Float.NaN),
-                    walk == null ? 0 : walk.frame());
+            // A picture of a movement stands in its tiles where its resting picture was moved to.
+            ImpostorKey.Walk walk = ImpostorKey.walk(key);
+            float centred = CENTRED.getOrDefault(key, walk == null ? Float.NaN : CENTRED.getOrDefault(walk.rest(), Float.NaN));
+            return new Request(key, puppet, null, grow, rider, centred, walk == null ? 0 : walk.frame());
         }
 
         /** One of the mod's own figures: its tile is the size it asks for, never grown. */
@@ -598,7 +601,7 @@ public final class ImpostorAtlas {
      */
     public static void request(ImpostorKey key, Entity mount, Rider rider) {
         if (failed || sheet(key) != null || UNDRAWABLE.contains(key) || refused(key) || !QUEUED.add(key)) return;
-        QUEUE.add(Request.of(key, mount, GROWN.getOrDefault(key, 1.0), rider));
+        queue(Request.of(key, mount, grown(key), rider));
     }
 
     /**
@@ -945,11 +948,7 @@ public final class ImpostorAtlas {
             if (state == null) throw new LeftOut();
         }
         stage(state, view);
-        if (request.walk > 0 && state instanceof LivingEntityRenderState walking) {
-            // One picture of its walk: its legs where that step of the stride has them.
-            walking.walkAnimationPos = ImpostorWalk.position(request.walk);
-            walking.walkAnimationSpeed = ImpostorWalk.BAKED_SPEED;
-        }
+        if (request.walk > 0) moving(state, request.walk);
         Posture.baked(state, request.key.posture());
         // Water mobs were in water when last seen; a puppet is in no world.
         if (state instanceof LivingEntityRenderState living && GhostRenderer.livesInWater(puppet)) {
@@ -957,6 +956,29 @@ public final class ImpostorAtlas {
         }
         return state;
     }
+
+    /**
+     * Poses a figure at picture {@code frame} of its movement ({@link ImpostorWalk}): a mob's, a
+     * player's or a mannequin's legs where that step of the stride has them, a boat's oars where
+     * that step of a stroke has them (from 1.21.2: before, the game reads them from the boat itself).
+     */
+    private static void moving(EntityRenderState state, int frame) {
+        if (state instanceof LivingEntityRenderState walking) {
+            walking.walkAnimationPos = ImpostorWalk.position(frame);
+            walking.walkAnimationSpeed = ImpostorWalk.BAKED_SPEED;
+        }
+        //? if >=1.21.2 {
+        if (state instanceof BoatRenderState boat) {
+            boat.rowingTimeLeft = boat.rowingTimeRight = (float) (ImpostorWalk.cycle(frame) * 2 * Math.PI + OARS);
+        }
+        //?}
+    }
+
+    /**
+     * Radians a stroke of the oars is shifted by: {@code sin(-time)} swings them from end to end, so
+     * its quarters, not its start, are the two ends a picture of a stroke shows.
+     */
+    public static final double OARS = Math.PI / 2;
 
     /**
      * Blocks a figure is raised by in its picture: lying down, but not riding ({@link Posture#BAKED_LIFT});

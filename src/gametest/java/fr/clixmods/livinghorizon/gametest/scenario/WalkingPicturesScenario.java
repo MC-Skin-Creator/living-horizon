@@ -13,7 +13,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 
 import java.util.ArrayList;
@@ -27,7 +26,15 @@ import java.util.List;
  * times: at rest, one leg forward, the other.
  */
 public final class WalkingPicturesScenario implements Scenario {
-    private static final String[] MOBS = {"cow", "pig", "sheep", "horse", "villager", "creeper", "wolf", "iron_golem"};
+    /**
+     * The row: mobs, and from 1.21.9 a mannequin, one of the other entities, which walks on its legs
+     * as a player does: its walk is baked too.
+     */
+    //? if >=1.21.9 {
+    private static final String[] MOBS = {"cow", "pig", "sheep", "horse", "villager", "creeper", "wolf", "iron_golem",
+            "mannequin"};
+    //?} else
+    /*private static final String[] MOBS = {"cow", "pig", "sheep", "horse", "villager", "creeper", "wolf", "iron_golem"};*/
     /** Blocks a mob walks a tick: about a strolling mob, legs at four times that. */
     private static final double PACE = 0.1;
     /** Ticks walked one way before turning back, so the row stays in view. */
@@ -76,6 +83,9 @@ public final class WalkingPicturesScenario implements Scenario {
             List<String> missing = context.computeOnClient(WalkingPicturesScenario::unbaked);
             Scene.log("walkingpictures walks not baked: " + missing);
             if (missing.contains("minecraft:cow")) throw new AssertionError("The cow's walk was not baked: " + missing);
+            //? if >=1.21.9 {
+            if (missing.contains("minecraft:mannequin")) throw new AssertionError("The mannequin's walk was not baked");
+            //?}
 
             context.runOnClient(minecraft -> minecraft.options.fov().set(30));
             // Two moments of a stride: the cow's legs one way, then the other.
@@ -156,7 +166,7 @@ public final class WalkingPicturesScenario implements Scenario {
             double step = back ? -PACE : PACE;
             world.getServer().runOnServer(server -> {
                 for (Entity entity : server.overworld().getAllEntities()) {
-                    if (!(entity instanceof Mob mob)) continue;
+                    if (!(entity instanceof LivingEntity mob) || entity instanceof Player) continue;
                     mob.setPos(mob.getX() + step, mob.getY(), mob.getZ());
                     mob.setYRot(yaw);
                     mob.setYBodyRot(yaw);

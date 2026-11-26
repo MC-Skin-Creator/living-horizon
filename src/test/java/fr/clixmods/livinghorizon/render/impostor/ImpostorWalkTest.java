@@ -60,6 +60,19 @@ class ImpostorWalkTest {
     }
 
     @Test
+    void aMovementThatRepeatsIsCutTheSameWay() {
+        for (int frame = 1; frame <= ImpostorWalk.FRAMES; frame++) {
+            double cycle = ImpostorWalk.cycle(frame);
+            assertEquals(frame, ImpostorWalk.frameAt(cycle));
+            assertEquals(frame, ImpostorWalk.frameAt(cycle + 3));
+            assertEquals(frame, ImpostorWalk.frameAt(cycle - 1));
+            assertEquals(frame, ImpostorWalk.frame(ImpostorWalk.position(frame), 1f));
+        }
+        assertEquals(0, ImpostorWalk.frameAt(0.25));
+        assertEquals(0, ImpostorWalk.frameAt(Double.NaN));
+    }
+
+    @Test
     void negativePositionsWrap() {
         assertEquals(ImpostorWalk.frame(ImpostorWalk.PERIOD / 2, 1f), ImpostorWalk.frame(-ImpostorWalk.PERIOD / 2, 1f));
     }
