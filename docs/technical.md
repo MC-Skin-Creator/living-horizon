@@ -1140,9 +1140,23 @@ that a mob met in an earlier game is read back rather than baked.
   or all eight pictures would show the side it faced.
 - **Never impostors**: a vehicle carrying more than one passenger (drawn as models, all of
   them), a mob carrying another that is not a player, the 2D birds, parrots and bats, and the
-  types `GhostRenderer.drawable` leaves out (GeckoLib 4). Nor drawn far away at all: what
+  types whose renderer failed once (`GhostRenderer.drawable`). Nor drawn far away at all: what
   Valkyrien Skies carries on a ship (`compat/ValkyrienSkies`), which sits in its shipyard and which
   its renderer places on the ship itself.
+- **GeckoLib** mobs. From 1.21.2 to 1.21.8 its renderers (GeckoLib 4, then 5 from 1.21.5) make
+  no state of their own: `createRenderState()` returns null and `createRenderState(entity, tick)`
+  fills the one state they reuse. `render/ReusedStates` gives each figure a state of that class,
+  filled for it, keeps its entity, and hands the renderer that entity again just before it is
+  drawn, since GeckoLib 4 draws the entity it was last handed, whatever state it is given. What
+  the mod changed in the state since (the body turned for each view, the legs stilled) is given
+  to the entity while it is drawn, then put back. GeckoLib 5 throws when its state lacks the
+  light, which it adds only in its hook on the game's own draw of an entity: `compat/GeckoLib`
+  gives it, by reflection. A renderer that throws while it draws is left out, and the poses it
+  pushed are popped. GeckoLib 4
+  (up to 1.21.4) plays a mob's walk only when it moves, read from its motion: `MobMotion.apply`
+  gives a copy the step it just took as its motion. GeckoLib 5 reads the legs' speed, which
+  copies have; both move their clock with the tick count, which copies keep going. The
+  `geckolib` scenario checks it (`run.sh geckolib --with geckolib,untitled-duck-mod`).
 - **Lycanites Mobs** (Forge 1.20.1) queues most of its models and draws them at a later stage of
   the frame: `compat/LycaniteMobs` draws that queue after each view is baked, and after the far
   figures, before the far terrain's depth is taken back.
