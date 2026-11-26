@@ -1982,7 +1982,7 @@ Every one is on by default except `optFreezeHidden`. Switch one off to see what 
 
 | Setting | In game | What it does |
 |---|---|---|
-| `optViewCulling` | Skip Outside the View | Copies outside the view are not prepared at all |
+| `optViewCulling` | Skip Outside the View | Copies outside the view are not prepared at all; a copy the hitbox would leave out is asked again with the box the game culls it by (`render/CullBox`), its whole model |
 | `optTinyCulling` | Skip Specks | Copies smaller than about half a pixel are not prepared (only when no minimum size is set) |
 | `depthOcclusion` | Hide Behind Far Terrain | The far terrain's depth on distant mobs and players, pixel by pixel (see [Far terrain depth](#far-terrain-depth)) |
 | `optLazyDepth` | Lazy Far Depth | The far terrain's depth is merged only on frames that draw something past the render distance |

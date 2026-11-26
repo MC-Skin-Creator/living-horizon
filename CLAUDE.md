@@ -490,6 +490,11 @@ come back, add it here in the same pull request: this file is what the next sess
   step was never drawn and the real one appeared a step ahead. Taking over at once instead (no
   walk) made it jump and turn on the spot. The `shortrange`, `smallmobs` and `comeback` scenarios
   check it.
+- **A giant mob vanishing far away while part of it is in view** (a modded boss gone once its
+  middle leaves the screen or a hill hides its feet; issue #351): its model reaches far past its
+  hitbox. The view, size and hidden-mob tests take the box the game culls it by
+  (`render/CullBox`: the renderer's `getBoundingBoxForCulling` and `affectedByCulling` from 1.21.2,
+  the entity's and `noCulling` before), never the hitbox alone.
 - **Small mobs vanishing for a few blocks with *Entity Distance* below 100 %** (chickens, cats,
   wolves; zombies and cows fine): the game culls a mob at a distance that grows with its size, a
   chicken past 16 blocks at 50 %. `GhostRenderer.unseen` takes over from the game's own test
