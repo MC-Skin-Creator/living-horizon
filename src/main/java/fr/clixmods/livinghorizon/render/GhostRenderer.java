@@ -278,8 +278,10 @@ public final class GhostRenderer {
         /*LIGHTS.clear();
         CLASSIC.clear();
         *///?}
-        //? if >=1.21.2 && <1.21.9
-        /*RENDERERS.clear();*/
+        //? if >=1.21.2 && <1.21.9 {
+        /*RENDERERS.clear();
+        ReusedStates.clear();
+        *///?}
         ImpostorRenderer.beginFrame();
         PolygonStats.beginFrame();
         forgetShown();
@@ -375,37 +377,20 @@ public final class GhostRenderer {
         return extractLight < 0 ? -1 : extractLight >> 4 & 15;
     }
 
-    /** Entity types whose renderer gave no state, or failed: never drawn far away again. */
+    /** Entity types whose renderer failed: never drawn far away again. */
     private static final Set<EntityType<?>> LEFT_OUT = Collections.newSetFromMap(new IdentityHashMap<>());
-    //? if >=1.21.2 && <1.21.9
-    /*private static final Set<EntityType<?>> PROBED = Collections.newSetFromMap(new IdentityHashMap<>());*/
 
     /**
-     * Whether this entity's renderer can give the mod a state of its own. Before 1.21.9,
-     * GeckoLib 4's gives none: it only keeps the one it reuses, for the entity it was last
-     * handed, and draws that entity whatever state it is given. Never an entity Valkyrien
-     * Skies carries on a ship: its renderer places it there itself.
+     * Whether the mod may draw this entity far away: not when its renderer failed once, nor
+     * when Valkyrien Skies carries it on a ship (its renderer places it there itself).
      */
     public static boolean drawable(EntityRenderDispatcher dispatcher, Entity entity) {
-        EntityType<?> type = entity.getType();
-        if (LEFT_OUT.contains(type) || ValkyrienSkies.onShip(entity)) return false;
-        //? if >=1.21.2 && <1.21.9 {
-        /*if (PROBED.add(type) && dispatcher.getRenderer(entity).createRenderState() == null) {
-            leaveOut(type, null);
-            return false;
-        }
-        *///?}
-        return true;
+        return !LEFT_OUT.contains(entity.getType()) && !ValkyrienSkies.onShip(entity);
     }
 
-    private static void leaveOut(EntityType<?> type, @Nullable Throwable error) {
+    private static void leaveOut(EntityType<?> type, Throwable error) {
         if (!LEFT_OUT.add(type)) return;
-        String id = EntityType.getKey(type).toString();
-        if (error == null) {
-            LivingHorizonClient.LOGGER.warn("{} is not drawn far away: its renderer gives no render state", id);
-        } else {
-            LivingHorizonClient.LOGGER.warn("{} is not drawn far away: its renderer failed", id, error);
-        }
+        LivingHorizonClient.LOGGER.warn("{} is not drawn far away: its renderer failed", EntityType.getKey(type), error);
     }
 
     //? if >=1.21.2 && <1.21.9 {
@@ -415,11 +400,18 @@ public final class GhostRenderer {
         return (net.minecraft.client.renderer.entity.EntityRenderer<? super E, EntityRenderState>) dispatcher.getRenderer(entity);
     }
 
-    /^* A state of its own: the renderer's createRenderState(entity, tick) hands back one it reuses. ^/
+    /^*
+     * A state of its own: the renderer's createRenderState(entity, tick) hands back one it reuses.
+     * A renderer that makes none (GeckoLib's) is given one of the class it fills ({@link ReusedStates}).
+     ^/
     private static <E extends Entity, S extends EntityRenderState> EntityRenderState state(
             net.minecraft.client.renderer.entity.EntityRenderer<? super E, S> renderer, E entity, float partialTick) {
         S state = renderer.createRenderState();
-        renderer.extractRenderState(entity, state, partialTick);
+        if (state == null) {
+            state = ReusedStates.own(renderer, entity, partialTick);
+        } else {
+            renderer.extractRenderState(entity, state, partialTick);
+        }
         RENDERERS.put(state, renderer);
         return state;
     }
@@ -440,9 +432,20 @@ public final class GhostRenderer {
         pose.pushPose();
         pose.translate(x + offset.x, y + offset.y, z + offset.z);
         Runnable told = EtfLink.drawing(state);
+        Runnable back = null;
+        PoseStack.Pose top = pose.last();
         try {
+            // A renderer that draws the entity it was last handed: handed this one again.
+            back = ReusedStates.hand(renderer, state, light);
             renderer.render(state, pose, buffers, light);
+        } catch (RuntimeException | LinkageError error) {
+            Entity entity = ReusedStates.entity(state);
+            if (entity == null) throw error;
+            leaveOut(entity.getType(), error);
+            // Failed halfway through, with poses of its own still pushed.
+            while (pose.last() != top) pose.popPose();
         } finally {
+            if (back != null) back.run();
             told.run();
             pose.popPose();
         }
