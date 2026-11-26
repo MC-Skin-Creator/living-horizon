@@ -67,6 +67,12 @@ repositories {
 repositories.withType<MavenArtifactRepository>().matching { it.name == "MavenCentralLWJGL" }.configureEach {
     setUrl("https://libraries.minecraft.net/")
 }
+// The game's libraries are taken from Mojang's repository as jars alone, as Fabric Loom does:
+// their POMs name parents only Maven Central serves, and fifty-odd runners asking Central for
+// them at once drew its "429 Too Many Requests". The game's metadata already lists them all.
+repositories.withType<MavenArtifactRepository>().matching { it.url.host == "libraries.minecraft.net" }.configureEach {
+    metadataSources { artifact() }
+}
 
 dependencies {
     // The code is annotated with jspecify's @Nullable, which the game ships from 1.21.11 on.

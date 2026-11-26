@@ -868,7 +868,9 @@ come back, add it here in the same pull request: this file is what the next sess
   repository serves (26.2's on 2026-11-25: `lwjgl-freetype:3.4.1-mojang-2.15.0.3`), and Quilt
   Loom keeps a repository of its own, exclusive to `org.lwjgl`, on Central (`MavenCentralLWJGL`):
   no other repository may serve LWJGL. `build.quilt.gradle.kts` points that one at
-  `libraries.minecraft.net`, which serves both kinds.
+  `libraries.minecraft.net`, which serves both kinds. Quilt Loom also read the POMs of the game's
+  libraries there, whose parents only Central serves (a 429 on `jackson-parent`, `guava-parent`):
+  that repository gives jars alone on Quilt, as Fabric Loom does.
 - **A Forge node failing in CI with "Failed to find JDK for version 8"** (`sha256 Invalid` on an
   `OpenJDK8U` tarball just before): the Mavenizer runs one step on Java 8, found through
   `JAVA_HOME_8_X64`, or downloads Temurin 8 itself. GitHub served 8u514's tarball as a 1.8 kB
