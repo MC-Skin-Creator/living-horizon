@@ -505,6 +505,10 @@ come back, add it here in the same pull request: this file is what the next sess
   server says it died (`ServerMobs`, `gone`), but the positions it shared before, every 7.5 s,
   were read again (`MobMemory.sync`) and made a new copy where they had it. A copy forgotten for
   something the server's last word does not know yet sets that word aside (`MobMemory.setAside`).
+- **Distant mobs flashing up in the air, then jumping to their place** (as they come into view far
+  away, for a frame): a mob the server has just sent has not ticked, and its last position
+  (`xOld`) is still 0, 0, 0; the game sets it to where it is before drawing one with `tickCount` 0.
+  `GhostRenderer.sinceLastTick` does the same before anything lerps from `xOld`, model or picture.
 - **Distant mobs gliding to and fro, legs still, or trembling** (past *Animation Distance* or
   under *Min. Animated Size*): a still mob must stand, not play its animation's path without its
   legs; `MobMotion.held` stops its animation's clock. And a puppet's `tickCount` must go on every
