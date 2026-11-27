@@ -88,11 +88,13 @@ public final class PopInScenario implements Scenario {
             Scene.command(world, "time set noon");
             Scene.command(world, "weather clear");
             Scene.command(world, "gamemode spectator @a");
+            context.runOnClient(minecraft -> minecraft.options.renderDistance().set(6));
             context.waitTicks(200);
-            for (int step = 0; step < 1600; step++) {
-                double x = step * 0.6;
+            // Slowly enough for the server to generate the land ahead without a graphics card.
+            for (int step = 0; step < 1000; step++) {
+                double x = step * 0.3;
                 Scene.command(world, "tp @a " + x + " 120 0 -90 25");
-                context.waitTicks(1);
+                context.waitTicks(step % 20 == 19 ? 5 : 1);
                 context.runOnClient(watch::look);
             }
             Scene.screenshot(context, this, "newland");
@@ -105,7 +107,6 @@ public final class PopInScenario implements Scenario {
         private final Map<UUID, Vec3> last = new HashMap<>();
         private final Map<UUID, String> lastBy = new HashMap<>();
         private final Map<UUID, Integer> goneAt = new HashMap<>();
-        private final Map<UUID, Long> drawn = new HashMap<>();
         int tick, jumps, aloft, blinks, appearances, vanished;
         boolean anyHeight;
 
@@ -117,9 +118,8 @@ public final class PopInScenario implements Scenario {
             for (MobMemory.Remembered mob : memory.shown(minecraft.level)) {
                 Entity puppet = mob.puppet();
                 if (puppet == null) continue;
-                long at = drawnAt(mob);
-                Long before = drawn.put(mob.id(), at);
-                if (before == null || before == at) continue;
+                // Drawn within the last 300 ms: a slow game draws fewer frames than it ticks.
+                if (System.nanoTime() - drawnAt(mob) > 300_000_000L) continue;
                 now.put(mob.id(), puppet.position());
                 by.put(mob.id(), memory.handingOver(mob) ? "copy-joining" : "copy");
             }
