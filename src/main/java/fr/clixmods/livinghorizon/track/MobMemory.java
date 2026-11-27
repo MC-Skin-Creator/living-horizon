@@ -746,7 +746,7 @@ public final class MobMemory {
         ClientLevel level = minecraft.level;
         if (level == null || puppet.level() != level || minecraft.player == null
                 || puppet.distanceToSqr(minecraft.player) > POOF_RANGE * POOF_RANGE) return;
-        var random = level.random;
+        var random = java.util.concurrent.ThreadLocalRandom.current();
         for (int i = 0; i < 20; i++) {
             // Past the game's 32 blocks for particles too: the copies are mostly farther than that.
             level.addAlwaysVisibleParticle(ParticleTypes.POOF, true, puppet.getRandomX(1.0), puppet.getRandomY(),
