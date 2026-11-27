@@ -125,9 +125,20 @@ public final class GiantCullScenario implements Scenario {
             if (on) state.scale *= GIANT;
         }
 
+        // From 26.3 the culling box is asked at the frame's part of a tick.
+        //? if >=26.3 {
+        /*@Override
+        public AABB getBoundingBoxForCulling(Cow cow, float partialTick) {
+            return on ? giant(cow) : super.getBoundingBoxForCulling(cow, partialTick);
+        }
+        *///?} else {
         @Override
         public AABB getBoundingBoxForCulling(Cow cow) {
-            if (!on) return super.getBoundingBoxForCulling(cow);
+            return on ? giant(cow) : super.getBoundingBoxForCulling(cow);
+        }
+        //?}
+
+        private static AABB giant(Cow cow) {
             double half = Math.max(cow.getBbWidth(), 1.4) * GIANT / 2, height = cow.getBbHeight() * GIANT;
             return new AABB(cow.getX() - half, cow.getY(), cow.getZ() - half,
                     cow.getX() + half, cow.getY() + height, cow.getZ() + half);
