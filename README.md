@@ -171,6 +171,8 @@ page, one file per game version and loader:
 | [GeckoLib](https://modrinth.com/mod/geckolib) | Its mobs are shown far away, animated, and as simplified pictures. |
 | [Immersive Aircraft](https://modrinth.com/mod/immersive-aircraft) | Its aircraft stay visible far away, where you left them. |
 | [Ambient Birds](https://modrinth.com/mod/ambient-birds) | Its birds keep flying far away. |
+| [The Graveyard](https://modrinth.com/mod/the-graveyard-fabric) | Its crows, ravens and magpies keep flying far away. |
+| [Useless Reptile](https://modrinth.com/mod/useless-reptile) | Its dragons stay animated far away. |
 
 Mobs from other mods should work. Mods not tested yet are listed under the
 [`mod compatibility`](https://github.com/MC-Skin-Creator/living-horizon/labels/mod%20compatibility)

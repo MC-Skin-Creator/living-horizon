@@ -344,7 +344,7 @@ public final class GeckoLibScenario implements Scenario {
     }
 
     /** The animations GeckoLib plays on this entity now, by controller; none until it was drawn. */
-    private static Set<String> playing(Entity entity) {
+    static Set<String> playing(Entity entity) {
         Set<String> names = new LinkedHashSet<>();
         try {
             for (Object controller : controllers(entity)) {
