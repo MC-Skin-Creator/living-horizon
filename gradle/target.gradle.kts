@@ -222,6 +222,8 @@ extra["lhMixins"] = buildList {
     if (atLeast("1.20.5")) add("OptionsListEntryMixin")
     // "Create" on the world creation screen, for the benchmark's world.
     add("CreateWorldScreenAccessor")
+    // The end of a screen's set-up, shown again or resized too: the Options screen's button.
+    add("ScreenInitMixin")
     add("TextureManagerMixin")
     add("VoxyRenderSystemMixin")
 }.sorted().joinToString(",\n    ") { "\"$it\"" }

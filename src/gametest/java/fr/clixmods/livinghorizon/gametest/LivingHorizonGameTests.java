@@ -53,6 +53,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.OfflineTabListScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OtherDimensionScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LinksScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LodistanceScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.OptionsButtonScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OptionsScreenScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OutlinesScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OverVoidScenario;
@@ -110,6 +111,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new ImpostorsScenario(),
             new RestingCostScenario(),
             new OfflineTabListScenario(),
+            new OptionsButtonScenario(),
             new BirdCostScenario(),
             new ImpostorSizeScenario(),
             new PlayerSizeScenario(),
