@@ -69,6 +69,7 @@ import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3fc;
 import org.jspecify.annotations.Nullable;
@@ -227,8 +228,24 @@ public final class GhostRenderer {
      */
     static @Nullable Mark skip(Entity entity, boolean mayVanish) {
         double size = Math.max(0.5, Math.max(entity.getBbHeight(), entity.getBbWidth()));
-        return count(why(entity.getX() - eyeX, entity.getY() + size * 0.5 - eyeY, entity.getZ() - eyeZ, size, mayVanish));
+        Mark why = why(entity.getX() - eyeX, entity.getY() + size * 0.5 - eyeY, entity.getZ() - eyeZ, size, mayVanish);
+        // Its model may reach far past its hitbox (a modded giant): the box the game culls it by
+        // decides, asked only of what the hitbox would leave out.
+        if (why != null) {
+            AABB box = CullBox.of(entity, frameTick);
+            why = box == null ? null : why(box, mayVanish);
+        }
+        return count(why);
     }
+
+    private static @Nullable Mark why(AABB box, boolean mayVanish) {
+        double size = Math.max(0.5, Math.max(box.getYsize(), Math.max(box.getXsize(), box.getZsize())));
+        return why((box.minX + box.maxX) * 0.5 - eyeX, (box.minY + box.maxY) * 0.5 - eyeY,
+                (box.minZ + box.maxZ) * 0.5 - eyeZ, size, mayVanish);
+    }
+
+    /** The part of a tick of the frame being extracted, which the culling boxes are asked at. */
+    private static float frameTick;
 
     /**
      * Whether something of the mod's own, {@code size} blocks across around a point this far
@@ -532,6 +549,7 @@ public final class GhostRenderer {
         Minecraft minecraft = Minecraft.getInstance();
         EntityRenderDispatcher dispatcher = minecraft.getEntityRenderDispatcher();
         Vec3 eye = camera.position();
+        frameTick = partialTick;
         view(camera, minecraft);
         prewarm(config);
         long started = System.nanoTime();
@@ -698,12 +716,15 @@ public final class GhostRenderer {
      */
     private static boolean occluded(Object key, Entity entity, FarConfig config) {
         if (!config.hideOccludedMobs) return false;
+        // The box the game culls it by, its whole model; never hidden when the game never culls it.
+        AABB box = CullBox.of(entity, frameTick);
+        if (box == null) return false;
         double dx = entity.getX() - eyeX, dy = entity.getY() - eyeY, dz = entity.getZ() - eyeZ;
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
         // Drawn bigger than it is with a minimum size: the bigger box, as drawn, is what must be hidden.
-        double boost = Apparent.boost(Apparent.extent(entity.getBbHeight(), entity.getBbWidth()), distance,
+        double boost = Apparent.boost(Apparent.extent(box.getYsize(), Math.max(box.getXsize(), box.getZsize())), distance,
                 pixelsPerRadian, config.minApparentPixels);
-        if (!Occlusion.hidden(key, entity, dx, dy, dz, boost)) {
+        if (!Occlusion.hidden(key, box, eyeX, eyeY, eyeZ, boost)) {
             return false;
         }
         // Its box is where the far terrain's depth is needed (Occlusion.hidden): only the far plane here.

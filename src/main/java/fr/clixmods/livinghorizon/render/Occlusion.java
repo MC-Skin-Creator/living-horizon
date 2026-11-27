@@ -5,7 +5,7 @@ import fr.clixmods.livinghorizon.compat.FarDepth;
 import fr.clixmods.livinghorizon.compat.FarViewLink;
 import fr.clixmods.livinghorizon.compat.OcclusionQueries;
 import fr.clixmods.livinghorizon.compat.LodWorld;
-import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
@@ -65,18 +65,21 @@ public final class Occlusion {
     }
 
     /**
-     * The last answer for this mob, standing at its feet, {@code (dx, dy, dz)} from the camera,
-     * drawn {@code scale} times its size; false until there is one.
+     * The last answer for this mob, its culling box {@code box} (its feet in the middle of the
+     * box's bottom) seen from the eye, drawn {@code scale} times its size; false until there is one.
      */
-    static boolean hidden(Object key, Entity entity, double dx, double dy, double dz, double scale) {
+    static boolean hidden(Object key, AABB box, double eyeX, double eyeY, double eyeZ, double scale) {
         // Asked about, so the far terrain's depth must be in the picture this frame.
         FarDepth.needed();
         if (byPixels()) return false;
+        double x = (box.minX + box.maxX) * 0.5, z = (box.minZ + box.maxZ) * 0.5;
+        double width = Math.max(box.getXsize(), box.getZsize()), tall = box.getYsize();
         // The GPU's answer is the better one: what the player sees, no world to read.
         // Never mixed with the world's answer, which disagrees often enough to make mobs blink.
         if (byDepth()) {
-            double half = Math.max(entity.getBbWidth() * 0.5, entity.getBbHeight() * 0.35) * scale;
-            double height = entity.getBbHeight() * scale;
+            double half = Math.max(width * 0.5, tall * 0.35) * scale;
+            double height = tall * scale;
+            double dx = x - eyeX, dy = box.minY - eyeY, dz = z - eyeZ;
             // The box is tested against the far terrain's depth: it must be merged there. Half a
             // block more than its sides and the queries' own margin.
             FarDepth.around(dx, dy + height * 0.5, dz, Math.max(half, height * 0.5) + 0.5);
@@ -84,10 +87,10 @@ public final class Occlusion {
         }
         double[] at = ASKED.get(key);
         if (at == null) ASKED.put(key, at = new double[5]);
-        at[0] = entity.getX();
-        at[1] = entity.getY();
-        at[2] = entity.getZ();
-        at[3] = entity.getBbHeight();
+        at[0] = x;
+        at[1] = box.minY;
+        at[2] = z;
+        at[3] = tall;
         at[4] = round;
         return HIDDEN.getOrDefault(key, false);
     }

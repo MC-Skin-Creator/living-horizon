@@ -43,6 +43,8 @@ import fr.clixmods.livinghorizon.gametest.scenario.MoreEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PhotonVoxyScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorShadingScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.GiantCullScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.GiantZombieScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OcclusionScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OfflineTabListScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OtherDimensionScenario;
@@ -152,6 +154,8 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new EntityDepthScenario(),
             new ResizeScenario(),
             new OcclusionScenario(),
+            new GiantCullScenario(),
+            new GiantZombieScenario(),
             new LodistanceScenario(),
             new UnloadScenario(),
             new UndergroundScenario(),
