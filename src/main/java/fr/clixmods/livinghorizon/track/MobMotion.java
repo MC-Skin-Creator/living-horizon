@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.track;
 
 import fr.clixmods.livinghorizon.FarConfig;
+import fr.clixmods.livinghorizon.compat.UselessReptile;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
@@ -126,6 +127,7 @@ final class MobMotion {
         // The legs slow down by 0.6 a tick: past a few dozen ticks they stand still for good.
         for (int i = Math.min(ticks, 64); i > 0; i--) Puppets.walk(puppet, 0f, 0.4f, restedScale);
         puppet.tickCount += ticks;
+        UselessReptile.animate(puppet, false);
     }
 
     double x() {
@@ -483,6 +485,8 @@ final class MobMotion {
         // The step just taken as its motion, as a mob the server moves has: GeckoLib 4 plays a
         // mob's walk only when it moves, read there, and a copy walking with none slid in its idle.
         puppet.setDeltaMovement(puppet.getX() - puppet.xo, puppet.getY() - puppet.yo, puppet.getZ() - puppet.zo);
+        // A mod that chooses its animations in the tick, which a copy never runs.
+        UselessReptile.animate(puppet, moved > 0.01);
         puppet.setYRot(body + backwards);
         puppet.setXRot(pitch);
         puppet.yBodyRot = body + backwards;

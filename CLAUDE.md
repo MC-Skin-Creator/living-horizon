@@ -637,6 +637,14 @@ come back, add it here in the same pull request: this file is what the next sess
   A renderer that throws while extracting or drawing is left out, logged once.
   GeckoLib copies sliding in their idle pose (up to 1.21.4): GeckoLib 4 plays a walk only from
   the entity's motion, which `MobMotion.apply` sets. The `geckolib` scenario checks it.
+- **Useless Reptile's dragons in a T-pose far away** (copies drawn as models, wings and legs spread;
+  from 1.21.11): it animates with Biscuit Roll, whose controllers play what the dragon's
+  `tickAnimations` chose, on the client up to 0.14 and on the server only from 0.15, sent to the
+  client in an attachment a copy never gets. A copy never ticks: `compat/UselessReptile.animate`
+  chooses for it from `MobMotion` (`apply` and `rest`), and Biscuit Roll knows an animation's file
+  only once the copy was drawn. The `uselessreptile` scenario checks it
+  (`run.sh uselessreptile --with useless-reptile,yacl`). Another mod that picks its animations in
+  the tick needs the same.
 - **Lycanites Mobs blank or through the far terrain** (Forge 1.20.1: its pictures empty in the
   impostor screen, its far models seen through Voxy's or Distant Horizons' hills): Lycanites queues
   the opaque parts of its OBJ models (`VBOBatcher.queueDeferred`) and draws them at Forge's
