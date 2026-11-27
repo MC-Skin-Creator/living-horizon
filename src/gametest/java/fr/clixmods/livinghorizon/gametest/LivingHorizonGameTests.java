@@ -20,6 +20,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.HandoverScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ShortRangeScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.SmallMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ComebackScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.PopInScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DragonScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FlyersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.GaitsScenario;
@@ -173,6 +174,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new ShortRangeScenario(),
             new SmallMobsScenario(),
             new ComebackScenario(),
+            new PopInScenario(),
             new PerfScenario(),
             new BenchmarkScenario(),
             new BenchmarkWorldScenario(),
