@@ -43,7 +43,7 @@ the id. What each version gets:
 | Field | Value |
 |---|---|
 | Version title | `Living Horizon 0.1.0 (1.21.11)` on Fabric, `(Quilt 1.21.11)`, `(NeoForge 1.21.11)`, `(Forge 1.21.11)` on the others |
-| Release channel | **Beta** below 1.0.0; **Alpha** for the targets not yet seen drawing in a world (`mod.release_type`) |
+| Release channel | **Beta** below 1.0.0, for every target (`mod.release_type` in a table overrides it) |
 | Loaders | the jar's own: Fabric, Quilt, NeoForge or Forge |
 | Game versions | the `mod.mc_releases` of its table (1.20 to 1.21.11, 26.1 to 26.3) |
 | Dependencies | Fabric and Quilt: Fabric API **Required**, Voxy **Optional**. NeoForge: Ecstatic **Optional**. Every loader: Distant Horizons **Optional** |
