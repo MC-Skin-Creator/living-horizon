@@ -964,9 +964,9 @@ come back, add it here in the same pull request: this file is what the next sess
 - **The *Living Horizon...* button over *Done* on the game's Options screen** (NeoForge, Forge;
   issue #374: right after coming back from one of its menus, or a resize): the game keeps the
   screen's widgets and only lays them out again, and those loaders send no init event then.
-  The layout centred *Done* at the half width the button gave it. `ScreenInitMixin` calls
-  `OptionsButton.relayout` at the end of every `Screen.init`; the `optionsbutton` scenario
-  checks it, with and without the init event.
+  `ScreenInitMixin` calls `OptionsButton.relayout` at the end of every `Screen.init`. The button
+  goes under *Telemetry Data*, or in the empty band under *FOV* when that has no room, never
+  beside *Done*; the `optionsbutton` scenario checks it, with and without the init event.
 - **No question before Unlimited on an old version** (1.20.x: a slider dragged to its right end
   shows *Unlimited*, nothing asks, the setting keeps its value): before 1.21 the game hands a
   mouse release only to the widget under the cursor, and a slider dragged past its end is

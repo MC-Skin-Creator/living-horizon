@@ -1,30 +1,30 @@
 part: client
 kind: fixed
 
-en: **Options screen buttons stay in place** — The *Living Horizon...* button and *Done* now stay side by side when you come back to the game's *Options* screen from one of its menus, instead of overlapping. (Forge and NeoForge.)
+en: **Living Horizon button always in its place** — The *Living Horizon...* button of the game's *Options* screen now sits under *Telemetry Data...*, or above the menus when the screen is too short, and no longer overlaps *Done* when you come back from one of the screen's menus. (Forge and NeoForge.)
 
-fr: **Boutons de l'écran Options bien placés** — Le bouton *Living Horizon...* et *Terminé* restent maintenant côte à côte lorsque vous revenez à l'écran *Options* du jeu depuis l'un de ses menus, au lieu de se chevaucher. (Forge et NeoForge.)
+fr: **Bouton Living Horizon toujours à sa place** — Le bouton *Living Horizon...* de l'écran *Options* du jeu se place maintenant sous *Données de télémétrie...*, ou au-dessus des menus lorsque l'écran est trop petit, et ne chevauche plus *Terminé* lorsque vous revenez de l'un des menus de cet écran. (Forge et NeoForge.)
 
-de: **Schaltflächen im Optionen-Menü bleiben an ihrem Platz** — Die Schaltfläche *Living Horizon …* und *Fertig* bleiben jetzt nebeneinander, wenn du aus einem seiner Menüs zum *Optionen*-Bildschirm des Spiels zurückkehrst, statt sich zu überlappen. (Forge und NeoForge.)
+de: **Living-Horizon-Schaltfläche immer an ihrem Platz** — Die Schaltfläche *Living Horizon …* im *Optionen*-Bildschirm des Spiels steht jetzt unter *Telemetriedaten …* oder, wenn der Bildschirm zu klein ist, über den Menüs, und überlappt *Fertig* nicht mehr, wenn du aus einem der Menüs dieses Bildschirms zurückkehrst. (Forge und NeoForge.)
 
-es: **Los botones de la pantalla de opciones se quedan en su sitio** — El botón *Living Horizon...* y *Hecho* ahora permanecen uno junto al otro cuando vuelves a la pantalla de *Opciones* del juego desde uno de sus menús, en lugar de superponerse. (Forge y NeoForge.)
+es: **El botón de Living Horizon siempre en su sitio** — El botón *Living Horizon...* de la pantalla de *Opciones* del juego ahora se sitúa bajo *Telemetría...*, o encima de los menús cuando la pantalla es demasiado pequeña, y ya no se superpone a *Hecho* al volver de uno de los menús de esa pantalla. (Forge y NeoForge.)
 
-it: **I pulsanti della schermata Opzioni restano al loro posto** — Il pulsante *Living Horizon...* e *Fatto* ora restano uno accanto all'altro quando torni alla schermata *Opzioni* del gioco da uno dei suoi menu, invece di sovrapporsi. (Forge e NeoForge.)
+it: **Il pulsante di Living Horizon sempre al suo posto** — Il pulsante *Living Horizon...* della schermata *Opzioni* del gioco ora si trova sotto *Dati di telemetria...*, o sopra i menu quando lo schermo è troppo piccolo, e non si sovrappone più a *Fatto* quando torni da uno dei menu di quella schermata. (Forge e NeoForge.)
 
-pt_br: **Botões da tela de opções no lugar certo** — O botão *Living Horizon...* e *Concluído* agora ficam lado a lado quando você volta para a tela de *Opções* do jogo a partir de um de seus menus, em vez de se sobreporem. (Forge e NeoForge.)
+pt_br: **Botão do Living Horizon sempre no lugar** — O botão *Living Horizon...* da tela de *Opções* do jogo agora fica abaixo de *Telemetria...*, ou acima dos menus quando a tela é pequena demais, e não se sobrepõe mais a *Concluído* quando você volta de um dos menus dessa tela. (Forge e NeoForge.)
 
-pl: **Przyciski ekranu opcji zostają na miejscu** — Przycisk *Living Horizon…* i *Gotowe* pozostają teraz obok siebie, gdy wracasz do ekranu *Opcje* gry z jednego z jego menu, zamiast na siebie nachodzić. (Forge i NeoForge.)
+pl: **Przycisk Living Horizon zawsze na swoim miejscu** — Przycisk *Living Horizon…* na ekranie *Opcje* gry znajduje się teraz pod *Dane telemetryczne…* albo nad menu, gdy ekran jest za mały, i nie nachodzi już na *Gotowe* po powrocie z jednego z menu tego ekranu. (Forge i NeoForge.)
 
-tr: **Ayarlar ekranının düğmeleri yerinde kalıyor** — *Living Horizon...* düğmesi ve *Bitti* artık oyunun *Ayarlar* ekranına menülerinden birinden döndüğünüzde üst üste binmek yerine yan yana kalıyor. (Forge ve NeoForge.)
+tr: **Living Horizon düğmesi her zaman yerinde** — Oyunun *Ayarlar* ekranındaki *Living Horizon...* düğmesi artık *Ölçüm Verileri...* altında, ekran çok küçükse menülerin üstünde yer alıyor ve bu ekranın menülerinden birinden döndüğünüzde artık *Bitti* ile üst üste binmiyor. (Forge ve NeoForge.)
 
-ru: **Кнопки экрана настроек остаются на месте** — Кнопка *Living Horizon...* и *Готово* теперь остаются рядом, когда вы возвращаетесь на экран *Настройки* игры из одного из его меню, а не накладываются друг на друга. (Forge и NeoForge.)
+ru: **Кнопка Living Horizon всегда на своём месте** — Кнопка *Living Horizon...* на экране *Настройки* игры теперь располагается под *Собираемые данные...* или над меню, если экран слишком мал, и больше не накладывается на *Готово*, когда вы возвращаетесь из одного из меню этого экрана. (Forge и NeoForge.)
 
-uk: **Кнопки екрана налаштувань залишаються на місці** — Кнопка *Living Horizon…* і *Готово* тепер залишаються поруч, коли ви повертаєтеся на екран *Налаштування* гри з одного з його меню, а не накладаються одна на одну. (Forge і NeoForge.)
+uk: **Кнопка Living Horizon завжди на своєму місці** — Кнопка *Living Horizon…* на екрані *Налаштування* гри тепер розташована під *Телеметричні дані…* або над меню, якщо екран замалий, і більше не накладається на *Готово*, коли ви повертаєтеся з одного з меню цього екрана. (Forge і NeoForge.)
 
-zh_cn: **选项界面的按钮保持原位** — 从游戏*选项*界面的某个菜单返回时，*Living Horizon…* 按钮和*完成*现在会并排显示，不再相互重叠。（Forge 和 NeoForge。）
+zh_cn: **Living Horizon 按钮始终在正确位置** — 游戏*选项*界面中的 *Living Horizon…* 按钮现在位于*遥测数据…*下方，界面过小时则位于各菜单上方；从该界面的某个菜单返回时，它不再与*完成*重叠。（Forge 和 NeoForge。）
 
-zh_tw: **選項畫面的按鈕維持原位** — 從遊戲*選項*畫面的某個選單返回時，*Living Horizon...* 按鈕和*完成*現在會並排顯示，不再互相重疊。（Forge 和 NeoForge。）
+zh_tw: **Living Horizon 按鈕始終在正確位置** — 遊戲*選項*畫面中的 *Living Horizon...* 按鈕現在位於*遙測資料...*下方，畫面過小時則位於各選單上方；從該畫面的某個選單返回時，它不再與*完成*重疊。（Forge 和 NeoForge。）
 
-ja: **設定画面のボタンが正しい位置に** — ゲームの*設定*画面でいずれかのメニューから戻ったとき、*Living Horizon…* ボタンと*完了*が重ならず、並んで表示されるようになりました。（Forge と NeoForge。）
+ja: **Living Horizon ボタンが常に正しい位置に** — ゲームの*設定*画面にある *Living Horizon…* ボタンは、*データの遠隔収集…*の下に、画面が小さすぎる場合は各メニューの上に表示されるようになりました。この画面のメニューから戻ったときに*完了*と重なることもなくなりました。（Forge と NeoForge。）
 
-ko: **설정 화면의 버튼이 제자리에 유지됨** — 게임의 *설정* 화면에서 메뉴 중 하나를 열었다가 돌아와도 *Living Horizon...* 버튼과 *완료*가 겹치지 않고 나란히 표시됩니다. (Forge 및 NeoForge.)
+ko: **Living Horizon 버튼이 항상 제자리에** — 게임 *설정* 화면의 *Living Horizon...* 버튼이 이제 *원격 측정 데이터...* 아래에, 화면이 너무 작으면 메뉴 위에 표시되며, 이 화면의 메뉴에서 돌아와도 더 이상 *완료*와 겹치지 않습니다. (Forge 및 NeoForge.)

@@ -18,7 +18,8 @@ import java.util.List;
  * The "Living Horizon..." button of the game's Options screen, as it opens and after coming
  * back from one of its sub-screens (issue #374): one button, overlapping none, and the screen
  * laid out the same both times, also when only laid out again with no init event, as on
- * NeoForge. Checked under "Telemetry Data" and, at a large GUI scale, sharing the "Done" row.
+ * NeoForge, and never on the row of "Done". Checked under "Telemetry Data" and, at a large GUI
+ * scale, in the band above the menus.
  */
 public final class OptionsButtonScenario implements Scenario {
     @Override
@@ -104,10 +105,17 @@ public final class OptionsButtonScenario implements Scenario {
     private static List<String> overlaps(Screen screen, int gui) {
         List<String> problems = new ArrayList<>();
         List<AbstractWidget> widgets = widgets(screen);
+        String open = net.minecraft.network.chat.Component.translatable("livinghorizon.options.open").getString();
+        String done = net.minecraft.network.chat.CommonComponents.GUI_DONE.getString();
         int ours = 0;
         for (AbstractWidget widget : widgets) {
-            if (widget.getMessage().getString().equals(net.minecraft.network.chat.Component
-                    .translatable("livinghorizon.options.open").getString())) ours++;
+            if (!widget.getMessage().getString().equals(open)) continue;
+            ours++;
+            for (AbstractWidget other : widgets) {
+                if (other.getMessage().getString().equals(done) && other.getY() == widget.getY()) {
+                    problems.add("gui " + gui + ": the Living Horizon button is on the row of \"Done\"");
+                }
+            }
         }
         if (ours != 1) problems.add("gui " + gui + ": " + ours + " Living Horizon buttons");
         for (int i = 0; i < widgets.size(); i++) {
