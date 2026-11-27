@@ -135,7 +135,8 @@ public final class GeckoLibScenario implements Scenario {
             for (String kind : kinds) {
                 List<Entity> mobs = byKind.getOrDefault(kind, List.of());
                 if (mobs.isEmpty()) {
-                    failures.add("No " + kind + " reached the client");
+                    // Its mod sends it to clients from closer than this: only its copies are checked.
+                    Scene.log("geckolib live " + kind + " is not sent this far: its copies only");
                     continue;
                 }
                 Entity mob = mobs.get(0);
@@ -205,6 +206,12 @@ public final class GeckoLibScenario implements Scenario {
     private void remembered(ClientGameTestContext context, TestSingleplayerContext world, List<String> kinds,
                             List<String> failures) {
         context.runOnClient(minecraft -> minecraft.options.renderDistance().set(16));
+        // Seen closer first, whatever distance their mod sends them from (yet far enough not to be
+        // taken as killed when they vanish), then left behind.
+        Scene.command(world, "tp @a 0 ~ 26 0 0");
+        context.waitTicks(100);
+        context.runOnClient(minecraft -> mobs(minecraft, kinds).forEach((kind, mobs) -> Scene.log("geckolib up close "
+                + kind + ": " + mobs.size() + " on the client, at " + mobs.get(0).blockPosition())));
         Scene.command(world, "tp @a 0 ~ -80 0 0");
         context.waitTicks(300);
         // How many looks played each animation, walking and standing, by kind.
@@ -212,7 +219,7 @@ public final class GeckoLibScenario implements Scenario {
         Map<Entity, Double> clocks = new IdentityHashMap<>();
         Map<Entity, double[]> places = new IdentityHashMap<>();
         Map<String, Integer> advanced = new HashMap<>(), copies = new HashMap<>(), steps = new HashMap<>(),
-                moving = new HashMap<>();
+                still = new HashMap<>(), moving = new HashMap<>();
         for (int sample = 0; sample < 60; sample++) {
             context.runOnClient(minecraft -> {
                 MobMemory memory = FarPlayerTracker.get().mobs();
@@ -227,6 +234,7 @@ public final class GeckoLibScenario implements Scenario {
                     Set<String> playing = playing(puppet);
                     Map<String, Integer> counts = (walks ? walking : standing).computeIfAbsent(mob.type(), k -> new TreeMap<>());
                     for (String name : playing) counts.merge(name, 1, Integer::sum);
+                    if (!walks) still.merge(mob.type(), 1, Integer::sum);
                     if (walks) {
                         steps.merge(mob.type(), 1, Integer::sum);
                         // GeckoLib 4 plays a walk only when this holds (GeoEntityRenderer.actuallyRender).
@@ -258,13 +266,15 @@ public final class GeckoLibScenario implements Scenario {
             else if (moving.getOrDefault(kind, 0) * 2 < walked) {
                 failures.add("The copies of " + kind + " walk with no motion: GeckoLib 4 plays their idle");
             }
-            // A copy just stopped still ends its walk, one just set off its idle: the animation
-            // played most is what tells them apart.
-            String walks = most(walking.get(kind)), stands = most(standing.get(kind));
-            if (walks != null && walks.equals(stands)) {
-                failures.add("The copies of " + kind + " play mostly " + walks + " walking as standing");
+            // Some controllers play the same whatever the mob does (blinking), and a copy just
+            // stopped still ends its walk: some animation must be played far more often walking.
+            String walks = walkingOnly(walking.get(kind), walked, standing.get(kind), still.getOrDefault(kind, 0));
+            Scene.log("geckolib copy " + kind + " walks with " + walks);
+            if (walks == null && standing.containsKey(kind)) {
+                failures.add("The copies of " + kind + " play the same animations walking as standing");
             }
         }
+        still(context, kinds, failures);
         Scene.configure(context, config -> {
             config.impostors = true;
             config.impostorDistance = 100;
@@ -275,10 +285,53 @@ public final class GeckoLibScenario implements Scenario {
         Scene.configure(context, config -> config.impostors = false);
     }
 
-    /** The animation played in the most looks, null when none was. */
-    private static @Nullable String most(@Nullable Map<String, Integer> counts) {
-        if (counts == null) return null;
-        return counts.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse(null);
+    /**
+     * The default *Min. Animated Size*: copies this far are too small to be animated, and stand
+     * still, drawn as models. GeckoLib must still pose them: each must play an animation.
+     */
+    private void still(ClientGameTestContext context, List<String> kinds, List<String> failures) {
+        Scene.configure(context, config -> config.animationMinPixels = new fr.clixmods.livinghorizon.FarConfig().animationMinPixels);
+        Map<String, Integer> looks = new HashMap<>(), posed = new HashMap<>();
+        for (int sample = 0; sample < 20; sample++) {
+            context.waitTicks(10);
+            context.runOnClient(minecraft -> {
+                MobMemory memory = FarPlayerTracker.get().mobs();
+                for (MobMemory.Remembered mob : memory.shown()) {
+                    if (!kinds.contains(mob.type()) || !(mob.puppet() instanceof LivingEntity puppet)) continue;
+                    looks.merge(mob.type(), 1, Integer::sum);
+                    if (!playing(puppet).isEmpty()) posed.merge(mob.type(), 1, Integer::sum);
+                }
+            });
+        }
+        Scene.screenshot(context, this, "remembered-still");
+        for (String kind : kinds) {
+            int seen = looks.getOrDefault(kind, 0);
+            Scene.log("geckolib still " + kind + ": " + seen + " looks, " + posed.getOrDefault(kind, 0)
+                    + " playing an animation");
+            if (seen > 0 && posed.getOrDefault(kind, 0) < seen) {
+                failures.add("Copies of " + kind + " drawn with no animation (in their model's base pose)");
+            }
+        }
+    }
+
+    /**
+     * The animation played in a larger share of the walking looks than of the standing ones, by
+     * at least a third; null when there is none.
+     */
+    private static @Nullable String walkingOnly(@Nullable Map<String, Integer> walking, int walkingLooks,
+                                                @Nullable Map<String, Integer> standing, int standingLooks) {
+        if (walking == null || walkingLooks == 0) return null;
+        String best = null;
+        double gap = 1 / 3.0;
+        for (Map.Entry<String, Integer> entry : walking.entrySet()) {
+            double standingShare = standingLooks == 0 || standing == null ? 0 : standing.getOrDefault(entry.getKey(), 0) / (double) standingLooks;
+            double share = entry.getValue() / (double) walkingLooks - standingShare;
+            if (share > gap) {
+                gap = share;
+                best = entry.getKey();
+            }
+        }
+        return best;
     }
 
     private static Map<String, List<Entity>> mobs(Minecraft minecraft, List<String> kinds) {
