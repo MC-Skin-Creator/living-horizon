@@ -131,7 +131,16 @@ for attempt in $(seq 1 "$attempts"); do
     fi
 
     drop_partial
-    [ "$attempt" -lt "$attempts" ] && sleep $((attempt * 30))
+    if [ "$attempt" -lt "$attempts" ]; then
+        # Maven Central says "429 Too Many Requests" while the other runners still ask: a
+        # longer wait, apart from theirs, before the next attempt.
+        if grep -q "status code 429" "$log"; then
+            echo "::warning::Maven Central asked to slow down (429): waiting before attempt $((attempt + 1))."
+            sleep $((attempt * 90 + RANDOM % 60))
+        else
+            sleep $((attempt * 30))
+        fi
+    fi
 done
 
 echo "::error::Gradle failed ${attempts} times on downloads; the Maven repositories may be down."

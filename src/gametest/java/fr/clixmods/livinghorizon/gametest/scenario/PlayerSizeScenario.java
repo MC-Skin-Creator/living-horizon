@@ -116,7 +116,7 @@ public final class PlayerSizeScenario implements Scenario {
 
     /** A player online the server does not know, standing at x, z, listed in the tab list as the server would. */
     @SuppressWarnings("unchecked")
-    private static Entity online(Minecraft minecraft, String name, double x, double z) {
+    static Entity online(Minecraft minecraft, String name, double x, double z) {
         GameProfile profile = new GameProfile(UUIDUtil.createOfflinePlayerUUID(name), name);
         try {
             Field field = ClientPacketListener.class.getDeclaredField("playerInfoMap");

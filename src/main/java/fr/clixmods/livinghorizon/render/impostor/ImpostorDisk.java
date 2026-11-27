@@ -54,7 +54,7 @@ import java.util.zip.GZIPOutputStream;
  */
 public final class ImpostorDisk {
     /** Bumped whenever a sheet is baked differently: part of the fingerprint, every sheet is baked again. */
-    private static final int BAKE = 2;
+    private static final int BAKE = 3;
     /**
      * Bumped whenever the file holds something else. 3 added when and where a sheet was baked;
      * a file of 2 is still read, its date unknown. 4 added how far down its tiles the figure's

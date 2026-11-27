@@ -185,11 +185,16 @@ extra["lhMixins"] = buildList {
     add("EntityRenderDispatcherMixin")
     // The light of the figures the mod extracts, where the client has none.
     add("EntityRendererLightMixin")
+    // Other players the game draws itself turned towards their picture: on the render state, from 1.21.2.
+    if (atLeast("1.21.2")) add("EntityRendererTurnMixin")
     // The far plane: the game renderer's before 26.1, the camera's from there.
     add(if (atLeast("26.1")) "CameraMixin" else "GameRendererMixin")
     // From 26.1 the projection with view bobbing in it only goes to the GPU: read on its way.
     if (atLeast("26.1")) add("GameRendererProjectionMixin")
     add("GuiMixin")
+    // The players who logged off in the player list (Tab), and the list open for them alone.
+    add("GuiTabListMixin")
+    add("PlayerTabOverlayMixin")
     // The feature renderers came in 1.21.9.
     if (atLeast("1.21.9")) {
         add("FeatureRenderDispatcherMixin")

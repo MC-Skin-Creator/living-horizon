@@ -86,11 +86,15 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addSmall(bool("impostorPlayers", c.impostorPlayers, v -> c.impostorPlayers = v),
                 bool("impostorBirds", c.impostorBirds, v -> c.impostorBirds = v));
         list.addSmall(bool("impostorShading", c.impostorShading, v -> c.impostorShading = v)
-                .createButton(minecraft.options, 0, 0, 150), null);
+                .createButton(minecraft.options, 0, 0, 150),
+                bool("impostorAnimation", c.impostorAnimation, v -> c.impostorAnimation = v)
+                        .createButton(minecraft.options, 0, 0, 150));
         list.addBig(distance(Shape.AROUND, blocks("impostorDistance", 0, FarConfig.MAX_IMPOSTOR_DISTANCE,
                 c.impostorDistance, v -> c.impostorDistance = v)));
         list.addBig(unit("impostorPixels", "pixels", 0, FarConfig.MAX_IMPOSTOR_PIXELS, c.impostorPixels,
                 v -> c.impostorPixels = v));
+        list.addBig(distance(Shape.AROUND, blocks("impostorAnimationDistance", FarConfig.MIN_ANIMATION_DISTANCE,
+                FarConfig.MAX_ANIMATION_DISTANCE, c.impostorAnimationDistance, v -> c.impostorAnimationDistance = v)));
         list.addBig(unit("impostorMobMemory", "megabytes", FarConfig.MIN_MOB_MEMORY, FarConfig.MAX_MOB_MEMORY,
                 c.impostorMobMemory, v -> c.impostorMobMemory = v));
         list.addBig(unit("impostorPlayerMemory", "megabytes", FarConfig.MIN_PLAYER_MEMORY, FarConfig.MAX_PLAYER_MEMORY,
@@ -112,7 +116,10 @@ public final class FarConfigScreen extends SideOptionsScreen {
                 bool("offlineLife", c.offlineLife, v -> c.offlineLife = v),
                 distance(Shape.AROUND, blocks("offlineRoam", 8, 128, c.offlineRoam, v -> c.offlineRoam = v)));
         list.addSmall(
-                bool("offlineNames", c.offlineNames, v -> c.offlineNames = v).createButton(minecraft.options, 0, 0, 150),
+                bool("offlineNames", c.offlineNames, v -> c.offlineNames = v),
+                bool("offlineTabList", c.offlineTabList, v -> c.offlineTabList = v));
+        list.addSmall(
+                bool("offlineTag", c.offlineTag, v -> c.offlineTag = v).createButton(minecraft.options, 0, 0, 150),
                 Button.builder(Component.translatable(KEY + "forgetSleepers"), b -> confirm("forgetSleepers",
                                 () -> FarPlayerTracker.get().resting().forgetAll()))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "forgetSleepers.tooltip"))).build());

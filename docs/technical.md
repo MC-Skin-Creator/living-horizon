@@ -48,7 +48,7 @@ never added to a level (`track/Puppets`).
 | root | `LivingHorizonCommon` (entry point on both sides, opens the network channel), `LivingHorizonClient` (client entry point), `FarConfig` (the settings file), `QualityPreset`, `Stats` |
 | `track/` | What is followed and remembered: online players (`FarPlayer`, `FarPlayerTracker`), players who logged off (`RestingPlayers`, `RestingPuppet`, `RestingLoop`, `RestingMount`, `Walkway`, `Footing`), mobs (`MobMemory`, `MobPaths`, `MobAnimations`, `MobMotion`, `MobGait`, `MobScan`, `ServerMobs`, `SeedDraws`, `SeedMobs`, `Foresight`), what the server shares (`PositionPublisher`, `PositionsMessage`, `SharedPositions`, `WorldPlayers`) |
 | `render/` | Adding the puppets to the frame (`GhostRenderer`, `Sink`), the far plane (`DepthFar`) and the depth arithmetic (`DepthMath`), `Occlusion`, the distance settings drawn in the world (`DistancePreview`); `impostor/` for the impostors; `state/` for the render state stand-ins used before 1.21.2 |
-| `compat/` | Voxy, Distant Horizons, Lodistance and Far View: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `LodistanceSource`, `FarViewSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `LodistanceLink`, `FarViewLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`); Lycanites Mobs, whose queued models are drawn in time (`LycaniteMobs`); Valkyrien Skies, whose ships' entities are left to it (`ValkyrienSkies`); Minecraft Comes Alive, handed the look of the players who logged off (`McaLook`, `Mca`); Entity Texture Features, asked which texture a mob wears and told which entity the mod draws (`EtfLink`) |
+| `compat/` | Voxy, Distant Horizons, Lodistance and Far View: reading their world (`LodWorld`, `VoxySource`, `DhSource`, `LodistanceSource`, `FarViewSource`, `DrawnGround`) and their depth (`FarDepth`, `FarDepthGpu`, `DhDepth`, `OcclusionQueries`), through one link per mod (`VoxyLink`, `DhLink`, `LodistanceLink`, `FarViewLink`, `IrisLink`); Entity Culling, told which entities the mod draws (`EntityCulling`); Lycanites Mobs, whose queued models are drawn in time (`LycaniteMobs`); Valkyrien Skies, whose ships' entities are left to it (`ValkyrienSkies`); Minecraft Comes Alive, handed the look of the players who logged off (`McaLook`, `Mca`); Entity Texture Features, asked which texture a mob wears and told which entity the mod draws (`EtfLink`); Entity Model Features, asked which of a pack's models a mob wears (`EmfLink`) |
 | `ambient/` | The birds (`Ambience`, `BirdModels`, `BirdFigure`, `AmbientRenderer`) and the easter eggs |
 | `platform/` | What differs between loaders: events, network, config folder |
 | `ui/` | The settings screens (`FarConfigScreen` and its sub-screens, `SodiumOptions`), the impostor screen, the text under the crosshair (`OfflineHud`) |
@@ -151,7 +151,9 @@ Their layout, from version 3:
 - the records, each after its length (a varint). The players who logged off come after which
   part of their list the message is and how many parts there are. Version 4 marks a gliding
   player with the last bit of their flags, and writes their pitch at the end of the record:
-  version 3 leaves both unread, and reads the rest of the record as before.
+  version 3 leaves both unread, and reads the rest of the record as before. Version 6 writes,
+  after which part of their list a message of players who logged off is, whether the server
+  lets the client list them in its player list (Tab): version 5 reads them as listed.
 
 A message stays under 1 MiB, past which the game refuses it (`MAX_BYTES`). The players who
 logged off go in as many messages as it takes, none left out; the client takes the list once
@@ -191,6 +193,9 @@ the game's but a team's name:
   sends the world's seed to the players with the mod, for their game to foresee them anywhere
   itself, where the dimension's generator is the game's own: whoever has the seed knows where
   everything in the world is.
+- `offlineInTabList` (on) lets the clients list the players who logged off in their player
+  list (Tab); off, the list of players who logged off says so (from version 6) and the clients
+  list those online only. A client of version 5 or older lists them whatever it says.
 - `sharePlayers`, `shareOfflinePlayers`, `shareMobs` switch each list off. The players
   message is still sent, empty but for the player themselves, so the client knows the
   server has the mod. Mobs switched off, or a player in a hidden dimension, get an empty
@@ -438,7 +443,19 @@ rider and mount wait on the spot.
   shows the time the server saw them leave; *offline* without a date only comes from a file
   an older version saved.
 - That time is kept in the file with their spot (`lastSeen`, milliseconds since 1970).
-- `offlineNames` turns both off.
+- `offlineNames` turns both off; `offlineTag` leaves the name and drops *(offline)* after it.
+
+### In the player list
+
+- The player list (Tab) lists them after those online (`ui/OfflineTabList`,
+  `mixin/PlayerTabOverlayMixin`): every one known on this server, any dimension, the last to
+  leave first, within the list's 80 rows, their head, their name in grey, and the bars of a
+  player with no connection. An entry is kept per player while their skin stays
+  the same.
+- In a world played alone the game opens the list only when someone else is in it; with such
+  players to list it opens (`mixin/GuiTabListMixin`, on the game's `isLocalServer` test there).
+  Forge before 1.20.6 draws the list in an overlay of its own, which this misses.
+- `offlineTabList` turns it off; the server's `offlineInTabList` too, for everyone with the mod.
 
 ## Distant mobs
 
@@ -821,8 +838,20 @@ entitytexturefeatures,entity-model-features --pack fresh-animations`). What they
   ETF which entity it draws; the mod draws through the renderer, and tells ETF itself
   (`EtfLink.drawing`), as that draw does.
 - **Impostors**: the texture ETF picks is in the impostor key (see
-  [Same look, same picture](#same-look-same-picture)). A model EMF changes on a resource reload
-  is baked again: the fingerprint on disk holds the packs.
+  [Same look, same picture](#same-look-same-picture)), and so is the model EMF picks when a pack
+  gives a kind several (`EmfLink.variant`: its model root's picker, ETF's
+  `ETFVariantSuffixProvider.getSuffixForEntity`; Fresh Animations picks a cow's, a pig's, a
+  villager's from the block under it). A model EMF changes on a resource reload is baked again:
+  the fingerprint on disk holds the packs.
+- **Baked standing**: EMF plays Fresh Animations on the entity's own stride and whether it is on
+  the ground, not on the render state's. `ImpostorAtlas.steady` stands the figure on the ground and
+  sets its own stride (`ImpostorAtlas.stride`: rest, or the step of a walk) while it is baked:
+  a copy is not on the ground, and a cow was pictured as if it jumped, head down and hindquarters
+  up; a mob baked mid-stride had its legs apart in some views. Its age is left alone, since Fresh
+  Animations lays a pig down on timers counted from it, and a mob is turned in its state only,
+  since Fresh Animations smooths a body turning: turned on the entity, a cow seen from behind was
+  pictured from the side. EMF's own pause (`pauseAllCustomAnimationsForEntity`) is no answer: its
+  models stand upright without their animations, bodies vertical.
 - EMF slows the animations of far entities on its own (*Animation LOD distance*, in its
   settings): far copies animate at its pace, as far entities of the game do.
 
@@ -1003,7 +1032,7 @@ textures, draws and reads back the views, and writes a sheet into its page. Ever
   name, when it is not the game's own (`compat/EtfLink`); never a blink. It comes from the mob's
   UUID, which is in none of its synched data: without it, every far cow of a pack of random cows
   wore the first one baked. The game's texture it stands in for is asked of the renderer once per
-  look.
+  look. With Entity Model Features, which of a pack's models it wears too (`compat/EmfLink`).
 - **Left out**: what never shows (positions, times, owners, sound variants, names but the four
   the game draws differently: Dinnerbone, Grumm, jeb_ and Toast) and,
   learnt per kind of mob, what keeps changing on one (a dolphin drying, a zombie raising its
@@ -1033,15 +1062,85 @@ textures, draws and reads back the views, and writes a sheet into its page. Ever
   (a dragon twenty blocks long just past the distance), and a picture kept stays one until 5%
   past that.
 - It keeps a picture until it has turned 8 degrees past the edge between it and the next one.
-- A mob or player model nearing its picture turns to it: from 80% of either threshold to the
-  point a picture would come back (95%), its body is eased to the yaw the picture will show it at
+- A mob or player model nearing its picture turns to it: over the last *Smooth Turn Distance*
+  blocks (`impostorTurnDistance`, 5) before the point a picture would come back (95% of the
+  distance, or where its size on screen would be 5% over the size, worked out from how that size
+  falls with the distance), its body is eased to the yaw the picture will show it at
   (`ImpostorViews.yaw`, the same 8-degree stickiness), head straight and level
-  (`ImpostorThreshold.approach`, `GhostRenderer.turn` / `turned`). Only once its sheet is baked
-  and not too large to be shown; never on a mount or in a bed. The picture then starts on the
-  view the model had turned to. *Smooth Simplification* in the debug screen (`impostorTurn`)
-  turns it off.
+  (`ImpostorThreshold.approach`, `GhostRenderer.turn` / `turned`). A share of the thresholds
+  before (from 80%) turned a figure over 20 blocks at 128 and two at 16. Only once its sheet is
+  baked and not too large to be shown; never on a mount or in a bed. The picture then starts on
+  the view the model had turned to. Another player online is drawn by the game itself until it is
+  a picture: `GhostRenderer.pictureInstead`, which the game asks as it culls, notes its turn, and
+  `EntityRendererTurnMixin` gives it to the state the game extracts (`turnedByGame`, from 1.21.2;
+  before, such a player still turns at once). *Smooth Simplification* and *Smooth Turn Distance*
+  are in the debug screen.
 - When its look changes, a player or a mob keeps its old picture until the new one is baked;
   a 3D bird is drawn as a model meanwhile.
+
+### Walking
+
+*Animated Pictures* (`impostorAnimation`, on by default) keeps whatever is pictured moving, rather
+than gliding along in its resting pose (`ImpostorWalk`): mobs, players and mannequins walk, a rider's
+mount walks under it, a boat's oars row (from 1.21.2), up to *Animated Picture Distance*
+(`impostorAnimationDistance`, 256 blocks; 128 on *Potato* and *Low*, 512 on *High*, 1024 on
+*Ultra*). Past it a picture stands, and a copy's walk is never asked for: the distance bounds the
+video memory the walks take as well as which mobs walk.
+
+- **The stride.** The game's models swing legs and arms by `cos(position * 0.6662)` times the
+  walk's speed: a stride every 9.43 of walk position. It is cut into four steps
+  (`ImpostorWalk.PHASES`). Half way between its two ends the legs cross straight down, as they
+  stand at rest, so those two steps show the resting picture every figure has; only the two ends
+  are baked, two sheets more per look (`ImpostorWalk.FRAMES`). Eight steps would take six.
+- **Keys.** Each picture of a walk has a key of its own, as a height has for a flyer:
+  `ImpostorKey.frame(key, n)`, `n` from 1, salted and the same in every game, so the allocator,
+  the disk, the aliases and the budgets need nothing new. A step whose pixels come out the same
+  as the resting picture (a fish, a slime: models that do not swing) is an alias of it.
+- **Baking.** `ImpostorAtlas.staged` sets the state's `walkAnimationPos` to the step and its
+  `walkAnimationSpeed` to `ImpostorWalk.BAKED_SPEED` (0.5, a mob strolling; at the game's 1 a
+  cow's legs reach out at 80 degrees). Before 1.21.2 the stand-ins of `render/state/` set the
+  same on the entity, so every backend bakes them. They wait in a queue of their own, baked once
+  every resting picture asked for is, within the same 3 ms; a step starts as large as the
+  resting picture was grown.
+- **One mob per walk.** Every picture of a look's walk, and its resting picture, is baked from
+  one mob (`ImpostorAtlas.walking`): the first seen walking asks for the whole walk, and its
+  resting picture is baked again from it when it came from another mob, replacing the old one in
+  a row of its own once ready (`Request.anew`, `SheetAllocator.put` gives the old row back), never
+  missing meanwhile. Two mobs of one look may differ in what no key reads (a pack's random parts,
+  Fresh Animations' values drawn from a mob's id, a second layer's texture): baked from two, a far
+  sheep had horns on one step and none on the next. Another mob of the look leaves the walk to its
+  owner (`WALKERS`) unless the owner has not had it baked within 20 s.
+- **Asked for.** A copy's walk is asked for by `GhostRenderer.prewarm` once its resting picture
+  is baked and the copy is within *Animated Picture Distance*, and by any picture showing a step not
+  baked yet, which shows the resting picture meanwhile: never a model.
+- **Shown.** `GhostRenderer.stride` reads the figure's own legs (`walkAnimation` at the frame's
+  partial tick, times 3 for a baby before 1.21.2) and picks the nearest step; below a walk speed
+  of `ImpostorWalk.WALKING` it is at rest. A step's sheet is drawn at its own size and feet; the
+  thresholds read the resting one, so a step never decides between model and picture. A copy
+  resting untouched (`MobMemory.Remembered.resting`: its legs were not caught up) is at rest
+  without its legs being read.
+- **Scope.** Anything living on its legs: mobs, players (online, far, logged off and standing) and
+  mannequins, each under its own switch (`GhostRenderer.walks`). A rider's picture takes its mount's
+  stride, or the stroke of its boat's oars while they row (`GhostRenderer.carrying`, the same phases
+  over a stroke of 2 pi, shifted by `ImpostorAtlas.OARS` so that its two ends are the pictures). A
+  picture of a movement seen from a height (a boat) keeps that height (`ImpostorKey.elevation` reads
+  its resting key's) and stands where its resting picture was centred. Not animated: flyers seen from
+  every height (phantoms, ghasts), whose wings and tentacles follow their age, not a stride; vehicles
+  of other mods, which give nothing to read; a boat's oars before 1.21.2, which the game reads from
+  the boat itself; the 3D birds, which beat their wings sheet to sheet already. Players' walks are
+  asked for only while one is drawn walking, never by `prewarm`: their sheets are thrown away once
+  unused.
+- **Cost.** Two sheets more per look of a mob that walks: 340 KB more video memory (680 KB with
+  normal maps), three times its resting picture. The frame's cost is unchanged: one quad a figure.
+  `walkingpictures` shows the stride in two screenshots and the three sheets of each look.
+- **Preview.** *Picture Preview...* shows a walk as one row, not three: *Animated* under its name
+  while every picture of its walk is baked, its views stepping through them; *Still* otherwise
+  (the setting off, past the distance, not baked yet). The line under the memory counts the
+  animated looks and what their walks take.
+- **Potato** (`QualityPreset.POTATO`), the lowest preset, draws every mob the mod draws as a
+  picture from 16 blocks: walking pictures stand in for the models the weakest computers cannot
+  afford. The presets set *Animated Picture Distance*; settings saved on a preset before it existed
+  are given that preset's (`FarConfig.migrate`, version 15).
 
 ### Video memory
 
@@ -1821,6 +1920,8 @@ and a slider dragged past its end is released beside it. Sodium's page cannot as
 | `offlineLife` | Offline Player Activity | `true` | | They live their life around their spot; off, they sit on it |
 | `offlineRoam` | Roaming Radius | `50` blocks | 8 to 128 | How far from their spot they walk around and look for a bed or a chest (50 is about a village) |
 | `offlineNames` | Offline Player Names | `true` | | Their name above them, marked offline, and when they were last seen, under the crosshair |
+| `offlineTag` | Offline Mark | `true` | | *(offline)* after their name above them |
+| `offlineTabList` | Offline in Player List | `true` | | They are listed in the player list (Tab) after those online, where the server allows it |
 
 *Clear Offline Players* forgets every player who logged off on this server. On a server with
 the mod, they come back at their last position.
@@ -1895,7 +1996,7 @@ Every one is on by default except `optFreezeHidden`. Switch one off to see what 
 
 | Setting | In game | What it does |
 |---|---|---|
-| `optViewCulling` | Skip Outside the View | Copies outside the view are not prepared at all |
+| `optViewCulling` | Skip Outside the View | Copies outside the view are not prepared at all; a copy the hitbox would leave out is asked again with the box the game culls it by (`render/CullBox`), its whole model |
 | `optTinyCulling` | Skip Specks | Copies smaller than about half a pixel are not prepared (only when no minimum size is set) |
 | `depthOcclusion` | Hide Behind Far Terrain | The far terrain's depth on distant mobs and players, pixel by pixel (see [Far terrain depth](#far-terrain-depth)) |
 | `optLazyDepth` | Lazy Far Depth | The far terrain's depth is merged only on frames that draw something past the render distance |

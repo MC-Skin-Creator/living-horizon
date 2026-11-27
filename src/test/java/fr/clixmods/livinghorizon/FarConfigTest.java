@@ -27,7 +27,7 @@ class FarConfigTest {
         FarConfig fresh = new FarConfig();
         fresh.version = migrated.version;
         assertEquals(GSON.toJson(fresh), GSON.toJson(migrated));
-        assertEquals(14, migrated.version);
+        assertEquals(15, migrated.version);
     }
 
     @Test
@@ -115,6 +115,35 @@ class FarConfigTest {
         // A number typed past the slider is a limit, not no limit.
         FarConfig typed = migrated("{\"version\": 13, \"maxDistantMobs\": 6000}");
         assertEquals(6000, typed.most(true, 9000));
+    }
+
+    @Test
+    void version15KeepsSettingsOnTheirPreset() {
+        // Saved on High before the presets set Animated Picture Distance: still on High.
+        FarConfig high = migrated("{\"version\": 14, \"impostorDistance\": 256, \"maxDistantMobs\": 1500,"
+                + " \"mobMaxDistance\": 1024, \"birdDensity\": 200, \"birdMaxDistance\": 1500}");
+        assertEquals(QualityPreset.HIGH, QualityPreset.of(high));
+        assertEquals(QualityPreset.NORMAL, QualityPreset.of(migrated("{\"version\": 14}")));
+        // A custom setup keeps the default distance, and a distance written out of range is brought back.
+        FarConfig custom = migrated("{\"version\": 14, \"impostorDistance\": 100}");
+        assertEquals(new FarConfig().impostorAnimationDistance, custom.impostorAnimationDistance);
+        assertEquals(FarConfig.MIN_ANIMATION_DISTANCE,
+                migrated("{\"version\": 15, \"impostorAnimationDistance\": 1}").impostorAnimationDistance);
+    }
+
+    @Test
+    void potatoIsTheLowest() {
+        FarConfig potato = new FarConfig();
+        QualityPreset.POTATO.apply(potato);
+        FarConfig low = new FarConfig();
+        QualityPreset.LOW.apply(low);
+        assertEquals(QualityPreset.POTATO, QualityPreset.of(potato));
+        assertTrue(potato.impostorDistance <= low.impostorDistance && potato.maxDistantMobs <= low.maxDistantMobs
+                && potato.mobMaxDistance <= low.mobMaxDistance && potato.birdDensity <= low.birdDensity);
+        // The cycle starts from it again after Ultra.
+        FarConfig ultra = new FarConfig();
+        QualityPreset.ULTRA.apply(ultra);
+        assertEquals(QualityPreset.POTATO, QualityPreset.next(ultra));
     }
 
     @Test

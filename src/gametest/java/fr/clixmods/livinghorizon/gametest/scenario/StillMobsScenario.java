@@ -69,7 +69,7 @@ public final class StillMobsScenario implements Scenario {
         Map<MobMemory.Remembered, double[]> last = new IdentityHashMap<>();
         Map<MobMemory.Remembered, Integer> ticks = new IdentityHashMap<>();
         double[] path = new double[1], longest = new double[1], legs = new double[1], stopped = new double[1],
-                madeUp = new double[1];
+                madeUp = new double[1], inPlace = new double[1];
         for (int tick = 0; tick < 600; tick++) {
             context.runOnClient(minecraft -> {
                 MobMemory memory = FarPlayerTracker.get().mobs();
@@ -85,6 +85,8 @@ public final class StillMobsScenario implements Scenario {
                     if (count != null && puppet.tickCount == count) stopped[0]++;
                     if (was == null) continue;
                     double d = Math.hypot(at[0] - was[0], at[1] - was[1]);
+                    // Legs walking while it stays where it is: a walk played on the spot.
+                    if (d < 1e-4 && puppet.walkAnimation.speed() >= 0.12f) inPlace[0]++;
                     path[0] += d;
                     longest[0] = Math.max(longest[0], d);
                 }
@@ -93,7 +95,8 @@ public final class StillMobsScenario implements Scenario {
         }
         Scene.log("stillmobs " + label + ": " + last.size() + " cows covered " + String.format("%.1f", path[0])
                 + " blocks, at most " + String.format("%.2f", longest[0]) + " a tick, legs " + String.format("%.2f", legs[0])
-                + ", tick count stopped " + (int) stopped[0] + " times, clocks made up " + (int) madeUp[0] + " times");
-        return new double[]{path[0], longest[0], stopped[0]};
+                + ", tick count stopped " + (int) stopped[0] + " times, clocks made up " + (int) madeUp[0] + " times"
+                + ", legs walking on the spot " + (int) inPlace[0] + " times");
+        return new double[]{path[0], longest[0], stopped[0], inPlace[0]};
     }
 }

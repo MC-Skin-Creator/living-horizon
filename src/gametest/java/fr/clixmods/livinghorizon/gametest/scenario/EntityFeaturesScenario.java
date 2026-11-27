@@ -115,6 +115,15 @@ public final class EntityFeaturesScenario implements Scenario {
         Set<String> all = new HashSet<>();
         variants.values().forEach(all::addAll);
         Scene.log("entityfeatures cows: " + all.size() + " textures " + all + ", " + variants.size() + " impostor keys");
+        // Which of the pack's models each cow wears (Fresh Animations picks one from the block under it).
+        Set<Integer> worn = context.computeOnClient(minecraft -> {
+            Set<Integer> found = new HashSet<>();
+            for (Entity entity : minecraft.level.entitiesForRendering()) {
+                if (entity.getType() == EntityType.COW) found.add(fr.clixmods.livinghorizon.compat.EmfLink.variant(entity));
+            }
+            return found;
+        });
+        Scene.log("entityfeatures cow models: " + worn);
         variants.forEach((key, textures) -> {
             if (textures.size() > 1) failures.add("Cows of " + textures.size() + " textures share one impostor key: " + textures);
         });

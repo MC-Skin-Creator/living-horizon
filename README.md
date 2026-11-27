@@ -105,6 +105,7 @@ choose what it shares. Changes apply after a few seconds, without a restart.
 | `hiddenPlayers` | `[]` | Names never shared, such as `["Steve"]` |
 | `hiddenDimensions` | `[]` | Dimensions where nothing is shared, such as `["minecraft:the_nether"]` |
 | `shareOfflinePlayers` | `true` | Shares players who logged off where they left |
+| `offlineInTabList` | `true` | Lets players with the mod list those who logged off in their player list (Tab) |
 | `shareMobs` | `true` | Shares the remembered mobs past the view distance |
 | `seedMobs` | `true` | Shares the mobs of land nobody has explored yet, guessed from the seed |
 | `seedMobRange` | `512` | How far from a player those mobs are shared, in blocks, up to `2048` |

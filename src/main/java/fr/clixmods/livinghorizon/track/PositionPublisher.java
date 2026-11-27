@@ -187,7 +187,7 @@ public final class PositionPublisher {
                 // Every few seconds, and at once to a player who just joined: everything.
                 byte[] everyone = PositionsMessage.players(withLooks(rules.online(shown, viewer), player));
                 List<byte[]> offline = PositionsMessage.offline(
-                        withLooks(rules.offline(offlinePlayers(), viewer), player));
+                        withLooks(rules.offline(offlinePlayers(), viewer), player), config.offlineInTabList);
                 byte[] around = PositionsMessage.mobs(
                         rules.mobs(viewer.dimension()) ? mobsAround(player, config) : noMobs(player));
                 sentBytes[0] += everyone.length + around.length;

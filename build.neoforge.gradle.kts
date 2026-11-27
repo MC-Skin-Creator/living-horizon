@@ -57,9 +57,11 @@ neoForge {
 }
 
 repositories {
-    maven("https://maven.caffeinemc.net/releases") {
-        name = "CaffeineMC"
-        content { includeGroup("net.caffeinemc") }
+    // Asked of its own repository alone, never of Maven Central first: fifty-odd builds at once
+    // drew Central's "429 Too Many Requests" on Sodium's API.
+    exclusiveContent {
+        forRepository { maven("https://maven.caffeinemc.net/releases") { name = "CaffeineMC" } }
+        filter { includeGroup("net.caffeinemc") }
     }
 }
 

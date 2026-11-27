@@ -47,14 +47,31 @@ loom.accessWidenerPath = project.extra["lhAccessWidener"] as File
 
 repositories {
     maven("https://maven.quiltmc.org/repository/release/") { name = "Quilt" }
-    maven("https://maven.terraformersmc.com/releases") {
-        name = "TerraformersMC"
-        content { includeGroup("com.terraformersmc") }
+    // Asked of its own repository alone, never of Maven Central first: fifty-odd builds at once
+    // drew Central's "429 Too Many Requests" on Mod Menu.
+    exclusiveContent {
+        forRepository { maven("https://maven.terraformersmc.com/releases") { name = "TerraformersMC" } }
+        filter { includeGroup("com.terraformersmc") }
     }
-    maven("https://maven.caffeinemc.net/releases") {
-        name = "CaffeineMC"
-        content { includeGroup("net.caffeinemc") }
+    // The same for Sodium's API, on CaffeineMC's own repository.
+    exclusiveContent {
+        forRepository { maven("https://maven.caffeinemc.net/releases") { name = "CaffeineMC" } }
+        filter { includeGroup("net.caffeinemc") }
     }
+}
+
+// The game's LWJGL from Mojang's library repository, where the game's own metadata finds it:
+// Quilt Loom keeps a repository of its own for org.lwjgl alone, on Maven Central, and 26.2's
+// metadata, republished on 2026-11-25, names a build of Mojang's ("3.4.1-mojang-2.15.0.3") that
+// Central does not have. Mojang's repository serves both kinds.
+repositories.withType<MavenArtifactRepository>().matching { it.name == "MavenCentralLWJGL" }.configureEach {
+    setUrl("https://libraries.minecraft.net/")
+}
+// The game's libraries are taken from Mojang's repository as jars alone, as Fabric Loom does:
+// their POMs name parents only Maven Central serves, and fifty-odd runners asking Central for
+// them at once drew its "429 Too Many Requests". The game's metadata already lists them all.
+repositories.withType<MavenArtifactRepository>().matching { it.url.host == "libraries.minecraft.net" }.configureEach {
+    metadataSources { artifact() }
 }
 
 dependencies {

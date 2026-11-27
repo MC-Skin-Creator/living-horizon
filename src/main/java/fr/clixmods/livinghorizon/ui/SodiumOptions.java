@@ -99,6 +99,9 @@ public final class SodiumOptions implements ConfigEntryPoint {
                         .addOption(bool(b, "impostorShading", d.impostorShading, v -> FarConfig.get().impostorShading = v,
                                 () -> FarConfig.get().impostorShading)
                                 .setEnabledProvider(any(PICTURED), ids(PICTURED)))
+                        .addOption(bool(b, "impostorAnimation", d.impostorAnimation,
+                                v -> FarConfig.get().impostorAnimation = v, () -> FarConfig.get().impostorAnimation)
+                                .setEnabledProvider(any(PICTURED), ids(PICTURED)))
                         .addOption(blocks(b, "impostorDistance", 0, FarConfig.MAX_IMPOSTOR_DISTANCE, d.impostorDistance,
                                 v -> FarConfig.get().impostorDistance = v, () -> FarConfig.get().impostorDistance)
                                 .setEnabledProvider(any(PICTURED), ids(PICTURED)))
@@ -106,6 +109,12 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 v -> FarConfig.get().impostorPixels = v, () -> FarConfig.get().impostorPixels,
                                 unit("impostorPixels", "pixels", 0))
                                 .setEnabledProvider(any(PICTURED), ids(PICTURED)))
+                        .addOption(blocks(b, "impostorAnimationDistance", FarConfig.MIN_ANIMATION_DISTANCE,
+                                FarConfig.MAX_ANIMATION_DISTANCE, d.impostorAnimationDistance,
+                                v -> FarConfig.get().impostorAnimationDistance = v,
+                                () -> FarConfig.get().impostorAnimationDistance)
+                                .setEnabledProvider(state -> any(PICTURED).apply(state)
+                                        && state.readBooleanOption(id("impostorAnimation")), ids(ANIMATED)))
                         .addOption(integer(b, "impostorMobMemory", FarConfig.MIN_MOB_MEMORY, FarConfig.MAX_MOB_MEMORY,
                                 d.impostorMobMemory, v -> FarConfig.get().impostorMobMemory = v,
                                 () -> FarConfig.get().impostorMobMemory,
@@ -144,6 +153,12 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                         && s.readBooleanOption(id("offlineLife")), id("offlinePlayers"), id("offlineLife")))
                         .addOption(bool(b, "offlineNames", d.offlineNames, v -> FarConfig.get().offlineNames = v,
                                 () -> FarConfig.get().offlineNames)
+                                .setEnabledProvider(on("offlinePlayers"), id("offlinePlayers")))
+                        .addOption(bool(b, "offlineTag", d.offlineTag, v -> FarConfig.get().offlineTag = v,
+                                () -> FarConfig.get().offlineTag)
+                                .setEnabledProvider(on("offlinePlayers"), id("offlinePlayers")))
+                        .addOption(bool(b, "offlineTabList", d.offlineTabList, v -> FarConfig.get().offlineTabList = v,
+                                () -> FarConfig.get().offlineTabList)
                                 .setEnabledProvider(on("offlinePlayers"), id("offlinePlayers")))
                         .addOption(button(b, "forgetSleepers", parent -> confirm(parent, "forgetSleepers",
                                 () -> FarPlayerTracker.get().resting().forgetAll()))));
@@ -508,6 +523,9 @@ public final class SodiumOptions implements ConfigEntryPoint {
     /** The switches of the flat pictures: what the pictures' distance and size follow, and the mobs' memory. */
     private static final String[] PICTURED = {"impostors", "impostorEntities", "impostorPlayers", "impostorBirds"};
     private static final String[] NOT_PLAYERS = {"impostors", "impostorEntities", "impostorBirds"};
+    /** The switches animated pictures follow: any figure as a picture, and their movement. */
+    private static final String[] ANIMATED = {"impostors", "impostorEntities", "impostorPlayers", "impostorBirds",
+            "impostorAnimation"};
 
     /** On while any of these switches is on. */
     private static Function<ConfigState, Boolean> any(String[] names) {
@@ -535,7 +553,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
 
     /** {@link QualityPreset}, and the settings that match none of them. */
     public enum Preset {
-        LOW(QualityPreset.LOW), NORMAL(QualityPreset.NORMAL), HIGH(QualityPreset.HIGH), ULTRA(QualityPreset.ULTRA),
+        POTATO(QualityPreset.POTATO), LOW(QualityPreset.LOW), NORMAL(QualityPreset.NORMAL), HIGH(QualityPreset.HIGH), ULTRA(QualityPreset.ULTRA),
         CUSTOM(null);
 
         final @Nullable QualityPreset preset;
