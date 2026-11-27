@@ -627,11 +627,24 @@ come back, add it here in the same pull request: this file is what the next sess
   through the renderer and tells it itself (`EtfLink.drawing`); an EMF pack that walks the legs
   reads its limb speed from there too (legs still, arms swinging, before 1.21.2). The `entityfeatures` scenario
   checks it: `run.sh entityfeatures --with entitytexturefeatures,entity-model-features --pack fresh-animations`.
-- **Crash extracting a distant mob on 1.21.2 to 1.21.8** (`NullPointerException` under
-  `GhostRenderer.state`, often blamed on another mod's mixin into `extractRenderState`):
-  GeckoLib 4's `createRenderState()` returns null and its `render` draws the entity it was
-  last handed. `GhostRenderer.drawable` leaves such types out (issue #67 is about drawing
-  them), and a renderer that throws while extracting is left out too, logged once.
+- **GeckoLib mobs on 1.21.2 to 1.21.8** (a crash under `GhostRenderer.state`, every distant one
+  drawn as the same mob, or the eight views of its picture all facing one way): GeckoLib's
+  `createRenderState()` returns null (4 and 5), and GeckoLib 4's `render` draws the entity it
+  was last handed, never the state. `ReusedStates` gives each figure a state of its own and hands
+  the renderer its entity again in `drawState`, with what the mod changed in the state given to
+  the entity. GeckoLib 5 ("Attempted to retrieve data from GeoRenderState that does not exist")
+  wants the light in its state, added only by its hook on the game's draw: `compat/GeckoLib.light`.
+  A renderer that throws while extracting or drawing is left out, logged once.
+  GeckoLib copies sliding in their idle pose (up to 1.21.4): GeckoLib 4 plays a walk only from
+  the entity's motion, which `MobMotion.apply` sets. The `geckolib` scenario checks it.
+- **Useless Reptile's dragons in a T-pose far away** (copies drawn as models, wings and legs spread;
+  from 1.21.11): it animates with Biscuit Roll, whose controllers play what the dragon's
+  `tickAnimations` chose, on the client up to 0.14 and on the server only from 0.15, sent to the
+  client in an attachment a copy never gets. A copy never ticks: `compat/UselessReptile.animate`
+  chooses for it from `MobMotion` (`apply` and `rest`), and Biscuit Roll knows an animation's file
+  only once the copy was drawn. The `uselessreptile` scenario checks it
+  (`run.sh uselessreptile --with useless-reptile,yacl`). Another mod that picks its animations in
+  the tick needs the same.
 - **Lycanites Mobs blank or through the far terrain** (Forge 1.20.1: its pictures empty in the
   impostor screen, its far models seen through Voxy's or Distant Horizons' hills): Lycanites queues
   the opaque parts of its OBJ models (`VBOBatcher.queueDeferred`) and draws them at Forge's

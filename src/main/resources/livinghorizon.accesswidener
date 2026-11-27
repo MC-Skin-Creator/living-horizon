@@ -37,7 +37,8 @@ accessible field net/minecraft/client/entity/ClientAvatarState zCloakO D
 accessible field net/minecraft/world/entity/Entity wasTouchingWater Z
 
 # A figure's own stride, set while it is baked (ImpostorAtlas.stride): before 1.21.2 there are no
-# render states, and on every version some renderers (Entity Model Features) read the entity's.
+# render states, and on every version some renderers (Entity Model Features) read the entity's;
+# up to 1.21.8 also one that draws the entity rather than its state (ReusedStates, GeckoLib 4).
 accessible field net/minecraft/world/entity/WalkAnimationState position F
 accessible field net/minecraft/world/entity/WalkAnimationState speed F
 accessible field net/minecraft/world/entity/WalkAnimationState speedOld F
