@@ -65,50 +65,16 @@ public final class PopInScenario implements Scenario {
         }
         Scene.log("popin jumps " + watch.jumps + ", off the ground " + watch.aloft + ", blinks " + watch.blinks
                 + ", appearances " + watch.appearances);
-        overNewLand(context);
-    }
-
-    /**
-     * Flying over land never seen, in a world of the usual terrain: the mobs there are guessed
-     * from the seed first, then sent by the server as the player comes.
-     */
-    private void overNewLand(ClientGameTestContext context) {
-        Watch watch = new Watch();
-        watch.anyHeight = true;
-        try (TestSingleplayerContext world = context.worldBuilder()
-                .setUseConsistentSettings(false)
-                .adjustSettings(settings -> settings.setSeed("living horizon"))
-                .create()) {
-            context.waitTicks(100);
-            //? if >=1.21.11 {
-            Scene.command(world, "gamerule advance_time false");
-            //?} else {
-            /*Scene.command(world, "gamerule doDaylightCycle false");
-            *///?}
-            Scene.command(world, "time set noon");
-            Scene.command(world, "weather clear");
-            Scene.command(world, "gamemode spectator @a");
-            context.runOnClient(minecraft -> minecraft.options.renderDistance().set(6));
-            context.waitTicks(200);
-            // Slowly enough for the server to generate the land ahead without a graphics card.
-            for (int step = 0; step < 1000; step++) {
-                double x = step * 0.3;
-                Scene.command(world, "tp @a " + x + " 120 0 -90 25");
-                context.waitTicks(step % 20 == 19 ? 5 : 1);
-                context.runOnClient(watch::look);
-            }
-            Scene.screenshot(context, this, "newland");
+        if (watch.jumps > 0 || watch.aloft > 0 || watch.blinks > 0) {
+            throw new AssertionError("mobs jumped, showed up off the ground or blinked as the player came back");
         }
-        Scene.log("popin new land: jumps " + watch.jumps + ", blinks " + watch.blinks + ", appearances "
-                + watch.appearances + ", gone in view " + watch.vanished);
     }
 
     private static final class Watch {
         private final Map<UUID, Vec3> last = new HashMap<>();
         private final Map<UUID, String> lastBy = new HashMap<>();
         private final Map<UUID, Integer> goneAt = new HashMap<>();
-        int tick, jumps, aloft, blinks, appearances, vanished;
-        boolean anyHeight;
+        int tick, jumps, aloft, blinks, appearances;
 
         void look(Minecraft minecraft) {
             tick++;
@@ -125,8 +91,7 @@ public final class PopInScenario implements Scenario {
             }
             for (Entity entity : minecraft.level.entitiesForRendering()) {
                 EntityType<?> type = entity.getType();
-                if (anyHeight ? !(entity instanceof net.minecraft.world.entity.animal.Animal)
-                        : type != EntityType.COW && type != EntityType.SHEEP && type != EntityType.PIG) continue;
+                if (type != EntityType.COW && type != EntityType.SHEEP && type != EntityType.PIG) continue;
                 if (memory.hides(entity) || now.containsKey(entity.getUUID())) continue;
                 now.put(entity.getUUID(), entity.position());
                 by.put(entity.getUUID(), "real");
@@ -141,10 +106,7 @@ public final class PopInScenario implements Scenario {
                 Integer gone = goneAt.remove(id);
                 if (was == null) {
                     appearances++;
-                    if (anyHeight) {
-                        if (far < 100) Scene.log(String.format("popin tick %d: %s%s appears %.0f blocks away", tick, source,
-                                guessed(id), far));
-                    } else if (at.y > -59.5 || at.y < -60.5) {
+                    if (at.y > -59.5 || at.y < -60.5) {
                         aloft++;
                         Scene.log(String.format("popin tick %d: %s appears at y %.2f, %.0f blocks away", tick, source, at.y, far));
                     }
@@ -157,32 +119,21 @@ public final class PopInScenario implements Scenario {
                     double moved = at.distanceTo(was);
                     if (moved > JUMP) {
                         jumps++;
-                        Scene.log(String.format("popin tick %d: %s -> %s%s jumped %.2f blocks (dy %.2f), %.0f blocks away",
-                                tick, lastBy.get(id), source, guessed(id), moved, at.y - was.y, far));
+                        Scene.log(String.format("popin tick %d: %s -> %s jumped %.2f blocks (dy %.2f), %.0f blocks away",
+                                tick, lastBy.get(id), source, moved, at.y - was.y, far));
                     }
                 }
                 last.put(id, at);
                 lastBy.put(id, source);
             }
-            for (Map.Entry<UUID, Vec3> e : last.entrySet()) {
-                UUID id = e.getKey();
+            for (UUID id : last.keySet()) {
                 if (!now.containsKey(id) && !goneAt.containsKey(id)) {
                     goneAt.put(id, tick);
-                    double far = Math.hypot(e.getValue().x - px, e.getValue().z - pz);
-                    // Gone while the player looks its way, within the fog.
-                    if (anyHeight && far < 100 && e.getValue().x > px - 8) {
-                        vanished++;
-                        Scene.log(String.format("popin tick %d: %s%s gone %.0f blocks away", tick, lastBy.get(id), guessed(id), far));
-                    }
                 }
             }
             // Gone for good from view: forget the last spot only after a second.
             last.keySet().removeIf(id -> goneAt.containsKey(id) && tick - goneAt.get(id) >= 20 && !now.containsKey(id));
             goneAt.keySet().removeIf(id -> !last.containsKey(id));
-        }
-
-        private static String guessed(UUID id) {
-            return fr.clixmods.livinghorizon.track.SeedDraws.foreseen(id) ? " (guessed)" : "";
         }
 
         private static long drawnAt(MobMemory.Remembered mob) {
