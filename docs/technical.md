@@ -1077,7 +1077,7 @@ textures, draws and reads back the views, and writes a sheet into its page. Ever
   a picture: `GhostRenderer.pictureInstead`, which the game asks as it culls, notes its turn, and
   `EntityRendererTurnMixin` gives it to the state the game extracts (`turnedByGame`, from 1.21.2;
   before, such a player still turns at once). *Smooth Simplification* and *Smooth Turn Distance*
-  are in the debug screen.
+  are on the simplification's *Advanced* screen.
 - When its look changes, a player or a mob keeps its old picture until the new one is baked;
   a 3D bird is drawn as a model meanwhile.
 

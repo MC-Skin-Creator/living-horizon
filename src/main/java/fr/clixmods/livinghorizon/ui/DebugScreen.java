@@ -12,7 +12,6 @@ import java.util.List;
 
 import static fr.clixmods.livinghorizon.ui.FarConfigScreen.bool;
 import static fr.clixmods.livinghorizon.ui.FarConfigScreen.choice;
-import static fr.clixmods.livinghorizon.ui.FarConfigScreen.unit;
 
 /**
  * Tools to see what the mod does: boxes and labels on every distant mob, outlines by kind, a panel of
@@ -47,18 +46,7 @@ public final class DebugScreen extends SideOptionsScreen {
         header(Component.translatable(KEY + "debug.rendering"));
         list.addSmall(
                 bool("extendFarPlane", c.extendFarPlane, v -> c.extendFarPlane = v),
-                unit("minApparentPixels", "pixels", 0, 32, (int) c.minApparentPixels, v -> c.minApparentPixels = v),
-                bool("renderTrackedVehiclesFar", c.renderTrackedVehiclesFar, v -> c.renderTrackedVehiclesFar = v),
-                bool("impostorTurn", c.impostorTurn, v -> c.impostorTurn = v),
-                unit("joinMaxDistance", "blocks", 0, 128, c.joinMaxDistance, v -> c.joinMaxDistance = v),
-                unit("joinPace", "percent", 25, 400, c.joinPace, v -> c.joinPace = v),
-                bool("joinFollowGround", c.joinFollowGround, v -> c.joinFollowGround = v),
-                unit("joinGiveUpSeconds", "seconds", 1, 120, c.joinGiveUpSeconds, v -> c.joinGiveUpSeconds = v),
-                unit("joinHurryDistance", "blocks", 0, 64, c.joinHurryDistance, v -> c.joinHurryDistance = v),
-                unit("joinHurrySpeed", "percent", 100, 400, c.joinHurrySpeed, v -> c.joinHurrySpeed = v));
-        // A whole row: its name is long in most languages.
-        list.addBig(unit("impostorTurnDistance", "blocks", FarConfig.MIN_TURN_DISTANCE, FarConfig.MAX_TURN_DISTANCE,
-                c.impostorTurnDistance, v -> c.impostorTurnDistance = v));
+                bool("renderTrackedVehiclesFar", c.renderTrackedVehiclesFar, v -> c.renderTrackedVehiclesFar = v));
 
         header(Component.translatable(KEY + "debug.optimisations"));
         list.addSmall(

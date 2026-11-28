@@ -26,7 +26,7 @@ import java.util.function.Function;
  * Every row of the mod's pages in Sodium's video settings used as a player would, with the
  * mouse: each slider dragged, each choice and tick box clicked, "Apply", and every value read
  * back from the mod's settings and from the file; the preset; each button's screen opened and
- * closed back to Sodium's; "Restore defaults"; the scan. Needs Sodium 0.8 or later.
+ * closed back to Sodium's; "Restore defaults". Needs Sodium 0.8 or later.
  */
 public final class SodiumControlsScenario implements Scenario {
     private static final int LEFT = InputConstants.MOUSE_BUTTON_LEFT;
@@ -151,7 +151,7 @@ public final class SodiumControlsScenario implements Scenario {
             // 4. The buttons: each opens its screen, which goes back to Sodium's when closed with Escape.
             for (String name : names(context, "button")) {
                 // These close the screen and start their work: no screen to come back from.
-                if (name.equals("scanMobs") || name.equals("foreseeMobs") || name.equals("restoreDefaults")) continue;
+                if (name.equals("restoreDefaults")) continue;
                 click(context, name);
                 context.waitTicks(5);
                 String opened = context.computeOnClient(minecraft -> minecraft.screen == null ? "none" : minecraft.screen.getClass().getSimpleName());
@@ -191,12 +191,6 @@ public final class SodiumControlsScenario implements Scenario {
             if (reset != defaults.impostorDistance || !resetShown.equals(reset)) failures.add("restoreDefaults: impostor distance " + resetShown + " / " + reset);
             if (!birdsShown.equals(defaults.skyBirds)) failures.add("restoreDefaults: birds shown " + birdsShown);
             screenshot(context, "restored");
-
-            // 6. The scan: back to the game, where the chat says what it reads.
-            click(context, "scanMobs");
-            context.waitTicks(20);
-            if (screen(context) != null) failures.add("scanMobs: the screen stayed open");
-            screenshot(context, "scan");
 
             context.setScreen(() -> null);
             context.getInput().resizeWindow(854, 480);
