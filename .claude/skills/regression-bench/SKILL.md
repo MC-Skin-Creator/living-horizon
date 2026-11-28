@@ -127,15 +127,16 @@ bench.cmd jars --tag v0.19.0-dev.842 --fps 10 --parallel 4 --memory 2G
 bench.cmd approve v0.16.0-jars_20261123-2157    # only once the user validated that run
 ```
 
-Validated today: **v0.16.0, approved by the user on 2026-11-28**, every profile on the ten
-`jar_nodes` (Voxy where it exists: 1.21.10 and later): vanilla from run
-`v0.16.0-jars_20261123-2157`, Sodium, Distant Horizons and Voxy (with Photon and Complementary)
-from run `v0.16.0-jars_20261128-1055`. The runs of 22 and 23 November comparing v0.16.0 with pull
-request #366 are kept in `results/` as a comparison only.
+Validated today: **v0.19.0-dev.842, approved by the user on 2026-11-28**, every profile on the ten
+`jar_nodes` (Voxy where it exists: 1.21.10 and later), from run `v0.19.0-dev.842-jars_20261128-1236`
+(26.3.x / dh from its replay `v0.19.0-dev.842-jars_20261128-1346`), after a comparison with v0.16.0
+that found no regression. The reference before it, **v0.16.0** (validated the same day: vanilla from
+`v0.16.0-jars_20261123-2157`, the other profiles from `v0.16.0-jars_20261128-1055`), is kept aside.
 
 **Each validated reference is also kept whole in `LH_BENCH_HOME/references/<release>_validated-<date>/`**
 (a copy of `baselines/`, the runs it was approved from and a README), so that approving the next
-one never loses it: `references/v0.16.0_validated-2026-11-28/` today. Before approving a new
+one never loses it: `references/v0.16.0_validated-2026-11-28/` and
+`references/v0.19.0-dev.842_validated-2026-11-28/` today. Before approving a new
 reference, check that the current one is there; to go back to it, copy its `baselines/` over
 `LH_BENCH_HOME/baselines`.
 

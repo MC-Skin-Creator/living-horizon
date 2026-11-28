@@ -281,8 +281,9 @@ on every Fabric node and compares its pictures with the reference the user valid
 Fabric Loader 0.19.5 for the run: see the skill). That reference is kept on the bench machine
 (`~/living-horizon-bench/baselines/`, `bench.cmd status` says which release): every bench run
 is compared with it, never with the newest run in `results/`, and only the user decides that a run
-becomes the new reference (`approve <run>`). Today: v0.16.0, every profile (vanilla, Sodium, Distant
-Horizons, Voxy, with shader packs), backed up in `~/living-horizon-bench/references/`.
+becomes the new reference (`approve <run>`). Today: v0.19.0-dev.842, every profile (vanilla, Sodium,
+Distant Horizons, Voxy, with shader packs); it and v0.16.0 before it are backed up in
+`~/living-horizon-bench/references/`.
 
 ## Debugging checklist
 
