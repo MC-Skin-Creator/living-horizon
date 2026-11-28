@@ -80,8 +80,9 @@ LH_BENCH_HOME/venv/Scripts/python.exe artifact.py <run> --lang fr   # writes res
 ```
 
 Publish `index.html` as `file_path` with `root` the copied folder and `files` mapping every
-`shots/*.webp` and `zoom/*.webp` to itself. One picture holds a viewpoint's three panels, so a run
-of ten games, four profiles and ten viewpoints stays under the 255 files of one publish.
+`shots/*.webp` and `zoom/*.webp` to itself. One picture holds a viewpoint's three panels; a run of
+every profile still makes about 270 pictures and 40 zooms, past the 255 files of one publish:
+publish the page with the first 250, then publish the same `file_path` again with the rest.
 
 Every report also ends with the pictures in the conversation, so that the user judges each change for themselves: send
 (`SendUserFile`, display `render`) the review sheet of every node and profile compared,
