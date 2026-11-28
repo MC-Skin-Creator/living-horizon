@@ -34,6 +34,8 @@ LABELS = {
         "legend": "Third column: what changed in red, framed in yellow; in blue what moves by itself and is "
         "left out. Greyed out when nothing changed.", "flip": "Flip", "close": "Close", "noref": "no reference",
         "summary": "Summary", "played_in": "played in", "min": "min", "stopped": "stopped",
+        "time": "Time", "total_time": "Total time", "mean_fps": "Frame rate, average change",
+        "games": "Games compared", "better": "better", "worse": "worse",
     },
     "fr": {
         "title": "Banc de régression", "reference": "Référence", "this": "Version testée", "found": "Différence",
@@ -47,6 +49,8 @@ LABELS = {
         "qui bouge tout seul et n'est pas compté. Grisée quand rien n'a changé.", "flip": "Alterner",
         "close": "Fermer", "noref": "pas de référence", "summary": "Résumé", "played_in": "joué en",
         "min": "min", "stopped": "arrêté",
+        "time": "Durée", "total_time": "Durée totale", "mean_fps": "FPS, écart moyen",
+        "games": "Parties comparées", "better": "mieux", "worse": "moins bien",
     },
 }
 
@@ -117,7 +121,8 @@ def build(run: Path, lang: str) -> Path:
                               "places": verdict.get("places", 0), "img": f"shots/{name}.webp", "zoom": zoom_name})
             cells.append({"node": node, "profile": profile, "status": cell.get("status"), "ref": ref_tag,
                           "fps": (played.get("fps") or {}).get("mean"), "ref_fps": (ref_run.get("fps") or {}).get("mean"),
-                          "minutes": played.get("minutes"), "stopped": played.get("stopped"),
+                          "minutes": played.get("minutes"), "ref_minutes": ref_run.get("minutes"),
+                          "stopped": played.get("stopped"),
                           "failures": played.get("failures", []), "log": cell.get("log", []),
                           "stats": cell.get("stats", []), "shots": shots})
     page = PAGE.replace("__TITLE__", html.escape(f"{t['title']} {tag}")) \
@@ -153,6 +158,12 @@ h1{font-size:1.5rem;font-weight:600;margin:0;text-wrap:balance}
 .chip:hover,.chip:focus-visible{box-shadow:0 2px 8px var(--shadow);outline:none}
 .chip b{font-weight:600;font-size:.95rem}.chip span{font-size:.8rem;color:var(--mute)}
 .st{color:var(--c);font-weight:600}
+.up{color:var(--same);font-weight:600}.down{color:var(--failed);font-weight:600}.flat{color:var(--mute)}
+.tiles{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 4px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:10px 14px;min-width:0;flex:1 1 200px}
+.tile .k{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mute)}
+.tile .v{font-size:1.35rem;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+.tile .d{font-size:.85rem;font-family:var(--mono)}
 .s-same{--c:var(--same)}.s-changed,.s-missing{--c:var(--changed)}.s-failed{--c:var(--failed)}.s-new{--c:var(--new)}
 section.cell{margin:0 0 36px;scroll-margin-top:12px}
 .cellhead{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:10px}
@@ -186,6 +197,7 @@ details{margin:6px 0 10px;font-size:.85rem}details pre{white-space:pre-wrap;over
     </div>
     <label class="toggle"><input type="checkbox" id="only"> <span id="onlyl"></span></label>
   </header>
+  <div class="tiles" id="tiles"></div>
   <p class="help" id="help"></p>
   <p class="help" id="legend"></p>
   <nav class="grid" id="grid"></nav>
@@ -214,14 +226,43 @@ $("onlyl").textContent = t.only_changed; $("help").textContent = t.help; $("lege
 ["reference","this","found"].forEach((k,i) => $("b"+i).textContent = (i+1) + " · " + (k === "this" ? D.tag : t[k]));
 $("flip").textContent = t.flip; $("close").textContent = t.close;
 
-const fps = c => c.fps == null ? "" : `${t.fps} ${Math.round(c.fps)}` + (c.ref_fps != null ? ` (${t.ref_short} ${Math.round(c.ref_fps)}, ${((c.fps/c.ref_fps-1)*100).toFixed(0).replace(/^(?!-)/,"+")} %)` : "");
+// A change against the reference: green when better, red when worse, grey within 3 %.
+function delta(now, ref, higherBetter) {
+  if (now == null || ref == null || !ref) return "";
+  const pct = (now / ref - 1) * 100;
+  const better = higherBetter ? pct > 0 : pct < 0;
+  const cls = Math.abs(pct) < 3 ? "flat" : (better ? "up" : "down");
+  const arrow = Math.abs(pct) < 3 ? "=" : (pct > 0 ? "▲" : "▼");
+  return `<span class="${cls}">${arrow} ${pct > 0 ? "+" : ""}${pct.toFixed(0)} %</span>`;
+}
+const num = (v, d = 0) => v == null ? "—" : Number(v).toFixed(d);
+const fps = c => c.fps == null ? "" : `${t.fps} ${num(c.fps)} <span class="flat">(${t.ref_short} ${num(c.ref_fps)})</span> ${delta(c.fps, c.ref_fps, true)}`;
+const dur = c => c.minutes == null ? "" : `${t.time} ${num(c.minutes, 1)} ${t.min} <span class="flat">(${t.ref_short} ${num(c.ref_minutes, 1)})</span> ${delta(c.minutes, c.ref_minutes, false)}`;
 const id = c => `c-${c.node}-${c.profile}`.replace(/[^A-Za-z0-9-]/g, "-");
+
+(() => {
+  const both = (a, b) => D.cells.filter(c => c[a] != null && c[b] != null);
+  const timed = both("minutes", "ref_minutes"), rated = both("fps", "ref_fps");
+  const sum = (list, k) => list.reduce((s, c) => s + c[k], 0);
+  const total = D.cells.reduce((s, c) => s + (c.minutes || 0), 0);
+  const meanPct = rated.length ? rated.reduce((s, c) => s + (c.fps / c.ref_fps - 1), 0) / rated.length : null;
+  const better = rated.filter(c => c.fps / c.ref_fps - 1 >= .03).length, worse = rated.filter(c => c.fps / c.ref_fps - 1 <= -.03).length;
+  const counts = ["same","changed","failed","new"].map(s => [s, D.cells.filter(c => c.status === s).length]).filter(x => x[1]);
+  $("tiles").innerHTML = [
+    `<div class="tile"><div class="k">${t.total_time}</div><div class="v">${num(total, 1)} ${t.min}</div>
+      <div class="d">${timed.length ? `${t.ref_short} ${num(sum(timed, "ref_minutes"), 1)} ${t.min} ${delta(sum(timed, "minutes"), sum(timed, "ref_minutes"), false)}` : ""}</div></div>`,
+    `<div class="tile"><div class="k">${t.mean_fps}</div><div class="v">${meanPct == null ? "—" : delta(1 + meanPct, 1, true)}</div>
+      <div class="d">${rated.length ? `<span class="up">${better} ${t.better}</span> · <span class="down">${worse} ${t.worse}</span> / ${rated.length}` : ""}</div></div>`,
+    `<div class="tile"><div class="k">${t.games}</div><div class="v">${D.cells.length}</div>
+      <div class="d">${counts.map(([s, n]) => `<span class="st s-${s}">${n} ${esc(word(s))}</span>`).join(" · ")}</div></div>`,
+  ].join("");
+})();
 
 $("grid").innerHTML = D.cells.map(c => {
   const n = c.shots.filter(s => s.verdict !== "same").length;
   return `<a class="chip s-${esc(c.status)}" href="#${id(c)}"><b>${esc(c.node)} · ${esc(c.profile)}</b>
     <span><span class="st">${esc(word(c.status))}</span>${n ? ` · ${n}/${c.shots.length}` : ""}</span>
-    <span class="mono">${esc(fps(c))}</span></a>`;
+    <span class="mono">${fps(c)}</span><span class="mono">${dur(c)}</span></a>`;
 }).join("");
 
 $("cells").innerHTML = D.cells.map(c => {
@@ -240,7 +281,7 @@ $("cells").innerHTML = D.cells.map(c => {
     + (c.failures.length ? `<details open><summary>${word("failed")}</summary><pre>${esc(c.failures.join("\n"))}</pre></details>` : "");
   return `<section class="cell" id="${id(c)}" data-changed="${c.status !== "same"}">
     <div class="cellhead"><h2>${esc(c.node)} · ${esc(c.profile)}</h2><span class="st s-${esc(c.status)}">${esc(word(c.status))}</span>
-    <span class="meta mono">${esc(fps(c))}</span><span class="meta">${esc(c.ref ? t.reference + " " + c.ref : t.noref)}${c.minutes ? ` · ${t.played_in} ${c.minutes} ${t.min}` : ""}${c.stopped ? ` · ${t.stopped}: ${esc(c.stopped)}` : ""}</span></div>
+    <span class="meta mono">${fps(c)}</span><span class="meta mono">${dur(c)}</span><span class="meta">${esc(c.ref ? t.reference + " " + c.ref : t.noref)}${c.stopped ? ` · ${t.stopped}: ${esc(c.stopped)}` : ""}</span></div>
     <div class="cols"><span>${t.reference}${c.ref ? " " + esc(c.ref) : ""}</span><span>${esc(D.tag)}</span><span>${t.found}</span></div>
     ${extra}${rows}</section>`;
 }).join("");
