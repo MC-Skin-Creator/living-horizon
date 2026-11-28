@@ -2,6 +2,36 @@
 
 ## Sonraki sürüm
 
+## 0.19.0 — 2026-11-28
+
+### Sunucu
+
+#### Yenilikler
+- **Oyuncu listesinde çevrim dışı oyuncular, senin seçimin** — Modu olan oyuncular, oyundan kimlerin çıktığını oyuncu listelerinde (Tab) görür. Sunucu sahipleri `config/livinghorizon-server.json` içindeki `offlineInTabList` ile listeyi yalnızca çevrim içi olanlara ayırabilir. Modun eski bir sürümünü kullanan oyuncular onları her zaman listeler.
+
+### İstemci
+
+#### Yenilikler
+- **Basit görüntüler hareket etmeye devam ediyor** — Basit görüntüler olarak çizilen uzaktaki canlılar, oyuncular ve varlıklar artık tek bir duruşta donmuş halde kaymak yerine hareket etmeye devam ediyor: yürüyor, bineklerinin bacakları hareket ederken biniyor ve teknelerinde kürek çekiyorlar. Bu daha fazla video belleği kullanır: hareket eden her biri resimleri için üç kat yer kaplar. *Hareketli Resim Mesafesi* ne kadar uzağa kadar hareket edeceklerini belirler, *Hareketli Resimler* bunu kapatır ve *Resim Önizleme...* hangilerinin hareketli olduğunu gösterir.
+- **Oyuncu listesinde çevrim dışı oyuncular** — Oyundan çıkan oyuncular artık oyuncu listesinde (Tab), çevrim içi olanlardan sonra, kafaları ve gri adlarıyla, en son çıkan en başta görünür: sunucuda kimlerin oynadığını bir bakışta görürsün. *Listede Çevrim Dışı* ile kapatabilirsin. Bir dünyada tek başınayken bile, gösterecek çevrim dışı oyuncu varsa liste artık açılır.
+- **Patates ön ayarı** — Yeni *Patates* ön ayarı en zayıf bilgisayarlar için her şeyi en düşüğe ayarlar. Uzaktaki canlıların neredeyse hepsi o zaman tam modeller yerine hâlâ yürüyen basit görüntüler olarak çizilir.
+
+#### İyileştirmeler
+- **Daha sade ayar ekranları** — Nadiren değiştirilen ayarlar artık her bölümdeki *Gelişmiş...* düğmesinin arkasında, hem modun ekranında hem de Sodium'un görüntü ayarlarındaki sayfasında. *Hata Ayıklama Seçenekleri* yalnızca modun ne yaptığını görme araçlarını tutuyor. Hiçbir ayarın değeri değişmiyor.
+- **Tüm sürümler daha kolay bulunuyor** — Tüm Minecraft sürümleri ve yükleyiciler artık beta olarak yayımlanıyor. Böylece CurseForge'da ve alfa sürümleri gizleyen launcher'larda görünüyorlar.
+- **GeckoLib modlarının canlıları uzakta** — Naturalist gibi GeckoLib kullanan modların canlıları artık uzakta ve basitleştirilmiş görüntüler olarak (*Basit Canlılar*) gösteriliyor; görüş mesafesinin ötesinde kaybolmuyor. (Minecraft 1.21.2 ile 1.21.8 arası.)
+- **Çevrim dışı işareti senin seçimin** — Oyundan çıkan oyuncuların üstündeki adın ardındaki (çevrim dışı) artık *Çevrim Dışı İşareti* ile gizlenebilir; yalnızca adları kalır.
+- **Basit görüntülere daha yumuşak geçiş** — Uzaktaki çevrimiçi oyuncular artık görüntü devreye girerken bir anda dönmek yerine, canlılar gibi, basit görüntülerinin onları gösterdiği açıya yumuşakça dönüyor. Her figür artık *Basitleştirme Mesafesi* ne olursa olsun dönmek için aynı birkaç bloğu kullanıyor. (Çevrimiçi oyuncular için Minecraft 1.21.2 ve sonrası.)
+- **Uzaktaki canlılar bir duman bulutunda kayboluyor** — Gördüğün uzaktaki bir canlı aslında artık orada değilse (sen yokken öldüyse ya da uzaklaştıysa), artık bir anda silinmek yerine oyunda ölen bir canlının çıkardığı duman bulutuyla kayboluyor. Oyunun *Parçacıklar* ayarına uyar. Endermanlar ise ışınlanarak gidiyor.
+
+#### Düzeltmeler
+- **Basit canlılar Fresh Animations ile düzgün duruyor** — Fresh Animations ile uzaktaki canlıların basit görüntüleri artık eğik, başları aşağıda ya da her açıdan farklı bir duruşta olmak yerine onları her yönden aynı şekilde dimdik gösteriyor. Bir canlı ayrıca bazen başka bir canlının görünümünü almak yerine paketin ona verdiği kendi görünümünü, boynuzları dahil, koruyor.
+- **Uzaktaki GeckoLib canlıları doğal yürüyor** — GeckoLib kullanan modların uzaktaki canlıları artık hareket ederken yürüme animasyonlarını oynatıyor; durma pozlarında kayarak ilerlemiyor. (Minecraft 1.20.1 ile 1.21.4 arası.)
+- **Dev canlılar uzaktan görünür kalıyor** — Modeli hitbox'ından çok daha büyük olan diğer modlardan canlılar, örneğin dev boss'lar, artık bir kısmı görüş alanına girer girmez uzakta gösteriliyor. Ortaları ekrandan çıkar çıkmaz ya da bir tepe ayaklarını gizler gizlemez artık kaybolmuyorlar.
+- **The Graveyard kuşları uzakta uçuyor** — The Graveyard'ın uzaktaki kargaları, kuzgunları ve saksağanları artık yerde yürümek yerine kanat çırparak uçuyor.
+- **Uzaktaki canlılar artık gökyüzünde belirip kaybolmuyor** — Uzakta görünen canlılar artık bir anlığına havada belirip sonra yerlerine sıçramıyor. Durdukları yerde beliriyorlar.
+- **Useless Reptile ejderhaları uzakta hareketli** — Useless Reptile'ın uzaktaki ejderhaları artık kanatları ve bacakları açık hâlde kaskatı durmak yerine animasyonlarını oynatıyor. (Minecraft 1.21.11 ve sonrası.)
+
 ## 0.18.1 — 2026-11-24
 
 ### İstemci

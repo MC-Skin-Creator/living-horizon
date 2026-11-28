@@ -2,6 +2,36 @@
 
 ## Prochaine version
 
+## 0.19.0 — 2026-11-28
+
+### Serveur
+
+#### Nouveautés
+- **Joueurs déconnectés dans la liste des joueurs, à votre choix** — Les joueurs qui ont le mod voient qui s'est déconnecté dans leur liste des joueurs (Tab). Les propriétaires de serveur peuvent la réserver aux joueurs en ligne avec `offlineInTabList` dans `config/livinghorizon-server.json`. Les joueurs qui ont une version plus ancienne du mod les affichent toujours.
+
+### Client
+
+#### Nouveautés
+- **Les images simplifiées restent en mouvement** — Les créatures, joueurs et entités lointains dessinés en images simplifiées continuent maintenant de bouger : ils marchent, chevauchent avec les pattes de leur monture en mouvement et rament dans leur bateau, au lieu de glisser figés dans une seule pose. Cela utilise plus de mémoire vidéo : chacun de ceux qui bougent en prend trois fois plus pour ses images. *Distance des images animées* règle jusqu'où ils bougent, *Images animées* permet de le désactiver, et *Aperçu des images...* montre lesquels sont animés.
+- **Joueurs déconnectés dans la liste des joueurs** — Les joueurs déconnectés apparaissent maintenant dans la liste des joueurs (Tab), après ceux en ligne, avec leur tête et leur pseudo grisé, les derniers partis en premier : vous voyez d'un coup d'œil qui joue sur le serveur. Désactivez-le avec *Déconnectés dans Tab*. Même seul dans un monde, la liste s'ouvre maintenant quand elle a des joueurs déconnectés à montrer.
+- **Préréglage Patate** — Un nouveau préréglage *Patate* met tout au plus bas pour les ordinateurs les plus modestes. Presque toutes les créatures lointaines sont alors dessinées en images simplifiées, qui marchent toujours, plutôt qu'en modèles complets.
+
+#### Améliorations
+- **Écrans de paramètres allégés** — Les paramètres qu'on change rarement se trouvent maintenant derrière un bouton *Avancé...* dans chaque section, sur l'écran du mod et sur sa page dans les paramètres vidéo de Sodium. Les *Paramètres de débogage* ne gardent que les outils pour voir ce que fait le mod. Aucun paramètre ne change de valeur.
+- **Toutes les versions plus faciles à trouver** — Toutes les versions de Minecraft et tous les chargeurs sont maintenant publiés en bêta. Ils apparaissent ainsi sur CurseForge et dans les launchers qui masquent les versions alpha.
+- **Créatures des mods GeckoLib au loin** — Les créatures des mods qui utilisent GeckoLib, comme Naturalist, sont maintenant affichées au loin et en images simplifiées (*Créatures simplifiées*), au lieu de disparaître au-delà de la distance d'affichage. (Minecraft 1.21.2 à 1.21.8.)
+- **Mention hors ligne au choix** — Le (hors ligne) après le pseudo au-dessus des joueurs déconnectés peut maintenant être masqué avec *Mention hors ligne*, pour ne laisser que leur pseudo.
+- **Passage plus doux aux images simplifiées** — Les joueurs en ligne au loin pivotent maintenant en douceur vers l'angle sous lequel leur image simplifiée les montre, comme les créatures, au lieu de tourner d'un coup quand l'image prend le relais. Chaque figure prend désormais les mêmes quelques blocs pour pivoter, quelle que soit la *Distance de simplification*. (Minecraft 1.21.2 et plus pour les joueurs en ligne.)
+- **Les créatures lointaines disparaissent dans un nuage de fumée** — Quand une créature lointaine que vous voyez n'est en fait plus là (morte ou partie pendant votre absence), elle disparaît maintenant dans le même nuage de fumée qu'une créature qui meurt dans le jeu, au lieu de s'effacer d'un coup. Elle suit le réglage *Particules* du jeu. Les Endermen, eux, se téléportent.
+
+#### Corrections
+- **Les créatures simplifiées se tiennent droites avec Fresh Animations** — Avec Fresh Animations, les images simplifiées des créatures lointaines les montrent maintenant bien droites, de la même façon sous tous les angles, au lieu de pencher, la tête en bas ou dans une pose différente d'un angle à l'autre. Une créature garde aussi son propre aspect donné par le pack, cornes comprises, au lieu de prendre parfois celui d'une autre.
+- **Les créatures GeckoLib lointaines marchent naturellement** — Les créatures lointaines des mods qui utilisent GeckoLib jouent maintenant leur animation de marche quand elles se déplacent, au lieu de glisser dans leur pose de repos. (Minecraft 1.20.1 à 1.21.4.)
+- **Les créatures géantes restent visibles au loin** — Les créatures d'autres mods dont le modèle dépasse largement leur hitbox, comme les boss géants, s'affichent maintenant au loin dès qu'une partie d'elles est visible. Elles ne disparaissent plus dès que leur centre sort de l'écran ou qu'une colline cache leurs pieds.
+- **Les oiseaux de The Graveyard volent au loin** — Les corneilles, corbeaux et pies lointains de The Graveyard volent maintenant en battant des ailes, au lieu de marcher au sol.
+- **Les créatures lointaines n'apparaissent plus dans le ciel** — Les créatures qui arrivent au loin n'apparaissent plus un instant dans les airs avant de sauter à leur place. Elles apparaissent là où elles se tiennent.
+- **Dragons de Useless Reptile animés au loin** — Les dragons lointains de Useless Reptile jouent maintenant leurs animations, au lieu de rester figés, ailes et pattes écartées. (Minecraft 1.21.11 et plus.)
+
 ## 0.18.1 — 2026-11-24
 
 ### Client

@@ -2,6 +2,36 @@
 
 ## Nächste Version
 
+## 0.19.0 — 2026-11-28
+
+### Server
+
+#### Neu
+- **Offline‐Spieler in der Spielerliste, nach deiner Wahl** — Spieler mit der Mod sehen in ihrer Spielerliste (Tab), wer sich abgemeldet hat. Serverbetreiber können die Liste mit `offlineInTabList` in `config/livinghorizon-server.json` auf Online‐Spieler beschränken. Spieler mit einer älteren Version der Mod führen sie immer auf.
+
+### Client
+
+#### Neu
+- **Vereinfachte Bilder bleiben in Bewegung** — Ferne Kreaturen, Spieler und Objekte, die als vereinfachte Bilder gezeichnet werden, bewegen sich jetzt weiter: Sie laufen, reiten mit sich bewegenden Beinen ihres Reittiers und rudern in ihren Booten, statt erstarrt in einer einzigen Haltung dahinzugleiten. Das braucht mehr Videospeicher: Jedes, das sich bewegt, braucht dreimal so viel für seine Bilder. *Weite animierter Bilder* legt fest, wie weit sie sich bewegen, *Animierte Bilder* schaltet es aus, und *Bildvorschau …* zeigt, welche animiert sind.
+- **Offline‐Spieler in der Spielerliste** — Abgemeldete Spieler erscheinen jetzt in der Spielerliste (Tab), nach den Online‐Spielern, mit ihrem Kopf und ihrem Namen in Grau, die zuletzt gegangenen zuerst: Du siehst auf einen Blick, wer auf dem Server spielt. Abschalten lässt es sich mit *Offline in Spielerliste*. Auch allein in einer Welt öffnet sich die Liste jetzt, wenn sie Offline‐Spieler zu zeigen hat.
+- **Voreinstellung Kartoffel** — Die neue Voreinstellung *Kartoffel* stellt alles für die schwächsten Rechner auf das Minimum. Fast alle fernen Kreaturen werden dann als vereinfachte Bilder gezeichnet, die weiterhin laufen, statt als vollständige Modelle.
+
+#### Verbessert
+- **Übersichtlichere Einstellungen** — Selten geänderte Einstellungen liegen jetzt hinter einer Schaltfläche *Erweitert …* in jedem Abschnitt, auf dem Bildschirm der Mod und auf ihrer Seite in Sodiums Grafikeinstellungen. Die *Debug‐Optionen* behalten nur die Werkzeuge, um zu sehen, was die Mod tut. Keine Einstellung ändert ihren Wert.
+- **Alle Builds leichter zu finden** — Alle Minecraft-Versionen und Loader werden jetzt als Beta veröffentlicht. Sie erscheinen damit auf CurseForge und in Launchern, die Alpha-Versionen ausblenden.
+- **Kreaturen aus GeckoLib-Mods in der Ferne** — Kreaturen aus Mods, die GeckoLib verwenden, etwa Naturalist, werden jetzt in der Ferne und als vereinfachte Bilder (*Vereinfachte Kreaturen*) angezeigt, statt jenseits der Sichtweite zu verschwinden. (Minecraft 1.21.2 bis 1.21.8.)
+- **Offline‐Zusatz nach Wahl** — Das (offline) nach dem Namen über abgemeldeten Spielern lässt sich jetzt mit *Offline‐Zusatz* ausblenden, sodass nur ihr Name bleibt.
+- **Sanfterer Wechsel zu vereinfachten Bildern** — Ferne Spieler, die online sind, drehen sich jetzt wie Kreaturen sanft in den Winkel, in dem ihr vereinfachtes Bild sie zeigt, statt sich auf einen Schlag zu drehen, wenn das Bild übernimmt. Jede Figur braucht jetzt dieselben wenigen Blöcke für die Drehung, unabhängig von der *Vereinfachungsweite*. (Minecraft 1.21.2 und neuer für Spieler, die online sind.)
+- **Ferne Kreaturen verschwinden in einer Rauchwolke** — Wenn eine ferne Kreatur, die du siehst, gar nicht mehr da ist (sie ist gestorben oder weitergezogen, während du weg warst), verschwindet sie jetzt in derselben Rauchwolke wie eine sterbende Kreatur im Spiel, statt einfach auszublenden. Sie richtet sich nach der Einstellung *Partikel* des Spiels. Endermen teleportieren sich stattdessen weg.
+
+#### Behoben
+- **Vereinfachte Kreaturen stehen mit Fresh Animations richtig** — Mit Fresh Animations zeigen die vereinfachten Bilder ferner Kreaturen sie jetzt aufrecht, von jeder Seite gleich, statt geneigt, mit gesenktem Kopf oder von Blickwinkel zu Blickwinkel in einer anderen Haltung. Eine Kreatur behält auch ihr eigenes Aussehen aus dem Paket, Hörner inklusive, statt manchmal das einer anderen zu tragen.
+- **Ferne GeckoLib-Kreaturen laufen natürlich** — Ferne Kreaturen aus Mods, die GeckoLib verwenden, spielen jetzt ihre Laufanimation ab, wenn sie sich bewegen, statt in ihrer Ruhehaltung dahinzugleiten. (Minecraft 1.20.1 bis 1.21.4.)
+- **Riesige Kreaturen bleiben aus der Ferne sichtbar** — Kreaturen anderer Mods, deren Modell weit größer als ihre Hitbox ist, etwa riesige Bosse, werden jetzt in der Ferne angezeigt, sobald ein Teil von ihnen zu sehen ist. Sie verschwinden nicht mehr, sobald ihre Mitte den Bildschirm verlässt oder ein Hügel ihre Füße verdeckt.
+- **Die Vögel aus The Graveyard fliegen in der Ferne** — Ferne Krähen, Raben und Elstern aus The Graveyard fliegen jetzt mit schlagenden Flügeln, statt am Boden zu laufen.
+- **Ferne Kreaturen blitzen nicht mehr am Himmel auf** — Kreaturen, die in der Ferne auftauchen, erscheinen nicht mehr kurz in der Luft, um dann an ihren Platz zu springen. Sie erscheinen dort, wo sie stehen.
+- **Drachen aus Useless Reptile in der Ferne animiert** — Ferne Drachen aus Useless Reptile spielen jetzt ihre Animationen ab, statt mit ausgebreiteten Flügeln und Gliedern starr dazustehen. (Minecraft 1.21.11 und neuer.)
+
 ## 0.18.1 — 2026-11-24
 
 ### Client

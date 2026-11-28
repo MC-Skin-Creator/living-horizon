@@ -2,6 +2,36 @@
 
 ## Prossima versione
 
+## 0.19.0 — 2026-11-28
+
+### Server
+
+#### Novità
+- **Giocatori disconnessi nell'elenco giocatori, a tua scelta** — I giocatori con la mod vedono chi si è disconnesso nel loro elenco giocatori (Tab). I proprietari dei server possono limitarlo ai giocatori connessi con `offlineInTabList` in `config/livinghorizon-server.json`. I giocatori con una versione precedente della mod li mostrano sempre.
+
+### Client
+
+#### Novità
+- **Le immagini semplificate restano in movimento** — Creature, giocatori ed entità lontani disegnati come immagini semplificate ora continuano a muoversi: camminano, cavalcano con le zampe della cavalcatura in movimento e remano nelle loro barche, invece di scivolare immobili in un'unica posa. Questo usa più memoria video: ognuno che si muove ne occupa il triplo per le sue immagini. *Distanza immagini animate* imposta fin dove continuano a muoversi, *Immagini animate* lo disattiva e *Anteprima immagini...* mostra quali sono animati.
+- **Giocatori disconnessi nell'elenco giocatori** — I giocatori disconnessi compaiono ora nell'elenco giocatori (Tab), dopo quelli connessi, con la loro testa e il nome in grigio, gli ultimi ad andarsene per primi: vedi a colpo d'occhio chi gioca sul server. Disattivalo con *Disconnessi nell'elenco*. Anche da solo in un mondo, l'elenco ora si apre quando ha giocatori disconnessi da mostrare.
+- **Preimpostazione Patata** — La nuova preimpostazione *Patata* porta tutto al minimo per i computer più modesti. Quasi tutte le creature lontane vengono allora disegnate come immagini semplificate, che continuano a camminare, invece che come modelli completi.
+
+#### Miglioramenti
+- **Schermate delle impostazioni più leggere** — Le impostazioni che si cambiano di rado ora si trovano dietro un pulsante *Avanzate...* in ogni sezione, nella schermata della mod e nella sua pagina delle impostazioni video di Sodium. Le *Opzioni diagnostiche* tengono solo gli strumenti per vedere cosa fa la mod. Nessuna impostazione cambia valore.
+- **Tutte le versioni più facili da trovare** — Tutte le versioni di Minecraft e tutti i loader ora sono pubblicati come beta. Ora compaiono su CurseForge e nei launcher che nascondono le versioni alpha.
+- **Creature delle mod GeckoLib in lontananza** — Le creature delle mod che usano GeckoLib, come Naturalist, ora vengono mostrate in lontananza e come immagini semplificate (*Creature semplificate*), invece di sparire oltre la distanza di visualizzazione. (Minecraft da 1.21.2 a 1.21.8.)
+- **Segno non in linea a scelta** — Il (non in linea) dopo il nome sopra i giocatori disconnessi ora può essere nascosto con *Segno non in linea*, lasciando solo il loro nome.
+- **Passaggio più dolce alle immagini semplificate** — I giocatori online lontani ora ruotano dolcemente verso l'angolo in cui li mostra la loro immagine semplificata, come le creature, invece di girarsi di colpo quando subentra l'immagine. Ogni figura impiega ora gli stessi pochi blocchi per ruotare, qualunque sia la *Distanza di semplificazione*. (Minecraft 1.21.2 e successive per i giocatori online.)
+- **Le creature lontane svaniscono in una nuvola di fumo** — Quando una creatura lontana che vedi in realtà non c'è più (è morta o si è allontanata mentre eri via), ora scompare nella stessa nuvola di fumo di una creatura che muore nel gioco, invece di sparire di colpo. Segue l'impostazione *Particelle* del gioco. Gli Enderman invece si teletrasportano via.
+
+#### Correzioni
+- **Le creature semplificate stanno dritte con Fresh Animations** — Con Fresh Animations, le immagini semplificate delle creature lontane ora le mostrano ben dritte, uguali da ogni lato, invece che inclinate, a testa bassa o in una posa diversa da un'angolazione all'altra. Una creatura mantiene anche il proprio aspetto dato dal pacchetto, corna comprese, invece di prendere a volte quello di un'altra.
+- **Le creature GeckoLib lontane camminano in modo naturale** — Le creature lontane delle mod che usano GeckoLib ora riproducono la loro animazione di camminata quando si muovono, invece di scivolare nella posa di riposo. (Minecraft da 1.20.1 a 1.21.4.)
+- **Le creature giganti restano visibili da lontano** — Le creature di altre mod il cui modello è molto più grande della loro hitbox, come i boss giganti, ora vengono mostrate in lontananza non appena una parte di esse è in vista. Non scompaiono più appena il loro centro esce dallo schermo o una collina ne nasconde i piedi.
+- **Gli uccelli di The Graveyard volano in lontananza** — Cornacchie, corvi e gazze lontani di The Graveyard ora volano battendo le ali, invece di camminare a terra.
+- **Le creature lontane non compaiono più per un attimo nel cielo** — Le creature che compaiono in lontananza non appaiono più per un istante a mezz'aria per poi saltare al loro posto. Compaiono dove si trovano.
+- **Draghi di Useless Reptile animati in lontananza** — I draghi lontani di Useless Reptile ora riproducono le loro animazioni, invece di restare rigidi con ali e zampe spalancate. (Minecraft 1.21.11 e successive.)
+
 ## 0.18.1 — 2026-11-24
 
 ### Client

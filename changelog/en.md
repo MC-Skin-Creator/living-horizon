@@ -2,6 +2,36 @@
 
 ## Unreleased
 
+## 0.19.0 — 2026-11-28
+
+### Server
+
+#### New
+- **Offline players in the player list, your choice** — Players with the mod see who logged off in their player list (Tab). Server owners can keep that list to those online with `offlineInTabList` in `config/livinghorizon-server.json`. Players with an older version of the mod always list them.
+
+### Client
+
+#### New
+- **Simplified images keep moving** — Distant mobs, players and entities drawn as simplified images now keep moving: they walk, ride with their mount's legs moving, and row their boats, instead of gliding along frozen in one pose. This uses more video memory: each one that moves takes three times as much for its images. *Animated Picture Distance* sets how far they keep moving, *Animated Pictures* turns it off, and *Picture Preview...* shows which ones are animated.
+- **Offline players in the player list** — Players who logged off now appear in the player list (Tab), after those online, with their head and their name in grey, the last to leave first: you see at a glance who plays on the server. Turn it off with *Offline in Player List*. Even alone in a world, the list now opens when it has offline players to show.
+- **Potato preset** — A new *Potato* preset sets everything to its lowest for the weakest computers. Nearly every distant mob is then drawn as a simplified image, which still walks, rather than a full model.
+
+#### Improved
+- **Lighter settings screens** — The settings players rarely change now sit behind an *Advanced...* button in each section, on the mod's screen and on its page in Sodium's video settings. The *Debug Options* keep only the tools to look at what the mod does. No setting changes its value.
+- **Every build easier to find** — All Minecraft versions and loaders are now published as beta. They show up on CurseForge and in launchers that hide alpha versions.
+- **Mobs from GeckoLib mods in the distance** — Mobs from mods that use GeckoLib, such as Naturalist, are now shown in the distance and as simplified images (*Simplified Mobs*), instead of vanishing past the render distance. (Minecraft 1.21.2 to 1.21.8.)
+- **Offline mark, your choice** — The (offline) after the name above players who logged off can now be hidden with *Offline Mark*, leaving their name alone.
+- **Smoother switch to simplified images** — Distant players online now turn gently to the angle their simplified image shows them at, as mobs do, instead of spinning all at once as the image takes over. Every figure now takes the same few blocks to turn, whatever *Simplification Distance* is set to. (Minecraft 1.21.2 and later for players online.)
+- **Distant mobs vanish in a puff of smoke** — When a distant mob you can see turns out to be gone (it died or wandered off while you were away), it now disappears in the same puff of smoke as a mob dying in the game, instead of blinking out. It follows the game's *Particles* setting. Endermen teleport away instead.
+
+#### Fixed
+- **Simplified mobs stand properly with Fresh Animations** — With Fresh Animations, the simplified images of distant mobs now show them standing straight, the same way from every side, instead of leaning, head down or in a different pose from one angle to the next. A mob also keeps its own look from the pack, horns and all, instead of sometimes wearing another mob's.
+- **Distant GeckoLib mobs walk naturally** — Distant mobs from mods that use GeckoLib now play their walking animation as they move, instead of sliding along in their idle pose. (Minecraft 1.20.1 to 1.21.4.)
+- **Giant mobs stay visible from afar** — Mobs from other mods whose model is much bigger than their hitbox, such as giant bosses, are now shown in the distance whenever part of them is in view. They no longer vanish as soon as their middle leaves the screen or a hill hides their feet.
+- **The Graveyard's birds fly in the distance** — Distant crows, ravens and magpies from The Graveyard now fly and flap their wings, instead of walking on the ground.
+- **Distant mobs no longer flash up in the sky** — Mobs coming into view far away no longer appear in the air for an instant and then jump to their place. They show up where they stand.
+- **Useless Reptile's dragons animated in the distance** — Distant dragons from Useless Reptile now play their animations, instead of standing stiff with their wings and limbs spread out. (Minecraft 1.21.11 and later.)
+
 ## 0.18.1 — 2026-11-24
 
 ### Client

@@ -2,6 +2,36 @@
 
 ## Próxima versão
 
+## 0.19.0 — 2026-11-28
+
+### Servidor
+
+#### Novidades
+- **Jogadores offline na lista de jogadores, à sua escolha** — Os jogadores com o mod veem quem saiu na lista de jogadores (Tab). Os donos de servidores podem limitá-la aos jogadores online com `offlineInTabList` em `config/livinghorizon-server.json`. Jogadores com uma versão mais antiga do mod sempre os mostram.
+
+### Cliente
+
+#### Novidades
+- **As imagens simplificadas continuam em movimento** — As criaturas, jogadores e entidades distantes desenhados como imagens simplificadas agora continuam se movendo: andam, cavalgam com as patas da montaria em movimento e remam em seus barcos, em vez de deslizarem congelados numa única pose. Isso usa mais memória de vídeo: cada um que se move ocupa o triplo para suas imagens. *Distância das imagens animadas* define até onde eles continuam se movendo, *Imagens animadas* desativa isso e *Prévia das imagens...* mostra quais estão animados.
+- **Jogadores offline na lista de jogadores** — Os jogadores que saíram agora aparecem na lista de jogadores (Tab), depois dos online, com a cabeça deles e o nome em cinza, os últimos a sair primeiro: você vê de relance quem joga no servidor. Desative com *Offline na lista*. Mesmo sozinho em um mundo, a lista agora abre quando tem jogadores offline para mostrar.
+- **Predefinição Batata** — A nova predefinição *Batata* coloca tudo no mínimo para os computadores mais modestos. Quase todas as criaturas distantes passam a ser desenhadas como imagens simplificadas, que continuam andando, em vez de modelos completos.
+
+#### Melhorias
+- **Telas de configurações mais leves** — As configurações que raramente mudam agora ficam atrás de um botão *Avançado...* em cada seção, na tela do mod e na página dele nas configurações de vídeo do Sodium. As *Opções de depuração* ficam só com as ferramentas para ver o que o mod faz. Nenhuma configuração muda de valor.
+- **Todas as versões mais fáceis de encontrar** — Todas as versões do Minecraft e todos os loaders agora são publicados como beta. Assim, aparecem no CurseForge e nos launchers que ocultam versões alfa.
+- **Criaturas de mods com GeckoLib à distância** — As criaturas de mods que usam GeckoLib, como o Naturalist, agora aparecem à distância e como imagens simplificadas (*Criaturas simplificadas*), em vez de sumirem além da distância de renderização. (Minecraft 1.21.2 a 1.21.8.)
+- **Marca offline à sua escolha** — O (offline) após o nome acima dos jogadores que saíram agora pode ser ocultado com *Marca offline*, deixando só o nome deles.
+- **Transição mais suave para as imagens simplificadas** — Os jogadores online distantes agora giram suavemente para o ângulo em que a imagem simplificada os mostra, como as criaturas, em vez de girar de uma vez quando a imagem assume. Cada figura agora leva os mesmos poucos blocos para girar, seja qual for a *Distância de simplificação*. (Minecraft 1.21.2 e posteriores para os jogadores online.)
+- **Criaturas distantes somem numa nuvem de fumaça** — Quando uma criatura distante que você vê não está mais lá (morreu ou foi embora enquanto você estava longe), agora ela some na mesma nuvem de fumaça de uma criatura que morre no jogo, em vez de sumir de repente. Ela segue a configuração *Partículas* do jogo. Os Endermen, por sua vez, se teletransportam.
+
+#### Correções
+- **As criaturas simplificadas ficam de pé direito com o Fresh Animations** — Com o Fresh Animations, as imagens simplificadas das criaturas distantes agora as mostram bem retas, iguais de todos os lados, em vez de inclinadas, de cabeça baixa ou numa pose diferente de um ângulo para outro. Uma criatura também mantém sua própria aparência dada pelo pacote, chifres incluídos, em vez de às vezes usar a de outra.
+- **Criaturas distantes de GeckoLib andam com naturalidade** — As criaturas distantes de mods que usam GeckoLib agora tocam sua animação de andar ao se mover, em vez de deslizarem na pose de repouso. (Minecraft 1.20.1 a 1.21.4.)
+- **Criaturas gigantes continuam visíveis de longe** — Criaturas de outros mods cujo modelo é muito maior que a hitbox, como chefes gigantes, agora aparecem à distância assim que uma parte delas está à vista. Elas não somem mais assim que o centro sai da tela ou uma colina esconde os pés delas.
+- **As aves do The Graveyard voam à distância** — Os corvos, gralhas e pegas distantes do The Graveyard agora voam batendo as asas, em vez de andar pelo chão.
+- **Criaturas distantes não piscam mais no céu** — Criaturas que surgem ao longe não aparecem mais por um instante no ar antes de pular para o seu lugar. Elas surgem onde estão.
+- **Dragões do Useless Reptile animados à distância** — Os dragões distantes do Useless Reptile agora tocam suas animações, em vez de ficarem rígidos com as asas e as patas abertas. (Minecraft 1.21.11 e posteriores.)
+
 ## 0.18.1 — 2026-11-24
 
 ### Cliente

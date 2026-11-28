@@ -2,6 +2,36 @@
 
 ## Następna wersja
 
+## 0.19.0 — 2026-11-28
+
+### Serwer
+
+#### Nowości
+- **Gracze offline na liście graczy, według twojego wyboru** — Gracze z modem widzą na liście graczy (Tab), kto się wylogował. Właściciele serwerów mogą ograniczyć ją do graczy online opcją `offlineInTabList` w `config/livinghorizon-server.json`. Gracze ze starszą wersją moda zawsze ich pokazują.
+
+### Klient
+
+#### Nowości
+- **Uproszczone obrazy pozostają w ruchu** — Odległe stworzenia, gracze i byty rysowane jako uproszczone obrazy dalej się teraz ruszają: chodzą, jeżdżą wierzchem, a ich wierzchowiec porusza nogami, i wiosłują w łodziach, zamiast sunąć zastygłe w jednej pozie. Zużywa to więcej pamięci wideo: każdy, kto się rusza, zajmuje trzy razy więcej na swoje obrazy. *Odległość animowanych obrazów* ustala, jak daleko dalej się ruszają, *Animowane obrazy* to wyłącza, a *Podgląd obrazów…* pokazuje, które są animowane.
+- **Gracze offline na liście graczy** — Gracze, którzy się wylogowali, pojawiają się teraz na liście graczy (Tab), po graczach online, z ich głową i nazwą na szaro, ostatnio wylogowani najpierw: od razu widać, kto gra na serwerze. Wyłączysz to opcją *Offline na liście graczy*. Nawet gdy grasz sam w świecie, lista otwiera się teraz, jeśli ma graczy offline do pokazania.
+- **Ustawienie Ziemniak** — Nowe ustawienie *Ziemniak* ustawia wszystko na minimum dla najsłabszych komputerów. Prawie wszystkie odległe stworzenia są wtedy rysowane jako uproszczone obrazy, które nadal chodzą, zamiast pełnych modeli.
+
+#### Ulepszenia
+- **Lżejsze ekrany ustawień** — Rzadko zmieniane ustawienia są teraz za przyciskiem *Zaawansowane…* w każdej sekcji, na ekranie moda i na jego stronie w ustawieniach grafiki Sodium. *Opcje debugowania* zachowują tylko narzędzia do podglądu działania moda. Żadne ustawienie nie zmienia wartości.
+- **Wszystkie wersje łatwiejsze do znalezienia** — Wszystkie wersje Minecrafta i wszystkie loadery są teraz publikowane jako beta. Dzięki temu pojawiają się na CurseForge i w launcherach, które ukrywają wersje alfa.
+- **Stworzenia z modów GeckoLib w oddali** — Stworzenia z modów korzystających z GeckoLib, takich jak Naturalist, są teraz widoczne w oddali i jako uproszczone obrazy (*Uproszczone stworzenia*), zamiast znikać poza zasięgiem renderowania. (Minecraft od 1.21.2 do 1.21.8.)
+- **Dopisek offline do wyboru** — Dopisek (offline) po nazwie nad graczami, którzy się wylogowali, można teraz ukryć opcją *Dopisek offline*, zostawiając samą nazwę.
+- **Płynniejsze przejście do uproszczonych obrazów** — Odlegli gracze online obracają się teraz łagodnie do kąta, pod którym pokazuje ich uproszczony obraz, tak jak stworzenia, zamiast obracać się nagle, gdy obraz przejmuje rolę. Każda postać obraca się teraz na tych samych kilku blokach, niezależnie od *Odległości uproszczenia*. (Minecraft 1.21.2 i nowsze dla graczy online.)
+- **Odległe stworzenia znikają w obłoku dymu** — Gdy odległe stworzenie, które widzisz, okazuje się już nieobecne (zginęło lub odeszło pod twoją nieobecność), znika teraz w takim samym obłoku dymu jak stworzenie ginące w grze, zamiast nagle zgasnąć. Zależy to od ustawienia *Cząsteczki* w grze. Endermany zamiast tego się teleportują.
+
+#### Poprawki
+- **Uproszczone stworzenia stoją prosto z Fresh Animations** — Z Fresh Animations uproszczone obrazy odległych stworzeń pokazują je teraz prosto, tak samo z każdej strony, zamiast pochylonych, z opuszczoną głową lub w innej pozie z każdego kąta. Stworzenie zachowuje też swój własny wygląd z paczki, razem z rogami, zamiast czasem przybierać wygląd innego.
+- **Odległe stworzenia GeckoLib chodzą naturalnie** — Odległe stworzenia z modów korzystających z GeckoLib odtwarzają teraz animację chodu, gdy się poruszają, zamiast sunąć w pozie spoczynku. (Minecraft od 1.20.1 do 1.21.4.)
+- **Olbrzymie stworzenia widoczne z daleka** — Stworzenia z innych modów, których model jest znacznie większy niż ich hitbox, na przykład olbrzymie bossy, są teraz pokazywane w oddali, gdy tylko część z nich jest widoczna. Nie znikają już, gdy tylko ich środek opuści ekran albo wzgórze zasłoni ich stopy.
+- **Ptaki z The Graveyard latają w oddali** — Odległe wrony, kruki i sroki z The Graveyard latają teraz, machając skrzydłami, zamiast chodzić po ziemi.
+- **Odległe stworzenia nie migają już na niebie** — Stworzenia pojawiające się w oddali nie ukazują się już na chwilę w powietrzu, by potem przeskoczyć na swoje miejsce. Pojawiają się tam, gdzie stoją.
+- **Smoki z Useless Reptile animowane w oddali** — Odległe smoki z Useless Reptile odtwarzają teraz swoje animacje, zamiast stać sztywno z rozłożonymi skrzydłami i łapami. (Minecraft 1.21.11 i nowsze.)
+
 ## 0.18.1 — 2026-11-24
 
 ### Klient
