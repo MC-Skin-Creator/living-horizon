@@ -4,16 +4,12 @@ package fr.clixmods.livinghorizon.ui;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.QualityPreset;
-import fr.clixmods.livinghorizon.track.FarPlayerTracker;
-import fr.clixmods.livinghorizon.track.Foresight;
-import fr.clixmods.livinghorizon.track.MobScan;
 import net.caffeinemc.mods.sodium.api.config.ConfigEntryPoint;
 import net.caffeinemc.mods.sodium.api.config.ConfigState;
 import net.caffeinemc.mods.sodium.api.config.StorageEventHandler;
 import net.caffeinemc.mods.sodium.api.config.option.ControlValueFormatter;
 import net.caffeinemc.mods.sodium.api.config.structure.ConfigBuilder;
 import net.caffeinemc.mods.sodium.api.config.structure.OptionBuilder;
-import net.caffeinemc.mods.sodium.api.config.structure.OptionGroupBuilder;
 import net.caffeinemc.mods.sodium.api.config.structure.OptionPageBuilder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConfirmScreen;
@@ -96,16 +92,18 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 () -> FarConfig.get().impostorPlayers))
                         .addOption(bool(b, "impostorBirds", d.impostorBirds, v -> FarConfig.get().impostorBirds = v,
                                 () -> FarConfig.get().impostorBirds))
-                        .addOption(bool(b, "impostorShading", d.impostorShading, v -> FarConfig.get().impostorShading = v,
-                                () -> FarConfig.get().impostorShading)
+                        .addOption(bool(b, "impostorAnimation", d.impostorAnimation,
+                                v -> FarConfig.get().impostorAnimation = v, () -> FarConfig.get().impostorAnimation)
                                 .setEnabledProvider(any(PICTURED), ids(PICTURED)))
                         .addOption(blocks(b, "impostorDistance", 0, FarConfig.MAX_IMPOSTOR_DISTANCE, d.impostorDistance,
                                 v -> FarConfig.get().impostorDistance = v, () -> FarConfig.get().impostorDistance)
                                 .setEnabledProvider(any(PICTURED), ids(PICTURED)))
-                        .addOption(integer(b, "impostorPixels", 0, FarConfig.MAX_IMPOSTOR_PIXELS, d.impostorPixels,
-                                v -> FarConfig.get().impostorPixels = v, () -> FarConfig.get().impostorPixels,
-                                unit("impostorPixels", "pixels", 0))
-                                .setEnabledProvider(any(PICTURED), ids(PICTURED)))
+                        .addOption(blocks(b, "impostorAnimationDistance", FarConfig.MIN_ANIMATION_DISTANCE,
+                                FarConfig.MAX_ANIMATION_DISTANCE, d.impostorAnimationDistance,
+                                v -> FarConfig.get().impostorAnimationDistance = v,
+                                () -> FarConfig.get().impostorAnimationDistance)
+                                .setEnabledProvider(state -> any(PICTURED).apply(state)
+                                        && state.readBooleanOption(id("impostorAnimation")), ids(ANIMATED)))
                         .addOption(integer(b, "impostorMobMemory", FarConfig.MIN_MOB_MEMORY, FarConfig.MAX_MOB_MEMORY,
                                 d.impostorMobMemory, v -> FarConfig.get().impostorMobMemory = v,
                                 () -> FarConfig.get().impostorMobMemory,
@@ -117,7 +115,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 unit("impostorPlayerMemory", "megabytes", FarConfig.MIN_PLAYER_MEMORY))
                                 .setEnabledProvider(on("impostorPlayers"), id("impostorPlayers"))))
                 .addOptionGroup(b.createOptionGroup()
-                        .addOption(opens(b, "impostorPreview", ImpostorScreen::new)));
+                        .addOption(opens(b, "simplificationAdvanced", SimplificationAdvancedScreen::new)));
     }
 
     private OptionPageBuilder players(ConfigBuilder b, FarConfig d) {
@@ -125,11 +123,9 @@ public final class SodiumOptions implements ConfigEntryPoint {
                 .addOptionGroup(b.createOptionGroup()
                         .addOption(bool(b, "enabled", d.enabled, v -> FarConfig.get().enabled = v,
                                 () -> FarConfig.get().enabled))
-                        .addOption(bool(b, "showVehicles", d.showVehicles, v -> FarConfig.get().showVehicles = v,
-                                () -> FarConfig.get().showVehicles))
                         .addOption(reach(b, "playerMaxDistance", d.playerMaxDistance,
                                 v -> FarConfig.get().playerMaxDistance = v, () -> FarConfig.get().playerMaxDistance)))
-                .addOptionGroup(b.createOptionGroup()
+                .addOptionGroup(b.createOptionGroup().setName(Component.translatable(KEY + "players.offline"))
                         .addOption(bool(b, "offlinePlayers", d.offlinePlayers, v -> FarConfig.get().offlinePlayers = v,
                                 () -> FarConfig.get().offlinePlayers))
                         .addOption(count(b, "maxOfflinePlayers", FarConfig.MAX_OFFLINE, FarConfig.UNLIMITED_OFFLINE, d.maxOfflinePlayers,
@@ -142,20 +138,15 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 () -> FarConfig.get().offlineRoam)
                                 .setEnabledProvider(s -> s.readBooleanOption(id("offlinePlayers"))
                                         && s.readBooleanOption(id("offlineLife")), id("offlinePlayers"), id("offlineLife")))
-                        .addOption(bool(b, "offlineNames", d.offlineNames, v -> FarConfig.get().offlineNames = v,
-                                () -> FarConfig.get().offlineNames)
-                                .setEnabledProvider(on("offlinePlayers"), id("offlinePlayers")))
-                        .addOption(button(b, "forgetSleepers", parent -> confirm(parent, "forgetSleepers",
-                                () -> FarPlayerTracker.get().resting().forgetAll()))));
+                        .addOption(opens(b, "playersAdvanced", PlayersAdvancedScreen::new)));
     }
 
     private OptionPageBuilder mobs(ConfigBuilder b, FarConfig d) {
         // In three parts, as on the mod's own screen: what goes for both, the mobs, the other entities.
         return b.createOptionPage().setName(Component.translatable(KEY + "mobs"))
-                .addOptionGroup(scan(b, d, b.createOptionGroup().setName(Component.translatable(KEY + "mobs.general"))
+                .addOptionGroup(b.createOptionGroup().setName(Component.translatable(KEY + "mobs.general"))
                         .addOption(opens(b, "chooseMobs", MobTypesScreen::new))
-                        .addOption(button(b, "forgetMobs", parent -> confirm(parent, "forgetMobs",
-                                () -> FarPlayerTracker.get().mobs().forgetAll())))))
+                        .addOption(opens(b, "mobsAdvanced", MobsAdvancedScreen::new)))
                 .addOptionGroup(b.createOptionGroup().setName(Component.translatable(KEY + "mobs.creatures"))
                         .addOption(bool(b, "distantMobs", d.distantMobs, v -> FarConfig.get().distantMobs = v,
                                 () -> FarConfig.get().distantMobs))
@@ -163,10 +154,6 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 v -> FarConfig.get().seedMobs = v, () -> FarConfig.get().seedMobs))
                         .addOption(count(b, "maxDistantMobs", FarConfig.MAX_MOBS, FarConfig.UNLIMITED_MOBS, d.maxDistantMobs,
                                 v -> FarConfig.get().maxDistantMobs = v, () -> FarConfig.get().maxDistantMobs))
-                        .addOption(bool(b, "rememberNamedMobs", d.rememberNamedMobs,
-                                v -> FarConfig.get().rememberNamedMobs = v, () -> FarConfig.get().rememberNamedMobs))
-                        .addOption(bool(b, "hideUndergroundMobs", d.hideUndergroundMobs,
-                                v -> FarConfig.get().hideUndergroundMobs = v, () -> FarConfig.get().hideUndergroundMobs))
                         .addOption(reach(b, "mobMaxDistance", d.mobMaxDistance,
                                 v -> FarConfig.get().mobMaxDistance = v, () -> FarConfig.get().mobMaxDistance))
                         .addOption(integer(b, "animationMinPixels", 0, 40, d.animationMinPixels,
@@ -183,57 +170,6 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 v -> FarConfig.get().entityMaxDistance = v, () -> FarConfig.get().entityMaxDistance)));
     }
 
-    /** "Scan the chunks around": only in a single player world, read again whenever the screen is built. */
-    /** The scan's two settings, added to {@code group}. */
-    private OptionGroupBuilder scan(ConfigBuilder b, FarConfig d, OptionGroupBuilder group) {
-        return group
-                .addOption(b.createIntegerOption(id("scanRadius"))
-                        .setName(Component.translatable(KEY + "scanRadius"))
-                        .setTooltip(tooltip("scanRadius"))
-                        .setRange(MobScan.MIN_RADIUS, MobScan.MAX_RADIUS, 1)
-                        .setValueFormatter(v -> Component.translatable(KEY + "scanRadius.value", v))
-                        .setDefaultValue(d.scanRadius)
-                        .setStorageHandler(storage)
-                        .setBinding(v -> FarConfig.get().scanRadius = v,
-                                () -> Math.clamp(FarConfig.get().scanRadius, MobScan.MIN_RADIUS, MobScan.MAX_RADIUS)))
-                .addOption(b.createExternalButtonOption(id("scanMobs"))
-                        .setName(Component.translatable(KEY + "scanMobs"))
-                        .setTooltip(Component.translatable(KEY + "scanMobs.tooltip"))
-                        .setEnabledProvider(s -> MobScan.available(Minecraft.getInstance()), ConfigState.UPDATE_ON_REBUILD)
-                        .setScreenConsumer(parent -> {
-                            Minecraft minecraft = Minecraft.getInstance();
-                            if (!MobScan.available(minecraft)) return;
-                            FarConfig.save();
-                            minecraft.setScreen(null);
-                            MobScan.start(minecraft, FarConfig.get().scanRadius);
-                        }))
-                .addOption(b.createIntegerOption(id("foreseeRadius"))
-                        .setName(Component.translatable(KEY + "foreseeRadius"))
-                        .setTooltip(tooltip("foreseeRadius"))
-                        .setRange(Foresight.MIN_RADIUS, Foresight.MAX_RADIUS, 1)
-                        .setValueFormatter(v -> Component.translatable(KEY + "foreseeRadius.value", v))
-                        .setDefaultValue(d.foreseeRadius)
-                        .setStorageHandler(storage)
-                        .setBinding(v -> FarConfig.get().foreseeRadius = v,
-                                () -> Math.clamp(FarConfig.get().foreseeRadius, Foresight.MIN_RADIUS, Foresight.MAX_RADIUS)))
-                .addOption(b.createExternalButtonOption(id("foreseeMobs"))
-                        .setName(Component.translatable(KEY + "foreseeMobs"))
-                        .setTooltip(Component.translatable(KEY + "foreseeMobs.tooltip"))
-                        .setEnabledProvider(s -> foreseeable(), ConfigState.UPDATE_ON_REBUILD)
-                        .setScreenConsumer(parent -> {
-                            Minecraft minecraft = Minecraft.getInstance();
-                            if (!foreseeable()) return;
-                            FarConfig.save();
-                            minecraft.setScreen(null);
-                            FarPlayerTracker.get().mobs().foresight().start(minecraft, FarConfig.get().foreseeRadius);
-                        }));
-    }
-
-    /** Whether <i>Guess Nearby Mobs</i> can run here: a world played here, or a server sharing its seed. */
-    private static boolean foreseeable() {
-        return FarPlayerTracker.get().mobs().foresight().available(Minecraft.getInstance());
-    }
-
     private OptionPageBuilder birds(ConfigBuilder b, FarConfig d) {
         Function<ConfigState, Boolean> birds = on("skyBirds");
         return b.createOptionPage().setName(Component.translatable(KEY + "birds"))
@@ -246,15 +182,8 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 .setEnabledProvider(birds, id("skyBirds")))
                         .addOption(blocks(b, "birdMaxDistance", 100, 3000, d.birdMaxDistance,
                                 v -> FarConfig.get().birdMaxDistance = v, () -> FarConfig.get().birdMaxDistance)
-                                .setEnabledProvider(birds, id("skyBirds")))
-                        .addOption(blocks(b, "birdMinHeight", 0, 200, d.birdMinHeight,
-                                v -> FarConfig.get().birdMinHeight = v, () -> FarConfig.get().birdMinHeight)
                                 .setEnabledProvider(birds, id("skyBirds"))))
                 .addOptionGroup(b.createOptionGroup()
-                        .addOption(integer(b, "birdSize", 1, 6, d.birdSize,
-                                v -> FarConfig.get().birdSize = v, () -> FarConfig.get().birdSize,
-                                unit("birdSize", "multiplier", 1))
-                                .setEnabledProvider(birds, id("skyBirds")))
                         .addOption(b.createEnumOption(id("birdStyle"), BirdStyle.class)
                                 .setName(Component.translatable(KEY + "birdStyle"))
                                 .setTooltip(tooltip("birdStyle"))
@@ -263,7 +192,8 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 .setStorageHandler(storage)
                                 .setBinding(s -> FarConfig.get().birdStyle = s.id, () -> BirdStyle.of(FarConfig.get().birdStyle))
                                 .setEnabledProvider(birds, id("skyBirds")))
-                        .addOption(opens(b, "chooseBirds", BirdTypesScreen::new)));
+                        .addOption(opens(b, "chooseBirds", BirdTypesScreen::new))
+                        .addOption(opens(b, "birdsAdvanced", BirdsAdvancedScreen::new)));
     }
 
     /** Once Sodium has saved the changed options: the preset on top of them, then the file. */
@@ -508,6 +438,9 @@ public final class SodiumOptions implements ConfigEntryPoint {
     /** The switches of the flat pictures: what the pictures' distance and size follow, and the mobs' memory. */
     private static final String[] PICTURED = {"impostors", "impostorEntities", "impostorPlayers", "impostorBirds"};
     private static final String[] NOT_PLAYERS = {"impostors", "impostorEntities", "impostorBirds"};
+    /** The switches animated pictures follow: any figure as a picture, and their movement. */
+    private static final String[] ANIMATED = {"impostors", "impostorEntities", "impostorPlayers", "impostorBirds",
+            "impostorAnimation"};
 
     /** On while any of these switches is on. */
     private static Function<ConfigState, Boolean> any(String[] names) {
@@ -535,7 +468,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
 
     /** {@link QualityPreset}, and the settings that match none of them. */
     public enum Preset {
-        LOW(QualityPreset.LOW), NORMAL(QualityPreset.NORMAL), HIGH(QualityPreset.HIGH), ULTRA(QualityPreset.ULTRA),
+        POTATO(QualityPreset.POTATO), LOW(QualityPreset.LOW), NORMAL(QualityPreset.NORMAL), HIGH(QualityPreset.HIGH), ULTRA(QualityPreset.ULTRA),
         CUSTOM(null);
 
         final @Nullable QualityPreset preset;

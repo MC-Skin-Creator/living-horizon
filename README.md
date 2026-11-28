@@ -105,6 +105,7 @@ choose what it shares. Changes apply after a few seconds, without a restart.
 | `hiddenPlayers` | `[]` | Names never shared, such as `["Steve"]` |
 | `hiddenDimensions` | `[]` | Dimensions where nothing is shared, such as `["minecraft:the_nether"]` |
 | `shareOfflinePlayers` | `true` | Shares players who logged off where they left |
+| `offlineInTabList` | `true` | Lets players with the mod list those who logged off in their player list (Tab) |
 | `shareMobs` | `true` | Shares the remembered mobs past the view distance |
 | `seedMobs` | `true` | Shares the mobs of land nobody has explored yet, guessed from the seed |
 | `seedMobRange` | `512` | How far from a player those mobs are shared, in blocks, up to `2048` |
@@ -167,9 +168,11 @@ page, one file per game version and loader:
 | [Photon](https://modrinth.com/shader/photon-shader) | Shader pack. Checked: it works. |
 | [Complementary Unbound](https://modrinth.com/shader/complementary-unbound) | Shader pack. Checked: it works. |
 | [Sodium](https://modrinth.com/mod/sodium) | From 0.8, the settings are also in Sodium's *Video Settings*. |
-| GeckoLib | Works. From 1.21.2 to 1.21.8 its mobs are not drawn far away yet ([#67](https://github.com/MC-Skin-Creator/living-horizon/issues/67)). |
+| [GeckoLib](https://modrinth.com/mod/geckolib) | Its mobs are shown far away, animated, and as simplified pictures. |
 | [Immersive Aircraft](https://modrinth.com/mod/immersive-aircraft) | Its aircraft stay visible far away, where you left them. |
 | [Ambient Birds](https://modrinth.com/mod/ambient-birds) | Its birds keep flying far away. |
+| [The Graveyard](https://modrinth.com/mod/the-graveyard-fabric) | Its crows, ravens and magpies keep flying far away. |
+| [Useless Reptile](https://modrinth.com/mod/useless-reptile) | Its dragons stay animated far away. |
 
 Mobs from other mods should work. Mods not tested yet are listed under the
 [`mod compatibility`](https://github.com/MC-Skin-Creator/living-horizon/labels/mod%20compatibility)

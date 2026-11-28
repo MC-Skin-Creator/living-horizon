@@ -24,6 +24,7 @@ import fr.clixmods.livinghorizon.render.impostor.ImpostorKey;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorRenderer;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorThreshold;
 import fr.clixmods.livinghorizon.render.impostor.ImpostorViews;
+import fr.clixmods.livinghorizon.render.impostor.ImpostorWalk;
 import fr.clixmods.livinghorizon.render.impostor.PolygonStats;
 import fr.clixmods.livinghorizon.track.FarPlayer;
 import fr.clixmods.livinghorizon.track.FarPlayerTracker;
@@ -68,6 +69,7 @@ import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3fc;
 import org.jspecify.annotations.Nullable;
@@ -185,6 +187,13 @@ public final class GhostRenderer {
     private static double eyeX, eyeY, eyeZ, lookX, lookY, lookZ, viewCos, viewSin, pixelsPerRadian, drawnRange;
     /** Figures drawn this frame, models or pictures, and those left out: for the debug panel. */
     private static int drawn, skipped;
+    /** Pictures drawn this frame at a step of their walk, and the frame before: for the game tests. */
+    private static int striding, strode;
+
+    /** Pictures drawn at a step of their walk in the last whole frame. */
+    public static int striding() {
+        return strode;
+    }
 
     private static void view(Camera camera, Minecraft minecraft) {
         Vec3 eye = camera.position();
@@ -219,8 +228,24 @@ public final class GhostRenderer {
      */
     static @Nullable Mark skip(Entity entity, boolean mayVanish) {
         double size = Math.max(0.5, Math.max(entity.getBbHeight(), entity.getBbWidth()));
-        return count(why(entity.getX() - eyeX, entity.getY() + size * 0.5 - eyeY, entity.getZ() - eyeZ, size, mayVanish));
+        Mark why = why(entity.getX() - eyeX, entity.getY() + size * 0.5 - eyeY, entity.getZ() - eyeZ, size, mayVanish);
+        // Its model may reach far past its hitbox (a modded giant): the box the game culls it by
+        // decides, asked only of what the hitbox would leave out.
+        if (why != null) {
+            AABB box = CullBox.of(entity, frameTick);
+            why = box == null ? null : why(box, mayVanish);
+        }
+        return count(why);
     }
+
+    private static @Nullable Mark why(AABB box, boolean mayVanish) {
+        double size = Math.max(0.5, Math.max(box.getYsize(), Math.max(box.getXsize(), box.getZsize())));
+        return why((box.minX + box.maxX) * 0.5 - eyeX, (box.minY + box.maxY) * 0.5 - eyeY,
+                (box.minZ + box.maxZ) * 0.5 - eyeZ, size, mayVanish);
+    }
+
+    /** The part of a tick of the frame being extracted, which the culling boxes are asked at. */
+    private static float frameTick;
 
     /**
      * Whether something of the mod's own, {@code size} blocks across around a point this far
@@ -278,8 +303,10 @@ public final class GhostRenderer {
         /*LIGHTS.clear();
         CLASSIC.clear();
         *///?}
-        //? if >=1.21.2 && <1.21.9
-        /*RENDERERS.clear();*/
+        //? if >=1.21.2 && <1.21.9 {
+        /*RENDERERS.clear();
+        ReusedStates.clear();
+        *///?}
         ImpostorRenderer.beginFrame();
         PolygonStats.beginFrame();
         forgetShown();
@@ -328,6 +355,19 @@ public final class GhostRenderer {
      * The state of an entity as its renderer sees it this frame; the impostors are baked from
      * it too. Null when its renderer cannot give one: that entity is not drawn far away.
      */
+    /**
+     * Where a figure was at the last tick, for the frame to go from there: a mob the server just
+     * sent has not ticked yet, and its last position is still 0, 0, 0. The game sets it to where it
+     * is before drawing one; drawn far away without it, the mob flashed up in the air, between the
+     * world's origin and its place, for a frame.
+     */
+    static void sinceLastTick(Entity entity) {
+        if (entity.tickCount != 0) return;
+        entity.xOld = entity.getX();
+        entity.yOld = entity.getY();
+        entity.zOld = entity.getZ();
+    }
+
     public static @Nullable EntityRenderState extract(EntityRenderDispatcher dispatcher, Entity entity, float partialTick) {
         return extract(dispatcher, entity, partialTick,
                 light(Minecraft.getInstance().level, entity.getX(), entity.getY(), entity.getZ()));
@@ -341,6 +381,7 @@ public final class GhostRenderer {
     public static @Nullable EntityRenderState extract(EntityRenderDispatcher dispatcher, Entity entity, float partialTick,
                                                       int light) {
         if (!drawable(dispatcher, entity)) return null;
+        sinceLastTick(entity);
         Puppets.skin(entity);
         Puppets.cape(entity);
         int before = extractLight;
@@ -375,37 +416,20 @@ public final class GhostRenderer {
         return extractLight < 0 ? -1 : extractLight >> 4 & 15;
     }
 
-    /** Entity types whose renderer gave no state, or failed: never drawn far away again. */
+    /** Entity types whose renderer failed: never drawn far away again. */
     private static final Set<EntityType<?>> LEFT_OUT = Collections.newSetFromMap(new IdentityHashMap<>());
-    //? if >=1.21.2 && <1.21.9
-    /*private static final Set<EntityType<?>> PROBED = Collections.newSetFromMap(new IdentityHashMap<>());*/
 
     /**
-     * Whether this entity's renderer can give the mod a state of its own. Before 1.21.9,
-     * GeckoLib 4's gives none: it only keeps the one it reuses, for the entity it was last
-     * handed, and draws that entity whatever state it is given. Never an entity Valkyrien
-     * Skies carries on a ship: its renderer places it there itself.
+     * Whether the mod may draw this entity far away: not when its renderer failed once, nor
+     * when Valkyrien Skies carries it on a ship (its renderer places it there itself).
      */
     public static boolean drawable(EntityRenderDispatcher dispatcher, Entity entity) {
-        EntityType<?> type = entity.getType();
-        if (LEFT_OUT.contains(type) || ValkyrienSkies.onShip(entity)) return false;
-        //? if >=1.21.2 && <1.21.9 {
-        /*if (PROBED.add(type) && dispatcher.getRenderer(entity).createRenderState() == null) {
-            leaveOut(type, null);
-            return false;
-        }
-        *///?}
-        return true;
+        return !LEFT_OUT.contains(entity.getType()) && !ValkyrienSkies.onShip(entity);
     }
 
-    private static void leaveOut(EntityType<?> type, @Nullable Throwable error) {
+    private static void leaveOut(EntityType<?> type, Throwable error) {
         if (!LEFT_OUT.add(type)) return;
-        String id = EntityType.getKey(type).toString();
-        if (error == null) {
-            LivingHorizonClient.LOGGER.warn("{} is not drawn far away: its renderer gives no render state", id);
-        } else {
-            LivingHorizonClient.LOGGER.warn("{} is not drawn far away: its renderer failed", id, error);
-        }
+        LivingHorizonClient.LOGGER.warn("{} is not drawn far away: its renderer failed", EntityType.getKey(type), error);
     }
 
     //? if >=1.21.2 && <1.21.9 {
@@ -415,11 +439,18 @@ public final class GhostRenderer {
         return (net.minecraft.client.renderer.entity.EntityRenderer<? super E, EntityRenderState>) dispatcher.getRenderer(entity);
     }
 
-    /^* A state of its own: the renderer's createRenderState(entity, tick) hands back one it reuses. ^/
+    /^*
+     * A state of its own: the renderer's createRenderState(entity, tick) hands back one it reuses.
+     * A renderer that makes none (GeckoLib's) is given one of the class it fills ({@link ReusedStates}).
+     ^/
     private static <E extends Entity, S extends EntityRenderState> EntityRenderState state(
             net.minecraft.client.renderer.entity.EntityRenderer<? super E, S> renderer, E entity, float partialTick) {
         S state = renderer.createRenderState();
-        renderer.extractRenderState(entity, state, partialTick);
+        if (state == null) {
+            state = ReusedStates.own(renderer, entity, partialTick);
+        } else {
+            renderer.extractRenderState(entity, state, partialTick);
+        }
         RENDERERS.put(state, renderer);
         return state;
     }
@@ -440,9 +471,20 @@ public final class GhostRenderer {
         pose.pushPose();
         pose.translate(x + offset.x, y + offset.y, z + offset.z);
         Runnable told = EtfLink.drawing(state);
+        Runnable back = null;
+        PoseStack.Pose top = pose.last();
         try {
+            // A renderer that draws the entity it was last handed: handed this one again.
+            back = ReusedStates.hand(renderer, state, light);
             renderer.render(state, pose, buffers, light);
+        } catch (RuntimeException | LinkageError error) {
+            Entity entity = ReusedStates.entity(state);
+            if (entity == null) throw error;
+            leaveOut(entity.getType(), error);
+            // Failed halfway through, with poses of its own still pushed.
+            while (pose.last() != top) pose.popPose();
         } finally {
+            if (back != null) back.run();
             told.run();
             pose.popPose();
         }
@@ -524,11 +566,14 @@ public final class GhostRenderer {
         Minecraft minecraft = Minecraft.getInstance();
         EntityRenderDispatcher dispatcher = minecraft.getEntityRenderDispatcher();
         Vec3 eye = camera.position();
+        frameTick = partialTick;
         view(camera, minecraft);
         prewarm(config);
         long started = System.nanoTime();
         drawn = 0;
         skipped = 0;
+        strode = striding;
+        striding = 0;
 
         for (FarPlayer player : config.enabled ? FarPlayerTracker.get().players() : List.<FarPlayer>of()) {
             AbstractClientPlayer live = player.live();
@@ -660,7 +705,8 @@ public final class GhostRenderer {
             if (debug) DebugMarks.mark(puppet, copy);
             mob.drawn();
             // Held by easter egg 15, its head turned apart from its body: a model, which shows it.
-            if (!Herd.holds(puppet) && impostor(minecraft, eye, puppet, partialTick, config)) continue;
+            // A copy resting untouched has legs that were not caught up: shown at rest, which it is.
+            if (!Herd.holds(puppet) && impostor(minecraft, eye, puppet, partialTick, config, !mob.resting())) continue;
             // A model plays its idle movements and its legs from its clocks: made up first, if it rested untouched.
             memory.catchUp(mob);
             EntityRenderState body = extract(dispatcher, puppet, partialTick);
@@ -687,12 +733,15 @@ public final class GhostRenderer {
      */
     private static boolean occluded(Object key, Entity entity, FarConfig config) {
         if (!config.hideOccludedMobs) return false;
+        // The box the game culls it by, its whole model; never hidden when the game never culls it.
+        AABB box = CullBox.of(entity, frameTick);
+        if (box == null) return false;
         double dx = entity.getX() - eyeX, dy = entity.getY() - eyeY, dz = entity.getZ() - eyeZ;
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
         // Drawn bigger than it is with a minimum size: the bigger box, as drawn, is what must be hidden.
-        double boost = Apparent.boost(Apparent.extent(entity.getBbHeight(), entity.getBbWidth()), distance,
+        double boost = Apparent.boost(Apparent.extent(box.getYsize(), Math.max(box.getXsize(), box.getZsize())), distance,
                 pixelsPerRadian, config.minApparentPixels);
-        if (!Occlusion.hidden(key, entity, dx, dy, dz, boost)) {
+        if (!Occlusion.hidden(key, box, eyeX, eyeY, eyeZ, boost)) {
             return false;
         }
         // Its box is where the far terrain's depth is needed (Occlusion.hidden): only the far plane here.
@@ -1051,6 +1100,16 @@ public final class GhostRenderer {
             ImpostorKey key = ImpostorKey.of(puppet);
             if (!fromHeights(puppet)) {
                 ImpostorAtlas.request(key, puppet);
+                // Its walk once it has its resting picture, which stands in for every step meanwhile,
+                // only within Animated Picture Distance, and only while it walks: the walk takes video
+                // memory, which a mob shown standing still or a mannequin would never use.
+                if (walks(puppet, key, config) && !mob.resting() && within(puppet, config.impostorAnimationDistance)
+                        && ((LivingEntity) puppet).walkAnimation.speed(1f) >= ImpostorWalk.WALKING
+                        && ImpostorAtlas.sheet(key) != null) {
+                    for (int frame = 1; frame <= ImpostorWalk.FRAMES; frame++) {
+                        ImpostorAtlas.request(ImpostorKey.frame(key, frame), puppet);
+                    }
+                }
                 continue;
             }
             // A phantom, a ghast, a dragon, an aircraft: seen from every height, as it flies about.
@@ -1099,7 +1158,18 @@ public final class GhostRenderer {
      * new one is baked: none of it blinks between a model and a picture.
      */
     private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config) {
-        return impostor(minecraft, eye, entity, partialTick, config, 0, 0, 0, Float.NaN);
+        return impostor(minecraft, eye, entity, partialTick, config, true);
+    }
+
+    /** @param mayWalk whether its legs may be read for a picture of its walk: false for a copy resting untouched */
+    private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config,
+                                    boolean mayWalk) {
+        return impostor(minecraft, eye, entity, partialTick, config, 0, 0, 0, Float.NaN, mayWalk);
+    }
+
+    private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config,
+                                    double dx, double dy, double dz, float facing) {
+        return impostor(minecraft, eye, entity, partialTick, config, dx, dy, dz, facing, true);
     }
 
     /**
@@ -1108,7 +1178,7 @@ public final class GhostRenderer {
      * @param facing the way the figure's body is taken to face, NaN for its own: along its bed
      */
     private static boolean impostor(Minecraft minecraft, Vec3 eye, Entity entity, float partialTick, FarConfig config,
-                                    double dx, double dy, double dz, float facing) {
+                                    double dx, double dy, double dz, float facing, boolean mayWalk) {
         // A glider is tilted along its flight, which no picture baked standing shows.
         if (!ImpostorAtlas.usable() || entity.getVehicle() != null || entity.isVehicle()
                 || entity instanceof LivingEntity glider && glider.isFallFlying() || unpictured(entity)
@@ -1117,6 +1187,7 @@ public final class GhostRenderer {
         }
         // Players are asked for under their own switch, before; mobs and the rest under theirs.
         if (!(entity instanceof Player) && !(creature(entity) ? config.impostors : config.impostorEntities)) return false;
+        sinceLastTick(entity);
         ImpostorKey key = ImpostorKey.of(entity);
         // A mob's body turns on its own; a boat or a vehicle is the way it faces.
         float yaw = !Float.isNaN(facing) ? facing : entity instanceof LivingEntity living
@@ -1129,8 +1200,61 @@ public final class GhostRenderer {
             dy += ImpostorAtlas.middle(entity);
             key = seenFrom(key, entity, eye, partialTick, dx, dy, dz);
         }
+        int walk = !mayWalk || aloft ? 0 : stride(entity, key, partialTick, config);
         return picture(minecraft, eye, entity, entity, key, null, 0, partialTick, config,
-                dx, dy, dz, yaw, Math.max(entity.getBbHeight(), entity.getBbWidth()), aloft);
+                dx, dy, dz, yaw, Math.max(entity.getBbHeight(), entity.getBbWidth()), aloft, walk);
+    }
+
+    /** Whether a figure is within {@code blocks} of the camera. */
+    private static boolean within(Entity entity, int blocks) {
+        Vec3 eye = Minecraft.getInstance().gameRenderer.getMainCamera().position();
+        return entity.distanceToSqr(eye) <= (double) blocks * blocks;
+    }
+
+    /**
+     * Whether a figure's pictures show its walk ({@link FarConfig#impostorAnimation}): a mob
+     * standing on its legs, not a player, a flyer or a vehicle.
+     */
+    private static boolean walks(Entity entity, ImpostorKey key, FarConfig config) {
+        // Mobs, players and mannequins alike: each is pictured only under its own switch already.
+        return config.impostorAnimation && entity instanceof LivingEntity && key.posture() == ImpostorKey.STANDING
+                && !fromHeights(entity);
+    }
+
+    /**
+     * The picture of its movement a rider and its mount show together this frame: the mount's
+     * stride (a horse, a camel), or the stroke of a boat's oars while they row; 0 for anything else.
+     */
+    private static int carrying(Entity mount, float partialTick, FarConfig config) {
+        if (!config.impostorAnimation) return 0;
+        if (mount instanceof LivingEntity && !fromHeights(mount)) {
+            LivingEntity living = (LivingEntity) mount;
+            return ImpostorWalk.frame(living.walkAnimation.position(partialTick), living.walkAnimation.speed(partialTick));
+        }
+        // Its oars, from 1.21.2, where a boat's picture can be baked with them anywhere in a stroke.
+        //? if >=1.21.2 {
+        if (mount instanceof net.minecraft.world.entity.vehicle.boat.AbstractBoat boat
+                && (boat.getPaddleState(0) || boat.getPaddleState(1))) {
+            int side = boat.getPaddleState(0) ? 0 : 1;
+            return ImpostorWalk.frameAt((boat.getRowingTime(side, partialTick) - ImpostorAtlas.OARS) / (2 * Math.PI));
+        }
+        //?}
+        return 0;
+    }
+
+    /**
+     * The picture of its walk a figure shows this frame ({@link ImpostorWalk}), from its own legs:
+     * 0 at rest, standing still or its legs crossing.
+     */
+    private static int stride(Entity entity, ImpostorKey key, float partialTick, FarConfig config) {
+        if (!walks(entity, key, config)) return 0;
+        LivingEntity living = (LivingEntity) entity;
+        float position = living.walkAnimation.position(partialTick);
+        //? if <1.21.2 {
+        /*// The renderer itself sped a baby's legs up before 1.21.2.
+        if (living.isBaby()) position *= 3f;
+        *///?}
+        return ImpostorWalk.frame(position, living.walkAnimation.speed(partialTick));
     }
 
     /** The key of the pictures of {@code at} baked from the height nearest the camera's, round the point given. */
@@ -1156,6 +1280,8 @@ public final class GhostRenderer {
                 || !drawable(dispatcher, mount) || !drawable(dispatcher, rider)) {
             return false;
         }
+        sinceLastTick(rider);
+        sinceLastTick(mount);
         // A mob's body turns on its own, a vehicle is the way it faces.
         float facing = mount instanceof LivingEntity horse ? horse.yBodyRot : mount.getYRot();
         float facingO = mount instanceof LivingEntity horse ? horse.yBodyRotO : mount.yRotO;
@@ -1171,7 +1297,8 @@ public final class GhostRenderer {
             dy = ImpostorAtlas.middle(mount, new ImpostorAtlas.Rider(rider, seat, turned));
             key = seenFrom(key, mount, eye, partialTick, 0, dy, 0);
         }
-        return picture(minecraft, eye, rider, mount, key, seat, turned, partialTick, config, 0, dy, 0, yaw, extent, aloft);
+        return picture(minecraft, eye, rider, mount, key, seat, turned, partialTick, config, 0, dy, 0, yaw, extent, aloft,
+                carrying(mount, partialTick, config));
     }
 
     /**
@@ -1181,10 +1308,12 @@ public final class GhostRenderer {
      * until the new one is baked. A rider ({@code shown}) is pictured on its mount ({@code at}),
      * sitting at {@code seat} on it, turned {@code turned} degrees from it. {@code facing}: a
      * picture baked from a height, round the figure's middle, turned to the camera up and down too.
+     * {@code walk}: the picture of its walk to show ({@link ImpostorWalk}), its resting one while
+     * that one is baked.
      */
     private static boolean picture(Minecraft minecraft, Vec3 eye, Entity shown, Entity at, ImpostorKey key,
                                    @Nullable Vec3 seat, float turned, float partialTick, FarConfig config,
-                                   double dx, double dy, double dz, float yaw, double size, boolean facing) {
+                                   double dx, double dy, double dz, float yaw, double size, boolean facing, int walk) {
         double x = Mth.lerp(partialTick, at.xOld, at.getX()) + dx;
         double y = Mth.lerp(partialTick, at.yOld, at.getY()) + dy;
         double z = Mth.lerp(partialTick, at.zOld, at.getZ()) + dz;
@@ -1216,6 +1345,20 @@ public final class GhostRenderer {
         if (ImpostorThreshold.enlarged(sheet.worldSize() * boost / distance * pixelsPerRadian, sheet.tile(), last != null)) {
             if (last != null) SHOWN.remove(shown);
             return false;
+        }
+        // Past Animated Picture Distance it stands, walking or not, and its walk is never asked for.
+        if (walk > 0 && distance <= config.impostorAnimationDistance) {
+            // A step of its walk, drawn at its own size and feet: one baked larger fits the same figure.
+            ImpostorKey step = ImpostorKey.frame(key, walk);
+            ImpostorAtlas.Sheet stride = ImpostorAtlas.sheet(step);
+            if (stride != null) {
+                sheet = stride;
+                striding++;
+            } else if (seat == null) {
+                ImpostorAtlas.request(step, at);
+            } else {
+                ImpostorAtlas.request(step, at, new ImpostorAtlas.Rider(shown, seat, turned));
+            }
         }
         if (distance > drawnRange) FarDepth.needed();
         farthest = Math.max(farthest, distance);
@@ -1257,7 +1400,8 @@ public final class GhostRenderer {
      */
     private static void turn(Entity shown, ImpostorKey key, @Nullable Shown last, float yaw, double ax, double az,
                              double distance, double apparent, double size, FarConfig config) {
-        double share = ImpostorThreshold.approach(distance, apparent, config.impostorDistance, config.impostorPixels);
+        double share = ImpostorThreshold.approach(distance, apparent, config.impostorDistance, config.impostorPixels,
+                config.impostorTurnDistance);
         ImpostorAtlas.Sheet sheet = share <= 0 || !(shown instanceof LivingEntity) ? null : ImpostorAtlas.sheet(key);
         // A figure too large for its picture stays a model: never turned in steps.
         if (sheet == null || ImpostorThreshold.enlarged(sheet.worldSize()
@@ -1280,8 +1424,24 @@ public final class GhostRenderer {
      * way the picture shows it, its head straight ahead and level, as it is pictured.
      */
     private static void turned(Entity entity, @Nullable EntityRenderState state, float partialTick) {
+        turned(entity, state, partialTick, 0);
+    }
+
+    /**
+     * Another player the game draws itself, near enough to the thresholds to turn to its picture:
+     * the game extracts it, and leaves it to the mod only once it is a picture
+     * ({@link #pictureInstead}), so without this it turned all at once as the picture took over.
+     * Noted by {@link #pictureInstead}, which the game asks as it culls, before the mod's frame.
+     * Called as the game extracts any entity; nothing for the ones the mod extracts itself.
+     */
+    public static void turnedByGame(Entity entity, @Nullable EntityRenderState state, float partialTick) {
+        if (extractLight >= 0 || !(entity instanceof AbstractClientPlayer) || entity instanceof LocalPlayer) return;
+        turned(entity, state, partialTick, 1);
+    }
+
+    private static void turned(Entity entity, @Nullable EntityRenderState state, float partialTick, int late) {
         Turn turn = TURNS.get(entity);
-        if (turn == null || turn.frame != frame || !(state instanceof LivingEntityRenderState living)
+        if (turn == null || frame - turn.frame > late || !(state instanceof LivingEntityRenderState living)
                 || !(entity instanceof LivingEntity mob)) {
             return;
         }
@@ -1388,8 +1548,13 @@ public final class GhostRenderer {
         double dx = at.getX() - camX, dy = at.getY() - camY, dz = at.getZ() - camZ;
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
         double apparent = distance < 1e-3 ? Double.MAX_VALUE : size / distance * pixelsPerRadian;
-        return ImpostorThreshold.pictured(distance, apparent, SHOWN.containsKey(rider), config.impostorDistance,
+        boolean pictured = ImpostorThreshold.pictured(distance, apparent, SHOWN.containsKey(rider), config.impostorDistance,
                 config.impostorPixels);
+        // Still the game's to draw: turned towards its picture as it nears it, as the mod's models are.
+        if (!pictured && mount == null && config.impostorTurn) {
+            turn(rider, ImpostorKey.of(rider), SHOWN.get(rider), rider.yBodyRot, dx, dz, distance, apparent, size, config);
+        }
+        return pictured;
     }
 
     /** A player, or something carrying one, however deep. */

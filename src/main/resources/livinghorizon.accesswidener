@@ -36,15 +36,32 @@ accessible field net/minecraft/client/entity/ClientAvatarState zCloakO D
 # render states, any figure is told it swims while it is drawn.
 accessible field net/minecraft/world/entity/Entity wasTouchingWater Z
 
-# Before 1.21.2, with no render states: a figure is told it swims, stands still or walks
-# while it is drawn, and the faces of each cube of a model are counted as it is drawn.
-# @until 1.21.1
-accessible field net/minecraft/world/entity/Entity wasEyeInWater Z
+# A figure's own stride, set while it is baked (ImpostorAtlas.stride): before 1.21.2 there are no
+# render states, and on every version some renderers (Entity Model Features) read the entity's;
+# up to 1.21.8 also one that draws the entity rather than its state (ReusedStates, GeckoLib 4).
 accessible field net/minecraft/world/entity/WalkAnimationState position F
 accessible field net/minecraft/world/entity/WalkAnimationState speed F
 accessible field net/minecraft/world/entity/WalkAnimationState speedOld F
+
+# Before 1.21.2, with no render states: a figure is told it swims while it is drawn, and the
+# faces of each cube of a model are counted as it is drawn.
+# @until 1.21.1
+accessible field net/minecraft/world/entity/Entity wasEyeInWater Z
 accessible class net/minecraft/client/model/geom/ModelPart$Polygon
 accessible field net/minecraft/client/model/geom/ModelPart$Cube polygons [Lnet/minecraft/client/model/geom/ModelPart$Polygon;
+
+# The box the game culls an entity by, and whether it culls it at all (render/CullBox): a modded
+# giant's model reaches far past its hitbox. From 1.21.2 the renderer says it.
+# @since 1.21.2
+accessible method net/minecraft/client/renderer/entity/EntityRenderer affectedByCulling (Lnet/minecraft/world/entity/Entity;)Z
+
+# @since 1.21.2
+# @until 26.2
+accessible method net/minecraft/client/renderer/entity/EntityRenderer getBoundingBoxForCulling (Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/phys/AABB;
+
+# The same, which takes the frame's part of a tick from 26.3.
+# @since 26.3
+accessible method net/minecraft/client/renderer/entity/EntityRenderer getBoundingBoxForCulling (Lnet/minecraft/world/entity/Entity;F)Lnet/minecraft/world/phys/AABB;
 
 # The view distance the server announced, which Bobby leaves out of the effective render distance.
 accessible field net/minecraft/client/Options serverRenderDistance I

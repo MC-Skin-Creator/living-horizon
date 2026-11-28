@@ -91,6 +91,11 @@ store description (`store/listing.md`) are written with the `readme-writing` ski
 
 ## Settings live in two screens
 
+The main screen holds what most players change; each section's *Advanced...* button opens what
+they rarely do (`SimplificationAdvancedScreen`, `PlayersAdvancedScreen`, `MobsAdvancedScreen`,
+`BirdsAdvancedScreen`), and Sodium's page opens the same screens instead of listing their rows.
+*Debug Options* holds only tools to look and measure, and switches to turn a fix off to compare.
+
 Every setting a player changes in game is shown twice: in the mod's own screen
 (`ui/FarConfigScreen` and its sub-screens) and in Sodium's video settings
 (`ui/SodiumOptions`, Sodium 0.8 and later). **A setting added, renamed, moved or removed
@@ -484,12 +489,18 @@ come back, add it here in the same pull request: this file is what the next sess
   (`MobMotion.follow`), as the game would walk it: at its kind's pace (`walkPace`, from its
   movement speed: a cow 0.064 blocks a tick), on the blocks under it (`standAt`), hopping if it
   hops; faster with the player close. Catching up faster the farther it was, it slid across the
-  ground with its legs racing and went up a ramp through the air. All of it is set on the *Debug*
-  screen (`join*` settings: how far it walks, its pace, the ground, when it gives up, the hurry).
+  ground with its legs racing and went up a ramp through the air. All of it is set on the mobs'
+  *Advanced* screen (`MobsAdvancedScreen`, `join*` settings: how far it walks, its pace, the
+  ground, when it gives up, the hurry).
   The real one takes over a tick after the copy stood on it: removed the tick it arrived, its last
   step was never drawn and the real one appeared a step ahead. Taking over at once instead (no
   walk) made it jump and turn on the spot. The `shortrange`, `smallmobs` and `comeback` scenarios
   check it.
+- **A giant mob vanishing far away while part of it is in view** (a modded boss gone once its
+  middle leaves the screen or a hill hides its feet; issue #351): its model reaches far past its
+  hitbox. The view, size and hidden-mob tests take the box the game culls it by
+  (`render/CullBox`: the renderer's `getBoundingBoxForCulling` and `affectedByCulling` from 1.21.2,
+  the entity's and `noCulling` before), never the hitbox alone.
 - **Small mobs vanishing for a few blocks with *Entity Distance* below 100 %** (chickens, cats,
   wolves; zombies and cows fine): the game culls a mob at a distance that grows with its size, a
   chicken past 16 blocks at 50 %. `GhostRenderer.unseen` takes over from the game's own test
@@ -505,6 +516,10 @@ come back, add it here in the same pull request: this file is what the next sess
   server says it died (`ServerMobs`, `gone`), but the positions it shared before, every 7.5 s,
   were read again (`MobMemory.sync`) and made a new copy where they had it. A copy forgotten for
   something the server's last word does not know yet sets that word aside (`MobMemory.setAside`).
+- **Distant mobs flashing up in the air, then jumping to their place** (as they come into view far
+  away, for a frame): a mob the server has just sent has not ticked, and its last position
+  (`xOld`) is still 0, 0, 0; the game sets it to where it is before drawing one with `tickCount` 0.
+  `GhostRenderer.sinceLastTick` does the same before anything lerps from `xOld`, model or picture.
 - **Distant mobs gliding to and fro, legs still, or trembling** (past *Animation Distance* or
   under *Min. Animated Size*): a still mob must stand, not play its animation's path without its
   legs; `MobMotion.held` stops its animation's clock. And a puppet's `tickCount` must go on every
@@ -585,6 +600,11 @@ come back, add it here in the same pull request: this file is what the next sess
   again with more room round it (`ImpostorPixels.growth`), drawn smaller in a tile of the same 64
   pixels: tiles two or three times larger took four or nine times the memory for a figure a dozen
   pixels tall. `impostoredges` and `longmobs` show both.
+- **Players online turning all at once into their picture** (mobs turning smoothly): the game
+  draws them itself until they are pictures, so the mod's own turn never touched them.
+  `GhostRenderer.pictureInstead` notes their turn and `EntityRendererTurnMixin` applies it to the
+  state the game extracts (`turnedByGame`, which leaves the mod's own extractions alone: applied
+  twice, the turn ran ahead). The `impostorturn` scenario logs a player online's body step by step.
 - **Players online never simplified** (full models far past *Simplification Distance*, or
   smaller than *Simplification Size*, while offline players are pictures): the game draws other
   players itself up to ten times the usual entity distance, and a figure it draws is never a
@@ -601,17 +621,40 @@ come back, add it here in the same pull request: this file is what the next sess
   fish lying on their side far away; before 1.21.9, far mobs in the game's textures, or all in
   the texture and pose of one other mob):
   ETF picks a texture from the mob's UUID, which no synched value shows, so `ImpostorKey` asks
-  `EtfLink.worn`. EMF asks the entity, not the render state, whether it is in water, and a copy
+  `EtfLink.worn`; a pack's model variants (a ram with horns or not) likewise, `EmfLink.variant`:
+  left out, a far sheep changed models as it walked, its walk baked from another sheep. Even
+  with every variant in the key, two mobs of one look differ in what no key reads (Fresh
+  Animations' `random(id)`, a pack's random parts): a look's resting picture and every step of
+  its walk are baked from one mob (`ImpostorAtlas.walking`, `WALKERS`, `BAKED_FROM`); the
+  `walkingpictures` scenario checks it with two cows. Pictures
+  of Fresh Animations' mobs leaning, head down, or in another pose in each view: EMF reads the
+  entity's own stride and ground, not the state's; `ImpostorAtlas.steady` and `stride` set them
+  for the bake. Never turn a living figure itself view by view (Fresh Animations smooths the turn:
+  a back view came out side on), nor reset its age (it lays pigs down), nor pause EMF (its models
+  stand upright without their animations). EMF asks the entity, not the render state, whether it is in water, and a copy
   never ticks: `Puppets.inWater` puts a fish's copy in water when it is made. Before 1.21.9 ETF
   and EMF act only inside the game's draw of an entity, which tells ETF which one; the mod draws
   through the renderer and tells it itself (`EtfLink.drawing`); an EMF pack that walks the legs
   reads its limb speed from there too (legs still, arms swinging, before 1.21.2). The `entityfeatures` scenario
   checks it: `run.sh entityfeatures --with entitytexturefeatures,entity-model-features --pack fresh-animations`.
-- **Crash extracting a distant mob on 1.21.2 to 1.21.8** (`NullPointerException` under
-  `GhostRenderer.state`, often blamed on another mod's mixin into `extractRenderState`):
-  GeckoLib 4's `createRenderState()` returns null and its `render` draws the entity it was
-  last handed. `GhostRenderer.drawable` leaves such types out (issue #67 is about drawing
-  them), and a renderer that throws while extracting is left out too, logged once.
+- **GeckoLib mobs on 1.21.2 to 1.21.8** (a crash under `GhostRenderer.state`, every distant one
+  drawn as the same mob, or the eight views of its picture all facing one way): GeckoLib's
+  `createRenderState()` returns null (4 and 5), and GeckoLib 4's `render` draws the entity it
+  was last handed, never the state. `ReusedStates` gives each figure a state of its own and hands
+  the renderer its entity again in `drawState`, with what the mod changed in the state given to
+  the entity. GeckoLib 5 ("Attempted to retrieve data from GeoRenderState that does not exist")
+  wants the light in its state, added only by its hook on the game's draw: `compat/GeckoLib.light`.
+  A renderer that throws while extracting or drawing is left out, logged once.
+  GeckoLib copies sliding in their idle pose (up to 1.21.4): GeckoLib 4 plays a walk only from
+  the entity's motion, which `MobMotion.apply` sets. The `geckolib` scenario checks it.
+- **Useless Reptile's dragons in a T-pose far away** (copies drawn as models, wings and legs spread;
+  from 1.21.11): it animates with Biscuit Roll, whose controllers play what the dragon's
+  `tickAnimations` chose, on the client up to 0.14 and on the server only from 0.15, sent to the
+  client in an attachment a copy never gets. A copy never ticks: `compat/UselessReptile.animate`
+  chooses for it from `MobMotion` (`apply` and `rest`), and Biscuit Roll knows an animation's file
+  only once the copy was drawn. The `uselessreptile` scenario checks it
+  (`run.sh uselessreptile --with useless-reptile,yacl`). Another mod that picks its animations in
+  the tick needs the same.
 - **Lycanites Mobs blank or through the far terrain** (Forge 1.20.1: its pictures empty in the
   impostor screen, its far models seen through Voxy's or Distant Horizons' hills): Lycanites queues
   the opaque parts of its OBJ models (`VBOBatcher.queueDeferred`) and draws them at Forge's
@@ -720,7 +763,10 @@ come back, add it here in the same pull request: this file is what the next sess
   otherwise moves it a quarter of the way: `Puppets.cape` sets it outright in
   `GhostRenderer.extract`, since each impostor view is baked from one call (`ImpostorAtlas.staged`).
   The `mannequins` scenario checks it, and counts the cape's pixels (a gold block stands in for
-  one) in the copy's baked picture, since the data can be right while the picture is not. When
+  one) in the copy's baked picture, since the data can be right while the picture is not. It
+  counts the gold's hue, back views against front ones: the picture is shaded like a model in
+  the world (the cape's back at 198 of red, which a test for bright gold never found), and
+  kai's blond hair shows from the front. When
   reading its atlas screenshot, know the game's default skins: kai is blond in dark clothes, Alex
   has orange hair and a green shirt, and a player's name shows its default skin until Mojang
   answers. Far, resting and logged-off player puppets are not ticked
@@ -857,6 +903,20 @@ come back, add it here in the same pull request: this file is what the next sess
   as a truncated jar (`zip END header not found` on the next attempt): `gradle.sh` deletes the
   jars that do not open before trying again. What Forge's Maven served is kept in each Forge
   node's cache entry (`mavenizer/caches/maven/forge`), so a build only asks it for what changed.
+- **CI jobs failing on Maven Central's "429 Too Many Requests"** (`Could not HEAD
+  .../repo.maven.apache.org/...`, often on Mod Menu or Sodium's API, a few nodes of a run):
+  fifty-odd runners ask Central at once. A mod's artifacts are asked of its own repository
+  alone (`exclusiveContent` in the build scripts: TerraformersMC, CaffeineMC), and
+  `gradle.sh` waits a minute and a half or more before trying again after a 429. A 429 on
+  something else means a dependency only Central serves: re-run the failed jobs later.
+- **A Quilt node failing with "Could not find org.lwjgl:…-mojang-…"** (only Maven Central
+  searched): Mojang republished a version's metadata with a library build only its own
+  repository serves (26.2's on 2026-11-25: `lwjgl-freetype:3.4.1-mojang-2.15.0.3`), and Quilt
+  Loom keeps a repository of its own, exclusive to `org.lwjgl`, on Central (`MavenCentralLWJGL`):
+  no other repository may serve LWJGL. `build.quilt.gradle.kts` points that one at
+  `libraries.minecraft.net`, which serves both kinds. Quilt Loom also read the POMs of the game's
+  libraries there, whose parents only Central serves (a 429 on `jackson-parent`, `guava-parent`):
+  that repository gives jars alone on Quilt, as Fabric Loom does.
 - **A Forge node failing in CI with "Failed to find JDK for version 8"** (`sha256 Invalid` on an
   `OpenJDK8U` tarball just before): the Mavenizer runs one step on Java 8, found through
   `JAVA_HOME_8_X64`, or downloads Temurin 8 itself. GitHub served 8u514's tarball as a 1.8 kB

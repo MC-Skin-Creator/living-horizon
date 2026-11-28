@@ -135,7 +135,7 @@ public final class RestingPlayers {
                     && Objects.equals(mount, other.mount) && Objects.equals(rest, other.rest);
         }
 
-        GameProfile profile() {
+        public GameProfile profile() {
             UUID uuid = id != null ? id : UUIDUtil.createOfflinePlayerUUID(name);
             if (textures == null) return new GameProfile(uuid, name);
             return Profiles.withSkin(uuid, name, new Property("textures", textures, signature));

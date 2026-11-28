@@ -13,6 +13,9 @@ import fr.clixmods.livinghorizon.gametest.scenario.EasterEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EggFiguresScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityDepthScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.EntityFeaturesScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.GeckoLibScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.GraveyardBirdsScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.UselessReptileScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DhFogScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FarFogScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FollowedMobsScenario;
@@ -20,6 +23,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.HandoverScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ShortRangeScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.SmallMobsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ComebackScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.PopInScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.DragonScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.FlyersScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.GaitsScenario;
@@ -43,7 +47,10 @@ import fr.clixmods.livinghorizon.gametest.scenario.MoreEggsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LightingScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.PhotonVoxyScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ImpostorShadingScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.GiantCullScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.GiantZombieScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OcclusionScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.OfflineTabListScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.OtherDimensionScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LinksScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.LodistanceScenario;
@@ -59,6 +66,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.RegressionScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.ResizeScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestKeptScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingCrowdScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.RestingCostScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingImpostorsScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingLoopScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.RestingMountScenario;
@@ -80,6 +88,7 @@ import fr.clixmods.livinghorizon.gametest.scenario.StrandedScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.UndergroundScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.UnloadScenario;
 import fr.clixmods.livinghorizon.gametest.scenario.VehiclesScenario;
+import fr.clixmods.livinghorizon.gametest.scenario.WalkingPicturesScenario;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
@@ -100,11 +109,14 @@ import java.util.stream.Collectors;
 public final class LivingHorizonGameTests implements FabricClientGameTest {
     private static final List<Scenario> SCENARIOS = List.of(
             new ImpostorsScenario(),
+            new RestingCostScenario(),
+            new OfflineTabListScenario(),
             new BirdCostScenario(),
             new ImpostorSizeScenario(),
             new PlayerSizeScenario(),
             new ImpostorSharingScenario(),
             new ImpostorCrowdScenario(),
+            new WalkingPicturesScenario(),
             new ImpostorEdgesScenario(),
             new ImpostorLongMobsScenario(),
             new ImpostorScreenScenario(),
@@ -146,6 +158,8 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new EntityDepthScenario(),
             new ResizeScenario(),
             new OcclusionScenario(),
+            new GiantCullScenario(),
+            new GiantZombieScenario(),
             new LodistanceScenario(),
             new UnloadScenario(),
             new UndergroundScenario(),
@@ -155,6 +169,9 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new SittingPetsScenario(),
             new HeadTurnScenario(),
             new EntityFeaturesScenario(),
+            new GeckoLibScenario(),
+            new UselessReptileScenario(),
+            new GraveyardBirdsScenario(),
             new GaitsScenario(),
             new StillMobsScenario(),
             new FlyersScenario(),
@@ -173,6 +190,7 @@ public final class LivingHorizonGameTests implements FabricClientGameTest {
             new ShortRangeScenario(),
             new SmallMobsScenario(),
             new ComebackScenario(),
+            new PopInScenario(),
             new PerfScenario(),
             new BenchmarkScenario(),
             new BenchmarkWorldScenario(),

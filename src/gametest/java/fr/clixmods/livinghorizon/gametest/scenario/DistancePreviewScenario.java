@@ -3,7 +3,9 @@ package fr.clixmods.livinghorizon.gametest.scenario;
 import fr.clixmods.livinghorizon.gametest.Scenario;
 import fr.clixmods.livinghorizon.gametest.Scene;
 import fr.clixmods.livinghorizon.render.DistancePreview;
+import fr.clixmods.livinghorizon.ui.BirdsAdvancedScreen;
 import fr.clixmods.livinghorizon.ui.FarConfigScreen;
+import fr.clixmods.livinghorizon.ui.MobsAdvancedScreen;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
@@ -52,13 +54,18 @@ public final class DistancePreviewScenario implements Scenario {
             Scene.screenshot(context, this, "impostor-128");
 
             // Down the list in its order: a row not drawn since the list moved keeps its old place.
+            hover(context, "mobMaxDistance");
+            Scene.screenshot(context, this, "mobs-160");
+
+            // The scan radius and the birds' height are on the advanced screens.
+            context.setScreen(() -> new MobsAdvancedScreen(null));
+            context.waitTicks(5);
             hover(context, "scanRadius");
             expect(context, true, "over the scan radius");
             Scene.screenshot(context, this, "scan-6-chunks");
 
-            hover(context, "mobMaxDistance");
-            Scene.screenshot(context, this, "mobs-160");
-
+            context.setScreen(() -> new BirdsAdvancedScreen(null));
+            context.waitTicks(5);
             hover(context, "birdMinHeight");
             expect(context, true, "over the birds' height");
             Scene.screenshot(context, this, "birds-30-above");
@@ -70,6 +77,7 @@ public final class DistancePreviewScenario implements Scenario {
 
             // From above, looking down: where the sphere meets the ground is the distance.
             Scene.command(world, "tp @a 0 -30 0 0 40");
+            context.setScreen(() -> new FarConfigScreen(null));
             context.waitTicks(40);
             hover(context, "offlineRoam");
             expect(context, true, "over the roaming radius");
@@ -95,7 +103,7 @@ public final class DistancePreviewScenario implements Scenario {
             int[] where = context.computeOnClient(minecraft -> {
                 AbstractSelectionList<?> list = list(minecraft);
                 AbstractWidget slider = find(list, I18n.get("livinghorizon.options." + setting));
-                if (slider != null && slider.getY() > list.getY() + 4 && slider.getY() + slider.getHeight() < list.getBottom() - 4) {
+                if (slider != null && slider.getY() >= list.getY() && slider.getY() + slider.getHeight() <= list.getBottom()) {
                     return new int[]{slider.getX() + slider.getWidth() / 2, slider.getY() + slider.getHeight() / 2};
                 }
                 list.setScrollAmount(list.scrollAmount() + 60);

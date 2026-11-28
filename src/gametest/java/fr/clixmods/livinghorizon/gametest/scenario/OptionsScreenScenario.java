@@ -51,6 +51,10 @@ public final class OptionsScreenScenario implements Scenario {
                     setLanguage(context, language);
                     look(context, language + "-settings", () -> new FarConfigScreen(null), problems);
                     look(context, language + "-debug", () -> new DebugScreen(null), problems);
+                    look(context, language + "-simplification", () -> new fr.clixmods.livinghorizon.ui.SimplificationAdvancedScreen(null), problems);
+                    look(context, language + "-players", () -> new fr.clixmods.livinghorizon.ui.PlayersAdvancedScreen(null), problems);
+                    look(context, language + "-mobs", () -> new fr.clixmods.livinghorizon.ui.MobsAdvancedScreen(null), problems);
+                    look(context, language + "-birds", () -> new fr.clixmods.livinghorizon.ui.BirdsAdvancedScreen(null), problems);
                     look(context, language + "-boxes", () -> new BoxesScreen(null), problems);
                     look(context, language + "-outlines", () -> new OutlinesScreen(null), problems);
                     look(context, language + "-stats", () -> new fr.clixmods.livinghorizon.ui.StatsScreen(null), problems);

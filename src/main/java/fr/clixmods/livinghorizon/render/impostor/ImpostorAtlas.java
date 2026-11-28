@@ -12,6 +12,7 @@ import fr.clixmods.livinghorizon.compat.LycaniteMobs;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.LivingHorizonClient;
 import fr.clixmods.livinghorizon.Profile;
+import fr.clixmods.livinghorizon.compat.EmfLink;
 import fr.clixmods.livinghorizon.compat.IrisNormals;
 import fr.clixmods.livinghorizon.render.GhostRenderer;
 import fr.clixmods.livinghorizon.render.Posture;
@@ -19,6 +20,8 @@ import fr.clixmods.livinghorizon.render.Sink;
 import fr.clixmods.livinghorizon.track.Puppets;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
+//? if >=1.21.2
+import net.minecraft.client.renderer.entity.state.BoatRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.client.renderer.rendertype.RenderType;
@@ -42,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
@@ -158,6 +162,19 @@ public final class ImpostorAtlas {
         return relief ? 2 * ROW_BYTES : ROW_BYTES;
     }
 
+    /** Bytes of video memory one sheet takes now, its normal map's included. */
+    public static long sheetBytes() {
+        return rowBytesNow();
+    }
+
+    /**
+     * The figure whose sheet {@code key} shares, its pixels being the same, or null for none.
+     * Does not count as a use: for the impostor screen.
+     */
+    public static @Nullable ImpostorKey aliasOf(ImpostorKey key) {
+        return ALIASES.get(key);
+    }
+
     /** Bytes of video memory the pages of the players, or of the mobs, take now. */
     public static long memory(boolean players) {
         return (long) ALLOCATOR.taken(players) * rowBytesNow();
@@ -257,7 +274,7 @@ public final class ImpostorAtlas {
                           ImpostorDisk.@Nullable Stored stored, int generation) {
         /** What to bake when the sheet could not be read back. */
         Request bake() {
-            return figure != null ? Request.of(key, figure) : Request.of(key, puppet, GROWN.getOrDefault(key, 1.0));
+            return figure != null ? Request.of(key, figure) : Request.of(key, puppet, grown(key));
         }
     }
 
@@ -268,23 +285,32 @@ public final class ImpostorAtlas {
      * {@code centred} down its tiles once moved there ({@link #CENTRED}), NaN until then.
      */
     record Request(ImpostorKey key, @Nullable Entity puppet, @Nullable ImpostorFigure figure, double grow,
-                   @Nullable Rider rider, float centred) {
+                   @Nullable Rider rider, float centred, int walk, boolean again) {
         static Request of(ImpostorKey key, Entity puppet, double grow) {
             return of(key, puppet, grow, null);
         }
 
         static Request of(ImpostorKey key, Entity puppet, double grow, @Nullable Rider rider) {
-            return new Request(key, puppet, null, grow, rider, CENTRED.getOrDefault(key, Float.NaN));
+            // A picture of a movement stands in its tiles where its resting picture was moved to.
+            ImpostorKey.Walk walk = ImpostorKey.walk(key);
+            float centred = CENTRED.getOrDefault(key, walk == null ? Float.NaN : CENTRED.getOrDefault(walk.rest(), Float.NaN));
+            return new Request(key, puppet, null, grow, rider, centred, walk == null ? 0 : walk.frame(), false);
         }
 
         /** One of the mod's own figures: its tile is the size it asks for, never grown. */
         static Request of(ImpostorKey key, ImpostorFigure figure) {
-            return new Request(key, null, figure, 1.0, null, Float.NaN);
+            return new Request(key, null, figure, 1.0, null, Float.NaN, 0, false);
         }
 
         /** The same figure, baked again with its picture covering {@code grow} times its box. */
         Request grown(double grow) {
-            return of(key, puppet, grow, rider);
+            Request grown = of(key, puppet, grow, rider);
+            return again ? grown.anew() : grown;
+        }
+
+        /** Baked again over the sheet it has: its picture is replaced once the new one is ready, never missing. */
+        Request anew() {
+            return new Request(key, puppet, figure, grow, rider, centred, walk, true);
         }
 
         /** Blocks along a side of its tiles: a mount's, with its rider on top. */
@@ -403,6 +429,11 @@ public final class ImpostorAtlas {
             ImpostorAtlas::forget);
 
     private static final Deque<Request> QUEUE = new ArrayDeque<>();
+    /**
+     * The pictures of walks ({@link ImpostorKey#frame}), baked once {@link #QUEUE} is empty: every
+     * figure gets its resting picture first, which also stands in while its walk is baked.
+     */
+    private static final Deque<Request> WALK_QUEUE = new ArrayDeque<>();
     /** Queued, or drawn and waiting for the read back. */
     private static final Set<ImpostorKey> QUEUED = new HashSet<>();
     /** Where each sheet's pictures come from, for the impostor screen. */
@@ -460,6 +491,7 @@ public final class ImpostorAtlas {
     /** The game's textures were reloaded: every picture may be out of date. */
     public static void invalidate() {
         dirty = true;
+        EmfLink.reloaded();
     }
 
     /**
@@ -532,6 +564,16 @@ public final class ImpostorAtlas {
      * it counts as a use: the figures on hand keep their sheets.
      */
     public static void request(ImpostorKey key, Entity puppet) {
+        ImpostorKey.Walk walk = ImpostorKey.walk(key);
+        if (walk != null) {
+            walking(walk.rest(), puppet);
+            return;
+        }
+        ask(key, puppet);
+    }
+
+    /** {@link #request}, for a resting picture or one step of a walk the walk's owner asks for. */
+    private static void ask(ImpostorKey key, Entity puppet) {
         if (failed || sheet(key) != null || UNDRAWABLE.contains(key) || refused(key) || !QUEUED.add(key)) return;
         if (!player(key)) {
             // Until the sheets on disk are listed, a mob waits, to be read back rather than baked again.
@@ -547,7 +589,86 @@ public final class ImpostorAtlas {
                 return;
             }
         }
-        QUEUE.add(Request.of(key, puppet, GROWN.getOrDefault(key, 1.0)));
+        queue(Request.of(key, puppet, grown(key)));
+    }
+
+    /**
+     * Whose walk each look's pictures of a walk are baked from, and since when: the first mob of
+     * that look seen walking, which every picture of it and its resting one are baked from. Two
+     * mobs of one look may differ in what no key reads (a pack's random parts, Fresh Animations'
+     * per-mob values, a texture of a second layer): from two of them, a far sheep had horns on
+     * one step of its walk and none on the next.
+     */
+    private record Walker(UUID id, long since) {
+    }
+
+    private static final Map<ImpostorKey, Walker> WALKERS = new HashMap<>();
+    /** The mob each resting picture was baked from; none for one read back from disk. */
+    private static final Map<ImpostorKey, UUID> BAKED_FROM = new HashMap<>();
+    /** The mob a look's walk is baked from, and the one its resting picture was: for the game tests. */
+    public static @Nullable UUID walker(ImpostorKey rest) {
+        Walker owner = WALKERS.get(rest);
+        return owner == null ? null : owner.id;
+    }
+
+    public static @Nullable UUID bakedFrom(ImpostorKey rest) {
+        return BAKED_FROM.get(rest);
+    }
+
+    /** Milliseconds a walk's owner has to get its pictures baked before another mob of the look takes over. */
+    private static final long WALKER_KEEP = 20_000L;
+
+    /**
+     * Asks for the whole walk of a look ({@link ImpostorKey#frame}), from {@code puppet}: every step,
+     * and its resting picture again when that one was baked from another mob, so that the look's
+     * pictures all show one mob. A walk another mob owns is left to it while it gets baked.
+     */
+    private static void walking(ImpostorKey rest, Entity puppet) {
+        UUID id = puppet.getUUID();
+        long now = System.currentTimeMillis();
+        Walker owner = WALKERS.get(rest);
+        boolean whole = true;
+        for (int frame = 1; frame <= ImpostorWalk.FRAMES; frame++) whole &= baked(ImpostorKey.frame(rest, frame));
+        if (owner != null && !owner.id.equals(id) && (whole || now - owner.since < WALKER_KEEP)) return;
+        if (owner == null || !owner.id.equals(id)) {
+            if (whole && owner == null) return;
+            WALKERS.put(rest, new Walker(id, now));
+        }
+        boolean fromDisk = true;
+        for (int frame = 1; frame <= ImpostorWalk.FRAMES; frame++) {
+            ImpostorKey step = ImpostorKey.frame(rest, frame);
+            fromDisk &= baked(step) || !player(step) && ImpostorDisk.ready() && ImpostorDisk.has(step);
+            ask(step, puppet);
+        }
+        // Its resting picture from the same mob, unless every picture comes from disk, saved together.
+        Origin origin = ORIGINS.get(rest);
+        boolean restFromDisk = origin != null && origin.source() == Source.DISK;
+        if (!(fromDisk && restFromDisk) && baked(rest) && !id.equals(BAKED_FROM.get(rest)) && QUEUED.add(rest)) {
+            BAKED_FROM.put(rest, id);
+            queue(Request.of(rest, puppet, grown(rest)).anew());
+        }
+    }
+
+    /**
+     * How much larger a figure was last baked. A picture of a walk starts as large as its resting
+     * picture: baked smaller, it would only be baked again.
+     */
+    private static double grown(ImpostorKey key) {
+        Double grown = GROWN.get(key);
+        if (grown != null) return grown;
+        ImpostorKey.Walk walk = ImpostorKey.walk(key);
+        return walk == null ? 1.0 : GROWN.getOrDefault(walk.rest(), 1.0);
+    }
+
+    /** Queues a bake: the pictures of a walk after every resting one. */
+    private static void queue(Request request) {
+        (request.walk > 0 ? WALK_QUEUE : QUEUE).add(request);
+    }
+
+    /** The next bake: a resting picture first, then a walk's. */
+    private static @Nullable Request next() {
+        Request request = QUEUE.poll();
+        return request != null ? request : WALK_QUEUE.poll();
     }
 
     /**
@@ -556,7 +677,7 @@ public final class ImpostorAtlas {
      */
     public static void request(ImpostorKey key, Entity mount, Rider rider) {
         if (failed || sheet(key) != null || UNDRAWABLE.contains(key) || refused(key) || !QUEUED.add(key)) return;
-        QUEUE.add(Request.of(key, mount, GROWN.getOrDefault(key, 1.0), rider));
+        queue(Request.of(key, mount, grown(key), rider));
     }
 
     /**
@@ -608,6 +729,8 @@ public final class ImpostorAtlas {
     private static void forget(ImpostorKey key) {
         ImpostorKey.forget(key);
         ORIGINS.remove(key);
+        WALKERS.remove(key);
+        BAKED_FROM.remove(key);
         ALIASES.values().removeIf(key::equals);
         LOOKS.values().removeIf(key::equals);
     }
@@ -684,12 +807,15 @@ public final class ImpostorAtlas {
         ALIASES.clear();
         LOOKS.clear();
         QUEUE.clear();
+        WALK_QUEUE.clear();
         QUEUED.clear();
         UNLISTED.clear();
         UNLISTED_FIGURES.clear();
         BAKING.clear();
         LOADED.clear();
         GROWN.clear();
+        WALKERS.clear();
+        BAKED_FROM.clear();
         CENTRED.clear();
         REFUSED.clear();
         UNDRAWABLE.clear();
@@ -715,7 +841,9 @@ public final class ImpostorAtlas {
         settle();
         if (!usable()) {
             for (Request request : QUEUE) QUEUED.remove(request.key);
+            for (Request request : WALK_QUEUE) QUEUED.remove(request.key);
             QUEUE.clear();
+            WALK_QUEUE.clear();
             for (Loaded loaded : LOADED) QUEUED.remove(loaded.key);
             LOADED.clear();
             QUEUED.removeAll(UNLISTED.keySet());
@@ -749,7 +877,7 @@ public final class ImpostorAtlas {
             if (loaded.generation != generation) continue;
             if (loaded.stored == null || !ImpostorPixels.fits(loaded.stored.levels(), levels())) {
                 ImpostorDisk.forget(loaded.key);
-                QUEUE.add(loaded.bake());
+                queue(loaded.bake());
                 continue;
             }
             QUEUED.remove(loaded.key);
@@ -772,10 +900,10 @@ public final class ImpostorAtlas {
                 return;
             }
         }
-        while (!QUEUE.isEmpty()) {
-            Request request = QUEUE.poll();
+        Request request;
+        while ((request = next()) != null) {
             // Gliding since it was asked for: lying in the air, it is asked for again once it lands.
-            if (request.puppet != null && request.puppet.level() != minecraft.level || baked(request.key)
+            if (request.puppet != null && request.puppet.level() != minecraft.level || baked(request.key) && !request.again
                     || request.puppet instanceof LivingEntity glider && glider.isFallFlying()) {
                 QUEUED.remove(request.key);
                 continue;
@@ -783,6 +911,11 @@ public final class ImpostorAtlas {
             Runnable back = request.puppet != null ? Puppets.atRest(request.puppet) : () -> {
             };
             Runnable turnedBack = request.puppet != null ? facingBack(request.puppet) : () -> {
+            };
+            // Its clocks and legs held, as its rider's: see steady.
+            Runnable played = request.puppet != null ? steady(request.puppet) : () -> {
+            };
+            Runnable riderPlayed = request.rider != null ? steady(request.rider.entity()) : () -> {
             };
             try {
                 bake(minecraft, request);
@@ -796,6 +929,8 @@ public final class ImpostorAtlas {
             } finally {
                 back.run();
                 turnedBack.run();
+                played.run();
+                riderPlayed.run();
             }
             if (System.nanoTime() > end) return;
         }
@@ -811,6 +946,7 @@ public final class ImpostorAtlas {
     private static void fail(Throwable error) {
         failed = true;
         QUEUE.clear();
+        WALK_QUEUE.clear();
         QUEUED.clear();
         UNLISTED.clear();
         UNLISTED_FIGURES.clear();
@@ -888,7 +1024,12 @@ public final class ImpostorAtlas {
         Entity puppet = request.puppet;
         // A boat, a minecart: no body to turn in its state, the entity itself is turned
         // for each view, the way stage turns a mob's body. Put back after the bake.
+        // A boat, a minecart: no body to turn in its state, the entity itself is turned
+        // for each view, the way stage turns a mob's body. Put back after the bake. A mob is turned
+        // in its state only: Fresh Animations smooths a body turning, and a mob turned view by view
+        // was pictured from the side where its back should be.
         if (!(puppet instanceof LivingEntity)) turn(puppet, ImpostorViews.facing(view));
+        if (puppet instanceof LivingEntity living) stride(living, request.walk);
         EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), puppet, 1.0f, FULL_BRIGHT);
         if (state == null) throw new LeftOut();
         if (puppet instanceof LivingEntity && !(state instanceof LivingEntityRenderState)) {
@@ -899,6 +1040,7 @@ public final class ImpostorAtlas {
             if (state == null) throw new LeftOut();
         }
         stage(state, view);
+        if (request.walk > 0) moving(state, request.walk);
         Posture.baked(state, request.key.posture());
         // Water mobs were in water when last seen; a puppet is in no world.
         if (state instanceof LivingEntityRenderState living && GhostRenderer.livesInWater(puppet)) {
@@ -906,6 +1048,29 @@ public final class ImpostorAtlas {
         }
         return state;
     }
+
+    /**
+     * Poses a figure at picture {@code frame} of its movement ({@link ImpostorWalk}): a mob's, a
+     * player's or a mannequin's legs where that step of the stride has them, a boat's oars where
+     * that step of a stroke has them (from 1.21.2: before, the game reads them from the boat itself).
+     */
+    private static void moving(EntityRenderState state, int frame) {
+        if (state instanceof LivingEntityRenderState walking) {
+            walking.walkAnimationPos = ImpostorWalk.position(frame);
+            walking.walkAnimationSpeed = ImpostorWalk.BAKED_SPEED;
+        }
+        //? if >=1.21.2 {
+        if (state instanceof BoatRenderState boat) {
+            boat.rowingTimeLeft = boat.rowingTimeRight = (float) (ImpostorWalk.cycle(frame) * 2 * Math.PI + OARS);
+        }
+        //?}
+    }
+
+    /**
+     * Radians a stroke of the oars is shifted by: {@code sin(-time)} swings them from end to end, so
+     * its quarters, not its start, are the two ends a picture of a stroke shows.
+     */
+    public static final double OARS = Math.PI / 2;
 
     /**
      * Blocks a figure is raised by in its picture: lying down, but not riding ({@link Posture#BAKED_LIFT});
@@ -916,6 +1081,35 @@ public final class ImpostorAtlas {
             return -middle(request.puppet, request.rider);
         }
         return request.rider == null ? Posture.bakedLift(request.key.posture()) : 0;
+    }
+
+    /**
+     * Stands a figure on the ground, still, while it is baked; gives back what puts it back as it
+     * was. Some renderers read the entity rather than its state: Entity Model Features plays Fresh
+     * Animations on the entity's own stride and whether it is on the ground, and a copy in no world
+     * is not, so a mob was pictured as if it jumped, head down and hindquarters up, and the eight
+     * views of one picture, drawn one after the other, came out each in another pose. Its age is
+     * left alone: Fresh Animations lays a pig down, or sits a mob, on timers counted from it.
+     */
+    private static Runnable steady(Entity puppet) {
+        boolean grounded = puppet.onGround();
+        puppet.setOnGround(true);
+        Runnable back = () -> puppet.setOnGround(grounded);
+        if (!(puppet instanceof LivingEntity living)) return back;
+        float position = living.walkAnimation.position, speed = living.walkAnimation.speed,
+                speedOld = living.walkAnimation.speedOld;
+        return () -> {
+            back.run();
+            living.walkAnimation.position = position;
+            living.walkAnimation.speed = speed;
+            living.walkAnimation.speedOld = speedOld;
+        };
+    }
+
+    /** Sets a figure's own legs at picture {@code frame} of its walk, or at rest for 0, steady. */
+    private static void stride(LivingEntity living, int frame) {
+        living.walkAnimation.position = frame == 0 ? 0 : ImpostorWalk.position(frame);
+        living.walkAnimation.speed = living.walkAnimation.speedOld = frame == 0 ? 0 : ImpostorWalk.BAKED_SPEED;
     }
 
     /** Turns an entity itself to face {@code facing}, level, for the view being baked. */
@@ -956,6 +1150,7 @@ public final class ImpostorAtlas {
 
     /** A rider's state for one view: on the mount, turned with it, in the riding pose. */
     private static EntityRenderState stagedRider(Minecraft minecraft, Rider rider, int view) {
+        if (rider.entity instanceof LivingEntity living) stride(living, 0);
         EntityRenderState state = GhostRenderer.extract(minecraft.getEntityRenderDispatcher(), rider.entity, 1.0f, FULL_BRIGHT);
         if (state == null) throw new LeftOut();
         stage(state, view);
@@ -1052,7 +1247,7 @@ public final class ImpostorAtlas {
                     CENTRED.put(key, feet);
                     growth = fit.growth();
                     if (growth <= 1.01 || request.grow >= MAX_GROW) {
-                        QUEUE.add(request.grown(request.grow));
+                        queue(request.grown(request.grow));
                         again = true;
                         return;
                     }
@@ -1061,7 +1256,7 @@ public final class ImpostorAtlas {
             if (growth > 1.01 && request.grow < MAX_GROW) {
                 double grow = Math.min(MAX_GROW, request.grow * growth);
                 GROWN.put(key, grow);
-                QUEUE.add(request.grown(grow));
+                queue(request.grown(grow));
                 again = true;
                 return;
             }
@@ -1089,6 +1284,7 @@ public final class ImpostorAtlas {
             }
             if (!place(key, index, size, request.feet(), levels)) return;
             BAKING.remove(index);
+            if (request.walk == 0 && request.puppet != null) BAKED_FROM.put(key, request.puppet.getUUID());
             // Mobs and the mod's own figures are kept; players come and go.
             boolean kept = !player(key);
             long now = System.currentTimeMillis();
@@ -1120,6 +1316,9 @@ public final class ImpostorAtlas {
             ALLOCATOR.free(index);
             return true;
         }
+        // Baked again (a walk's resting picture, from the mob the walk is baked from): its own pixels now.
+        ALIASES.remove(key);
+        LOOKS.values().removeIf(key::equals);
         LOOKS.put(look, key);
         int row = index % SheetAllocator.ROWS;
         for (int level = 0; level < MIPS; level++) {

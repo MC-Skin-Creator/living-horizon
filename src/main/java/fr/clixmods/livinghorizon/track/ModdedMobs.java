@@ -1,6 +1,7 @@
 package fr.clixmods.livinghorizon.track;
 
 import fr.clixmods.livinghorizon.compat.AmbientBirds;
+import fr.clixmods.livinghorizon.compat.Graveyard;
 import net.minecraft.world.entity.Entity;
 import org.jspecify.annotations.Nullable;
 
@@ -32,6 +33,11 @@ public final class ModdedMobs {
         // round the player and fly off in flocks. Far away they wheel in the sky, wings out.
         for (String bird : List.of("tit", "crow", "jay", "bullfinch", "sparrow", "lark", "seagull", "owl", "woodpecker")) {
             KNOWN.put("ambientbirds:" + bird, new Known(MobFlight.WHEEL, AmbientBirds::flying));
+        }
+        // The Graveyard (every version): crows, ravens and magpies, which fly about graveyards and
+        // perch on gravestones. Far away they wheel over where they were met, wings flapping.
+        for (String bird : List.of("crow", "raven", "magpie")) {
+            KNOWN.put("graveyard:" + bird, new Known(MobFlight.WHEEL, Graveyard::flying));
         }
     }
 
