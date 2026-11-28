@@ -139,6 +139,11 @@ one never loses it: `references/v0.16.0_validated-2026-11-28/` today. Before app
 reference, check that the current one is there; to go back to it, copy its `baselines/` over
 `LH_BENCH_HOME/baselines`.
 
+A comparison the user asks to keep (not a reference) goes to
+`LH_BENCH_HOME/saved/<build>_vs_<reference>-<date>/`: its runs, with their `_artifact/` pages, and a
+README with the verdict and the published links. Kept today: `v0.19.0-dev.842_vs_v0.16.0-2026-11-28`
+(no regression found).
+
 `jar_nodes` in `bench.toml` is the default list of games (ten: one per change in how the mod
 draws, and Forge and NeoForge where most players are); list it to the user before a run and
 take `--nodes` from what they keep.
