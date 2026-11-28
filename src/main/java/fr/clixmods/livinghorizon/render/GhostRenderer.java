@@ -355,6 +355,19 @@ public final class GhostRenderer {
      * The state of an entity as its renderer sees it this frame; the impostors are baked from
      * it too. Null when its renderer cannot give one: that entity is not drawn far away.
      */
+    /**
+     * Where a figure was at the last tick, for the frame to go from there: a mob the server just
+     * sent has not ticked yet, and its last position is still 0, 0, 0. The game sets it to where it
+     * is before drawing one; drawn far away without it, the mob flashed up in the air, between the
+     * world's origin and its place, for a frame.
+     */
+    static void sinceLastTick(Entity entity) {
+        if (entity.tickCount != 0) return;
+        entity.xOld = entity.getX();
+        entity.yOld = entity.getY();
+        entity.zOld = entity.getZ();
+    }
+
     public static @Nullable EntityRenderState extract(EntityRenderDispatcher dispatcher, Entity entity, float partialTick) {
         return extract(dispatcher, entity, partialTick,
                 light(Minecraft.getInstance().level, entity.getX(), entity.getY(), entity.getZ()));
@@ -368,6 +381,7 @@ public final class GhostRenderer {
     public static @Nullable EntityRenderState extract(EntityRenderDispatcher dispatcher, Entity entity, float partialTick,
                                                       int light) {
         if (!drawable(dispatcher, entity)) return null;
+        sinceLastTick(entity);
         Puppets.skin(entity);
         Puppets.cape(entity);
         int before = extractLight;
@@ -1173,6 +1187,7 @@ public final class GhostRenderer {
         }
         // Players are asked for under their own switch, before; mobs and the rest under theirs.
         if (!(entity instanceof Player) && !(creature(entity) ? config.impostors : config.impostorEntities)) return false;
+        sinceLastTick(entity);
         ImpostorKey key = ImpostorKey.of(entity);
         // A mob's body turns on its own; a boat or a vehicle is the way it faces.
         float yaw = !Float.isNaN(facing) ? facing : entity instanceof LivingEntity living
@@ -1265,6 +1280,8 @@ public final class GhostRenderer {
                 || !drawable(dispatcher, mount) || !drawable(dispatcher, rider)) {
             return false;
         }
+        sinceLastTick(rider);
+        sinceLastTick(mount);
         // A mob's body turns on its own, a vehicle is the way it faces.
         float facing = mount instanceof LivingEntity horse ? horse.yBodyRot : mount.getYRot();
         float facingO = mount instanceof LivingEntity horse ? horse.yBodyRotO : mount.yRotO;

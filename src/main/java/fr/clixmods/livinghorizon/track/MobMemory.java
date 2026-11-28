@@ -13,6 +13,7 @@ import fr.clixmods.livinghorizon.compat.LodWorld;
 import fr.clixmods.livinghorizon.platform.Platform;
 import fr.clixmods.livinghorizon.render.DepthFar;
 import net.minecraft.core.SectionPos;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.client.Minecraft;
@@ -729,6 +730,60 @@ public final class MobMemory {
     }
 
     /**
+     * Forgotten because the mob is not there any more (died, despawned, never was): a copy the
+     * player was looking at goes in the puff of smoke the game shows as a mob dies, rather than
+     * blinking out.
+     */
+    private void vanish(UUID id) {
+        Remembered mob = mobs.get(id);
+        if (mob != null) poof(mob);
+        forget(id);
+    }
+
+    /**
+     * The game's puff of smoke where a copy drawn a moment ago stands, as {@code LivingEntity.makePoofParticles}
+     * makes it, and as the game's Particles setting allows. An enderman leaves the specks of its teleport.
+     */
+    private static void poof(Remembered mob) {
+        Entity puppet = mob.puppet;
+        if (mob.gone || puppet == null || System.nanoTime() - mob.drawnAt > POOF_DRAWN) return;
+        Minecraft minecraft = Minecraft.getInstance();
+        ClientLevel level = minecraft.level;
+        if (level == null || puppet.level() != level || minecraft.player == null
+                || puppet.distanceToSqr(minecraft.player) > POOF_RANGE * POOF_RANGE) return;
+        // The game's Particles setting, as for its own smoke: Decreased drops a third, Minimal all of it.
+        // Its order (All, Decreased, Minimal) is the same on every version; its class moved in 1.21.2.
+        int particles = minecraft.options.particles().get().ordinal();
+        if (particles >= 2) return;
+        var random = java.util.concurrent.ThreadLocalRandom.current();
+        if (puppet.getType() == EntityType.ENDERMAN) {
+            // An enderman teleports away instead: the purple specks the game scatters over its body as it goes.
+            for (int i = 0; i < 128; i++) {
+                if (particles == 1 && random.nextInt(3) == 0) continue;
+                level.addAlwaysVisibleParticle(ParticleTypes.PORTAL, true,
+                        puppet.getX() + (random.nextDouble() - 0.5) * puppet.getBbWidth() * 2.0,
+                        puppet.getY() + random.nextDouble() * puppet.getBbHeight(),
+                        puppet.getZ() + (random.nextDouble() - 0.5) * puppet.getBbWidth() * 2.0,
+                        (random.nextFloat() - 0.5f) * 0.2f, (random.nextFloat() - 0.5f) * 0.2f,
+                        (random.nextFloat() - 0.5f) * 0.2f);
+            }
+            return;
+        }
+        for (int i = 0; i < 20; i++) {
+            if (particles == 1 && random.nextInt(3) == 0) continue;
+            // Past the game's 32 blocks for particles too: the copies are mostly farther than that.
+            level.addAlwaysVisibleParticle(ParticleTypes.POOF, true, puppet.getRandomX(1.0), puppet.getRandomY(),
+                    puppet.getRandomZ(1.0), random.nextGaussian() * 0.02, random.nextGaussian() * 0.02,
+                    random.nextGaussian() * 0.02);
+        }
+    }
+
+    /** How long ago a copy may have been drawn to vanish in smoke: on screen, not one long out of view. */
+    private static final long POOF_DRAWN = 250_000_000L;
+    /** Blocks within which a vanishing copy leaves a puff: farther, it is a speck on screen. */
+    private static final double POOF_RANGE = 160;
+
+    /**
      * A mount a far player got off, where its copy under them was: it stays there, rather than
      * walk from where it was remembered before it was ridden. What the server last said of it is
      * older than that, and is not taken until it says something new.
@@ -1442,7 +1497,7 @@ public final class MobMemory {
             if (mob.fromPack && isHere(mob) && !published.contains(mob.id) && !live.containsKey(mob.id)
                     && pack.covers(mob.dimension, mob.x, mob.z)) dead.add(mob.id);
         }
-        dead.forEach(this::forget);
+        dead.forEach(this::vanish);
     }
 
     /**
@@ -1609,7 +1664,7 @@ public final class MobMemory {
             for (UUID id : answer.gone()) {
                 if (live.containsKey(id)) continue;
                 // Died there: the positions the server shared before, read again, would bring its copy back.
-                forget(id);
+                vanish(id);
                 setAside(id);
             }
         }
@@ -1811,7 +1866,7 @@ public final class MobMemory {
         }
         for (Remembered mob : missing) {
             if (mob.fromPack) dismissed.put(mob.id, mob.x + mob.y * 31 + mob.z * 961);
-            forget(mob.id);
+            vanish(mob.id);
         }
     }
 
