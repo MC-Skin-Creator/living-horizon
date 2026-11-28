@@ -125,7 +125,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
                                 () -> FarConfig.get().enabled))
                         .addOption(reach(b, "playerMaxDistance", d.playerMaxDistance,
                                 v -> FarConfig.get().playerMaxDistance = v, () -> FarConfig.get().playerMaxDistance)))
-                .addOptionGroup(b.createOptionGroup()
+                .addOptionGroup(b.createOptionGroup().setName(Component.translatable(KEY + "players.offline"))
                         .addOption(bool(b, "offlinePlayers", d.offlinePlayers, v -> FarConfig.get().offlinePlayers = v,
                                 () -> FarConfig.get().offlinePlayers))
                         .addOption(count(b, "maxOfflinePlayers", FarConfig.MAX_OFFLINE, FarConfig.UNLIMITED_OFFLINE, d.maxOfflinePlayers,

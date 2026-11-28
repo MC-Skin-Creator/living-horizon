@@ -98,6 +98,7 @@ public final class FarConfigScreen extends SideOptionsScreen {
         header(Component.translatable(KEY + "players"));
         list.addSmall(bool("enabled", c.enabled, v -> c.enabled = v).createButton(minecraft.options, 0, 0, 150), null);
         list.addBig(distance(Shape.AROUND, reach("playerMaxDistance", c.playerMaxDistance, v -> c.playerMaxDistance = v)));
+        subheader(Component.translatable(KEY + "players.offline"));
         list.addSmall(
                 bool("offlinePlayers", c.offlinePlayers, v -> c.offlinePlayers = v),
                 integer("maxOfflinePlayers", 0, FarConfig.MAX_OFFLINE, c.maxOfflinePlayers,
