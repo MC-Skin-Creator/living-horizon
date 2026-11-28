@@ -47,7 +47,7 @@ desktop: a locked or sleeping screen draws nothing (`-KeepAwake`).
 ```
 bench.cmd run                               # the newest develop pre-release, every node and profile
 bench.cmd run --ref develop --nodes 26.3.x  # a branch, tag or commit; some nodes
-bench.cmd run --ref local                   # this checkout as it is (on a dev machine: python bench.py)
+bench.cmd run --ref local                   # this checkout as it is (on a dev machine: `LH_BENCH_HOME/venv` python, bench.py)
 bench.cmd run --profiles voxy,voxy-photon --perf
 bench.cmd compare last                      # compare again (after changing bench.toml)
 bench.cmd approve <run>                     # the user validated it: it becomes the reference
@@ -94,7 +94,7 @@ even one of a release.
 **Whenever the user asks for a regression bench** ("test v0.19.0-dev.842", "is this build
 stable"):
 
-1. `bench.cmd status` (on a dev machine `python bench.py status`): which release each game and
+1. `bench.cmd status` (on a dev machine `~/living-horizon-bench/venv/Scripts/python.exe bench.py status`: the system Python lacks its packages): which release each game and
    profile is validated against, and which have no validated reference. Tell the user.
 2. Play the build asked for alone (`jars --tag <build>`, no `--against`): it is compared with those
    references. A game or profile with no validated reference comes out **new**: say so, never
