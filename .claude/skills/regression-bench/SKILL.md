@@ -69,7 +69,21 @@ match, since the world is the same.
 ## Report to the user
 
 Write the report in the user's language (French for this project's author), captions included.
-Every report ends with the pictures, so that the user judges each change for themselves: send
+
+**Every compared run gets an artifact** the user opens to look at the pictures: for each game,
+profile and viewpoint, the reference, the build tested and the difference, side by side, with a
+full-size view that flips between them. Build it, copy it into the scratchpad (the Artifact tool
+only sends files from there or the working folder) and publish it, then give the link first:
+
+```
+LH_BENCH_HOME/venv/Scripts/python.exe artifact.py <run> --lang fr   # writes results/<run>/_artifact/
+```
+
+Publish `index.html` as `file_path` with `root` the copied folder and `files` mapping every
+`shots/*.webp` and `zoom/*.webp` to itself. One picture holds a viewpoint's three panels, so a run
+of ten games, four profiles and ten viewpoints stays under the 255 files of one publish.
+
+Every report also ends with the pictures in the conversation, so that the user judges each change for themselves: send
 (`SendUserFile`, display `render`) the review sheet of every node and profile compared,
 `results/<run>/_review/<node>-<profile>.png` (every viewpoint in three columns: the reference,
 this run, and what the bench found, in red framed in yellow, in blue what moves by itself and is
