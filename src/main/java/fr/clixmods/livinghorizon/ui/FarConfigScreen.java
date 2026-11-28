@@ -230,16 +230,22 @@ public final class FarConfigScreen extends SideOptionsScreen {
 
     /** A button named and explained by {@code name}, opening a screen that goes back to {@code from}. */
     static Button opens(Screen from, String name, java.util.function.Function<Screen, Screen> screen) {
-        return Button.builder(Component.translatable(KEY + name), b -> Minecraft.getInstance().setScreen(screen.apply(from)))
+        return Button.builder(Component.translatable(KEY + name), b -> {
+                    Minecraft minecraft = Minecraft.getInstance();
+                    minecraft.setScreen(screen.apply(from));
+                })
                 .tooltip(Tooltip.create(Component.translatable(KEY + name + ".tooltip"))).build();
     }
 
     /** A button that forgets something, asking first: what is forgotten does not come back. */
     static Button forgets(Screen from, String name, Runnable action) {
-        return Button.builder(Component.translatable(KEY + name), b -> Minecraft.getInstance().setScreen(new ConfirmScreen(yes -> {
-                    if (yes) action.run();
-                    Minecraft.getInstance().setScreen(from);
-                }, Component.translatable(KEY + name), Component.translatable(KEY + name + ".confirm"))))
+        return Button.builder(Component.translatable(KEY + name), b -> {
+                    Minecraft minecraft = Minecraft.getInstance();
+                    minecraft.setScreen(new ConfirmScreen(yes -> {
+                        if (yes) action.run();
+                        minecraft.setScreen(from);
+                    }, Component.translatable(KEY + name), Component.translatable(KEY + name + ".confirm")));
+                })
                 .tooltip(Tooltip.create(Component.translatable(KEY + name + ".tooltip"))).build();
     }
 
