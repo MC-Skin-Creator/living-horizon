@@ -740,7 +740,7 @@ public final class MobMemory {
 
     /**
      * The game's puff of smoke where a copy drawn a moment ago stands, as {@code LivingEntity.makePoofParticles}
-     * makes it, and as the game's Particles setting allows.
+     * makes it, and as the game's Particles setting allows. An enderman leaves the specks of its teleport.
      */
     private static void poof(Remembered mob) {
         Entity puppet = mob.puppet;
@@ -754,6 +754,19 @@ public final class MobMemory {
         int particles = minecraft.options.particles().get().ordinal();
         if (particles >= 2) return;
         var random = java.util.concurrent.ThreadLocalRandom.current();
+        if (puppet.getType() == EntityType.ENDERMAN) {
+            // An enderman teleports away instead: the purple specks the game scatters over its body as it goes.
+            for (int i = 0; i < 128; i++) {
+                if (particles == 1 && random.nextInt(3) == 0) continue;
+                level.addAlwaysVisibleParticle(ParticleTypes.PORTAL, true,
+                        puppet.getX() + (random.nextDouble() - 0.5) * puppet.getBbWidth() * 2.0,
+                        puppet.getY() + random.nextDouble() * puppet.getBbHeight(),
+                        puppet.getZ() + (random.nextDouble() - 0.5) * puppet.getBbWidth() * 2.0,
+                        (random.nextFloat() - 0.5f) * 0.2f, (random.nextFloat() - 0.5f) * 0.2f,
+                        (random.nextFloat() - 0.5f) * 0.2f);
+            }
+            return;
+        }
         for (int i = 0; i < 20; i++) {
             if (particles == 1 && random.nextInt(3) == 0) continue;
             // Past the game's 32 blocks for particles too: the copies are mostly farther than that.
