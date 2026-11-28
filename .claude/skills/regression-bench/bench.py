@@ -968,16 +968,14 @@ def command_jars(args, config: dict) -> list[Path]:
     else:
         nodes = pick(args.nodes, known, "node") if args.nodes else config["jar_nodes"]
     names = pick(args.profiles, list(config["profiles"]), "profile")
-    if len(args.tag) == 1 and not args.against and not getattr(args, "no_init", False):
+    if len(args.tag) == 1 and not args.against:
+        # References are only ever made by `approve`, once the user has validated a run: a release
+        # approved on its own would hide the regressions it brought.
         have = references()
         missing = [(n, p) for n in nodes for p in names if (n, p) not in have]
-        stable = latest_stable(config["repository"])
-        if missing and args.tag[0] != stable:
-            say(f"no reference yet for {len(missing)} game(s) on this machine: playing {stable}, the newest full"
-                " release, and approving it first")
-            first = argparse.Namespace(**{**vars(args), "tag": [stable], "no_init": True})
-            for run in command_jars(first, config):
-                approve_run(run, cells=set(missing))
+        if missing:
+            say(f"no validated reference for {len(missing)} game(s) and profile(s) on this machine: "
+                + ", ".join(f"{n}/{p}" for n, p in missing) + "; they come out as new")
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M")
     pins = load_pins()
     runs: dict[str, Path] = {}
@@ -1250,8 +1248,8 @@ def main() -> None:
     elif args.command == "status":
         have = references()
         if not have:
-            print(f"no reference on this machine yet: the first `jars` run plays "
-                  f"{latest_stable(config['repository'])}, the newest full release, and approves it")
+            print("no validated reference on this machine yet: play a release, check its pictures with the "
+                  "user, then `approve <run>`")
         for (node, profile), approved in sorted(have.items()):
             print(f"{node:16} {profile:8} {approved.get('tag')}  (approved {approved.get('at', '')[:16]})")
         old = references(stale=True)

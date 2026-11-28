@@ -277,8 +277,11 @@ scenarios in `src/gametest/java` and takes screenshots to look at. Run
 for what the change touches, and show the user the screenshots. Voxy cannot run there: say so
 when a check depends on it. Across versions and with Voxy, Distant Horizons and shader packs,
 on the machine with a graphics card: `.claude/skills/regression-bench/` plays one frozen scene
-on every Fabric node and compares its pictures with the last approved run. Distant Horizons runs there on 26.3 (`--with distanthorizons`,
-Fabric Loader 0.19.5 for the run: see the skill).
+on every Fabric node and compares its pictures with the reference the user validated. Distant Horizons runs there on 26.3 (`--with distanthorizons`,
+Fabric Loader 0.19.5 for the run: see the skill). That reference is kept on the bench machine
+(`~/living-horizon-bench/baselines/`, `bench.cmd status` says which release): every bench run
+is compared with it, never with the newest run in `results/`, and only the user decides that a run
+becomes the new reference (`approve <run>`). Today: v0.16.0, vanilla, the ten default nodes.
 
 ## Debugging checklist
 

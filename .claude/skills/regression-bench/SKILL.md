@@ -1,6 +1,6 @@
 ---
 name: regression-bench
-description: Run Living Horizon's regression bench on the dedicated test machine - the same frozen scene played on every game version, alone and with Sodium, Voxy, Distant Horizons and shader packs, its pictures and numbers compared with the last approved run and between versions, in an HTML report. Use when a develop build (or a branch) must be checked across versions before release, when the user asks whether a build draws the same as the previous one, to approve new baselines, or to set the bench machine up.
+description: Run Living Horizon's regression bench on the dedicated test machine - the same frozen scene played on every game version, alone and with Sodium, Voxy, Distant Horizons and shader packs, its pictures and numbers compared with the reference the user validated and between versions, in an HTML report. Use when a develop build (or a branch) must be checked across versions before release, when the user asks whether a build draws the same as the previous one, to approve new baselines, or to set the bench machine up.
 ---
 
 # The regression bench
@@ -8,7 +8,7 @@ description: Run Living Horizon's regression bench on the dedicated test machine
 `game-test` checks one scenario on one version, headless, without Voxy. The bench is its
 companion for a machine with a graphics card: it plays one fixed scene on **every Fabric node
 from 1.21.4** (the client game tests need it), once per **profile** (a set of mods), and
-compares each picture with the one approved last time on that same machine.
+compares each picture with the validated reference on that same machine (see *References*).
 
 Each game version is installed once, by its node's Gradle run. A profile is only a folder of
 mods Fabric Loader is pointed at (`-Plh.mods`, `fabric.addMods`): `instances/<node>/<profile>/mods`.
@@ -50,7 +50,7 @@ bench.cmd run --ref develop --nodes 26.3.x  # a branch, tag or commit; some node
 bench.cmd run --ref local                   # this checkout as it is (on a dev machine: python bench.py)
 bench.cmd run --profiles voxy,voxy-photon --perf
 bench.cmd compare last                      # compare again (after changing bench.toml)
-bench.cmd approve last                      # this run's pictures become the baselines
+bench.cmd approve <run>                     # the user validated it: it becomes the reference
 bench.cmd mods [--update]                   # the mod versions pinned per game version
 bench.cmd runs
 ```
@@ -81,27 +81,45 @@ a mob through the far terrain, a picture not settled) and whether it looks like 
 an intended change, with the changelog entry that explains it when there is one. Never sum up a
 comparison without them.
 
-## References: compare with the last validated release
+## References: always compare with the validated reference
 
-**First, on any machine: `bench.cmd status`.** It says whether this machine has references and
-from which release, game by game, or that it has none yet.
+**A run is compared with the validated reference, never with whatever ran last.** The reference is
+a run the user looked at and said was right, approved with `approve <run>`: its pictures, frame
+rates and stats are copied into `LH_BENCH_HOME/baselines/<node>/<profile>/`, and `approved.json`
+there names the run and the release. It stays on this machine until the user validates another one.
+Every other folder of `results/` is only a run (a comparison played once, a test of a pull request,
+a release played to compare with): never take one of those as the reference, even the newest,
+even one of a release.
 
-- **References there**: play the build asked for alone; it is compared with them.
-- **None yet** (a new machine, a scene changed): the same command sets them up first. Asked for
-  one release with no `--against`, `jars` finds the games with no reference, plays the newest full
-  release on them (`releases/latest`, never a pre-release: v0.16.0 today), approves it, then plays
-  the build asked for and compares it. Say so to the user before starting: it doubles the time
-  once.
+**Whenever the user asks for a regression bench** ("test v0.19.0-dev.842", "is this build
+stable"):
+
+1. `bench.cmd status` (on a dev machine `python bench.py status`): which release each game and
+   profile is validated against, and which have no validated reference. Tell the user.
+2. Play the build asked for alone (`jars --tag <build>`, no `--against`): it is compared with those
+   references. A game or profile with no validated reference comes out **new**: say so, never
+   approve anything to fill the gap, and never present a comparison with another run as a result
+   against the reference.
+3. Approve only when the user says this run is the new reference (`approve <run>`, which replaces
+   the old one for the games and profiles it played). Never on your own, not even a full release.
+
+`--against <run>` compares two runs directly (a pull request against the release it starts from,
+say); it is a side comparison, kept apart from the reference, and reported as such.
 
 ```
 bench.cmd status
-bench.cmd jars --tag v0.17.0-dev.760 --profiles dh,voxy --fps 10 --parallel 4 --memory 2G
+bench.cmd jars --tag v0.19.0-dev.842 --fps 10 --parallel 4 --memory 2G
+bench.cmd approve v0.16.0-jars_20261123-2157    # only once the user validated that run
 ```
+
+Validated today: **v0.16.0, profile vanilla, the ten `jar_nodes`**, from run
+`v0.16.0-jars_20261123-2157` (approved 2026-11-28). Sodium, Distant Horizons and Voxy have no
+validated reference yet. The runs of 22 and 23 November comparing v0.16.0 with pull request #366
+are kept in `results/` as a comparison only.
 
 `jar_nodes` in `bench.toml` is the default list of games (ten: one per change in how the mod
 draws, and Forge and NeoForge where most players are); list it to the user before a run and
-take `--nodes` from what they keep. A reference can also be made by hand from any run
-(`approve <run>`), or from a later release once it is validated.
+take `--nodes` from what they keep.
 
 The references stay in `LH_BENCH_HOME`, never in the repository (`baselines/<node>/<profile>`,
 `approved.json` says which release): they belong to this machine's graphics card and driver, and
@@ -118,8 +136,10 @@ below it. New warnings and errors of the mod in the game's log (its own lines, o
 stack goes through it) mark a result changed too: a bug does not always show in a picture, and
 this is how the far depth failing on Forge 1.20.1 in v0.17.0-dev.744 showed first.
 
-- **The first run** has nothing to compare with: look at its pictures, then `approve last`.
-- **Changed, expected** (the pull request changed what is drawn): approve it.
+- **The first run** has nothing to compare with: show the user its pictures; approve it only once
+  they say it is the reference.
+- **Changed, expected** (the pull request changed what is drawn): show it; approve it as the new
+  reference only if the user says so.
 - **Changed, unexpected**: a regression. Find the build that brought it (`run --ref <older tag>`),
   then debug on that node with `game-test` or `runClientGameTest` and the instance's mods
   (`-Plh.mods=<LH_BENCH_HOME>/instances/<node>/<profile>/mods`).
