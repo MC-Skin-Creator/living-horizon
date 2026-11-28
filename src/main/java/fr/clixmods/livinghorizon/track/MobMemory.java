@@ -738,7 +738,10 @@ public final class MobMemory {
         forget(id);
     }
 
-    /** The game's puff of smoke where a copy drawn a moment ago stands: as {@code LivingEntity.makePoofParticles} makes it. */
+    /**
+     * The game's puff of smoke where a copy drawn a moment ago stands, as {@code LivingEntity.makePoofParticles}
+     * makes it, and as the game's Particles setting allows.
+     */
     private static void poof(Remembered mob) {
         Entity puppet = mob.puppet;
         if (mob.gone || puppet == null || System.nanoTime() - mob.drawnAt > POOF_DRAWN) return;
@@ -746,8 +749,13 @@ public final class MobMemory {
         ClientLevel level = minecraft.level;
         if (level == null || puppet.level() != level || minecraft.player == null
                 || puppet.distanceToSqr(minecraft.player) > POOF_RANGE * POOF_RANGE) return;
+        // The game's Particles setting, as for its own smoke: Decreased drops a third, Minimal all of it.
+        // Its order (All, Decreased, Minimal) is the same on every version; its class moved in 1.21.2.
+        int particles = minecraft.options.particles().get().ordinal();
+        if (particles >= 2) return;
         var random = java.util.concurrent.ThreadLocalRandom.current();
         for (int i = 0; i < 20; i++) {
+            if (particles == 1 && random.nextInt(3) == 0) continue;
             // Past the game's 32 blocks for particles too: the copies are mostly farther than that.
             level.addAlwaysVisibleParticle(ParticleTypes.POOF, true, puppet.getRandomX(1.0), puppet.getRandomY(),
                     puppet.getRandomZ(1.0), random.nextGaussian() * 0.02, random.nextGaussian() * 0.02,
