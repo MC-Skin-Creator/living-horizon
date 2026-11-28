@@ -4,9 +4,6 @@ import com.mojang.serialization.Codec;
 import fr.clixmods.livinghorizon.FarConfig;
 import fr.clixmods.livinghorizon.QualityPreset;
 import fr.clixmods.livinghorizon.render.DistancePreview.Shape;
-import fr.clixmods.livinghorizon.track.FarPlayerTracker;
-import fr.clixmods.livinghorizon.track.Foresight;
-import fr.clixmods.livinghorizon.track.MobScan;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.OptionInstance;
 import net.minecraft.client.Options;
@@ -80,72 +77,47 @@ public final class FarConfigScreen extends SideOptionsScreen {
         // Distances take a whole row: their names are long, as the game's own are. Each is drawn
         // in the world behind the screen while it is hovered or changed (distance()).
         header(Component.translatable(KEY + "impostorsSection"));
+        subheader(Component.translatable(KEY + "simplification"));
         list.addSmall(
                 bool("impostors", c.impostors, v -> c.impostors = v),
                 bool("impostorEntities", c.impostorEntities, v -> c.impostorEntities = v));
         list.addSmall(bool("impostorPlayers", c.impostorPlayers, v -> c.impostorPlayers = v),
                 bool("impostorBirds", c.impostorBirds, v -> c.impostorBirds = v));
-        list.addSmall(bool("impostorShading", c.impostorShading, v -> c.impostorShading = v)
-                .createButton(minecraft.options, 0, 0, 150),
-                bool("impostorAnimation", c.impostorAnimation, v -> c.impostorAnimation = v)
-                        .createButton(minecraft.options, 0, 0, 150));
+        list.addSmall(bool("impostorAnimation", c.impostorAnimation, v -> c.impostorAnimation = v)
+                .createButton(minecraft.options, 0, 0, 150), null);
         list.addBig(distance(Shape.AROUND, blocks("impostorDistance", 0, FarConfig.MAX_IMPOSTOR_DISTANCE,
                 c.impostorDistance, v -> c.impostorDistance = v)));
-        list.addBig(unit("impostorPixels", "pixels", 0, FarConfig.MAX_IMPOSTOR_PIXELS, c.impostorPixels,
-                v -> c.impostorPixels = v));
         list.addBig(distance(Shape.AROUND, blocks("impostorAnimationDistance", FarConfig.MIN_ANIMATION_DISTANCE,
                 FarConfig.MAX_ANIMATION_DISTANCE, c.impostorAnimationDistance, v -> c.impostorAnimationDistance = v)));
         list.addBig(unit("impostorMobMemory", "megabytes", FarConfig.MIN_MOB_MEMORY, FarConfig.MAX_MOB_MEMORY,
                 c.impostorMobMemory, v -> c.impostorMobMemory = v));
         list.addBig(unit("impostorPlayerMemory", "megabytes", FarConfig.MIN_PLAYER_MEMORY, FarConfig.MAX_PLAYER_MEMORY,
                 c.impostorPlayerMemory, v -> c.impostorPlayerMemory = v));
-        list.addSmall(
-                Button.builder(Component.translatable(KEY + "impostorPreview"), b -> minecraft.setScreen(new ImpostorScreen(this)))
-                        .tooltip(Tooltip.create(Component.translatable(KEY + "impostorPreview.tooltip"))).build(),
-                null);
+        list.addSmall(opens(this, "simplificationAdvanced", SimplificationAdvancedScreen::new), null);
 
         header(Component.translatable(KEY + "players"));
-        list.addSmall(
-                bool("enabled", c.enabled, v -> c.enabled = v),
-                bool("showVehicles", c.showVehicles, v -> c.showVehicles = v));
+        list.addSmall(bool("enabled", c.enabled, v -> c.enabled = v).createButton(minecraft.options, 0, 0, 150), null);
         list.addBig(distance(Shape.AROUND, reach("playerMaxDistance", c.playerMaxDistance, v -> c.playerMaxDistance = v)));
+        subheader(Component.translatable(KEY + "players.offline"));
         list.addSmall(
                 bool("offlinePlayers", c.offlinePlayers, v -> c.offlinePlayers = v),
                 integer("maxOfflinePlayers", 0, FarConfig.MAX_OFFLINE, c.maxOfflinePlayers,
                         v -> c.maxOfflinePlayers = v, FarConfig.UNLIMITED_OFFLINE),
                 bool("offlineLife", c.offlineLife, v -> c.offlineLife = v),
                 distance(Shape.AROUND, blocks("offlineRoam", 8, 128, c.offlineRoam, v -> c.offlineRoam = v)));
-        list.addSmall(
-                bool("offlineNames", c.offlineNames, v -> c.offlineNames = v),
-                bool("offlineTabList", c.offlineTabList, v -> c.offlineTabList = v));
-        list.addSmall(
-                bool("offlineTag", c.offlineTag, v -> c.offlineTag = v).createButton(minecraft.options, 0, 0, 150),
-                Button.builder(Component.translatable(KEY + "forgetSleepers"), b -> confirm("forgetSleepers",
-                                () -> FarPlayerTracker.get().resting().forgetAll()))
-                        .tooltip(Tooltip.create(Component.translatable(KEY + "forgetSleepers.tooltip"))).build());
+        list.addSmall(opens(this, "playersAdvanced", PlayersAdvancedScreen::new), null);
 
         // In three parts, as on Sodium's page: what goes for both, then the mobs, then the other entities.
         header(Component.translatable(KEY + "mobs"));
         subheader(Component.translatable(KEY + "mobs.general"));
-        list.addSmall(
-                Button.builder(Component.translatable(KEY + "chooseMobs"), b -> minecraft.setScreen(new MobTypesScreen(this)))
-                        .tooltip(Tooltip.create(Component.translatable(KEY + "chooseMobs.tooltip"))).build(),
-                Button.builder(Component.translatable(KEY + "forgetMobs"), b -> confirm("forgetMobs",
-                                () -> FarPlayerTracker.get().mobs().forgetAll()))
-                        .tooltip(Tooltip.create(Component.translatable(KEY + "forgetMobs.tooltip"))).build());
-        list.addSmall(scanButton(), distanceButton(Shape.CHUNKS, chunks("scanRadius", MobScan.MIN_RADIUS,
-                MobScan.MAX_RADIUS, c.scanRadius, v -> c.scanRadius = v), 150));
-        list.addSmall(foreseeButton(), distanceButton(Shape.CHUNKS, chunks("foreseeRadius", Foresight.MIN_RADIUS,
-                Foresight.MAX_RADIUS, c.foreseeRadius, v -> c.foreseeRadius = v), 150));
+        list.addSmall(opens(this, "chooseMobs", MobTypesScreen::new), opens(this, "mobsAdvanced", MobsAdvancedScreen::new));
         subheader(Component.translatable(KEY + "mobs.creatures"));
         // The guessed mobs beside the mobs: Max Mobs and Mob Render Distance count both.
         list.addSmall(
                 bool("distantMobs", c.distantMobs, v -> c.distantMobs = v),
                 bool("seedMobs", c.seedMobs, v -> c.seedMobs = v));
-        list.addSmall(
-                integer("maxDistantMobs", 0, FarConfig.MAX_MOBS, c.maxDistantMobs, v -> c.maxDistantMobs = v, FarConfig.UNLIMITED_MOBS),
-                bool("rememberNamedMobs", c.rememberNamedMobs, v -> c.rememberNamedMobs = v));
-        list.addSmall(bool("hideUndergroundMobs", c.hideUndergroundMobs, v -> c.hideUndergroundMobs = v));
+        list.addSmall(integer("maxDistantMobs", 0, FarConfig.MAX_MOBS, c.maxDistantMobs, v -> c.maxDistantMobs = v,
+                FarConfig.UNLIMITED_MOBS));
         list.addBig(distance(Shape.AROUND, reach("mobMaxDistance", c.mobMaxDistance, v -> c.mobMaxDistance = v)));
         list.addBig(unit("animationMinPixels", "pixels", 0, 40, c.animationMinPixels, v -> c.animationMinPixels = v));
         list.addBig(distance(Shape.AROUND, reach("animationMaxDistance", c.animationMaxDistance, v -> c.animationMaxDistance = v)));
@@ -163,12 +135,10 @@ public final class FarConfigScreen extends SideOptionsScreen {
         list.addBig(distance(Shape.AROUND, blocks("birdMaxDistance", 100, 3000, c.birdMaxDistance,
                 v -> c.birdMaxDistance = v)));
         list.addSmall(
-                distance(Shape.ABOVE, blocks("birdMinHeight", 0, 200, c.birdMinHeight, v -> c.birdMinHeight = v)),
-                unit("birdSize", "multiplier", 1, 6, c.birdSize, v -> c.birdSize = v));
-        list.addSmall(
                 choice("birdStyle", List.of("3d", "2d"), c.birdStyle, v -> c.birdStyle = v).createButton(minecraft.options, 0, 0, 150),
                 Button.builder(Component.translatable(KEY + "chooseBirds"), b -> minecraft.setScreen(new BirdTypesScreen(this)))
                         .tooltip(Tooltip.create(Component.translatable(KEY + "chooseBirds.tooltip"))).build());
+        list.addSmall(opens(this, "birdsAdvanced", BirdsAdvancedScreen::new), null);
     }
 
     @Override
@@ -246,39 +216,6 @@ public final class FarConfigScreen extends SideOptionsScreen {
         layout.addToFooter(row);
     }
 
-    /**
-     * Reads the mobs of the chunks around from the world itself: only in single player,
-     * where the world is in this game. Back to the game, where the chat says what it found.
-     */
-    private Button scanButton() {
-        boolean available = MobScan.available(minecraft);
-        Button button = Button.builder(Component.translatable(KEY + "scanMobs"), b -> {
-                    FarConfig.save();
-                    minecraft.setScreen(null);
-                    MobScan.start(minecraft, FarConfig.get().scanRadius);
-                })
-                .tooltip(Tooltip.create(Component.translatable(
-                        KEY + (available ? "scanMobs.tooltip" : "scanMobs.unavailable"))))
-                .build();
-        button.active = available;
-        return button;
-    }
-
-    /** <i>Guess Nearby Mobs</i>: in a world played here, or on a server that shares its seed. */
-    private Button foreseeButton() {
-        boolean available = FarPlayerTracker.get().mobs().foresight().available(minecraft);
-        Button button = Button.builder(Component.translatable(KEY + "foreseeMobs"), b -> {
-                    FarConfig.save();
-                    minecraft.setScreen(null);
-                    FarPlayerTracker.get().mobs().foresight().start(minecraft, FarConfig.get().foreseeRadius);
-                })
-                .tooltip(Tooltip.create(Component.translatable(
-                        KEY + (available ? "foreseeMobs.tooltip" : "foreseeMobs.unavailable"))))
-                .build();
-        button.active = available;
-        return button;
-    }
-
     @Override
     public void removed() {
         FarConfig.save();
@@ -292,12 +229,25 @@ public final class FarConfigScreen extends SideOptionsScreen {
         }, Component.translatable(KEY + "restoreDefaults"), Component.translatable(KEY + "restoreDefaults.confirm")));
     }
 
-    /** Asks before forgetting: what is forgotten does not come back. */
-    private void confirm(String name, Runnable action) {
-        minecraft.setScreen(new ConfirmScreen(yes -> {
-            if (yes) action.run();
-            minecraft.setScreen(this);
-        }, Component.translatable(KEY + name), Component.translatable(KEY + name + ".confirm")));
+    /** A button named and explained by {@code name}, opening a screen that goes back to {@code from}. */
+    static Button opens(Screen from, String name, java.util.function.Function<Screen, Screen> screen) {
+        return Button.builder(Component.translatable(KEY + name), b -> {
+                    Minecraft minecraft = Minecraft.getInstance();
+                    minecraft.setScreen(screen.apply(from));
+                })
+                .tooltip(Tooltip.create(Component.translatable(KEY + name + ".tooltip"))).build();
+    }
+
+    /** A button that forgets something, asking first: what is forgotten does not come back. */
+    static Button forgets(Screen from, String name, Runnable action) {
+        return Button.builder(Component.translatable(KEY + name), b -> {
+                    Minecraft minecraft = Minecraft.getInstance();
+                    minecraft.setScreen(new ConfirmScreen(yes -> {
+                        if (yes) action.run();
+                        minecraft.setScreen(from);
+                    }, Component.translatable(KEY + name), Component.translatable(KEY + name + ".confirm")));
+                })
+                .tooltip(Tooltip.create(Component.translatable(KEY + name + ".tooltip"))).build();
     }
 
     static OptionInstance<Boolean> bool(String name, boolean value, Consumer<Boolean> set) {

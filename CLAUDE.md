@@ -91,6 +91,11 @@ store description (`store/listing.md`) are written with the `readme-writing` ski
 
 ## Settings live in two screens
 
+The main screen holds what most players change; each section's *Advanced...* button opens what
+they rarely do (`SimplificationAdvancedScreen`, `PlayersAdvancedScreen`, `MobsAdvancedScreen`,
+`BirdsAdvancedScreen`), and Sodium's page opens the same screens instead of listing their rows.
+*Debug Options* holds only tools to look and measure, and switches to turn a fix off to compare.
+
 Every setting a player changes in game is shown twice: in the mod's own screen
 (`ui/FarConfigScreen` and its sub-screens) and in Sodium's video settings
 (`ui/SodiumOptions`, Sodium 0.8 and later). **A setting added, renamed, moved or removed
@@ -484,8 +489,9 @@ come back, add it here in the same pull request: this file is what the next sess
   (`MobMotion.follow`), as the game would walk it: at its kind's pace (`walkPace`, from its
   movement speed: a cow 0.064 blocks a tick), on the blocks under it (`standAt`), hopping if it
   hops; faster with the player close. Catching up faster the farther it was, it slid across the
-  ground with its legs racing and went up a ramp through the air. All of it is set on the *Debug*
-  screen (`join*` settings: how far it walks, its pace, the ground, when it gives up, the hurry).
+  ground with its legs racing and went up a ramp through the air. All of it is set on the mobs'
+  *Advanced* screen (`MobsAdvancedScreen`, `join*` settings: how far it walks, its pace, the
+  ground, when it gives up, the hurry).
   The real one takes over a tick after the copy stood on it: removed the tick it arrived, its last
   step was never drawn and the real one appeared a step ahead. Taking over at once instead (no
   walk) made it jump and turn on the spot. The `shortrange`, `smallmobs` and `comeback` scenarios
